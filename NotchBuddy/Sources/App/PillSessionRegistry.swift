@@ -44,13 +44,16 @@ struct PillSessionRegistry {
         var hostApp: String? = nil
         /// Bundle id of the client (VS Code, Cursor…) that sent the event.
         var bundleId: String = ""
+        var hookSessionId: String? = nil
+        var codexThreadId: String? = nil
+        var codexTurnId: String? = nil
+        var codexRolloutPath: String? = nil
+        var sessionTerminalId: String? = nil
+        var codexManaged: Bool = false
     }
 
     private struct Session {
-        var projectName: String
-        var cwd: String
-        var hostApp: String?
-        var bundleId: String
+        var display: Display
         var isWorking: Bool
         var lastSeen: Date
         /// Last time the session was mid-turn or ended a turn. A stray notification
@@ -78,13 +81,27 @@ struct PillSessionRegistry {
             p.order.append(display.session)
         }
         var session = p.sessions[display.session]
-            ?? Session(projectName: display.projectName, cwd: display.cwd,
-                       hostApp: display.hostApp, bundleId: display.bundleId,
-                       isWorking: false, lastSeen: now)
-        session.projectName = display.projectName
-        if !display.cwd.isEmpty { session.cwd = display.cwd }
-        if display.hostApp != nil { session.hostApp = display.hostApp }
-        if !display.bundleId.isEmpty { session.bundleId = display.bundleId }
+            ?? Session(display: display, isWorking: false, lastSeen: now)
+        session.display.projectName = display.projectName
+        if !display.cwd.isEmpty { session.display.cwd = display.cwd }
+        if display.hostApp != nil { session.display.hostApp = display.hostApp }
+        if !display.bundleId.isEmpty {
+            session.display.bundleId = display.bundleId
+            session.display.hostApp = display.hostApp
+        }
+        if let id = display.hookSessionId { session.display.hookSessionId = id }
+        if display.codexManaged {
+            if let id = display.codexThreadId { session.display.codexThreadId = id }
+            if let id = display.codexTurnId, !id.isEmpty { session.display.codexTurnId = id }
+            if let path = display.codexRolloutPath { session.display.codexRolloutPath = path }
+        } else {
+            // A root hook session can change child threads; absent identity is unavailable.
+            session.display.codexThreadId = display.codexThreadId
+            session.display.codexTurnId = nil
+            session.display.codexRolloutPath = nil
+        }
+        if let id = display.sessionTerminalId { session.display.sessionTerminalId = id }
+        session.display.codexManaged = display.codexManaged
         if working { session.isWorking = true; session.lastWorked = now }
         session.lastSeen = now
         p.sessions[display.session] = session
@@ -137,8 +154,11 @@ struct PillSessionRegistry {
             (p.sessions[$0]?.lastWorked ?? .distantPast) < (p.sessions[$1]?.lastWorked ?? .distantPast)
         }
         guard let id = working ?? lastWorked, let session = p.sessions[id] else { return nil }
-        return Display(session: id, projectName: session.projectName, cwd: session.cwd,
-                       hostApp: session.hostApp, bundleId: session.bundleId)
+        return session.display
+    }
+
+    func display(pill: String, session: String) -> Display? {
+        pills[pill]?.sessions[session]?.display
     }
 
     /// Whether this session may write the pill's name and cwd. True when the

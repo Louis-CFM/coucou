@@ -109,12 +109,12 @@ extension EnvironmentValues {
 
 extension HubPage {
     /// The line under the title of the notch's pages.
-    static func notchSubtitle(_ page: HubPage) -> String? {
+    static func notchSubtitle(_ page: HubPage, chatProvider: ChatProvider) -> String? {
         switch page {
         case .general:      return String(localized: "hub.notch.general")
         case .pills:        return String(localized: "hub.notch.pills")
         case .agents:       return String(localized: "hub.notch.agents")
-        case .chat:         return String(localized: "hub.notch.chat")
+        case .chat:         return chatProvider == .codex ? String(localized: "codex.chat.title") : String(localized: "hub.notch.chat")
         case .integrations: return String(localized: "hub.notch.integrations")
         case .voice:        return String(localized: "hub.notch.voice")
         case .shortcuts:    return String(localized: "hub.notch.shortcuts")
@@ -195,6 +195,7 @@ final class FlowHubController {
 }
 
 struct FlowHubView: View {
+    @ObservedObject private var state = AppState.shared
     @ObservedObject var router: HubRouter
     @ObservedObject var windowState: HubWindowState
 
@@ -234,7 +235,7 @@ struct FlowHubView: View {
         default:
             if let section = router.page.settingsSection {
                 VStack(alignment: .leading, spacing: 0) {
-                    HubHero(page: router.page, title: router.page.title, subtitle: HubPage.notchSubtitle(router.page))
+                    HubHero(page: router.page, title: router.page.title, subtitle: HubPage.notchSubtitle(router.page, chatProvider: state.chatProvider))
                         .padding(.horizontal, 28)
                         .padding(.top, 24)
                     SettingsView(embeddedSection: section)

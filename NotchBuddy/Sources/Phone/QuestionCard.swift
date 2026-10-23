@@ -8,12 +8,22 @@ struct QuestionCard: View {
     let payload: QuestionPayload
 
     @State private var picks: [Set<String>] = []
+    @State private var other: [String] = []
+    @State private var useOther: [Bool] = []
     @State private var sending = false
     @State private var sent = false
     @State private var error: String?
 
     private var ready: Bool {
-        picks.count == payload.items.count && !picks.contains { $0.isEmpty }
+        payload.accepts(selections)
+    }
+
+    private var selections: [[String]] {
+        payload.items.enumerated().map { index, item in
+            guard picks.indices.contains(index), other.indices.contains(index), useOther.indices.contains(index) else { return [] }
+            if useOther[index] || item.options.isEmpty { return [other[index].trimmingCharacters(in: .whitespacesAndNewlines)] }
+            return item.options.map(\.label).filter { picks[index].contains($0) }
+        }
     }
 
     var body: some View {
@@ -33,6 +43,16 @@ struct QuestionCard: View {
                     ForEach(item.options, id: \.label) { option in
                         optionRow(option, item: item, index: index)
                     }
+                    if other.indices.contains(index), useOther.indices.contains(index), item.isOther == true || item.options.isEmpty {
+                        if !item.options.isEmpty {
+                            Toggle("Other answer", isOn: $useOther[index]).font(.callout)
+                        }
+                        if useOther[index] || item.options.isEmpty {
+                            TextField("Your answer", text: $other[index], axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .disabled(sent || sending)
+                        }
+                    }
                 }
             }
             if sent {
@@ -49,7 +69,7 @@ struct QuestionCard: View {
                 .tint(.cyan)
                 .controlSize(.large)
                 .disabled(!ready || sending)
-                Text("Claude waits about 2 minutes, then asks in the terminal.")
+                Text("Answer while this request is still waiting on your Mac.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             if let error {
@@ -67,6 +87,7 @@ struct QuestionCard: View {
         let selected = picks.indices.contains(index) && picks[index].contains(option.label)
         return Button {
             guard picks.indices.contains(index), !sent else { return }
+            if useOther.indices.contains(index) { useOther[index] = false }
             if item.multiSelect {
                 if selected { picks[index].remove(option.label) } else { picks[index].insert(option.label) }
             } else {
@@ -96,6 +117,8 @@ struct QuestionCard: View {
 
     private func reset() {
         picks = Array(repeating: [], count: payload.items.count)
+        other = Array(repeating: "", count: payload.items.count)
+        useOther = Array(repeating: false, count: payload.items.count)
         sent = false
         error = nil
     }
@@ -104,10 +127,6 @@ struct QuestionCard: View {
         sending = true
         defer { sending = false }
         error = nil
-        // Keep the order of the choices, as Claude listed them.
-        let selections = payload.items.enumerated().map { index, item in
-            item.options.map(\.label).filter { picks[index].contains($0) }
-        }
         if await link.answer(fingerprint: session.questionFingerprint, pillId: session.id, selections: selections) {
             sent = true
             Haptics.success()

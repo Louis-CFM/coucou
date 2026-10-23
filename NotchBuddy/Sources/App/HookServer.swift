@@ -29,8 +29,6 @@ final class HookServer: @unchecked Sendable {
     // App Store build derives the command from the panel-selected claudeURL in buildHooksData(claudeURL:).
     static var hookScriptPath: String { supportDir.appendingPathComponent("nb-hook").path }
 
-    // No approval blocking state — notch is notification-only, user answers in VS Code
-
     private static let maxPayload = 1_048_576          // 1 MB — reject oversized messages
     private static let receiveTimeoutSeconds: Int = 5   // SO_RCVTIMEO on client sockets
     private static let maxConnections = 32              // concurrent connection ceiling
@@ -47,10 +45,16 @@ final class HookServer: @unchecked Sendable {
     private var pendingQuestionFD: Int32 = -1         // held open while user answers AskUserQuestion
     private var questionFDSource: (any DispatchSourceRead)? = nil  // monitors pendingQuestionFD
 
-    /// True when a real nb-hook connection is holding the approval fd open.
+    /// True when the shared queue has a real socket or native approval request.
     @MainActor var hasRealPendingApproval: Bool { !approvals.isEmpty }
     /// True when a real nb-hook connection is holding the question fd open.
-    @MainActor var hasRealPendingQuestion: Bool { pendingQuestionFD >= 0 }
+    @MainActor var hasRealPendingQuestion: Bool {
+        #if !APPSTORE
+        return pendingQuestionFD >= 0 || codexQuestion != nil
+        #else
+        return pendingQuestionFD >= 0
+        #endif
+    }
     private var questionPillId: String = ""           // pill that owns the pending question
     private var questionSessionId: String = ""        // sessionId for the pending question (recap tracking)
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
@@ -59,6 +63,17 @@ final class HookServer: @unchecked Sendable {
     private var focusBeforeAlert: String? = nil       // saved focus while another pill's card shows
     private var alertPill: String? = nil              // the pill that took the focus for its alert
     private var sessions = PillSessionRegistry()      // live sessions behind each pill
+
+    #if !APPSTORE
+    private struct NativeRequest {
+        let id: Any
+        let method: String
+        let params: [String: Any]
+        let key: String
+    }
+    @MainActor private var codexApprovals: [UUID: NativeRequest] = [:]
+    @MainActor private var codexQuestion: NativeRequest?
+    #endif
 
     private init() {}
 
@@ -101,11 +116,36 @@ final class HookServer: @unchecked Sendable {
             return
         }
         state.updateTask(id: head.pillId, state: .approval)
-        state.pendingApproval = ApprovalInfo(sessionId: head.sessionId, tool: head.tool,
+        var info = ApprovalInfo(sessionId: head.sessionId, tool: head.tool,
                                               command: head.command, inputKey: head.inputKey,
                                               pillId: head.pillId, id: head.id,
                                               queueCount: approvals.count,
                                               projectName: head.projectName)
+        #if !APPSTORE
+        if let request = codexApprovals[head.id] {
+            info.requestId = request.key
+            info.threadId = request.params["threadId"] as? String
+            info.turnId = request.params["turnId"] as? String
+            let available = request.params["availableDecisions"] as? [Any] ?? []
+            info.allowsSession = available.contains { $0 as? String == "acceptForSession" }
+            info.ruleLabels = Self.codexApprovalRules(available).map { rule in
+                if let amendment = rule["acceptWithExecpolicyAmendment"] as? [String: Any],
+                   let prefix = amendment["execpolicy_amendment"] as? [String] {
+                    return String(format: String(localized: "approval.command-rule %@", defaultValue: "Remember command prefix: %@"), prefix.joined(separator: " "))
+                }
+                if let wrapper = rule["applyNetworkPolicyAmendment"] as? [String: Any],
+                   let network = wrapper["network_policy_amendment"] as? [String: Any] {
+                    return String(format: String(localized: "approval.network-rule %@ %@", defaultValue: "Remember network rule: %@ %@"), network["action"] as? String ?? "", network["host"] as? String ?? "")
+                }
+                return String(localized: "approval.unsupported-rule", defaultValue: "Unsupported rule — decline this request")
+            }
+        } else {
+            info.requestId = head.id.uuidString
+        }
+        #else
+        info.requestId = head.id.uuidString
+        #endif
+        state.pendingApproval = info
         state.isPinned = true
         // Approval always forces the island open — the user must be able to respond.
         // Save the focus once, so it comes back when the last request is gone.
@@ -122,10 +162,15 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func removeApproval(id: UUID, answer json: String? = nil, note: String? = nil) {
         guard let entry = approvals.remove(id: id) else { return }
+        #if !APPSTORE
+        if let request = codexApprovals.removeValue(forKey: id) {
+            replyNativeApproval(request, decision: "deny")
+        }
+        #endif
         let age = Int(Date().timeIntervalSince(entry.received))
-        nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Coucou" } ?? note ?? "dropped")")
+        nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Coucou" } ?? note ?? (entry.fd < 0 ? "native request closed" : "dropped"))")
         let source = approvalSources.removeValue(forKey: id)
-        if let json {
+        if let json, entry.fd >= 0 {
             let fd = entry.fd
             Task.detached { [weak self] in
                 // Write while the fd is still valid, then cancel → the cancel handler closes it.
@@ -174,14 +219,33 @@ final class HookServer: @unchecked Sendable {
     }
 
     @MainActor
+    private func finishPluginQuestion() -> Bool {
+        let state = AppState.shared
+        guard state.pendingQuestion?.isCodexPlugin == true,
+              let session = state.pendingQuestion?.sessionId else { return false }
+        _ = sessions.endSession(pill: questionPillId, session: session)
+        applyDisplayOwner(pill: questionPillId)
+        if state.pendingApproval?.pillId != questionPillId {
+            state.updateTask(id: questionPillId, state: sessions.workingCount(pill: questionPillId) > 0 ? .working : .idle)
+        }
+        if state.pendingApproval == nil { state.isPinned = false }
+        return true
+    }
+
+    @MainActor
     private func dismissQuestionCard(note: String) {
         cancelQuestionFDSource()
         pendingQuestionFD = -1
         let state = AppState.shared
         let pillId = questionPillId
+        let wasPlugin = finishPluginQuestion()
         state.pendingQuestion = nil
+        if wasPlugin, state.pendingApproval != nil {
+            focusBeforeQuestion = nil
+            return
+        }
         state.isPinned = false
-        state.updateTask(id: pillId, state: .working)
+        if !wasPlugin { state.updateTask(id: pillId, state: .working) }
         clearPillBadge(id: pillId)
         if let prev = focusBeforeQuestion {
             focusBeforeQuestion = nil
@@ -202,7 +266,22 @@ final class HookServer: @unchecked Sendable {
 
     /// Called by QuestionView. Sends answers JSON and cleans up.
     @MainActor
-    func sendQuestionAnswers(_ answers: [String: Any]) {
+    func sendQuestionAnswers(_ answers: [String: Any], for id: String? = nil) {
+        #if !APPSTORE
+        if let request = codexQuestion {
+            guard let id, id == request.key else { return }
+            guard AppState.shared.pendingQuestion?.requestId == request.key, isCurrentCodexRequest(request) else {
+                resolveCodexRequests(requestId: request.id)
+                return
+            }
+            codexQuestion = nil
+            try? CodexConnection.shared.respond(id: request.id, result: ["answers": answers])
+            if let thread = request.params["threadId"] as? String { RecapStore.shared.recordQuestionAnswered(sessionId: thread) }
+            dismissQuestionCard(note: "")
+            return
+        }
+        #endif
+        guard id == AppState.shared.pendingQuestion?.requestId else { return }
         // Only intercept a demo question — real questions always have a live fd.
         if DemoEngine.shared.isActive, pendingQuestionFD < 0 {
             AppState.shared.pendingQuestion = nil
@@ -233,12 +312,17 @@ final class HookServer: @unchecked Sendable {
     /// Called by QuestionView.onDisappear — card left screen without an explicit answer.
     /// Sends "ask" immediately to unblock nb-hook; does NOT navigate (view already changed).
     @MainActor
-    func releaseQuestionFD() {
+    func releaseQuestionFD(for id: String? = nil) {
+        #if !APPSTORE
+        if codexQuestion != nil { sendQuestionAsk(for: id); return }
+        #endif
+        guard id == AppState.shared.pendingQuestion?.requestId else { return }
         guard pendingQuestionFD >= 0 else { return }
         let fd = pendingQuestionFD
         pendingQuestionFD = -1
         let source = questionFDSource
         questionFDSource = nil
+        _ = finishPluginQuestion()
         AppState.shared.pendingQuestion = nil
         Task.detached { [weak self] in
             self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
@@ -248,7 +332,24 @@ final class HookServer: @unchecked Sendable {
 
     /// Called by QuestionView "Reply in terminal" button.
     @MainActor
-    func sendQuestionAsk() {
+    func sendQuestionAsk(for id: String? = nil) {
+        #if !APPSTORE
+        if let request = codexQuestion {
+            guard let id, id == request.key else { return }
+            guard AppState.shared.pendingQuestion?.requestId == request.key, isCurrentCodexRequest(request) else {
+                resolveCodexRequests(requestId: request.id)
+                return
+            }
+            codexQuestion = nil
+            try? CodexConnection.shared.respond(id: request.id, result: ["answers": [:]])
+            let thread = request.params["threadId"] as? String ?? ""
+            let turn = request.params["turnId"] as? String ?? ""
+            Task { _ = try? await CodexConnection.shared.request("turn/interrupt", params: ["threadId": thread, "turnId": turn]) }
+            dismissQuestionCard(note: "")
+            return
+        }
+        #endif
+        guard id == AppState.shared.pendingQuestion?.requestId else { return }
         let fd = pendingQuestionFD
         pendingQuestionFD = -1
         let source = questionFDSource
@@ -380,6 +481,28 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        #if !APPSTORE
+        if coucouKind == "codex_mcp_question" {
+            let input = payload["tool_input"] as? [String: Any] ?? [:]
+            let cwd = payload["cwd"] as? String ?? ""
+            var directory: ObjCBool = false
+            guard raw.count <= 131_072, payload["coucou_agent"] as? String == "codex",
+                  payload["coucou_managed"] == nil, payload["thread_id"] == nil,
+                  payload["turn_id"] == nil, payload["rollout_path"] == nil,
+                  UUID(uuidString: payload["session_id"] as? String ?? "") != nil,
+                  UUID(uuidString: payload["request_id"] as? String ?? "") != nil,
+                  cwd.hasPrefix("/"), !cwd.contains("\0"),
+                  FileManager.default.fileExists(atPath: cwd, isDirectory: &directory), directory.boolValue,
+                  let parsed = AskQuestion.parseCodexPlugin(input) else {
+                sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+                return
+            }
+            Task { @MainActor in self.processQuestionRequest(fd: fd, parsed: parsed, payload: payload) }
+            return
+        }
+        #endif
+
         // AskUserQuestion via --ask PreToolUse hook — hold fd open like PermissionRequest
         if coucouKind == "ask_user_question" {
             let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
@@ -471,6 +594,10 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        #if !APPSTORE
+        if isCodexEvent, payload["coucou_managed"] as? Bool != true,
+           CodexEventAdapter.shared.isManagedHookSession(sessionId) { return }
+        #endif
         let focused = state.focusId == agentId
         // The user is looking at the session's terminal: a finish or an error is already in
         // front of them, so the pill only takes a badge (no sound, no reveal). Warp exposes
@@ -480,20 +607,21 @@ final class HookServer: @unchecked Sendable {
         // Several sessions can share one pill (it is chosen from the client, not from the
         // session). The registry tells a turn-ending event whether it may touch the pill,
         // and which session owns the project name shown on it.
-        let display = PillSessionRegistry.Display(
-            session: sessionId,
+        let display = sessionDisplay(payload: payload, session: sessionId,
             projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
-            cwd: isExternalAgent ? "" : cwd,
-            hostApp: hostApp, bundleId: bundleId)
+            cwd: isExternalAgent ? "" : cwd, hostApp: hostApp)
+        let registrySession = display.session
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
-        let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
+        let recapSessionId = payload["coucou_managed"] as? Bool == true
+            ? (payload["thread_id"] as? String ?? sessionId)
+            : (sessionId == "unknown" || sessionId.isEmpty)
             ? "\(agentId)+\(cwd)"
             : sessionId
 
         #if PHONE_LINK
         // The iPhone's "last turn" (prompt, actions, diffs, answer).
-        if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
+        if !isExternalAgent, payload["coucou_managed"] as? Bool != true { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
         #endif
 
         // Waiting permission requests: an event that settles one (its tool finished, or its
@@ -503,6 +631,9 @@ final class HookServer: @unchecked Sendable {
             let eventKey = Self.approvalInputKey(payload["tool_input"] as? [String: Any] ?? [:])
             for entry in approvals.resolved(byEvent: name, sessionId: sessionId, pillId: agentId,
                                             tool: eventTool, inputKey: eventKey) {
+                #if !APPSTORE
+                if codexApprovals[entry.id] != nil { continue }
+                #endif
                 removeApproval(id: entry.id, note: handledNote(pill: entry.pillId))
             }
             // A session still waiting on a decision is held back (its parallel tool calls
@@ -568,25 +699,30 @@ final class HookServer: @unchecked Sendable {
             nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
-            sessions.note(pill: agentId, display: display, working: true)
-            state.updateTask(id: agentId, state: .working)
-            // Live diff for Edit / MultiEdit / Write
+            upsertTask(pill: agentId, display: display, working: true,
+                       externalAgent: isExternalAgent ? validAgent : nil)
+            let response = payload["tool_response"] as? [String: Any] ?? [:]
+            let failed = isCodexEvent && ((response["exit_code"] as? Int ?? response["exitCode"] as? Int ?? 0) != 0
+                || response["success"] as? Bool == false || response["status"] as? String == "failed")
+            state.updateTask(id: agentId, state: failed ? .error : .working)
+            if failed { appendStep(id: agentId, step: String(localized: "codex.command-failed", defaultValue: "Command failed")); break }
             let diffTool = payload["tool_name"] as? String ?? ""
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
-            if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
-                let idx = state.appendSessionDiff(diff, for: agentId)
-                let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
-                appendStep(id: agentId, step: step)
-                RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
+            let diffs = diffTool == "apply_patch" ? DiffEngine.fromCodexPatch(diffInput["command"] as? String ?? "")
+                : buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId).map { [$0] } ?? []
+            for diff in diffs {
+                recordCodexDiff(diff, pillId: agentId, sessionId: recapSessionId)
             }
 
         case "PostToolUseFailure":
-            sessions.note(pill: agentId, display: display, working: true)
+            upsertTask(pill: agentId, display: display, working: true,
+                       externalAgent: isExternalAgent ? validAgent : nil)
             state.updateTask(id: agentId, state: .working)
             appendStep(id: agentId, step: "⚠ failed")
 
         case "Notification":
-            sessions.note(pill: agentId, display: display, working: false)
+            upsertTask(pill: agentId, display: display, working: false,
+                       externalAgent: isExternalAgent ? validAgent : nil)
             let message = payload["message"] as? String ?? ""
             let lower = message.lowercased()
             if lower.contains("rate limit") || lower.contains("limite d") {
@@ -598,7 +734,7 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "Stop":
-            let scope = sessions.endTurn(pill: agentId, session: sessionId)
+            let scope = sessions.endTurn(pill: agentId, session: registrySession)
             // A turn ending can hand the name to a sibling session that is still working.
             applyDisplayOwner(pill: agentId)
             let rawFinal = (payload["last_assistant_message"] as? String)
@@ -613,6 +749,8 @@ final class HookServer: @unchecked Sendable {
                 nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
                 break
             }
+            let finishStamp = Date()
+            if let index = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[index].lastEventAt = finishStamp }
             state.updateTask(id: agentId, state: .finished)
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
@@ -625,7 +763,9 @@ final class HookServer: @unchecked Sendable {
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
                 // A session (this one or a sibling) may have started a new turn meanwhile.
-                guard self.sessions.workingCount(pill: agentId) == 0 else { return }
+                guard self.sessions.workingCount(pill: agentId) == 0,
+                      let task = AppState.shared.tasks.first(where: { $0.id == agentId }),
+                      task.lastEventAt == finishStamp, task.state == .finished else { return }
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
@@ -636,10 +776,11 @@ final class HookServer: @unchecked Sendable {
 
         case "StopFailure":
             RecapStore.shared.stop(sessionId: recapSessionId)
-            let failScope = sessions.endTurn(pill: agentId, session: sessionId)
+            let failScope = sessions.endTurn(pill: agentId, session: registrySession)
             applyDisplayOwner(pill: agentId)
             guard failScope == .pill else { break }
             nbLog("StopFailure \(sessionId.prefix(8)) — \(payload.keys.sorted().joined(separator: ", ")): \(Self.stopFailureDetail(payload) ?? "no detail")")
+
             state.updateTask(id: agentId, state: .error)
             // The error view shows what went wrong (finalLine), not the last thing said before it.
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
@@ -655,7 +796,7 @@ final class HookServer: @unchecked Sendable {
         case "Interrupt":
             // Codex: user stopped the turn
             RecapStore.shared.stop(sessionId: recapSessionId)
-            let interruptScope = sessions.endTurn(pill: agentId, session: sessionId)
+            let interruptScope = sessions.endTurn(pill: agentId, session: registrySession)
             applyDisplayOwner(pill: agentId)
             guard interruptScope == .pill else { break }
             activeSessionId = nil
@@ -664,7 +805,7 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionEnd":
             // Only the last session behind the pill may take the card and its diffs down.
-            guard sessions.endSession(pill: agentId, session: sessionId) == .pill else {
+            guard sessions.endSession(pill: agentId, session: registrySession) == .pill else {
                 RecapStore.shared.sessionEnd(sessionId: recapSessionId)
                 nbLog("SessionEnd \(sessionId.prefix(8)) — \(sessions.liveCount(pill: agentId)) session(s) left on \(agentId)")
                 applyDisplayOwner(pill: agentId)
@@ -801,6 +942,17 @@ final class HookServer: @unchecked Sendable {
 
     @MainActor
     private func processPermissionRequest(fd: Int32, payload: [String: Any]) {
+        #if !APPSTORE
+        let nativeMirror = payload["coucou_agent"] as? String == "codex"
+            && CodexEventAdapter.shared.isManagedHookSession(payload["session_id"] as? String ?? "")
+        if nativeMirror || codexQuestion != nil || AppState.shared.pendingQuestion?.isCodexPlugin == true {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
+        #endif
         let state = AppState.shared
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
@@ -908,9 +1060,9 @@ final class HookServer: @unchecked Sendable {
         activeSessionId = sessionId
 
         upsertTask(pill: pillId,
-                   display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
-                                                        cwd: cwd, hostApp: terminalHost?.bundleId,
-                                                        bundleId: bundleId),
+                   display: sessionDisplay(payload: payload, session: sessionId,
+                                           projectName: projectName, cwd: cwd,
+                                           hostApp: terminalHost?.bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .approval)
         SoundEngine.shared.play("approval")
@@ -964,11 +1116,26 @@ final class HookServer: @unchecked Sendable {
             s.view = s.tasks.isEmpty ? .empty : .overview
             return
         }
-        if let id, id != head.id {
-            nbLog("Approval decision for a request no longer on the card, ignored")
+        guard let id, id == head.id else {
+            nbLog("Approval decision without the displayed request id, ignored")
             return
         }
 
+        #if !APPSTORE
+        if let request = codexApprovals[head.id] {
+            guard AppState.shared.pendingApproval?.requestId == request.key,
+                  isCurrentCodexRequest(request) else {
+                removeApproval(id: head.id)
+                return
+            }
+            codexApprovals.removeValue(forKey: head.id)
+            replyNativeApproval(request, decision: decision)
+            RecapStore.shared.recordDecision(pillId: head.pillId, decision: decision)
+            removeApproval(id: head.id)
+            return
+        }
+        #endif
+        guard head.fd >= 0 else { removeApproval(id: head.id); return }
         let json: String
         switch decision {
         case "allow":  json = #"{"permissionDecision":"allow"}"#
@@ -996,10 +1163,181 @@ final class HookServer: @unchecked Sendable {
         return title.isEmpty ? "Plan" : title
     }
 
+    #if !APPSTORE
+    @MainActor
+    func receiveCodexEvent(name: String, payload: [String: Any]) {
+        processEvent(name: name, payload: payload)
+    }
+
+    @MainActor
+    func receiveCodexRequest(method: String, params: [String: Any], id: Any) {
+        guard let threadId = params["threadId"] as? String,
+              CodexChatService.shared.owns(threadId: threadId) else {
+            try? CodexConnection.shared.reject(id: id, message: "This request has no Coucou-owned thread.")
+            return
+        }
+        let request = NativeRequest(id: id, method: method, params: params, key: Self.nativeRequestKey(id))
+        guard isCurrentCodexRequest(request) else {
+            try? CodexConnection.shared.reject(id: id, message: "The original Codex turn is no longer active.")
+            return
+        }
+        let key = Self.nativeRequestKey(id)
+        if method == "item/tool/requestUserInput" {
+            guard !hasRealPendingQuestion, !hasRealPendingApproval,
+                  let question = AskQuestion.parseCodex(params, requestId: key) else {
+                try? CodexConnection.shared.respond(id: id, result: ["answers": [:]])
+                return
+            }
+            codexQuestion = NativeRequest(id: id, method: method, params: params, key: key)
+            questionPillId = "agent_codex"
+            questionSessionId = threadId
+            let state = AppState.shared
+            state.pendingQuestion = question
+            state.updateTask(id: "agent_codex", state: .question)
+            state.focusId = "agent_codex"
+            state.isPinned = true
+            expandIfNeeded(to: .question)
+            SoundEngine.shared.play("approval")
+        } else if ["item/commandExecution/requestApproval", "item/fileChange/requestApproval", "item/permissions/requestApproval"].contains(method) {
+            let request = NativeRequest(id: id, method: method, params: params, key: key)
+            let permissions = params["permissions"] as? [String: Any] ?? params["additionalPermissions"] as? [String: Any] ?? [:]
+            let fileSystem = permissions["fileSystem"] as? [String: Any] ?? [:]
+            let wantsWrite = method == "item/fileChange/requestApproval"
+                || !(fileSystem["write"] as? [String] ?? []).isEmpty
+                || (fileSystem["entries"] as? [[String: Any]] ?? []).contains { $0["access"] as? String == "write" }
+            let unconstrainedCommand = method == "item/commandExecution/requestApproval"
+                && !(params["additionalPermissions"] is [String: Any])
+            if (wantsWrite || unconstrainedCommand || Self.codexPermissionsMayWrite(permissions)), !CodexChatService.shared.allowsProjectWrites(threadId: threadId) {
+                replyNativeApproval(request, decision: "deny")
+                return
+            }
+            guard !hasRealPendingQuestion else { replyNativeApproval(request, decision: "deny"); return }
+            if codexApprovals.values.contains(where: { $0.key == key }) { return }
+            let detail: String
+            if method == "item/permissions/requestApproval",
+               let permissions = params["permissions"], let data = try? JSONSerialization.data(withJSONObject: permissions, options: [.prettyPrinted, .sortedKeys]) {
+                detail = String(data: data, encoding: .utf8) ?? "Permissions"
+            } else {
+                detail = params["command"] as? String ?? params["reason"] as? String ?? "File changes"
+            }
+            guard let display = sessions.display(pill: "agent_codex", session: threadId) else {
+                replyNativeApproval(request, decision: "deny")
+                return
+            }
+            let entry = QueuedApproval(id: UUID(), fd: -1, sessionId: threadId, pillId: "agent_codex",
+                projectName: display.projectName, cwd: display.cwd, tool: method,
+                command: detail, inputKey: key, hostApp: display.hostApp, bundleId: display.bundleId)
+            guard approvals.enqueue(entry) == .accepted else { replyNativeApproval(request, decision: "deny"); return }
+            codexApprovals[entry.id] = request
+            AppState.shared.updateTask(id: "agent_codex", state: .approval)
+            showApprovalHead()
+            SoundEngine.shared.play("approval")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
+                guard let self, self.approvals.contains(id: entry.id) else { return }
+                self.removeApproval(id: entry.id, note: self.waitingNote(pill: entry.pillId))
+            }
+        } else {
+            try? CodexConnection.shared.reject(id: id, message: "Coucou does not support this Codex request. Use the original tool.")
+        }
+    }
+
+    private static func nativeRequestKey(_ id: Any) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: [id]), let text = String(data: data, encoding: .utf8) else { return "" }
+        return text
+    }
+
+    private static func codexApprovalRules(_ available: [Any]) -> [[String: Any]] {
+        available.compactMap { value in
+            guard let rule = value as? [String: Any], rule.count == 1 else { return nil }
+            if let amendment = rule["acceptWithExecpolicyAmendment"] as? [String: Any], amendment.count == 1,
+               let prefix = amendment["execpolicy_amendment"] as? [String], !prefix.isEmpty,
+               prefix.allSatisfy({ !$0.isEmpty }) { return rule }
+            if let wrapper = rule["applyNetworkPolicyAmendment"] as? [String: Any], wrapper.count == 1,
+               let network = wrapper["network_policy_amendment"] as? [String: Any], network.count == 2,
+               let host = network["host"] as? String, !host.isEmpty,
+               ["allow", "deny"].contains(network["action"] as? String ?? "") { return rule }
+            return nil
+        }
+    }
+
+    /// Unknown permission shapes cannot extend a read-only thread.
+    private static func codexPermissionsMayWrite(_ permissions: [String: Any]) -> Bool {
+        guard Set(permissions.keys).isSubset(of: ["fileSystem", "network"]) else { return true }
+        guard let value = permissions["fileSystem"], !(value is NSNull) else { return false }
+        guard let fileSystem = value as? [String: Any],
+              Set(fileSystem.keys).isSubset(of: ["entries", "read", "write", "globScanMaxDepth"]) else { return true }
+        if let write = fileSystem["write"], !(write is NSNull) {
+            guard let paths = write as? [String], paths.isEmpty else { return true }
+        }
+        if let entries = fileSystem["entries"], !(entries is NSNull) {
+            guard let entries = entries as? [[String: Any]],
+                  entries.allSatisfy({ ["read", "deny"].contains($0["access"] as? String ?? "") }) else { return true }
+        }
+        return false
+    }
+
+    @MainActor
+    private func isCurrentCodexRequest(_ request: NativeRequest) -> Bool {
+        guard let thread = request.params["threadId"] as? String, !thread.isEmpty,
+              let turn = request.params["turnId"] as? String, !turn.isEmpty,
+              CodexChatService.shared.owns(threadId: thread), CodexChatService.shared.turnId == turn,
+              let session = sessions.display(pill: "agent_codex", session: thread) else { return false }
+        return session.codexManaged && session.codexThreadId == thread && session.codexTurnId == turn
+    }
+
+    @MainActor
+    private func replyNativeApproval(_ request: NativeRequest, decision: String) {
+        let result: [String: Any]
+        if request.method == "item/permissions/requestApproval" {
+            result = ["permissions": decision == "allow" ? (request.params["permissions"] as? [String: Any] ?? [:]) : [:], "scope": "turn"]
+        } else {
+            let available = request.params["availableDecisions"] as? [Any]
+            let rules = Self.codexApprovalRules(available ?? [])
+            if decision.hasPrefix("rule:"), let index = Int(decision.dropFirst(5)), index >= 0,
+               index < rules.count {
+                result = ["decision": rules[index]]
+            } else {
+                let allowed = available?.compactMap { $0 as? String }
+                var value = decision == "allow" ? "accept" : decision == "session" ? "acceptForSession" : "decline"
+                if let allowed, !allowed.contains(value) { value = allowed.contains("decline") ? "decline" : "cancel" }
+                result = ["decision": value]
+            }
+        }
+        try? CodexConnection.shared.respond(id: request.id, result: result)
+    }
+
+    @MainActor
+    func resolveCodexRequests(threadId: String? = nil, requestId: Any? = nil) {
+        func matches(_ request: NativeRequest) -> Bool {
+            if let requestId { return request.key == Self.nativeRequestKey(requestId) }
+            return threadId == nil || request.params["threadId"] as? String == threadId
+        }
+        for (id, request) in codexApprovals where matches(request) {
+            removeApproval(id: id)
+        }
+        if let request = codexQuestion, matches(request) {
+            codexQuestion = nil
+            if AppState.shared.pendingQuestion?.requestId == request.key { dismissQuestionCard(note: "") }
+        }
+    }
+    #endif
+
     // MARK: - Question request
 
     @MainActor
     private func processQuestionRequest(fd: Int32, parsed: AskQuestion, payload: [String: Any]) {
+        #if !APPSTORE
+        let nativeMirror = payload["coucou_agent"] as? String == "codex"
+            && CodexEventAdapter.shared.isManagedHookSession(payload["session_id"] as? String ?? "")
+        if nativeMirror || codexQuestion != nil || !codexApprovals.isEmpty
+            || (parsed.isCodexPlugin && (hasRealPendingQuestion || hasRealPendingApproval)) {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
+        #endif
         let state = AppState.shared
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
@@ -1041,6 +1379,7 @@ final class HookServer: @unchecked Sendable {
 
         // Displace any previous question waiting for an answer.
         if pendingQuestionFD >= 0 {
+            _ = finishPluginQuestion()
             let old = pendingQuestionFD
             let oldSrc = questionFDSource
             questionFDSource = nil
@@ -1057,12 +1396,17 @@ final class HookServer: @unchecked Sendable {
             : sessionId
 
         upsertTask(pill: pillId,
-                   display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
-                                                        cwd: cwd, hostApp: terminalHost?.bundleId,
-                                                        bundleId: bundleId),
+                   display: sessionDisplay(payload: payload, session: sessionId,
+                                           projectName: projectName, cwd: cwd,
+                                           hostApp: terminalHost?.bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
-        state.pendingQuestion = parsed
+        var identified = parsed
+        identified.pillId = pillId
+        identified.sessionId = sessionId
+        identified.requestId = UUID().uuidString
+        if identified.isCodexPlugin { identified.projectName = projectName }
+        state.pendingQuestion = identified
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
@@ -1071,8 +1415,10 @@ final class HookServer: @unchecked Sendable {
         expandIfNeeded(to: .question)
 
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
+        let capturedRequestId = identified.requestId
         source.setEventHandler { [weak self] in
-            guard let self, self.pendingQuestionFD == fd else { return }
+            guard let self, self.pendingQuestionFD == fd,
+                  AppState.shared.pendingQuestion?.requestId == capturedRequestId else { return }
             self.dismissQuestionCard(note: "")
         }
         source.setCancelHandler { close(fd) }
@@ -1081,7 +1427,8 @@ final class HookServer: @unchecked Sendable {
 
         let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
-            guard let self, self.pendingQuestionFD == captured else { return }
+            guard let self, self.pendingQuestionFD == captured,
+                  AppState.shared.pendingQuestion?.requestId == capturedRequestId else { return }
             // Send "ask" so nb-hook exits cleanly; Claude Code re-asks in terminal.
             let askFD = self.pendingQuestionFD
             self.pendingQuestionFD = -1
@@ -1101,9 +1448,23 @@ final class HookServer: @unchecked Sendable {
         ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.hostApp)
     }
 
-    /// Records the session an event came from, then refreshes its card.
-    /// `externalAgent` is the validated `coucou_agent` name for a third-party agent pill,
-    /// nil for a workspace pill.
+    @MainActor
+    private func sessionDisplay(payload: [String: Any], session: String, projectName: String,
+                                cwd: String, hostApp: String?) -> PillSessionRegistry.Display {
+        let managed = payload["coucou_managed"] as? Bool == true
+        let candidate = payload["thread_id"] as? String
+        let thread = (managed || payload["coucou_agent"] as? String == "codex")
+            ? candidate.flatMap { !$0.isEmpty && $0.utf8.count <= 512 && !$0.contains("\0") ? $0 : nil } : nil
+        // External hooks supply a read-only candidate, never native transport ownership.
+        return PillSessionRegistry.Display(session: managed ? thread ?? session : session, projectName: projectName, cwd: cwd,
+            hostApp: hostApp, bundleId: SessionTarget.bundleId(payload: payload) ?? hostApp ?? "",
+            hookSessionId: session, codexThreadId: thread,
+            codexTurnId: managed ? payload["turn_id"] as? String : nil,
+            codexRolloutPath: managed ? payload["rollout_path"] as? String : nil,
+            sessionTerminalId: payload["iterm_session_id"] as? String, codexManaged: managed)
+    }
+
+    /// Uses the registry's oldest live session for all display and action identity.
     @MainActor
     private func upsertTask(pill: String, display: PillSessionRegistry.Display,
                             working: Bool, externalAgent: String?) {
@@ -1111,14 +1472,10 @@ final class HookServer: @unchecked Sendable {
         if let externalAgent {
             upsertExternalAgent(id: pill, name: externalAgent)
         } else {
-            upsertWorkspaceTask(id: pill, projectName: display.projectName, cwd: display.cwd,
-                                hostApp: display.hostApp, bundleId: display.bundleId,
-                                session: display.session)
+            upsertWorkspaceTask(id: pill)
         }
     }
 
-    /// Writes the pill's name, cwd and terminal from the session that owns it: used when
-    /// the owner ends and a sibling session inherits the card.
     @MainActor
     private func applyDisplayOwner(pill: String) {
         guard let owner = sessions.displayOwner(of: pill),
@@ -1126,43 +1483,42 @@ final class HookServer: @unchecked Sendable {
               !owner.projectName.isEmpty else { return }
         let state = AppState.shared
         state.tasks[idx].name = owner.projectName
-        if !owner.cwd.isEmpty { state.tasks[idx].sessionCwd = owner.cwd }
+        state.tasks[idx].sessionCwd = owner.cwd.isEmpty ? nil : owner.cwd
+        state.tasks[idx].sessionId = owner.hookSessionId ?? owner.session
+        state.tasks[idx].sessionBundleId = owner.bundleId.isEmpty ? nil : owner.bundleId
+        state.tasks[idx].sessionTerminalId = owner.sessionTerminalId
+        state.tasks[idx].codexThreadId = owner.codexThreadId
+        state.tasks[idx].codexTurnId = owner.codexTurnId
+        state.tasks[idx].codexRolloutPath = owner.codexRolloutPath
+        state.tasks[idx].codexManaged = owner.codexManaged
         if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp }
-        if !owner.bundleId.isEmpty { state.tasks[idx].sessionBundleId = owner.bundleId }
     }
 
-    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
-    /// If the task already exists (persistent), just updates name/cwd.
-    /// If missing (transient), creates it and inserts after the main pill.
-    /// Name, cwd and terminal belong to the session that owns the pill (the oldest one
-    /// still running), so a second session under the same client cannot rename the card,
-    /// or send "Open terminal" elsewhere, out from under the first.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String) {
+    private func upsertWorkspaceTask(id: String) {
         let state = AppState.shared
-        if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
-            guard sessions.ownsDisplay(pill: id, session: session) else { return }
-            state.tasks[idx].name = projectName
-            if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
-            if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
-            return
+        if !state.tasks.contains(where: { $0.id == id }) {
+            let def = PillCatalog.definition(for: id)
+            let task = AgentTask(id: id, name: sessions.displayOwner(of: id)?.projectName ?? "Session",
+                color: def?.color ?? "#C0C4CC", state: .idle, steps: [],
+                source: def?.source ?? .agent, isIntegration: true)
+            if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
+                state.tasks.insert(task, at: mainIdx + 1)
+            } else {
+                state.tasks.insert(task, at: 0)
+            }
+            if state.focusId == nil { state.focusId = id }
+            state.syncMode()
         }
-        // Transient: create and insert after the main pill
-        let def = PillCatalog.definition(for: id)
-        let color = def?.color ?? "#C0C4CC"
-        let source = def?.source ?? .agent
-        var task = AgentTask(id: id, name: projectName, color: color,
-                             state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp }
-        if !bundleId.isEmpty { task.sessionBundleId = bundleId }
-        if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
-            state.tasks.insert(task, at: mainIdx + 1)
-        } else {
-            state.tasks.insert(task, at: 0)
-        }
-        if state.focusId == nil { state.focusId = id }
-        state.syncMode()
+        applyDisplayOwner(pill: id)
+        if let idx = state.tasks.firstIndex(where: { $0.id == id }) { state.tasks[idx].lastEventAt = Date() }
+    }
+
+    @MainActor
+    func recordCodexDiff(_ diff: FileDiff, pillId: String = "agent_codex", sessionId: String) {
+        let index = AppState.shared.appendSessionDiff(diff, for: pillId)
+        appendStep(id: pillId, step: String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: index))
+        RecapStore.shared.recordFileDiff(sessionId: sessionId, path: diff.path, added: diff.added, removed: diff.removed)
     }
 
     // MARK: - Badge helpers
@@ -1383,6 +1739,47 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Outdated hook detection
+
+    /// Read back the configured relay. App Store callers must supply a panel-authorized URL.
+    static func claudeHooksInstalled(settingsURL selectedURL: URL? = nil) -> Bool {
+        #if APPSTORE
+        guard let settingsURL = selectedURL else { return false }
+        let scriptPath = settingsURL.deletingLastPathComponent().appendingPathComponent("coucou/nb-hook").path
+        #else
+        let settingsURL = selectedURL ?? FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/settings.json")
+        let scriptPath = hookScriptPath
+        #endif
+        guard FileManager.default.isExecutableFile(atPath: scriptPath),
+              let data = try? Data(contentsOf: settingsURL),
+              let settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let hooks = settings["hooks"] as? [String: Any] else { return false }
+        let required = ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse",
+                        "PostToolUseFailure", "PermissionRequest", "Notification", "Stop", "StopFailure",
+                        "SubagentStart", "SubagentStop"]
+        func usesRelay(_ hook: [String: Any]) -> Bool {
+            guard hook["type"] as? String == "command", let command = hook["command"] as? String else { return false }
+            let prefixes = ["\"\(scriptPath)\"", "/bin/sh \"\(scriptPath)\""]
+            return prefixes.contains { command == $0 || command.hasPrefix($0 + " ") }
+        }
+        let complete = required.allSatisfy { event in
+            (hooks[event] as? [[String: Any]] ?? []).contains { group in
+                (group["hooks"] as? [[String: Any]] ?? []).contains { hook in
+                    guard usesRelay(hook) else { return false }
+                    return event != "PermissionRequest" || (hook["timeout"] as? Int ?? 0) >= 120
+                }
+            }
+        }
+        let question = (hooks["PreToolUse"] as? [[String: Any]] ?? []).contains { group in
+            group["matcher"] as? String == "AskUserQuestion" &&
+            (group["hooks"] as? [[String: Any]] ?? []).contains { hook in
+                guard let command = hook["command"] as? String else { return false }
+                return usesRelay(hook) &&
+                    command.contains("--ask") && (hook["timeout"] as? Int ?? 0) >= 130
+            }
+        }
+        return complete && question
+    }
 
     /// Returns true if settings.json has a Coucou hook that needs updating:
     /// either a PermissionRequest hook with timeout < 120s, or the AskUserQuestion
@@ -2026,6 +2423,8 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Codex hook installer  (#if !APPSTORE only)
 
+    static let codexRequiredHookEvents = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PermissionRequest", "PostToolUse", "Stop", "SubagentStart", "SubagentStop", "Interrupt", "SessionEnd"]
+
     static var codexHooksURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks.json")
     }
@@ -2091,18 +2490,10 @@ final class HookServer: @unchecked Sendable {
         let base = hookBase()
         // Events, timeouts in seconds (Codex format).
         // PermissionRequest uses 120s + a statusMessage shown in the Codex UI while waiting.
-        let events: [(String, Int, String?)] = [
-            ("SessionStart",    10,  nil),
-            ("UserPromptSubmit", 10, nil),
-            ("PreToolUse",      10,  nil),
-            ("PermissionRequest", 120, "Waiting for your answer in the notch (Coucou)"),
-            ("PostToolUse",     10,  nil),
-            ("Stop",            10,  nil),
-            ("SubagentStart",   10,  nil),
-            ("SubagentStop",    10,  nil),
-            ("Interrupt",        3,  nil),
-            ("SessionEnd",       3,  nil),
-        ]
+        let events: [(String, Int, String?)] = Self.codexRequiredHookEvents.map { event in
+            (event, event == "PermissionRequest" ? 120 : ["Interrupt", "SessionEnd"].contains(event) ? 3 : 10,
+             event == "PermissionRequest" ? "Waiting for your answer in the notch (Coucou)" : nil)
+        }
         var hooks = root["hooks"] as? [String: Any] ?? [:]
         for (event, timeout, statusMsg) in events {
             if let raw = hooks[event], !(raw is [[String: Any]]) {
@@ -3228,6 +3619,43 @@ extension Notification.Name {
     static let hookExpand = Notification.Name("notchBuddy.hookExpand")
 }
 
+extension HookServer {
+    /// What stopped a Claude Code turn, from its StopFailure hook: Claude Code's own message when
+    /// it sends one, else a sentence for the kind of error. nil when nothing says.
+    static func stopFailureDetail(_ payload: [String: Any]) -> String? {
+        for key in ["error_message", "error_details", "message"] {
+            if let text = payload[key] as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return DiffEngine.toOneLine(text)
+            }
+        }
+        if let error = payload["error"] as? [String: Any], let text = error["message"] as? String, !text.isEmpty {
+            return DiffEngine.toOneLine(text)
+        }
+        if payload["coucou_agent"] as? String == "codex" {
+            return String(localized: "codex.turn-failed", defaultValue: "Codex could not complete this turn.")
+        }
+        let kind = (payload["error_type"] as? String) ?? (payload["error"] as? String) ?? ""
+        switch kind {
+        case "rate_limit":            return String(localized: "Claude's rate limit is reached. Try again in a moment.")
+        case "overloaded":            return String(localized: "Claude is overloaded. Try again in a moment.")
+        case "authentication_failed", "oauth_org_not_allowed":
+                                      return String(localized: "Claude Code is not signed in, or its key is no longer valid.")
+        case "billing_error":         return String(localized: "Billing problem on the Claude account.")
+        case "server_error":          return String(localized: "Claude's servers had a problem. Try again.")
+        case "max_output_tokens":     return String(localized: "The answer was too long and was cut.")
+        case "model_not_found":       return String(localized: "This model is not available.")
+        default:
+            // Claude Code's last message can contain the API error when its kind is unknown.
+            if let last = payload["last_assistant_message"] as? String,
+               last.range(of: "error", options: .caseInsensitive) != nil {
+                return DiffEngine.toOneLine(last)
+            }
+            // "unknown" and bare status codes do not describe the failure.
+            return kind.count > 3 && Int(kind) == nil && kind != "unknown" ? kind : nil
+        }
+    }
+}
+
 // MARK: - nb-hook shell wrapper (same for both GitHub and App Store)
 // Invoked by Claude Code via /bin/sh or directly via shebang.
 // Always exits 0 — never blocks Claude Code.
@@ -3487,6 +3915,7 @@ def main():
 
     # Enrich with terminal context
     env = os.environ
+    payload.setdefault('originator', env.get('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', ''))
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
@@ -3839,6 +4268,7 @@ def main():
         payload['coucou_agent'] = 'claude-desktop'
 
     env = os.environ
+    payload.setdefault('originator', env.get('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', ''))
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
@@ -3971,39 +4401,3 @@ except Exception:
     pass
 sys.exit(0)
 """
-
-
-extension HookServer {
-    /// What stopped a Claude Code turn, from its StopFailure hook: Claude Code's own message when
-    /// it sends one, else a sentence for the kind of error. nil when nothing says.
-    static func stopFailureDetail(_ payload: [String: Any]) -> String? {
-        for key in ["error_message", "error_details", "message"] {
-            if let text = payload[key] as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return DiffEngine.toOneLine(text)
-            }
-        }
-        if let error = payload["error"] as? [String: Any], let text = error["message"] as? String, !text.isEmpty {
-            return DiffEngine.toOneLine(text)
-        }
-        let kind = (payload["error_type"] as? String) ?? (payload["error"] as? String) ?? ""
-        switch kind {
-        case "rate_limit":            return String(localized: "Claude's rate limit is reached. Try again in a moment.")
-        case "overloaded":            return String(localized: "Claude is overloaded. Try again in a moment.")
-        case "authentication_failed", "oauth_org_not_allowed":
-                                      return String(localized: "Claude Code is not signed in, or its key is no longer valid.")
-        case "billing_error":         return String(localized: "Billing problem on the Claude account.")
-        case "server_error":          return String(localized: "Claude's servers had a problem. Try again.")
-        case "max_output_tokens":     return String(localized: "The answer was too long and was cut.")
-        case "model_not_found":       return String(localized: "This model is not available.")
-        default:
-            // Claude Code often sends only `error: "unknown"`: its last message then usually
-            // carries the API's own words ("API Error: 529 Overloaded…").
-            if let last = payload["last_assistant_message"] as? String,
-               last.range(of: "error", options: .caseInsensitive) != nil {
-                return DiffEngine.toOneLine(last)
-            }
-            // A readable error is shown as it is; "unknown" or a bare status code says nothing.
-            return kind.count > 3 && Int(kind) == nil && kind != "unknown" ? kind : nil
-        }
-    }
-}
