@@ -50,6 +50,8 @@ pub struct Settings {
     pub lmstudio_url: String,
     /// Any other OpenAI-compatible server; its key, if any, is in the keychain.
     pub custom_url: String,
+    /// OmniRoute, the model router (omniroute.rs); its key, if any, is in the keychain.
+    pub omniroute: crate::omniroute::Config,
     /// Global shortcuts the user changed, by action id; the others keep their
     /// default (see shortcuts.rs).
     pub shortcuts: crate::shortcuts::Bindings,
@@ -151,6 +153,7 @@ impl Default for Settings {
             ollama_url: String::new(),
             lmstudio_url: String::new(),
             custom_url: String::new(),
+            omniroute: Default::default(),
             shortcuts: Default::default(),
             mochi_outfit: "auto".into(),
             pill_colors: BTreeMap::new(),
@@ -440,6 +443,7 @@ mod tests {
   "ollamaUrl": "http://127.0.0.1:11434",
   "lmstudioUrl": "http://127.0.0.1:1234",
   "customUrl": "https://llm.example.com",
+  "omniroute": { "enabled": true, "url": "http://127.0.0.1:20129", "features": true, "featuresModel": "my-combo" },
   "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } },
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
@@ -958,6 +962,7 @@ mod tests {
                 "ollamaUrl",
                 "lmstudioUrl",
                 "customUrl",
+                "omniroute",
                 "shortcuts",
                 "mochiOutfit",
                 "pillColors",

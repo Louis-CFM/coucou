@@ -22,6 +22,7 @@ import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
+import { omnirouteSection } from "./omniroute";
 import { whatsappSection } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { updateRows, updatesListener } from "./updates";
@@ -1407,6 +1408,7 @@ async function render() {
     shortcuts: () => [shortcutsSection(shortcutReport)],
   };
   root.append(...(sections[notchPage]?.() ?? []));
+  if (notchPage === "chat") root.append(omnirouteSection({ settings: () => settings, save, toggle, keyStore: KEY_STORE }));
   if (notchPage === "general") {
     root.append(h("div", {
       class: "hint",

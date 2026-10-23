@@ -16,7 +16,7 @@ pub const MODEL: &str = "claude-haiku-4-5";
 const TIMEOUT: Duration = Duration::from_secs(4);
 
 pub fn has_key() -> bool {
-    crate::secrets::present(crate::claude::KEY)
+    crate::secrets::present(crate::claude::KEY) || crate::omniroute::serves_features()
 }
 
 pub async fn clean(raw: &str, style: Style, app: Option<&str>, words: &[String]) -> String {

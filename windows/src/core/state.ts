@@ -8,6 +8,7 @@ import {
 } from "./pills";
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
+import type { OmniRouteConfig } from "./omniroute";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
@@ -130,6 +131,8 @@ export interface Settings {
   ollamaUrl: string;
   lmstudioUrl: string;
   customUrl: string;
+  /** OmniRoute, the model router (see core/omniroute.ts); its key is in the keychain. */
+  omniroute: OmniRouteConfig;
   /** Global shortcuts the user changed, by action id (see core/shortcuts.ts). */
   shortcuts: Bindings;
   /**
@@ -189,6 +192,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ollamaUrl: "",
   lmstudioUrl: "",
   customUrl: "",
+  omniroute: { enabled: false, url: "", features: false, featuresModel: "" },
   shortcuts: {},
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},

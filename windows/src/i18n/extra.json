@@ -53,6 +53,19 @@
       "de": "Eine nicht von Coucou erstellte Hook-Gruppe namens \"coucou\" ist bereits vorhanden — Coucou hat sie nicht verändert.",
       "tr": "Coucou'nun oluşturmadığı \"coucou\" adlı bir hook grubu zaten var — Coucou bunu değiştirmedi."
     },
+    "Address": {
+      "zh-Hans": "地址",
+      "hi": "पता",
+      "es": "Dirección",
+      "ar": "العنوان",
+      "fr": "Adresse",
+      "bn": "ঠিকানা",
+      "pt-BR": "Endereço",
+      "ru": "Адрес",
+      "id": "Alamat",
+      "de": "Adresse",
+      "tr": "Adres"
+    },
     "API error {code}": {
       "zh-Hans": "API 错误 {code}",
       "hi": "API त्रुटि {code}",
@@ -521,6 +534,19 @@
       "de": "Verbinde {name} zuerst unter Einstellungen → Lokale Modelle.",
       "tr": "Önce Ayarlar → Yerel modeller bölümünden {name} bağlantısını kur."
     },
+    "Connected · {count} models": {
+      "zh-Hans": "已连接 · {count} 个模型",
+      "hi": "कनेक्टेड · {count} मॉडल",
+      "es": "Conectado · {count} modelos",
+      "ar": "متصل · النماذج: {count}",
+      "fr": "Connecté · {count} modèles",
+      "bn": "সংযুক্ত · {count}টি মডেল",
+      "pt-BR": "Conectado · {count} modelos",
+      "ru": "Подключено · моделей: {count}",
+      "id": "Terhubung · {count} model",
+      "de": "Verbunden · {count} Modelle",
+      "tr": "Bağlı · {count} model"
+    },
     "Copied — paste it anywhere.": {
       "zh-Hans": "已复制 — 可以粘贴到任何地方。",
       "hi": "कॉपी हो गया — कहीं भी पेस्ट करें।",
@@ -585,6 +611,19 @@
       "id": "Coucou terhubung ke sesi Claude Code Anda. Panggilan alat, pertanyaan, dan permintaan izin muncul di pulau, dan Anda bisa menjawabnya di sana.",
       "de": "Coucou ist mit deinen Claude Code-Sitzungen verbunden. Werkzeugaufrufe, Fragen und Berechtigungsanfragen erscheinen in der Insel und können dort beantwortet werden.",
       "tr": "Coucou, Claude Code oturumlarına bağlı. Araç çağrıları, sorular ve izin istekleri adada görünür; bunları oradan yanıtlayabilirsin."
+    },
+    "Coucou's AI features": {
+      "zh-Hans": "Coucou 的 AI 功能",
+      "hi": "Coucou की AI सुविधाएँ",
+      "es": "Funciones de IA de Coucou",
+      "ar": "ميزات الذكاء الاصطناعي في Coucou",
+      "fr": "Fonctions d'IA de Coucou",
+      "bn": "Coucou-এর AI সুবিধা",
+      "pt-BR": "Recursos de IA do Coucou",
+      "ru": "Функции ИИ в Coucou",
+      "id": "Fitur AI Coucou",
+      "de": "KI-Funktionen von Coucou",
+      "tr": "Coucou'nun yapay zekâ özellikleri"
     },
     "Could not remove {path}: {error}": {
       "zh-Hans": "无法删除 {path}：{error}",
@@ -728,6 +767,19 @@
       "id": "Detail",
       "de": "Details",
       "tr": "Ayrıntılar"
+    },
+    "Dictation clean-up, Notetaker summaries and « OK Coucou » go through OmniRoute with this model, instead of your Anthropic key. What you dictate and record then goes to the providers behind it.": {
+      "zh-Hans": "听写整理、会议笔记摘要和 « OK Coucou » 会通过 OmniRoute 使用这个模型，而不是你的 Anthropic 密钥。此时你听写和录制的内容会发送给它背后的服务商。",
+      "hi": "डिक्टेशन की सफ़ाई, Notetaker के सारांश और « OK Coucou » आपकी Anthropic कुंजी की जगह इस मॉडल के साथ OmniRoute से होकर जाते हैं। तब आप जो बोलकर लिखवाते और रिकॉर्ड करते हैं, वह उसके पीछे के प्रदाताओं तक जाता है।",
+      "es": "La limpieza del dictado, los resúmenes de Notetaker y « OK Coucou » pasan por OmniRoute con este modelo, en lugar de tu clave de Anthropic. Lo que dictes y grabes irá entonces a los proveedores que tenga detrás.",
+      "ar": "يمرّ تنظيف الإملاء وملخّصات Notetaker و« OK Coucou » عبر OmniRoute بهذا النموذج بدلًا من مفتاح Anthropic الخاص بك. وعندها يذهب ما تمليه وتسجّله إلى المزوّدين الذين خلفه.",
+      "fr": "Le nettoyage de la dictée, les résumés du Notetaker et « OK Coucou » passent par OmniRoute avec ce modèle, au lieu de ta clé Anthropic. Ce que tu dictes et enregistres part alors chez les fournisseurs qui sont derrière.",
+      "bn": "ডিক্টেশন পরিষ্কার, Notetaker-এর সারাংশ আর « OK Coucou » আপনার Anthropic কী-এর বদলে এই মডেল নিয়ে OmniRoute-এর মাধ্যমে যায়। তখন আপনি যা ডিক্টেট ও রেকর্ড করেন তা এর পেছনের প্রদানকারীদের কাছে যায়।",
+      "pt-BR": "A limpeza do ditado, os resumos do Notetaker e o « OK Coucou » passam pelo OmniRoute com este modelo, em vez da sua chave da Anthropic. O que você dita e grava passa então a ir para os provedores por trás dele.",
+      "ru": "Очистка диктовки, сводки Notetaker и « OK Coucou » идут через OmniRoute с этой моделью вместо вашего ключа Anthropic. Тогда то, что вы диктуете и записываете, уходит к провайдерам за ним.",
+      "id": "Perapian dikte, ringkasan Notetaker, dan « OK Coucou » lewat OmniRoute dengan model ini, bukan kunci Anthropic-mu. Yang kamu diktekan dan rekam lalu dikirim ke penyedia di belakangnya.",
+      "de": "Diktat-Bereinigung, Zusammenfassungen der Notizfunktion und « OK Coucou » laufen mit diesem Modell über OmniRoute statt über deinen Anthropic-Schlüssel. Was du diktierst und aufnimmst, geht dann an die Anbieter dahinter.",
+      "tr": "Dikte temizliği, Not alıcı özetleri ve « OK Coucou », Anthropic anahtarın yerine bu modelle OmniRoute üzerinden çalışır. Dikte ettiğin ve kaydettiğin şeyler o zaman onun arkasındaki sağlayıcılara gider."
     },
     "Display under the cursor": {
       "zh-Hans": "光标所在的显示器",
@@ -1054,6 +1106,19 @@
       "de": "Hooks installieren…",
       "tr": "Hook'ları kur…"
     },
+    "Install it once from its official source, with Node.js 22 or later, then come back: Coucou starts it for you.": {
+      "zh-Hans": "从官方来源安装一次（需要 Node.js 22 或更高版本），然后回到这里：Coucou 会替你启动它。",
+      "hi": "इसे एक बार इसके आधिकारिक स्रोत से इंस्टॉल करें (Node.js 22 या नया), फिर यहाँ लौटें: Coucou इसे आपके लिए शुरू कर देगा।",
+      "es": "Instálalo una vez desde su fuente oficial, con Node.js 22 o posterior, y vuelve: Coucou lo inicia por ti.",
+      "ar": "ثبّته مرة واحدة من مصدره الرسمي، مع Node.js 22 أو أحدث، ثم عُد إلى هنا: سيشغّله Coucou نيابةً عنك.",
+      "fr": "Installe-le une fois depuis sa source officielle, avec Node.js 22 ou plus récent, puis reviens : Coucou le lance pour toi.",
+      "bn": "এর অফিসিয়াল উৎস থেকে একবার ইনস্টল করুন (Node.js 22 বা নতুন সহ), তারপর ফিরে আসুন: Coucou আপনার হয়ে এটি চালু করবে।",
+      "pt-BR": "Instale uma vez a partir da fonte oficial, com Node.js 22 ou mais recente, e volte: o Coucou inicia para você.",
+      "ru": "Установите его один раз из официального источника (нужен Node.js 22 или новее) и вернитесь: Coucou запустит его сам.",
+      "id": "Pasang sekali dari sumber resminya, dengan Node.js 22 atau lebih baru, lalu kembali: Coucou yang akan menjalankannya.",
+      "de": "Installiere es einmal aus der offiziellen Quelle, mit Node.js 22 oder neuer, und komm zurück: Coucou startet es für dich.",
+      "tr": "Resmî kaynağından bir kez kur (Node.js 22 veya üstü gerekir), sonra geri dön: Coucou onu senin için başlatır."
+    },
     "Install relay…": {
       "zh-Hans": "安装中继…",
       "hi": "रिले इंस्टॉल करें…",
@@ -1092,6 +1157,19 @@
       "id": "Pasang…",
       "de": "Installieren…",
       "tr": "Kur…"
+    },
+    "Installed, not running.": {
+      "zh-Hans": "已安装，未运行。",
+      "hi": "इंस्टॉल है, चल नहीं रहा।",
+      "es": "Instalado, pero no se está ejecutando.",
+      "ar": "مثبَّت، لكنه لا يعمل.",
+      "fr": "Installé, pas lancé.",
+      "bn": "ইনস্টল করা আছে, চলছে না।",
+      "pt-BR": "Instalado, mas não está rodando.",
+      "ru": "Установлен, но не запущен.",
+      "id": "Terpasang, belum berjalan.",
+      "de": "Installiert, läuft nicht.",
+      "tr": "Kurulu, çalışmıyor."
     },
     "Instance URL": {
       "zh-Hans": "实例地址",
@@ -1157,6 +1235,32 @@
       "id": "Pulau berada di",
       "de": "Insel anzeigen auf",
       "tr": "Adanın bulunduğu ekran"
+    },
+    "It asks for an API key: create one in its dashboard, under API Manager, then paste it here.": {
+      "zh-Hans": "它需要一个 API 密钥：在它的控制台中（API Manager 下）创建一个，然后粘贴到这里。",
+      "hi": "यह एक API कुंजी माँगता है: इसके डैशबोर्ड में API Manager के अंतर्गत एक बनाएँ, फिर उसे यहाँ पेस्ट करें।",
+      "es": "Pide una clave de API: crea una en su panel, en API Manager, y pégala aquí.",
+      "ar": "يطلب مفتاح API: أنشئ واحدًا من لوحة التحكم الخاصة به، ضمن API Manager، ثم الصقه هنا.",
+      "fr": "Il demande une clé d'API : crées-en une dans son tableau de bord, sous API Manager, puis colle-la ici.",
+      "bn": "এটি একটি API কী চায়: এর ড্যাশবোর্ডে API Manager-এর অধীনে একটি তৈরি করুন, তারপর এখানে পেস্ট করুন।",
+      "pt-BR": "Ele pede uma chave de API: crie uma no painel dele, em API Manager, e cole aqui.",
+      "ru": "Он запрашивает ключ API: создайте его в панели управления, в разделе API Manager, и вставьте сюда.",
+      "id": "Ia meminta kunci API: buat satu di dasbornya, di bagian API Manager, lalu tempel di sini.",
+      "de": "Es verlangt einen API-Schlüssel: Erstelle einen in seinem Dashboard unter API Manager und füge ihn hier ein.",
+      "tr": "Bir API anahtarı istiyor: kontrol panelinde API Manager altında bir tane oluştur, sonra buraya yapıştır."
+    },
+    "It refused this key: create a new one in its dashboard, then paste it here.": {
+      "zh-Hans": "它拒绝了这个密钥：在它的控制台中新建一个，然后粘贴到这里。",
+      "hi": "इसने यह कुंजी अस्वीकार कर दी: इसके डैशबोर्ड में नई कुंजी बनाएँ, फिर उसे यहाँ पेस्ट करें।",
+      "es": "Rechazó esta clave: crea una nueva en su panel y pégala aquí.",
+      "ar": "رفض هذا المفتاح: أنشئ مفتاحًا جديدًا من لوحة التحكم الخاصة به، ثم الصقه هنا.",
+      "fr": "Il a refusé cette clé : crées-en une nouvelle dans son tableau de bord, puis colle-la ici.",
+      "bn": "এটি এই কী প্রত্যাখ্যান করেছে: এর ড্যাশবোর্ডে নতুন একটি তৈরি করুন, তারপর এখানে পেস্ট করুন।",
+      "pt-BR": "Ele recusou esta chave: crie uma nova no painel dele e cole aqui.",
+      "ru": "Он отклонил этот ключ: создайте новый в панели управления и вставьте сюда.",
+      "id": "Ia menolak kunci ini: buat yang baru di dasbornya, lalu tempel di sini.",
+      "de": "Es hat diesen Schlüssel abgelehnt: Erstelle in seinem Dashboard einen neuen und füge ihn hier ein.",
+      "tr": "Bu anahtarı reddetti: kontrol panelinde yenisini oluştur, sonra buraya yapıştır."
     },
     "Keep the island open": {
       "zh-Hans": "保持岛打开",
@@ -1600,6 +1704,58 @@
       "de": "Nichts verlässt deinen PC: Der Server läuft auf diesem Computer.",
       "tr": "Hiçbir veri bilgisayarından çıkmaz: sunucu bu bilgisayarda çalışır."
     },
+    "OmniRoute didn't start. Run omniroute in a terminal once to see why.": {
+      "zh-Hans": "OmniRoute 没有启动。请在终端里运行一次 omniroute 查看原因。",
+      "hi": "OmniRoute शुरू नहीं हुआ। कारण देखने के लिए एक बार टर्मिनल में omniroute चलाएँ।",
+      "es": "OmniRoute no se inició. Ejecuta omniroute una vez en una terminal para ver por qué.",
+      "ar": "لم يبدأ OmniRoute. شغّل omniroute مرة في الطرفية لمعرفة السبب.",
+      "fr": "OmniRoute n'a pas démarré. Lance omniroute une fois dans un terminal pour voir pourquoi.",
+      "bn": "OmniRoute চালু হয়নি। কারণ দেখতে একবার টার্মিনালে omniroute চালান।",
+      "pt-BR": "O OmniRoute não iniciou. Rode omniroute uma vez num terminal para ver o motivo.",
+      "ru": "OmniRoute не запустился. Запустите omniroute в терминале, чтобы увидеть причину.",
+      "id": "OmniRoute tidak berjalan. Jalankan omniroute sekali di terminal untuk melihat sebabnya.",
+      "de": "OmniRoute ist nicht gestartet. Führe omniroute einmal in einem Terminal aus, um den Grund zu sehen.",
+      "tr": "OmniRoute başlamadı. Nedenini görmek için omniroute'u bir kez terminalde çalıştır."
+    },
+    "OmniRoute is a router you run on your computer, in front of every AI provider and account you connect to it. Coucou can chat with its models and combos, and send its own AI features through it.": {
+      "zh-Hans": "OmniRoute 是运行在你电脑上的路由器，统一接入你连接给它的所有 AI 服务商和账户。Coucou 可以用它的模型和组合聊天，也可以让自己的 AI 功能经由它处理。",
+      "hi": "OmniRoute एक राउटर है जिसे आप अपने कंप्यूटर पर चलाते हैं, उन सभी AI प्रदाताओं और खातों के आगे जिन्हें आप इससे जोड़ते हैं। Coucou इसके मॉडल और कॉम्बो से चैट कर सकता है, और अपनी AI सुविधाएँ इसके ज़रिए भेज सकता है।",
+      "es": "OmniRoute es un enrutador que ejecutas en tu ordenador, delante de todos los proveedores y cuentas de IA que le conectes. Coucou puede chatear con sus modelos y combos, y enviar a través de él sus propias funciones de IA.",
+      "ar": "OmniRoute موجِّه تشغّله على حاسوبك، أمام كل مزوّدي الذكاء الاصطناعي والحسابات التي توصلها به. يستطيع Coucou الدردشة مع نماذجه ومجموعاته، وتمرير ميزات الذكاء الاصطناعي الخاصة به عبره.",
+      "fr": "OmniRoute est un routeur que tu fais tourner sur ton ordinateur, devant tous les fournisseurs et comptes d'IA que tu y connectes. Coucou peut discuter avec ses modèles et ses combos, et y faire passer ses propres fonctions d'IA.",
+      "bn": "OmniRoute হলো একটি রাউটার যা আপনি নিজের কম্পিউটারে চালান, আপনি যত AI প্রদানকারী ও অ্যাকাউন্ট এতে যুক্ত করেন সবার সামনে। Coucou এর মডেল ও কম্বো দিয়ে চ্যাট করতে পারে, আর নিজের AI সুবিধাগুলো এর মাধ্যমে পাঠাতে পারে।",
+      "pt-BR": "O OmniRoute é um roteador que você roda no seu computador, na frente de todos os provedores e contas de IA que você conecta a ele. O Coucou pode conversar com os modelos e combos dele e passar por ele os próprios recursos de IA.",
+      "ru": "OmniRoute — маршрутизатор, который работает на вашем компьютере перед всеми подключёнными к нему провайдерами и аккаунтами ИИ. Coucou может общаться с его моделями и комбо и отправлять через него свои функции ИИ.",
+      "id": "OmniRoute adalah router yang kamu jalankan di komputermu, di depan semua penyedia dan akun AI yang kamu hubungkan ke sana. Coucou bisa mengobrol dengan model dan kombonya, serta mengirim fitur AI-nya sendiri lewat OmniRoute.",
+      "de": "OmniRoute ist ein Router, der auf deinem Computer läuft, vor allen KI-Anbietern und Konten, die du damit verbindest. Coucou kann mit seinen Modellen und Kombinationen chatten und seine eigenen KI-Funktionen darüber laufen lassen.",
+      "tr": "OmniRoute, bilgisayarında çalıştırdığın ve ona bağladığın tüm yapay zekâ sağlayıcılarının ve hesaplarının önünde duran bir yönlendiricidir. Coucou onun modelleri ve kombolarıyla sohbet edebilir, kendi yapay zekâ özelliklerini de onun üzerinden gönderebilir."
+    },
+    "OmniRoute isn't installed on this computer.": {
+      "zh-Hans": "这台电脑上没有安装 OmniRoute。",
+      "hi": "इस कंप्यूटर पर OmniRoute इंस्टॉल नहीं है।",
+      "es": "OmniRoute no está instalado en este ordenador.",
+      "ar": "OmniRoute غير مثبَّت على هذا الحاسوب.",
+      "fr": "OmniRoute n'est pas installé sur cet ordinateur.",
+      "bn": "এই কম্পিউটারে OmniRoute ইনস্টল করা নেই।",
+      "pt-BR": "O OmniRoute não está instalado neste computador.",
+      "ru": "OmniRoute не установлен на этом компьютере.",
+      "id": "OmniRoute belum terpasang di komputer ini.",
+      "de": "OmniRoute ist auf diesem Computer nicht installiert.",
+      "tr": "OmniRoute bu bilgisayarda kurulu değil."
+    },
+    "OmniRoute wants a valid API key: check it in Settings → Chat → OmniRoute.": {
+      "zh-Hans": "OmniRoute 需要有效的 API 密钥：请在“设置 → 聊天 → OmniRoute”中检查。",
+      "hi": "OmniRoute को एक मान्य API कुंजी चाहिए: इसे सेटिंग्स → चैट → OmniRoute में जाँचें।",
+      "es": "OmniRoute necesita una clave de API válida: revísala en Configuración → Chat → OmniRoute.",
+      "ar": "يحتاج OmniRoute إلى مفتاح API صالح: تحقّق منه في الإعدادات ← الدردشة ← OmniRoute.",
+      "fr": "OmniRoute veut une clé d'API valide : vérifie-la dans Réglages → Chat → OmniRoute.",
+      "bn": "OmniRoute-এর একটি বৈধ API কী দরকার: সেটিংস → চ্যাট → OmniRoute-এ যাচাই করুন।",
+      "pt-BR": "O OmniRoute quer uma chave de API válida: verifique em Configurações → Chat → OmniRoute.",
+      "ru": "OmniRoute нужен действительный ключ API: проверьте его в «Настройки → Чат → OmniRoute».",
+      "id": "OmniRoute butuh kunci API yang valid: periksa di Pengaturan → Obrolan → OmniRoute.",
+      "de": "OmniRoute braucht einen gültigen API-Schlüssel: Prüfe ihn unter Einstellungen → Chat → OmniRoute.",
+      "tr": "OmniRoute geçerli bir API anahtarı istiyor: Ayarlar → Sohbet → OmniRoute bölümünden kontrol et."
+    },
     "Only files dropped on the island can be added.": {
       "zh-Hans": "只能添加拖放到岛上的文件。",
       "hi": "केवल आइलैंड पर छोड़ी गई फ़ाइलें ही जोड़ी जा सकती हैं।",
@@ -1612,6 +1768,19 @@
       "id": "Hanya file yang diletakkan di pulau yang bisa ditambahkan.",
       "de": "Nur auf der Insel abgelegte Dateien können hinzugefügt werden.",
       "tr": "Yalnızca adaya bırakılan dosyalar eklenebilir."
+    },
+    "Open dashboard": {
+      "zh-Hans": "打开控制台",
+      "hi": "डैशबोर्ड खोलें",
+      "es": "Abrir el panel",
+      "ar": "فتح لوحة التحكم",
+      "fr": "Ouvrir le tableau de bord",
+      "bn": "ড্যাশবোর্ড খুলুন",
+      "pt-BR": "Abrir o painel",
+      "ru": "Открыть панель",
+      "id": "Buka dasbor",
+      "de": "Dashboard öffnen",
+      "tr": "Kontrol panelini aç"
     },
     "Open in VS Code": {
       "zh-Hans": "在 VS Code 中打开",
@@ -1768,6 +1937,19 @@
       "id": "Pilih model {name} di atas kotak obrolan.",
       "de": "Wähle ein {name}-Modell über dem Chatfeld aus.",
       "tr": "Sohbet kutusunun üstünden bir {name} modeli seç."
+    },
+    "Pick the model for Coucou's features in Settings → Chat → OmniRoute.": {
+      "zh-Hans": "请在“设置 → 聊天 → OmniRoute”中为 Coucou 的功能选择模型。",
+      "hi": "सेटिंग्स → चैट → OmniRoute में Coucou की सुविधाओं के लिए मॉडल चुनें।",
+      "es": "Elige el modelo para las funciones de Coucou en Configuración → Chat → OmniRoute.",
+      "ar": "اختر النموذج لميزات Coucou من الإعدادات ← الدردشة ← OmniRoute.",
+      "fr": "Choisis le modèle des fonctions de Coucou dans Réglages → Chat → OmniRoute.",
+      "bn": "সেটিংস → চ্যাট → OmniRoute-এ Coucou-এর সুবিধাগুলোর জন্য মডেল বেছে নিন।",
+      "pt-BR": "Escolha o modelo dos recursos do Coucou em Configurações → Chat → OmniRoute.",
+      "ru": "Выберите модель для функций Coucou в «Настройки → Чат → OmniRoute».",
+      "id": "Pilih model untuk fitur Coucou di Pengaturan → Obrolan → OmniRoute.",
+      "de": "Wähle das Modell für die Funktionen von Coucou unter Einstellungen → Chat → OmniRoute.",
+      "tr": "Coucou'nun özellikleri için modeli Ayarlar → Sohbet → OmniRoute bölümünden seç."
     },
     "Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.": {
       "zh-Hans": "最多选择 {max} 个标签显示在 Mochi 旁边 — 已用 {used}/{max}。密钥保存在 {store} 中，绝不写入磁盘。",
@@ -1963,6 +2145,19 @@
       "id": "Hasil",
       "de": "Ergebnis",
       "tr": "Sonuç"
+    },
+    "Running, but no models yet: connect a provider in its dashboard.": {
+      "zh-Hans": "正在运行，但还没有模型：请在它的控制台中连接一个服务商。",
+      "hi": "चल रहा है, पर अभी कोई मॉडल नहीं: इसके डैशबोर्ड में कोई प्रदाता जोड़ें।",
+      "es": "Funciona, pero aún no tiene modelos: conecta un proveedor en su panel.",
+      "ar": "يعمل، لكن لا توجد نماذج بعد: صِل مزوّدًا من لوحة التحكم الخاصة به.",
+      "fr": "Il tourne, mais sans modèle pour l'instant : connecte un fournisseur dans son tableau de bord.",
+      "bn": "চলছে, কিন্তু এখনো কোনো মডেল নেই: এর ড্যাশবোর্ডে একটি প্রদানকারী যুক্ত করুন।",
+      "pt-BR": "Rodando, mas ainda sem modelos: conecte um provedor no painel dele.",
+      "ru": "Работает, но моделей пока нет: подключите провайдера в панели управления.",
+      "id": "Berjalan, tapi belum ada model: hubungkan penyedia di dasbornya.",
+      "de": "Läuft, aber noch ohne Modelle: Verbinde in seinem Dashboard einen Anbieter.",
+      "tr": "Çalışıyor ama henüz model yok: kontrol panelinden bir sağlayıcı bağla."
     },
     "Saturday": {
       "zh-Hans": "星期六",
@@ -2250,6 +2445,32 @@
       "de": "Neuen Chat starten",
       "tr": "Yeni sohbet başlat"
     },
+    "Start OmniRoute": {
+      "zh-Hans": "启动 OmniRoute",
+      "hi": "OmniRoute शुरू करें",
+      "es": "Iniciar OmniRoute",
+      "ar": "تشغيل OmniRoute",
+      "fr": "Lancer OmniRoute",
+      "bn": "OmniRoute চালু করুন",
+      "pt-BR": "Iniciar o OmniRoute",
+      "ru": "Запустить OmniRoute",
+      "id": "Jalankan OmniRoute",
+      "de": "OmniRoute starten",
+      "tr": "OmniRoute'u başlat"
+    },
+    "Starting OmniRoute…": {
+      "zh-Hans": "正在启动 OmniRoute…",
+      "hi": "OmniRoute शुरू हो रहा है…",
+      "es": "Iniciando OmniRoute…",
+      "ar": "جارٍ تشغيل OmniRoute…",
+      "fr": "Lancement d'OmniRoute…",
+      "bn": "OmniRoute চালু হচ্ছে…",
+      "pt-BR": "Iniciando o OmniRoute…",
+      "ru": "Запуск OmniRoute…",
+      "id": "Menjalankan OmniRoute…",
+      "de": "OmniRoute wird gestartet…",
+      "tr": "OmniRoute başlatılıyor…"
+    },
     "Sunday": {
       "zh-Hans": "星期日",
       "hi": "रविवार",
@@ -2484,6 +2705,19 @@
       "de": "Dies wird geändert: nur die Statuszeile. Eine vorhandene Statuszeile funktioniert weiterhin; Coucous Relay führt sie für dich aus.",
       "tr": "Yapılacak değişiklik tam olarak bu: yalnızca durum satırı. Mevcut bir durum satırın varsa çalışmaya devam eder; Coucou'nun aracısı onu senin için çalıştırır."
     },
+    "This OmniRoute runs on another computer: start it there.": {
+      "zh-Hans": "这个 OmniRoute 运行在另一台电脑上：请在那里启动它。",
+      "hi": "यह OmniRoute किसी दूसरे कंप्यूटर पर चलता है: उसे वहीं शुरू करें।",
+      "es": "Este OmniRoute se ejecuta en otro ordenador: inícialo allí.",
+      "ar": "يعمل OmniRoute هذا على حاسوب آخر: شغّله هناك.",
+      "fr": "Cet OmniRoute tourne sur un autre ordinateur : lance-le là-bas.",
+      "bn": "এই OmniRoute অন্য একটি কম্পিউটারে চলে: সেখানেই এটি চালু করুন।",
+      "pt-BR": "Este OmniRoute roda em outro computador: inicie-o lá.",
+      "ru": "Этот OmniRoute работает на другом компьютере: запустите его там.",
+      "id": "OmniRoute ini berjalan di komputer lain: jalankan di sana.",
+      "de": "Dieses OmniRoute läuft auf einem anderen Computer: Starte es dort.",
+      "tr": "Bu OmniRoute başka bir bilgisayarda çalışıyor: onu orada başlat."
+    },
     "This puts your previous status line back, or removes the entry if there was none.": {
       "zh-Hans": "这会恢复你之前的状态栏；如果之前没有，则移除该条目。",
       "hi": "यह आपकी पिछली स्टेटस लाइन वापस लगाता है, या अगर कोई नहीं थी तो प्रविष्टि हटा देता है।",
@@ -2717,6 +2951,19 @@
       "id": "Pakai di obrolan",
       "de": "Im Chat verwenden",
       "tr": "Sohbette kullan"
+    },
+    "Use OmniRoute": {
+      "zh-Hans": "使用 OmniRoute",
+      "hi": "OmniRoute का उपयोग करें",
+      "es": "Usar OmniRoute",
+      "ar": "استخدام OmniRoute",
+      "fr": "Utiliser OmniRoute",
+      "bn": "OmniRoute ব্যবহার করুন",
+      "pt-BR": "Usar o OmniRoute",
+      "ru": "Использовать OmniRoute",
+      "id": "Pakai OmniRoute",
+      "de": "OmniRoute verwenden",
+      "tr": "OmniRoute'u kullan"
     },
     "Used twice": {
       "zh-Hans": "重复使用",
