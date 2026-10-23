@@ -10,6 +10,7 @@ import { onEvent } from "../core/bridge";
 import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus } from "../core/flow";
 import { hero, liveMochi, setWindowShown } from "./hero";
 import { icon, keyLabel } from "./ui";
+import { swapPage } from "./pageTransition";
 
 export type PageId =
   | "dictation" | "notes" | "insights" | "dictionary" | "snippets" | "styles" | "flowsettings"
@@ -140,6 +141,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     const def = ALL.find((p) => p.id === page) ?? FLOW_PAGES[0];
     ctx.onLeave?.();
     ctx.onLeave = undefined;
+    const from = ALL.findIndex((p) => p.id === current);
     current = def.id;
     for (const [id, el] of items) el.classList.toggle("on", id === current);
     const token = ++rendering;
@@ -154,9 +156,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       await opts.renderNotch(def.id, container);
     }
     if (token !== rendering) return;
-    clear(scroll);
-    scroll.append(page_);
-    scroll.scrollTop = 0;
+    swapPage(scroll, page_, Math.sign(ALL.indexOf(def) - from));
   }
 
   // ── The sidebar ──
