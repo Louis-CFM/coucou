@@ -921,3 +921,14 @@ button.hub-icon svg {
 .hub-note-detail > button {
   align-self: flex-start;
 }
+
+/* ── Page transitions ─────────────────────────────────────────────────────────
+   The page being left is laid over the panel while it fades out (see
+   pageTransition.ts); it never takes the pointer. */
+.hub-scroll.leaving {
+  position: fixed;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 21px;
+  pointer-events: none;
+}
