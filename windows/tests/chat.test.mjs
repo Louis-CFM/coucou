@@ -43,7 +43,7 @@ test("the model button shows the active provider's model", () => {
   assert.equal($(".model-name").textContent, "claude-opus-5");
   State.settings = { ...State.settings, chatProvider: "google" };
   view.sync();
-  assert.equal($(".model-name").textContent, "gemini-2.0-flash");
+  assert.equal($(".model-name").textContent, "gemini-3.8-flash");
   State.settings = { ...State.settings, chatProvider: "ollama" };
   view.sync();
   assert.equal($(".model-name").textContent, "Choose a model");

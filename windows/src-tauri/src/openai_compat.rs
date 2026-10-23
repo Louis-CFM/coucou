@@ -51,7 +51,7 @@ pub const PROVIDERS: &[Provider] = &[
         base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
         key: "google-api-key",
         models_path: "models",
-        default_model: "gemini-2.0-flash",
+        default_model: "gemini-3.8-flash",
         not_chat: &["embed", "imagen", "veo", "aqa", "tts", "audio", "live"],
         max_tokens_field: "max_tokens",
     },
@@ -394,13 +394,13 @@ mod tests {
         assert_eq!(ids, vec!["gpt-5-mini", "gpt-4o"]);
 
         let google = json!({"data":[
-            {"id":"models/gemini-2.0-flash"},
+            {"id":"models/gemini-3.8-flash"},
             {"id":"models/text-embedding-004"},
             {"id":"gemini-2.5-pro"},
             {"id":"models/imagen-3.0"}
         ]});
         let ids: Vec<_> = parse_models(p("google"), &google).into_iter().map(|m| m.id).collect();
-        assert_eq!(ids, vec!["gemini-2.0-flash", "gemini-2.5-pro"]);
+        assert_eq!(ids, vec!["gemini-3.8-flash", "gemini-2.5-pro"]);
 
         let openrouter = json!({"data":[
             {"id":"b/paid","name":"B Paid","pricing":{"prompt":"0.000001","completion":"0.000002"}},
