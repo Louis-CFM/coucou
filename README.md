@@ -74,7 +74,7 @@ Flow dictation and the Notetaker are on the Mac for now; Windows and Linux are n
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
 - 🖥️ **Mochi on the desktop** — drag Mochi out of the island to set him loose on your desktop: he floats as a 120 pt companion, follows your cursor, wears his outfit, reacts to alerts by flying home and flying back, and comes back where you left him on next launch.
 - 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
-- 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub (open PRs, reviews requested, CI status), Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
+- 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub (open PRs, reviews requested, CI status, and the CI of the branch you're on), Vercel deployments, Resend emails, Notion, Cal.com, Google Calendar (with meeting reminders). Each one gets its own little colored Mochi.
 - 🎵 **Apple Music pill** *(macOS, GitHub build)* — add the Apple Music pill in Settings → Active pills to see what's playing and control playback from the notch; Mochi dances while it plays.
 - 🎧 **Spotify pill** *(macOS, GitHub build)* — add the Spotify pill in Settings → Active pills: album cover, title and artist, a progress bar you drag to seek, play/pause, previous/next, shuffle, repeat and volume, right from the notch; Mochi dances while it plays.
 - 👗 **Dress Mochi up** — right-click him for the wardrobe. He also dresses up for the seasons on his own.
@@ -334,7 +334,7 @@ On the Mac, open Coucou from the Dock or the menu bar: its window has every sett
 | **Active pills** *(macOS)* | choose which tools and agents appear in the island | Settings → Active pills |
 | **Flow dictation** *(macOS, GitHub build)* | hold a key, speak, the words are pasted | Coucou → Flow → Settings · the Accessibility and Microphone permissions |
 | **Parakeet** *(macOS, Apple silicon)* | offline dictation, more accurate | Coucou → Flow → Settings → Recognition → **Download** (about 650 MB) |
-| Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the service pills | Keychain / Windows Credential Manager / Secret Service, all optional |
+| Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com, Google Calendar (your own OAuth client) | the service pills | Keychain / Windows Credential Manager / Secret Service, all optional |
 | **WhatsApp** *(macOS GitHub build, Windows, Linux; experimental)* | your WhatsApp messages in the notch or the island, and replies | Settings → Integrations → WhatsApp · a gateway on your Mac, see [WhatsApp (experimental)](#whatsapp-experimental) |
 
 If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
