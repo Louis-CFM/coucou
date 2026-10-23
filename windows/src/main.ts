@@ -17,6 +17,7 @@ import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
 import { WhatsNew } from "./whats-new/controller";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
+import { hopScreens } from "./island/screenHop";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
 function applyLanguage() {
@@ -105,10 +106,10 @@ async function main() {
     await Bridge.fitZoom(dpr);
   };
 
-  await onEvent<null>("screen-changed", async () => {
+  await onEvent<null>("screen-changed", () => void hopScreens(async () => {
     await checkZoom();
-    void Bridge.reposition();
-  });
+    await Bridge.reposition();
+  }, () => State.mode !== "hidden"));
 
   const mediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
   mediaQuery.addEventListener?.("change", () => void checkZoom());
