@@ -3026,3 +3026,59 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* A dropped code file in the user's turn: its name and a copy button over
+   the code. */
+.code-block {
+  margin: 6px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.code-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px 3px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  font: 500 10px var(--font);
+  color: var(--dim-3);
+}
+
+.code-lang {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow: auto;
+  background: transparent;
+  border-radius: 0;
+}
+
+.code-block pre code {
+  font: 400 11px/1.45 var(--mono);
+  white-space: pre;
+}
+
+.chat-row.user .user-turn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.chat-row.user .code-block {
+  align-self: stretch;
+  margin: 0;
+}

@@ -8,7 +8,7 @@
 
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
-import { renderMarkdown } from "./markdown";
+import { copyButton, renderMarkdown } from "./markdown";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
   activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
@@ -33,10 +33,17 @@ let nextId = 1;
 
 function bubble(message: ChatMessage): HTMLElement {
   if (message.role === "user") {
+    const a = message.attachment;
     return h(
       "div",
       { class: "chat-row user" },
-      h("div", { class: "bubble", text: message.content }),
+      h(
+        "div",
+        { class: "user-turn" },
+        // The dropped code file, as the model got it.
+        a ? fileCard(a.text, `${a.name} · ${a.text.split("\n").length} lines`) : null,
+        h("div", { class: "bubble", text: message.content }),
+      ),
     );
   }
   const reply = h("div", { class: "reply" });
@@ -52,6 +59,16 @@ function typingDots(): HTMLElement {
   );
 }
 
+/** A dropped text or code file, as the model got it: its name, the code, a copy button. */
+function fileCard(code: string, title: string): HTMLElement {
+  return h(
+    "div",
+    { class: "code-block" },
+    h("div", { class: "code-head" }, h("span", { class: "code-lang", text: title }), copyButton(code)),
+    h("pre", {}, h("code", { text: code })),
+  );
+}
+
 /** The coloured chip showing what the question is about (a dropped file). */
 function contextChip(label: string): HTMLElement {
   const chip = h("div", { class: "chip" }, h("i", { class: "chip-dot" }), h("span", { text: label }));
@@ -62,6 +79,8 @@ function contextChip(label: string): HTMLElement {
 function saveSettings() {
   void Bridge.saveSettings(State.settings);
 }
+
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp)$/i;
 
 // ── Model picker ──────────────────────────────────────────────────────────────
 
@@ -273,12 +292,21 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     drawModelButton();
     Sound.play("send");
 
-    State.chatHistory.push({ id: nextId++, role: "user", content: query });
+    // A dropped text or code file goes along on the first turn: show it too.
+    const file = State.droppedFile;
+    const firstTurn = State.chatHistory.length === 0;
+    const attachment =
+      firstTurn && file?.path && !IMAGE_FILE.test(file.path) ? await Bridge.readAttachment(file.path) : null;
+    State.chatHistory.push({
+      id: nextId++,
+      role: "user",
+      content: query,
+      attachment: attachment ? { name: file!.name, ...attachment } : null,
+    });
     State.stateOverride = "thinking";
     State.notify();
     onHeightChange();
 
-    const file = State.droppedFile;
     const context: ChatContext | null =
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 

@@ -539,6 +539,18 @@ async fn chat_send(
     chat::send(&app, &chat, &settings, query, context).await
 }
 
+/// A dropped text or code file's contents and language, for the chat's code
+/// card (none for images, PDFs, binaries or big files). Only Coucou's own
+/// copies in the inbox can be read.
+#[tauri::command]
+fn read_attachment(path: String) -> Option<serde_json::Value> {
+    if !chat::is_inside(&files::inbox_dir(), std::path::Path::new(&path)) {
+        return None;
+    }
+    let (text, lang) = chat::read_text(&path)?;
+    Some(serde_json::json!({ "text": text, "lang": lang }))
+}
+
 /// The models a provider offers, for the picker in the chat view. Only asked
 /// once the user picked that provider, and only with its key or address.
 #[tauri::command]
@@ -846,6 +858,7 @@ pub fn run() {
             local_connect,
             local_set_key,
             chat_reset,
+            read_attachment,
             ingest_file,
             secret_present,
             secret_set,
