@@ -329,6 +329,21 @@ test("the end of the turn takes a waiting card down and releases the relay", () 
   }
 });
 
+test("a card the relay stopped waiting for goes, and the next request gets its card (#857)", () => {
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", tool_name: "Bash" });
+  // Another request's expiry leaves this card alone.
+  emit("approval-expired", "r0");
+  assert.equal(State.pendingApproval?.requestId, "r1");
+  emit("approval-expired", "r1");
+  assert.equal(State.pendingApproval, null);
+  hook({ hook_event_name: "PermissionRequest", request_id: "r2", session_id: "s1", tool_name: "Bash" });
+  assert.equal(State.pendingApproval?.requestId, "r2");
+  assert.deepEqual(sent("approval_decline"), []);
+  // r1's 110 s timer was cancelled: it doesn't take r2's card down.
+  seconds(100);
+  assert.equal(State.pendingApproval?.requestId, "r2");
+});
+
 test("Codex's Interrupt puts its pill back to idle", () => {
   hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", coucou_agent: "codex", prompt: "go" });
   assert.equal(task("agent_codex").state, "thinking");

@@ -242,9 +242,16 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
     // and Claude Code asks in the terminal, exactly as if Coucou were closed.
-    if let Some(d) = decision {
-        let _ = pipe.write_all(format!("{d}\n").as_bytes()).await;
-        let _ = pipe.flush().await;
+    // The island is told, so a card that came up late (or is still up after the
+    // long wait) goes instead of holding the view with nobody to answer (#857).
+    match decision {
+        Some(d) => {
+            let _ = pipe.write_all(format!("{d}\n").as_bytes()).await;
+            let _ = pipe.flush().await;
+        }
+        None => {
+            let _ = app.emit_to(WINDOW_LABEL, "approval-expired", &id);
+        }
     }
     pipe.finish();
 }

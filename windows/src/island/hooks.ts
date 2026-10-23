@@ -241,6 +241,14 @@ export function registerHookHandlers(island: Island) {
   // The last plan numbers seen survive a restart, as on the Mac.
   State.planUsage ??= restorePlanUsage(storedClaudePlanUsage());
   void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  // The relay stopped waiting without a decision and the terminal has taken
+  // over: a card still up for that request would be lying (#857).
+  void onEvent<string>("approval-expired", (requestId) => {
+    if (State.pendingApproval?.requestId !== requestId) return;
+    if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+    dropPendingCard(island);
+  });
 }
 
 function handleHook(island: Island, payload: HookPayload) {
