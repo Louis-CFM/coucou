@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -175,7 +176,7 @@ private fun OutfitCell(label: String, chosen: Boolean, onClick: () -> Unit, icon
     val shape = RoundedCornerShape(Radii.PANEL.dp)
     val selectedText = stringResource(R.string.wardrobe_selected)
     Column(
-        Modifier.fillMaxWidth().clip(shape).background(t.panel.c()).border(if (chosen) 2.dp else 1.dp, if (chosen) t.text.c() else t.line.c(), shape)
+        Modifier.fillMaxWidth().heightIn(min = Spacing.MIN_TOUCH.dp).clip(shape).background(t.panel.c()).border(if (chosen) 2.dp else 1.dp, if (chosen) t.text.c() else t.line.c(), shape)
             .clickable(role = Role.RadioButton, onClick = onClick)
             .semantics { selected = chosen; contentDescription = if (chosen) "$label, $selectedText" else label }
             .padding(vertical = 12.dp, horizontal = 4.dp),

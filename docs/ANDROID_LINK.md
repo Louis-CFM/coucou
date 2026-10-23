@@ -231,6 +231,28 @@ out. A bare `{"type":"usage"}` means the computer has nothing to say any more: t
 `resetsAt` has passed counts as 0 on the phone, as on the PC. Nothing else about the plans (no account, no token, no cost) is
 ever sent, and nothing goes back.
 
+## Weekly recap (optional capability `recap`)
+
+A phone that sends `caps: ["recap"]` in its `hello`, while the user has turned on "Show my weekly recap on the phone" on the
+computer (off by default, a switch of its own; re-read for every connection, and a change disconnects the phones once), is offered
+`recap` in `welcome.caps`. It is then sent, right after the first `sessions` and again whenever the week changes, the numbers of the
+**last completed week** (Monday to Sunday, the computer's time zone) that the recap card on the computer shows:
+
+```json
+{"type":"recap","week":"2026-10-05","minutes":340,"sessions":12,"files":40,"added":900,"removed":210,
+ "commands":55,"allowed":20,"denied":3,"topAgent":"Claude Code"}
+```
+
+`week` is the Monday that starts the week (`YYYY-MM-DD`, the computer's local date), `minutes` the time with an agent working (overlapping
+sessions counted once, at most 10 080), `sessions` the number of turns, `files` the files changed, `added` and `removed` the lines, `commands`
+the commands run, `allowed` and `denied` the permissions answered; all whole numbers, `0` or more, clamped by the computer. `topAgent` is
+the agent used most (a name of at most 24 letters, digits, spaces, dashes, dots and underscores), left out when there is none. **Counts only:
+no project, file name, command or prompt.** The one exception is `project`, the top project's **folder name** (never a path, at most 64
+characters): it is added only for a phone that was also offered `details` (the user showed session details on the phone) and only when the user
+did not choose to leave project names out of the recap. A week with no session, or one whose `week` is not a date, is not sent: a bare
+`{"type":"recap"}` means the computer has nothing to show and the phone removes the card. The phone ignores a `recap` on a connection that was
+not offered the capability, and a number that is not a whole number in range makes it drop the card. Nothing goes back.
+
 ## Admission (what a flood cannot do)
 
 The server answers the local network before it knows who is calling, so it bounds what a caller who has not yet sent

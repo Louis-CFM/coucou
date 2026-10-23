@@ -58,6 +58,6 @@ class ProtocolAnswersTest {
 
     @Test fun anOldComputerThatSendsNoQuestionChangesNothing() {
         // unknown to an old phone, ignored by a new one when it was not offered (see LinkAnswersTest)
-        assertEquals(setOf("chat", "details", "answers", "prefs", "diffs", "usage", "services", "relay"), Protocol.CAPABILITIES.toSet())
+        assertEquals(setOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay"), Protocol.CAPABILITIES.toSet())
     }
 }

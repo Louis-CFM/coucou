@@ -23,6 +23,7 @@ import { Bridge, type ApprovalDecision } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
+import { buildWhatsNew } from "./whatsnew";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
@@ -64,6 +65,10 @@ export interface ViewActions {
   chooseOutfit(selection: OutfitSelection): void;
   /** Wardrobe hover: shows an outfit on Mochi without keeping it; null ends it. */
   previewOutfit(outfit: Outfit | null): void;
+  /** The island takes the keyboard (a text field in a card) or gives it back. */
+  keyboard(on: boolean): void;
+  /** Something is being typed in a card: the island stays open until it is sent or cleared. */
+  holdOpen(on: boolean): void;
 }
 
 export interface ViewHost {
@@ -928,6 +933,7 @@ export function buildViews(
   map.set("wardrobe", buildWardrobe(actions));
   map.set("capture", buildCapture(actions));
   map.set("update", buildUpdate());
+  map.set("whatsNew", buildWhatsNew());
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildMail(actions));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

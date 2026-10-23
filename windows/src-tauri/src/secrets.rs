@@ -72,7 +72,8 @@ pub fn present(key: &str) -> bool {
 
 // ── Entries only Rust reads and writes ───────────────────────────────────────
 //
-// The phone link's certificate, key and pairing token, and the relay's room, end-to-end key and access key.
+// The phone link's certificate, key and pairing token, the relay's room, end-to-end key and access key,
+// and WhatsApp's gateway address, credential and webhook secret.
 // They are not in KNOWN_KEYS
 // on purpose: the island has `secret_present` / `secret_set` / `secret_clear`
 // for those, and none of the three may be reachable from a webview.

@@ -53,7 +53,7 @@ private fun PlanBlock(name: String, plan: PlanUsage, nowMs: Long) {
     Column(Modifier.fillMaxWidth().padding(Spacing.INSIDE.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(name, Modifier.weight(1f), style = TypeScale.HEADLINE.style(t.text.c()))
-            plan.plan?.let { Text(it, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 1) }
+            plan.plan?.let { Text(it, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 2) }
         }
         plan.fiveHour?.let { WindowBar(name, stringResource(R.string.usage_five_hours), it, nowMs, weekly = false) }
         plan.sevenDay?.let { WindowBar(name, stringResource(R.string.usage_week), it, nowMs, weekly = true) }
@@ -85,6 +85,6 @@ private fun WindowBar(plan: String, label: String, w: PlanWindow, nowMs: Long, w
         Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(t.secondaryButton.c()).clearAndSetSemantics { }) {
             Box(Modifier.fillMaxWidth(pct / 100f).height(8.dp).clip(RoundedCornerShape(4.dp)).background(color))
         }
-        Text(reset, Modifier.clearAndSetSemantics { }, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 1)
+        Text(reset, Modifier.clearAndSetSemantics { }, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 2)
     }
 }

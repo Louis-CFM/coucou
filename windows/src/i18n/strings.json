@@ -366,6 +366,19 @@
    "de": "Agent",
    "tr": "Ajan"
   },
+  "Agent sessions": {
+   "zh-Hans": "智能体会话",
+   "hi": "एजेंट सत्र",
+   "es": "Sesiones de agentes",
+   "ar": "جلسات الوكلاء",
+   "fr": "Sessions d’agents",
+   "bn": "এজেন্ট সেশন",
+   "pt-BR": "Sessões de agentes",
+   "ru": "Сессии агентов",
+   "id": "Sesi agen",
+   "de": "Agent-Sitzungen",
+   "tr": "Ajan oturumları"
+  },
   "Agents": {
    "zh-Hans": "代理",
    "hi": "एजेंट्स",
@@ -404,6 +417,19 @@
    "id": "Semua",
    "de": "Alle",
    "tr": "Tümü"
+  },
+  "All changes": {
+   "zh-Hans": "全部更新内容",
+   "hi": "सभी बदलाव",
+   "es": "Todos los cambios",
+   "ar": "كل التغييرات",
+   "fr": "Tous les changements",
+   "bn": "সব পরিবর্তন",
+   "pt-BR": "Todas as mudanças",
+   "ru": "Все изменения",
+   "id": "Semua perubahan",
+   "de": "Alle Änderungen",
+   "tr": "Tüm değişiklikler"
   },
   "Allow": {
    "zh-Hans": "允许",
@@ -651,6 +677,19 @@
    "id": "Disetujui",
    "de": "Genehmigt",
    "tr": "Onaylandı"
+  },
+  "Approved from the notch": {
+   "zh-Hans": "在刘海中批准",
+   "hi": "नॉच से मंज़ूर",
+   "es": "Aprobados desde el notch",
+   "ar": "موافقات من النوتش",
+   "fr": "Validés depuis le notch",
+   "bn": "নচ থেকে অনুমোদিত",
+   "pt-BR": "Aprovados pelo notch",
+   "ru": "Одобрено из выреза",
+   "id": "Disetujui dari notch",
+   "de": "In der Notch freigegeben",
+   "tr": "Çentikten onaylanan"
   },
   "As said": {
    "zh-Hans": "原样",
@@ -938,6 +977,19 @@
    "de": "Aktivster Tag",
    "tr": "En yoğun gün"
   },
+  "Buy Mochi a coffee": {
+   "zh-Hans": "请 Mochi 喝咖啡",
+   "hi": "Mochi को कॉफ़ी पिलाएँ",
+   "es": "Invitar a Mochi a un café",
+   "ar": "ادعُ Mochi إلى قهوة",
+   "fr": "Offrir un café à Mochi",
+   "bn": "Mochi-কে কফি খাওয়ান",
+   "pt-BR": "Pagar um café para o Mochi",
+   "ru": "Угостить Mochi кофе",
+   "id": "Traktir Mochi kopi",
+   "de": "Mochi einen Kaffee spendieren",
+   "tr": "Mochi’ye kahve ısmarla"
+  },
   "COMMANDS": {
    "zh-Hans": "命令",
    "hi": "कमांड",
@@ -963,6 +1015,19 @@
    "id": "Panggilan · {0}",
    "de": "Gespräch · {0}",
    "tr": "Görüşme · {0}"
+  },
+  "Calls transcribed": {
+   "zh-Hans": "已转写的通话",
+   "hi": "ट्रांसक्राइब की गई कॉल",
+   "es": "Llamadas transcritas",
+   "ar": "مكالمات مُفرّغة",
+   "fr": "Appels transcrits",
+   "bn": "ট্রান্সক্রাইব করা কল",
+   "pt-BR": "Chamadas transcritas",
+   "ru": "Звонков расшифровано",
+   "id": "Panggilan ditranskripsi",
+   "de": "Transkribierte Anrufe",
+   "tr": "Yazıya dökülen aramalar"
   },
   "Can't reach {name} at {url}. Is it running?": {
    "zh-Hans": "无法访问 {name}（{url}）。它正在运行吗？",
@@ -1756,6 +1821,19 @@
    "id": "Coucou tidak bisa menempel: kata-katamu sudah disalin. Tekan ⌘V, dan izinkan Aksesibilitas agar ia menempel sendiri.",
    "de": "Coucou konnte nicht einfügen: Deine Worte wurden kopiert. Drücke ⌘V und erlaube Bedienungshilfen, damit Coucou sie für dich einfügt.",
    "tr": "Coucou yapıştıramadı: sözlerin kopyalandı. ⌘V tuşlarına bas ve Coucou'nun senin için yapıştırabilmesi için Erişilebilirlik izni ver."
+  },
+  "Coucou is free and open source. If it saves you time, you can buy Mochi a coffee.": {
+   "zh-Hans": "Coucou 免费且开源。如果它帮你节省了时间，可以请 Mochi 喝杯咖啡。",
+   "hi": "Coucou मुफ़्त और ओपन सोर्स है। अगर यह आपका समय बचाता है, तो Mochi को एक कॉफ़ी पिला सकते हैं।",
+   "es": "Coucou es gratis y de código abierto. Si te ahorra tiempo, puedes invitar a Mochi a un café.",
+   "ar": "Coucou مجاني ومفتوح المصدر. إن وفّر عليك الوقت، يمكنك دعوة Mochi إلى قهوة.",
+   "fr": "Coucou est gratuit et open source. S’il te fait gagner du temps, tu peux offrir un café à Mochi.",
+   "bn": "Coucou বিনামূল্যে ও ওপেন সোর্স। এটি আপনার সময় বাঁচালে Mochi-কে এক কাপ কফি খাওয়াতে পারেন।",
+   "pt-BR": "O Coucou é gratuito e de código aberto. Se ele economiza seu tempo, você pode pagar um café para o Mochi.",
+   "ru": "Coucou бесплатный и с открытым кодом. Если он экономит вам время, можно угостить Mochi кофе.",
+   "id": "Coucou gratis dan open source. Kalau ini menghemat waktumu, kamu bisa traktir Mochi kopi.",
+   "de": "Coucou ist kostenlos und Open Source. Wenn es dir Zeit spart, kannst du Mochi einen Kaffee spendieren.",
+   "tr": "Coucou ücretsiz ve açık kaynak. Sana zaman kazandırıyorsa Mochi’ye bir kahve ısmarlayabilirsin."
   },
   "Coucou is up to date": {
    "zh-Hans": "Coucou 已是最新版本",
@@ -3615,6 +3693,19 @@
    "id": "Biarkan iPhone saya mengirim instruksi ke Claude Code",
    "de": "Mein iPhone darf Anweisungen an Claude Code senden",
    "tr": "iPhone'umun Claude Code'a talimat göndermesine izin ver"
+  },
+  "Lines written": {
+   "zh-Hans": "写下的代码行",
+   "hi": "लिखी गई पंक्तियाँ",
+   "es": "Líneas escritas",
+   "ar": "أسطر مكتوبة",
+   "fr": "Lignes écrites",
+   "bn": "লেখা লাইন",
+   "pt-BR": "Linhas escritas",
+   "ru": "Строк написано",
+   "id": "Baris ditulis",
+   "de": "Geschriebene Zeilen",
+   "tr": "Yazılan satırlar"
   },
   "Listening…": {
    "zh-Hans": "我在听…",
@@ -6359,6 +6450,19 @@
    "de": "Integrationen speichern",
    "tr": "Entegrasyonları kaydet"
   },
+  "Saved with Flow": {
+   "zh-Hans": "Flow 帮你节省",
+   "hi": "Flow से बचा समय",
+   "es": "Ahorrado con Flow",
+   "ar": "وفّرته مع Flow",
+   "fr": "Gagnés avec Flow",
+   "bn": "Flow দিয়ে বাঁচানো",
+   "pt-BR": "Economizado com o Flow",
+   "ru": "Сэкономлено с Flow",
+   "id": "Dihemat dengan Flow",
+   "de": "Mit Flow gespart",
+   "tr": "Flow ile kazanılan"
+  },
   "Save…": {
    "zh-Hans": "存储…",
    "hi": "सहेजें…",
@@ -8296,6 +8400,19 @@
    "de": "Bei aktivierter Überarbeitung wird der Text mit deinem Claude-Schlüssel an Anthropic gesendet, niemals deine Stimme. Ist sie aus, bleibt alles auf deinem Mac.",
    "tr": "Düzenleme açıkken metin, Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Kapalıyken her şey Mac'inde kalır."
   },
+  "With your agents": {
+   "zh-Hans": "与智能体一起",
+   "hi": "एजेंटों के साथ",
+   "es": "Con tus agentes",
+   "ar": "مع وكلائك",
+   "fr": "Avec tes agents",
+   "bn": "এজেন্টদের সঙ্গে",
+   "pt-BR": "Com seus agentes",
+   "ru": "С агентами",
+   "id": "Bersama agenmu",
+   "de": "Mit deinen Agents",
+   "tr": "Ajanlarınla"
+  },
   "Without the “um” and the repeats, your tone kept.": {
    "zh-Hans": "去掉“嗯”和重复，保留你的语气。",
    "hi": "बिना “अं” और दोहराव के, आपका लहजा बना रहता है।",
@@ -8517,6 +8634,19 @@
    "de": "Du sprichst",
    "tr": "Konuştuğun dil"
   },
+  "Your Coucou so far": {
+   "zh-Hans": "你的 Coucou 至今",
+   "hi": "अब तक आपका Coucou",
+   "es": "Tu Coucou hasta ahora",
+   "ar": "Coucou الخاص بك حتى الآن",
+   "fr": "Ton Coucou jusqu’ici",
+   "bn": "এ পর্যন্ত আপনার Coucou",
+   "pt-BR": "Seu Coucou até agora",
+   "ru": "Ваш Coucou на сегодня",
+   "id": "Coucou-mu sejauh ini",
+   "de": "Dein Coucou bisher",
+   "tr": "Şimdiye kadar Coucou’n"
+  },
   "Your Mac is hot": {
    "zh-Hans": "你的 Mac 很热",
    "hi": "आपका Mac गर्म है",
@@ -8620,6 +8750,19 @@
    "id": "Suaramu diubah menjadi teks oleh pengenalan suara Mac, langsung di perangkat bila Mac mendukungnya; Coucou tidak mengirimnya ke mana pun. Setelah menempel, papan klip kembali berisi apa yang ada sebelumnya.",
    "de": "Deine Stimme wird mit der Spracherkennung deines Mac in Text umgewandelt, wenn unterstützt direkt auf dem Gerät; Coucou sendet sie nirgendwohin. Nach dem Einfügen wird der vorherige Inhalt der Zwischenablage wiederhergestellt.",
    "tr": "Sesin, Mac'inin konuşma tanıma özelliğiyle metne dönüştürülür; Mac'in destekliyorsa bu işlem cihazda yapılır. Coucou sesini hiçbir yere göndermez. Yapıştırmadan sonra pano önceki içeriğine döner."
+  },
+  "You’re on Coucou {0}": {
+   "zh-Hans": "你已更新到 Coucou {0}",
+   "hi": "आप Coucou {0} पर हैं",
+   "es": "Ya tienes Coucou {0}",
+   "ar": "أنت الآن على Coucou {0}",
+   "fr": "Tu es sur Coucou {0}",
+   "bn": "আপনি এখন Coucou {0}-এ",
+   "pt-BR": "Você está no Coucou {0}",
+   "ru": "У вас Coucou {0}",
+   "id": "Kamu sekarang di Coucou {0}",
+   "de": "Du hast jetzt Coucou {0}",
+   "tr": "Artık Coucou {0} kullanıyorsun"
   },
   "coding": {
    "zh-Hans": "编程",

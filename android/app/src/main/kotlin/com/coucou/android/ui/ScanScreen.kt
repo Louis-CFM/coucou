@@ -45,6 +45,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -117,7 +118,8 @@ fun ScanScreen(onBack: () -> Unit, onText: (String) -> Boolean) {
     )
 
     val backLabel = stringResource(R.string.action_back)
-    // A camera screen: black, edge to edge, with light text.
+    // A camera screen: black, edge to edge, with light text, in both themes (so the buttons on it use the dark tokens).
+    CompositionLocalProvider(LocalTokens provides Tokens.DARK) {
     Column(
         Modifier.fillMaxSize().background(Color(IslandSurface.BLACK)).windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = Gutter),
         verticalArrangement = Arrangement.spacedBy(Gap),
@@ -164,6 +166,7 @@ fun ScanScreen(onBack: () -> Unit, onText: (String) -> Boolean) {
                 PillButton(stringResource(R.string.scan_paste_instead), onBack, Modifier.fillMaxWidth(), onDark = true)
             }
         }
+    }
     }
 }
 

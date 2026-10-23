@@ -138,6 +138,25 @@ export interface PhoneLinkUsage {
   codex: PhoneLinkPlan | null;
 }
 
+/**
+ * Last week's recap as the phone gets it: counts, the week's Monday and the busiest agent's name (cap `recap`). The project is a folder name that
+ * Rust sends only to a phone that also may see session details. A week with no session is not sent: all zero clears the phone's card.
+ */
+export interface PhoneLinkRecap {
+  /** The Monday that starts the week, YYYY-MM-DD (local). */
+  week: string;
+  minutes: number;
+  sessions: number;
+  files: number;
+  linesAdded: number;
+  linesRemoved: number;
+  commands: number;
+  allowed: number;
+  denied: number;
+  topAgent?: string;
+  topProject?: string;
+}
+
 /** What one service pill says, for a phone whose user allowed it (Rust cuts every text to size). */
 export interface PhoneLinkService {
   id: string;
@@ -153,6 +172,10 @@ export interface PhoneServicesStatus {
 }
 
 export interface PhoneUsageStatus {
+  enabled: boolean;
+}
+
+export interface PhoneRecapStatus {
   enabled: boolean;
 }
 
@@ -324,6 +347,9 @@ export const Bridge = {
   /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
   phoneUsageSetEnabled: (enabled: boolean) => callOrThrow<PhoneUsageStatus>("phone_usage_set_enabled", { enabled }),
   phoneLinkPublishUsage: (usage: PhoneLinkUsage) => call<void>("phone_link_publish_usage", { usage }),
+  phoneRecapStatus: () => call<PhoneRecapStatus>("phone_recap_status"),
+  phoneRecapSetEnabled: (enabled: boolean) => callOrThrow<PhoneRecapStatus>("phone_recap_set_enabled", { enabled }),
+  phoneLinkPublishRecap: (recap: PhoneLinkRecap | null) => call<void>("phone_link_publish_recap", { recap: recap ?? {} }),
   phoneChatStatus: () => call<PhoneChatStatus>("phone_chat_status"),
   /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
   phoneChatSetEnabled: (enabled: boolean) => callOrThrow<PhoneChatStatus>("phone_chat_set_enabled", { enabled }),
@@ -495,6 +521,8 @@ export const Bridge = {
   /** Settings → Install X: opens the island's update card. */
   updateShow: () => call<void>("update_show"),
   updateLater: () => call<void>("update_later"),
+  /** Blue Mochi in the tray while a new version waits (tray.rs). */
+  trayUpdateHint: (on: boolean) => call<void>("tray_update_hint", { on }),
   updateDismiss: () => call<void>("update_dismiss"),
   /** "Update now" (Windows): download, check the SHA-256, run the installer, quit. */
   updateInstall: () => call<void>("update_install"),

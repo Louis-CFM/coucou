@@ -8,12 +8,23 @@ import { calls, emit, internals, sent } from "./tauri.mjs";
 import { bareCommand, folderName, linkSnapshot, registerPhoneLink } from "../src/island/phone-link.ts";
 import { makeDiffStep } from "../src/core/diff.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
+import { previousWeekStart, sampleHistory, summarize } from "../src/recap/summary.ts";
 
 const CLAUDE = "integration_claude";
 
 let status = { enabled: true, running: true, port: 47821, host: "192.168.1.2", name: "PC", clients: 0, error: null };
 const original = internals.invoke;
-internals.invoke = async (cmd, args) => (cmd === "phone_link_status" ? status : original(cmd, args));
+let recapOn = false;
+let recapHistory = null;
+internals.invoke = async (cmd, args) => {
+  if (cmd === "phone_link_status") return status;
+  if (cmd === "phone_recap_status") return { enabled: recapOn };
+  if (cmd === "recap_history") {
+    await original(cmd, args); // recorded like any other command
+    return recapHistory;
+  }
+  return original(cmd, args);
+};
 
 let asked;
 let dispose = () => {};
@@ -31,6 +42,8 @@ beforeEach(() => {
   asked = [];
   calls.length = 0;
   status = { ...status, running: true };
+  recapOn = false;
+  recapHistory = null;
   State.tasks = [];
   State.focusId = null;
   State.pendingApproval = null;
@@ -436,4 +449,72 @@ test("service cards are published when the link comes up and when they change, a
   tick(250);
   assert.equal(p().length, 2);
   for (const id of Object.keys(State.integrations)) delete State.integrations[id];
+});
+
+// ── Last week's recap (cap `recap`) ───────────────────────────────────────────
+
+test("last week's recap goes out once, as counts, when the switch is on", async () => {
+  recapOn = true;
+  recapHistory = sampleHistory(previousWeekStart(new Date()));
+  dispose = registerPhoneLink(island);
+  await settle();
+  tick(250);
+  await settle();
+  const p = () => sent("phone_link_publish_recap");
+  assert.equal(p().length, 1);
+  const r = p()[0].recap;
+  assert.equal(r.sessions, 6);
+  assert.equal(r.minutes, summarize(recapHistory, previousWeekStart(new Date())).totalMinutes);
+  assert.ok(r.minutes > 0);
+  assert.equal(r.allowed, 4);
+  assert.equal(r.denied, 1);
+  assert.equal(r.topAgent, "Claude Code");
+  assert.deepEqual(
+    Object.keys(r).sort(),
+    ["allowed", "commands", "denied", "files", "linesAdded", "linesRemoved", "minutes", "sessions", "topAgent", "topProject", "week"],
+  );
+  assert.match(r.week, /^\d{4}-\d{2}-\d{2}$/);
+
+  State.notify(); // another burst: a completed week has not changed
+  tick(250);
+  await settle();
+  assert.equal(p().length, 1, "not worked out again until the week changes or a setting does");
+  assert.equal(sent("recap_history").length, 1);
+});
+
+test("with the switch off the history is not even read, and the hub is told there is nothing", async () => {
+  recapOn = false;
+  recapHistory = sampleHistory(previousWeekStart(new Date()));
+  dispose = registerPhoneLink(island);
+  await settle();
+  tick(250);
+  await settle();
+  assert.equal(sent("recap_history").length, 0);
+  assert.deepEqual(sent("phone_link_publish_recap"), [{ recap: {} }]);
+});
+
+test("turning the switch on or off in Settings is picked up at the next picture", async () => {
+  dispose = registerPhoneLink(island);
+  await settle();
+  tick(250);
+  await settle();
+  assert.equal(sent("phone_link_publish_recap").length, 1);
+  recapOn = true;
+  recapHistory = sampleHistory(previousWeekStart(new Date()));
+  emit("settings-changed", {});
+  await settle();
+  tick(250);
+  await settle();
+  assert.equal(sent("phone_link_publish_recap").length, 2);
+  assert.equal(sent("phone_link_publish_recap")[1].recap.sessions, 6);
+});
+
+test("a week with no session publishes nothing to show", async () => {
+  recapOn = true;
+  recapHistory = { turns: [], decisions: [], prefs: { enabled: true, hideProjects: false, lastShownWeek: "" } };
+  dispose = registerPhoneLink(island);
+  await settle();
+  tick(250);
+  await settle();
+  assert.deepEqual(sent("phone_link_publish_recap"), [{ recap: {} }]);
 });

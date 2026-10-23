@@ -89,7 +89,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:gravity="center"
-                    android:maxLines="1"
+                    android:maxLines="2"
                     android:textColor="@color/widget_text_secondary"
                     android:textSize="@dimen/widget_text_state"
                     android:visibility="gone" />

@@ -5,12 +5,19 @@ import com.coucou.android.core.RelayStatus
 import com.coucou.android.link.RelayIssue
 import com.coucou.android.link.Route
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RelayStatusTest {
     private fun kind(hasRelay: Boolean = true, use: Boolean = true, connected: Boolean = false, route: Route? = null, issue: RelayIssue = RelayIssue.NONE) =
         RelayStatus.kind(hasRelay, use, connected, route, issue)
+
+    @Test fun theAwayCardIsHiddenUnlessThePairingCarriesARelay() {
+        assertFalse(RelayStatus.sectionVisible(paired = true, hasRelay = false))
+        assertFalse(RelayStatus.sectionVisible(paired = false, hasRelay = true))
+        assertTrue(RelayStatus.sectionVisible(paired = true, hasRelay = true))
+    }
 
     @Test fun aPairingWithoutARelayExplainsHowToGetOne() = assertEquals(RelayLineKind.NO_RELAY_IN_PAIRING, kind(hasRelay = false, connected = true))
 
