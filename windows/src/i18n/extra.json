@@ -885,6 +885,32 @@
       "de": "Datei",
       "tr": "Dosya"
     },
+    "Ask about file": {
+      "zh-Hans": "询问文件",
+      "hi": "फ़ाइल के बारे में पूछें",
+      "es": "Preguntar sobre el archivo",
+      "ar": "اسأل عن الملف",
+      "fr": "Poser une question sur le fichier",
+      "bn": "ফাইল সম্পর্কে জিজ্ঞাসা করুন",
+      "pt-BR": "Perguntar sobre o arquivo",
+      "ru": "Спросить о файле",
+      "id": "Tanyakan tentang file",
+      "de": "Zur Datei fragen",
+      "tr": "Dosya hakkında sor"
+    },
+    "Cannot set file permissions: {error}": {
+      "zh-Hans": "无法设置文件权限：{error}",
+      "hi": "फ़ाइल अनुमतियाँ सेट नहीं कर सकते: {error}",
+      "es": "No se pueden establecer los permisos del archivo: {error}",
+      "ar": "تعذّر ضبط أذونات الملف: {error}",
+      "fr": "Impossible de définir les autorisations du fichier : {error}",
+      "bn": "ফাইলের অনুমতি সেট করা যাচ্ছে না: {error}",
+      "pt-BR": "Não foi possível definir as permissões do arquivo: {error}",
+      "ru": "Не удалось задать разрешения файла: {error}",
+      "id": "Tidak dapat mengatur izin file: {error}",
+      "de": "Dateiberechtigungen können nicht festgelegt werden: {error}",
+      "tr": "Dosya izinleri ayarlanamıyor: {error}"
+    },
     "Folders can't be dropped yet.": {
       "zh-Hans": "暂时还不能拖放文件夹。",
       "hi": "फ़ोल्डर अभी नहीं छोड़े जा सकते।",
@@ -897,6 +923,45 @@
       "id": "Folder belum bisa diletakkan.",
       "de": "Ordner können noch nicht abgelegt werden.",
       "tr": "Klasörler henüz bırakılamıyor."
+    },
+    "Files in Notch": {
+      "zh-Hans": "Notch 中的文件",
+      "hi": "Notch में फ़ाइलें",
+      "es": "Archivos en Notch",
+      "ar": "الملفات في Notch",
+      "fr": "Fichiers dans Notch",
+      "bn": "Notch-এ ফাইল",
+      "pt-BR": "Arquivos no Notch",
+      "ru": "Файлы в Notch",
+      "id": "File di Notch",
+      "de": "Dateien in Notch",
+      "tr": "Notch'taki dosyalar"
+    },
+    "Files you drop in the Notch will stay here until you remove them.": {
+      "zh-Hans": "拖到 Notch 中的文件会保留在这里，直到你将其移除。",
+      "hi": "Notch में छोड़ी गई फ़ाइलें हटाए जाने तक यहीं रहेंगी।",
+      "es": "Los archivos que sueltes en Notch permanecerán aquí hasta que los elimines.",
+      "ar": "ستبقى الملفات التي تُسقطها في Notch هنا حتى تزيلها.",
+      "fr": "Les fichiers déposés dans Notch resteront ici jusqu’à ce que vous les supprimiez.",
+      "bn": "Notch-এ রাখা ফাইলগুলো সরানো না পর্যন্ত এখানেই থাকবে।",
+      "pt-BR": "Os arquivos que você soltar no Notch ficarão aqui até serem removidos.",
+      "ru": "Файлы, оставленные в Notch, будут здесь, пока вы их не удалите.",
+      "id": "File yang ditaruh di Notch akan tetap di sini sampai Anda menghapusnya.",
+      "de": "Dateien, die du in Notch ablegst, bleiben hier, bis du sie entfernst.",
+      "tr": "Notch'a bıraktığınız dosyalar siz kaldırana kadar burada kalır."
+    },
+    "Keep in Notch": {
+      "zh-Hans": "保存在 Notch 中",
+      "hi": "Notch में रखें",
+      "es": "Guardar en Notch",
+      "ar": "الاحتفاظ في Notch",
+      "fr": "Garder dans Notch",
+      "bn": "Notch-এ রাখুন",
+      "pt-BR": "Manter no Notch",
+      "ru": "Оставить в Notch",
+      "id": "Simpan di Notch",
+      "de": "In Notch behalten",
+      "tr": "Notch'ta tut"
     },
     "Friday": {
       "zh-Hans": "星期五",

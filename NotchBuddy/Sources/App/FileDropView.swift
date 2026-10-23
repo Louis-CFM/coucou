@@ -9,7 +9,7 @@ final class FileDropNSView: NSView {
     var onDragEntered: ((CGPoint) -> Void)?
     var onDragUpdated: ((CGPoint) -> Void)?
     var onDragExited:  (() -> Void)?
-    var onFilesDropped: (([URL]) -> Void)?
+    var onFilesDropped: (([URL], CGPoint) -> Void)?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -35,8 +35,131 @@ final class FileDropNSView: NSView {
             forClasses: [NSURL.self],
             options: [.urlReadingFileURLsOnly: true]
         ) as? [URL], !urls.isEmpty else { return false }
-        onFilesDropped?(urls)
+        onFilesDropped?(urls, sender.draggingLocation)
         return true
+    }
+}
+
+enum FileDropDestination: Equatable {
+    case stash
+    case ask
+    case airDrop
+
+    static func at(x: CGFloat, hasAirDrop: Bool = true) -> FileDropDestination {
+        let fraction = min(1, max(0, (x - CGFloat(USC.CARD_X)) / CGFloat(USC.CARD_W)))
+        if hasAirDrop {
+            if fraction < 1.0 / 3.0 { return .ask }
+            if fraction < 2.0 / 3.0 { return .stash }
+            return .airDrop
+        }
+        return fraction < 0.5 ? .ask : .stash
+    }
+}
+
+enum FileStashStore {
+    private static let manifestKey = "notchStashedFiles"
+    private static var directory: URL {
+        HookServer.supportDir.appendingPathComponent("notch-files", isDirectory: true)
+    }
+
+    static func list() -> [StashedFile] {
+        guard let data = UserDefaults.standard.data(forKey: manifestKey),
+              let files = try? JSONDecoder().decode([StashedFile].self, from: data) else { return [] }
+        return files.filter { FileManager.default.fileExists(atPath: $0.path) }
+            .map { file in
+                let fileURL = file.url.standardizedFileURL
+                let root = directory.standardizedFileURL
+                var isDirectory: ObjCBool = false
+                let isStoredAppBundle = fileURL.pathExtension.lowercased() == "app"
+                    && fileURL.path.hasPrefix(root.path + "/")
+                    && fileURL.deletingLastPathComponent().deletingLastPathComponent().path == root.path
+                    && FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory)
+                    && isDirectory.boolValue
+                if isStoredAppBundle {
+                    // Repair bundle roots made non-traversable by older versions.
+                    try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fileURL.path)
+                }
+                return file
+            }
+            .sorted { $0.addedAt > $1.addedAt }
+    }
+
+    static func add(urls: [URL]) throws -> [StashedFile] {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+        var added: [StashedFile] = []
+        do {
+            for source in urls {
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: source.path, isDirectory: &isDirectory) else { continue }
+                if isDirectory.boolValue {
+                    let values = try source.resourceValues(forKeys: [.isPackageKey])
+                    let isAppBundle = source.pathExtension.lowercased() == "app"
+                    guard values.isPackage == true || isAppBundle else {
+                        throw NSError(domain: "CoucouFileStash", code: 1,
+                                      userInfo: [NSLocalizedDescriptionKey: String(localized: "Folders can't be dropped yet.")])
+                    }
+                }
+                let accessing = source.startAccessingSecurityScopedResource()
+                defer { if accessing { source.stopAccessingSecurityScopedResource() } }
+                let name = source.lastPathComponent.isEmpty ? "file" : source.lastPathComponent
+                let id = UUID().uuidString
+                let destination = directory.appendingPathComponent(id, isDirectory: true)
+                    .appendingPathComponent(name)
+                let entryDirectory = destination.deletingLastPathComponent()
+                try FileManager.default.createDirectory(at: entryDirectory, withIntermediateDirectories: true)
+                try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: entryDirectory.path)
+                try FileManager.default.copyItem(at: source, to: destination)
+                // A .app is a directory bundle. Forcing 0600 on its root removes
+                // execute/traverse permission and breaks the app's own executable bit.
+                if !isDirectory.boolValue {
+                    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination.path)
+                }
+                added.append(StashedFile(id: id, name: name, path: destination.path, addedAt: Date()))
+            }
+            let all = list() + added
+            let data = try JSONEncoder().encode(all)
+            UserDefaults.standard.set(data, forKey: manifestKey)
+            return added
+        } catch {
+            for file in added { try? FileManager.default.removeItem(at: file.url.deletingLastPathComponent()) }
+            throw error
+        }
+    }
+
+    static func remove(_ file: StashedFile) throws {
+        let fileURL = file.url.standardizedFileURL
+        let root = directory.standardizedFileURL
+        guard fileURL.path.hasPrefix(root.path + "/") else { throw CocoaError(.fileWriteNoPermission) }
+        let entryDirectory = fileURL.deletingLastPathComponent().standardizedFileURL
+        guard entryDirectory.deletingLastPathComponent().path == root.path else { throw CocoaError(.fileWriteNoPermission) }
+        if FileManager.default.fileExists(atPath: entryDirectory.path) {
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                // Earlier versions chmod'ed the bundle root to 0600. Restore
+                // write/traverse access on its directories before removing it.
+                repairBundleDirectories(at: fileURL)
+            }
+            try FileManager.default.removeItem(at: entryDirectory)
+        }
+        let remaining = list().filter { $0.id != file.id }
+        UserDefaults.standard.set(try JSONEncoder().encode(remaining), forKey: manifestKey)
+    }
+
+    private static func repairBundleDirectories(at bundle: URL) {
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: bundle.path)
+        guard let entries = FileManager.default.enumerator(
+            at: bundle,
+            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
+            options: [],
+            errorHandler: nil
+        ) else { return }
+        for case let url as URL in entries {
+            guard let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]),
+                  values.isDirectory == true,
+                  values.isSymbolicLink != true else { continue }
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+        }
     }
 }
 

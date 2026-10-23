@@ -378,6 +378,9 @@ export const Bridge = {
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  stashFile: (path: string) => callOrThrow<StashedFile>("stash_file", { path }),
+  listStashedFiles: () => callOrThrow<StashedFile[]>("list_stashed_files"),
+  deleteStashedFile: (path: string) => callOrThrow<void>("delete_stashed_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
@@ -552,6 +555,14 @@ export interface LocalServer {
 export interface DroppedFile {
   name: string;
   path: string;
+  size: number;
+}
+
+export interface StashedFile {
+  id: string;
+  name: string;
+  path: string;
+  addedAt: number;
   size: number;
 }
 

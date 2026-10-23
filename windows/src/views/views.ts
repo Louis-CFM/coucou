@@ -118,6 +118,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  const tabFiles = h("button", { class: "tab", title: tl("Files in Notch"), onclick: () => go("files") }, svg(ICONS.folder, 13));
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
@@ -135,7 +136,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabFiles),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -147,6 +148,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
+      tabFiles.classList.toggle("on", v === "files");
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
@@ -812,6 +814,71 @@ function buildSettings(actions: ViewActions): ViewHost {
 
 // ── Placeholders filled in later stages ───────────────────────────────────────
 
+function fileIcon(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["app", "exe", "msi", "appimage", "deb", "rpm"].includes(ext)) return "▣";
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "heic"].includes(ext)) return "▧";
+  if (["zip", "7z", "rar", "tar", "gz"].includes(ext)) return "▤";
+  if (["pdf"].includes(ext)) return "▰";
+  if (["swift", "ts", "tsx", "js", "jsx", "rs", "py", "html", "css", "json"].includes(ext)) return "‹›";
+  return "▤";
+}
+
+function fileDragUri(path: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  const escaped = normalized.split("/").map((part, index) => index === 0 ? part : encodeURIComponent(part)).join("/");
+  return `file://${normalized.startsWith("/") ? "" : "/"}${escaped}`;
+}
+
+function buildStashedFiles(): ViewHost {
+  const title = h("div", { class: "title", text: tl("Files in Notch") });
+  const rows = h("div", { class: "stash-files" });
+  const body = h("div", { class: "stack stash-body" }, title, rows);
+  return {
+    el: h("div", { class: "view" }, card(null, body)),
+    sync() {
+      clear(rows);
+      if (State.stashedFiles.length === 0) {
+        rows.append(h("div", { class: "sub", text: tl("Files you drop in the Notch will stay here until you remove them.") }));
+        return;
+      }
+      for (const file of State.stashedFiles) {
+        const remove = h("button", {
+          class: "stash-remove",
+          draggable: false,
+          title: tl("Remove"),
+          "aria-label": `${t("Remove")} ${file.name}`,
+          text: "×",
+          onclick: async () => {
+            try {
+              await Bridge.deleteStashedFile(file.path);
+              State.stashedFiles = State.stashedFiles.filter((item) => item.id !== file.id);
+              State.notify();
+            } catch (err) {
+              State.noteMessage = String(err).replace(/^Error:\\s*/, "");
+            }
+          },
+        });
+        const tile = h("div", { class: "stash-file-row", draggable: true },
+          h("div", { class: "stash-file-icon-wrap" },
+            h("span", { class: "stash-file-icon", text: fileIcon(file.name) }),
+            remove,
+          ),
+          h("span", { class: "stash-file-name", text: file.name }),
+        );
+        tile.addEventListener("dragstart", (event: DragEvent) => {
+          if (!event.dataTransfer) return;
+          const uri = fileDragUri(file.path);
+          event.dataTransfer.setData("text/uri-list", uri);
+          event.dataTransfer.setData("text/plain", file.path);
+          event.dataTransfer.effectAllowed = "copy";
+        });
+        rows.append(tile);
+      }
+    },
+  };
+}
+
 function buildPlaceholder(title: Msg, sub: string): ViewHost {
   const body = h(
     "div",
@@ -840,6 +907,7 @@ export function buildViews(
   map.set("settings", buildSettings(actions));
   map.set("prompt", buildPrompt(onChatHeightChange));
   map.set("upload", buildUpload());
+  map.set("files", buildStashedFiles());
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));
   map.set("recap", buildRecap(actions));

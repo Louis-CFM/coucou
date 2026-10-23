@@ -289,6 +289,7 @@ final class AppState: ObservableObject {
 
     // Dropped file (set during upload flow)
     @Published var droppedFile: DroppedFile? = nil
+    @Published var stashedFiles: [StashedFile] = []
     /// A mail prepared by voice: fills the mail card; sent through Apple Mail on the
     /// user's click. nil for the drop-a-file flow.
     @Published var voiceMailDraft: VoiceMailDraft? = nil
@@ -523,6 +524,7 @@ final class AppState: ObservableObject {
 
     private init() {
         let ud = UserDefaults.standard
+        stashedFiles = FileStashStore.list()
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
@@ -776,6 +778,15 @@ struct VoiceMailDraft: Equatable {
 struct DroppedFile {
     var url: URL
     var name: String
+}
+
+struct StashedFile: Codable, Identifiable, Equatable, Sendable {
+    var id: String
+    var name: String
+    var path: String
+    var addedAt: Date
+
+    var url: URL { URL(fileURLWithPath: path) }
 }
 
 struct SearchResult {

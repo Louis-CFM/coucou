@@ -42,6 +42,8 @@ export const ICONS = {
   stack: "M5 8h14v11.5H5V8zm1.8-3h10.4v1.6H6.8V5zm1.6-2.6h7.2V4H8.4V2.4z",
   // doc.on.doc (copy)
   copy: "M9 3.5h8.5L21 7v10.5H9v-14zm1.8 1.8v10.4h8.4V7.8l-2.5-2.5h-5.9zM3 7.5h4.2v1.8H4.8v10.4h8.4v-2.2H15v4H3v-14z",
+  // folder.fill
+  folder: "M2.5 6.5A2.5 2.5 0 0 1 5 4h5l2 2h7A2.5 2.5 0 0 1 21.5 8.5v9A2.5 2.5 0 0 1 19 20H5a2.5 2.5 0 0 1-2.5-2.5v-11z",
   // chevron.up.chevron.down
   chevronUpDown: "M8 9.5 12 5.5l4 4M8 14.5l4 4 4-4",
   // arrow.triangle.pull (stroked)

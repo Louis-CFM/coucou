@@ -4,6 +4,8 @@
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 use serde::Serialize;
 
@@ -19,8 +21,22 @@ pub struct DroppedFile {
     pub size: u64,
 }
 
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StashedFile {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub added_at: u64,
+    pub size: u64,
+}
+
 pub fn inbox_dir() -> PathBuf {
     settings::local_dir().join("inbox")
+}
+
+fn stash_dir() -> PathBuf {
+    settings::local_dir().join("notch-files")
 }
 
 // ── Paths a real drop delivered ─────────────────────────────────────────────
@@ -67,15 +83,71 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         return Err(crate::i18n::t("Only files dropped on the island can be added."));
     }
     let src = Path::new(source);
+    let result = copy_to_dir(src, &inbox_dir())?;
+    sweep(&inbox_dir());
+    Ok(result)
+}
+
+/// Persists a user-dropped file in the Notch stash, which has no age-based sweep.
+pub fn stash(source: &str) -> Result<StashedFile, String> {
+    if !take_dropped(source) {
+        return Err(crate::i18n::t("Only files dropped on the island can be added."));
+    }
+    let src = Path::new(source);
+    let copied = copy_to_dir(src, &stash_dir())?;
+    let added_at = std::fs::metadata(&copied.path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|d| d.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or_default();
+    Ok(StashedFile {
+        id: copied.path.clone(),
+        name: copied.name,
+        path: copied.path,
+        added_at,
+        size: copied.size,
+    })
+}
+
+pub fn list_stashed() -> Vec<StashedFile> {
+    let Ok(entries) = std::fs::read_dir(stash_dir()) else { return Vec::new() };
+    let mut files: Vec<_> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let kind = entry.file_type().ok()?;
+            if !kind.is_file() { return None; }
+            let path = entry.path();
+            let metadata = entry.metadata().ok()?;
+            let name = path.file_name()?.to_string_lossy().to_string();
+            let added_at = metadata.modified().ok()?
+                .duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+            let path = path.to_string_lossy().to_string();
+            Some(StashedFile { id: path.clone(), name, path, added_at, size: metadata.len() })
+        })
+        .collect();
+    files.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+    files
+}
+
+pub fn delete_stashed(path: &str) -> Result<(), String> {
+    let root = stash_dir().canonicalize().map_err(|e| e.to_string())?;
+    let target = Path::new(path).canonicalize().map_err(|e| e.to_string())?;
+    if target.parent() != Some(root.as_path()) || !target.is_file() {
+        return Err("File is outside the Notch stash.".into());
+    }
+    std::fs::remove_file(target).map_err(|e| e.to_string())
+}
+
+fn copy_to_dir(src: &Path, dir: &Path) -> Result<DroppedFile, String> {
     let meta = std::fs::metadata(src)
-        .map_err(|e| crate::i18n::tf("Cannot read {path}: {error}", &[("path", source), ("error", &e.to_string())]))?;
+        .map_err(|e| crate::i18n::tf("Cannot read {path}: {error}", &[("path", &src.to_string_lossy()), ("error", &e.to_string())]))?;
     if meta.is_dir() {
         return Err(crate::i18n::t("Folders can't be dropped yet."));
     }
 
-    let dir = inbox_dir();
     crate::platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
 
     let name = src
         .file_name()
@@ -96,14 +168,15 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     }
 
     std::fs::copy(src, &dest).map_err(|e| crate::i18n::tf("Cannot copy: {error}", &[("error", &e.to_string())]))?;
+    #[cfg(unix)]
+    std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o600))
+        .map_err(|e| crate::i18n::tf("Cannot set file permissions: {error}", &[("error", &e.to_string())]))?;
     // CopyFileEx carries the source's timestamps across, so a file last edited
     // three years ago would arrive already older than the sweep window and be
     // deleted on the spot. The inbox ages from when *we* copied it.
     if let Ok(file) = std::fs::File::options().write(true).open(&dest) {
         let _ = file.set_modified(SystemTime::now());
     }
-    sweep(&dir);
-
     Ok(DroppedFile {
         name,
         path: dest.to_string_lossy().to_string(),

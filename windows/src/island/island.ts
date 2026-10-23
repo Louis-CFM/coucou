@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, type StashedFile } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -595,15 +595,34 @@ export class Island {
       }
       case "drop": {
         State.fileDragOver = false;
-        const path = e.paths?.[0];
-        if (!path) {
+        const paths = e.paths ?? [];
+        if (paths.length === 0) {
           this.engine.animateMorph(0);
           this.setView(State.defaultView());
           return;
         }
-        this.swallow(path);
+        // The target is chosen by where the pointer releases on the expanded card.
+        // This port deliberately omits AirDrop; the Apple share service has no
+        // native counterpart on Windows or Linux.
+        if (State.mouseInIsland.x < 320) this.swallow(paths[0]);
+        else void this.stash(paths);
         break;
       }
+    }
+  }
+
+  private async stash(paths: string[]) {
+    UploadSeq.deactivate();
+    this.engine.animateMorph(0);
+    const added: StashedFile[] = [];
+    try {
+      for (const path of paths) added.push(await Bridge.stashFile(path));
+      State.stashedFiles = [...added.reverse(), ...State.stashedFiles];
+      State.notify();
+      this.setView("files");
+    } catch (err) {
+      State.noteMessage = String(err).replace(/^Error:\s*/, "");
+      this.setView("note");
     }
   }
 

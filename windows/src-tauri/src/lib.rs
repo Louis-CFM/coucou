@@ -571,6 +571,22 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
+/// Copies a real dropped file to the persistent Notch stash.
+#[tauri::command]
+fn stash_file(path: String) -> Result<files::StashedFile, String> {
+    files::stash(&path)
+}
+
+#[tauri::command]
+fn list_stashed_files() -> Vec<files::StashedFile> {
+    files::list_stashed()
+}
+
+#[tauri::command]
+fn delete_stashed_file(path: String) -> Result<(), String> {
+    files::delete_stashed(&path)
+}
+
 /// The island may only ask whether a key exists — never read it.
 #[tauri::command]
 fn secret_present(key: String) -> bool {
@@ -847,6 +863,9 @@ pub fn run() {
             local_set_key,
             chat_reset,
             ingest_file,
+            stash_file,
+            list_stashed_files,
+            delete_stashed_file,
             secret_present,
             secret_set,
             secret_clear,

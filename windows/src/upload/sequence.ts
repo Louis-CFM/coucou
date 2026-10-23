@@ -488,7 +488,7 @@ class UploadSequence {
     // Content alphas.
     f.zoneOver = this.entered >= 0 && pt < USC.T_CHEW_END;
     f.zoneAlpha = 1 - seg(pt, USC.T_CHEW_END, USC.T_CHEW_END + 0.2);
-    f.textAlpha = f.zoneAlpha * (x > USC.TEXT_X - 40 && isDragging ? 0.25 : 1);
+    f.textAlpha = f.zoneAlpha;
     f.barReveal =
       eOut(seg(pt, USC.T_BAR_IN, USC.T_BAR_IN + 0.25)) * (1 - seg(pt, growStart, growStart + 0.2));
     f.barAlpha =

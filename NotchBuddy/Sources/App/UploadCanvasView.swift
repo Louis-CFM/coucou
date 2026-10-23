@@ -80,6 +80,7 @@ struct UploadCanvasView: View {
             .buttonStyle(.plain)
             .frame(width: 120, height: 26)
             .position(x: 290 + 60, y: 113 + 13)   // center = (350, 126)
+
         }
         .opacity(f.chooseAlpha)
         .allowsHitTesting(f.chooseAlpha > 0.5)
@@ -157,25 +158,66 @@ struct UploadCanvasView: View {
     // MARK: - Drop zone text + chips
 
     private func drawDropText(ctx: inout GraphicsContext, f: USFrame) {
-        var tCtx = ctx
-        tCtx.opacity = f.textAlpha
+        let labels: [String] = [String(localized: "Ask about file"), String(localized: "Store in Notch"), String(localized: "AirDrop")]
+        let cardX = CGFloat(USC.CARD_X)
+        let cardY = CGFloat(USC.CARD_Y)
+        let cardW = CGFloat(USC.CARD_W)
+        let cardH = CGFloat(USC.CARD_H)
+        let cellW = cardW / CGFloat(labels.count)
+        let selected = min(labels.count - 1, max(0, Int((CGFloat(f.cursorX) - cardX) / cellW)))
 
-        let label = Text("Drop your files here")
-            .font(.system(size:13, weight:.medium))
-            .foregroundColor(Color(hex:"#D5D7DB"))
-        tCtx.draw(label, at: CGPoint(x: USC.TEXT_X, y: USC.TEXT_Y - 4), anchor: .leading)
+        var zones = ctx
+        zones.opacity = f.textAlpha
+        for index in labels.indices {
+            let rect = CGRect(x: cardX + CGFloat(index) * cellW + 3,
+                              y: cardY + 3, width: cellW - 6, height: cardH - 6)
+            if index == selected {
+                zones.fill(roundedRect(rect, r: 15),
+                           with: .color(Color(hex: "#22C55E").opacity(0.13)))
+                zones.stroke(roundedRect(rect, r: 15),
+                             with: .color(Color(hex: "#34D399").opacity(0.55)), lineWidth: 1)
+            }
+            let centerX = cardX + (CGFloat(index) + 0.5) * cellW
+            drawDropZoneIcon(ctx: &zones, index: index, center: CGPoint(x: centerX, y: cardY + 43), selected: index == selected)
+            let title = Text(labels[index])
+                .font(.system(size: 12.5, weight: index == selected ? .semibold : .medium))
+                .foregroundColor(Color(hex: index == selected ? "#E9FFF5" : "#C4C8CF"))
+            zones.draw(title, at: CGPoint(x: centerX, y: cardY + 85), anchor: .center)
 
-        let chips = ["PDF","Images","Code","Docs"]
-        var cx = USC.TEXT_X
-        for chip in chips {
-            let chipText = Text(chip).font(.system(size:11, weight:.medium)).foregroundColor(Color(hex:"#B9BDC4"))
-            // measure approximate width
-            let estW = Double(chip.count) * 6.5 + 16
-            tCtx.fill(roundedRect(CGRect(x:cx, y:USC.TEXT_Y+9, width:estW, height:18), r:9),
-                      with: .color(Color.white.opacity(0.07)))
-            tCtx.draw(chipText, at: CGPoint(x: cx + 8, y: USC.TEXT_Y + 18), anchor: .leading)
-            cx += estW + 6
+            if index > 0 {
+                let dividerX = cardX + CGFloat(index) * cellW
+                var divider = Path()
+                divider.move(to: CGPoint(x: dividerX, y: cardY + 18))
+                divider.addLine(to: CGPoint(x: dividerX, y: cardY + cardH - 18))
+                zones.stroke(divider, with: .color(Color.white.opacity(0.08)), lineWidth: 1)
+            }
         }
+    }
+
+    private func drawDropZoneIcon(ctx: inout GraphicsContext, index: Int, center: CGPoint, selected: Bool) {
+        let tint = Color(hex: selected ? "#E9FFF5" : "#AEB4BE")
+        if index < 2 {
+            let symbols = ["doc.text.magnifyingglass", "tray.and.arrow.down.fill"]
+            let symbol = Text(Image(systemName: symbols[index]))
+                .font(.system(size: 23, weight: .medium))
+                .foregroundColor(tint)
+            ctx.draw(symbol, at: center, anchor: .center)
+            return
+        }
+
+        // AirDrop glyph: three upward arches above a centered dot.
+        var mark = Path()
+        for radius: CGFloat in [6, 11, 16] {
+            let baseline = center.y + 7
+            mark.move(to: CGPoint(x: center.x - radius, y: baseline))
+            mark.addCurve(
+                to: CGPoint(x: center.x + radius, y: baseline),
+                control1: CGPoint(x: center.x - radius, y: baseline - radius * 1.8),
+                control2: CGPoint(x: center.x + radius, y: baseline - radius * 1.8)
+            )
+        }
+        mark.addEllipse(in: CGRect(x: center.x - 2, y: center.y + 4.5, width: 4, height: 4))
+        ctx.stroke(mark, with: .color(tint), style: StrokeStyle(lineWidth: 2.3, lineCap: .round))
     }
 
     // MARK: - Progress bar
@@ -288,6 +330,7 @@ struct UploadCanvasView: View {
             .font(.system(size:12.5, weight:.medium))
             .foregroundColor(Color(hex:"#F1F2F4"))
         cCtx.draw(btn2, at: CGPoint(x:350, y:126), anchor: .center)
+
     }
 
     // MARK: - Mochi (superellipse body + eyes + mouth)
