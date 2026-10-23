@@ -24,6 +24,9 @@ jobs:
       - name: Test Claude hook detection
         run: bash scripts/test-claude-hooks.sh
 
+      - name: Test the nb-hook relay (socket, decisions, remote sessions)
+        run: python3 scripts/test-nb-hook.py
+
       - name: Test display choice
         run: bash scripts/test-display-choice.sh
 

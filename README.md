@@ -413,6 +413,8 @@ ENGINE_TYPE=baileys SSRF_ALLOWED_HOSTS=127.0.0.1 npm run start:prod
 
 OpenCode, Amp and Hermes use a plugin model rather than a hook command. Coucou installs the plugin file into `~/.config/opencode/plugins/`, `~/.config/amp/plugins/` and `~/.hermes/plugins/coucou/` respectively. On Windows and Linux the plugins start the `coucou-hook` relay directly — see [`windows/README.md`](windows/README.md#supported-agents).
 
+Agents running on a server (VS Code Remote - SSH, an SSH environment in the Claude app, Codex on a dev box) can reach Coucou on your Mac through an SSH tunnel: see [`docs/REMOTE.md`](docs/REMOTE.md).
+
 ## Things to try
 
 | Do this | Mochi does that |
