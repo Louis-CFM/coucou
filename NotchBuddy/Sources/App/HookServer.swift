@@ -3333,9 +3333,12 @@ def normalize_tool_fields(payload):
         payload['cwd'] = payload['workdir']
 
 def add_session_name(payload):
-    # Name the pill after the folder the session started in, not the current cwd (the
-    # agent may cd into subfolders), or after the session's /rename title. Both come
-    # from the transcript: its first lines and the last custom-title entry.
+    # Name the pill after the session's title, else the folder the session started in,
+    # not the current cwd (the agent may cd into subfolders). Both come from the
+    # transcript: its first lines, and its last custom-title entry (/rename), else its
+    # last ai-title one (the title Claude Code gives a session; VS Code sessions only
+    # have that). Entries are told by their type: a message that merely quotes one is not
+    # a title. Claude Code writes the title again every 40-80 KB, hence a 256 KB tail.
     path = payload.get('transcript_path') or ''
     if not path:
         return
@@ -3350,15 +3353,24 @@ def add_session_name(payload):
                     payload['session_root'] = root
                     break
             f.seek(0, os.SEEK_END)
-            start = max(0, f.tell() - 65536)
+            start = max(0, f.tell() - 262144)
             f.seek(start)
             lines = f.read().splitlines()
+            ai_title = ''
             for line in reversed(lines[1:] if start else lines):
-                if b'"custom-title"' in line:
-                    title = json.loads(line).get('customTitle')
-                    if title:
-                        payload['session_title'] = title
-                    break
+                if b'"type":"custom-title"' not in line and b'"type":"ai-title"' not in line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except Exception:
+                    continue
+                if entry.get('type') == 'custom-title' and entry.get('customTitle'):
+                    payload['session_title'] = entry['customTitle']
+                    return
+                if entry.get('type') == 'ai-title' and not ai_title:
+                    ai_title = entry.get('aiTitle') or ''
+            if ai_title:
+                payload['session_title'] = ai_title
     except Exception:
         pass
 
@@ -3686,9 +3698,12 @@ def normalize_tool_fields(payload):
         payload['cwd'] = payload['workdir']
 
 def add_session_name(payload):
-    # Name the pill after the folder the session started in, not the current cwd (the
-    # agent may cd into subfolders), or after the session's /rename title. Both come
-    # from the transcript: its first lines and the last custom-title entry.
+    # Name the pill after the session's title, else the folder the session started in,
+    # not the current cwd (the agent may cd into subfolders). Both come from the
+    # transcript: its first lines, and its last custom-title entry (/rename), else its
+    # last ai-title one (the title Claude Code gives a session; VS Code sessions only
+    # have that). Entries are told by their type: a message that merely quotes one is not
+    # a title. Claude Code writes the title again every 40-80 KB, hence a 256 KB tail.
     path = payload.get('transcript_path') or ''
     if not path:
         return
@@ -3703,15 +3718,24 @@ def add_session_name(payload):
                     payload['session_root'] = root
                     break
             f.seek(0, os.SEEK_END)
-            start = max(0, f.tell() - 65536)
+            start = max(0, f.tell() - 262144)
             f.seek(start)
             lines = f.read().splitlines()
+            ai_title = ''
             for line in reversed(lines[1:] if start else lines):
-                if b'"custom-title"' in line:
-                    title = json.loads(line).get('customTitle')
-                    if title:
-                        payload['session_title'] = title
-                    break
+                if b'"type":"custom-title"' not in line and b'"type":"ai-title"' not in line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except Exception:
+                    continue
+                if entry.get('type') == 'custom-title' and entry.get('customTitle'):
+                    payload['session_title'] = entry['customTitle']
+                    return
+                if entry.get('type') == 'ai-title' and not ai_title:
+                    ai_title = entry.get('aiTitle') or ''
+            if ai_title:
+                payload['session_title'] = ai_title
     except Exception:
         pass
 
