@@ -75095,6 +75095,363 @@
         }
       }
     }
+,
+    "MCP Tools & Connectors" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أدوات وموصلات MCP"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP টুল ও কানেক্টর"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP-Tools & Konnektoren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP Tools & Connectors"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramientas y conectores MCP"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outils et connecteurs MCP"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP टूल्स और कनेक्टर्स"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alat & Konektor MCP"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ferramentas e conectores MCP"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Инструменты и коннекторы MCP"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เครื่องมือและตัวเชื่อมต่อ MCP"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP Araçları ve Bağlayıcıları"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP 工具与连接器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP 工具與連接器"
+          }
+        }
+      }
+    },
+    "Coucou discovers MCP servers you already configured in Claude Desktop, Cursor, VS Code, or OpenCode. Enabled tools become available to the chat." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يكتشف Coucou خوادم MCP التي قمت بتهيئتها بالفعل في Claude Desktop أو Cursor أو VS Code أو OpenCode. تصبح الأدوات الممكّنة متاحة للدردشة."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou আপনার Claude Desktop, Cursor, VS Code বা OpenCode-এ ইতিমধ্যে কনফিগার করা MCP সার্ভারগুলো শনাক্ত করে। সক্ষম টুলগুলো চ্যাটে ব্যবহারযোগ্য হয়ে ওঠে।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou erkennt MCP-Server, die Sie bereits in Claude Desktop, Cursor, VS Code oder OpenCode konfiguriert haben. Aktivierte Tools stehen dem Chat zur Verfügung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou discovers MCP servers you already configured in Claude Desktop, Cursor, VS Code, or OpenCode. Enabled tools become available to the chat."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou detecta los servidores MCP que ya configuraste en Claude Desktop, Cursor, VS Code u OpenCode. Las herramientas habilitadas estarán disponibles en el chat."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou détecte les serveurs MCP déjà configurés dans Claude Desktop, Cursor, VS Code ou OpenCode. Les outils activés deviennent disponibles pour le chat."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou उन MCP सर्वरों का पता लगाता है जिन्हें आपने पहले ही Claude Desktop, Cursor, VS Code या OpenCode में कॉन्फ़िगर किया है। सक्षम किए गए टूल चैट के लिए उपलब्ध हो जाते हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou mendeteksi server MCP yang sudah Anda konfigurasi di Claude Desktop, Cursor, VS Code, atau OpenCode. Alat yang diaktifkan akan tersedia untuk obrolan."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Coucou detecta servidores MCP já configurados no Claude Desktop, Cursor, VS Code ou OpenCode. As ferramentas habilitadas ficam disponíveis para o chat."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou обнаруживает серверы MCP, уже настроенные в Claude Desktop, Cursor, VS Code или OpenCode. Включенные инструменты становятся доступны в чате."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ตรวจพบเซิร์ฟเวอร์ MCP ที่คุณกำหนดค่าไว้แล้วใน Claude Desktop, Cursor, VS Code หรือ OpenCode เครื่องมือที่เปิดใช้งานจะพร้อมใช้งานในการแชต"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou; Claude Desktop, Cursor, VS Code veya OpenCode'da yapılandırdığınız MCP sunucularını keşfeder. Etkinleştirilen araçlar sohbette kullanılabilir hale gelir."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 会发现你在 Claude Desktop、Cursor、VS Code 或 OpenCode 中已配置的 MCP 服务器。启用的工具可在聊天中使用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 會探索你在 Claude Desktop、Cursor、VS Code 或 OpenCode 中已設定的 MCP 伺服器。啟用的工具將可在聊天中使用。"
+          }
+        }
+      }
+    },
+    "Scans existing configuration files on this Mac without making any modifications." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يمسح ملفات التهيئة الحالية على هذا الـ Mac دون إجراء أي تعديلات."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কোনো পরিবর্তন না করেই এই Mac-এর বিদ্যমান কনফিগারেশন ফাইল স্ক্যান করে।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scannt bestehende Konfigurationsdateien auf diesem Mac, ohne Änderungen vorzunehmen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scans existing configuration files on this Mac without making any modifications."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanea los archivos de configuración existentes en este Mac sin realizar modificaciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyse les fichiers de configuration existants sur ce Mac sans effectuer de modifications."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "बिना किसी संशोधन के इस Mac पर मौजूदा कॉन्फ़िगरेशन फ़ाइलों को स्कैन करता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memindai file konfigurasi yang ada di Mac ini tanpa melakukan perubahan apa pun."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifica os arquivos de configuração existentes neste Mac sem fazer alterações."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сканирует существующие файлы конфигурации на этом Mac без внесения изменений."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สแกนไฟล์กำหนดค่าที่มีอยู่บน Mac เครื่องนี้โดยไม่ทำการแก้ไขใดๆ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu Mac'teki mevcut yapılandırma dosyalarını hiçbir değişiklik yapmadan tarar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "扫描此 Mac 上的现有配置文件，而不作任何修改。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "掃描此 Mac 上的現有設定檔，而不做任何修改。"
+          }
+        }
+      }
+    },
+    "Safe mode: mutating tools require approval in the Notch." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الوضع الآمن: تتطلب الأدوات التي تجري تغييرات موافقة في النوتش."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নিরাপদ মোড: পরিবর্তনকারী টুলগুলোর জন্য নচে অনুমোদনের প্রয়োজন।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sicherer Modus: Ändernde Tools erfordern eine Bestätigung in der Notch."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safe mode: mutating tools require approval in the Notch."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo seguro: las herramientas de modificación requieren aprobación en el Notch."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode sécurisé : les outils de modification nécessitent une approbation dans le Notch."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "सुरक्षित मोड: बदलाव करने वाले टूल्स के लिए नॉच में अनुमोदन आवश्यक है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode aman: alat pengubah memerlukan persetujuan di Notch."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo seguro: ferramentas de modificação exigem aprovação no Notch."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Безопасный режим: изменяющие инструменты требуют подтверждения в Notch."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โหมดปลอดภัย: เครื่องมือที่มีการเปลี่ยนแปลงต้องได้รับการอนุมัติในแถบ Notch"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güvenli mod: değişiklik yapan araçlar Çentik'te onay gerektirir."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安全模式：修改类工具需要在刘海中获得批准。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安全模式：修改類工具需要在瀏海中獲得核准。"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }

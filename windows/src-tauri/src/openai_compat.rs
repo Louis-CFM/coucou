@@ -156,6 +156,7 @@ pub async fn send(
     chat: &Chat,
     p: &'static Provider,
     model: &str,
+    mcp: &crate::mcp::Registry,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
@@ -165,11 +166,16 @@ pub async fn send(
     }
     let turn = chat.begin(p.id);
     let user = user_message(turn.first, context.as_ref(), &query);
-    let body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
+    let mut body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
+
+    let tools = mcp.get_openai_tools().await;
+    if !tools.is_empty() {
+        body["tools"] = Value::Array(tools);
+    }
 
     let endpoint = url(p, "chat/completions")?;
     let response = net::client(&endpoint, Duration::from_secs(90))?
-        .post(endpoint)
+        .post(endpoint.clone())
         .bearer_auth(&key)
         .json(&body)
         .send()
@@ -182,6 +188,50 @@ pub async fn send(
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
     let json: Value = serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))?;
+
+    // Check for tool calls from the model
+    if let Some(tool_calls) = json.pointer("/choices/0/message/tool_calls").and_then(Value::as_array) {
+        if !tool_calls.is_empty() {
+            let mut follow_up_messages = body["messages"].as_array().cloned().unwrap_or_default();
+            if let Some(msg) = json.pointer("/choices/0/message") {
+                follow_up_messages.push(msg.clone());
+            }
+
+            for tc in tool_calls {
+                let call_id = tc.get("id").and_then(Value::as_str).unwrap_or("");
+                let fn_name = tc.pointer("/function/name").and_then(Value::as_str).unwrap_or("");
+                let args_str = tc.pointer("/function/arguments").and_then(Value::as_str).unwrap_or("{}");
+                let args_map: std::collections::HashMap<String, Value> = serde_json::from_str(args_str).unwrap_or_default();
+
+                let tool_res = mcp.execute_tool(fn_name, &args_map).await;
+                follow_up_messages.push(json!({
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "content": tool_res.content,
+                }));
+            }
+
+            body["messages"] = Value::Array(follow_up_messages);
+            let follow_up_resp = net::client(&endpoint, Duration::from_secs(90))?
+                .post(endpoint)
+                .bearer_auth(&key)
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
+
+            if follow_up_resp.status().is_success() {
+                let f_bytes = net::read_capped(follow_up_resp, net::MAX_BODY).await?;
+                if let Ok(f_json) = serde_json::from_slice::<Value>(&f_bytes) {
+                    let text = reply_text(p, &f_json)?;
+                    let plain = chat::plain_question(turn.first, context.as_ref(), &query);
+                    chat.commit(&turn, user, json!({ "role": "assistant", "content": text }), &plain, &text);
+                    return Ok(ChatReply { text });
+                }
+            }
+        }
+    }
+
     let text = reply_text(p, &json)?;
 
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);

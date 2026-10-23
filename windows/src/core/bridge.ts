@@ -383,6 +383,10 @@ export const Bridge = {
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
   secretClear: (key: string) => callOrThrow<void>("secret_clear", { key }),
 
+  // ── MCP Servers ────────────────────────────────────────────────────────────
+  mcpServersList: () => call<MCPServerConfig[]>("mcp_servers_list"),
+  mcpServersScan: () => call<MCPServerConfig[]>("mcp_servers_scan"),
+
   // ── Integrations ──────────────────────────────────────────────────────────
   refreshIntegration: (id: string) => call<void>("refresh_integration", { id }),
   /** The GitHub card is on screen: refetch that part if it is stale. */
@@ -547,6 +551,15 @@ export interface LocalServer {
   models: string[];
   /** The address is this machine. */
   loopback: boolean;
+}
+
+export interface MCPServerConfig {
+  id: string;
+  name: string;
+  sources: string[];
+  transport: { type: "stdio"; command: string; args: string[]; env: Record<string, string> } | { type: "http"; url: string; headers: Record<string, string> };
+  isEnabled: boolean;
+  notes: string[];
 }
 
 export interface DroppedFile {

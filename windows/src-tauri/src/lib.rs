@@ -17,6 +17,7 @@ mod integrations;
 mod island;
 mod local_chat;
 mod log;
+pub mod mcp;
 mod net;
 mod notes;
 mod openai_compat;
@@ -58,6 +59,7 @@ use settings::Settings;
 pub struct Shared {
     pub settings: Mutex<Settings>,
     pub gate: Arc<PollGate>,
+    pub mcp: Arc<mcp::Registry>,
 }
 
 #[derive(Serialize)]
@@ -536,7 +538,20 @@ async fn chat_send(
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
     let settings = shared.settings.lock().unwrap().clone();
-    chat::send(&app, &chat, &settings, query, context).await
+    let mcp = shared.mcp.clone();
+    chat::send(&app, &chat, &settings, &mcp, query, context).await
+}
+
+#[tauri::command]
+async fn mcp_servers_list(shared: State<'_, Shared>) -> Result<Vec<mcp::MCPServerConfig>, String> {
+    Ok(shared.mcp.get_configs().await)
+}
+
+#[tauri::command]
+async fn mcp_servers_scan(shared: State<'_, Shared>) -> Result<Vec<mcp::MCPServerConfig>, String> {
+    let scanned = mcp::scanner::scan_all();
+    shared.mcp.refresh(scanned.clone()).await;
+    Ok(scanned)
 }
 
 /// The models a provider offers, for the picker in the chat view. Only asked
@@ -797,10 +812,13 @@ pub fn run() {
         builder = builder.plugin(shortcuts::plugin());
     }
 
+    let mcp_registry = Arc::new(mcp::Registry::default());
+
     builder
         .manage(Shared {
             settings: Mutex::new(loaded.clone()),
             gate: gate.clone(),
+            mcp: mcp_registry,
         })
         .manage(Pending::default())
         .manage(Chat::default())
@@ -843,6 +861,8 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            mcp_servers_list,
+            mcp_servers_scan,
             local_connect,
             local_set_key,
             chat_reset,
@@ -1011,6 +1031,14 @@ pub fn run() {
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
+            let mcp_handle = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                let scanned = mcp::scanner::scan_all();
+                if let Some(shared) = mcp_handle.try_state::<Shared>() {
+                    shared.mcp.refresh(scanned).await;
+                }
+            });
+
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());
             if loaded.autostart {

@@ -945,6 +945,13 @@ final class HookServer: @unchecked Sendable {
     /// card moved on to another request is ignored, so it can never answer the wrong one.
     @MainActor
     func sendApprovalDecision(_ decision: String, for id: UUID? = nil) {
+        // Handle MCP Tool approval from chat
+        if AppState.shared.pendingApproval?.pillId == "mcp_tool" {
+            let isAllowed = (decision == "allow" || decision == "always")
+            MCPApprovalManager.shared.handleDecision(isAllowed: isAllowed)
+            return
+        }
+
         // Only intercept a demo card — a real card has a queued request behind it.
         if DemoEngine.shared.isActive,
            AppState.shared.pendingApproval?.sessionId == "demo_session",
