@@ -329,6 +329,7 @@ final class IslandWindowController: NSWindowController {
         // A WhatsApp reply being typed holds the island open, like a voice mail draft.
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil
                            || WhatsAppController.shared.composing }
+        fsm.keepsPetit = { SpotifyLyricsStore.shared.isFollowing }
         #else
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil }
         #endif
