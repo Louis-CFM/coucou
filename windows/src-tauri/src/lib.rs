@@ -91,7 +91,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed, shortcuts_changed) = {
+    let (settings, screen_changed, autostart_changed, shortcuts_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
@@ -112,9 +112,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
         *current = settings;
-        (screen_changed, autostart_changed, shortcuts_changed)
+        (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
-    let settings = shared.settings.lock().unwrap().clone();
     if let Err(err) = settings::save(&settings) {
         log::line(format!("could not save settings: {err}"));
     }
