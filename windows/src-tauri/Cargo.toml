@@ -49,6 +49,10 @@ sherpa-onnx = { version = "1.13.8", default-features = false, features = ["stati
 # The microphone, and the computer's own sound for the Notetaker (WASAPI
 # loopback on Windows, a PulseAudio/PipeWire monitor on Linux). Apache-2.0.
 cpal = "0.18"
+# WhatsApp's "Install WhatsApp" takes GOWA's binary out of the zip GOWA publishes (whatsapp/archive.rs):
+# the raw DEFLATE decoder only, already in the tree through png (the same 0.8.9), so nothing new is
+# downloaded or compiled. MIT/Zlib/Apache-2.0.
+miniz_oxide = "0.8"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

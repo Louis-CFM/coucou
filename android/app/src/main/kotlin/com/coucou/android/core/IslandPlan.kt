@@ -56,7 +56,7 @@ object IslandPlan {
             BotState.RATELIMIT -> IslandSpec.Kind.RATELIMIT
             else -> return null
         }
-        val a = StatusPolicy.announce(previous, session.state, settings, minuteOfDay, appInForeground = false)
+        val a = StatusPolicy.announce(previous, session.state, settings, minuteOfDay, appInForeground = false, pillId = session.pillId)
         if (!a.pill) return null
         return spec(kind, session, name)
     }

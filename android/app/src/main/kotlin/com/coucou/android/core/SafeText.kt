@@ -34,7 +34,7 @@ object SafeText {
 
     /** "Running a command · npm" for a shell tool, "Editing files" for the others: the label of a request. */
     fun requestLabel(tool: String, command: String?): String {
-        val label = ToolLabels.label(tool).ifEmpty { "Working" }
+        val label = ToolLabels.label(tool).ifEmpty { Texts.t("state_working", "Working") }
         val program = if (isShell(tool)) program(command) else null
         return if (program != null) "$label · $program" else label
     }

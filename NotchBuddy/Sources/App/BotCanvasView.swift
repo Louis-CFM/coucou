@@ -51,6 +51,13 @@ struct BotCanvasView: View {
                         ? cgColorFromHex(state.focusTask!.color)
                         : nil
                 }
+                // A new Coucou waits and Mochi has nothing else to say: he turns blue, with an arrow.
+                let updateHint = MacUpdater.shared.hintActive
+                    && (state.effectiveState == .idle || state.effectiveState == .sleeping)
+                    && state.pendingApproval == nil && state.pendingQuestion == nil
+                    && !state.showingPlanDetail
+                if updateHint { engine.bodyColor = BotEngine.updateBlue }
+                engine.setUpdateHint(updateHint)
                 #else
                 engine.bodyColor = (state.focusTask?.isIntegration == true)
                     ? cgColorFromHex(state.focusTask!.color)

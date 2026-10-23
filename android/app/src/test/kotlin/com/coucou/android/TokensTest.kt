@@ -12,9 +12,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The redesign's tokens: readable text on every surface it sits on, on the dark theme, and a scale that holds together. */
+/** The redesign's tokens: readable text on every surface it sits on, in the dark and the light theme, and a scale that holds together. */
 class TokensTest {
-    private val themes = mapOf("dark" to Tokens.DARK)
+    private val themes = mapOf("dark" to Tokens.DARK, "light" to Tokens.LIGHT)
     private fun c(a: Long, b: Long) = Palette.contrast(a, b)
 
     @Test fun primaryTextIsReadableOnEverySurface() {

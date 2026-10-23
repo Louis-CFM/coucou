@@ -218,6 +218,17 @@ final class RecapStore {
         )
     }
 
+    /// Everything the recap still keeps (its last 12 weeks), for "What's new" after an update.
+    func keptTotals() -> (sessions: Int, minutes: Int, linesAdded: Int, approvals: Int, since: Date?) {
+        let turns = data.turns
+        let approvals = data.decisions.filter { $0.decision == "allow" || $0.decision == "always" }.count
+        return (sessions: turns.count,
+                minutes: Int(mergedTotalSeconds(turns) / 60),
+                linesAdded: turns.reduce(0) { $0 + $1.linesAdded },
+                approvals: approvals,
+                since: (turns.map(\.start) + data.decisions.map(\.date)).min())
+    }
+
     // MARK: - Persistence
 
     var isEnabled: Bool {

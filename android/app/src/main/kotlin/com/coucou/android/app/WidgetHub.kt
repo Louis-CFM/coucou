@@ -20,13 +20,18 @@ import com.coucou.android.core.WidgetTone
 import kotlin.math.roundToInt
 
 /**
- * The one place that pushes the Widgets (Solo, List, Mochi Big, Status Pill, Waiting Alert, Usage Ring, Today and Mochi Mood). The app calls [update] on every change of sessions, requests and
+ * The one place that pushes the Widgets (Solo, List, Mochi Big, Status Pill, Waiting Alert, Usage Ring, Today, Mochi Mood and Team). The app calls [update] on every change of sessions, requests and
  * link (from AppModel.pushGlance); a push whose content is the same as the last one is dropped, so a change that does not
  * show on a widget costs nothing. There is no timer: a widget is drawn when something changes or when it is added, and the Today
  * widget once at local midnight (one inexact alarm, see [scheduleMidnight]).
  */
 object WidgetHub {
-    private class Kind(val provider: Class<out AppWidgetProvider>, val views: (Context, WidgetContent) -> RemoteViews)
+    /** A Widget drawn once for all its copies ([views]), or once per copy when each has its own choice ([each], the Team widget). */
+    private class Kind(
+        val provider: Class<out AppWidgetProvider>,
+        val each: ((Context, WidgetContent, Int) -> RemoteViews)? = null,
+        val views: ((Context, WidgetContent) -> RemoteViews)? = null,
+    )
 
     private val widgets = listOf(
         Kind(SoloWidget::class.java) { c, w -> SoloWidget.views(c, w) },
@@ -37,6 +42,7 @@ object WidgetHub {
         Kind(UsageRingWidget::class.java) { c, w -> UsageRingWidget.views(c, w) },
         Kind(TodayWidget::class.java) { c, w -> TodayWidget.views(c, w) },
         Kind(MoodWidget::class.java) { c, w -> MoodWidget.views(c, w) },
+        Kind(TeamWidget::class.java, each = { c, w, id -> TeamWidget.views(c, w, id) }),
     )
 
     private var last: WidgetContent? = null
@@ -52,11 +58,12 @@ object WidgetHub {
         runCatching {
             val manager = AppWidgetManager.getInstance(context)
             var pushed = false
+            val localized = AppLanguage.wrap(context) // before Android 13 the language chosen in the app
             for (kind in widgets) {
                 val ids = manager.getAppWidgetIds(ComponentName(context, kind.provider))
                 if (ids.isEmpty()) continue
-                val rendered = kind.views(context, content)
-                for (id in ids) manager.updateAppWidget(id, rendered)
+                val shared = kind.views?.invoke(localized, content)
+                for (id in ids) manager.updateAppWidget(id, shared ?: kind.each!!(localized, content, id))
                 pushed = true
             }
             // With no widget on screen nothing is remembered, so the first one added is drawn.
@@ -66,8 +73,15 @@ object WidgetHub {
 
     /** Draws the widgets the system just created or resized, from what the app says now. */
     fun refresh(context: Context, manager: AppWidgetManager, ids: IntArray, views: (Context, WidgetContent) -> RemoteViews) {
-        val rendered = views(context, current(context))
+        val rendered = views(AppLanguage.wrap(context), current(context))
         for (id in ids) runCatching { manager.updateAppWidget(id, rendered) }
+    }
+
+    /** The same for a Widget whose copies differ (the Team widget): each copy is drawn with its own id. */
+    fun refreshEach(context: Context, manager: AppWidgetManager, ids: IntArray, views: (Context, WidgetContent, Int) -> RemoteViews) {
+        val localized = AppLanguage.wrap(context)
+        val content = current(context)
+        for (id in ids) runCatching { manager.updateAppWidget(id, views(localized, content, id)) }
     }
 
     /** The three sizes a responsive Widget is drawn for (Android 12 and later picks one by the room it has). */
@@ -222,4 +236,7 @@ object WidgetHub {
     const val CODE_BIG_USAGE_SETTINGS = 0x5D00
     const val CODE_BIG_USAGE_APP = 0x5E00
     const val CODE_MIDNIGHT = 0x5F00
+
+    /** The Team widget: one code per agent (+ 0..3), one per agent that does not run (+ 4..7), and the card itself (+ 8). */
+    const val CODE_TEAM = 0x6000
 }

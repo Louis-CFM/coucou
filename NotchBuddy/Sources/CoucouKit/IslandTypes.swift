@@ -17,6 +17,7 @@ enum IslandView: String, CaseIterable {
     case capture      // a screen capture just taken (⌃⌥X): paste, copy, annotate, ask Claude
     case update       // a new Coucou is out on GitHub: one click to install it (GitHub build)
     case convert      // a dropped file turned into another format (image, PDF, document)
+    case whatsNew     // Coucou just updated itself: what the version brings, then your Coucou so far (GitHub build)
 }
 
 // MARK: - Bot State
@@ -246,6 +247,8 @@ enum IslandConst {
         .update:       ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
         // Convert: same place as the choose card it comes from
         .convert:      ViewLayout(height: 176, botX: 60,  botY: nil, botDiameter: 52, agentMode: .column),
+        // After an update: taller, four items then the stats (like mail, it fills the height)
+        .whatsNew:     ViewLayout(height: 232, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
     ]
 
     // Project colors — keyed by lowercase display name or slug

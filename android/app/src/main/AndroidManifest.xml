@@ -24,6 +24,9 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:allowBackup="false"
+        android:supportsRtl="true"
+        android:localeConfig="@xml/locales_config"
+        android:enableOnBackInvokedCallback="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:theme="@style/Theme.Coucou">
@@ -36,6 +39,8 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Long-press the icon: Chat, Recent decisions, Pair again (res/xml/shortcuts.xml). They start LaunchActivity, not this one. -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
             <!-- Scanning the pairing QR code with the camera app opens coucou://pair?... here. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -128,6 +133,35 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_mood_widget_info" />
         </receiver>
+
+        <!-- The Team widget: the agents the user picked. Its choice screen is started by the launcher (so it is exported) and checks the widget id itself. -->
+        <receiver android:name=".app.TeamWidget" android:exported="true" android:label="@string/widget_team_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_team_widget_info" />
+        </receiver>
+        <activity android:name=".app.TeamConfigActivity" android:exported="true" android:label="@string/team_config_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <!-- "Share to Coucou": text/plain from another app goes into the chat box as a draft, never sent. Exported for the share sheet; it takes one
+             string, cleaned and cut, and nothing else. -->
+        <activity
+            android:name=".app.ShareActivity"
+            android:exported="true"
+            android:label="@string/share_label"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
 
         <!-- The quick-settings tile: on while the computer is connected; a tap opens Coucou. -->
         <service

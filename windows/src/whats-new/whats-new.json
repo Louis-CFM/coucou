@@ -1,0 +1,361 @@
+{
+  "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 12 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
+  "releases": [
+    {
+      "version": "0.5.3",
+      "items": [
+        {
+          "icon": "chat",
+          "title": {
+            "en": "WhatsApp in the island",
+            "zh-Hans": "岛中的 WhatsApp",
+            "hi": "आइलैंड में WhatsApp",
+            "es": "WhatsApp en la isla",
+            "ar": "واتساب في الشريط",
+            "fr": "WhatsApp dans l’île",
+            "bn": "আইল্যান্ডে WhatsApp",
+            "pt-BR": "WhatsApp na ilha",
+            "ru": "WhatsApp на острове",
+            "id": "WhatsApp di pulau",
+            "de": "WhatsApp in der Insel",
+            "tr": "Adada WhatsApp"
+          },
+          "detail": {
+            "en": "Your chats in the island, and replies without opening WhatsApp. Experimental.",
+            "zh-Hans": "在岛中查看聊天，不打开 WhatsApp 也能回复。实验性功能。",
+            "hi": "आइलैंड में आपकी चैट, और WhatsApp खोले बिना जवाब। प्रायोगिक।",
+            "es": "Tus chats en la isla y respuestas sin abrir WhatsApp. Experimental.",
+            "ar": "محادثاتك في الشريط، والرد دون فتح واتساب. تجريبي.",
+            "fr": "Tes conversations dans l’île, et tes réponses sans ouvrir WhatsApp. Expérimental.",
+            "bn": "আইল্যান্ডে আপনার চ্যাট, আর WhatsApp না খুলেই উত্তর। পরীক্ষামূলক।",
+            "pt-BR": "Suas conversas na ilha e respostas sem abrir o WhatsApp. Experimental.",
+            "ru": "Чаты на острове и ответы без открытия WhatsApp. Экспериментально.",
+            "id": "Obrolanmu di pulau, dan balas tanpa membuka WhatsApp. Eksperimental.",
+            "de": "Deine Chats in der Insel und Antworten, ohne WhatsApp zu öffnen. Experimentell.",
+            "tr": "Sohbetlerin adada; WhatsApp’ı açmadan yanıtla. Deneysel."
+          }
+        },
+        {
+          "icon": "download",
+          "title": {
+            "en": "Set up in one click",
+            "zh-Hans": "一键设置",
+            "hi": "एक क्लिक में सेटअप",
+            "es": "Listo en un clic",
+            "ar": "الإعداد بنقرة واحدة",
+            "fr": "Installé en un clic",
+            "bn": "এক ক্লিকে সেটআপ",
+            "pt-BR": "Pronto em um clique",
+            "ru": "Настройка в один клик",
+            "id": "Siap dalam sekali klik",
+            "de": "Eingerichtet mit einem Klick",
+            "tr": "Tek tıkla kurulum"
+          },
+          "detail": {
+            "en": "Coucou installs the gateway, checks it and shows the QR code to scan.",
+            "zh-Hans": "Coucou 安装网关、进行校验，并显示要扫描的二维码。",
+            "hi": "Coucou गेटवे इंस्टॉल करता है, जाँचता है और स्कैन के लिए QR कोड दिखाता है।",
+            "es": "Coucou instala la pasarela, la comprueba y muestra el código QR.",
+            "ar": "يثبّت Coucou البوابة ويتحقق منها ويعرض رمز QR للمسح.",
+            "fr": "Coucou installe la passerelle, la vérifie et affiche le QR code à scanner.",
+            "bn": "Coucou গেটওয়ে ইনস্টল করে, যাচাই করে, তারপর স্ক্যানের QR কোড দেখায়।",
+            "pt-BR": "O Coucou instala o gateway, verifica e mostra o QR code para escanear.",
+            "ru": "Coucou ставит шлюз, проверяет его и показывает QR-код.",
+            "id": "Coucou memasang gateway, memeriksanya, dan menampilkan kode QR.",
+            "de": "Coucou installiert das Gateway, prüft es und zeigt den QR-Code.",
+            "tr": "Coucou ağ geçidini kurar, doğrular ve taranacak QR kodunu gösterir."
+          }
+        },
+        {
+          "icon": "shield",
+          "title": {
+            "en": "Nothing leaves your computer",
+            "zh-Hans": "数据不离开你的电脑",
+            "hi": "कुछ भी कंप्यूटर से बाहर नहीं जाता",
+            "es": "Nada sale de tu equipo",
+            "ar": "لا شيء يغادر حاسوبك",
+            "fr": "Rien ne quitte ton ordinateur",
+            "bn": "কিছুই কম্পিউটারের বাইরে যায় না",
+            "pt-BR": "Nada sai do seu computador",
+            "ru": "Ничего не покидает компьютер",
+            "id": "Tak ada yang keluar dari komputermu",
+            "de": "Nichts verlässt deinen Computer",
+            "tr": "Hiçbir şey bilgisayarından çıkmaz"
+          },
+          "detail": {
+            "en": "Messages stay in memory and are gone when Coucou quits.",
+            "zh-Hans": "消息只保存在内存中，退出 Coucou 后即消失。",
+            "hi": "संदेश सिर्फ़ मेमोरी में रहते हैं और Coucou बंद होते ही मिट जाते हैं।",
+            "es": "Los mensajes quedan en memoria y se borran al cerrar Coucou.",
+            "ar": "تبقى الرسائل في الذاكرة وتُمحى عند إغلاق Coucou.",
+            "fr": "Les messages restent en mémoire et disparaissent quand Coucou quitte.",
+            "bn": "বার্তা শুধু মেমোরিতে থাকে, Coucou বন্ধ হলেই মুছে যায়।",
+            "pt-BR": "As mensagens ficam na memória e somem quando o Coucou fecha.",
+            "ru": "Сообщения хранятся только в памяти и исчезают при выходе из Coucou.",
+            "id": "Pesan hanya di memori dan hilang saat Coucou ditutup.",
+            "de": "Nachrichten bleiben im Speicher und sind weg, wenn Coucou beendet wird.",
+            "tr": "Mesajlar bellekte kalır, Coucou kapanınca silinir."
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.5.2",
+      "items": [
+        {
+          "icon": "update",
+          "title": {
+            "en": "Mochi turns blue for updates",
+            "fr": "Mochi bleu pour les mises à jour",
+            "es": "Mochi azul cuando hay versión nueva",
+            "pt-BR": "Mochi azul quando há versão nova",
+            "ru": "Синий Mochi — есть обновление",
+            "zh-Hans": "有更新时 Mochi 变蓝",
+            "hi": "अपडेट पर Mochi नीला",
+            "ar": "Mochi يتحول للأزرق عند التحديث",
+            "bn": "আপডেটে Mochi নীল",
+            "id": "Mochi biru saat ada pembaruan",
+            "de": "Mochi wird blau bei Updates",
+            "tr": "Güncellemede Mochi maviye döner"
+          },
+          "detail": {
+            "en": "A new version turns him blue, in the island and the tray. On Windows, one click installs it.",
+            "zh-Hans": "有新版本时，岛和系统托盘中的它会变蓝。在 Windows 上一键安装。",
+            "hi": "नया वर्ज़न आने पर वह आइलैंड और सिस्टम ट्रे में नीला हो जाता है। Windows पर एक क्लिक में इंस्टॉल।",
+            "es": "Una versión nueva lo vuelve azul, en la isla y el área de notificación. En Windows, un clic la instala.",
+            "ar": "عند صدور إصدار جديد يصبح أزرق في الشريط وعلبة النظام. على Windows تثبّته نقرة واحدة.",
+            "fr": "Une nouvelle version le rend bleu, dans l’île et la zone de notification. Sur Windows, un clic l’installe.",
+            "bn": "নতুন ভার্সন এলে আইল্যান্ড ও সিস্টেম ট্রেতে সে নীল হয়। Windows-এ এক ক্লিকে ইনস্টল।",
+            "pt-BR": "Uma versão nova o deixa azul, na ilha e na área de notificação. No Windows, um clique instala.",
+            "ru": "Новая версия делает его синим — на острове и в области уведомлений. В Windows — в один клик.",
+            "id": "Versi baru membuatnya biru, di pulau dan baki sistem. Di Windows, sekali klik untuk memasang.",
+            "de": "Eine neue Version macht ihn blau, in der Insel und im Infobereich. Unter Windows reicht ein Klick.",
+            "tr": "Yeni sürüm onu adada ve sistem tepsisinde maviye çevirir. Windows’ta tek tıkla kurulur."
+          }
+        },
+        {
+          "icon": "sparkles",
+          "title": {
+            "en": "What’s new, right here",
+            "fr": "Les nouveautés, ici même",
+            "es": "Las novedades, aquí mismo",
+            "pt-BR": "As novidades, aqui mesmo",
+            "ru": "Что нового — прямо здесь",
+            "zh-Hans": "更新内容，就在这里",
+            "hi": "नया क्या है, यहीं",
+            "ar": "الجديد، هنا مباشرة",
+            "bn": "নতুন কী, এখানেই",
+            "id": "Yang baru, langsung di sini",
+            "de": "Neuigkeiten, direkt hier",
+            "tr": "Yenilikler, tam burada"
+          },
+          "detail": {
+            "en": "After each update: what it brings, then your Coucou so far.",
+            "fr": "Après chaque mise à jour : ce qu’elle apporte, puis ton Coucou jusqu’ici.",
+            "es": "Tras cada actualización: lo que trae y luego tu Coucou hasta ahora.",
+            "pt-BR": "Após cada atualização: o que ela traz e depois seu Coucou até agora.",
+            "ru": "После каждого обновления — что нового, а затем ваш Coucou на сегодня.",
+            "zh-Hans": "每次更新后：先看新内容，再看你的 Coucou 至今。",
+            "hi": "हर अपडेट के बाद: उसमें क्या नया है, फिर अब तक आपका Coucou।",
+            "ar": "بعد كل تحديث: ما الجديد فيه، ثم Coucou الخاص بك حتى الآن.",
+            "bn": "প্রতিটি আপডেটের পর: কী নতুন, তারপর এ পর্যন্ত আপনার Coucou।",
+            "id": "Setelah tiap pembaruan: isinya, lalu Coucou-mu sejauh ini.",
+            "de": "Nach jedem Update: was es bringt, dann dein Coucou bisher.",
+            "tr": "Her güncellemeden sonra: getirdikleri, ardından şimdiye kadar Coucou’n."
+          }
+        },
+        {
+          "icon": "puzzle",
+          "title": {
+            "en": "GitLab and Gitea",
+            "zh-Hans": "GitLab 和 Gitea",
+            "hi": "GitLab और Gitea",
+            "es": "GitLab y Gitea",
+            "ar": "GitLab وGitea",
+            "fr": "GitLab et Gitea",
+            "bn": "GitLab ও Gitea",
+            "pt-BR": "GitLab e Gitea",
+            "ru": "GitLab и Gitea",
+            "id": "GitLab dan Gitea",
+            "de": "GitLab und Gitea",
+            "tr": "GitLab ve Gitea"
+          },
+          "detail": {
+            "en": "Two new pills with your projects’ activity, like GitHub’s.",
+            "zh-Hans": "两个新胶囊，显示你项目的动态，和 GitHub 的一样。",
+            "hi": "दो नए पिल, आपके प्रोजेक्ट की गतिविधि के साथ, GitHub वाले की तरह।",
+            "es": "Dos píldoras nuevas con la actividad de tus proyectos, como la de GitHub.",
+            "ar": "حبتان جديدتان بنشاط مشاريعك، مثل حبة GitHub.",
+            "fr": "Deux nouvelles pills avec l’activité de tes projets, comme celle de GitHub.",
+            "bn": "দুটি নতুন পিল, আপনার প্রজেক্টের কার্যকলাপ সহ, GitHub-এর মতো।",
+            "pt-BR": "Duas pílulas novas com a atividade dos seus projetos, como a do GitHub.",
+            "ru": "Две новые пилюли с активностью ваших проектов, как у GitHub.",
+            "id": "Dua pil baru berisi aktivitas proyekmu, seperti pil GitHub.",
+            "de": "Zwei neue Pills mit der Aktivität deiner Projekte, wie bei GitHub.",
+            "tr": "Projelerinin etkinliğini gösteren iki yeni araç, GitHub’ınki gibi."
+          }
+        },
+        {
+          "icon": "phone",
+          "title": {
+            "en": "Weekly recap on Android",
+            "zh-Hans": "Android 上的每周回顾",
+            "hi": "Android पर साप्ताहिक रीकैप",
+            "es": "Resumen semanal en Android",
+            "ar": "ملخص الأسبوع على Android",
+            "fr": "Le récap de la semaine sur Android",
+            "bn": "Android-এ সাপ্তাহিক রিক্যাপ",
+            "pt-BR": "Resumo semanal no Android",
+            "ru": "Итоги недели на Android",
+            "id": "Rekap mingguan di Android",
+            "de": "Wochenrückblick auf Android",
+            "tr": "Android’de haftalık özet"
+          },
+          "detail": {
+            "en": "Last week’s numbers on your Android phone, if you turn it on.",
+            "zh-Hans": "上周的数据显示在你的 Android 手机上（需开启）。",
+            "hi": "पिछले हफ़्ते के आँकड़े आपके Android फ़ोन पर, अगर आप चालू करें।",
+            "es": "Las cifras de la semana pasada en tu Android, si lo activas.",
+            "ar": "أرقام الأسبوع الماضي على هاتف Android، إن فعّلت ذلك.",
+            "fr": "Les chiffres de la semaine passée sur ton téléphone Android, si tu l’actives.",
+            "bn": "গত সপ্তাহের সংখ্যা আপনার Android ফোনে, চালু করলে।",
+            "pt-BR": "Os números da semana passada no seu Android, se você ativar.",
+            "ru": "Цифры прошлой недели на вашем Android, если включите.",
+            "id": "Angka minggu lalu di ponsel Android-mu, kalau kamu nyalakan.",
+            "de": "Die Zahlen der letzten Woche auf deinem Android-Handy, wenn du es einschaltest.",
+            "tr": "Geçen haftanın sayıları Android telefonunda, açarsan."
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.5.1",
+      "items": [
+        {
+          "icon": "update",
+          "title": {
+            "en": "New version in the island",
+            "zh-Hans": "岛中的新版本",
+            "hi": "आइलैंड में नया वर्ज़न",
+            "es": "Nueva versión en la isla",
+            "ar": "إصدار جديد في الشريط",
+            "fr": "Nouvelle version dans l'île",
+            "bn": "আইল্যান্ডে নতুন ভার্সন",
+            "pt-BR": "Nova versão na ilha",
+            "ru": "Новая версия на острове",
+            "id": "Versi baru di pulau",
+            "de": "Neue Version in der Insel",
+            "tr": "Adada yeni sürüm"
+          },
+          "detail": {
+            "en": "Coucou tells you when a new version is out. On Windows, one click installs it.",
+            "zh-Hans": "有新版本时 Coucou 会告诉你。在 Windows 上一键即可安装。",
+            "hi": "नया वर्ज़न आने पर Coucou बताता है। Windows पर एक क्लिक में इंस्टॉल।",
+            "es": "Coucou te avisa cuando sale una versión nueva. En Windows, un clic la instala.",
+            "ar": "يخبرك Coucou بصدور إصدار جديد. على Windows تثبّته نقرة واحدة.",
+            "fr": "Coucou te prévient quand une nouvelle version sort. Sur Windows, un clic l'installe.",
+            "bn": "নতুন ভার্সন এলে Coucou জানায়। Windows-এ এক ক্লিকে ইনস্টল।",
+            "pt-BR": "O Coucou avisa quando sai uma nova versão. No Windows, um clique instala.",
+            "ru": "Coucou сообщит о новой версии. В Windows она ставится одним кликом.",
+            "id": "Coucou memberi tahu saat versi baru keluar. Di Windows, sekali klik untuk memasang.",
+            "de": "Coucou sagt dir, wenn eine neue Version da ist. Unter Windows installiert sie ein Klick.",
+            "tr": "Yeni sürüm çıkınca Coucou haber verir. Windows'ta tek tıkla kurulur."
+          }
+        },
+        {
+          "icon": "languages",
+          "title": {
+            "en": "German and Turkish",
+            "zh-Hans": "德语和土耳其语",
+            "hi": "जर्मन और तुर्की",
+            "es": "Alemán y turco",
+            "ar": "الألمانية والتركية",
+            "fr": "Allemand et turc",
+            "bn": "জার্মান ও তুর্কি",
+            "pt-BR": "Alemão e turco",
+            "ru": "Немецкий и турецкий",
+            "id": "Jerman dan Turki",
+            "de": "Deutsch und Türkisch",
+            "tr": "Almanca ve Türkçe"
+          },
+          "detail": {
+            "en": "Coucou now speaks 12 languages.",
+            "zh-Hans": "Coucou 现在支持 12 种语言。",
+            "hi": "Coucou अब 12 भाषाएँ बोलता है।",
+            "es": "Coucou ya habla 12 idiomas.",
+            "ar": "يتحدث Coucou الآن 12 لغة.",
+            "fr": "Coucou parle maintenant 12 langues.",
+            "bn": "Coucou এখন ১২টি ভাষায় কথা বলে।",
+            "pt-BR": "O Coucou agora fala 12 idiomas.",
+            "ru": "Теперь Coucou говорит на 12 языках.",
+            "id": "Coucou kini berbicara 12 bahasa.",
+            "de": "Coucou spricht jetzt 12 Sprachen.",
+            "tr": "Coucou artık 12 dil konuşuyor."
+          }
+        },
+        {
+          "icon": "clock",
+          "title": {
+            "en": "A clock in the island",
+            "zh-Hans": "岛中的时钟",
+            "hi": "आइलैंड में घड़ी",
+            "es": "Un reloj en la isla",
+            "ar": "ساعة في الشريط",
+            "fr": "Une horloge dans l'île",
+            "bn": "আইল্যান্ডে ঘড়ি",
+            "pt-BR": "Um relógio na ilha",
+            "ru": "Часы на острове",
+            "id": "Jam di pulau",
+            "de": "Eine Uhr in der Insel",
+            "tr": "Adada saat"
+          },
+          "detail": {
+            "en": "Optional, in the middle of the compact island.",
+            "zh-Hans": "可选，显示在紧凑岛的中间。",
+            "hi": "वैकल्पिक, कॉम्पैक्ट आइलैंड के बीच में।",
+            "es": "Opcional, en el centro de la isla compacta.",
+            "ar": "اختيارية، في منتصف الشريط المصغّر.",
+            "fr": "En option, au milieu de l'île compacte.",
+            "bn": "ঐচ্ছিক, ছোট আইল্যান্ডের মাঝখানে।",
+            "pt-BR": "Opcional, no meio da ilha compacta.",
+            "ru": "По желанию, в центре компактного острова.",
+            "id": "Opsional, di tengah pulau ringkas.",
+            "de": "Optional, in der Mitte der kompakten Insel.",
+            "tr": "İsteğe bağlı, kompakt adanın ortasında."
+          }
+        },
+        {
+          "icon": "bolt",
+          "title": {
+            "en": "Lighter on Linux",
+            "zh-Hans": "Linux 上更轻快",
+            "hi": "Linux पर हल्का",
+            "es": "Más ligero en Linux",
+            "ar": "أخف على Linux",
+            "fr": "Plus léger sous Linux",
+            "bn": "Linux-এ আরও হালকা",
+            "pt-BR": "Mais leve no Linux",
+            "ru": "Легче на Linux",
+            "id": "Lebih ringan di Linux",
+            "de": "Leichter unter Linux",
+            "tr": "Linux'ta daha hafif"
+          },
+          "detail": {
+            "en": "The closed window no longer keeps a processor core busy on KDE.",
+            "zh-Hans": "在 KDE 上，关闭的窗口不再占用一个处理器核心。",
+            "hi": "KDE पर बंद विंडो अब प्रोसेसर का एक कोर व्यस्त नहीं रखती।",
+            "es": "La ventana cerrada ya no mantiene ocupado un núcleo en KDE.",
+            "ar": "لم تعد النافذة المغلقة تُشغل نواة معالج على KDE.",
+            "fr": "La fenêtre fermée n'occupe plus un cœur du processeur sous KDE.",
+            "bn": "KDE-তে বন্ধ উইন্ডো আর প্রসেসরের একটি কোর ব্যস্ত রাখে না।",
+            "pt-BR": "A janela fechada não ocupa mais um núcleo no KDE.",
+            "ru": "Закрытое окно больше не занимает ядро процессора в KDE.",
+            "id": "Jendela yang ditutup tak lagi menyibukkan satu inti prosesor di KDE.",
+            "de": "Das geschlossene Fenster hält unter KDE keinen Prozessorkern mehr beschäftigt.",
+            "tr": "Kapalı pencere KDE'de artık bir işlemci çekirdeğini meşgul etmiyor."
+          }
+        }
+      ]
+    }
+  ]
+}

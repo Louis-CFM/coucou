@@ -48,6 +48,9 @@ jobs:
       - name: Test Mac update (releases, versions, where it may replace itself)
         run: bash scripts/test-mac-update.sh
 
+      - name: Test What's new
+        run: bash scripts/test-whats-new-mac.sh
+
       - name: Test Claude Desktop chat (stop button labels)
         run: bash scripts/test-claude-desktop-chat.sh
 

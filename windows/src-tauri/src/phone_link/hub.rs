@@ -297,6 +297,95 @@ pub struct UsageIn {
     pub codex: Option<PlanIn>,
 }
 
+/// The last completed week as the island counted it (cap `recap`): numbers, the week's Monday, the busiest agent's name. Counts only; the
+/// project is a folder name and goes only to a phone that has `details`. Numbers are taken as f64 so a wrong one is clamped, not refused.
+#[derive(Debug, Clone, PartialEq, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct RecapIn {
+    /// The Monday that starts the week, `YYYY-MM-DD`.
+    pub week: String,
+    pub minutes: f64,
+    pub sessions: f64,
+    pub files: f64,
+    pub lines_added: f64,
+    pub lines_removed: f64,
+    pub commands: f64,
+    pub allowed: f64,
+    pub denied: f64,
+    pub top_agent: Option<String>,
+    pub top_project: Option<String>,
+}
+
+/// The two forms of a recap line: without the project, and with it (for a phone that has `details`).
+#[derive(Debug, Clone, PartialEq)]
+struct RecapLines {
+    plain: Arc<str>,
+    with_project: Arc<str>,
+}
+
+impl RecapLines {
+    fn for_phone(&self, details: bool) -> &Arc<str> {
+        if details {
+            &self.with_project
+        } else {
+            &self.plain
+        }
+    }
+}
+
+/// A whole number in `0..=max`: junk (NaN, infinite, negative) is 0, too large is the maximum.
+fn count(v: f64, max: u64) -> u64 {
+    if !v.is_finite() || v < 0.0 {
+        0
+    } else {
+        (v.round() as u64).min(max)
+    }
+}
+
+/// `YYYY-MM-DD` with a plausible month and day; nothing else gets through.
+fn valid_week(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() == 10
+        && b[4] == b'-'
+        && b[7] == b'-'
+        && b.iter().enumerate().all(|(i, c)| i == 4 || i == 7 || c.is_ascii_digit())
+        && (1..=12).contains(&s[5..7].parse::<u8>().unwrap_or(0))
+        && (1..=31).contains(&s[8..10].parse::<u8>().unwrap_or(0))
+}
+
+/// None when the week has nothing to say (no session, or a week that is not a date).
+fn recap_lines(r: &RecapIn) -> Option<RecapLines> {
+    if !valid_week(&r.week) || count(r.sessions, 100_000) == 0 {
+        return None;
+    }
+    let mut v = json!({
+        "type": "recap",
+        "week": r.week,
+        // A week has 10 080 minutes.
+        "minutes": count(r.minutes, 10_080),
+        "sessions": count(r.sessions, 100_000),
+        "files": count(r.files, 10_000_000),
+        "added": count(r.lines_added, 10_000_000),
+        "removed": count(r.lines_removed, 10_000_000),
+        "commands": count(r.commands, 10_000_000),
+        "allowed": count(r.allowed, 10_000_000),
+        "denied": count(r.denied, 10_000_000),
+    });
+    // An agent's name: letters, digits, spaces and a few marks, short.
+    if let Some(name) = r.top_agent.as_deref() {
+        let clean: String = name.chars().filter(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '.' | '_')).take(24).collect();
+        if !clean.trim().is_empty() {
+            v["topAgent"] = json!(clean.trim());
+        }
+    }
+    let plain: Arc<str> = v.to_string().into();
+    // The folder's own name, never a path, as for the session lines.
+    if let Some(name) = r.top_project.as_deref().and_then(project_name) {
+        v["project"] = json!(name);
+    }
+    Some(RecapLines { plain, with_project: v.to_string().into() })
+}
+
 /// One line of a service card.
 #[derive(Debug, Clone, PartialEq, Deserialize, Default)]
 #[serde(default)]
@@ -417,6 +506,8 @@ struct Sub {
     diffs: bool,
     /// The phone asked for `usage` and the user's switch was on when it connected.
     usage: bool,
+    /// The phone asked for `recap` and the user's switch was on when it connected.
+    recap: bool,
     /// The phone asked for `relay` and the relay switch was on when it connected: it is sent the new access key
     /// when the user rotates it (docs/RELAY_LINK.md section 6).
     relay: bool,
@@ -434,6 +525,7 @@ pub struct Caps {
     pub prefs: bool,
     pub diffs: bool,
     pub usage: bool,
+    pub recap: bool,
     pub relay: bool,
     /// The services the user allowed for the phone (empty: the capability is not offered).
     pub services: Vec<String>,
@@ -448,6 +540,8 @@ struct Inner {
     outfit: Option<&'static str>,
     /// The last `usage` line (None: the island has nothing to say).
     usage: Option<Arc<str>>,
+    /// The last `recap` (None: the island has no week to show).
+    recap: Option<RecapLines>,
     /// The service cards the island has, cleaned (all of them: each phone gets only the ones its user allowed).
     services: Vec<ServiceIn>,
     subs: Vec<Sub>,
@@ -557,7 +651,7 @@ impl Hub {
 
     /// Like [`subscribe`], for a phone that may also have been offered `answers` and `prefs`.
     pub fn subscribe_with(&self, tx: mpsc::Sender<Out>, now: u64, caps: Caps) -> (u64, Arc<AtomicBool>) {
-        let Caps { details, answers, prefs, diffs, usage, relay, services } = caps;
+        let Caps { details, answers, prefs, diffs, usage, recap, relay, services } = caps;
         let mut inner = self.inner.lock().unwrap();
         expire(&mut inner, now);
         let id = inner.next_sub;
@@ -587,8 +681,13 @@ impl Hub {
                 let _ = tx.try_send(Out::Line(line.clone()));
             }
         }
+        if recap {
+            if let Some(lines) = &inner.recap {
+                let _ = tx.try_send(Out::Line(lines.for_phone(details).clone()));
+            }
+        }
         let evicted = Arc::new(AtomicBool::new(false));
-        inner.subs.push(Sub { id, tx, evicted: evicted.clone(), details, answers, prefs, diffs, usage, relay, services, diff_asks: Vec::new() });
+        inner.subs.push(Sub { id, tx, evicted: evicted.clone(), details, answers, prefs, diffs, usage, recap, relay, services, diff_asks: Vec::new() });
         (id, evicted)
     }
 
@@ -707,6 +806,31 @@ impl Hub {
                 return true;
             }
             let kept = s.tx.try_send(Out::Line(shared.clone())).is_ok();
+            if !kept {
+                s.evicted.store(true, Ordering::SeqCst);
+            }
+            kept
+        });
+    }
+
+    /// Last week's recap, as counts (cap `recap`). Only phones that have `recap` hear of it, and a new one at once; two identical weeks are sent
+    /// once. The project's folder name goes only to a phone that also has `details`.
+    pub fn publish_recap(&self, recap: RecapIn) {
+        let lines = recap_lines(&recap);
+        let mut inner = self.inner.lock().unwrap();
+        if inner.recap == lines {
+            return;
+        }
+        inner.recap = lines.clone();
+        inner.subs.retain(|s| {
+            if !s.recap {
+                return true;
+            }
+            let line = match &lines {
+                Some(l) => l.for_phone(s.details).clone(),
+                None => json!({ "type": "recap" }).to_string().into(),
+            };
+            let kept = s.tx.try_send(Out::Line(line)).is_ok();
             if !kept {
                 s.evicted.store(true, Ordering::SeqCst);
             }
@@ -1913,6 +2037,124 @@ mod tests {
         let (_, mut after) = sub_with(&hub, Caps { usage: true, ..Caps::default() });
         assert!(drain(&mut after).iter().all(|l| l["type"] != "usage"), "after a clear a new phone is told nothing");
     }
+    // ── weekly recap (cap `recap`) ──────────────────────────────────────────────────
+
+    fn recap_in() -> RecapIn {
+        RecapIn {
+            week: "2026-10-05".into(),
+            minutes: 340.4,
+            sessions: 12.0,
+            files: 40.0,
+            lines_added: 900.0,
+            lines_removed: 210.0,
+            commands: 55.0,
+            allowed: 20.0,
+            denied: 3.0,
+            top_agent: Some("Claude Code\n<b>".into()),
+            top_project: Some("/home/someone/private/coucou".into()),
+        }
+    }
+
+    #[test]
+    fn a_phone_with_recap_gets_counts_and_no_project() {
+        let (hub, _) = hub();
+        let (_, mut rx) = sub_with(&hub, Caps { recap: true, ..Caps::default() });
+        let (_, mut other) = sub_with(&hub, Caps { details: true, diffs: true, answers: true, prefs: true, usage: true, ..Caps::default() });
+        drain(&mut rx);
+        drain(&mut other);
+        hub.publish_recap(recap_in());
+        let r = drain(&mut rx);
+        assert_eq!(r.len(), 1);
+        assert_eq!(
+            r[0],
+            serde_json::json!({
+                "type": "recap", "week": "2026-10-05", "minutes": 340, "sessions": 12, "files": 40, "added": 900, "removed": 210,
+                "commands": 55, "allowed": 20, "denied": 3, "topAgent": "Claude Codeb",
+            }),
+            "counts and the busiest agent's name, nothing else"
+        );
+        assert!(drain(&mut other).is_empty(), "a phone without recap never hears of it");
+    }
+
+    #[test]
+    fn the_project_goes_only_to_a_phone_that_also_has_details_and_only_as_a_folder_name() {
+        let (hub, _) = hub();
+        let (_, mut plain) = sub_with(&hub, Caps { recap: true, ..Caps::default() });
+        let (_, mut detailed) = sub_with(&hub, Caps { recap: true, details: true, ..Caps::default() });
+        drain(&mut plain);
+        drain(&mut detailed);
+        hub.publish_recap(recap_in());
+        assert!(drain(&mut plain)[0].get("project").is_none());
+        assert_eq!(drain(&mut detailed)[0]["project"], "coucou", "the folder, never the path");
+        // A phone arriving later is told the form it may have.
+        let (_, mut late) = sub_with(&hub, Caps { recap: true, details: true, ..Caps::default() });
+        assert_eq!(drain(&mut late).iter().find(|l| l["type"] == "recap").unwrap()["project"], "coucou");
+        let (_, mut late_plain) = sub_with(&hub, Caps { recap: true, ..Caps::default() });
+        assert!(drain(&mut late_plain).iter().find(|l| l["type"] == "recap").unwrap().get("project").is_none());
+    }
+
+    #[test]
+    fn a_new_phone_gets_the_week_and_a_repeat_is_not_sent() {
+        let (hub, _) = hub();
+        hub.publish_recap(recap_in());
+        let (_, mut rx) = sub_with(&hub, Caps { recap: true, ..Caps::default() });
+        assert!(drain(&mut rx).iter().any(|l| l["type"] == "recap" && l["sessions"] == 12));
+        hub.publish_recap(recap_in());
+        assert!(drain(&mut rx).is_empty());
+        let mut next = recap_in();
+        next.week = "2026-10-12".into();
+        hub.publish_recap(next);
+        assert_eq!(drain(&mut rx)[0]["week"], "2026-10-12");
+    }
+
+    #[test]
+    fn numbers_are_clamped_and_a_week_with_nothing_or_no_date_clears_it() {
+        let (hub, _) = hub();
+        let (_, mut rx) = sub_with(&hub, Caps { recap: true, ..Caps::default() });
+        drain(&mut rx);
+        let wild = RecapIn { minutes: 1e12, sessions: 1e12, files: f64::NAN, lines_added: -5.0, lines_removed: f64::INFINITY, ..recap_in() };
+        hub.publish_recap(wild);
+        let r = &drain(&mut rx)[0];
+        assert_eq!(r["minutes"], 10_080);
+        assert_eq!(r["sessions"], 100_000);
+        assert_eq!(r["files"], 0);
+        assert_eq!(r["added"], 0);
+        assert_eq!(r["removed"], 0);
+        // No session this week: the phone is told there is nothing.
+        hub.publish_recap(RecapIn { sessions: 0.0, ..recap_in() });
+        assert_eq!(drain(&mut rx), vec![serde_json::json!({ "type": "recap" })]);
+        // Not a date: nothing is sent, because nothing is still nothing.
+        for bad in ["", "2026-13-01", "2026-10-32", "2026/10/05", "2026-10-5", "<script>1", "2026-10-05\n"] {
+            hub.publish_recap(RecapIn { week: bad.into(), ..recap_in() });
+            assert!(drain(&mut rx).is_empty(), "{bad:?}");
+        }
+        let (_, mut after) = sub_with(&hub, Caps { recap: true, ..Caps::default() });
+        assert!(drain(&mut after).iter().all(|l| l["type"] != "recap"), "after a clear a new phone is told nothing");
+    }
+
+    #[test]
+    fn the_agent_name_is_short_and_plain_and_may_be_left_out() {
+        let (hub, _) = hub();
+        let (_, mut rx) = sub_with(&hub, Caps { recap: true, ..Caps::default() });
+        drain(&mut rx);
+        hub.publish_recap(RecapIn { top_agent: Some("A very long agent name that goes on and on".into()), ..recap_in() });
+        assert_eq!(drain(&mut rx)[0]["topAgent"].as_str().unwrap().chars().count(), 24);
+        hub.publish_recap(RecapIn { top_agent: Some("\n\t<>".into()), ..recap_in() });
+        assert!(drain(&mut rx)[0].get("topAgent").is_none());
+    }
+
+    #[test]
+    fn nothing_but_counts_names_and_a_date_ever_leaves() {
+        let (hub, _) = hub();
+        let (_, mut rx) = sub_with(&hub, Caps { recap: true, details: true, ..Caps::default() });
+        drain(&mut rx);
+        hub.publish_recap(recap_in());
+        let line = drain(&mut rx).remove(0);
+        let mut keys: Vec<&str> = line.as_object().unwrap().keys().map(String::as_str).collect();
+        keys.sort_unstable();
+        assert_eq!(keys, ["added", "allowed", "commands", "denied", "files", "minutes", "project", "removed", "sessions", "topAgent", "type", "week"]);
+    }
+
     // ── service cards (cap `services`) ──────────────────────────────────────────────
 
     fn card(id: &str, headline: &str, items: &[(&str, &str)]) -> ServiceIn {

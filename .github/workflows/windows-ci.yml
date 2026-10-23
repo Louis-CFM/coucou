@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - 'windows/**'
+      - 'scripts/test-whats-new.py'
       - '.github/workflows/windows-ci.yml'
   push:
     branches: [main]
@@ -56,6 +57,10 @@ jobs:
 
       - name: Island tests
         run: npm test
+
+      # Every release brings its "What's new" in the 12 languages (src/whats-new/whats-new.json).
+      - name: What's new for this version
+        run: python ../scripts/test-whats-new.py windows
 
       # The app bundles target/release/coucou-hook.exe as a resource, and its
       # build script refuses to run until that file exists. One command per
