@@ -1,6 +1,7 @@
 package com.coucou.android
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -113,6 +114,7 @@ import com.coucou.android.ui.DiffSheet
 import com.coucou.android.ui.QuestionSheet
 import com.coucou.android.ui.ServicesPanel
 import com.coucou.android.ui.UsagePanel
+import com.coucou.android.ui.RecapPanel
 import com.coucou.android.ui.WardrobeScreen
 import com.coucou.android.ui.HeroCard
 import com.coucou.android.ui.RecentPanel
@@ -142,17 +144,27 @@ class MainActivity : ComponentActivity() {
     private var closedApproval by mutableStateOf<String?>(null)
     private var questionPill by mutableStateOf<String?>(null)
     private var confirming = false
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(com.coucou.android.app.AppLanguage.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        model.languageChanged(com.coucou.android.app.AppLanguage.current(this))
         enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
         model.resume()
         setContent {
-            CoucouTheme {
-                // The app is dark only: the status bar icons are always light.
-                SideEffect { WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false }
+            CoucouTheme(model.settings.theme, model.settings.dynamicColour) {
+                // Dark icons on a light page; the camera screen is black in both themes, so its icons are light.
+                val lightPage = !tokens().isDark && screen != Screen.SCAN
+                SideEffect {
+                    val bars = WindowCompat.getInsetsController(window, window.decorView)
+                    bars.isAppearanceLightStatusBars = lightPage
+                    bars.isAppearanceLightNavigationBars = lightPage
+                }
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize().windowInsetsPadding(if (screen == Screen.HOME || screen == Screen.SCAN) WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom) else WindowInsets.safeDrawing)) {
                         val tabs = Nav.tabs()
@@ -265,6 +277,8 @@ class MainActivity : ComponentActivity() {
         }
         // A tap on a widget button: a screen of the closed list ([LaunchScreen]), even when the app is locked, not connected or not paired.
         model.launch.takeScreen()?.let { screen = it.screen }
+        // Text shared to Coucou from another app (ShareActivity, which only keeps cleaned text): it waits in the model for the chat box.
+        if (model.shareDraft.pending()) screen = Screen.CHAT
         val launch = model.launch.take() ?: return
         val fp = launch.fingerprint
         if (launch.allow) {
@@ -407,6 +421,7 @@ private fun Home(
             }
         }
 
+        if (model.recap != null) item { Box(Modifier.padding(horizontal = Gutter)) { RecapPanel(model.recap) } }
         if (model.usage != null) item { Box(Modifier.padding(horizontal = Gutter)) { UsagePanel(model.usage) } }
         if (model.services.isNotEmpty()) item { Box(Modifier.padding(horizontal = Gutter)) { ServicesPanel(model.services) } }
         item { Box(Modifier.padding(horizontal = Gutter)) { RecentPanel(model.decisions, onHistory) } }

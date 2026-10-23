@@ -16,7 +16,7 @@ export type EyeShape =
   | "pill" | "wide" | "dot" | "line" | "flat" | "happy" | "closed"
   | "spiral" | "heart" | "star" | "tired" | "wink" | "cup";
 
-export type BadgeKind = "dots" | "bang" | "question" | "dot";
+export type BadgeKind = "dots" | "bang" | "question" | "dot" | "arrow";
 
 export interface Badge {
   kind: BadgeKind;
@@ -198,6 +198,11 @@ export class BotEngine {
   isMini = false;
   /** Solid body colour for mini bots / integration pills (null = Mochi gradient). */
   bodyColor: RGB | null = null;
+  /**
+   * A new Coucou waits (whats-new/whats-new.ts): while Mochi is idle or asleep
+   * he wears the up-arrow badge. The island turns his body blue alongside.
+   */
+  private updateHint: RGB | null = null;
 
   // Animated state (BotEngine `s`)
   yaw = 0; pitch = 0; roll = 0; tilt = 0; open = 1;
@@ -280,7 +285,7 @@ export class BotEngine {
     this.colT = this.cfg.color;
     if (!this.locks.has("tint")) this.tint = this.cfg.tint;
     if (!this.locks.has("tilt")) this.tgTilt = this.cfg.tilt;
-    this.setBadge(this.cfg.badge);
+    this.setBadge(this.stateBadge());
 
     switch (next) {
       case "finished":
@@ -308,6 +313,25 @@ export class BotEngine {
       default:
         if (prev !== "idle" || next !== "idle") this.blink();
     }
+  }
+
+  /** The update badge (blue arrow) while one waits, else nothing. Asked every frame; cheap. */
+  setUpdateHint(color: RGB | null) {
+    const was = this.updateHint;
+    const same = color === was || (color != null && was != null && color.every((c, i) => c === was[i]));
+    if (same) return;
+    this.updateHint = color;
+    this.setBadge(this.stateBadge());
+  }
+
+  /** Whether the update hint shows now: only over an idle or sleeping Mochi. */
+  get showsUpdateHint(): boolean {
+    return this.updateHint != null && (this.state === "idle" || this.state === "sleeping");
+  }
+
+  private stateBadge(): Badge | null {
+    if (this.showsUpdateHint && this.updateHint) return { kind: "arrow", color: this.updateHint };
+    return this.cfg.badge;
   }
 
   setBadge(b: Badge | null) {
@@ -1210,6 +1234,30 @@ export class BotEngine {
           x.arc((i - 1) * R * 0.18, 0, dotR, 0, Math.PI * 2);
           x.fill();
         }
+      }
+    } else if (badge.kind === "arrow") {
+      // The "!" badge's ring and disc, with a white up-arrow: a new Coucou is out.
+      x.fillStyle = "#000";
+      x.beginPath();
+      x.arc(0, 0, R * 0.3, 0, Math.PI * 2);
+      x.fill();
+      x.fillStyle = col;
+      x.beginPath();
+      x.arc(0, 0, R * 0.23, 0, Math.PI * 2);
+      x.fill();
+      if (!this.isMini) {
+        const a = R * 0.12;
+        x.strokeStyle = "#fff";
+        x.lineWidth = R * 0.055;
+        x.lineCap = "round";
+        x.lineJoin = "round";
+        x.beginPath();
+        x.moveTo(0, a);
+        x.lineTo(0, -a);
+        x.moveTo(-a * 0.8, -a * 0.2);
+        x.lineTo(0, -a);
+        x.lineTo(a * 0.8, -a * 0.2);
+        x.stroke();
       }
     } else if (badge.kind === "bang" || badge.kind === "question") {
       x.fillStyle = "#000";

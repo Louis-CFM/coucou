@@ -2375,6 +2375,92 @@ input[type="range"]::-webkit-slider-thumb {
   transition: width 0.25s linear;
 }
 
+/* ── What's new after an update (views/whatsnew.ts) ─────────────────────────
+   Text from x = 116 like the other cards; the items in two columns, each an
+   icon in the update's blue, a title and its line. */
+
+.whatsnew-stack {
+  padding: 4px 16px 4px 116px;
+  gap: 7px;
+}
+
+.whatsnew-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+
+.whatsnew-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.whatsnew-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.whatsnew-text {
+  min-width: 0;
+}
+
+.whatsnew-item-title {
+  font: 600 12px var(--font);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.whatsnew-item-detail {
+  font: 400 10.5px/1.3 var(--font);
+  color: var(--dim-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.whatsnew-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.whatsnew-stat {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.whatsnew-stat-icon {
+  color: #93c5fd;
+  padding-top: 4px;
+}
+
+.whatsnew-stat .v {
+  font: 700 16px var(--font);
+  color: var(--ink-2);
+}
+
+.whatsnew-stat .l {
+  font: 400 9px var(--font);
+  color: var(--dim-2);
+}
+
+.whatsnew-thanks {
+  font-size: 11.5px;
+}
+
 /* ── Spotify: the pill's controls and the now-playing card ──────────────────
    SpotifyPill, MusicControlButton and SpotifyCardView (SpotifyViews.swift,
    NowPlayingViews.swift): sizes and colours are the Mac's. */
@@ -2647,6 +2733,274 @@ input[type="range"]::-webkit-slider-thumb {
 .np-volume .np-bar {
   flex: 0 0 44px;
   width: 44px;
+}
+
+/* ── WhatsApp (views/whatsapp.ts) — WhatsAppCardView on macOS ────────────────
+   Nothing here applies to a view that already ships: every class is the card's own. */
+
+.wa-card {
+  height: 100%;
+  box-sizing: border-box;
+  padding-top: 10px;
+}
+
+.wa-list,
+.wa-convo {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.wa-unread {
+  font: 600 10px var(--font);
+  color: #25d366;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(37, 211, 102, 0.14);
+}
+
+.wa-empty {
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+  padding: 8px 0 0 8px;
+}
+
+.wa-status-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.wa-settings {
+  color: var(--dim-2);
+  padding: 0;
+}
+
+.wa-rows {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 12px;
+  scrollbar-width: none;
+}
+
+.wa-row {
+  border: 0;
+  background: transparent;
+  text-align: start;
+  width: 100%;
+  gap: 6px;
+  padding: 3px 6px;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
+.wa-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.wa-row.unread {
+  background: rgba(37, 211, 102, 0.08);
+}
+
+.wa-row.unread:hover {
+  background: rgba(37, 211, 102, 0.14);
+}
+
+.wa-row-name {
+  max-width: 92px;
+  flex: 0 1 auto;
+}
+
+.wa-row.unread .wa-row-name {
+  font-weight: 600;
+  color: #e8e9ec;
+}
+
+.wa-row.unread .wa-preview {
+  color: var(--dim-2);
+}
+
+.wa-spacer {
+  flex: 1 1 0;
+}
+
+.wa-count {
+  font: 700 9px var(--font);
+  color: #0b0c0e;
+  background: #25d366;
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+
+.wa-ignore {
+  color: #f4505e;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.wa-avatar {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(37, 211, 102, 0.22);
+  color: #25d366;
+  font-family: var(--font);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.wa-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding-right: 36px;
+  margin-left: -6px;
+}
+
+.wa-back {
+  width: 20px;
+  height: 20px;
+}
+
+.wa-name {
+  font: 600 11px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.wa-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 12px 4px 0;
+  scrollbar-width: none;
+}
+
+.wa-line {
+  display: flex;
+  padding-right: 40px;
+}
+
+.wa-line.mine {
+  justify-content: flex-end;
+  padding-right: 0;
+  padding-left: 40px;
+}
+
+.wa-bubble {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  min-width: 0;
+  user-select: text;
+}
+
+.wa-bubble.mine {
+  background: rgba(37, 211, 102, 0.16);
+}
+
+.wa-sender {
+  font: 600 9px var(--font);
+  color: rgba(37, 211, 102, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wa-media {
+  font: 500 10px var(--font);
+  color: #9398a1;
+}
+
+.wa-text {
+  font: 400 10.5px/1.35 var(--font);
+  color: #c5c8cd;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wa-bubble.mine .wa-text {
+  color: #e8e9ec;
+}
+
+.wa-reply {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 4px 8px;
+  margin-right: 12px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  flex: 0 0 auto;
+}
+
+.wa-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: 400 11px/1.35 var(--font);
+  max-height: 44px;
+  padding: 1px 0;
+  field-sizing: content;
+}
+
+.wa-field::placeholder {
+  color: var(--dim-3);
+}
+
+.wa-send {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(37, 211, 102, 0.3);
+  display: grid;
+  place-items: center;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
+.wa-send.ready {
+  background: #25d366;
+}
+
+.wa-note {
+  font: 400 9.5px var(--font);
+  min-height: 0;
+  padding: 2px 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wa-note.warn {
+  color: #f5b83d;
+}
+
+.wa-note.err {
+  color: #f4505e;
+}
+
+html[data-dir="rtl"] #views :is(.wa-text, .wa-field, .wa-preview) {
+  unicode-bidi: plaintext;
+  text-align: start;
 }
 
 /* ── Arabic: right to left ─────────────────────────────────────────────────────

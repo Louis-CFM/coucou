@@ -304,7 +304,7 @@ class LinkClientTest {
         val rec = Recorder()
         client(d, rec).start()
         assertTrue(rec.connected.await(5, TimeUnit.SECONDS))
-        assertTrue(d.received.poll(2, TimeUnit.SECONDS)!!.contains("\"caps\":[\"chat\",\"details\",\"answers\",\"prefs\",\"diffs\",\"usage\",\"services\",\"relay\"]"))
+        assertTrue(d.received.poll(2, TimeUnit.SECONDS)!!.contains("\"caps\":[\"chat\",\"details\",\"answers\",\"prefs\",\"diffs\",\"usage\",\"recap\",\"services\",\"relay\"]"))
 
         val old = FakeDesktop(tls = true).track()
         val rec2 = Recorder()

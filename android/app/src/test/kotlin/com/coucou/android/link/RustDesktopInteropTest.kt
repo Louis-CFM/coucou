@@ -104,6 +104,8 @@ class RustDesktopInteropTest {
         override fun onServices(cards: List<ServiceCard>) { serviceCards.add(cards) }
         val usages = LinkedBlockingQueue<UsageSnapshot>()
         override fun onUsage(usage: UsageSnapshot) { usages.add(usage) }
+        val recaps = LinkedBlockingQueue<java.util.Optional<Recap>>()
+        override fun onRecap(recap: Recap?) { recaps.add(java.util.Optional.ofNullable(recap)) }
         val diffParts = LinkedBlockingQueue<ServerMsg.Diff>()
         override fun onDiff(part: ServerMsg.Diff) { diffParts.add(part) }
         override fun onPrefs(outfit: String) { prefs.add(outfit) }
@@ -312,6 +314,42 @@ class RustDesktopInteropTest {
         try {
             assertEquals(emptySet<String>(), rec.caps.poll(15, TimeUnit.SECONDS))
             assertNull(rec.usages.poll(2, TimeUnit.SECONDS))
+        } finally {
+            client.stop()
+        }
+    }
+
+    // ── Weekly recap (cap recap) ────────────────────────────────────────────────────
+
+    @Test fun theRealServerSendsLastWeeksCountsToAnAppThatAsksWhileTheSwitchIsOn() {
+        val info = startDesktop()
+        command("recap on")
+        command("recapweek 2026-10-05")
+        val rec = Rec()
+        val client = chatClient(info, rec)
+        val old = Rec()
+        val oldClient = chatClient(info, old, caps = emptyList())
+        try {
+            assertEquals(setOf("prefs", "recap"), rec.allCaps.poll(15, TimeUnit.SECONDS))
+            val r = rec.recaps.poll(10, TimeUnit.SECONDS)!!.get()
+            assertEquals(Recap("2026-10-05", 340, 12, 40, 900, 210, 55, 20, 3, "Claude Code", null), r)
+            command("recapnone")
+            assertTrue("the card goes", !rec.recaps.poll(10, TimeUnit.SECONDS)!!.isPresent)
+            assertNull("an app that did not ask hears nothing", old.recaps.poll(1, TimeUnit.SECONDS))
+        } finally {
+            client.stop()
+            oldClient.stop()
+        }
+    }
+
+    @Test fun withTheSwitchOffTheRealServerOffersNoRecap() {
+        val info = startDesktop()
+        command("recapweek 2026-10-05")
+        val rec = Rec()
+        val client = chatClient(info, rec)
+        try {
+            assertEquals(emptySet<String>(), rec.caps.poll(15, TimeUnit.SECONDS))
+            assertNull(rec.recaps.poll(2, TimeUnit.SECONDS))
         } finally {
             client.stop()
         }

@@ -18,6 +18,9 @@ enum class IconKind { HOME, CHAT, SLIDERS, BACK, SEND, LOCK, SCAN, CHEVRON, CHEC
 
 object IconSpec {
     const val GRID = 24.0
+
+    /** The icons that point somewhere along the reading direction: in a right-to-left language (Arabic) they are drawn flipped. */
+    fun mirrorsInRtl(kind: IconKind): Boolean = kind == IconKind.BACK || kind == IconKind.SEND || kind == IconKind.CHEVRON
     const val STROKE = 1.9
 
     private fun poly(vararg p: Double) = IconShape.Poly(p.toList())

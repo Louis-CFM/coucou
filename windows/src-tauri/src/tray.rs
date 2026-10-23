@@ -1,11 +1,12 @@
 // Notification-area icon: Open, Weekly recap, Wardrobe, Settings, Pause, Quit.
 // "Update Coucou to X…" shows under Open only while a new version is out
-// (update.rs).
+// (update.rs). While one waits, the tray Mochi turns blue like the island's.
 
 use std::sync::Mutex;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
+use tauri::image::Image;
 use tauri::{AppHandle, Emitter, Manager, Wry};
 
 use crate::i18n::{n_, t, tf};
@@ -109,5 +110,59 @@ pub fn set_update(app: &AppHandle, version: Option<&str>) {
         None => {
             let _ = update.menu.remove(&update.item);
         }
+    }
+}
+
+/// Coucou's update blue, #3B82F6, the colour of Mochi while a new version waits.
+const UPDATE_BLUE: [f32; 3] = [59.0, 130.0, 246.0];
+
+/// The tray Mochi in the update blue: the light body takes the blue and keeps its
+/// shading, the dark outline and eyes stay as they are, transparency untouched.
+pub fn tint_blue(rgba: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(rgba.len());
+    for p in rgba.chunks_exact(4) {
+        let light = (0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32) / 255.0;
+        // 0 for the outline and eyes, 1 for the white body.
+        let body = ((light - 0.35) / 0.65).clamp(0.0, 1.0);
+        for (i, blue) in UPDATE_BLUE.iter().enumerate() {
+            let shaded = blue * (0.8 + 0.2 * light);
+            out.push((p[i] as f32 * (1.0 - body) + shaded * body).round().clamp(0.0, 255.0) as u8);
+        }
+        out.push(p[3]);
+    }
+    out
+}
+
+/// The island says whether a new version waits (consent, newer, not put off with
+/// Later): blue Mochi in the tray, or the usual one.
+#[tauri::command]
+pub fn tray_update_hint(app: AppHandle, on: bool) {
+    let Some(tray) = app.tray_by_id("coucou") else { return };
+    let Some(base) = app.default_window_icon() else { return };
+    let icon = if on {
+        Image::new_owned(tint_blue(base.rgba()), base.width(), base.height())
+    } else {
+        base.clone().to_owned()
+    };
+    let _ = tray.set_icon(Some(icon));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tint_blue;
+
+    #[test]
+    fn the_body_turns_blue_the_outline_stays() {
+        let px = [
+            245, 240, 235, 255, // the off-white body
+            10, 10, 10, 255, // the outline
+            250, 250, 250, 0, // transparent around Mochi
+        ];
+        let out = tint_blue(&px);
+        let body = &out[0..4];
+        assert!(body[2] > 220 && body[0] < 80 && body[1] > 100 && body[1] < 150, "body {body:?}");
+        assert_eq!(&out[4..8], &[10, 10, 10, 255], "the outline stays dark");
+        assert_eq!(out[11], 0, "transparency is kept");
+        assert_eq!(out.len(), px.len());
     }
 }
