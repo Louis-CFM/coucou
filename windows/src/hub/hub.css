@@ -147,10 +147,14 @@ body.hub-window {
   flex-direction: column;
 }
 
+/* The scrollbar gutter is always kept, so a section that grows past the window
+   doesn't shift the page sideways; the end padding gives its 10px back. */
 .hub-scroll {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 24px 28px 28px;
+  padding-inline-end: 18px;
+  scrollbar-gutter: stable;
 }
 
 .hub-page {
@@ -920,4 +924,67 @@ button.hub-icon svg {
 
 .hub-note-detail > button {
   align-self: flex-start;
+}
+
+/* ── Scrollbars ───────────────────────────────────────────────────────────────
+   WebView2 (Windows) and WebKitGTK (Linux) both honour ::-webkit-scrollbar. A
+   thin pill floating on the dark panel: no track, no arrow buttons, almost
+   invisible at rest, brighter while the area is hovered, wider under the
+   pointer. The thumb's transparent border insets it from the edge. */
+
+body.hub-window ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body.hub-window ::-webkit-scrollbar-track,
+body.hub-window ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+body.hub-window ::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+body.hub-window ::-webkit-scrollbar-thumb {
+  min-height: 40px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+body.hub-window :hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+body.hub-window ::-webkit-scrollbar-thumb:hover {
+  border-width: 2px;
+  background-color: rgba(255, 255, 255, 0.26);
+}
+
+body.hub-window ::-webkit-scrollbar-thumb:active {
+  border-width: 2px;
+  background-color: rgba(255, 255, 255, 0.34);
+}
+
+/* The panel's thumb stays clear of its rounded corners. */
+.hub-scroll::-webkit-scrollbar-track {
+  margin: 18px 0;
+}
+
+/* The sidebar only shows its thumb while hovered, and narrower. */
+.hub-side::-webkit-scrollbar {
+  width: 6px;
+}
+
+.hub-side::-webkit-scrollbar-thumb {
+  border-width: 1px;
+  background-color: transparent;
+}
+
+.hub-side:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
 }
