@@ -101,6 +101,10 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// Where the island sits on the display `screen` picks: "top" (centred on
+    /// the top edge) or "bottomLeft" (on the Windows taskbar, opening upwards).
+    /// Kept as it comes, like `mochi_outfit`: anything else reads as "top".
+    pub placement: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -168,6 +172,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            placement: "top".into(),
         }
     }
 }
@@ -456,7 +461,8 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "showClock": true
+  "showClock": true,
+  "placement": "bottomLeft"
 }"##;
 
     fn custom() -> Value {
@@ -708,6 +714,9 @@ mod tests {
         // The language too: "" (follow the system) when absent, as it comes otherwise.
         assert_eq!(parse(&custom_with("language", None)).unwrap().language, "");
         assert_eq!(parse(&custom_with("language", Some(json!("xx")))).unwrap().language, "xx");
+        // The placement too: "top" when absent, as it comes otherwise.
+        assert_eq!(parse(&custom_with("placement", None)).unwrap().placement, "top");
+        assert_eq!(parse(&custom_with("placement", Some(json!("xx")))).unwrap().placement, "xx");
     }
 
     #[test]
@@ -729,6 +738,7 @@ mod tests {
             ("activeIntegrations", json!("integration_n8n")),
             ("mainPill", json!(["agent_cursor"])),
             ("screen", Value::Null),
+            ("placement", Value::Null),
             ("shortcuts", json!("Ctrl+Alt+A")),
         ] {
             let loaded = parse(&custom_with(key, Some(wrong)))
@@ -975,6 +985,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "placement",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

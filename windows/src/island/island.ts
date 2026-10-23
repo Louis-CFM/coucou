@@ -10,6 +10,7 @@ import {
   QUESTION_PICKER_H,
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
+import { HOST_OS } from "../core/pills";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
@@ -44,6 +45,11 @@ const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading"
 /** Seconds between the drop and the moment the progress bar starts filling. */
 const PRE_PROGRESS = USC.T_PROG_START - USC.T_DROP;
 
+/**
+ * The island sits in the bottom-left corner of its display, over the taskbar,
+ * and grows upwards (island.rs, `at_bottom_left`). Windows only.
+ */
+const atBottomLeft = () => HOST_OS === "windows" && State.settings.placement === "bottomLeft";
 const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 : 2);
 
 export class Island {
@@ -117,6 +123,8 @@ export class Island {
 
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
+  /** The placement the last applySettings saw; null before the first. */
+  private placedBottomLeft: boolean | null = null;
 
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
@@ -714,10 +722,16 @@ export class Island {
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
-    this.islandEl.style.width = `${w}px`;
-    this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    const s = this.islandEl.style;
+    s.width = `${w}px`;
+    s.height = `${hh}px`;
+    if (atBottomLeft()) {
+      Object.assign(s, { top: "auto", bottom: "0", left: "0", transform: "none" });
+      s.borderRadius = `${r}px ${r}px 0 0`;
+    } else {
+      Object.assign(s, { top: "", bottom: "", left: "", transform: "translateX(-50%)" });
+      s.borderRadius = `0 0 ${r}px ${r}px`;
+    }
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
@@ -726,10 +740,12 @@ export class Island {
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
-    const rect = { x: (viewportW - w) / 2, y: 0, w, h: hh };
+    const rect = this.islandRect();
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
+    if (
+      Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.y - rect.y) > 0.5 ||
+      Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5
+    ) {
       this.pushedRect = rect;
       void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
     }
@@ -739,6 +755,10 @@ export class Island {
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
+    if (atBottomLeft()) {
+      const viewportH = window.innerHeight > 0 ? window.innerHeight : PANEL_H;
+      return { x: 0, y: viewportH - hh, w, h: hh };
+    }
     const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
     return { x: (viewportW - w) / 2, y: 0, w, h: hh };
   }
@@ -1173,7 +1193,7 @@ export class Island {
   }
 
   private lookY(): number {
-    return -Math.tanh((State.mouse.y - this.botCy.value) / 200);
+    return -Math.tanh((State.mouse.y - (this.islandRect().y + this.botCy.value)) / 200);
   }
 
   private updateCountdown(nowMs: number) {
@@ -1271,6 +1291,16 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    // On the taskbar the compact island stays put, and the wake strip follows it.
+    const bottomLeft = atBottomLeft();
+    this.fsm.setNeverHide(bottomLeft);
+    const strip = this.wakeStrip.style;
+    if (bottomLeft) Object.assign(strip, { top: "auto", bottom: "0", left: "0", transform: "none" });
+    else Object.assign(strip, { top: "", bottom: "", left: "", transform: "" });
+    // Moved there from Settings: show it at once (not at launch, which greets).
+    if (bottomLeft && this.placedBottomLeft === false) this.revealSilently();
+    this.placedBottomLeft = bottomLeft;
+    this.applyGeometry();
     State.notify();
     // ponytail: one timer for the life of the window; a minute is the clock's finest tick.
     this.clockTimer ??= window.setInterval(() => this.updateClock(), 10_000);

@@ -377,3 +377,23 @@ test("open on hover: an island opened by an alert keeps the normal delay", () =>
   seconds(2);
   assert.equal(fsm.state, "petit");
 });
+
+test("never hide keeps the compact island on screen", () => {
+  fsm.setNeverHide(true);
+  fsm.reveal();
+  fsm.mouseEntered();
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "petit");
+});
+
+test("turning never hide off lets the compact island hide after the usual delay", () => {
+  fsm.setNeverHide(true);
+  fsm.reveal();
+  seconds(600);
+  fsm.setNeverHide(false);
+  seconds(fsm.petitToHiddenDelay - 0.1);
+  assert.equal(fsm.state, "petit");
+  seconds(0.1);
+  assert.equal(fsm.state, "hidden");
+});

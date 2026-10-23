@@ -2,8 +2,8 @@
 // (full panel / invisible wake strip), click-through and the cursor poll.
 //
 // There is no notch on a PC, so the island is a black shape drawn at the top
-// centre of the main display inside a borderless, transparent, always-on-top
-// window that never takes focus.
+// centre of the main display (or at the bottom left, over the Windows taskbar)
+// inside a borderless, transparent, always-on-top window that never takes focus.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -22,6 +22,10 @@ pub const STRIP_W: f64 = 240.0;
 pub const STRIP_H: f64 = 6.0;
 
 pub const WINDOW_LABEL: &str = "island";
+
+/// `placement: "bottomLeft"`: gap between the island and the left edge of the
+/// display, in logical px.
+const BOTTOM_LEFT_INSET: f64 = 12.0;
 
 /// Margin around the island that still counts as "on the island", in logical px.
 /// Wider than the macOS 6 pt because a click must never be swallowed.
@@ -131,25 +135,35 @@ pub struct MonitorChoice {
 
 pub fn monitor_choices(app: &AppHandle) -> Vec<MonitorChoice> {
     let Ok(monitors) = app.available_monitors() else { return Vec::new() };
-    monitors
-        .iter()
-        .map(|m| {
-            let d = describe(m);
-            MonitorChoice {
-                key: d.key(),
-                label: crate::i18n::tf(
-                    "{name} — {width}×{height} at {x},{y}",
-                    &[
-                        ("name", &d.name),
-                        ("width", &d.w.to_string()),
-                        ("height", &d.h.to_string()),
-                        ("x", &d.x.to_string()),
-                        ("y", &d.y.to_string()),
-                    ],
-                ),
-            }
+    let ids: Vec<DisplayId> = monitors.iter().map(describe).collect();
+    let primary = app.primary_monitor().ok().flatten().map(|m| describe(&m));
+    ids.iter()
+        .zip(display_numbers(&ids))
+        .map(|(d, n)| {
+            let (n, w, h) = (n.to_string(), d.w.to_string(), d.h.to_string());
+            let vars = [("n", n.as_str()), ("width", w.as_str()), ("height", h.as_str())];
+            let label = if Some(d) == primary.as_ref() {
+                crate::i18n::tf("Display {n} — {width}×{height} (main)", &vars)
+            } else {
+                crate::i18n::tf("Display {n} — {width}×{height}", &vars)
+            };
+            // The key is unchanged: preferences saved before still match.
+            MonitorChoice { key: d.key(), label }
         })
         .collect()
+}
+
+/// Each display's number in Settings, in the order of `ids`: from left to
+/// right, and from top to bottom when one sits above another. Two monitors of
+/// the same model share a name, so a number tells them apart.
+fn display_numbers(ids: &[DisplayId]) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..ids.len()).collect();
+    order.sort_by_key(|&i| (ids[i].x, ids[i].y));
+    let mut numbers = vec![0; ids.len()];
+    for (n, i) in order.into_iter().enumerate() {
+        numbers[i] = n + 1;
+    }
+    numbers
 }
 
 /// What a display is remembered by: its logical origin, plus its name and
@@ -238,6 +252,55 @@ fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
         .or_else(|| monitors.into_iter().next())
 }
 
+/// The island sits at the bottom left, on the taskbar, rather than at the top
+/// centre. Windows only: on Linux the layer shell keeps it at the top.
+pub fn at_bottom_left(placement: &str) -> bool {
+    cfg!(windows) && placement == "bottomLeft"
+}
+
+fn placement(app: &AppHandle) -> String {
+    app.try_state::<crate::Shared>()
+        .map(|s| s.settings.lock().unwrap().placement.clone())
+        .unwrap_or_default()
+}
+
+/// Top-left of the window, in physical px: centred on the top edge of the
+/// display, or (`bottom_left`) on its bottom edge, over the taskbar, `inset`
+/// px from its left.
+fn window_origin(bottom_left: bool, mp: (i32, i32), ms: (u32, u32), pw: u32, ph: u32, inset: i32) -> (i32, i32) {
+    if bottom_left {
+        (mp.0 + inset, mp.1 + ms.1 as i32 - ph as i32)
+    } else {
+        (mp.0 + (ms.0 as i32 - pw as i32) / 2, mp.1)
+    }
+}
+
+static KEEPER: AtomicBool = AtomicBool::new(false);
+
+/// Once a second while the island sits at the bottom left: puts it back above
+/// the taskbar, which a click brings to the front of every topmost window.
+/// Stops as soon as the placement changes, so the top-centre island costs nothing.
+// ponytail: 1 Hz poll; SetWinEventHook(EVENT_SYSTEM_FOREGROUND) if the lag shows.
+fn spawn_keeper(app: &AppHandle) {
+    if KEEPER.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(1));
+        if !at_bottom_left(&placement(&app)) {
+            KEEPER.store(false, Ordering::SeqCst);
+            // Moved back in the meantime: keep going, unless a new keeper already has.
+            if !at_bottom_left(&placement(&app)) || KEEPER.swap(true, Ordering::SeqCst) {
+                return;
+            }
+        }
+        if let Some(win) = window(&app) {
+            platform::keep_topmost(&win);
+        }
+    });
+}
+
 #[cfg(test)]
 mod display_tests {
     use super::*;
@@ -277,6 +340,38 @@ mod display_tests {
         assert_eq!(pick_display("at:1920,0", &[lap.clone(), ext.clone()]), Some(1));
         assert_eq!(pick_display("primary", &[lap, ext]), None);
         assert_eq!(pick_display("at:nonsense", &[]), None);
+    }
+
+    #[test]
+    fn displays_are_numbered_from_left_to_right() {
+        // Enumerated main first, then the one on its left, then the one on its right.
+        let main = d("DISPLAY1", 0, 0, 1920, 1080);
+        let left = d("DISPLAY2", -1920, 0, 1920, 1080);
+        let right = d("DISPLAY3", 1920, 0, 1920, 1080);
+        assert_eq!(display_numbers(&[main.clone(), left, right]), [2, 1, 3]);
+        // One above the main display comes first.
+        let above = d("DISPLAY2", 0, -1080, 1920, 1080);
+        assert_eq!(display_numbers(&[main.clone(), above]), [2, 1]);
+        assert_eq!(display_numbers(&[main]), [1]);
+    }
+
+    #[test]
+    fn the_window_sits_top_centre_or_bottom_left() {
+        // Top centre, the default.
+        assert_eq!(window_origin(false, (0, 0), (1920, 1080), 900, 400, 15), (510, 0));
+        // A display left of the main one at 125 %: 1920×1080 physical at
+        // (-1920,-8), panel 720×320 → 900×400, inset 12 → 15.
+        assert_eq!(window_origin(true, (-1920, -8), (1920, 1080), 900, 400, 15), (-1905, 672));
+        // The window's bottom edge is the display's, over the taskbar.
+        let (_, y) = window_origin(true, (0, 0), (1920, 1080), 240, 6, 12);
+        assert_eq!(y + 6, 1080);
+    }
+
+    #[test]
+    fn only_windows_puts_the_island_at_the_bottom_left() {
+        assert_eq!(at_bottom_left("bottomLeft"), cfg!(windows));
+        assert!(!at_bottom_left("top"));
+        assert!(!at_bottom_left("xx"), "unknown values read as the top");
     }
 }
 
@@ -362,8 +457,9 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let bottom_left = at_bottom_left(&placement(app));
+    let inset = (BOTTOM_LEFT_INSET * scale).round() as i32;
+    let (x, y) = window_origin(bottom_left, (mp.x, mp.y), (ms.width, ms.height), pw, ph, inset);
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -379,6 +475,10 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
+    if bottom_left {
+        platform::keep_topmost(&win);
+        spawn_keeper(app);
+    }
 
     // On Windows, moving across displays or waking from the strip can clamp or lag
     // the resize. If the physical inner size differs from what was requested, retry once.
