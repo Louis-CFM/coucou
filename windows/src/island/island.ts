@@ -146,7 +146,8 @@ export class Island {
   /** The request has its answer: the card goes and the session carries on. */
   private closeApproval() {
     State.endApproval();
-    this.fsm.pinned = false;
+    // The next request in line, if any, has taken the card and keeps the island pinned.
+    this.fsm.pinned = State.pendingApproval != null;
     this.setView(State.defaultView());
   }
 
@@ -223,6 +224,11 @@ export class Island {
         Sound.play("approve");
         void Bridge.approvalAnswer(req.requestId, answers);
         this.closeApproval();
+      },
+      showQueued: (requestId) => {
+        if (!State.promoteApproval(requestId)) return;
+        Sound.play("blip");
+        this.setView(State.defaultView());
       },
       answerInTerminal: () => {
         const req = State.pendingApproval;

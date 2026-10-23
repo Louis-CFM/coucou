@@ -63,6 +63,15 @@ enum ApprovalQueueTests {
         _ = same.enqueue(entry(1)); _ = same.enqueue(entry(2, tool: "Edit"))
         precondition(!same.hasMixedSources)
 
+        // Promote: the picked entry takes the card, the rest keep their order
+        var p = ApprovalQueue()
+        let p1 = entry(1), p2 = entry(2), p3 = entry(3)
+        for e in [p1, p2, p3] { _ = p.enqueue(e) }
+        precondition(p.promote(id: p3.id))
+        precondition(p.entries == [p3, p1, p2] && p.head == p3)
+        precondition(p.promote(id: p3.id) && p.entries == [p3, p1, p2])  // already head: no change
+        precondition(!p.promote(id: UUID()))
+
         print("pass")
     }
 }

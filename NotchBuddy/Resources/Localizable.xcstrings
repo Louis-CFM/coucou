@@ -32591,6 +32591,12 @@
     },
     "%@ is ready." : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ siap."
+          }
+        },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
@@ -33115,6 +33121,12 @@
     },
     "Address" : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alamat"
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -37315,6 +37327,12 @@
     },
     "Codex plan" : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paket Codex"
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -40579,6 +40597,12 @@
     },
     "Follow the mouse" : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikuti mouse"
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -45307,6 +45331,12 @@
     },
     "Main screen (menu bar)" : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Layar utama (bar menu)"
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47215,6 +47245,12 @@
     },
     "Off: sessions in Warp, Terminal, iTerm… show in the notch, but their questions and permission requests are asked in the terminal. On: the notch shows them first, and the terminal waits until you answer there or close the island (up to 2 min)." : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mati: sesi di Warp, Terminal, iTerm… tampil di notch, tapi pertanyaan dan permintaan izinnya ditanyakan di terminal. Nyala: notch menampilkannya lebih dulu, dan terminal menunggu sampai kamu menjawab di sana atau menutup island (maksimal 2 menit)."
+          }
+        },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47329,6 +47365,12 @@
     },
     "On a screen without a notch, Mochi sits in a small bar at the top. Follow the mouse moves it to your cursor's screen while it is closed." : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Di layar tanpa notch, Mochi duduk di bar kecil di bagian atas. Ikuti mouse memindahkannya ke layar tempat kursormu berada selama island tertutup."
+          }
+        },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
@@ -55254,6 +55296,12 @@
             "value" : "Dans Binance → Gestion des API, créez une clé avec la permission Lire uniquement. N'activez pas le trading ni les retraits."
           }
         },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Di Binance → API Management, buat kunci dengan izin Read Info saja. Jangan aktifkan Spot Trading atau Withdrawals."
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -55292,6 +55340,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dans Bybit → Gestion API, créez une clé avec les permissions En lecture seule uniquement."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Di Bybit → API Management, buat kunci dengan izin Read Only. Matikan semua scope lain."
           }
         },
         "th" : {
@@ -55334,6 +55388,12 @@
             "value" : "Cette clé privée est illisible. Colle toute la clé, de BEGIN EC PRIVATE KEY à END EC PRIVATE KEY (clé ECDSA)."
           }
         },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunci privat ini tidak bisa dibaca. Tempel seluruh kuncinya, dari BEGIN EC PRIVATE KEY sampai END EC PRIVATE KEY (kunci ECDSA)."
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -55372,6 +55432,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sur coinbase.com → Paramètres → API (CDP) → Créer une clé API, signature ECDSA, permission Lecture (View) uniquement. Colle le nom de la clé (organizations/…/apiKeys/…) et toute la clé privée (BEGIN EC PRIVATE KEY…)."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Di coinbase.com → Settings → API (CDP) → Create API key, tanda tangan ECDSA, izin View only. Tempel nama kunci (organizations/…/apiKeys/…) dan seluruh kunci privat (BEGIN EC PRIVATE KEY…)."
           }
         },
         "th" : {
@@ -55414,6 +55480,12 @@
             "value" : "Dans Kraken → Sécurité → API, créez une clé avec la permission Consulter les fonds uniquement. Collez la clé privée (base64) comme secret."
           }
         },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Di Kraken → Security → API, buat kunci dengan izin Query Funds saja. Tempel Private Key (base64) sebagai secret."
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -55452,6 +55524,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dans OKX → API → Créer clé API V5. Permissions : Lecture seule. Notez votre passphrase — elle n'est affichée qu'une fois."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Di OKX → API → Create V5 API Key. Pilih izin Read only. Catat passphrase-mu, karena hanya ditampilkan sekali."
           }
         },
         "th" : {
@@ -55990,6 +56068,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Test en cours…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menguji…"
           }
         },
         "th" : {
@@ -59183,6 +59267,12 @@
     },
     "Requires a newer version of Hermes — run: hermes update" : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Butuh Hermes versi lebih baru. Jalankan: hermes update"
+          }
+        },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
@@ -59281,6 +59371,12 @@
     },
     "Resets" : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset"
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -59737,6 +59833,12 @@
     },
     "Saved screen (not connected)" : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Layar tersimpan (tidak terhubung)"
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -59929,6 +60031,12 @@
     },
     "Screen with the notch" : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Layar dengan notch"
+          }
+        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
@@ -63290,6 +63398,12 @@
     },
     "Shows your Codex plan usage (weekly limit and free resets left) in the notch header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT." : {
       "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menampilkan penggunaan paket Codex-mu (batas mingguan dan sisa reset gratis) di header notch. Coucou bertanya ke Codex CLI (codex app-server) saat pil tampil; tidak ada yang dipasang. Codex harus masuk dengan ChatGPT."
+          }
+        },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
@@ -75091,6 +75205,718 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "簡體中文"
+          }
+        }
+      }
+    },
+    "Auto-approve" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الموافقة التلقائية"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "স্বয়ংক্রিয় অনুমোদন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch erlauben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-approve"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobar automáticamente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approbation automatique"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्वतः स्वीकृति"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setujui otomatis"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprovação automática"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоодобрение"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุมัติอัตโนมัติ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otomatik onay"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动批准"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動核准"
+          }
+        }
+      }
+    },
+    "Allow the commands you picked with Always here without asking again. Only for Codex, Copilot CLI and Muse Code, only in the same folder, and never for a command that chains, redirects or deletes." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "السماح بالأوامر التي اخترتها بـ «دائمًا هنا» دون السؤال مجددًا. فقط لـ Codex وCopilot CLI وMuse Code، وفي المجلد نفسه فقط، وأبدًا لأمر يتسلسل أو يعيد التوجيه أو يحذف."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«সবসময় এখানে» দিয়ে বেছে নেওয়া কমান্ডগুলো আর না জিজ্ঞেস করেই অনুমতি দিন। শুধু Codex, Copilot CLI ও Muse Code-এর জন্য, শুধু একই ফোল্ডারে, এবং কখনও শৃঙ্খলিত, রিডাইরেক্ট বা মুছে ফেলা কমান্ডের জন্য নয়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Befehle, die du mit „Immer hier“ gewählt hast, ohne erneute Nachfrage erlauben. Nur für Codex, Copilot CLI und Muse Code, nur im selben Ordner und nie für Befehle, die verketten, umleiten oder löschen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow the commands you picked with Always here without asking again. Only for Codex, Copilot CLI and Muse Code, only in the same folder, and never for a command that chains, redirects or deletes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permite sin volver a preguntar los comandos que elegiste con «Siempre aquí». Solo para Codex, Copilot CLI y Muse Code, solo en la misma carpeta, y nunca para un comando que encadena, redirige o borra."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorise sans redemander les commandes choisies avec « Toujours ici ». Seulement pour Codex, Copilot CLI et Muse Code, seulement dans le même dossier, et jamais pour une commande qui enchaîne, redirige ou supprime."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«हमेशा यहाँ» से चुने कमांड बिना दोबारा पूछे चलने दें। सिर्फ़ Codex, Copilot CLI और Muse Code के लिए, सिर्फ़ उसी फ़ोल्डर में, और कभी भी जोड़ने, रीडायरेक्ट करने या मिटाने वाले कमांड के लिए नहीं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izinkan perintah yang kamu pilih dengan Selalu di sini tanpa ditanya lagi. Hanya untuk Codex, Copilot CLI, dan Muse Code, hanya di folder yang sama, dan tidak pernah untuk perintah yang dirangkai, dialihkan, atau menghapus."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permite sem perguntar de novo os comandos que você escolheu com «Sempre aqui». Só para Codex, Copilot CLI e Muse Code, só na mesma pasta, e nunca para um comando que encadeia, redireciona ou apaga."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешать без вопросов команды, выбранные кнопкой «Всегда здесь». Только для Codex, Copilot CLI и Muse Code, только в той же папке и никогда для команд, которые объединяют, перенаправляют или удаляют."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุญาตคำสั่งที่คุณเลือกด้วย «เสมอที่นี่» โดยไม่ถามอีก เฉพาะ Codex, Copilot CLI และ Muse Code เฉพาะในโฟลเดอร์เดิม และไม่ใช้กับคำสั่งที่ต่อกัน เปลี่ยนทิศทาง หรือลบ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Her zaman burada» ile seçtiğin komutlara yeniden sormadan izin ver. Yalnızca Codex, Copilot CLI ve Muse Code için, yalnızca aynı klasörde ve asla zincirleyen, yönlendiren ya da silen bir komut için değil."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用“此处始终”选过的命令以后不再询问直接允许。仅限 Codex、Copilot CLI 和 Muse Code，仅限同一文件夹，且绝不用于串联、重定向或删除的命令。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用「此處一律」選過的指令以後不再詢問直接允許。僅限 Codex、Copilot CLI 和 Muse Code，僅限同一資料夾，且絕不用於串接、重新導向或刪除的指令。"
+          }
+        }
+      }
+    },
+    "No rules yet." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا توجد قواعد بعد."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এখনও কোনো নিয়ম নেই।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Regeln."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No rules yet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay reglas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune règle pour l’instant."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभी कोई नियम नहीं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Belum ada aturan."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma regra ainda."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Правил пока нет."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยังไม่มีกฎ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Henüz kural yok."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还没有规则。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "還沒有規則。"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إزالة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সরান"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entfernen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "हटाएँ"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hapus"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remover"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลบ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaldır"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除"
+          }
+        }
+      }
+    },
+    "Always here" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "دائمًا هنا"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সবসময় এখানে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Immer hier"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always here"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siempre aquí"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toujours ici"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "हमेशा यहाँ"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selalu di sini"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sempre aqui"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всегда здесь"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เสมอที่นี่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her zaman burada"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此处始终"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此處一律"
+          }
+        }
+      }
+    },
+    "Allow this command in this folder from now on. Remove it in Settings → Agents." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "السماح بهذا الأمر في هذا المجلد من الآن. أزله من الإعدادات ← الوكلاء."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এখন থেকে এই ফোল্ডারে এই কমান্ডের অনুমতি দিন। সেটিংস → এজেন্টে সরান।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Befehl in diesem Ordner ab jetzt erlauben. Entfernen unter Einstellungen → Agenten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow this command in this folder from now on. Remove it in Settings → Agents."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir este comando en esta carpeta a partir de ahora. Quítalo en Ajustes → Agentes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser cette commande dans ce dossier désormais. À retirer dans Réglages → Agents."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अब से इस फ़ोल्डर में यह कमांड चलने दें। सेटिंग्स → एजेंट में हटाएँ।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izinkan perintah ini di folder ini mulai sekarang. Hapus di Pengaturan → Agen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir este comando nesta pasta daqui em diante. Remova em Ajustes → Agentes."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешать эту команду в этой папке и дальше. Удалить можно в Настройки → Агенты."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุญาตคำสั่งนี้ในโฟลเดอร์นี้ต่อจากนี้ ลบได้ที่ การตั้งค่า → เอเจนต์"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu komuta bu klasörde bundan sonra izin ver. Ayarlar → Ajanlar’dan kaldır."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从现在起允许此文件夹中的这条命令。可在设置 → 代理中移除。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "從現在起允許此資料夾中的這條指令。可在設定 → 代理中移除。"
+          }
+        }
+      }
+    },
+    "Show everything waiting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عرض كل ما ينتظر"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অপেক্ষমাণ সব দেখান"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alles Wartende zeigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show everything waiting"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver todo lo que espera"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir tout ce qui attend"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "सब प्रतीक्षारत दिखाएँ"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tampilkan semua yang menunggu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver tudo o que espera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать всё ожидающее"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แสดงทั้งหมดที่รออยู่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekleyen her şeyi göster"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示所有等待项"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示所有等待項目"
+          }
+        }
+      }
+    },
+    "Auto-approved · %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "موافقة تلقائية · %@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "স্বয়ংক্রিয় অনুমোদিত · %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch erlaubt · %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-approved · %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobado automáticamente · %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approuvé automatiquement · %@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्वतः स्वीकृत · %@"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disetujui otomatis · %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprovado automaticamente · %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Одобрено автоматически · %@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุมัติอัตโนมัติ · %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otomatik onaylandı · %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已自动批准 · %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已自動核准 · %@"
           }
         }
       }
