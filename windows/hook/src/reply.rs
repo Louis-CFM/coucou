@@ -56,6 +56,33 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
     }
 }
 
+/// `stdout`, plus Claude Code's `permission_suggestions` for an "always": the
+/// allow then carries them as `updatedPermissions`, which Claude Code saves
+/// exactly as if "Yes, and don't ask again" had been picked in its terminal.
+/// Only Claude Code takes them (Codex, Copilot CLI and Muse Code have no such
+/// field); with none offered, "always" is a plain allow.
+pub fn stdout_with(
+    agent: &str,
+    event: &str,
+    decision: Option<&str>,
+    question: Option<&Value>,
+    suggestions: Option<&Value>,
+) -> Option<String> {
+    let offered = suggestions.and_then(Value::as_array).filter(|s| !s.is_empty());
+    if let (Some(rules), "", "PermissionRequest", Some("always")) = (offered, agent, event, decision.map(str::trim)) {
+        return Some(
+            json!({
+                "hookSpecificOutput": {
+                    "hookEventName": "PermissionRequest",
+                    "decision": { "behavior": "allow", "updatedPermissions": rules },
+                }
+            })
+            .to_string(),
+        );
+    }
+    stdout(agent, event, decision, question)
+}
+
 /// The documented PermissionRequest output. Anything we do not recognise prints
 /// nothing at all rather than guessing — silence is the safe answer.
 /// See https://code.claude.com/docs/en/hooks
@@ -276,5 +303,31 @@ mod tests {
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":"Tests"}}"#));
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":[]}}"#));
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests","Tests"]}}"#));
+    }
+
+    #[test]
+    fn always_saves_only_the_rules_claude_code_offered() {
+        let rules = json!([
+            { "type": "addRules", "rules": [{ "toolName": "Bash", "ruleContent": "npm test:*" }],
+              "behavior": "allow", "destination": "localSettings" }
+        ]);
+        let out = stdout_with("", "PermissionRequest", Some("always"), None, Some(&rules)).unwrap();
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["hookSpecificOutput"]["hookEventName"], "PermissionRequest");
+        assert_eq!(v["hookSpecificOutput"]["decision"]["behavior"], "allow");
+        assert_eq!(v["hookSpecificOutput"]["decision"]["updatedPermissions"], rules);
+
+        let plain = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#;
+        // Nothing offered: a plain allow, as before.
+        assert_eq!(stdout_with("", "PermissionRequest", Some("always"), None, None).unwrap(), plain);
+        assert_eq!(stdout_with("", "PermissionRequest", Some("always"), None, Some(&json!([]))).unwrap(), plain);
+        // A plain Allow never saves a rule, and Codex never gets the field.
+        assert_eq!(stdout_with("", "PermissionRequest", Some("allow"), None, Some(&rules)).unwrap(), plain);
+        assert_eq!(stdout_with("codex", "PermissionRequest", Some("always"), None, Some(&rules)).unwrap(), plain);
+        // No decision, or another event: rules or not, nothing is allowed.
+        assert_eq!(stdout_with("", "PermissionRequest", None, None, Some(&rules)), None);
+        assert_eq!(stdout_with("", "PreToolUse", Some("always"), None, Some(&rules)), None);
+        assert_eq!(stdout_with("", "PermissionRequest", Some("deny"), None, Some(&rules)).unwrap(),
+            r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#);
     }
 }
