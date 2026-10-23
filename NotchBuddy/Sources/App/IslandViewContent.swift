@@ -1597,6 +1597,8 @@ struct ChipFlowLayout: Layout {
 struct ModelPickerView: View {
     @ObservedObject var state: AppState
     @Binding var isPresented: Bool
+    @State private var query = ""
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1656,6 +1658,7 @@ struct ModelPickerView: View {
             state.fetchModelsIfNeeded(for: state.chatProvider)
         }
         .onChange(of: state.chatProvider) { _, provider in
+            query = ""
             if provider.isLocal {
                 state.fetchedProviderModels[provider] = nil
                 state.providerModelFetchError[provider] = nil
@@ -1681,48 +1684,109 @@ struct ModelPickerView: View {
                 .foregroundColor(Color(hex: "#8A8F98"))
                 .padding(.vertical, 4)
         } else if let models = state.fetchedProviderModels[state.chatProvider] {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(models, id: \.id) { model in
-                        Button {
-                            switch state.chatProvider {
-                            case .anthropic: state.claudeModel = model.id
-                            case .google:    state.googleChatModel = model.id
-                            case .openai:    state.openAIChatModel = model.id
-                            case .ollama:    state.ollamaChatModel = model.id
-                            case .lmstudio:  state.lmstudioChatModel = model.id
-                            case .deepseek:  state.deepseekChatModel = model.id
-                            case .qwen:      state.qwenChatModel = model.id
-                            case .moonshot:  state.moonshotChatModel = model.id
-                            }
-                            isPresented = false
-                            SoundEngine.shared.play("blip")
-                        } label: {
-                            HStack {
-                                Text(model.label)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(state.activeChatModel == model.id
-                                                     ? Color(hex: state.chatProvider.accentHex)
-                                                     : Color(hex: "#C8CDD4"))
-                                Spacer()
-                                if state.activeChatModel == model.id {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(Color(hex: state.chatProvider.accentHex))
+            let shown = filtered(models)
+            VStack(alignment: .leading, spacing: 8) {
+                if models.count > Self.searchThreshold {
+                    searchField(firstMatch: shown.first)
+                }
+                if shown.isEmpty {
+                    Text("No model matches “\(query)”.")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8A8F98"))
+                        .padding(.vertical, 4)
+                }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(shown, id: \.id) { model in
+                            Button {
+                                select(model.id)
+                            } label: {
+                                HStack {
+                                    Text(model.label)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(state.activeChatModel == model.id
+                                                         ? Color(hex: state.chatProvider.accentHex)
+                                                         : Color(hex: "#C8CDD4"))
+                                    Spacer()
+                                    if state.activeChatModel == model.id {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundColor(Color(hex: state.chatProvider.accentHex))
+                                    }
                                 }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(state.activeChatModel == model.id
+                                            ? Color(hex: state.chatProvider.accentHex).opacity(0.1)
+                                            : Color.clear)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .background(state.activeChatModel == model.id
-                                        ? Color(hex: state.chatProvider.accentHex).opacity(0.1)
-                                        : Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
         }
+    }
+
+    /// Short lists (a handful of Anthropic or local models) stay as they were.
+    private static let searchThreshold = 8
+
+    private func searchField(firstMatch: (id: String, label: String)?) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8A8F98"))
+            TextField("Search models", text: $query)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundColor(Color(hex: "#C8CDD4"))
+                .focused($searchFocused)
+                // Return picks the first match.
+                .onSubmit { if let firstMatch { select(firstMatch.id) } }
+            if !query.isEmpty {
+                Button { query = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8A8F98"))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.white.opacity(0.06))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(
+            searchFocused ? Color(hex: state.chatProvider.accentHex).opacity(0.5) : Color.white.opacity(0.1),
+            lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    /// Every word of the query must appear in the model's name or ID, in any order
+    /// ("claude sonnet", "free llama", "gpt 4o").
+    private func filtered(_ models: [(id: String, label: String)]) -> [(id: String, label: String)] {
+        let words = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !words.isEmpty else { return models }
+        return models.filter { model in
+            let haystack = model.label + " " + model.id
+            return words.allSatisfy { haystack.range(of: $0, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+        }
+    }
+
+    private func select(_ id: String) {
+        switch state.chatProvider {
+        case .anthropic: state.claudeModel = id
+        case .google:    state.googleChatModel = id
+        case .openai:    state.openAIChatModel = id
+        case .ollama:    state.ollamaChatModel = id
+        case .lmstudio:  state.lmstudioChatModel = id
+        case .deepseek:  state.deepseekChatModel = id
+        case .qwen:      state.qwenChatModel = id
+        case .moonshot:  state.moonshotChatModel = id
+        case .openrouter: state.openrouterChatModel = id
+        }
+        isPresented = false
+        SoundEngine.shared.play("blip")
     }
 }
 

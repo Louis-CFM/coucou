@@ -186,6 +186,7 @@ final class MacDictation: @unchecked Sendable {
     nonisolated private static func startEngine(_ engine: AVAudioEngine, feeding requests: [SFSpeechAudioBufferRecognitionRequest],
                                                 bands: FlowAudioBands? = nil) -> Bool {
         let input = engine.inputNode
+        guard input.hasMicrophone else { return false }
         input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { buffer, _ in
             for request in requests { request.append(buffer) }
             bands?.consume(buffer)
