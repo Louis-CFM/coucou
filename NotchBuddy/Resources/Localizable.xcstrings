@@ -52773,7 +52773,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "через %lld ч %lld мин"
+            "value" : "через %lld ч %lld"
           }
         },
         "th" : {
