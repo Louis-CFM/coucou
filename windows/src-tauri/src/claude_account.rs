@@ -27,6 +27,18 @@ const SIGN_IN: &str = "https://claude.ai/login";
 const QUIET: &str = "https://claude.ai/api/organizations";
 const REPORT_HOST: &str = "coucou-report.invalid";
 const EVERY: Duration = Duration::from_secs(60);
+/// Where the window waits while hidden. A hidden WebView2 still sets the cursor
+/// for its page wherever its rectangle is: left in the middle of the screen, it
+/// fought every window under it (the I-beam over the settings page's text blinked
+/// to an arrow twice a second). Off the screen, the pointer is never "on" it.
+const AWAY: (i32, i32) = (-32000, -32000);
+
+/// Hidden, out of the taskbar and off the screen.
+fn step_aside(w: &tauri::WebviewWindow) {
+    let _ = w.hide();
+    let _ = w.set_skip_taskbar(true);
+    let _ = w.set_position(tauri::PhysicalPosition::new(AWAY.0, AWAY.1));
+}
 /// Numbers older than this aren't live any more: the Claude app's record is used instead.
 pub const FRESH_MS: f64 = 5.0 * 60_000.0;
 
@@ -154,7 +166,7 @@ fn report(app: &AppHandle, fragment: &str) {
         // Signed in: the window steps out of the way and waits, hidden, on a quiet page.
         if was_signing_in {
             if let Some(w) = app.get_webview_window(LABEL) {
-                let _ = w.hide();
+                step_aside(&w);
                 if let Ok(url) = QUIET.parse() {
                     let _ = w.navigate(url);
                 }
@@ -188,10 +200,11 @@ fn window(app: &AppHandle, show: bool) -> Option<tauri::WebviewWindow> {
     let url = if show { SIGN_IN } else { QUIET };
     let reporter = app.clone();
     let loaded = app.clone();
-    WebviewWindowBuilder::new(app, LABEL, WebviewUrl::External(url.parse().ok()?))
+    let builder = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::External(url.parse().ok()?))
         .title(crate::i18n::t("Sign in to Claude"))
-        .inner_size(480.0, 720.0)
-        .center()
+        .inner_size(480.0, 720.0);
+    let builder = if show { builder.center() } else { builder.position(AWAY.0 as f64, AWAY.1 as f64) };
+    builder
         .visible(show)
         .skip_taskbar(!show)
         .data_directory(data_dir())
@@ -244,6 +257,7 @@ pub async fn claude_account_connect(app: AppHandle) {
         }
         let _ = w.set_skip_taskbar(false);
         let _ = w.unminimize();
+        let _ = w.center();
         let _ = w.show();
         let _ = w.set_focus();
         ACCOUNT.lock().unwrap().window_made = true;
@@ -305,8 +319,7 @@ pub fn start(app: &AppHandle) {
                     let _ = std::fs::create_dir_all(crate::platform::local_dir());
                     let _ = std::fs::write(marker(), b"1");
                     if let Some(w) = app.get_webview_window(LABEL) {
-                        let _ = w.hide();
-                        let _ = w.set_skip_taskbar(true);
+                        step_aside(&w);
                         if let Ok(url) = QUIET.parse() {
                             let _ = w.navigate(url);
                         }
