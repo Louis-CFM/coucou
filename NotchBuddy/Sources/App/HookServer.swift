@@ -44,15 +44,18 @@ final class HookServer: @unchecked Sendable {
     /// One read source per queued request: it notices the client hanging up, and its
     /// cancel handler is the only place the request's fd is closed.
     private var approvalSources: [UUID: any DispatchSourceRead] = [:]
-    private var pendingQuestionFD: Int32 = -1         // held open while user answers AskUserQuestion
-    private var questionFDSource: (any DispatchSourceRead)? = nil  // monitors pendingQuestionFD
+    /// AskUserQuestions waiting for an answer, oldest first, one per session; the head is on
+    /// the card. Each one holds its nb-hook connection open until it is answered or dropped.
+    private var questions = QuestionQueue()
+    /// One read source per waiting question: it notices the client hanging up, and its
+    /// cancel handler is the only place the question's fd is closed.
+    private var questionSources: [UUID: any DispatchSourceRead] = [:]
+    private var shownQuestion: UUID? = nil            // the question the card shows
 
     /// True when a real nb-hook connection is holding the approval fd open.
     @MainActor var hasRealPendingApproval: Bool { !approvals.isEmpty }
-    /// True when a real nb-hook connection is holding the question fd open.
-    @MainActor var hasRealPendingQuestion: Bool { pendingQuestionFD >= 0 }
-    private var questionPillId: String = ""           // pill that owns the pending question
-    private var questionSessionId: String = ""        // sessionId for the pending question (recap tracking)
+    /// True when a real nb-hook connection is holding a question fd open.
+    @MainActor var hasRealPendingQuestion: Bool { !questions.isEmpty }
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
     private var activeSessionId: String? = nil        // current Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
@@ -138,7 +141,8 @@ final class HookServer: @unchecked Sendable {
 
         let state = AppState.shared
         if !approvals.hasEntries(forPill: entry.pillId) {
-            state.updateTask(id: entry.pillId, state: .working)
+            // A question from another session on this pill may still be waiting.
+            state.updateTask(id: entry.pillId, state: questionWaits(onPill: entry.pillId) ? .question : .working)
             clearPillBadge(id: entry.pillId)
         }
         if approvals.head != nil {
@@ -165,103 +169,142 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
-    // MARK: - Question fd helpers
+    // MARK: - Question queue helpers
 
+    /// True while a question from a session behind `pill` waits for its answer. The pill keeps
+    /// its question state meanwhile: the iPhone and the Live Activity read the question from it.
     @MainActor
-    private func cancelQuestionFDSource() {
-        questionFDSource?.cancel()
-        questionFDSource = nil
+    private func questionWaits(onPill pill: String) -> Bool {
+        questions.hasEntries(forPill: pill)
     }
 
+    /// Puts the oldest waiting question on the card. When the card already shows it, only
+    /// the list the card and the iPhone read is refreshed (no sound, no focus change).
     @MainActor
-    private func dismissQuestionCard(note: String) {
-        cancelQuestionFDSource()
-        pendingQuestionFD = -1
+    private func showQuestionHead() {
         let state = AppState.shared
-        let pillId = questionPillId
-        state.pendingQuestion = nil
-        state.isPinned = false
-        state.updateTask(id: pillId, state: .working)
-        clearPillBadge(id: pillId)
-        if let prev = focusBeforeQuestion {
-            focusBeforeQuestion = nil
-            if state.focusId == pillId, state.tasks.contains(where: { $0.id == prev }) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
-            }
-        }
-        if !note.isEmpty {
-            state.noteMessage = note
-            state.view = .note
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                NotificationCenter.default.post(name: .islandCollapse, object: nil)
-            }
-        } else {
-            state.view = state.tasks.isEmpty ? .empty : .overview
-        }
+        state.waitingQuestions = questions.entries
+        guard let head = questions.head, shownQuestion != head.id else { return }
+        shownQuestion = head.id
+        state.pendingQuestion = head.question
+        state.isPinned = true
+        if focusBeforeQuestion == nil { focusBeforeQuestion = state.focusId }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = head.pillId }
+        expandIfNeeded(to: .question)
     }
 
-    /// Called by QuestionView. Sends answers JSON and cleans up.
+    /// Takes one question out of the queue. With `answer`, the line is written to its nb-hook
+    /// first; without, the connection just closes and the agent asks again itself. The cancel
+    /// handler of its source closes the fd — never close it directly. The next question then
+    /// takes the card; when none is left the card closes.
     @MainActor
-    func sendQuestionAnswers(_ answers: [String: Any]) {
-        // Only intercept a demo question — real questions always have a live fd.
-        if DemoEngine.shared.isActive, pendingQuestionFD < 0 {
-            AppState.shared.pendingQuestion = nil
-            AppState.shared.isPinned = false
-            AppState.shared.view = AppState.shared.tasks.isEmpty ? .empty : .overview
-            DemoEngine.shared.handleQuestionAnswered(answers: answers)
-            return
-        }
-        let fd = pendingQuestionFD
-        pendingQuestionFD = -1
-        let source = questionFDSource
-        questionFDSource = nil
-        let sid = questionSessionId
-        questionSessionId = ""
-        if fd >= 0, let data = try? JSONSerialization.data(withJSONObject: ["permissionDecision": "answer", "answers": answers], options: .withoutEscapingSlashes),
-           let json = String(data: data, encoding: .utf8) {
+    private func removeQuestion(id: UUID, answer json: String? = nil) {
+        guard let entry = questions.remove(id: id) else { return }
+        let source = questionSources.removeValue(forKey: id)
+        if let json {
+            let fd = entry.fd
             Task.detached { [weak self] in
+                // Write while the fd is still valid, then cancel → the cancel handler closes it.
                 self?.sendLine(fd: fd, text: json)
                 DispatchQueue.main.async { source?.cancel() }
             }
         } else {
             source?.cancel()
         }
-        if !sid.isEmpty { RecapStore.shared.recordQuestionAnswered(sessionId: sid) }
-        dismissQuestionCard(note: "")
+
+        let state = AppState.shared
+        if !questions.hasEntries(forPill: entry.pillId) {
+            let approval = approvals.hasEntries(forPill: entry.pillId)
+            state.updateTask(id: entry.pillId, state: approval ? .approval : .working)
+            if !approval { clearPillBadge(id: entry.pillId) }
+        }
+        if questions.head != nil {
+            showQuestionHead()
+            return
+        }
+        state.waitingQuestions = []
+        closeQuestionCard(pill: entry.pillId)
     }
 
-    /// Called by QuestionView.onDisappear — card left screen without an explicit answer.
-    /// Sends "ask" immediately to unblock nb-hook; does NOT navigate (view already changed).
+    /// No question left: close the card and give the focus back.
+    @MainActor
+    private func closeQuestionCard(pill: String?) {
+        let state = AppState.shared
+        shownQuestion = nil
+        state.pendingQuestion = nil
+        state.isPinned = false
+        if let prev = focusBeforeQuestion {
+            focusBeforeQuestion = nil
+            if let pill, state.focusId == pill, state.tasks.contains(where: { $0.id == prev }) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+            }
+        }
+        state.view = state.tasks.isEmpty ? .empty : .overview
+    }
+
+    /// The question `id` (the one the card or the iPhone showed), else the card's.
+    /// nil when that question no longer waits.
+    @MainActor
+    private func waitingQuestion(_ id: UUID?) -> QueuedQuestion? {
+        guard let id else { return questions.head }
+        guard let entry = questions.entry(id: id) else {
+            nbLog("Answer for a question no longer waiting, ignored")
+            return nil
+        }
+        return entry
+    }
+
+    /// Called by QuestionView and the iPhone. Sends the answers to the session that asked
+    /// question `id` (the card's when nil), then the next question takes the card.
+    @MainActor
+    func sendQuestionAnswers(_ answers: [String: Any], for id: UUID? = nil) {
+        // Only intercept a demo question — real questions always have a live fd.
+        if DemoEngine.shared.isActive, questions.isEmpty {
+            AppState.shared.pendingQuestion = nil
+            AppState.shared.isPinned = false
+            AppState.shared.view = AppState.shared.tasks.isEmpty ? .empty : .overview
+            DemoEngine.shared.handleQuestionAnswered(answers: answers)
+            return
+        }
+        guard !questions.isEmpty else { closeQuestionCard(pill: nil); return }
+        guard let entry = waitingQuestion(id) else { return }
+        guard let data = try? JSONSerialization.data(withJSONObject: ["permissionDecision": "answer", "answers": answers], options: .withoutEscapingSlashes),
+              let json = String(data: data, encoding: .utf8) else {
+            removeQuestion(id: entry.id)
+            return
+        }
+        RecapStore.shared.recordQuestionAnswered(sessionId: entry.sessionId)
+        removeQuestion(id: entry.id, answer: json)
+    }
+
+    /// Called by QuestionView.onDisappear — the card left the screen without an answer.
+    /// Every waiting question goes back to its terminal ("ask") at once, since none of them
+    /// is on screen any more; does NOT navigate (view already changed).
     @MainActor
     func releaseQuestionFD() {
-        guard pendingQuestionFD >= 0 else { return }
-        let fd = pendingQuestionFD
-        pendingQuestionFD = -1
-        let source = questionFDSource
-        questionFDSource = nil
-        AppState.shared.pendingQuestion = nil
-        Task.detached { [weak self] in
-            self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
-            DispatchQueue.main.async { source?.cancel() }
-        }
-    }
-
-    /// Called by QuestionView "Reply in terminal" button.
-    @MainActor
-    func sendQuestionAsk() {
-        let fd = pendingQuestionFD
-        pendingQuestionFD = -1
-        let source = questionFDSource
-        questionFDSource = nil
-        if fd >= 0 {
+        guard !questions.isEmpty else { return }
+        let state = AppState.shared
+        for entry in questions.removeAll() {
+            let source = questionSources.removeValue(forKey: entry.id)
+            let fd = entry.fd
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 DispatchQueue.main.async { source?.cancel() }
             }
-        } else {
-            source?.cancel()
+            if !approvals.hasEntries(forPill: entry.pillId) { state.updateTask(id: entry.pillId, state: .working) }
         }
-        dismissQuestionCard(note: "")
+        shownQuestion = nil
+        state.waitingQuestions = []
+        state.pendingQuestion = nil
+    }
+
+    /// Called by QuestionView "Reply in terminal" button: question `id` (the card's when nil)
+    /// goes back to its terminal.
+    @MainActor
+    func sendQuestionAsk(for id: UUID? = nil) {
+        guard !questions.isEmpty else { closeQuestionCard(pill: nil); return }
+        guard let entry = waitingQuestion(id) else { return }
+        removeQuestion(id: entry.id, answer: #"{"permissionDecision":"ask"}"#)
     }
 
     /// Returns the tool_input serialized as sorted-keys JSON, "" if absent or empty.
@@ -511,9 +554,14 @@ final class HookServer: @unchecked Sendable {
                 return
             }
         }
-        // A sibling session's event must not take the pill out of its approval state.
+        // A sibling session's event must not take the pill out of its approval state,
+        // nor out of the question state while a question waits on it.
         defer {
-            if approvals.hasEntries(forPill: agentId) { state.updateTask(id: agentId, state: .approval) }
+            if approvals.hasEntries(forPill: agentId) {
+                state.updateTask(id: agentId, state: .approval)
+            } else if questionWaits(onPill: agentId) {
+                state.updateTask(id: agentId, state: .question)
+            }
         }
 
         switch name {
@@ -1039,22 +1087,31 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        // Displace any previous question waiting for an answer.
-        if pendingQuestionFD >= 0 {
-            let old = pendingQuestionFD
-            let oldSrc = questionFDSource
-            questionFDSource = nil
+        // Several sessions can wait on a question at once: they queue, the card shows the
+        // oldest, and each answer goes back to the session that asked. A session asking again
+        // replaces its own older question; past the cap, the newest goes back to its terminal.
+        let entry = QueuedQuestion(id: UUID(), fd: fd,
+                                   sessionId: (sessionId == "unknown" || sessionId.isEmpty) ? "\(pillId)+\(cwd)" : sessionId,
+                                   pillId: pillId, projectName: projectName, cwd: cwd, question: parsed)
+        switch questions.enqueue(entry) {
+        case .rejectedFull:
+            nbLog("Question: \(QuestionQueue.maxPending) already waiting, asked in the terminal")
             Task.detached { [weak self] in
-                self?.sendLine(fd: old, text: #"{"permissionDecision":"ask"}"#)
-                DispatchQueue.main.async { oldSrc?.cancel() }
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
             }
+            return
+        case .accepted(let replaced?):
+            let oldSource = questionSources.removeValue(forKey: replaced.id)
+            let oldFD = replaced.fd
+            Task.detached { [weak self] in
+                self?.sendLine(fd: oldFD, text: #"{"permissionDecision":"ask"}"#)
+                DispatchQueue.main.async { oldSource?.cancel() }
+            }
+        case .accepted(nil):
+            break
         }
-        pendingQuestionFD = fd
         activeSessionId = sessionId
-        questionPillId = pillId
-        questionSessionId = (sessionId == "unknown" || sessionId.isEmpty)
-            ? "\(pillId)+\(cwd)"
-            : sessionId
 
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
@@ -1062,37 +1119,27 @@ final class HookServer: @unchecked Sendable {
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
-        state.pendingQuestion = parsed
-        state.isPinned = true
         SoundEngine.shared.play("approval")
 
-        if focusBeforeQuestion == nil { focusBeforeQuestion = state.focusId }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = pillId }
-        expandIfNeeded(to: .question)
-
+        // Monitor fd: if the agent closes the connection (stopped or answered in its own UI),
+        // drop the question. The cancel handler closes the fd — never close it anywhere else.
+        let entryId = entry.id
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
         source.setEventHandler { [weak self] in
-            guard let self, self.pendingQuestionFD == fd else { return }
-            self.dismissQuestionCard(note: "")
+            guard let self, self.questions.contains(id: entryId) else { return }
+            self.removeQuestion(id: entryId)
         }
         source.setCancelHandler { close(fd) }
         source.resume()
-        questionFDSource = source
+        questionSources[entryId] = source
 
-        let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
-            guard let self, self.pendingQuestionFD == captured else { return }
+            guard let self, self.questions.contains(id: entryId) else { return }
             // Send "ask" so nb-hook exits cleanly; Claude Code re-asks in terminal.
-            let askFD = self.pendingQuestionFD
-            self.pendingQuestionFD = -1
-            let src = self.questionFDSource
-            self.questionFDSource = nil
-            Task.detached { [weak self] in
-                self?.sendLine(fd: askFD, text: #"{"permissionDecision":"ask"}"#)
-                DispatchQueue.main.async { src?.cancel() }
-            }
-            self.dismissQuestionCard(note: "")
+            self.removeQuestion(id: entryId, answer: #"{"permissionDecision":"ask"}"#)
         }
+
+        showQuestionHead()
     }
 
     /// "VS Code", "Warp"… — where the Claude Code pill's current session runs.

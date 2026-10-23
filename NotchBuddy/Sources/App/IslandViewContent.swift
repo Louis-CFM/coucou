@@ -438,8 +438,18 @@ struct QuestionView: View {
     // Per-question "Other…" mode active
     @State private var showOther: [Bool] = []
     @FocusState private var otherFieldFocused: Bool
+    // The queued question this card's choices belong to: an answer goes to that one only.
+    @State private var shownId: UUID?
 
     var question: AskQuestion? { state.pendingQuestion }
+
+    /// With questions from several sessions waiting, the pill named after the session that asks.
+    private var asker: AgentTask? {
+        guard state.waitingQuestions.count > 1, let head = state.waitingQuestions.first,
+              var task = state.tasks.first(where: { $0.id == head.pillId }) else { return nil }
+        if !head.projectName.isEmpty { task.name = head.projectName }
+        return task
+    }
 
     var body: some View {
         ZStack {
@@ -457,14 +467,21 @@ struct QuestionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     // Header row: agent name + question counter + "Reply in terminal" link
                     HStack(spacing: 4) {
-                        AgentWho(task: nil, label: "Claude Code is asking")
+                        AgentWho(task: asker, label: "Claude Code is asking")
+                        // Questions from other sessions waiting behind this one: "+2".
+                        if state.waitingQuestions.count > 1 {
+                            Text(verbatim: "+\(state.waitingQuestions.count - 1)")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                                .monospacedDigit()
+                        }
                         Spacer(minLength: 4)
                         if q.questions.count > 1 {
                             Text("\(qi + 1)/\(q.questions.count)")
                                 .font(.system(size: 10))
                                 .foregroundColor(Color(hex: "#6B7079"))
                         }
-                        Button("Reply in terminal") { HookServer.shared.sendQuestionAsk() }
+                        Button("Reply in terminal") { HookServer.shared.sendQuestionAsk(for: shownId) }
                             .buttonStyle(.plain)
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#6B7079"))
@@ -597,10 +614,13 @@ struct QuestionView: View {
         }
         .onAppear { resetQuestionState() }
         .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
+        // The next session's question can read the same as the one just answered.
+        .onChange(of: state.waitingQuestions.first?.id) { _, _ in resetQuestionState() }
         .onDisappear { HookServer.shared.releaseQuestionFD() }
     }
 
     private func resetQuestionState() {
+        shownId = state.waitingQuestions.first?.id
         questionIndex = 0
         let count = state.pendingQuestion?.questions.count ?? 0
         selections = Array(repeating: [], count: count)
@@ -644,7 +664,7 @@ struct QuestionView: View {
 
     private func sendAnswers(q: AskQuestion) {
         let answers = AskQuestion.buildAnswers(questions: q.questions, selections: selections)
-        HookServer.shared.sendQuestionAnswers(answers)
+        HookServer.shared.sendQuestionAnswers(answers, for: shownId)
     }
 }
 

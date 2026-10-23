@@ -414,6 +414,10 @@ final class AppState: ObservableObject {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
     }
 
+    /// Every AskUserQuestion waiting for an answer, oldest first: the first one is on the
+    /// card (`pendingQuestion`). Written by HookServer only; empty for a demo question.
+    @Published var waitingQuestions: [QueuedQuestion] = []
+
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
     var sessionDiffs: [String: [FileDiff]] = [:]

@@ -55,9 +55,9 @@ final class SessionPublisher {
         guard cancellable == nil else { return }
         let state = AppState.shared
         cancellable = state.$tasks
-            .combineLatest(state.$pendingApproval, state.$pendingQuestion)
-            .map { tasks, approval, question in
-                SessionSnapshot.all(tasks: tasks, approval: approval, question: question)
+            .combineLatest(state.$pendingApproval, state.$waitingQuestions)
+            .map { tasks, approval, questions in
+                SessionSnapshot.all(tasks: tasks, approval: approval, questions: questions)
             }
             .removeDuplicates()
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
@@ -176,15 +176,17 @@ struct SessionSnapshot: Equatable {
     var questionFingerprint: String = ""
 
     static func all(tasks: [AgentTask], approval: ApprovalInfo?,
-                    question: AskQuestion?) -> [String: SessionSnapshot] {
+                    questions: [QueuedQuestion]) -> [String: SessionSnapshot] {
         var result: [String: SessionSnapshot] = [:]
         // Services (Stripe, GitHub…) go through ServicePublisher, with their data.
         for task in tasks where task.source != .n8n && PillCatalog.isSession(task.id) {
             let hasApproval = approval?.pillId == task.id
-            let questionText = task.state == .question
-                ? (question?.questions.map(\.question).joined(separator: "\n") ?? "")
-                : ""
-            let payload = task.state == .question ? question.map(QuestionPayload.init(ask:)) : nil
+            // The pill's record carries the first question behind it, as it always has.
+            let question = task.state == .question
+                ? questions.first(where: { $0.pillId == task.id && $0.slot == 1 })?.question
+                : nil
+            let questionText = question?.questions.map(\.question).joined(separator: "\n") ?? ""
+            let payload = question.map(QuestionPayload.init(ask:))
             result[task.id] = SessionSnapshot(
                 pillId: task.id,
                 name: task.name,
@@ -200,6 +202,26 @@ struct SessionSnapshot: Equatable {
                 question: questionText,
                 questionPayload: payload?.json ?? "",
                 questionFingerprint: payload?.fingerprint ?? "")
+            // Questions from other sessions behind the same pill get a record of their own
+            // ("<pill>#2"…), so each one shows up and is answered on its own.
+            for entry in questions where entry.pillId == task.id && entry.slot > 1 {
+                let payload = QuestionPayload(ask: entry.question)
+                result[entry.phoneRecordId] = SessionSnapshot(
+                    pillId: entry.phoneRecordId,
+                    name: entry.projectName,
+                    color: task.color,
+                    state: BotState.question.rawValue,
+                    stepIndex: 0,
+                    steps: [],
+                    cwd: entry.cwd,
+                    finalLine: "",
+                    approvalTool: "",
+                    approvalCommand: "",
+                    approvalFingerprint: "",
+                    question: entry.question.questions.map(\.question).joined(separator: "\n"),
+                    questionPayload: payload.json,
+                    questionFingerprint: payload.fingerprint)
+            }
         }
         return result
     }

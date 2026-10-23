@@ -146,8 +146,11 @@ enum PillCatalog {
     /// Default ID for the always-on main workspace pill.
     static let defaultMainPillId = "integration_claude"
 
-    /// Looks up a definition by task ID (nil if not in catalog).
+    /// Looks up a definition by task ID (nil if not in catalog). The iPhone record of a second
+    /// question behind a pill ("integration_claude#2", QueuedQuestion.phoneRecordId) reads as
+    /// that pill; pill IDs themselves never contain "#".
     static func definition(for id: String) -> PillDefinition? {
-        all.first { $0.id == id }
+        let pill = id.firstIndex(of: "#").map { String(id[..<$0]) } ?? id
+        return all.first { $0.id == pill }
     }
 }
