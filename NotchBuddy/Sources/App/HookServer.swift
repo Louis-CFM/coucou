@@ -319,7 +319,11 @@ final class HookServer: @unchecked Sendable {
 
         while true {
             let clientFD = Darwin.accept(fd, nil, nil)
-            guard clientFD >= 0 else { break }
+            guard clientFD >= 0 else {
+                // Never end the server on a failed accept (#853); pause unless it was transient
+                if errno != EINTR && errno != ECONNABORTED { usleep(100_000) }
+                continue
+            }
             // Reject connections from other users (same-UID check)
             var euid: uid_t = 0
             var egid: gid_t = 0

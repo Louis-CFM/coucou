@@ -84,6 +84,10 @@ pub fn start(app: AppHandle) {
         };
         loop {
             if server.connect().await.is_err() {
+                // A failed instance never connects again (#853): listen on a fresh one.
+                if let Ok(fresh) = ServerOptions::new().create(&name) {
+                    server = fresh;
+                }
                 tokio::time::sleep(Duration::from_millis(200)).await;
                 continue;
             }
