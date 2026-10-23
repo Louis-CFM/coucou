@@ -25,6 +25,8 @@ export interface WaMessage {
   date: number;
   fromMe: boolean;
   mentionsMe: boolean;
+  /** WhatsApp's "Forwarded" (GOWA's webhook only; the big WhatsApp chat shows it). */
+  forwarded?: boolean;
 }
 
 export interface WaConversation {
@@ -42,7 +44,7 @@ export type WaLink =
   | { state: "failed"; detail: string };
 
 export type WaSendError =
-  | { code: "tooLong" | "tooFast" | "unreachable" | "unauthorized" | "needsQr" }
+  | { code: "tooLong" | "tooFast" | "unreachable" | "unauthorized" | "needsQr" | "tooBig" | "notMedia" }
   | { code: "refused"; detail: string };
 
 /** IslandView in src-tauri/src/whatsapp/mod.rs. */
@@ -211,12 +213,48 @@ export function sendErrorLabel(e: WaSendError): string {
     case "unauthorized": return t("The gateway refuses the credentials");
     case "needsQr": return t("Scan the QR code in Settings");
     case "refused": return e.detail;
+    case "tooBig": return t("Too big to send (16 MB at most).");
+    case "notMedia": return t("Only photos and videos can be sent here.");
   }
 }
 
 /** The last ten messages of a conversation, oldest first: what the open card shows. */
 export function lastMessages(c: WaConversation, count = 10): WaMessage[] {
   return c.messages.slice(-count);
+}
+
+/** ChatSummary in src-tauri/src/whatsapp/mod.rs: a chat of the gateway's own list. */
+export interface WaChatSummary {
+  id: string;
+  name: string;
+  isGroup: boolean;
+  lastActivity: number;
+  /** Archived on the phone: under "Archived", not in the list. */
+  archived: boolean;
+}
+
+/** The big WhatsApp chat's list: the inbox's conversations, then the gateway's other chats
+ *  (no message yet), newest first. `archived`: only the chats archived on the phone, or only the
+ *  others; left out, all of them. */
+export function chatList(conversations: WaConversation[], gateway: WaChatSummary[], archived?: boolean): WaConversation[] {
+  const known = new Set(conversations.map((c) => c.id));
+  const hidden = new Set(gateway.filter((c) => c.archived).map((c) => c.id));
+  const others = gateway
+    .filter((c) => !known.has(c.id))
+    .map(({ id, name, isGroup, lastActivity }) => ({ id, name, isGroup, lastActivity, messages: [], unread: 0 }));
+  return [...conversations, ...others]
+    .filter((c) => archived === undefined || hidden.has(c.id) === archived)
+    .sort((a, b) => b.lastActivity - a.lastActivity);
+}
+
+/** The ceiling for a photo or video sent from the big WhatsApp chat (provider.rs MAX_MEDIA). */
+export const MAX_MEDIA_BYTES = 16 * 1024 * 1024;
+
+/** The older pages and the inbox's latest together: once each, oldest first. */
+export function mergeMessages(older: WaMessage[], latest: WaMessage[]): WaMessage[] {
+  const byId = new Map<string, WaMessage>();
+  for (const m of [...older, ...latest]) byId.set(m.id, m);
+  return [...byId.values()].sort((a, b) => a.date - b.date);
 }
 
 /** Enter sends, Shift+Enter is a new line; IME composition never sends. */

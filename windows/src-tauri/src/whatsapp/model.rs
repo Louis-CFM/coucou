@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
-/// What a message holds besides text: only a label is shown, the media itself is never fetched.
+/// What a message holds besides text: a label, and for a photo or video the bytes the big WhatsApp
+/// chat fetches through the gateway when it shows one (in memory, never on disk).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Media {
@@ -39,6 +40,8 @@ pub struct Message {
     pub from_me: bool,
     /// The message mentions this account (only meaningful in groups).
     pub mentions_me: bool,
+    /// WhatsApp's "Forwarded" (only GOWA's webhook says so; stored messages don't carry it).
+    pub forwarded: bool,
     /// Set by the gateway when the chat name came with the message.
     #[serde(skip)]
     pub chat_name: Option<String>,
@@ -56,6 +59,7 @@ impl Message {
             date,
             from_me: false,
             mentions_me: false,
+            forwarded: false,
             chat_name: None,
         }
     }
