@@ -155,6 +155,16 @@ test("the main pill is a workspace tool that works here", () => {
   assert.equal(DEFAULT_MAIN_PILL, "integration_claude");
 });
 
+test("Claude Desktop can be the main pill where the Claude app exists", () => {
+  assert.deepEqual(mainPillChoices("windows").map((p) => p.id), [
+    "integration_claude", "agent_cursor", "agent_antigravity", "agent_codex", "agent_claude-desktop",
+  ]);
+  assert.ok(!mainPillChoices("linux").some((p) => p.id === "agent_claude-desktop"));
+  const d = sanitizeDeclared({ mainPill: "agent_claude-desktop", activeIntegrations: ["agent_claude-desktop", "agent_cursor"] }, "windows");
+  assert.deepEqual(d, { mainPill: "agent_claude-desktop", activeIntegrations: ["agent_cursor"] });
+  assert.equal(sanitizeDeclared({ mainPill: "agent_claude-desktop", activeIntegrations: [] }, "linux").mainPill, "integration_claude");
+});
+
 test("hook-driven pills are the workspace tools and the agents with hooks", () => {
   for (const id of ["integration_claude", "agent_cursor", "agent_codex", "agent_gemini", "agent_copilot", "agent_muse", "agent_antigravity", "agent_opencode", "agent_amp", "agent_hermes"]) {
     assert.ok(isHookPill(id), id);
@@ -188,8 +198,9 @@ test("a declaration from an older or edited settings file is made usable", () =>
     sanitizeDeclared({ activeIntegrations: ["integration_github"] }, "windows"),
     { mainPill: "integration_claude", activeIntegrations: ["integration_github"] },
   );
+  // Claude Desktop may be the main pill on Windows, where the Claude app runs.
   assert.equal(sanitizeDeclared({ mainPill: "agent_claude-desktop", activeIntegrations: [] }, "windows").mainPill,
-    "integration_claude");
+    "agent_claude-desktop");
 });
 
 test("up to four pills next to the main one, never the main one itself", () => {
