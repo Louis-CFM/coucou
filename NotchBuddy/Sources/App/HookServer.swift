@@ -138,7 +138,8 @@ final class HookServer: @unchecked Sendable {
 
         let state = AppState.shared
         if !approvals.hasEntries(forPill: entry.pillId) {
-            state.updateTask(id: entry.pillId, state: .working)
+            // A question from another session on this pill may still be waiting.
+            state.updateTask(id: entry.pillId, state: questionWaits(onPill: entry.pillId) ? .question : .working)
             clearPillBadge(id: entry.pillId)
         }
         if approvals.head != nil {
@@ -166,6 +167,13 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Question fd helpers
+
+    /// True while a question holds its nb-hook connection open on `pill`. The pill keeps its
+    /// question state meanwhile: the iPhone and the Live Activity read the question from it.
+    @MainActor
+    private func questionWaits(onPill pill: String) -> Bool {
+        pendingQuestionFD >= 0 && questionPillId == pill
+    }
 
     @MainActor
     private func cancelQuestionFDSource() {
@@ -511,9 +519,14 @@ final class HookServer: @unchecked Sendable {
                 return
             }
         }
-        // A sibling session's event must not take the pill out of its approval state.
+        // A sibling session's event must not take the pill out of its approval state,
+        // nor out of the question state while a question waits on it.
         defer {
-            if approvals.hasEntries(forPill: agentId) { state.updateTask(id: agentId, state: .approval) }
+            if approvals.hasEntries(forPill: agentId) {
+                state.updateTask(id: agentId, state: .approval)
+            } else if questionWaits(onPill: agentId) {
+                state.updateTask(id: agentId, state: .question)
+            }
         }
 
         switch name {
