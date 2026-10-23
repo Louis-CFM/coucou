@@ -788,7 +788,8 @@ final class HookServer: @unchecked Sendable {
 
     @MainActor
     private func processStatusLine(payload: [String: Any]) {
-        guard let usage = ClaudePlanGauge.parse(payload: payload) else { return }
+        guard let incoming = ClaudePlanGauge.parse(payload: payload) else { return }
+        let usage = ClaudePlanGauge.merge(AppState.shared.claudePlanUsage, with: incoming)
         // Claude Code calls the status line several times a second: publish (and save to
         // UserDefaults) only when the numbers change, or every 30 s for "updated … ago".
         if let cur = AppState.shared.claudePlanUsage,
