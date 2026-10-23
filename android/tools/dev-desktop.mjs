@@ -2,7 +2,7 @@
 // A pretend Coucou desktop for developing and testing the Android app without the real one.
 // Speaks docs/ANDROID_LINK.md (v1): TLS with a self-signed certificate, newline-delimited JSON.
 //
-//   node android/tools/dev-desktop.mjs [--host IP] [--port N] [--name "My PC"] [--step MS] [--once] [--fake-chat] [--details] [--answers] [--diffs] [--usage] [--services]
+//   node android/tools/dev-desktop.mjs [--host IP] [--port N] [--name "My PC"] [--step MS] [--once] [--fake-chat] [--details] [--answers] [--diffs] [--usage] [--recap] [--services]
 //
 // --details offers the "details" capability: the sessions then carry steps, finalLine, project (a folder
 // name) and color, like the real desktop with "Show session details on the phone" turned on. A phone that
@@ -19,6 +19,8 @@
 //
 // --usage offers the "usage" capability: a Claude plan (5 hours 63 %, week 21 %) and a Codex plan (week 31 %, 2 free
 // resets) sent when the phone connects and every few steps with the percentages moving, like the real desktop's pills.
+//
+// --recap offers the "recap" capability: last week's counts (FAKE numbers) sent once after the first sessions, for the phone's recap card.
 //
 // --services offers the "services" capability with two FAKE cards (Stripe and Notion), as if the user had ticked both.
 // The cards carry only a headline and short lines, like the real ones.
@@ -177,6 +179,7 @@ const server = tls.createServer({ key, cert, minVersion: "TLSv1.2" }, (sock) => 
   let answers = false;
   let diffs = false;
   let usage = false;
+  let recap = false;
   let services = false;
   let asked = null; // { fingerprint, questions }
   const sessionsMsg = (list) => ({ type: "sessions", sessions: diffs ? withFiles(details ? withDetails(list) : list) : details ? withDetails(list) : list });
@@ -247,8 +250,17 @@ const server = tls.createServer({ key, cert, minVersion: "TLSv1.2" }, (sock) => 
     });
   };
 
+  // Last week's recap (FAKE numbers), docs/ANDROID_LINK.md "Weekly recap": counts only, the Monday of the last completed week.
+  const sendRecap = () => {
+    if (!recap) return;
+    const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) - 7);
+    const week = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    send({ type: "recap", week, minutes: 340, sessions: 12, files: 40, added: 900, removed: 210, commands: 55, allowed: 20, denied: 3, topAgent: "Claude Code" });
+  };
+
   const advance = () => {
     sendUsage();
+    if (step === 0) sendRecap();
     if (step === 0) sendServices();
     const entries = script(Date.now());
     const e = entries[step % entries.length];
@@ -292,7 +304,8 @@ const server = tls.createServer({ key, cert, minVersion: "TLSv1.2" }, (sock) => 
       diffs = flag("diffs") && Array.isArray(m.caps) && m.caps.includes("diffs");
       services = flag("services") && Array.isArray(m.caps) && m.caps.includes("services");
       usage = flag("usage") && Array.isArray(m.caps) && m.caps.includes("usage");
-      const offered = [...(chat ? ["chat"] : []), ...(details ? ["details"] : []), ...(answers ? ["answers"] : []), ...(diffs ? ["diffs"] : []), ...(usage ? ["usage"] : []), ...(services ? ["services"] : [])];
+      recap = flag("recap") && Array.isArray(m.caps) && m.caps.includes("recap");
+      const offered = [...(chat ? ["chat"] : []), ...(details ? ["details"] : []), ...(answers ? ["answers"] : []), ...(diffs ? ["diffs"] : []), ...(usage ? ["usage"] : []), ...(recap ? ["recap"] : []), ...(services ? ["services"] : [])];
       send({ type: "welcome", v: V, desktop: NAME, os: process.platform, ...(offered.length ? { caps: offered } : {}) });
       advance();
       timer = setInterval(advance, STEP_MS);

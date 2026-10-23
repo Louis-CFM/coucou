@@ -12,6 +12,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.coucou.android.mochi.MochiPainter.drawMochi
 
+private const val IDLE_STEP_S = 0.25
+
 /**
  * Hosts a [MochiEngine] and redraws it every frame while the screen is visible.
  * The frame loop only runs while the lifecycle is STARTED, so a backgrounded app costs no CPU.
@@ -20,10 +22,21 @@ import com.coucou.android.mochi.MochiPainter.drawMochi
 fun MochiView(engine: MochiEngine, modifier: Modifier = Modifier) {
     val frame = remember { mutableLongStateOf(0L) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val reduced = com.coucou.android.ui.reducedMotion()
+    androidx.compose.runtime.SideEffect { engine.reduceMotion = reduced }
     LaunchedEffect(engine, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             var last = 0L
             while (true) {
+                // Reduce motion: nothing idles, so while nothing is moving the loop only wakes a few times a second (a state change
+                // still plays, then he is still again).
+                if (engine.reduceMotion && !engine.busy) {
+                    engine.update(IDLE_STEP_S)
+                    frame.longValue += 1
+                    kotlinx.coroutines.delay((IDLE_STEP_S * 1000).toLong())
+                    last = 0L
+                    continue
+                }
                 androidx.compose.runtime.withFrameNanos { ns ->
                     val dt = if (last == 0L) 1.0 / 60 else ((ns - last) / 1e9).coerceIn(0.0, 0.1)
                     last = ns

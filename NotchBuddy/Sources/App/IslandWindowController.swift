@@ -1270,6 +1270,13 @@ final class IslandWindowController: NSWindowController {
 
     func defaultView() -> IslandView {
         if state.pendingApproval != nil { return .approval }
+        #if !APPSTORE
+        // Mochi is blue: a new Coucou waits, and that is the first thing the island shows.
+        if state.pendingQuestion == nil, MacUpdater.shared.hintActive {
+            MacUpdater.shared.prepareCard()
+            return .update
+        }
+        #endif
         return state.tasks.isEmpty ? .empty : .overview
     }
 

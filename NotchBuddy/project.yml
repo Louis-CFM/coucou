@@ -131,14 +131,17 @@ targets:
         type: folder
       - path: Resources/Localizable.xcstrings
         buildPhase: resources
+      # What's new after an update, once in the notch (WhatsNewViews.swift; GitHub build)
+      - path: Resources/whats-new.json
+        buildPhase: resources
     info:
       path: Resources/Info.plist
       properties:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "19"
-        CFBundleShortVersionString: "0.5.2"
+        CFBundleVersion: "20"
+        CFBundleShortVersionString: "0.5.3"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES

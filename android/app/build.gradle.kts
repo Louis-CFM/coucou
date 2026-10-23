@@ -22,10 +22,10 @@ android {
         applicationId = "com.coucou.android"
         minSdk = 30
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
-        // English only: libraries' other languages are left out of the app too.
-        resourceConfigurations += listOf("en")
+        versionCode = 3
+        versionName = "0.3.0"
+        // The app's languages (English and the translations in i18n/translations); the libraries' other languages are left out of the app.
+        resourceConfigurations += listOf("en", "fr", "es", "pt-rBR", "b+zh+Hans", "hi", "bn", "ru", "in", "ar")
     }
     signingConfigs {
         val keystore = releaseKeystore

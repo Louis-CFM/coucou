@@ -129,7 +129,7 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 - 🧩 **Home-screen widgets** — nine of them, from a tiny Mochi to a big card with plan usage and quick buttons. Orange when something waits for you, blue while it works, green when it's done. Read-only: a request is always decided in the app.
 - 🔒 **Local and private** — the phone talks straight to your computer on your Wi-Fi, paired with a QR code and a pinned certificate. The phone link is **off by default**, and nothing listens until you turn it on.
 
-**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. Download the signed APK from the [latest Android release](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
+**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. Download the signed APK from the [latest Android release](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
 
 <table>
 <tr>
@@ -148,6 +148,7 @@ macOS releases are published as `v*` tags. See [CHANGELOG.md](CHANGELOG.md) for 
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [0.5.3](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.3) | Oct 22, 2026 | Mochi turns blue when a new version waits; What's new and your Coucou so far after each update; Buy Mochi a coffee |
 | [0.5.2](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.2) | Oct 20, 2026 | New version in the notch, one click to install it; German, Turkish, Thai, Traditional Chinese; Homebrew; plan approval from the notch |
 | [0.5.1](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.1) | Oct 18, 2026 | WhatsApp in one click: Coucou installs and starts the gateway, no Terminal |
 | [0.5.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.0) | Oct 18, 2026 | WhatsApp in the notch (experimental), Mochi feels your Mac, a screen capture for Claude, dictation that writes prompts or translates |
@@ -172,6 +173,8 @@ Windows and Linux are released together, under the `windows-v*` and `linux-v*` t
 
 | Windows & Linux | Date | Highlights |
 |---------|------|------------|
+| 0.5.3 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.5.3) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.5.3) | Oct 22, 2026 | WhatsApp in the island (experimental): one-click gateway install, your chats and replies |
+| 0.5.2 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.5.2) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.5.2) | Oct 22, 2026 | Mochi turns blue when a new version waits, What's new after each update; GitLab and Gitea pills; the weekly recap on Android |
 | 0.5.1 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.5.1) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.5.1) | Oct 20, 2026 | New version in the island, one click to install it on Windows; German and Turkish; an optional clock; Linux idle CPU fixed |
 | 0.5.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.5.0) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.5.0) | Oct 15, 2026 | Catches up with the Mac: the Coucou window, Flow dictation with Parakeet offline (X11 and Wayland), the Notetaker, « OK Coucou » |
 | 0.4.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.4.0) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.4.0) | Oct 11, 2026 | Your Android phone: the link for Coucou for Android, by @Rhytam23 — approvals with your fingerprint, answers, chat, off by default |
@@ -183,6 +186,7 @@ Coucou for Android, by [@Rhytam23](https://github.com/Rhytam23), is released und
 
 | Android | Date | Highlights |
 |---------|------|------------|
+| [0.3.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0) | Oct 22, 2026 | A light theme and your phone's colours, nine more languages (Arabic right to left), quick actions, a Team widget, Share to Coucou, the weekly recap, a per-agent mute |
 | [0.2.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0) | Oct 13, 2026 | Nine home-screen widgets: Mochi, your agents, plan usage and quick buttons, coloured by state |
 | [0.1.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) | Oct 11, 2026 | First release: your agents, approvals with your fingerprint, answers and chat, linked to Windows or Linux |
 
@@ -212,7 +216,7 @@ Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md
 
 ### Android
 
-1. **Download** `Coucou-Android-0.2.0.apk` from the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0) on your phone (Android 11 or later) and open it. Android asks once to allow installs from your browser or file manager. You can also [build it from source](#build-from-source).
+1. **Download** `Coucou-Android-0.3.0.apk` from the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0) on your phone (Android 11 or later) and open it. Android asks once to allow installs from your browser or file manager. You can also [build it from source](#build-from-source).
 2. **On your computer**, install Coucou **0.4.0 or later** for [Windows](#windows) or [Linux](#linux): **Settings → Android phone**, turn on **Phone link**. If Windows asks about the firewall, allow Coucou on private networks.
 3. **Show pairing code** and scan it with the app. The phone and the computer must be on the same Wi-Fi.
 
@@ -245,7 +249,7 @@ Download **[Coucou-Windows.msi](https://github.com/Louis-CFM/coucou/releases/dow
 
 This is only because the app isn't signed with a paid certificate yet. Coucou is open source, and Microsoft Defender scans the installer as clean.
 
-**Windows and Linux 0.5.1** tell you when a new version is out (once you agree) and, on Windows, install it in one click; they also speak German and Turkish. **0.5.0** caught up with the Mac: Coucou is now an app with its own window in the taskbar, **Flow dictation** anywhere (hold right Ctrl, speak, let go) with Parakeet running offline on your computer, the **Notetaker** for your calls, and **« OK Coucou »** to talk to Mochi, powered by Claude with your key. On Linux, dictation works on X11 and Wayland. 0.4.0 paired with [Coucou for Android](#coucou-for-android): approve, answer and chat from your Android phone (Settings → Android phone, off by default). 0.3.0 added open on hover, your own sounds, a colour of your own for each Mochi and the Mochi-to-desktop shortcut; on Linux, the Spotify pill with Mochi dancing to it, global shortcuts on Wayland and "Open terminal" that brings the terminal forward. 0.2.0 caught up with the Mac: Codex, Copilot CLI, Muse Code and six more agents with approvals from the island, answers to Claude's questions, live diffs, GitHub pull requests and CI, plan usage, local models, the wardrobe, Mochi on the desktop, keyboard shortcuts, the weekly recap and 10 languages. See the [changelog](CHANGELOG.md).
+**Windows and Linux 0.5.3** bring **WhatsApp** to the island (experimental), with the gateway installed in one click. **0.5.2** turn Mochi blue when a new version waits and show what it brings after the update; they add **GitLab and Gitea** pills. **0.5.1** tell you when a new version is out (once you agree) and, on Windows, install it in one click; they also speak German and Turkish. **0.5.0** caught up with the Mac: Coucou is now an app with its own window in the taskbar, **Flow dictation** anywhere (hold right Ctrl, speak, let go) with Parakeet running offline on your computer, the **Notetaker** for your calls, and **« OK Coucou »** to talk to Mochi, powered by Claude with your key. On Linux, dictation works on X11 and Wayland. 0.4.0 paired with [Coucou for Android](#coucou-for-android): approve, answer and chat from your Android phone (Settings → Android phone, off by default). 0.3.0 added open on hover, your own sounds, a colour of your own for each Mochi and the Mochi-to-desktop shortcut; on Linux, the Spotify pill with Mochi dancing to it, global shortcuts on Wayland and "Open terminal" that brings the terminal forward. 0.2.0 caught up with the Mac: Codex, Copilot CLI, Muse Code and six more agents with approvals from the island, answers to Claude's questions, live diffs, GitHub pull requests and CI, plan usage, local models, the wardrobe, Mochi on the desktop, keyboard shortcuts, the weekly recap and 10 languages. See the [changelog](CHANGELOG.md).
 
 There is no notch on a PC, so the island slides out of the top edge of the screen
 instead of hiding inside one. See [`windows/README.md`](windows/README.md) for the
@@ -331,13 +335,13 @@ On the Mac, open Coucou from the Dock or the menu bar: its window has every sett
 | **Flow dictation** *(macOS, GitHub build)* | hold a key, speak, the words are pasted | Coucou → Flow → Settings · the Accessibility and Microphone permissions |
 | **Parakeet** *(macOS, Apple silicon)* | offline dictation, more accurate | Coucou → Flow → Settings → Recognition → **Download** (about 650 MB) |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the service pills | Keychain / Windows Credential Manager / Secret Service, all optional |
-| **WhatsApp** *(macOS, GitHub build, experimental)* | your WhatsApp messages in the notch, and replies | Settings → Integrations → WhatsApp · a gateway on your Mac, see [WhatsApp (experimental)](#whatsapp-experimental) |
+| **WhatsApp** *(macOS GitHub build, Windows, Linux; experimental)* | your WhatsApp messages in the notch or the island, and replies | Settings → Integrations → WhatsApp · a gateway on your Mac, see [WhatsApp (experimental)](#whatsapp-experimental) |
 
 If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
 
 ### WhatsApp (experimental)
 
-*macOS, GitHub build only.* The WhatsApp pill shows your incoming messages in the notch, one row per conversation, and lets you reply without opening WhatsApp. WhatsApp has no API for personal accounts, so Coucou goes through an **unofficial gateway that runs on your Mac** and speaks the WhatsApp Web protocol: [GOWA](https://github.com/aldinokemal/go-whatsapp-web-multidevice) (recommended) or [OpenWA](https://github.com/rmyndharis/OpenWA). Coucou only reads and sends through that gateway.
+*macOS (GitHub build), and Windows and Linux since 0.5.3.* The WhatsApp pill shows your incoming messages in the notch, one row per conversation, and lets you reply without opening WhatsApp. WhatsApp has no API for personal accounts, so Coucou goes through an **unofficial gateway that runs on your Mac** and speaks the WhatsApp Web protocol: [GOWA](https://github.com/aldinokemal/go-whatsapp-web-multidevice) (recommended) or [OpenWA](https://github.com/rmyndharis/OpenWA). Coucou only reads and sends through that gateway.
 
 > **Unofficial.** Use it on your own account only. WhatsApp may restrict an account that abuses it (bulk messages, automation). Coucou only replies in a conversation that wrote to you, a few messages a minute at most.
 
@@ -347,7 +351,7 @@ If Coucou isn't running, the hook exits immediately: **Claude Code is never bloc
 2. **Click Install WhatsApp.** Coucou downloads [GOWA](https://github.com/aldinokemal/go-whatsapp-web-multidevice), the open-source gateway, from its GitHub releases (the build for your Mac, about 15 MB, once), checks it against the SHA-256 GOWA publishes, and starts it. It starts and stops with Coucou from then on.
 3. **Scan the QR code** that shows right there: on your phone, WhatsApp → Settings → Linked devices → Link a device. The dot turns green and the pill fills in as messages arrive.
 
-The gateway lives in `~/Library/Application Support/Coucou/GOWA`, next to the WhatsApp session it keeps, so you scan once. **Update** in the same place gets GOWA's latest version. That download is the only time Coucou goes online for WhatsApp, and only when you click.
+The gateway lives in `~/Library/Application Support/Coucou/GOWA`, next to the WhatsApp session it keeps, so you scan once. **Update** in the same place gets GOWA's latest version. That download is the only time Coucou goes online for WhatsApp, and only when you click. On Windows it lives in `%LOCALAPPDATA%\Coucou\GOWA`, on Linux in `~/.local/share/coucou/GOWA`.
 
 Coucou tells the gateway where to post new messages (a small server on `127.0.0.1`, port 47823 by default, never reachable from another machine), with a random secret kept in the Keychain; every delivery is checked against its HMAC-SHA256 signature. If no message comes that way, Coucou checks every 20 seconds instead.
 

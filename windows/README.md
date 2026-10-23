@@ -305,6 +305,64 @@ minute while a CI is running, and as soon as you open the card on data older
 than a minute; contributions every 30 minutes. Nothing is fetched while the pill
 is off or Coucou is paused.
 
+## WhatsApp (experimental)
+
+The same as on the Mac. Your WhatsApp messages in the island, through a
+gateway that runs on this computer. It is off until you turn it on in
+**Settings… → Integrations → WhatsApp**. It is unofficial: use it on your own
+account only, because WhatsApp may restrict accounts that abuse it.
+
+**Setting it up**
+
+- **Install WhatsApp** downloads [GOWA](https://github.com/aldinokemal/go-whatsapp-web-multidevice),
+  the open-source gateway, from its GitHub releases. It picks the zip for this
+  system (Windows or Linux, amd64 or arm64) and checks it against the SHA-256
+  GOWA publishes; nothing is installed if they differ.
+- Coucou then unpacks GOWA into `%LOCALAPPDATA%\Coucou\GOWA` (Windows) or
+  `~/.local/share/coucou/GOWA` (Linux) and starts it on `127.0.0.1` only, with
+  media downloads off. It stops GOWA when Coucou quits.
+- Scan the QR code in Settings with your phone: **WhatsApp › Settings › Linked
+  devices › Link a device**.
+- **Update** fetches the latest GOWA. Nothing goes to GitHub except on these
+  two clicks.
+
+**Using it**
+
+- The island lists one row per conversation, with its initials, name, last
+  message and unread count. Photos, voice messages and other media show as a
+  label; Coucou never downloads them.
+- Click a conversation for its last ten messages and a reply field. **Enter**
+  sends, **Shift+Enter** starts a new line and **Escape** goes back. Nothing is
+  ever sent without your Enter or click.
+- On a new message Mochi smiles, with the "pop" sound if sounds are on.
+- Groups stay quiet unless you are mentioned. A right-click on a row ignores
+  that chat.
+- Read receipts are sent only when you open a conversation, or only when you
+  reply if you turn that setting off.
+
+**Your own gateway**
+
+Under **Advanced** you can use your own GOWA or [OpenWA](https://github.com/rmyndharis/OpenWA)
+at a local address, with its credential (GOWA's `user:password` or OpenWA's
+API key), and change the port of Coucou's webhook (47823).
+
+- The address and the credential are stored in the Credential Manager or the
+  Secret Service, never on disk.
+- New messages arrive on a webhook bound to `127.0.0.1` and signed by the
+  gateway. When the webhook isn't working, Coucou checks for new messages
+  every 20 s instead.
+- Messages stay in memory only: they are never logged or saved, and they are
+  forgotten when Coucou quits or WhatsApp is turned off.
+- Nothing runs while the integration or its pill is off.
+
+**Different from the Mac**
+
+- There is no macOS Focus to follow, so "Stay quiet during a Focus" is not
+  offered.
+- The card's ↗ opens WhatsApp Web, as there is no WhatsApp app here to bring
+  forward.
+- You type the path to your own GOWA binary instead of picking it.
+
 ## New versions
 
 Coucou can tell you when a new version is out, and on Windows install it in one

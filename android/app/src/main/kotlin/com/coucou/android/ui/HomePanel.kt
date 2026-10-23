@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,8 +33,8 @@ import com.coucou.android.core.HistoryDays
 import com.coucou.android.core.HomePanel
 import com.coucou.android.core.HomeText
 import com.coucou.android.core.IconKind
-import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.Pills
+import com.coucou.android.core.SpokenLabels
 import com.coucou.android.core.Spacing
 import com.coucou.android.core.TypeScale
 import com.coucou.android.link.SessionInfo
@@ -85,8 +86,8 @@ fun HeroCard(
 ) {
     val state = focus?.state ?: BotState.SLEEPING
     val wash = MochiConst.STATES[state]?.color?.let(::rgbColor)
-    val dim = Color(IslandSurface.TEXT_DIM)
-    val white = Color(IslandSurface.TEXT)
+    val dim = Color(tokens().heroTextDim)
+    val white = Color(tokens().heroText)
     HeroPanel(wash = wash) {
         Column(
             Modifier.windowInsetsPadding(WindowInsets.statusBars).padding(start = Spacing.INSIDE.dp, end = Spacing.INSIDE.dp, top = 12.dp, bottom = 18.dp),
@@ -95,7 +96,7 @@ fun HeroCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StateDot(linkDot)
                 Spacer(Modifier.width(8.dp))
-                Text(linkText, Modifier.weight(1f), style = TypeScale.LABEL.style(dim), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(linkText, Modifier.weight(1f), style = TypeScale.LABEL.style(dim), maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (running > 0) Text(stringResource(R.string.home_running, running), style = TypeScale.LABEL.style(dim), maxLines = 1)
             }
             if (focus == null) {
@@ -105,11 +106,15 @@ fun HeroCard(
                     Text(stringResource(R.string.home_empty_hint), style = TypeScale.SECONDARY.style(dim), maxLines = 3)
                 }
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                val pillName = Pills.byId(focus.pillId)?.name.orEmpty()
+                val name = focus.agent.ifBlank { pillName }.ifBlank { stringResource(R.string.app_name) }
+                val spoken = SpokenLabels.agent(name, stringResource(stateLabel(state)), HomeText.line(focus))
+                Row(
+                    Modifier.semantics(mergeDescendants = true) { contentDescription = spoken },
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
                     MochiView(engine, Modifier.size(108.dp).then(touch))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        val pillName = Pills.byId(focus.pillId)?.name.orEmpty()
-                        val name = focus.agent.ifBlank { pillName }.ifBlank { stringResource(R.string.app_name) }
                         Text(name, style = TypeScale.TITLE.style(white), maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(
                             if (pillName.isNotBlank() && pillName != name) pillName else stringResource(R.string.agent_kind),
@@ -152,15 +157,18 @@ fun AgentRows(others: List<SessionInfo>, engineFor: (SessionInfo) -> MochiEngine
             if (i > 0) RowDivider()
             val name = s.agent.ifBlank { Pills.byId(s.pillId)?.name.orEmpty() }
             val state = stringResource(stateLabel(s.state))
+            val line = HomeText.line(s)
+            // The dot is only a colour: the state is said in words, with the line when it adds something.
+            val spoken = SpokenLabels.agent(name, state, line)
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = Role.Button) { onPick(s) }
-                    .padding(horizontal = Spacing.INSIDE.dp, vertical = 12.dp).semantics(mergeDescendants = true) {},
+                    .padding(horizontal = Spacing.INSIDE.dp, vertical = 12.dp).semantics(mergeDescendants = true) { contentDescription = spoken },
                 horizontalArrangement = Arrangement.spacedBy(Spacing.GAP.dp), verticalAlignment = Alignment.CenterVertically,
             ) {
                 MochiView(engineFor(s), Modifier.size(40.dp))
                 Column(Modifier.weight(1f)) {
                     Text(name, style = TypeScale.BODY.style(t.text.c()).copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(HomeText.line(s) ?: state, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(line ?: state, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 StateDot(stateColor(s.state))
             }
@@ -200,7 +208,7 @@ fun RecentPanel(decisions: List<Decision>, onAll: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(Spacing.GAP.dp), verticalAlignment = Alignment.CenterVertically,
                 ) {
                     StateDot(if (d.allowed) StatusColors.online else t.danger.c())
-                    Text(HomeText.recent(d.allowed, d.tool), Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(HomeText.recent(d.allowed, d.tool), Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(whenText, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 1)
                 }
             }

@@ -110,6 +110,15 @@ enum MacUpdate {
         return true
     }
 
+    /// Mochi turns blue while a newer Coucou waits (and a click opens the update first): once the
+    /// user said yes to looking, until it is installed, except for a day after "Later" on that version.
+    static func showsHint(_ release: Release?, current: String, consent: Bool?,
+                          laterVersion: String?, laterAt: Date?, now: Date) -> Bool {
+        guard consent == true, let release, isNewer(release.version, than: current) else { return false }
+        if laterVersion == release.version, let at = laterAt, now >= at, now.timeIntervalSince(at) < snooze { return false }
+        return true
+    }
+
     /// The app in the zip is the one announced: right bundle id, the release's version.
     static func matches(infoPlist: [String: Any], version: String) -> Bool {
         infoPlist["CFBundleIdentifier"] as? String == bundleId

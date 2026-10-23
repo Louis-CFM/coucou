@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark only (the UI itself is Compose). -->
-    <style name="Theme.Coucou" parent="android:Theme.DeviceDefault">
+    <!-- Light or dark with the phone until Compose draws (the UI itself is Compose, with its own Theme setting). -->
+    <style name="Theme.Coucou" parent="android:Theme.DeviceDefault.DayNight">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>

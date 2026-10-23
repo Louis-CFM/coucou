@@ -40,6 +40,9 @@ interface LinkListener {
     fun onDiff(part: ServerMsg.Diff) {}
     /** The plan usage (only with the `usage` capability); both plans null: nothing to show any more. */
     fun onUsage(usage: UsageSnapshot) {}
+
+    /** Last week's recap (only with the `recap` capability); null: the computer has nothing to show any more. */
+    fun onRecap(recap: Recap?) {}
     /** The service cards (only with the `services` capability); an empty list: none to show any more. */
     fun onServices(cards: List<ServiceCard>) {}
     /** The relay's access key was replaced on the computer (only with the `relay` capability). */
@@ -138,6 +141,8 @@ class LinkClient(
     @Volatile private var diffsOffered = false
     /** The computer's welcome offered `usage` on this connection. */
     @Volatile private var usageOffered = false
+    /** The computer's welcome offered `recap` on this connection. */
+    @Volatile private var recapOffered = false
     /** The computer's welcome offered `services` on this connection. */
     @Volatile private var servicesOffered = false
     /** The computer's welcome offered `relay` on this connection. */
@@ -290,6 +295,7 @@ class LinkClient(
                 prefsOffered = false
                 diffsOffered = false
                 usageOffered = false
+                recapOffered = false
                 servicesOffered = false
                 relayOffered = false
                 runCatching { socket?.close() }
@@ -336,6 +342,7 @@ class LinkClient(
                     prefsOffered = Protocol.CAP_PREFS in msg.caps
                     diffsOffered = Protocol.CAP_DIFFS in msg.caps
                     usageOffered = Protocol.CAP_USAGE in msg.caps
+                    recapOffered = Protocol.CAP_RECAP in msg.caps
                     servicesOffered = Protocol.CAP_SERVICES in msg.caps
                     relayOffered = Protocol.CAP_RELAY in msg.caps
                     listener.onState(LinkState.CONNECTED)
@@ -353,6 +360,7 @@ class LinkClient(
                 is ServerMsg.Diff -> if (diffsOffered && Protocol.CAP_DIFFS in caps) listener.onDiff(msg)
                 is ServerMsg.Services -> if (servicesOffered && Protocol.CAP_SERVICES in caps) listener.onServices(msg.cards)
                 is ServerMsg.Usage -> if (usageOffered && Protocol.CAP_USAGE in caps) listener.onUsage(msg.usage)
+                is ServerMsg.RecapMsg -> if (recapOffered && Protocol.CAP_RECAP in caps) listener.onRecap(msg.recap)
                 // Only on a connection that was offered `relay`, and only a well-formed key.
                 is ServerMsg.RelayAccess -> if (relayOffered && Protocol.CAP_RELAY in caps) listener.onRelayAccess(msg.access)
                 is ServerMsg.Prefs -> if (prefsOffered && Protocol.CAP_PREFS in caps) listener.onPrefs(msg.outfit)

@@ -18,7 +18,7 @@ object Protocol {
     /** One message never exceeds this; a longer line is a protocol error. */
     const val MAX_LINE_BYTES = 64 * 1024
     /** Optional features this app understands; the desktop offers back the ones it has switched on. */
-    val CAPABILITIES = listOf("chat", "details", "answers", "prefs", "diffs", "usage", "services", "relay")
+    val CAPABILITIES = listOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay")
     const val CAP_CHAT = "chat"
     /** Steps, last line, project folder name and colour of each session. */
     const val CAP_DETAILS = "details"
@@ -30,10 +30,17 @@ object Protocol {
     const val CAP_DIFFS = "diffs"
     /** How much of the Claude and Codex plans is used, and when they reset. */
     const val CAP_USAGE = "usage"
+    /** Last week's numbers (counts and the busiest agent), when the user turned it on on the computer. */
+    const val CAP_RECAP = "recap"
     /** Read-only cards of the services the user ticked on the computer (Stripe, GitHub...). */
     const val CAP_SERVICES = "services"
     /** The computer's relay switch is on: it sends the new access key when the user replaces it (docs/RELAY_LINK.md). */
     const val CAP_RELAY = "relay"
+    /** A week has 10 080 minutes; no count of a week is larger than the computer's own caps. */
+    const val RECAP_MAX_MINUTES = 10_080
+    const val RECAP_MAX_SESSIONS = 100_000
+    const val RECAP_MAX_COUNT = 10_000_000
+    const val RECAP_MAX_AGENT_CHARS = 24
     const val MAX_SERVICES = 7
     const val MAX_SERVICE_ITEMS = 3
     const val MAX_SERVICE_TEXT = 80
@@ -66,6 +73,16 @@ data class PlanUsage(
 
 /** Both plans; null for one the computer does not know. */
 data class UsageSnapshot(val claude: PlanUsage?, val codex: PlanUsage?)
+
+/**
+ * Last completed week as the computer counted it. [week] is the Monday that starts it (`YYYY-MM-DD`). Counts only; [topAgent] is the agent
+ * used most and [project] the top project's folder name (only sent when the user also showed session details). Nothing here is a command, a
+ * file name or a prompt.
+ */
+data class Recap(
+    val week: String, val minutes: Int, val sessions: Int, val files: Int, val linesAdded: Int, val linesRemoved: Int,
+    val commands: Int, val allowed: Int, val denied: Int, val topAgent: String? = null, val project: String? = null,
+)
 
 /** One line of a service card. */
 data class ServiceLine(val label: String, val detail: String)
@@ -131,6 +148,8 @@ sealed interface ServerMsg {
     data class Services(val cards: List<ServiceCard>) : ServerMsg
     /** The plan usage; both null means the computer has nothing to say any more. */
     data class Usage(val usage: UsageSnapshot) : ServerMsg
+    /** Last week's recap; null means the computer has nothing to show (or sent something that is not one), so the card goes. */
+    data class RecapMsg(val recap: Recap?) : ServerMsg
     /** One part of a file's diff; [gone]: the computer no longer has it; [truncated]: there were more lines than it sends. */
     data class Diff(
         val pillId: String, val fileId: Long, val name: String, val added: Int, val removed: Int,
@@ -211,6 +230,7 @@ object Wire {
                 // A value this build does not know is dropped rather than guessed: the phone keeps what it had.
                 "diff" -> diff(o)
                 "services" -> ServerMsg.Services(services(o.getJSONArray("services")))
+                "recap" -> ServerMsg.RecapMsg(recap(o))
                 "usage" -> ServerMsg.Usage(UsageSnapshot(plan(o.optJSONObject("claude")), plan(o.optJSONObject("codex"))))
                 "prefs" -> o.optString("outfit", "").takeIf { it in Wardrobe.SELECTIONS }?.let { ServerMsg.Prefs(it) }
                 "relayAccess" -> o.optString("access", "").takeIf(RelayPairing::isSecret)?.let { ServerMsg.RelayAccess(it) }
@@ -270,6 +290,50 @@ object Wire {
                 oneLine(o.optString("reason", ""), Protocol.MAX_SERVICE_TEXT).ifBlank { null }, items,
             )
         }.take(Protocol.MAX_SERVICES)
+    }
+
+    /** A whole number of [Protocol]'s range, or null when it is missing, fractional, negative or too large (then the whole recap is dropped). */
+    private fun count(o: JSONObject, key: String, max: Int): Int? {
+        if (!o.has(key)) return null
+        val v = o.opt(key)
+        val n = when (v) {
+            is Int -> v.toLong()
+            is Long -> v
+            else -> return null
+        }
+        return if (n in 0..max) n.toInt() else null
+    }
+
+    private fun recapWeek(s: String): Boolean {
+        if (s.length != 10 || s[4] != '-' || s[7] != '-') return false
+        val digits = s.filterIndexed { i, _ -> i != 4 && i != 7 }
+        if (!digits.all { it in '0'..'9' }) return false
+        return s.substring(5, 7).toInt() in 1..12 && s.substring(8, 10).toInt() in 1..31
+    }
+
+    /** The recap, or null if it is empty or breaks a limit the computer keeps (so it cannot be a real one). */
+    private fun recap(o: JSONObject): Recap? {
+        val week = o.optString("week", "")
+        if (!recapWeek(week)) return null
+        val sessions = count(o, "sessions", Protocol.RECAP_MAX_SESSIONS) ?: return null
+        if (sessions == 0) return null
+        val big = Protocol.RECAP_MAX_COUNT
+        val agent = o.optString("topAgent", "").filter { it.isLetterOrDigit() || it == ' ' || it == '-' || it == '.' || it == '_' }
+            .trim().take(Protocol.RECAP_MAX_AGENT_CHARS).ifBlank { null }
+        val project = o.optString("project", "").let { fileNameOf(it) }?.take(Protocol.MAX_PROJECT_CHARS)
+        return Recap(
+            week = week,
+            minutes = count(o, "minutes", Protocol.RECAP_MAX_MINUTES) ?: return null,
+            sessions = sessions,
+            files = count(o, "files", big) ?: return null,
+            linesAdded = count(o, "added", big) ?: return null,
+            linesRemoved = count(o, "removed", big) ?: return null,
+            commands = count(o, "commands", big) ?: return null,
+            allowed = count(o, "allowed", big) ?: return null,
+            denied = count(o, "denied", big) ?: return null,
+            topAgent = agent,
+            project = project,
+        )
     }
 
     private fun window(o: JSONObject?): PlanWindow? {

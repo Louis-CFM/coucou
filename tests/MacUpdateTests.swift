@@ -91,6 +91,16 @@ enum MacUpdateTests {
         check("Later yesterday: again", MacUpdate.shouldAnnounce(r, current: "0.5.1", snoozedVersion: "0.6.0", snoozedAt: now - 25 * 3600, now: now))
         check("Later on an older version: this one shows", MacUpdate.shouldAnnounce(r, current: "0.5.1", snoozedVersion: "0.5.2", snoozedAt: now - 60, now: now))
 
+        print("\nBlue Mochi while it waits")
+        check("waiting: blue", MacUpdate.showsHint(r, current: "0.5.1", consent: true, laterVersion: nil, laterAt: nil, now: now))
+        check("not asked yet: no", !MacUpdate.showsHint(r, current: "0.5.1", consent: nil, laterVersion: nil, laterAt: nil, now: now))
+        check("said no: no", !MacUpdate.showsHint(r, current: "0.5.1", consent: false, laterVersion: nil, laterAt: nil, now: now))
+        check("nothing found: no", !MacUpdate.showsHint(nil, current: "0.5.1", consent: true, laterVersion: nil, laterAt: nil, now: now))
+        check("installed: no", !MacUpdate.showsHint(r, current: "0.6.0", consent: true, laterVersion: nil, laterAt: nil, now: now))
+        check("Later an hour ago: no", !MacUpdate.showsHint(r, current: "0.5.1", consent: true, laterVersion: "0.6.0", laterAt: now - 3600, now: now))
+        check("Later yesterday: blue again", MacUpdate.showsHint(r, current: "0.5.1", consent: true, laterVersion: "0.6.0", laterAt: now - 25 * 3600, now: now))
+        check("Later on an older version: blue", MacUpdate.showsHint(r, current: "0.5.1", consent: true, laterVersion: "0.5.9", laterAt: now - 60, now: now))
+
         print("\nThe app in the zip")
         check("right id and version", MacUpdate.matches(infoPlist: ["CFBundleIdentifier": "fr.louisraille.NotchBuddy", "CFBundleShortVersionString": "0.6.0"], version: "0.6.0"))
         check("another app", !MacUpdate.matches(infoPlist: ["CFBundleIdentifier": "com.evil.app", "CFBundleShortVersionString": "0.6.0"], version: "0.6.0"))
