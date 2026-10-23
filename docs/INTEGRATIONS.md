@@ -302,6 +302,18 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 
 ---
 
+## 5quater. OmniRoute
+
+**ID de pastille** : `ai_omniroute` (cyan `#22D3EE`)  
+**Catégorie** : AI for the chat  
+**Plateforme** : macOS uniquement
+
+Passerelle compatible OpenAI hébergée par l'utilisateur (par exemple `https://omniroute.example.com/v1`). Réglages → Chat → **OmniRoute** : l'URL et la clé d'API, enregistrées ensemble. L'URL va dans les préférences, la clé dans le Trousseau (`omniroute-api-key`). Sans `/v1` à la fin, Coucou l'ajoute.
+
+Les modèles viennent de `GET /v1/models` (combos compris), le chat passe par `POST /v1/chat/completions` en streaming. Un clic sur la pastille ouvre le chat avec OmniRoute. La pastille est configurée quand l'URL et la clé sont toutes les deux présentes.
+
+---
+
 ## 6. Mail (app Mail du Mac)
 
 - Vue `mail` : À (obligatoire, validation d'adresse), Objet (prérempli : nom du fichier), Message (optionnel, une ligne).

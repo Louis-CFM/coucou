@@ -67,6 +67,7 @@ final class KeychainStore: @unchecked Sendable {
         "deepseek-api-key",
         "qwen-api-key",
         "moonshot-api-key",
+        "omniroute-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -315,12 +316,15 @@ final class ClaudeService {
             case .deepseek:  baseURL = "https://api.deepseek.com/v1"
             case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
             case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
+            case .omniroute: baseURL = state.omnirouteBaseURL
             case .anthropic, .ollama, .lmstudio: baseURL = ""
             }
         }
 
         guard !baseURL.isEmpty else {
-            if provider.isLocal {
+            if provider == .omniroute {
+                await showError("Add your OmniRoute URL in Settings → Chat first.", state: state)
+            } else if provider.isLocal {
                 let name = provider == .ollama ? "Ollama" : "LM Studio"
                 await showError("Connect \(name) in Settings → Chat first.", state: state)
             }
@@ -383,6 +387,7 @@ final class ClaudeService {
         conversationMessages.append(["role": "user", "content": userText])
 
         let useStream = provider.isLocal || provider == .deepseek || provider == .qwen || provider == .moonshot
+            || provider == .omniroute
         var body: [String: Any] = [
             "model": state.activeChatModel,
             "max_tokens": 4096,

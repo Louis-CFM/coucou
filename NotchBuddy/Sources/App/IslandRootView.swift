@@ -110,6 +110,13 @@ struct IslandContainer: View {
             // Under the island while the pointer is on Mochi: how the Mac is doing.
             VitalsHoverLine(islandW: islandWidth, islandH: islandHeight)
 
+            #if !APPSTORE
+            // Island closed while Spotify lyrics are open: the line being sung, under the notch.
+            if state.mode == .compact {
+                SpotifyLyricLine(islandW: islandWidth, islandH: islandHeight)
+            }
+            #endif
+
             if demoEngine.isActive {
                 Text(verbatim: "DEMO")
                     .font(.system(size: 8, weight: .bold, design: .monospaced))

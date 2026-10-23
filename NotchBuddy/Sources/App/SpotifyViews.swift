@@ -84,8 +84,12 @@ struct SpotifyPill: View {
 
 struct SpotifyCardView: View {
     @ObservedObject private var controller = SpotifyController.shared
+    @ObservedObject private var lyricsStore = SpotifyLyricsStore.shared
+    @AppStorage(SpotifyLyricsStore.enabledKey) private var lyricsEnabled = false
 
     private let green = Color(hex: SpotifyController.green)
+
+    private var showingLyrics: Bool { lyricsEnabled && lyricsStore.showing }
 
     var body: some View {
         Group {
@@ -109,49 +113,120 @@ struct SpotifyCardView: View {
     private func nowPlaying(_ track: SpotifyTrack) -> some View {
         let subtitle = [track.artist, track.album].filter { !$0.isEmpty }.joined(separator: " · ")
         return VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 9) {
-                NowPlayingArtwork(image: controller.artwork, accent: green)
-                    .frame(width: 36, height: 36)
-                    .onTapGesture { controller.openSpotify() }
-                    .help(track.album.isEmpty ? String(localized: "Open Spotify") : String(localized: "\(track.album) — open Spotify"))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 5) {
-                        Circle().fill(green).frame(width: 6, height: 6)
-                        Text(track.isAd ? String(localized: "Advertisement") : track.title)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color(hex: "#F5F6F8"))
-                            .lineLimit(1).truncationMode(.tail)
-                    }
-                    if !subtitle.isEmpty {
-                        Text(subtitle)
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#8E939C"))
-                            .lineLimit(1).truncationMode(.tail)
-                    }
-                }
-                Spacer(minLength: 0)
+            if showingLyrics {
+                lyricsView(track)
+            } else {
+                trackInfo(track, subtitle: subtitle)
             }
-            .padding(.trailing, 24)   // the ↗ button sits top-right
-            .padding(.top, 6)
-
-            // Position runs on its own clock only while playing and on screen
-            TimelineView(.animation(minimumInterval: 0.5, paused: !controller.isPlaying)) { context in
-                NowPlayingProgress(
-                    position: controller.position(at: context.date),
-                    duration: track.duration,
-                    accent: green,
-                    canSeek: !track.isAd && track.duration > 0,
-                    onSeek: { controller.seek(to: $0) }
-                )
-            }
-            .padding(.top, 7)
 
             controls
                 .padding(.top, 4)
         }
         .padding(.leading, 108)
         .padding(.trailing, 12)
+    }
+
+    @ViewBuilder
+    private func trackInfo(_ track: SpotifyTrack, subtitle: String) -> some View {
+        HStack(alignment: .center, spacing: 9) {
+            NowPlayingArtwork(image: controller.artwork, accent: green)
+                .frame(width: 36, height: 36)
+                .onTapGesture { controller.openSpotify() }
+                .help(track.album.isEmpty ? String(localized: "Open Spotify") : String(localized: "\(track.album) — open Spotify"))
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Circle().fill(green).frame(width: 6, height: 6)
+                    Text(track.isAd ? String(localized: "Advertisement") : track.title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .lineLimit(1).truncationMode(.tail)
+                }
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1).truncationMode(.tail)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.trailing, 24)   // the ↗ button sits top-right
+        .padding(.top, 6)
+
+        // Position runs on its own clock only while playing and on screen
+        TimelineView(.animation(minimumInterval: 0.5, paused: !controller.isPlaying)) { context in
+            NowPlayingProgress(
+                position: controller.position(at: context.date),
+                duration: track.duration,
+                accent: green,
+                canSeek: !track.isAd && track.duration > 0,
+                onSeek: { controller.seek(to: $0) }
+            )
+        }
+        .padding(.top, 7)
+    }
+
+    // MARK: Lyrics
+
+    // Takes the place of the artwork and progress rows: previous, current and next line.
+    private func lyricsView(_ track: SpotifyTrack) -> some View {
+        Group {
+            switch lyricsStore.lyrics {
+            case .synced(let lines):
+                TimelineView(.animation(minimumInterval: 0.25, paused: !controller.isPlaying)) { context in
+                    lyricLines(lines, current: SpotifyLyrics.currentIndex(
+                        in: lines, at: controller.position(at: context.date)))
+                }
+            case .unsynced:
+                lyricsMessage(String(localized: "spotify.lyrics.unsynced"))
+            case .instrumental:
+                lyricsMessage(String(localized: "spotify.lyrics.instrumental"))
+            case .notFound:
+                lyricsMessage(String(localized: "spotify.lyrics.not-found"))
+            case nil:
+                lyricsMessage(lyricsStore.loading ? String(localized: "spotify.lyrics.loading")
+                                                  : String(localized: "spotify.lyrics.not-found"))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 62)
+        .padding(.trailing, 24)   // the ↗ button sits top-right
+        .clipped()
+    }
+
+    private func lyricLines(_ lines: [LyricLine], current: Int?) -> some View {
+        func text(_ i: Int) -> String {
+            guard lines.indices.contains(i) else { return " " }
+            return lines[i].text.isEmpty ? "♪" : lines[i].text
+        }
+        let i = current ?? -1
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(i >= 1 ? text(i - 1) : " ")
+                .font(.system(size: 10))
+                .foregroundColor(Color(hex: "#6B7079"))
+            Text(current == nil ? "♪" : text(i))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Color(hex: "#F5F6F8"))
+            Text(text(i + 1))
+                .font(.system(size: 10))
+                .foregroundColor(Color(hex: "#6B7079"))
+        }
+        .lineLimit(1)
+        .truncationMode(.tail)
+        .padding(.top, 8)
+        .animation(.easeOut(duration: 0.2), value: i)
+    }
+
+    private func lyricsMessage(_ message: String) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(green).frame(width: 6, height: 6)
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8E939C"))
+                .lineLimit(2)
+        }
+        .padding(.top, 8)
     }
 
     private var controls: some View {
@@ -184,6 +259,13 @@ struct SpotifyCardView: View {
                                   tint: controller.repeating ? green : Color(hex: "#6B7079"),
                                   help: controller.repeating ? "Repeat on" : "Repeat off") {
                     controller.setRepeating(!controller.repeating)
+                }
+                if lyricsEnabled {
+                    NowPlayingIconButton(icon: "quote.bubble", size: 10,
+                                      tint: lyricsStore.showing ? green : Color(hex: "#6B7079"),
+                                      help: lyricsStore.showing ? "Hide lyrics" : "Show lyrics") {
+                        lyricsStore.showing.toggle()
+                    }
                 }
             }
             Spacer(minLength: 8)
@@ -250,6 +332,54 @@ struct SpotifyCardView: View {
         .padding(.top, 6)
         .padding(.leading, 108)
         .padding(.trailing, 36)
+    }
+}
+// MARK: - Spotify lyric line (under the closed island, GitHub build only)
+
+/// The line being sung, in a capsule under the compact island, while the lyrics are open in the
+/// Spotify card. Only in compact mode: hidden, the island draws nothing.
+struct SpotifyLyricLine: View {
+    let islandW: CGFloat
+    let islandH: CGFloat
+    @ObservedObject private var controller = SpotifyController.shared
+    @ObservedObject private var lyricsStore = SpotifyLyricsStore.shared
+    @ObservedObject private var vitals = MachineVitals.shared
+    @AppStorage(SpotifyLyricsStore.enabledKey) private var lyricsEnabled = false
+
+    var body: some View {
+        // Vitals take the same place while the pointer is on Mochi
+        let show = lyricsEnabled && lyricsStore.isFollowing && !vitals.hovered
+        ZStack {
+            if show, case .synced(let lines) = lyricsStore.lyrics {
+                TimelineView(.animation(minimumInterval: 0.25, paused: !controller.isPlaying)) { context in
+                    let i = SpotifyLyrics.currentIndex(in: lines, at: controller.position(at: context.date))
+                    let text = i.map { lines[$0].text } ?? ""
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color(hex: SpotifyController.green))
+                            .frame(width: 6, height: 6)
+                        Text(verbatim: text.isEmpty ? "♪" : text)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(hex: "#E1E3E6"))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .id(i)
+                            .transition(.opacity)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Color.black.opacity(0.92)))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                    .animation(.easeOut(duration: 0.2), value: i)
+                }
+                .transition(.opacity.combined(with: .offset(y: -4)))
+            }
+        }
+        // Long lines are cut, the capsule never wider than this
+        .frame(maxWidth: 380)
+        .animation(.easeOut(duration: 0.18), value: show)
+        .position(x: islandW / 2, y: islandH + 18)
+        .allowsHitTesting(false)
     }
 }
 #endif

@@ -145,6 +145,20 @@ final class AppState: ObservableObject {
     @Published var moonshotChatModel: String = ChatProvider.moonshot.defaultModel {
         didSet { UserDefaults.standard.set(moonshotChatModel, forKey: "moonshotChatModel") }
     }
+    @Published var omnirouteChatModel: String = ChatProvider.omniroute.defaultModel {
+        didSet { UserDefaults.standard.set(omnirouteChatModel, forKey: "omnirouteChatModel") }
+    }
+    /// The OmniRoute gateway, as typed in Settings (e.g. https://omniroute.example.com/v1).
+    @Published var omnirouteServerURL: String = "" {
+        didSet { UserDefaults.standard.set(omnirouteServerURL, forKey: "omnirouteServerURL") }
+    }
+    /// The OmniRoute URL with its `/v1`, the way the cloud providers' base URLs are written.
+    var omnirouteBaseURL: String {
+        var s = omnirouteServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while s.hasSuffix("/") { s = String(s.dropLast()) }
+        guard !s.isEmpty else { return "" }
+        return s.hasSuffix("/v1") ? s : s + "/v1"
+    }
     @Published var ollamaServerURL: String = "" {
         didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
     }
@@ -201,6 +215,10 @@ final class AppState: ObservableObject {
             }
             return
         }
+        if provider == .omniroute, omnirouteBaseURL.isEmpty {
+            providerModelFetchError[provider] = "Add your OmniRoute URL in Settings → Chat first."
+            return
+        }
         // Remote providers: require API key
         guard let apiKey = KeychainStore.shared.get(provider.keychainKey), !apiKey.isEmpty else {
             providerModelFetchError[provider] = "No API key — add it in Settings."
@@ -217,6 +235,7 @@ final class AppState: ObservableObject {
             case .deepseek:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.deepseek.com/v1", apiKey: apiKey)
             case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
             case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
+            case .omniroute: models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: omnirouteBaseURL, apiKey: apiKey)
             case .ollama, .lmstudio: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
@@ -249,6 +268,10 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == moonshotChatModel }) {
                         moonshotChatModel = models.first!.id
                     }
+                case .omniroute:
+                    if !models.contains(where: { $0.id == omnirouteChatModel }) {
+                        omnirouteChatModel = models.first!.id
+                    }
                 case .ollama, .lmstudio: break
                 }
             }
@@ -266,6 +289,7 @@ final class AppState: ObservableObject {
         case .deepseek:  return deepseekChatModel
         case .qwen:      return qwenChatModel
         case .moonshot:  return moonshotChatModel
+        case .omniroute: return omnirouteChatModel
         }
     }
 
@@ -538,6 +562,8 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "deepseekChatModel"), !v.isEmpty { deepseekChatModel = v }
         if let v = ud.string(forKey: "qwenChatModel"),     !v.isEmpty { qwenChatModel     = v }
         if let v = ud.string(forKey: "moonshotChatModel"), !v.isEmpty { moonshotChatModel = v }
+        if let v = ud.string(forKey: "omnirouteChatModel"), !v.isEmpty { omnirouteChatModel = v }
+        if let v = ud.string(forKey: "omnirouteServerURL"), !v.isEmpty { omnirouteServerURL = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s

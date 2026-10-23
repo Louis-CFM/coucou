@@ -302,6 +302,8 @@ struct OverviewView: View {
             switchChatProvider(.ollama)
         case "ai_lmstudio":
             switchChatProvider(.lmstudio)
+        case "ai_omniroute":
+            switchChatProvider(.omniroute)
         case "integration_music":
             #if !APPSTORE
             MusicController.shared.openMusic()
@@ -1604,6 +1606,7 @@ struct ModelPickerView: View {
             let visibleProviders = ChatProvider.allCases.filter { p in
                 if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                if p == .omniroute { return !AppState.shared.omnirouteServerURL.isEmpty || state.chatProvider == .omniroute }
                 return true
             }
             ChipFlowLayout(spacing: 6) {
@@ -1694,6 +1697,7 @@ struct ModelPickerView: View {
                             case .deepseek:  state.deepseekChatModel = model.id
                             case .qwen:      state.qwenChatModel = model.id
                             case .moonshot:  state.moonshotChatModel = model.id
+                            case .omniroute: state.omnirouteChatModel = model.id
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -1985,6 +1989,8 @@ struct IntegrationCardView: View {
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
         case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
         case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
+        case "ai_omniroute":  return !AppState.shared.omnirouteServerURL.isEmpty
+                                  && KeychainStore.shared.get("omniroute-api-key") != nil
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -2155,6 +2161,7 @@ struct IntegrationCardView: View {
                 case "ai_anthropic": model = appState.claudeModel
                 case "ai_google":    model = appState.googleChatModel
                 case "ai_openai":    model = appState.openAIChatModel
+                case "ai_omniroute": model = appState.omnirouteChatModel
                 default:             model = ""
                 }
                 return String(localized: "Key configured · \(model)")

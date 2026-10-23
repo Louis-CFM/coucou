@@ -105,6 +105,8 @@ enum PillCatalog {
               category: .ai,        subtitle: String(localized: "Chat"),         source: .n8n),
         .init(id: "ai_lmstudio",         name: "LM Studio",   color: ChatProvider.lmstudio.accentHex,
               category: .ai,        subtitle: String(localized: "Chat"),         source: .n8n),
+        .init(id: "ai_omniroute",        name: "OmniRoute",   color: ChatProvider.omniroute.accentHex,
+              category: .ai,        subtitle: String(localized: "Chat"),         source: .n8n),
         // ── Services ─────────────────────────────────────────────────────────
         .init(id: "integration_resend",  name: "Resend",      color: "#22C55E",
               category: .service,   subtitle: String(localized: "Integration"),  source: .n8n),
