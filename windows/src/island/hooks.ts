@@ -63,6 +63,8 @@ interface HookPayload {
   coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Hermes clarification questions from the normalized callback schema. */
+  questions?: { qid?: string; question?: string; choices?: ({ label?: string } | string)[]; options?: ({ label?: string } | string)[]; multi_select?: boolean }[];
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
@@ -252,10 +254,66 @@ function handleHook(island: Island, payload: HookPayload) {
     return;
   }
 
+  if (payload.hook_event_name === "HermesClarify") {
+    const requestId = payload.request_id ?? "";
+    if (typeof requestId !== "string" || !requestId || requestId.length > 128) return;
+    if (State.paused || (State.pendingApproval && State.pendingApproval.requestId !== requestId)) {
+      void Bridge.clarifyDecline(requestId);
+      return;
+    }
+    const agent = validateAgent(payload.coucou_agent) ?? "hermes";
+    const agentId = `agent_${agent}`;
+    if (State.pendingApproval?.requestId === requestId) {
+      void Bridge.clarifyAck(requestId);
+      return;
+    }
+    const raw = payload.questions;
+    if (agent !== "hermes" || !Array.isArray(raw) || raw.length === 0 || raw.length > 5) {
+      void Bridge.clarifyDecline(requestId);
+      return;
+    }
+    const questions = [];
+    for (const [index, q] of raw.entries()) {
+      const offered = q?.choices ?? q?.options ?? [];
+      if (!q || (q.options !== undefined && !Array.isArray(q.options)) ||
+          (q.multi_select !== undefined && typeof q.multi_select !== "boolean") ||
+          (q.qid != null && q.qid !== `q${index}`) || typeof q.question !== "string" ||
+          (q.choices != null && !Array.isArray(q.choices)) ||
+          !q.question.trim() || q.question.length > 8000 || !Array.isArray(offered) || offered.length > 4 ||
+          offered.some((option) => {
+            const label = typeof option === "string" ? option : option?.label;
+            return typeof label !== "string" || !label.trim() || label.length > 8020;
+          })) {
+        void Bridge.clarifyDecline(requestId);
+        return;
+      }
+      const choices = offered.map((option) => typeof option === "string" ? option : option.label!);
+      if (new Set(choices).size !== choices.length) {
+        void Bridge.clarifyDecline(requestId);
+        return;
+      }
+      questions.push({ qid: `q${index}`, question: q.question,
+        ...(choices.length ? { choices } : {}), multiSelect: q.multi_select === true && choices.length > 0 });
+    }
+    cancelStopTimer(agentId);
+    State.setPillBadge(agentId, null);
+    State.upsertExternalAgent(agentId, agentName(agent), agentColor(agent));
+    const task = State.tasks.find((item) => item.id === agentId);
+    if (task && payload.cwd) task.sessionCwd = payload.cwd;
+    if (task && payload.session_id) task.sessionId = payload.session_id;
+    State.beginApproval({ requestId, sessionId: payload.session_id ?? "", pillId: agentId, tool: "clarify", command: "clarify", clarification: { questions } });
+    State.updateTask(agentId, "question");
+    Sound.play("question");
+    island.alert("question");
+    if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+    pendingTimeout = window.setTimeout(() => { pendingTimeout = null; dropPendingCard(island); }, 110_000);
+    void Bridge.clarifyAck(requestId);
+    State.notify();
+    return;
+  }
+
   if (State.paused) {
-    // Silence here used to cost Claude Code nearly two minutes: the relay waited
-    // for a decision from an island that had already decided not to look. Say so,
-    // and the terminal takes the question immediately.
+    // Permission requests still use approval transport; clarification uses its own route above.
     if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
     return;
   }

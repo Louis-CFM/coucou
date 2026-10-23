@@ -313,6 +313,12 @@ export const Bridge = {
   approvalAnswer: (requestId: string, answers: Record<string, string | string[]>) =>
     call<void>("approval_answer", { requestId, answers }),
 
+  /** Hermes clarification uses a dedicated bounded relay, not approval transport. */
+  clarifyAck: (requestId: string) => call<void>("clarify_ack", { requestId }),
+  clarifyAnswer: (requestId: string, answers: Record<string, string | string[]>) =>
+    call<void>("clarify_answer", { requestId, answer: JSON.stringify(answers) }),
+  clarifyDecline: (requestId: string) => call<void>("clarify_decline", { requestId }),
+
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 

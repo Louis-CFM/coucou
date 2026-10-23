@@ -51,6 +51,42 @@ afterEach(() => {
   mock.timers.reset();
 });
 
+// ── Hermes clarification ──────────────────────────────────────────────────────
+
+test("HermesClarify routes normalized question IDs, renders card, then acknowledges", () => {
+  const questions = [{ question: "Pick one", options: [{ label: "A" }, { label: "B" }], multi_select: false }, { question: "Details", options: [], multi_select: false }];
+  hook({ hook_event_name: "HermesClarify", request_id: "clarify-1", session_id: "hs1", cwd: "/p", coucou_agent: "hermes", questions });
+  assert.deepEqual(State.pendingApproval.clarification.questions, [
+    { qid: "q0", question: "Pick one", choices: ["A", "B"], multiSelect: false },
+    { qid: "q1", question: "Details", multiSelect: false },
+  ]);
+  assert.deepEqual(asked, ["alert:question"]);
+  assert.deepEqual(sent("clarify_ack"), [{ requestId: "clarify-1" }]);
+});
+
+test("HermesClarify collision declines instead of replacing active card", () => {
+  State.pendingApproval = { requestId: "old", sessionId: "s", pillId: "agent_hermes", tool: "clarify", command: "clarify" };
+  hook({ hook_event_name: "HermesClarify", request_id: "new", coucou_agent: "hermes", questions: [] });
+  assert.equal(State.pendingApproval.requestId, "old");
+  assert.deepEqual(sent("clarify_decline"), [{ requestId: "new" }]);
+});
+
+test("malformed Hermes clarification declines without ACK or card", () => {
+  for (const questions of [[], null, {}, [null], [{ question: "Q", options: [null] }], [{ question: "Q", options: null }], [{ question: "Q", multi_select: "yes" }], [{ qid: "x", question: "Q" }]]) {
+    hook({ hook_event_name: "HermesClarify", request_id: "bad", coucou_agent: "hermes", questions });
+    assert.equal(State.pendingApproval, null);
+    assert.equal(sent("clarify_ack").length, 0);
+  }
+});
+
+test("Hermes clarification cancels finished-session removal", () => {
+  hook({ hook_event_name: "SessionStart", coucou_agent: "hermes", session_id: "hs" });
+  hook({ hook_event_name: "Stop", coucou_agent: "hermes", session_id: "hs" });
+  hook({ hook_event_name: "HermesClarify", request_id: "new", coucou_agent: "hermes", questions: [{ question: "Q" }] });
+  seconds(5.2);
+  assert.ok(task("agent_hermes"));
+});
+
 // ── Paused ────────────────────────────────────────────────────────────────────
 
 test("a paused island hands a permission request straight back to the terminal", () => {
@@ -245,7 +281,7 @@ test("an agent's pill goes away when its session ends, or 5.2 s after it stops",
 });
 
 test("an agent's permission request is declined, never shown as Claude Code's", () => {
-  for (const agent of ["gemini", "antigravity", "cursor", "opencode", "amp", "hermes", "my-tool"]) {
+  for (const agent of ["gemini", "antigravity", "cursor", "opencode", "amp", "my-tool"]) {
     calls.length = 0;
     hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: agent, tool_name: "Bash" });
     assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], agent);
@@ -254,8 +290,8 @@ test("an agent's permission request is declined, never shown as Claude Code's", 
   }
 });
 
-test("Codex, Copilot CLI and Muse Code get the card on their own pill", () => {
-  for (const agent of ["codex", "copilot", "muse"]) {
+test("Codex, Copilot CLI, Muse Code and Hermes get the card on their own pill", () => {
+  for (const agent of ["codex", "copilot", "hermes", "muse"]) {
     State.pendingApproval = null;
     State.focusId = CLAUDE;
     calls.length = 0;
