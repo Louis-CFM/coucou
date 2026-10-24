@@ -170,6 +170,7 @@
     <string name="notif_question">У него вопрос</string>
     <string name="notif_ratelimit">Достиг лимита использования</string>
     <string name="island_answer_on_pc">Нажми, чтобы открыть Coucou, или ответь на компьютере</string>
+    <string name="island_dismiss">Скрыть остров</string>
     <string name="state_ready">Готов</string>
     <string name="state_working">Работает</string>
     <string name="state_thinking">Думает</string>

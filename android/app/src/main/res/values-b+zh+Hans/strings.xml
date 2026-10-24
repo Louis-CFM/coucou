@@ -170,6 +170,7 @@
     <string name="notif_question">有一个问题</string>
     <string name="notif_ratelimit">达到用量上限</string>
     <string name="island_answer_on_pc">点按以打开 Coucou，或在电脑上回答</string>
+    <string name="island_dismiss">收起灵动岛</string>
     <string name="state_ready">就绪</string>
     <string name="state_working">工作中</string>
     <string name="state_thinking">思考中</string>

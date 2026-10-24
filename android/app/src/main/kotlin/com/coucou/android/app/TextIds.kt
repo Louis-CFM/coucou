@@ -175,6 +175,7 @@ internal object TextIds {
         "notif_question" to R.string.notif_question,
         "notif_ratelimit" to R.string.notif_ratelimit,
         "island_answer_on_pc" to R.string.island_answer_on_pc,
+        "island_dismiss" to R.string.island_dismiss,
         "state_ready" to R.string.state_ready,
         "state_working" to R.string.state_working,
         "state_thinking" to R.string.state_thinking,

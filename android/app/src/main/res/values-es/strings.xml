@@ -170,6 +170,7 @@
     <string name="notif_question">Tiene una pregunta</string>
     <string name="notif_ratelimit">Alcanzó un límite de uso</string>
     <string name="island_answer_on_pc">Toca para abrir Coucou, o responde en tu ordenador</string>
+    <string name="island_dismiss">Cerrar la isla</string>
     <string name="state_ready">Listo</string>
     <string name="state_working">Trabajando</string>
     <string name="state_thinking">Pensando</string>

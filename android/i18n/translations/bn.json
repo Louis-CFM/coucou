@@ -169,6 +169,7 @@
     "notif_question": "একটি প্রশ্ন আছে",
     "notif_ratelimit": "ব্যবহারের সীমায় পৌঁছেছে",
     "island_answer_on_pc": "Coucou খুলতে ট্যাপ করুন, বা কম্পিউটারে উত্তর দিন",
+    "island_dismiss": "আইল্যান্ড সরান",
     "state_ready": "প্রস্তুত",
     "state_working": "কাজ করছে",
     "state_thinking": "ভাবছে",

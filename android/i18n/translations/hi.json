@@ -169,6 +169,7 @@
     "notif_question": "एक सवाल है",
     "notif_ratelimit": "उपयोग की सीमा पर पहुँचा",
     "island_answer_on_pc": "Coucou खोलने के लिए टैप करें, या अपने कंप्यूटर पर जवाब दें",
+    "island_dismiss": "आइलैंड हटाएँ",
     "state_ready": "तैयार",
     "state_working": "काम कर रहा है",
     "state_thinking": "सोच रहा है",

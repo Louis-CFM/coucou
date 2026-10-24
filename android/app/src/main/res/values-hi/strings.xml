@@ -170,6 +170,7 @@
     <string name="notif_question">एक सवाल है</string>
     <string name="notif_ratelimit">उपयोग की सीमा पर पहुँचा</string>
     <string name="island_answer_on_pc">Coucou खोलने के लिए टैप करें, या अपने कंप्यूटर पर जवाब दें</string>
+    <string name="island_dismiss">आइलैंड हटाएँ</string>
     <string name="state_ready">तैयार</string>
     <string name="state_working">काम कर रहा है</string>
     <string name="state_thinking">सोच रहा है</string>

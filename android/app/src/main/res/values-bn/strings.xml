@@ -170,6 +170,7 @@
     <string name="notif_question">একটি প্রশ্ন আছে</string>
     <string name="notif_ratelimit">ব্যবহারের সীমায় পৌঁছেছে</string>
     <string name="island_answer_on_pc">Coucou খুলতে ট্যাপ করুন, বা কম্পিউটারে উত্তর দিন</string>
+    <string name="island_dismiss">আইল্যান্ড সরান</string>
     <string name="state_ready">প্রস্তুত</string>
     <string name="state_working">কাজ করছে</string>
     <string name="state_thinking">ভাবছে</string>

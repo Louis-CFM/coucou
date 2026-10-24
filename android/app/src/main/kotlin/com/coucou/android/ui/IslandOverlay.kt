@@ -1,6 +1,8 @@
 package com.coucou.android.ui
 
+import android.content.ComponentCallbacks
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.os.Handler
@@ -65,7 +67,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -130,6 +136,16 @@ class IslandOverlay(
 
     private val deadline = Runnable { safely { timeline.tick(); sync() } }
 
+    /**
+     * A rotation, a change of screen resolution or of font size while the island is open: measure again, so it never keeps
+     * the box of the old screen. Registered only while the window exists, so nothing listens while it is hidden.
+     */
+    private val screenChanged = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) { main.post { remeasure() } }
+        override fun onLowMemory() = Unit
+    }
+    private var watchingScreen = false
+
     fun permitted(): Boolean = Settings.canDrawOverlays(context)
 
     /** Something is going on right now: an agent works, a question waits, a request waits. Null: nothing. */
@@ -141,6 +157,12 @@ class IslandOverlay(
     /** An agent finished, failed or hit a limit: shown for 10 s, then the island goes up. */
     fun flash(next: IslandSpec) = safely {
         timeline.flash(next)
+        sync()
+    }
+
+    /** The user swiped the island up (or chose "Dismiss" in TalkBack): it goes back into the notch until something new happens. */
+    fun swipeAway() = safely {
+        timeline.swipeAway()
         sync()
     }
 
@@ -208,8 +230,24 @@ class IslandOverlay(
         timeline.nextDeadline()?.let { main.postDelayed(deadline, (it - clock()).toLong().coerceAtLeast(0)) }
     }
 
+    /** The screen changed under the open island: new box, same window moved to the new centre, then the usual sync. */
+    private fun remeasure() = safely {
+        val v = view ?: return@safely
+        val b = measure()
+        if (b == box) return@safely
+        box = b
+        val params = v.layoutParams as? WindowManager.LayoutParams ?: return@safely
+        params.x = b.centerOffsetX
+        wm.updateViewLayout(v, params)
+        sync()
+    }
+
     private fun removeView() {
         main.removeCallbacks(deadline)
+        if (watchingScreen) {
+            runCatching { context.unregisterComponentCallbacks(screenChanged) }
+            watchingScreen = false
+        }
         view?.let { runCatching { wm.removeView(it) } }
         view = null
         owner?.destroy()
@@ -263,6 +301,8 @@ class IslandOverlay(
             wm.addView(v, params)
             owner = lifecycleOwner
             view = v
+            context.registerComponentCallbacks(screenChanged)
+            watchingScreen = true
             true
         } catch (e: Exception) {
             Log.w(TAG, "cannot add the window: ${e.javaClass.simpleName}") // permission taken away meanwhile
@@ -322,9 +362,21 @@ class IslandOverlay(
             // merges with the camera hole, instead of hanging as a bar below it.
             Box(Modifier.width(px(width.value) + ear * 2).height(px(height.value))) {
                 Canvas(Modifier.matchParentSize()) { drawFlares(ear.toPx().coerceAtMost(size.height), ink) }
+                val dismissLabel = stringResource(R.string.island_dismiss)
+                val swipeThreshold = with(density) { SWIPE_UP_DP.dp.toPx() }
                 Box(
                     Modifier.align(Alignment.TopCenter).width(px(width.value)).fillMaxHeight()
-                        .clip(RoundedCornerShape(bottomStart = corner, bottomEnd = corner)).background(ink),
+                        .clip(RoundedCornerShape(bottomStart = corner, bottomEnd = corner)).background(ink)
+                        // A swipe up sends the island back into the notch (taps on its buttons are not touched: a drag starts only after the touch slop).
+                        .pointerInput(s.kind, s.fingerprint) {
+                            var travelled = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { travelled = 0f },
+                                onDragEnd = { if (travelled <= -swipeThreshold) swipeAway() },
+                                onDragCancel = { travelled = 0f },
+                            ) { _, dy -> travelled += dy }
+                        }
+                        .semantics { customActions = listOf(CustomAccessibilityAction(dismissLabel) { swipeAway(); true }) },
                 ) {
                     Box(
                         Modifier.fillMaxWidth().padding(top = topInset).alpha(open.coerceIn(0.0, 1.0).toFloat()),
@@ -455,5 +507,9 @@ class IslandOverlay(
         }
     }
 
-    private companion object { const val TAG = "CoucouIsland" }
+    private companion object {
+        const val TAG = "CoucouIsland"
+        /** How far up the finger must travel for a swipe to count (a little over a tap's wobble). */
+        const val SWIPE_UP_DP = 40
+    }
 }

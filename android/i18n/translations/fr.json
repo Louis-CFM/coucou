@@ -169,6 +169,7 @@
     "notif_question": "A une question",
     "notif_ratelimit": "A atteint une limite d'utilisation",
     "island_answer_on_pc": "Touche pour ouvrir Coucou, ou réponds sur ton ordinateur",
+    "island_dismiss": "Fermer l'îlot",
     "state_ready": "Prêt",
     "state_working": "Au travail",
     "state_thinking": "Réfléchit",

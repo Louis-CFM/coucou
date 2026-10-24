@@ -170,6 +170,7 @@
     <string name="notif_question">Punya pertanyaan</string>
     <string name="notif_ratelimit">Mencapai batas pemakaian</string>
     <string name="island_answer_on_pc">Ketuk untuk membuka Coucou, atau jawab di komputermu</string>
+    <string name="island_dismiss">Tutup pulau</string>
     <string name="state_ready">Siap</string>
     <string name="state_working">Bekerja</string>
     <string name="state_thinking">Berpikir</string>

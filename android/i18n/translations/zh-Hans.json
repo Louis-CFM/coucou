@@ -169,6 +169,7 @@
     "notif_question": "有一个问题",
     "notif_ratelimit": "达到用量上限",
     "island_answer_on_pc": "点按以打开 Coucou，或在电脑上回答",
+    "island_dismiss": "收起灵动岛",
     "state_ready": "就绪",
     "state_working": "工作中",
     "state_thinking": "思考中",

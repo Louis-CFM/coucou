@@ -170,6 +170,7 @@
     <string name="notif_question">A une question</string>
     <string name="notif_ratelimit">A atteint une limite d\'utilisation</string>
     <string name="island_answer_on_pc">Touche pour ouvrir Coucou, ou réponds sur ton ordinateur</string>
+    <string name="island_dismiss">Fermer l\'îlot</string>
     <string name="state_ready">Prêt</string>
     <string name="state_working">Au travail</string>
     <string name="state_thinking">Réfléchit</string>

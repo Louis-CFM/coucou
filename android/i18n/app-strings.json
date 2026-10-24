@@ -170,6 +170,7 @@
     "notif_question": "Has a question",
     "notif_ratelimit": "Hit a usage limit",
     "island_answer_on_pc": "Tap to open Coucou, or answer on your computer",
+    "island_dismiss": "Dismiss the island",
     "state_ready": "Ready",
     "state_working": "Working",
     "state_thinking": "Thinking",

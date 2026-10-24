@@ -169,6 +169,7 @@
     "notif_question": "لديه سؤال",
     "notif_ratelimit": "بلغ حدّ الاستخدام",
     "island_answer_on_pc": "اضغط لفتح Coucou، أو أجب على حاسوبك",
+    "island_dismiss": "إغلاق الجزيرة",
     "state_ready": "جاهز",
     "state_working": "يعمل",
     "state_thinking": "يفكّر",

@@ -169,6 +169,7 @@
     "notif_question": "У него вопрос",
     "notif_ratelimit": "Достиг лимита использования",
     "island_answer_on_pc": "Нажми, чтобы открыть Coucou, или ответь на компьютере",
+    "island_dismiss": "Скрыть остров",
     "state_ready": "Готов",
     "state_working": "Работает",
     "state_thinking": "Думает",
