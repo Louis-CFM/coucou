@@ -5,7 +5,7 @@
 
 import { closeCurve } from "../core/anim";
 import { Sound } from "../core/sound";
-import { COMPACT_W, NOTCH_H, NOTCH_W } from "../core/layout";
+import { COMPACT_SIDE, COMPACT_W, NOTCH_H, NOTCH_W } from "../core/layout";
 
 // ── Timing (GT in the Swift file) ─────────────────────────────────────────────
 
@@ -38,20 +38,21 @@ export const GREETING_H = 150;
 const C0 = { x: 320, y: 90 };
 const HB = 58;
 export const ASP = 1.34;
-const EAR_X = 40;
+const EAR_X = COMPACT_SIDE;
 const EAR_HB = 17;
 const CARD = { x: 10, y: 36, w: 620, h: 104 };
 const CARD_R = 20;
 
 /** IslandRestingLayout for the compact island the greeting lands in. */
 const COMPACT = {
-  width: COMPACT_W,
   height: NOTCH_H,
   botDiameter: Math.min(20, Math.max(0, NOTCH_H - 6)),
   botCenterY: NOTCH_H / 2,
   miniGridScale: Math.min(1, Math.max(0, NOTCH_H - 4) / 28),
-  miniGridCenterX: COMPACT_W - 40,
 };
+
+/** The bar's width depends on the clock, so it is passed in (core/layout.ts compactWidth). */
+const miniGridCenterX = (compactW: number) => compactW - COMPACT_SIDE;
 
 // ── Easing ────────────────────────────────────────────────────────────────────
 
@@ -204,10 +205,10 @@ function greetPose(t: number): Pose {
   };
 }
 
-function smallPose(): Pose {
+function smallPose(compactW: number): Pose {
   return {
     hb: (EAR_HB * COMPACT.botDiameter) / 20,
-    x: GREETING_W / 2 - COMPACT.width / 2 + EAR_X,
+    x: GREETING_W / 2 - compactW / 2 + EAR_X,
     y: COMPACT.botCenterY,
     sx: 1, sy: 1, tilt: 0,
     eye: "dot", open: 1, eyeRoll: 0,
@@ -216,15 +217,18 @@ function smallPose(): Pose {
     badge: 1, tint: 0.6, halo: 0.6, haloBlue: 1,
     minis: 1, fx: 1,
     header: 0, card: 0,
-    iw: COMPACT.width, ih: COMPACT.height,
+    iw: compactW, ih: COMPACT.height,
   };
 }
 
-/** Mochi's pose `t` seconds in; `tc` is when the collapse began (∞ if not yet). */
-export function greetingPose(t: number, tc = Number.POSITIVE_INFINITY): Pose {
+/**
+ * Mochi's pose `t` seconds in; `tc` is when the collapse began (∞ if not yet).
+ * `compactW` is the width of the compact bar he lands in.
+ */
+export function greetingPose(t: number, tc = Number.POSITIVE_INFINITY, compactW = COMPACT_W): Pose {
   if (t < tc) return greetPose(Math.min(t, T.end + 10));
   const a = greetPose(tc);
-  const b = smallPose();
+  const b = smallPose(compactW);
   // Same curve and duration (340 ms) as the island shrinking around him: with
   // the Mac's inOut ease the island got ahead of Mochi and cut his body off
   // when the greeting was left early.
@@ -565,9 +569,9 @@ function drawParticles(x: CanvasRenderingContext2D, t: number, p: Pose) {
 
 const MINI_COLORS = ["#E86A6A", "#3E86E0", "#EFAE5A", "#8C73F2"];
 
-function drawMinis(x: CanvasRenderingContext2D, alpha: number) {
+function drawMinis(x: CanvasRenderingContext2D, alpha: number, compactW: number) {
   if (alpha <= 0.01) return;
-  const cx = GREETING_W / 2 - COMPACT.width / 2 + COMPACT.miniGridCenterX;
+  const cx = GREETING_W / 2 - compactW / 2 + miniGridCenterX(compactW);
   const cy = COMPACT.botCenterY;
   const sp = 6 * COMPACT.miniGridScale;
   const offsets: [number, number][] = [[-sp, -sp], [sp, -sp], [-sp, sp], [sp, sp]];
@@ -593,10 +597,13 @@ export class Greeting {
   private tc = Number.POSITIVE_INFINITY;
   private fired = false;
   private timers: number[] = [];
+  /** Width of the compact bar this greeting lands in, fixed when it starts. */
+  private compactW = COMPACT_W;
 
   onComplete: (() => void) | null = null;
 
-  start() {
+  start(compactW = COMPACT_W) {
+    this.compactW = compactW;
     this.startMs = performance.now();
     this.tc = Number.POSITIVE_INFINITY;
     this.fired = false;
@@ -650,7 +657,7 @@ export class Greeting {
     const t = this.elapsed;
     if (!this.fired && t >= T.end && this.tc >= T.autoLeave) this.fire();
 
-    const p = greetingPose(t, this.tc);
+    const p = greetingPose(t, this.tc, this.compactW);
     x.clearRect(0, 0, GREETING_W, GREETING_H);
 
     if (p.card > 0) {
@@ -670,7 +677,7 @@ export class Greeting {
       drawParticles(x, t, p);
     }
 
-    drawMinis(x, p.minis);
+    drawMinis(x, p.minis, this.compactW);
     drawMochi(x, p);
   }
 }

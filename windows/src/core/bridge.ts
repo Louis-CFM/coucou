@@ -222,6 +222,8 @@ export const Bridge = {
 
   /** Give the window keyboard focus (chat field) and take it away again. */
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
+  /** Windows' short time and short date patterns; null on Linux, on failure, outside Tauri. */
+  regionalFormat: () => call<{ time: string | null; date: string | null }>("regional_format"),
 
   reposition: () => call<void>("reposition"),
   fitZoom: (dpr: number) => call<boolean>("fit_zoom", { dpr }),

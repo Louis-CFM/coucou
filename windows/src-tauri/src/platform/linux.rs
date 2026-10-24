@@ -294,6 +294,13 @@ pub fn codex_candidates() -> Vec<PathBuf> {
     out
 }
 
+// ── Regional format ───────────────────────────────────────────────────────────
+
+/// Not read here yet: the page uses its own locale for the clock (deferred in the scope).
+pub fn regional_format() -> super::RegionalFormat {
+    super::RegionalFormat::default()
+}
+
 // ── Cursor ────────────────────────────────────────────────────────────────────
 
 /// Nothing polls the cursor here: the page reports it over the island, and the
