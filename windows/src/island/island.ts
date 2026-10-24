@@ -89,6 +89,8 @@ export class Island {
   private lastFrame = 0;
   private dirty = true;
   private canvasPx = 0;
+  /** The pixel ratio Mochi's bitmap was sized for: it changes with the monitor. */
+  private canvasDpr = 0;
 
   // Rust starts the window at full size so the launch greeting has room.
   private collapsed = false;
@@ -1201,6 +1203,10 @@ export class Island {
       const gctx = this.greetingCanvas.getContext("2d");
       if (gctx) {
         const dpr = Math.min(2, window.devicePixelRatio || 1);
+        if (this.greetingCanvas.width !== Math.round(EXPANDED_W * dpr)) {
+          this.greetingCanvas.width = Math.round(EXPANDED_W * dpr);
+          this.greetingCanvas.height = Math.round(150 * dpr);
+        }
         gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         this.greeting.draw(gctx);
       }
@@ -1277,8 +1283,11 @@ export class Island {
     const hCss = w + BOT_OVERHANG;
     const wCss = w + BOT_SIDE * 2;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (this.canvasPx !== w) {
+    // Drawn at the current ratio, so a bitmap sized for another monitor's
+    // would show Mochi too big and cut, or too small.
+    if (this.canvasPx !== w || this.canvasDpr !== dpr) {
       this.canvasPx = w;
+      this.canvasDpr = dpr;
       this.botCanvas.width = Math.round(wCss * dpr);
       this.botCanvas.height = Math.round(hCss * dpr);
       this.botCanvas.style.width = `${wCss}px`;

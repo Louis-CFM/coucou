@@ -110,6 +110,13 @@ pub fn is_group(jid: &str) -> bool {
     jid.ends_with("@g.us")
 }
 
+/// Status updates (status@broadcast), broadcast lists and channels (…@newsletter)
+/// arrive as messages too, but they are not conversations: a contact's Status
+/// would become a chat named after them (upstream #901).
+pub fn is_conversation(jid: &str) -> bool {
+    !jid.ends_with("@broadcast") && !jid.ends_with("@newsletter")
+}
+
 /// "33612345678@s.whatsapp.net" → "+33612345678": the digits with a plus.
 pub fn display_number(jid: &str) -> String {
     let user = jid.split('@').next().unwrap_or(jid);
@@ -205,7 +212,7 @@ impl Inbox {
             return Outcome::Duplicate;
         }
         let chat = normalized(&message.chat);
-        if filters.ignored.contains(&chat) {
+        if filters.ignored.contains(&chat) || !is_conversation(&chat) {
             return Outcome::Ignored;
         }
         self.seen.insert(message.id.clone());
@@ -459,6 +466,17 @@ mod tests {
         assert_eq!(inbox.total_unread(), 1);
         assert_eq!(add(&mut inbox, msg("5", "33600000002@s.whatsapp.net", None, 10.0, true, false), &f), Outcome::Quiet);
         assert_eq!(inbox.conversations["33600000002@s.whatsapp.net"].unread, 0, "my own message reads the chat");
+    }
+
+    #[test]
+    fn status_updates_and_channels_are_not_chats() {
+        let mut inbox = Inbox::default();
+        let f = Filters::default();
+        assert_eq!(add(&mut inbox, msg("s1", "status@broadcast", Some("33600000001@s.whatsapp.net"), 0.0, false, false), &f), Outcome::Ignored);
+        assert_eq!(add(&mut inbox, msg("n1", "120363000000000009@newsletter", None, 1.0, false, false), &f), Outcome::Ignored);
+        assert!(inbox.conversations.is_empty(), "no chat for a Status or a channel");
+        assert_eq!(add(&mut inbox, msg("m1", "33600000001@s.whatsapp.net", None, 2.0, false, false), &f), Outcome::Notify);
+        assert_eq!(inbox.conversations.len(), 1, "a real message still makes its chat");
     }
 
     #[test]

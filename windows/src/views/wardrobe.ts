@@ -35,6 +35,7 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
   let hovered: OutfitSelection | null = null;
   let drawnSeason: Outfit | null = null;
   let drawnLanguage = language();
+  let drawnDpr = 0;
   const items = new Map<OutfitSelection, { button: HTMLButtonElement; canvas: HTMLCanvasElement }>();
 
   const updateNote = () => {
@@ -67,11 +68,13 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
   /** Icons are drawn once; only "auto" changes, with the season and its badge's language. */
   const drawIcons = () => {
     const season = seasonalOutfit(new Date());
-    if (season === drawnSeason && drawnLanguage === language()) return;
-    const first = drawnSeason == null;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (season === drawnSeason && drawnLanguage === language() && drawnDpr === dpr) return;
+    // On a monitor of another scale every icon is drawn again, sharp and whole.
+    const first = drawnSeason == null || drawnDpr !== dpr;
     drawnSeason = season;
     drawnLanguage = language();
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    drawnDpr = dpr;
     for (const [sel, { canvas }] of items) {
       if (!first && sel !== "auto") continue;
       canvas.width = Math.round(ICON * dpr);

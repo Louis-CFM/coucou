@@ -1,11 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Mac: WhatsApp statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the WhatsApp pill (#901, same fix as #910)
+
 ## Windows and Linux 0.5.3 — October 22, 2026
 
 WhatsApp comes to Windows and Linux, as on the Mac.
 
 - **WhatsApp in the island** *(experimental)* — your incoming WhatsApp messages in a green pill, one row per conversation with initials, name, the last message and the unread count; photos, voice messages and documents show as a label. Click a conversation to read its last ten messages and reply: Enter sends, Shift+Enter starts a new line, Esc goes back. Mochi smiles at a new message. Groups stay quiet unless you're mentioned, chats you ignore never show, and read receipts go only when you open a conversation or reply. Off by default: Settings → Integrations → WhatsApp
 - **Install WhatsApp in one click** — Coucou downloads GOWA, the open-source gateway, from its GitHub page, checks it against the SHA-256 GOWA publishes, starts it on this computer only and shows the QR code to scan; **Update** fetches GOWA's latest version, and your own GOWA or OpenWA goes under **Advanced**. Messages stay in memory, are never logged or saved, and are forgotten when Coucou quits. Use it on your own account only: WhatsApp may restrict accounts that abuse it
+- **Statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the pill (#910 by @afpruivo, reported by @orphic07 in #901)
+- **Mochi stays whole on another monitor** — moving the island or Mochi on the desktop to a screen with another scale no longer cuts him off or blurs him; the mini Mochis and the wardrobe follow too (#892 by @ZouaouiB, tested on two monitors by @afpruivo; fixes #344)
 
 ## Android 0.3.0 — October 22, 2026
 
