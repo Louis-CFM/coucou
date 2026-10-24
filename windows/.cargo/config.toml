@@ -1,0 +1,5 @@
+[build]
+jobs = 2
+
+[profile.dev]
+debug = 1
