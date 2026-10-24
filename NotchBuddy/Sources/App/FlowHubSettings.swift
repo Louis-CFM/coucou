@@ -18,6 +18,7 @@ struct HubSettingsPage: View {
                 HubRow(title: String(localized: "flow.enable")) {
                     Toggle("", isOn: $flow.isEnabled).toggleStyle(.switch).labelsHidden()
                 }
+                .hubFindable("flow.enable")
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.hold"),
                        detail: flow.key == .fn ? String(localized: "flow.fn-help") : nil) {
@@ -27,6 +28,7 @@ struct HubSettingsPage: View {
                     .labelsHidden()
                     .fixedSize()
                 }
+                .hubFindable("hub.settings.hold")
                 HubDivider()
                 HubRow(title: String(localized: "flow.edge")) {
                     Picker("", selection: $flow.pillEdge) {
@@ -36,20 +38,24 @@ struct HubSettingsPage: View {
                     .labelsHidden()
                     .fixedSize()
                 }
+                .hubFindable("flow.edge")
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.handsfree"),
                        detail: String(localized: "hub.settings.handsfree-detail")) {
                     HubKeyCap(text: "\(flow.key.symbol) \(flow.key.symbol)")
                 }
+                .hubFindable("hub.settings.handsfree")
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.paste-again"),
                        detail: String(localized: "hub.settings.paste-again-detail")) {
                     HubKeyCap(text: "⌃⌘V")
                 }
+                .hubFindable("hub.settings.paste-again")
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.cancel")) {
                     HubKeyCap(text: String(localized: "hub.key-esc"))
                 }
+                .hubFindable("hub.settings.cancel")
             }
 
             HubLabel(String(localized: "flow.ai.title"))
@@ -60,6 +66,7 @@ struct HubSettingsPage: View {
                         .labelsHidden()
                         .disabled(!FlowCleanup.hasKey && !store.promptMode)
                 }
+                .hubFindable("flow.prompt-mode")
                 HubDivider()
                 HubRow(title: String(localized: "flow.translate"),
                        detail: FlowLanguages.language(store.translateTo).map {
@@ -74,6 +81,7 @@ struct HubSettingsPage: View {
                     .fixedSize()
                     .disabled(!FlowCleanup.hasKey && store.translateTo.isEmpty)
                 }
+                .hubFindable("flow.translate")
                 if !FlowCleanup.hasKey {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
@@ -137,12 +145,14 @@ struct HubSettingsPage: View {
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }
+                .hubFindable("hub.settings.dock")
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.open-at-launch")) {
                     Toggle("", isOn: Binding(get: { openAtLaunch }, set: { openAtLaunch = $0; FlowHubController.openAtLaunch = $0 }))
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }
+                .hubFindable("hub.settings.open-at-launch")
             }
 
             HubLabel(String(localized: "hub.settings.privacy"))
@@ -158,6 +168,7 @@ struct HubSettingsPage: View {
                     .labelsHidden()
                     .fixedSize()
                 }
+                .hubFindable("hub.settings.keep")
                 HubDivider()
                 HStack(spacing: 8) {
                     Button(String(localized: "hub.settings.clear-history")) { store.clearHistory() }
@@ -226,6 +237,7 @@ struct HubRecognitionSettings: View {
                 .labelsHidden()
                 .fixedSize()
             }
+            .hubFindable("dictation-language")
         } else if !parakeet.isReady {
             Text("hub.engine.fallback")
                 .font(.system(size: 12))

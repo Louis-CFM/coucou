@@ -4539,6 +4539,19 @@
    "de": "Keine andere App geöffnet",
    "tr": "Başka açık uygulama yok"
   },
+  "No results": {
+   "zh-Hans": "没有结果",
+   "hi": "कोई परिणाम नहीं",
+   "es": "Sin resultados",
+   "ar": "لا توجد نتائج",
+   "fr": "Aucun résultat",
+   "bn": "কোনো ফলাফল নেই",
+   "pt-BR": "Nenhum resultado",
+   "ru": "Нет результатов",
+   "id": "Tidak ada hasil",
+   "de": "Keine Ergebnisse",
+   "tr": "Sonuç yok"
+  },
   "No snippet yet. Your booking link, your signature, your address: say a few words, get the whole text.": {
    "zh-Hans": "还没有片段。你的预约链接、签名、地址：说几个字，就能得到整段文字。",
    "hi": "अभी कोई स्निपेट नहीं। आपका बुकिंग लिंक, हस्ताक्षर, पता: कुछ शब्द बोलें, पूरा टेक्स्ट पाएँ।",
@@ -6566,6 +6579,19 @@
    "id": "Cari dikte",
    "de": "Diktate suchen",
    "tr": "Diktelerde ara"
+  },
+  "Search settings": {
+   "zh-Hans": "搜索设置",
+   "hi": "सेटिंग्स खोजें",
+   "es": "Buscar en los ajustes",
+   "ar": "البحث في الإعدادات",
+   "fr": "Rechercher dans les réglages",
+   "bn": "সেটিংস খুঁজুন",
+   "pt-BR": "Buscar nos ajustes",
+   "ru": "Поиск по настройкам",
+   "id": "Cari di pengaturan",
+   "de": "Einstellungen durchsuchen",
+   "tr": "Ayarlarda ara"
   },
   "Searches": {
    "zh-Hans": "搜索",

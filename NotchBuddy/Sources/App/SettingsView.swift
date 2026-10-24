@@ -223,6 +223,7 @@ struct SettingsView: View {
                     .padding(.bottom, 16)
                     .frame(maxWidth: embeddedSection == nil ? .infinity : 1100, alignment: .leading)
                 }
+                .hubScrollsToFind()
                 if !statusMessage.isEmpty {
                     Divider()
                     Text(statusMessage)
@@ -337,6 +338,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("Sound")
 
         GroupBox("Behavior") {
             VStack(alignment: .leading, spacing: 10) {
@@ -361,6 +363,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("Behavior")
 
         GroupBox("Display") {
             VStack(alignment: .leading, spacing: 10) {
@@ -390,6 +393,7 @@ struct SettingsView: View {
                 refreshConnectedScreens()
             }
         }
+        .hubFindable("Display")
 
         GroupBox(String(localized: "vitals.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -403,6 +407,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("vitals")
 
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
@@ -431,12 +436,14 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("Hotkey")
 
         GroupBox("Startup") {
             Toggle("Launch at Mac startup", isOn: $launchAtStartup)
                 .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
                 .padding(6)
         }
+        .hubFindable("Startup")
 
         #if !APPSTORE
         UpdateSettingsSection()
@@ -455,6 +462,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("recap")
 
         GroupBox(String(localized: "Language")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -503,6 +511,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("Language")
 
         #if PHONE_LINK
         GroupBox("iPhone") {
@@ -532,6 +541,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("iPhone")
         #endif
     }
 
@@ -649,6 +659,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("hooks.claude-code")
 
         #if !APPSTORE
         ClaudeDesktopChatSettingsSection()
@@ -685,6 +696,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("hooks.gemini")
 
         GroupBox(String(localized: "hooks.antigravity.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -718,6 +730,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("hooks.antigravity")
 
         GroupBox(String(localized: "hooks.codex.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -751,6 +764,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("hooks.codex")
 
         GroupBox(String(localized: "hooks.copilot.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -784,6 +798,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("hooks.copilot")
 
         GroupBox(String(localized: "hooks.muse.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -817,6 +832,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("hooks.muse")
 
         GroupBox(String(localized: "plugin.opencode.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -850,6 +866,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("plugin.opencode")
 
         GroupBox(String(localized: "plugin.amp.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -883,6 +900,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("plugin.amp")
 
         GroupBox(String(localized: "plugin.hermes.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -955,6 +973,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("plugin.hermes")
         #if !APPSTORE
         .task(id: hermesPluginInstalled) {
             guard hermesPluginInstalled else { hermesSupportsApprovals = false; return }
@@ -1034,6 +1053,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("plan")
         #endif
     }
 
@@ -1078,6 +1098,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("chat.anthropic")
 
         GroupBox(String(localized: "chat.other-providers.title")) {
             VStack(alignment: .leading, spacing: 12) {
@@ -1155,6 +1176,7 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
         }
+        .hubFindable("chat.providers")
 
         GroupBox(String(localized: "chat.local.title")) {
             VStack(alignment: .leading, spacing: 12) {
@@ -1232,6 +1254,7 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
         }
+        .hubFindable("chat.local")
     }
 
     // MARK: - Integrations section
@@ -1464,6 +1487,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("voice.wake")
         .onAppear {
             voicePermissionsGranted = VoiceSettings.micStatus == .granted
                 && VoiceSettings.speechStatus == .granted
@@ -1502,6 +1526,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("voice.language")
 
         GroupBox(String(localized: "voice.tts-engine")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -1569,6 +1594,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .hubFindable("voice.tts")
     }
 
     #if !APPSTORE
@@ -1623,6 +1649,7 @@ struct SettingsView: View {
                     }
                     .padding(6)
                 }
+                .hubFindable("voice.history")
             }
         }
     }

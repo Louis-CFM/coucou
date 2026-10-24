@@ -5,10 +5,11 @@
 
 import "./hub.css";
 import { h, clear } from "../views/dom";
-import { t } from "../i18n/i18n";
+import { t, tl } from "../i18n/i18n";
 import { onEvent } from "../core/bridge";
 import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus } from "../core/flow";
 import { hero, liveMochi, setWindowShown } from "./hero";
+import { searchSettings, normalize, type Hit, type PageInfo } from "./search";
 import { icon, keyLabel } from "./ui";
 
 export type PageId =
@@ -136,7 +137,18 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     statusLine.append(h("i", { class: "dot", style: `background:${color}` }), h("span", { text }));
   }
 
-  async function show(page: PageId) {
+  /** Underlines the setting a search result led to, and brings it into view. */
+  function underline(container: HTMLElement, text: string) {
+    const want = normalize(text.trim());
+    const found = [...container.querySelectorAll<HTMLElement>("label, .title, .hub-label, .subhead, h2 span")]
+      .find((el) => normalize((el.textContent ?? "").trim()) === want);
+    if (!found) return;
+    found.classList.add("hub-found");
+    found.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  /** `find`: the label of a setting to underline once the page is drawn (from the search box). */
+  async function show(page: PageId, find?: string) {
     const def = ALL.find((p) => p.id === page) ?? FLOW_PAGES[0];
     ctx.onLeave?.();
     ctx.onLeave = undefined;
@@ -157,6 +169,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     clear(scroll);
     scroll.append(page_);
     scroll.scrollTop = 0;
+    if (find) underline(page_, find);
   }
 
   // ── The sidebar ──
@@ -164,6 +177,67 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   const logo = h("canvas", {});
   side.append(h("div", { class: "hub-brand" }, logo, h("span", { text: "Coucou" })));
   liveMochi(logo as HTMLCanvasElement);
+
+  // The search box: while something is typed, the results take the place of the pages.
+  const input = h("input", {
+    class: "hub-input hub-search",
+    type: "search",
+    placeholder: tl("Search settings"),
+    "aria-label": tl("Search settings"),
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const hits = h("div", { class: "hub-hits" });
+  let results: Hit[] = [];
+  let active = 0;
+
+  const pageInfos = (): PageInfo[] => [
+    ...FLOW_PAGES.map((p) => ({ id: p.id, title: p.title(), group: "Flow" })),
+    ...NOTCH_PAGES.map((p) => ({ id: p.id, title: p.title(), group: t("Notch") })),
+  ];
+
+  function drawHits() {
+    clear(hits);
+    const query = input.value.trim();
+    side.classList.toggle("searching", query !== "");
+    results = query ? searchSettings(query, pageInfos()) : [];
+    if (!query) return;
+    if (!results.length) {
+      hits.append(h("div", { class: "hub-hits-empty", text: t("No results") }));
+      return;
+    }
+    active = Math.min(active, results.length - 1);
+    results.forEach((hit, i) => {
+      const b = h("button", { class: `hub-hit${i === active ? " on" : ""}`, onclick: () => openHit(hit) });
+      b.append(h("span", { class: "name", text: hit.text }), h("span", { class: "where", text: hit.where }));
+      hits.append(b);
+    });
+  }
+
+  function openHit(hit: Hit) {
+    input.value = "";
+    active = 0;
+    drawHits();
+    void show(hit.page, hit.setting ? hit.text : undefined);
+  }
+
+  input.addEventListener("input", () => {
+    active = 0;
+    drawHits();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      input.value = "";
+      drawHits();
+    } else if (e.key === "Enter" && results[active]) {
+      openHit(results[active]);
+    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && results.length) {
+      e.preventDefault();
+      active = (active + (e.key === "ArrowDown" ? 1 : -1) + results.length) % results.length;
+      drawHits();
+    }
+  });
+  side.append(input, hits);
   const group = (title: string, pages: PageDef[]) => {
     side.append(h("div", { class: "hub-group", text: title }));
     for (const p of pages) {

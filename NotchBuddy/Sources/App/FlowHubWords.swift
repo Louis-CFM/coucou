@@ -222,6 +222,7 @@ struct HubStylesPage: View {
                         .labelsHidden()
                         .disabled(!FlowCleanup.hasKey && !store.cleanupEnabled)
                 }
+                .hubFindable("hub.cleanup")
                 if !FlowCleanup.hasKey {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
@@ -241,6 +242,7 @@ struct HubStylesPage: View {
                 HubRow(title: String(localized: "hub.style-default"), detail: store.defaultStyle.detail) {
                     stylePicker($store.defaultStyle)
                 }
+                .hubFindable("hub.style-default")
             }
             .opacity(1)
 
