@@ -22,10 +22,10 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
-import { onLanguageChange } from "../i18n/i18n";
-import { clockText, msToNextMinute, resolveFormat, type RegionalFormat } from "./clock";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
+import { onLanguageChange } from "../i18n/i18n";
+import { clockText, msToNextMinute, resolveFormat, type RegionalFormat } from "./clock";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
@@ -399,8 +399,8 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
-    this.syncClock();
     if (mode === "expanded") Sound.play("open");
+    this.syncClock();
     if (prev === "expanded") {
       Sound.play("close");
       // A folded card is still waiting: it keeps the island pinned.
