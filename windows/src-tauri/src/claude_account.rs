@@ -238,6 +238,13 @@ fn window(app: &AppHandle, show: bool) -> Option<tauri::WebviewWindow> {
         })
         .build()
         .ok()
+        // Windows puts a window made off the screen back at its default spot: moved
+        // there once it exists instead.
+        .inspect(|w| {
+            if !show {
+                let _ = w.set_position(tauri::PhysicalPosition::new(AWAY.0, AWAY.1));
+            }
+        })
 }
 
 /// Settings → Connect: claude.ai's sign-in, in Coucou's own window. Async: a window
