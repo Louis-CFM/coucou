@@ -176,21 +176,44 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
-/* Date and time in the middle of the compact island, between Mochi and the grid. */
+/* The date and time between Mochi and the pills in the compact island.
+   Left edge and width are set from core/layout.ts. It never takes the mouse. */
 #island-clock {
   position: absolute;
-  left: 50px;
-  right: 56px;
   top: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 0.85);
+  gap: 1px;
+  opacity: 0;
   pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  text-align: center;
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
   transition: opacity 0.25s ease-in-out;
+}
+
+#island-clock .clock-time,
+#island-clock .clock-date {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+
+#island-clock .clock-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+#island-clock .clock-date {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* A mini Mochi: the slot is the body, the canvas is larger and overflows it so

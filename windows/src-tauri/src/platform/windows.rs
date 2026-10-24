@@ -8,10 +8,11 @@ use std::process::Command;
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use ::windows::core::{w, BOOL, PWSTR};
+use ::windows::core::{w, BOOL, PCWSTR, PWSTR};
 use ::windows::Win32::Foundation::{
     CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT, RPC_E_CHANGED_MODE,
 };
+use ::windows::Win32::Globalization::{GetLocaleInfoEx, LOCALE_SSHORTDATE, LOCALE_SSHORTTIME};
 use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
 use ::windows::Win32::System::Com::{
@@ -38,7 +39,7 @@ use ::windows::Win32::UI::WindowsAndMessaging::{
     WS_EX_TOOLWINDOW,
 };
 
-use super::LocalTime;
+use super::{LocalTime, RegionalFormat};
 use crate::session_window::{self, Proc};
 
 /// File name of the Claude Code relay.
@@ -263,6 +264,28 @@ fn local_full_name() -> Option<String> {
         NetApiBufferFree(info.cast());
         text
     }
+}
+
+// ── Regional format ───────────────────────────────────────────────────────────
+
+/// The user's short time and short date patterns, as set in Windows' region settings.
+pub fn regional_format() -> RegionalFormat {
+    RegionalFormat {
+        time: locale_info(LOCALE_SSHORTTIME),
+        date: locale_info(LOCALE_SSHORTDATE),
+    }
+}
+
+fn locale_info(kind: u32) -> Option<String> {
+    let mut buf = [0u16; 80];
+    // A null name means the user's own locale. The count it returns includes the end
+    // marker, and is 0 on failure.
+    let n = unsafe { GetLocaleInfoEx(PCWSTR::null(), kind, Some(&mut buf)) };
+    if n <= 1 {
+        return None;
+    }
+    let text = String::from_utf16_lossy(&buf[..n as usize - 1]);
+    Some(text).filter(|t| !t.trim().is_empty())
 }
 
 // ── Cursor ────────────────────────────────────────────────────────────────────

@@ -72,6 +72,8 @@ windows = { version = "0.61", features = [
   "Win32_System_Com",
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Variant",
+  # The clock in the compact bar reads the user's short time and date formats.
+  "Win32_Globalization",
   "Win32_Security",
   "Win32_Security_Authorization",
   "Win32_System_Com",

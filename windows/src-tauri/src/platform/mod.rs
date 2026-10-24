@@ -30,6 +30,15 @@ pub struct LocalTime {
     pub second: u32,
 }
 
+/// The user's regional formats as the OS writes them, for the compact bar's clock:
+/// the short time ("h:mm tt", "HH:mm") and the short date ("dd-MM-yyyy", "M/d/yyyy").
+/// A field is `None` where the OS does not say, and the page falls back to its locale.
+#[derive(Debug, Default, PartialEq, serde::Serialize)]
+pub struct RegionalFormat {
+    pub time: Option<String>,
+    pub date: Option<String>,
+}
+
 /// The user's home directory, where `.claude/settings.json` lives.
 pub fn home_dir() -> PathBuf {
     std::env::var_os(HOME_VAR)
@@ -87,4 +96,18 @@ pub enum MouseShape {
     Whole,
     /// A disc, in window-logical pixels: Mochi's body.
     Disc { cx: f64, cy: f64, r: f64 },
+}
+
+#[cfg(all(test, windows))]
+mod regional_tests {
+    use super::regional_format;
+
+    #[test]
+    fn windows_reports_a_short_time_and_a_short_date() {
+        let f = regional_format();
+        let time = f.time.expect("a short time pattern");
+        let date = f.date.expect("a short date pattern");
+        assert!(time.contains('h') || time.contains('H'), "no hour in {time:?}");
+        assert!(date.contains('d') && date.contains('M'), "no day and month in {date:?}");
+    }
 }

@@ -60,7 +60,23 @@ export const PANEL_H = 320;
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
 export const NOTCH_H = 32;
-export const COMPACT_W = 288; // NOTCH_W + 104
+// No notch to leave room for: Mochi (Ø 20) on the left and the 2×2 mini grid (29 wide)
+// on the right, each centred COMPACT_SIDE from its edge of the bar, with a gap of
+// about 28 px between them: 48 + 10 + 28 + 14.5 + 48 = 148.5, rounded up.
+export const COMPACT_SIDE = 48;
+export const COMPACT_W = 149;
+
+// With the date and time between them the text box starts 24 px after Mochi (who ends
+// at x 58), is CLOCK_BOX_W wide, and leaves 24 px before the grid (which starts 62.5 px
+// from the right edge): 58 + 24 + 64 + 24 + 62.5 = 232.5, rounded up.
+export const CLOCK_BOX_X = 82;
+export const CLOCK_BOX_W = 64;
+export const COMPACT_CLOCK_W = 233;
+
+/** Width of the compact bar, with or without the clock. */
+export function compactWidth(clock: boolean): number {
+  return clock ? COMPACT_CLOCK_W : COMPACT_W;
+}
 export const EXPANDED_W = 640;
 
 export const ROUNDED_CORNER = 14; // hidden / compact
@@ -118,6 +134,7 @@ export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  clock = false,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
@@ -125,7 +142,7 @@ export function islandSize(
       // slides into the top edge of the screen instead of sitting there as a bar.
       return { w: NOTCH_W, h: 0 };
     case "compact":
-      return { w: COMPACT_W, h: NOTCH_H };
+      return { w: compactWidth(clock), h: NOTCH_H };
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
@@ -151,7 +168,7 @@ export function botPosition(
     case "hidden":
       return { cx: 46, cy: 16, diameter: 6, opacity: 0 };
     case "compact":
-      return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
+      return { cx: COMPACT_SIDE, cy: 16, diameter: 20, opacity: 1 };
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
       if (view === "uploading") {

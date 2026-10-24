@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  CLOCK_BOX_W, CLOCK_BOX_X, COMPACT_SIDE, EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W, compactWidth,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
@@ -22,6 +22,8 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { onLanguageChange } from "../i18n/i18n";
+import { clockText, msToNextMinute, resolveFormat, type RegionalFormat } from "./clock";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
@@ -60,8 +62,6 @@ export class Island {
   private botGlow!: HTMLElement;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
-  private clockEl!: HTMLElement;
-  private clockTimer?: number;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
@@ -118,6 +118,18 @@ export class Island {
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
 
+  // The date and time in the compact bar. One timer, aimed at the next
+  // minute, and only while the bar is compact with the clock on: syncClock() owns it.
+  private clockEl!: HTMLElement;
+  private clockTime!: HTMLElement;
+  private clockDate!: HTMLElement;
+  private clockTimer: number | null = null;
+  /** Windows' short time and date patterns, as last read; null until one read lands. */
+  private regional: RegionalFormat | null = null;
+  private regionalAsked = false;
+  /** The setting as last applied, to tell a flip from a settings message that left it alone. */
+  private clockSetting = State.settings.showClock;
+
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
@@ -130,6 +142,8 @@ export class Island {
       dizzyFromDesktop: () => this.handleDizzy(),
     });
     this.build();
+    // The date's names follow the language: draw it again from what is cached.
+    onLanguageChange(() => this.syncClock());
     this.wireFsm();
     this.wireInput();
     this.engine.onDizzy = () => this.handleDizzy();
@@ -286,7 +300,11 @@ export class Island {
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
-    this.clockEl = h("div", { id: "island-clock" });
+    this.clockTime = h("div", { class: "clock-time" });
+    this.clockDate = h("div", { class: "clock-date" });
+    this.clockEl = h("time", { id: "island-clock" }, this.clockTime, this.clockDate);
+    this.clockEl.style.left = `${CLOCK_BOX_X}px`;
+    this.clockEl.style.width = `${CLOCK_BOX_W}px`;
     this.countdown = h("div", { id: "countdown" });
 
     this.header = buildHeader(actions);
@@ -363,7 +381,7 @@ export class Island {
           break;
         case "coucou":
           this.expand("greeting");
-          this.greeting.start();
+          this.greeting.start(compactWidth(State.settings.showClock));
           break;
       }
       State.notify();
@@ -381,6 +399,7 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
+    this.syncClock();
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
       Sound.play("close");
@@ -688,7 +707,7 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, State.settings.showClock);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -720,7 +739,7 @@ export class Island {
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
+    this.miniGrid.style.left = `${w - COMPACT_SIDE - 14.5}px`;
     this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
     this.clockEl.style.height = `${hh}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
@@ -838,6 +857,12 @@ export class Island {
         else if (!State.isPinned) this.collapse();
       }
       State.lastActivity = performance.now();
+    });
+
+    // A clock change or a long sleep is noticed on the next minute, or at once here.
+    window.addEventListener("focus", () => this.syncClock(true));
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) this.syncClock(true);
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
@@ -1247,22 +1272,8 @@ export class Island {
       }
     }
 
-    this.updateClock();
-
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
-  }
-
-  /** The clock sits in the middle of the compact island, where the notch is on a Mac. */
-  private updateClock() {
-    const on = State.mode === "compact" && State.settings.showClock;
-    this.clockEl.style.opacity = on ? "1" : "0";
-    if (!on) return;
-    const now = new Date();
-    const date = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
-    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const text = `${date}  ${time}`;
-    if (this.clockEl.textContent !== text) this.clockEl.textContent = text;
   }
 
   /** Applies settings coming from Rust at boot. */
@@ -1271,9 +1282,76 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    // The bar changes width with the clock: grow with a spring, shrink along the curve.
+    if (State.settings.showClock !== this.clockSetting) {
+      this.clockSetting = State.settings.showClock;
+      this.animateGeometry(!this.clockSetting);
+    }
+    this.syncClock();
     State.notify();
-    // ponytail: one timer for the life of the window; a minute is the clock's finest tick.
-    this.clockTimer ??= window.setInterval(() => this.updateClock(), 10_000);
+  }
+
+  // ── The date and time in the compact island ────────────────────────────────────
+
+  /**
+   * Shows the clock and keeps one timer aimed at the next minute while the bar is
+   * compact with the clock on; hides it and clears the timer otherwise. Safe to
+   * call any number of times. `realign`: aim the timer again (after a sleep, a
+   * clock change or the window coming back). It writes text only, never State.notify,
+   * so a minute tick cannot wake the frame loop.
+   */
+  private syncClock(realign = false) {
+    const show = State.mode === "compact" && State.settings.showClock;
+    this.clockEl.style.opacity = show ? "1" : "0";
+    if (!show) {
+      this.clearClockTimer();
+      return;
+    }
+    this.drawClock();
+    if (!this.regionalAsked) this.readRegional();
+    if (realign) this.clearClockTimer();
+    if (this.clockTimer == null) this.armClock();
+  }
+
+  private clearClockTimer() {
+    if (this.clockTimer != null) window.clearTimeout(this.clockTimer);
+    this.clockTimer = null;
+  }
+
+  private armClock() {
+    this.clockTimer = window.setTimeout(() => {
+      this.clockTimer = null;
+      // Left compact since: nothing to draw, nothing to aim.
+      if (State.mode !== "compact" || !State.settings.showClock) return;
+      this.drawClock();
+      this.readRegional();
+      this.armClock();
+    }, msToNextMinute(Date.now()));
+  }
+
+  /** Windows' formats can change while we run: read them again, keep the last good ones. */
+  private readRegional() {
+    this.regionalAsked = true;
+    void Bridge.regionalFormat().then((r) => {
+      if (!r || (r.time == null && r.date == null)) return;
+      if (r.time === this.regional?.time && r.date === this.regional?.date) return;
+      this.regional = r;
+      if (State.mode === "compact" && State.settings.showClock) this.drawClock();
+    });
+  }
+
+  private drawClock() {
+    const locale = navigator.language || "en";
+    const now = new Date();
+    const text = clockText(now, resolveFormat(this.regional, locale), locale);
+    if (this.clockTime.textContent !== text.time) this.clockTime.textContent = text.time;
+    this.clockDate.textContent = text.date;
+    // A language whose weekday makes the line too long shows the date without it.
+    if (this.clockDate.scrollWidth > this.clockDate.clientWidth + 0.5) this.clockDate.textContent = text.dateShort;
+    if (this.clockEl.getAttribute("aria-label") !== text.label) {
+      this.clockEl.setAttribute("aria-label", text.label);
+      this.clockEl.setAttribute("datetime", now.toISOString().slice(0, 16));
+    }
   }
 
   get panelSize() {
