@@ -8,8 +8,8 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
+import type { WhatsAppPrefs, WhatsAppState } from "./whatsapp";
 import type { UpdateStatus } from "./update";
-import type { WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -305,7 +305,7 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  approvalDecision: (requestId: string, decision: ApprovalDecision) =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
@@ -392,6 +392,15 @@ export const Bridge = {
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+  /** Reads the computer for Mochi's mood while he is on screen (vitals.rs). */
+  vitalsSetActive: (on: boolean) => call<void>("vitals_set_active", { on }),
+  // Screen capture for Claude (capture.rs).
+  captureBegin: () => call<void>("capture_begin"),
+  capturePaste: () => call<boolean>("capture_paste"),
+  captureCopy: () => call<boolean>("capture_copy"),
+  captureOnIsland: (on: boolean) => call<void>("capture_on_island", { on }),
+  captureDismiss: () => call<void>("capture_dismiss"),
+  captureAnnotate: () => call<void>("capture_annotate"),
 
   // ── Global shortcuts ──────────────────────────────────────────────────────
   /** How each global shortcut went when Rust last registered them. */
@@ -445,28 +454,62 @@ export const Bridge = {
   spotifyInstalled: () => call<boolean>("spotify_installed"),
 
   // ── WhatsApp (src-tauri/src/whatsapp) ─────────────────────────────────────
-  /** The island's copy, asked once at start (then the "whatsapp" event). Island only. */
-  whatsappIsland: () => call<WaIslandView>("whatsapp_island"),
-  /** A conversation opened in the card: its latest messages, the receipt if Settings says so. */
+  whatsappState: () => call<WhatsAppState>("whatsapp_state"),
+  /** `url` / `credential`: null leaves the stored one alone, "" clears it. */
+  whatsappSetPrefs: (prefs: WhatsAppPrefs, url: string | null, credential: string | null) =>
+    call<void>("whatsapp_set_prefs", { prefs, url, credential }),
+  /** "Test connection": what the gateway says, in a sentence. */
+  whatsappTest: () => call<string>("whatsapp_test"),
+  /** Downloads, checks and starts GOWA; progress arrives in the snapshots. */
+  whatsappInstall: () => call<void>("whatsapp_install"),
+  /** A conversation opened in the card (read receipts if Settings says so). */
   whatsappOpen: (chat: string) => call<void>("whatsapp_open", { chat }),
   whatsappClose: (chat: string) => call<void>("whatsapp_close", { chat }),
-  /** Enter or the send button only. True once the gateway took it. */
+  /** True when the gateway took it. */
   whatsappSend: (chat: string, text: string) => call<boolean>("whatsapp_send", { chat, text }),
-  /** A chat id, or (Settings) a phone number. */
   whatsappIgnore: (chat: string) => call<void>("whatsapp_ignore", { chat }),
   whatsappUnignore: (chat: string) => call<void>("whatsapp_unignore", { chat }),
-  /** Settings only, from here down. */
-  whatsappSettings: () => call<WaSettingsView>("whatsapp_settings"),
-  whatsappSetOptions: (enabled: boolean, muteGroups: boolean, markReadOnOpen: boolean) =>
-    callOrThrow<void>("whatsapp_set_options", { enabled, muteGroups, markReadOnOpen }),
-  /** `credential`: null keeps the stored one, "" removes it. */
-  whatsappSaveGateway: (g: {
-    gateway: "gowa" | "openwa"; url: string; credential: string | null; port: number; autoStart: boolean; gowaPath: string;
-  }) => callOrThrow<void>("whatsapp_save_gateway", g),
-  whatsappTest: () => call<WaTestResult>("whatsapp_test"),
-  /** "Install WhatsApp" / "Update": GOWA from its GitHub releases, on this click only. */
-  whatsappInstall: () => call<void>("whatsapp_install"),
+  /** WhatsApp's app when installed, WhatsApp Web otherwise. */
+  whatsappOpenApp: () => call<void>("whatsapp_open_app"),
 
+  // ── The chat's microphone (src-tauri/src/flow/chat.rs) ───────────────────
+  /** Opens the microphone; rejects with why it can't (no voice model, no microphone). */
+  chatDictateStart: () => callOrThrow<void>("chat_dictate_start"),
+  /** What was said, through Flow's on-device model ("" for silence). */
+  chatDictateStop: () => call<string>("chat_dictate_stop"),
+  chatDictateCancel: () => call<void>("chat_dictate_cancel"),
+
+  // ── Send by email (src-tauri/src/mail.rs) ─────────────────────────────────
+  /** "resend" when Resend sent it, "mailApp" when the mail app was opened instead. */
+  mailSend: (to: string, subject: string, body: string, path: string | null) =>
+    callOrThrow<"resend" | "mailApp">("mail_send", { to, subject, body, path }),
+
+  /** The newest plan sample the Claude desktop app recorded (src-tauri/src/claude_plan.rs). */
+  claudeDesktopPlan: () =>
+    call<{ at: number; fiveHour: number | null; sevenDay: number | null } | null>("claude_desktop_plan"),
+  /** Your Claude account, signed in once in Coucou's own claude.ai window (claude_account.rs). */
+  claudeAccountStatus: () => call<ClaudeAccountStatus>("claude_account_status"),
+  claudeAccountConnect: () => call<void>("claude_account_connect"),
+  claudeAccountDisconnect: () => call<void>("claude_account_disconnect"),
+  /** The plan's use right now, from claude.ai or with Claude Code's sign-in (claude_plan.rs). */
+  claudeLivePlan: () =>
+    call<{ fiveHour: number | null; sevenDay: number | null; fiveHourResetsAt: string | null; sevenDayResetsAt: string | null } | null>(
+      "claude_live_plan",
+    ),
+
+  // ── Test results (src-tauri/src/tests_check.rs) ──────────────────────────
+  /** The double-check of one unclear run; null while it is off. */
+  testsCheck: (evidence: Record<string, unknown>) => call<CheckAnswer | null>("tests_check", { evidence }),
+  testsCheckPing: (mode: "local" | "cloud") => call<CheckAnswer>("tests_check_ping", { mode }),
+  /** Git's view of the test files in a folder, for the fix loop (island/loop.ts). */
+  testsGitDiff: (cwd: string) => call<string | null>("tests_git_diff", { cwd }),
+  /** The fix loop's word for a relay that waits; null: none, Claude Code carries on. */
+  loopAnswer: (id: string, answer: string | null) => call<void>("loop_answer", { id, answer }),
+  layaStatus: () => call<LayaStatus>("laya_status"),
+  layaSetup: () => call<void>("laya_setup"),
+  layaStart: () => call<void>("laya_start"),
+  layaStop: () => call<void>("laya_stop"),
+  layaRemove: () => call<void>("laya_remove"),
   // ── New versions (src-tauri/src/update.rs) ────────────────────────────────
   updateStatus: () => call<UpdateStatus>("update_status"),
   /** The island's question or Settings' toggle: may Coucou look at GitHub on its own? */
@@ -486,6 +529,37 @@ export const Bridge = {
   /** The release's page on github.com. */
   updateOpenPage: () => call<void>("update_open_page"),
 };
+
+/** Your Claude account in Coucou: connected, signed in, when claude.ai last answered (epoch ms). */
+export interface ClaudeAccountStatus {
+  connected: boolean;
+  signedIn: boolean | null;
+  signingIn: boolean;
+  updatedAt: number | null;
+}
+
+/** The double-check's answer: P(the tests pass), or why it couldn't say. */
+export interface CheckAnswer {
+  by: "laya" | "jev";
+  p: number | null;
+  model: string | null;
+  error: string | null;
+  ms: number;
+}
+
+/** Laya on this computer: setting up, starting, ready. */
+export interface LayaStatus {
+  phase: string;
+  message: string;
+  line: string;
+  installed: boolean;
+  running: boolean;
+  /** Started outside Coucou (its own run.bat): used, never stopped. */
+  external: boolean;
+}
+
+/** Allow / Deny, or the plan card's choices (ExitPlanMode). */
+export type ApprovalDecision = "allow" | "deny" | "plan_auto" | "plan_default" | "plan_change";
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
 
@@ -605,7 +679,9 @@ export type BridgeEvent =
   | { name: "cursor"; payload: { x: number; y: number } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
-  | { name: "screen-changed"; payload: null };
+  | { name: "screen-changed"; payload: null }
+  | { name: "wake-hover"; payload: null }
+  | { name: "browser-foreground"; payload: boolean };
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";

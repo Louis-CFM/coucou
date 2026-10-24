@@ -11,6 +11,9 @@ pub const KNOWN_KEYS: &[&str] = &[
     "openai-api-key",
     "google-api-key",
     "openrouter-api-key",
+    "deepseek-api-key",
+    "qwen-api-key",
+    "moonshot-api-key",
     "openai-compatible-key",
     "n8n-url",
     "n8n-api-key",
@@ -22,10 +25,17 @@ pub const KNOWN_KEYS: &[&str] = &[
     "gitea-token",
     "stripe-api-key",
     "resend-api-key",
+    // The sender address Resend sends "Send by email" from (mail.rs).
+    "resend-from",
     "notion-api-key",
     "calcom-api-key",
     // « OK Coucou »'s answers in an ElevenLabs voice.
     "elevenlabs-api-key",
+    // Jev, the cloud double-check of unclear test results (tests_check.rs).
+    "typesafe-api-key",
+    // The WhatsApp gateway (GOWA or OpenWA) when it is not the one Coucou runs.
+    "whatsapp-url",
+    "whatsapp-api-key",
 ];
 
 fn entry(key: &str) -> Option<Entry> {
@@ -76,10 +86,7 @@ pub const INTERNAL_KEYS: &[&str] = &[
     "phone-relay-room",
     "phone-relay-key",
     "phone-relay-access",
-    // WhatsApp's gateway address, its credential (GOWA's user:password or OpenWA's API key) and
-    // the webhook's signing secret: set from Settings through whatsapp_save_gateway, read by Rust only.
-    "whatsapp-url",
-    "whatsapp-api-key",
+    // Signs what the WhatsApp gateway posts to Coucou.
     "whatsapp-webhook-secret",
 ];
 

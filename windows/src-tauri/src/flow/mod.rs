@@ -8,7 +8,9 @@
 // through the dictionary, the snippets and (if turned on) Claude's clean-up,
 // and are pasted. The thread sleeps on its channel while nothing happens.
 
+pub mod chat;
 pub mod cleanup;
+pub mod languages;
 pub mod logic;
 pub mod paste;
 pub mod pill;
@@ -355,6 +357,13 @@ fn finish(app: &AppHandle, flow: &Arc<Flow>, mut l: Listening, busy: Arc<AtomicB
     // Too short or silent: nothing to send to the model.
     if samples.len() < 16_000 / 4 || peak < 0.004 {
         pill::update(app, |s| s.phase = "idle".into());
+        // A real attempt (a second or more) that heard nothing is said, not
+        // dropped without a word: a quiet or wrong microphone looked like
+        // dictation not working at all. A short tap stays quiet.
+        if seconds >= 1.0 {
+            crate::log::line(format!("flow: heard nothing in {seconds:.1} s (peak {peak:.4})"));
+            pill::announce(app, "mic", "#FF6B6B", t("Coucou heard nothing: speak closer to the microphone, or pick another one in Flow → Settings."), None, 6);
+        }
         return;
     }
     pill::update(app, |s| s.phase = "thinking".into());
@@ -377,16 +386,29 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let transcript = speech::transcribe(samples).ok_or("the voice model is not loaded")?;
     let raw = transcript.text.trim().to_string();
     if raw.is_empty() {
+        crate::log::line(format!("flow: no words in {seconds:.1} s of sound"));
         pill::update(app, |s| s.phase = "idle".into());
+        pill::announce(app, "mic", "#FF6B6B", t("Coucou heard nothing: speak closer to the microphone, or pick another one in Flow → Settings."), None, 6);
         return Ok(());
     }
-    let (prepared, style, cleanup, words, key) = {
+    let (prepared, style, cleanup, words, key, prompt_mode, translate_to) = {
         let store = flow.store.lock().unwrap();
         let app_id = front.map(|(id, _)| id.as_str());
-        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key)
+        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key,
+         store.prefs.prompt_mode, store.prefs.translate_to.clone())
     };
     let mut written = prepared.text.clone();
-    if cleanup && style != store::Style::Verbatim && cleanup::has_key() {
+    // Prompt mode or translation: one call to Claude does the clean-up too (FlowDictation.swift).
+    let language = languages::find(&translate_to);
+    if (prompt_mode || language.is_some()) && !prepared.text.is_empty() {
+        let app_name = front.map(|(_, n)| n.clone());
+        let shaped = tauri::async_runtime::block_on(cleanup::transform(
+            &prepared.text, prompt_mode, language, style, app_name.as_deref(), &words,
+        ));
+        if text::keeps_marks(&shaped, &prepared.snippets) {
+            written = shaped;
+        }
+    } else if cleanup && style != store::Style::Verbatim && cleanup::has_key() {
         let app_name = front.map(|(_, n)| n.clone());
         let cleaned = tauri::async_runtime::block_on(cleanup::clean(&prepared.text, style, app_name.as_deref(), &words));
         if text::keeps_marks(&cleaned, &prepared.snippets) {
@@ -397,6 +419,8 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     crate::log::line(format!("flow: {} words in {:?}", text::word_count(&final_text), started.elapsed()));
 
     os::wait_key_released(key);
+    // A screen capture waiting on the island goes in first, then the words (ScreenCapture.swift).
+    crate::capture::paste_for_dictation(app, front.map(|(id, _)| id.as_str()));
     let terminal = front.is_some_and(|(id, _)| is_terminal(id));
     let outcome = paste::paste(&final_text, terminal);
     let entry = {
@@ -447,6 +471,10 @@ pub struct FlowStatus {
     /// "ok", or why the key can't be watched here ("wayland", "no-display").
     keys: String,
     has_claude_key: bool,
+    /// Who answers « OK Coucou »: "claude", "gemini" (no Claude key), or none.
+    voice_brain: Option<&'static str>,
+    /// The languages Flow can translate into, by code (the page names them).
+    languages: Vec<&'static str>,
     mics: Vec<audio::InputDevice>,
     platform: &'static str,
     /// Coucou started with the computer.
@@ -465,6 +493,8 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
             Err(why) => why.into(),
         },
         has_claude_key: cleanup::has_key(),
+        voice_brain: crate::voice::brain::available(),
+        languages: languages::codes(),
         mics: audio::input_devices(),
         platform: if cfg!(windows) { "windows" } else { "linux" },
         autostarted: crate::launched_at_login(),

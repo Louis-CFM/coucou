@@ -365,7 +365,7 @@ function dotGoal(now: number, i: number): number {
 
 function tick(now: number) {
   frame = null;
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   last = now;
   const l = look();
   // The dots: follow the voice, or a slow wave while thinking.

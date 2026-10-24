@@ -61,6 +61,8 @@ pub struct PollGate {
     pub rect: Mutex<IslandRect>,
     /// Mirrors the window flag so we only call into the OS when it changes.
     ignoring: AtomicBool,
+    /// A web browser is the app in front (spawn_browser_watch).
+    pub browser_front: AtomicBool,
 }
 
 impl PollGate {
@@ -71,6 +73,7 @@ impl PollGate {
             collapsed: AtomicBool::new(true),
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
+            browser_front: AtomicBool::new(false),
         }
     }
 
@@ -502,6 +505,144 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     });
 }
 
+/// How often the wake strip is checked while the island is hidden, in ms.
+const WAKE_POLL_MS: u64 = 40;
+/// A press this far below the top of the screen (logical px) starts a drag that
+/// may wake the island over a browser: the tab strip sits above it.
+const DRAG_FROM_BELOW: f64 = 80.0;
+
+/// Emits `wake-hover` when the cursor arrives on the wake strip while the island
+/// is hidden. The strip's own DOM `mouseenter` is not enough on Windows: WebView2
+/// often delivers no mouse event to a 6 px, non-activating, always-on-top window,
+/// so a push to the top of the screen sometimes woke the island and sometimes did
+/// not. A cursor read 25 times a second costs next to nothing.
+///
+/// Edge-triggered: a cursor already resting on the strip when the island hides
+/// (Ctrl+Alt+N, Pause) must leave and come back, or the island could never hide.
+pub fn spawn_wake_poll(app: AppHandle, gate: Arc<PollGate>) {
+    if !platform::CURSOR_POLL {
+        return;
+    }
+    std::thread::spawn(move || {
+        let mut was_inside: Option<bool> = None;
+        // The left button: whether it went down well below the top of the screen.
+        let mut was_down = false;
+        let mut pressed_low = false;
+        // What this poll last set while a browser is in front (None: not its business).
+        let mut passing: Option<bool> = None;
+        loop {
+            std::thread::sleep(Duration::from_millis(WAKE_POLL_MS));
+            let Some((cx, cy)) = cursor_physical() else { continue };
+            let down = platform::left_button_down();
+            if down && !was_down {
+                let scale = window(&app).and_then(|w| w.scale_factor().ok()).unwrap_or(1.0);
+                pressed_low = cy > DRAG_FROM_BELOW * scale;
+            }
+            was_down = down;
+            // Something carried up from below (a file from a download bar, a page, a
+            // folder), not a click or a drag on the tab strip at the top.
+            let carrying = down && pressed_low;
+            if !gate.collapsed.load(Ordering::Relaxed) {
+                was_inside = None;
+                passing = None;
+                continue;
+            }
+            // In front of a browser the hidden strip lets the mouse through to its
+            // tabs (refresh_click_through); while a file is carried up, it takes the
+            // drag instead, or the drop could never reach the island.
+            if gate.browser_front.load(Ordering::Relaxed) {
+                let pass = !carrying;
+                if passing != Some(pass) {
+                    set_ignore_cursor(&app, pass);
+                    passing = Some(pass);
+                }
+            } else {
+                passing = None;
+            }
+            let Some(win) = window(&app) else { continue };
+            let (Ok(origin), Ok(size)) = (win.outer_position(), win.outer_size()) else { continue };
+            let inside = cx >= origin.x as f64
+                && cx < (origin.x + size.width as i32) as f64
+                && cy >= origin.y as f64
+                && cy < (origin.y + size.height as i32) as f64;
+            if inside && was_inside == Some(false) {
+                // `true`: a drag carried up; it wakes the island even over a browser.
+                let _ = win.emit("wake-hover", carrying);
+            }
+            was_inside = Some(inside);
+        }
+    });
+}
+
+/// Web browsers, by the file name of their program. While one of them is in
+/// front, the island keeps out of the way of its tabs.
+const BROWSERS: &[&str] = &[
+    "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe",
+    "arc.exe", "chromium.exe", "iexplore.exe", "waterfox.exe", "librewolf.exe", "floorp.exe",
+    "zen.exe", "thorium.exe", "whale.exe", "comet.exe", "dia.exe", "yandex.exe",
+];
+
+pub fn is_browser(exe: &str) -> bool {
+    BROWSERS.contains(&exe)
+}
+
+/// Emits `browser-foreground` (true / false) whenever a web browser becomes, or
+/// stops being, the app in front. Four reads a second of the foreground window.
+pub fn spawn_browser_watch(app: AppHandle, gate: Arc<PollGate>) {
+    if !platform::CURSOR_POLL {
+        return;
+    }
+    std::thread::spawn(move || {
+        let mut last: Option<bool> = None;
+        let mut last_exe: Option<String> = None;
+        let mut ticks: u32 = 0;
+        loop {
+            let exe = platform::foreground_exe().map(|e| e.to_lowercase());
+            // The program in front, for a finish that stays quiet while its own
+            // window is (Mac #9e95732). Its name only, when it changes.
+            if exe != last_exe {
+                if let Some(win) = window(&app) {
+                    let _ = win.emit("front-exe", exe.clone());
+                }
+                last_exe = exe.clone();
+            }
+            let now = exe.as_deref().is_some_and(is_browser);
+            // Repeated every 2 s as well: the first report can go out before the
+            // page is listening.
+            ticks = ticks.wrapping_add(1);
+            if last != Some(now) {
+                gate.browser_front.store(now, Ordering::Relaxed);
+                // The hidden island's wake strip sits on the browser's tabs.
+                if gate.collapsed.load(Ordering::Relaxed) {
+                    refresh_click_through(&app, &gate);
+                }
+            }
+            if last != Some(now) || ticks % 8 == 0 {
+                last = Some(now);
+                if let Some(win) = window(&app) {
+                    let _ = win.emit("browser-foreground", now);
+                }
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+    });
+}
+
+#[cfg(test)]
+mod browser_tests {
+    use super::*;
+
+    #[test]
+    fn browsers_are_told_from_other_apps() {
+        assert!(is_browser("chrome.exe"));
+        assert!(is_browser("msedge.exe"));
+        assert!(is_browser("firefox.exe"));
+        assert!(!is_browser("claude.exe"));
+        assert!(!is_browser("windowsterminal.exe"));
+        assert!(!is_browser("code.exe"));
+    }
+}
+
 /// Re-applies click-through after the window or the island changed shape.
 ///
 /// With the cursor poll (Windows) the window takes the mouse again and the next
@@ -509,7 +650,11 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 /// the island itself, or to the whole wake strip while collapsed.
 pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     if platform::CURSOR_POLL {
-        set_ignore_cursor(app, false);
+        // While hidden in front of a browser the wake strip lets clicks through
+        // to the tabs under it: the browser rule keeps the island asleep anyway.
+        let pass_through = gate.collapsed.load(Ordering::Relaxed)
+            && gate.browser_front.load(Ordering::Relaxed);
+        set_ignore_cursor(app, pass_through);
         gate.forget_ignore_state();
         return;
     }

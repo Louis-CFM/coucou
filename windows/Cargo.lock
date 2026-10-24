@@ -722,6 +722,7 @@ name = "coucou"
 version = "0.5.3"
 dependencies = [
  "arboard",
+ "clipboard-win",
  "cpal",
  "dbus",
  "futures-util",
@@ -729,7 +730,7 @@ dependencies = [
  "keyring",
  "libc",
  "mdns-sd",
- "miniz_oxide 0.8.9",
+ "png 0.17.16",
  "qrcode",
  "rcgen",
  "reqwest 0.12.28",
@@ -751,6 +752,7 @@ dependencies = [
  "windows 0.61.3",
  "windows-core 0.62.2",
  "x11rb",
+ "zip",
 ]
 
 [[package]]

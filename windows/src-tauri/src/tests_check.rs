@@ -1,0 +1,820 @@
+// Test runs: the double-check of unclear results and the fix loop — dotpals'
+// bridge/checker.js and bridge/laya.js, and its "Make agents fix failing tests"
+// (MIT, see windows/THIRD_PARTY_NOTICES.md; the question and thresholds come from
+// claude-referee, MIT).
+//
+// Double-check (Settings → Agents → Test results, off by default). A test run
+// whose output can't say whether it passed is asked about once:
+//   local  Laya (Convai Innovations) on this computer, `laya-serve` on 127.0.0.1.
+//          Nothing leaves the computer. "Set up Laya" installs it in a private
+//          Python environment in Coucou's folder, and Coucou starts and stops it.
+//   cloud  TypeSafe's Jev, with the user's API key (Windows Credential Manager),
+//          after removing anything that looks like a key, password, email, IP
+//          address or the user's own folder.
+// It gets 5 seconds and fails open: no answer changes nothing.
+//
+// Fix loop (off by default): Claude Code ending its turn while the session's last
+// test run failed is sent back to fix them, at most twice per request, as dotpals
+// does. The relay waits for that answer only while the loop is on (a marker file
+// it can see, `fix-loop.on` in Coucou's folder).
+
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+use serde::Serialize;
+use serde_json::{json, Value};
+use tauri::{AppHandle, Emitter, Manager};
+
+const BUDGET: Duration = Duration::from_secs(5);
+pub const JEV_KEY: &str = "typesafe-api-key";
+const JEV_URL: &str = "https://api.typesafe.ai";
+const JEV_MODEL: &str = "jev-1.13.0";
+pub const LAYA_URL: &str = "http://127.0.0.1:8000";
+
+/// claude-referee's done.met question, asked about the tests passing.
+fn questions() -> Value {
+    json!({ "done.met": {
+        "type": "noul",
+        "instructions": {
+            "question": "Does `evidence` show that the tests pass?",
+            "note": "`evidence` holds facts parsed from the test command's output (runner, passed, failed, errors, skipped, failing test names) or null when no summary was found, its exit status, the end of the output and the lines that look like failures. A claim of success in prose is not evidence. Zero tests, only skipped tests, a missing summary or a missing exit code do not show that tests pass.",
+        },
+        "criteria": {
+            "true": "The test output directly shows that the tests pass.",
+            "false": "The output does not show it, or shows that they fail.",
+        },
+    } })
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+struct Config {
+    mode: String,
+    laya_url: String,
+    /// A Laya already on this computer (its folder), else Coucou's own copy.
+    laya_dir: String,
+    fix_loop: bool,
+}
+
+fn config(app: &AppHandle) -> Config {
+    app.try_state::<crate::Shared>()
+        .map(|s| {
+            let s = s.settings.lock().unwrap();
+            Config {
+                mode: s.test_checker.clone(),
+                laya_url: s.laya_url.clone(),
+                laya_dir: s.laya_dir.clone(),
+                fix_loop: s.fix_failing_tests,
+            }
+        })
+        .unwrap_or(Config { mode: "off".into(), laya_url: String::new(), laya_dir: String::new(), fix_loop: false })
+}
+
+fn laya_url(c: &Config) -> String {
+    let u = c.laya_url.trim().trim_end_matches('/');
+    // Only an address on this computer: Laya is the private option.
+    if u.starts_with("http://127.0.0.1:") || u.starts_with("http://localhost:") { u.to_string() } else { LAYA_URL.to_string() }
+}
+
+// ── Redaction (before anything goes to the cloud) ─────────────────────────────
+
+fn looks_secret(word: &str) -> bool {
+    let w = word.trim_matches(|c: char| !c.is_ascii_alphanumeric());
+    // Keys are long runs of mixed-case letters and digits; test names rarely are.
+    w.len() >= 24
+        && w.chars().all(|c| c.is_ascii_alphanumeric() || "-_.+=".contains(c))
+        && w.chars().any(|c| c.is_ascii_uppercase())
+        && w.chars().any(|c| c.is_ascii_lowercase())
+        && w.chars().any(|c| c.is_ascii_digit())
+}
+
+fn looks_email(word: &str) -> bool {
+    let w = word.trim_matches(|c: char| !(c.is_ascii_alphanumeric() || c == '@' || c == '.'));
+    match w.split_once('@') {
+        Some((user, domain)) => !user.is_empty() && domain.contains('.') && !domain.ends_with('.'),
+        None => false,
+    }
+}
+
+fn looks_ip(word: &str) -> bool {
+    let w = word.trim_matches(|c: char| !(c.is_ascii_digit() || c == '.'));
+    w.split('.').count() == 4 && w.parse::<std::net::Ipv4Addr>().is_ok()
+}
+
+const SECRET_NAMES: [&str; 8] = ["password", "passwd", "secret", "token", "api_key", "apikey", "authorization", "bearer"];
+
+/// Where a "name=value" or "name: value" secret starts in a line, if one does.
+fn secret_at(lower: &str) -> Option<usize> {
+    SECRET_NAMES
+        .iter()
+        .flat_map(|name| lower.match_indices(name).map(move |(i, _)| (i, name.len())))
+        .filter(|(i, len)| {
+            let rest = lower[i + len..].trim_start();
+            rest.starts_with('=') || rest.starts_with(':') || (lower[*i..].starts_with("bearer") && rest.chars().next().is_some_and(|c| c.is_ascii_alphanumeric()))
+        })
+        .map(|(i, _)| i)
+        .min()
+}
+
+/// One line with keys, passwords, emails, IP addresses and the home folder taken out.
+pub fn redact_line(line: &str, home: &str) -> String {
+    let mut out = if home.len() > 3 { line.replace(home, "~") } else { line.to_string() };
+    if let Some(i) = secret_at(&out.to_ascii_lowercase()) {
+        // "password=hunter2", "Authorization: Bearer x": everything after the name goes.
+        out = format!("{}[redacted]", &out[..i]);
+    }
+    out.split(' ')
+        .map(|w| if looks_email(w) || looks_ip(w) || looks_secret(w) { "[redacted]" } else { w })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+pub fn redact(value: &Value, home: &str) -> Value {
+    match value {
+        Value::String(s) => Value::String(s.split('\n').map(|l| redact_line(l, home)).collect::<Vec<_>>().join("\n")),
+        Value::Array(a) => Value::Array(a.iter().map(|v| redact(v, home)).collect()),
+        Value::Object(m) => Value::Object(m.iter().map(|(k, v)| (k.clone(), redact(v, home))).collect()),
+        other => other.clone(),
+    }
+}
+
+// ── Asking ────────────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Answer {
+    /// "laya" or "jev".
+    pub by: String,
+    /// P(the tests pass), 0…1.
+    pub p: Option<f64>,
+    pub model: Option<String>,
+    pub error: Option<String>,
+    pub ms: u64,
+}
+
+fn client() -> reqwest::Client {
+    reqwest::Client::builder().timeout(BUDGET).no_proxy().build().unwrap_or_default()
+}
+
+fn jev_client() -> reqwest::Client {
+    reqwest::Client::builder().timeout(BUDGET).build().unwrap_or_default()
+}
+
+/// A short, safe reason: never the raw error, which could echo the request.
+fn reason(by: &str, status: Option<u16>, timed_out: bool) -> String {
+    use crate::i18n::t;
+    if timed_out {
+        return t("no answer within 5 s");
+    }
+    match (by, status) {
+        ("jev", Some(401 | 403)) => t("TypeSafe didn't accept the API key"),
+        (_, Some(429)) => t("too many requests right now"),
+        ("laya", Some(503)) => t("Laya is still loading its model…"),
+        ("jev", Some(_)) => t("TypeSafe answered with an error"),
+        (_, Some(_)) => t("Laya answered with an error"),
+        ("jev", None) => t("couldn't reach TypeSafe"),
+        _ => t("couldn't reach Laya: is it running?"),
+    }
+}
+
+async fn ask(by: &str, url: &str, key: Option<&str>, body: &Value) -> Result<(f64, Option<String>), String> {
+    let req = if by == "jev" {
+        jev_client().post(format!("{JEV_URL}/v1/systemone")).bearer_auth(key.unwrap_or_default())
+    } else {
+        client().post(format!("{url}/v1/systemone"))
+    };
+    let res = req.json(body).send().await.map_err(|e| reason(by, None, e.is_timeout()))?;
+    let status = res.status().as_u16();
+    if !res.status().is_success() {
+        return Err(reason(by, Some(status), false));
+    }
+    let data: Value = res.json().await.map_err(|_| crate::i18n::t("gave no probability"))?;
+    let p = data.pointer("/answers/done.met/noul").and_then(Value::as_f64).filter(|p| (0.0..=1.0).contains(p));
+    let model = data.get("model").and_then(Value::as_str).map(|m| m.chars().take(60).collect());
+    p.map(|p| (p, model)).ok_or_else(|| crate::i18n::t("gave no probability"))
+}
+
+/// Asks the double-check about one unclear test run. None while it is off.
+#[tauri::command]
+pub async fn tests_check(app: AppHandle, evidence: Value) -> Option<Answer> {
+    let c = config(&app);
+    let by = match c.mode.as_str() {
+        "local" => "laya",
+        "cloud" => "jev",
+        _ => return None,
+    };
+    if by == "laya" {
+        *USED.lock().unwrap() = Some(Instant::now());
+        if let Some(why) = laya_not_ready(&app) {
+            return Some(Answer { by: by.into(), p: None, model: None, error: Some(why), ms: 0 });
+        }
+    }
+    let started = Instant::now();
+    let key = if by == "jev" { crate::secrets::get(JEV_KEY) } else { None };
+    if by == "jev" && key.is_none() {
+        return Some(Answer { by: by.into(), p: None, model: None, error: Some(crate::i18n::t("no API key: add one in Settings")), ms: 0 });
+    }
+    let home = std::env::var("USERPROFILE").unwrap_or_default();
+    // Laya runs here: the evidence as it is. Jev is in the cloud: redacted first.
+    let evidence = if by == "jev" { redact(&evidence, &home) } else { evidence };
+    let body = if by == "jev" {
+        json!({ "state": { "evidence": evidence }, "questions": questions(), "model": JEV_MODEL })
+    } else {
+        json!({ "state": { "evidence": evidence }, "questions": questions() })
+    };
+    let answer = ask(by, &laya_url(&c), key.as_deref(), &body).await;
+    let ms = started.elapsed().as_millis() as u64;
+    Some(match answer {
+        Ok((p, model)) => Answer { by: by.into(), p: Some((p * 1000.0).round() / 1000.0), model, error: None, ms },
+        Err(error) => Answer { by: by.into(), p: None, model: None, error: Some(error), ms },
+    })
+}
+
+/// "Test connection": a tiny request (Laya's /health, Jev's model list).
+#[tauri::command]
+pub async fn tests_check_ping(app: AppHandle, mode: String) -> Answer {
+    let c = config(&app);
+    let by = if mode == "cloud" { "jev" } else { "laya" };
+    if by == "laya" {
+        *USED.lock().unwrap() = Some(Instant::now());
+        // Only a Laya that is up: Test connection never loads its model.
+        let phase = with_laya(|l| l.status.phase.clone());
+        if phase == "starting" {
+            return Answer { by: by.into(), p: None, model: None, error: Some(crate::i18n::t("Laya is still loading its model…")), ms: 0 };
+        }
+    }
+    let started = Instant::now();
+    let result: Result<(), String> = async {
+        let res = if by == "jev" {
+            let key = crate::secrets::get(JEV_KEY).ok_or_else(|| crate::i18n::t("no API key: add one in Settings"))?;
+            jev_client().get(format!("{JEV_URL}/v1/models")).bearer_auth(key).send().await
+        } else {
+            client().get(format!("{}/health", laya_url(&c))).send().await
+        }
+        .map_err(|e| reason(by, None, e.is_timeout()))?;
+        if res.status().is_success() { Ok(()) } else { Err(reason(by, Some(res.status().as_u16()), false)) }
+    }
+    .await;
+    let ms = started.elapsed().as_millis() as u64;
+    // Nothing answers on Laya's port: it isn't running (it only starts when needed).
+    let error = result.err().map(|e| if by == "laya" && e == crate::i18n::t("couldn't reach Laya: is it running?") { crate::i18n::t("Laya isn't running: press Start.") } else { e });
+    Answer { by: by.into(), p: None, model: None, error, ms }
+}
+
+// ── Laya on this computer ─────────────────────────────────────────────────────
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LayaStatus {
+    /// idle, python, venv, install, starting, ready, error
+    pub phase: String,
+    pub message: String,
+    /// The last line pip or the server printed.
+    pub line: String,
+    pub installed: bool,
+    pub running: bool,
+    /// Running, but started outside Coucou (its own run.bat): used, never stopped.
+    pub external: bool,
+}
+
+struct Laya {
+    status: LayaStatus,
+    server: Option<Child>,
+    /// The folder the server Coucou started runs from.
+    started_in: Option<PathBuf>,
+    busy: bool,
+}
+
+static LAYA: Mutex<Option<Laya>> = Mutex::new(None);
+/// One start at a time: two saves in a row must not start two servers.
+static STARTING: Mutex<()> = Mutex::new(());
+
+/// Coucou's own copy ("Set up Laya").
+fn laya_dir() -> PathBuf {
+    crate::platform::local_dir().join("laya")
+}
+
+fn venv_bin(name: &str) -> PathBuf {
+    laya_dir().join(".venv").join("Scripts").join(format!("{name}.exe"))
+}
+
+/// Where Laya runs from: the folder picked in Settings, else Coucou's own copy.
+fn laya_home(c: &Config) -> PathBuf {
+    let dir = c.laya_dir.trim();
+    if dir.is_empty() { laya_dir() } else { PathBuf::from(dir) }
+}
+
+/// How to start the Laya in `dir`: a hand-made `laya_serve.py` next to its
+/// environment (it knows its own model cache), else the environment's `laya-serve`.
+fn runner(dir: &Path) -> Option<(PathBuf, Vec<String>)> {
+    // A full path only: "D:Laya" means a different folder depending on where it runs.
+    if !dir.is_absolute() {
+        return None;
+    }
+    let scripts = dir.join(".venv").join("Scripts");
+    let python = scripts.join("python.exe");
+    let script = dir.join("laya_serve.py");
+    if python.is_file() && script.is_file() {
+        return Some((python, vec!["laya_serve.py".to_string()]));
+    }
+    let serve = scripts.join("laya-serve.exe");
+    serve.is_file().then(|| (serve, Vec::new()))
+}
+
+fn installed(c: &Config) -> bool {
+    runner(&laya_home(c)).is_some()
+}
+
+fn laya_port(c: &Config) -> u16 {
+    laya_url(c).rsplit(':').next().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8000)
+}
+
+/// Whether a Laya answers on `port`: Some(true) ready, Some(false) still loading
+/// its model, None nobody there.
+fn probe(port: u16) -> Option<bool> {
+    let url = format!("http://127.0.0.1:{port}/health");
+    tauri::async_runtime::block_on(async move {
+        let c = reqwest::Client::builder().timeout(Duration::from_secs(3)).no_proxy().build().ok()?;
+        let r = c.get(url).send().await.ok()?;
+        Some(r.status().is_success())
+    })
+}
+
+fn with_laya<T>(f: impl FnOnce(&mut Laya) -> T) -> T {
+    let mut slot = LAYA.lock().unwrap();
+    let laya = slot.get_or_insert_with(|| Laya {
+        status: LayaStatus {
+            phase: "idle".into(),
+            message: String::new(),
+            line: String::new(),
+            installed: false,
+            running: false,
+            external: false,
+        },
+        server: None,
+        started_in: None,
+        busy: false,
+    });
+    f(laya)
+}
+
+fn publish(app: &AppHandle) {
+    let installed = installed(&config(app));
+    let status = with_laya(|l| {
+        if let Some(child) = l.server.as_mut() {
+            if !matches!(child.try_wait(), Ok(None)) {
+                l.server = None;
+            }
+        }
+        l.status.installed = installed;
+        l.status.running = l.server.is_some() || l.status.external;
+        l.status.clone()
+    });
+    let _ = app.emit("laya", status);
+}
+
+fn set(app: &AppHandle, phase: &str, message: String) {
+    with_laya(|l| {
+        l.status.phase = phase.into();
+        l.status.message = message;
+        l.status.line.clear();
+    });
+    publish(app);
+}
+
+#[cfg(windows)]
+fn hidden(cmd: &mut Command) -> &mut Command {
+    use std::os::windows::process::CommandExt;
+    cmd.creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+}
+
+#[cfg(not(windows))]
+fn hidden(cmd: &mut Command) -> &mut Command {
+    cmd
+}
+
+/// Runs a command, the last line of its output reported as it goes. True when it succeeded.
+fn run(app: &AppHandle, program: &PathBuf, args: &[&str]) -> (bool, String) {
+    use std::io::{BufRead, BufReader};
+    let mut cmd = Command::new(program);
+    cmd.args(args)
+        .current_dir(laya_dir())
+        .env("PIP_DISABLE_PIP_VERSION_CHECK", "1")
+        .env("PYTHONIOENCODING", "utf-8")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let Ok(mut child) = hidden(&mut cmd).spawn() else { return (false, String::new()) };
+    let mut last = String::new();
+    if let Some(out) = child.stderr.take() {
+        // pip writes progress to stderr: read it in the background, keep the tail.
+        let app = app.clone();
+        std::thread::spawn(move || {
+            for line in BufReader::new(out).lines().map_while(Result::ok) {
+                let line = line.trim().chars().take(160).collect::<String>();
+                if !line.is_empty() {
+                    with_laya(|l| l.status.line = line);
+                    publish(&app);
+                }
+            }
+        });
+    }
+    if let Some(out) = child.stdout.take() {
+        for line in BufReader::new(out).lines().map_while(Result::ok) {
+            let line = line.trim().chars().take(160).collect::<String>();
+            if !line.is_empty() {
+                last = line.clone();
+                with_laya(|l| l.status.line = line);
+                publish(app);
+            }
+        }
+    }
+    let ok = child.wait().map(|s| s.success()).unwrap_or(false);
+    (ok, last)
+}
+
+/// Python 3.10–3.13 (PyTorch, which Laya needs, lags the newest Python): the
+/// Windows launcher's versions first, newest first.
+fn find_python() -> Option<(PathBuf, Vec<String>)> {
+    for v in ["3.12", "3.11", "3.13", "3.10"] {
+        let mut cmd = Command::new("py");
+        cmd.args([&format!("-{v}"), "--version"]).stdout(Stdio::piped()).stderr(Stdio::piped());
+        if hidden(&mut cmd).output().is_ok_and(|o| o.status.success()) {
+            return Some((PathBuf::from("py"), vec![format!("-{v}")]));
+        }
+    }
+    let mut cmd = Command::new("python");
+    cmd.args(["-c", "import sys; print(sys.version_info[:2])"]).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let out = hidden(&mut cmd).output().ok()?;
+    let v = String::from_utf8_lossy(&out.stdout);
+    ["(3, 10)", "(3, 11)", "(3, 12)", "(3, 13)"].iter().any(|ok| v.trim() == *ok).then(|| (PathBuf::from("python"), Vec::new()))
+}
+
+/// "Set up Laya": a private Python environment, `pip install "laya[serve]"`, then start it.
+#[tauri::command]
+pub fn laya_setup(app: AppHandle) {
+    if with_laya(|l| std::mem::replace(&mut l.busy, true)) {
+        return;
+    }
+    std::thread::spawn(move || {
+        use crate::i18n::t;
+        let done = |app: &AppHandle| {
+            with_laya(|l| l.busy = false);
+            publish(app);
+        };
+        let _ = std::fs::create_dir_all(laya_dir());
+        set(&app, "python", t("Looking for Python 3.10 to 3.13…"));
+        let Some((python, args)) = find_python() else {
+            set(&app, "error", t("No Python 3.10 to 3.13 was found. Install Python 3.12 from python.org, then set up Laya again."));
+            done(&app);
+            return;
+        };
+        set(&app, "venv", t("Making a private Python environment for Laya…"));
+        let venv = laya_dir().join(".venv");
+        let _ = std::fs::remove_dir_all(&venv);
+        let mut a: Vec<&str> = args.iter().map(String::as_str).collect();
+        let venv_s = venv.to_string_lossy().to_string();
+        a.extend(["-m", "venv", venv_s.as_str()]);
+        if !run(&app, &python, &a).0 || !venv_bin("python").is_file() {
+            set(&app, "error", t("Python couldn't make the environment."));
+            done(&app);
+            return;
+        }
+        set(&app, "install", t("Installing Laya and PyTorch (a few GB, once)…"));
+        let py = venv_bin("python");
+        let _ = run(&app, &py, &["-m", "pip", "install", "--upgrade", "--quiet", "pip"]);
+        let (ok, _) = run(&app, &py, &["-m", "pip", "install", "--progress-bar", "off", "laya[serve]"]);
+        if !ok || !venv_bin("laya-serve").is_file() {
+            set(&app, "error", t("Installing Laya failed. Check your connection and try again."));
+            done(&app);
+            return;
+        }
+        done(&app);
+        start_server(&app);
+    });
+}
+
+fn start_server(app: &AppHandle) {
+    use crate::i18n::t;
+    let _one = STARTING.lock().unwrap_or_else(|e| e.into_inner());
+    let c = config(app);
+    let home = laya_home(&c);
+    let port = laya_port(&c);
+    // Already ours, from this folder: nothing to do. From another one: moved.
+    match with_laya(|l| l.server.as_ref().map(|_| l.started_in.clone())) {
+        Some(Some(dir)) if dir == home => {
+            publish(app);
+            return;
+        }
+        Some(_) => stop_server(),
+        None => {}
+    }
+    // A Laya started outside Coucou (its own run.bat) is used as it is.
+    if let Some(ready) = probe(port) {
+        with_laya(|l| l.status.external = true);
+        if ready {
+            set(app, "ready", t("Laya is already running on this computer."));
+        } else {
+            set(app, "starting", t("Starting Laya…"));
+            wait_ready(app.clone(), port);
+        }
+        return;
+    }
+    with_laya(|l| l.status.external = false);
+    // Its model needs a few GB: loading it on a machine short of memory swaps
+    // everything else out, and the whole computer stalls. Not now, then.
+    if let Some(free) = available_gb().filter(|free| *free < LAYA_MEMORY_GB) {
+        let (need, free) = (format!("{LAYA_MEMORY_GB:.1}"), format!("{free:.1}"));
+        crate::log::line(format!("laya: not started, {free} GB free"));
+        set(app, "memory", crate::i18n::tf("Laya needs about {need} GB of free memory to load its model; {free} GB is free now. Close some apps, then press Start.", &[("need", &need), ("free", &free)]));
+        return;
+    }
+    let Some((program, args)) = runner(&home) else {
+        if c.laya_dir.trim().is_empty() {
+            publish(app);
+        } else {
+            set(app, "error", t("No Laya was found in that folder."));
+        }
+        return;
+    };
+    let own = c.laya_dir.trim().is_empty();
+    let hf = laya_dir().join("hf");
+    let _ = std::fs::create_dir_all(crate::platform::local_dir());
+    let log = std::fs::File::create(crate::platform::local_dir().join("laya.log")).ok();
+    let mut cmd = Command::new(&program);
+    cmd.args(&args)
+        .current_dir(&home)
+        // Only this computer, never every network (Laya's own default is 0.0.0.0).
+        .env("LAYA_HOST", "127.0.0.1")
+        .env("LAYA_PORT", port.to_string())
+        .env("LAYA_MODELS", "english")
+        .env("HF_HUB_DISABLE_TELEMETRY", "1")
+        .env("PYTHONUNBUFFERED", "1")
+        .env("PYTHONIOENCODING", "utf-8")
+        .env_remove("LAYA_API_KEY")
+        .stdin(Stdio::null());
+    // Coucou's copy keeps its model in its folder; a picked Laya keeps its own.
+    if own {
+        cmd.env("HF_HOME", &hf);
+    }
+    match &log {
+        Some(f) => {
+            cmd.stdout(f.try_clone().map(Stdio::from).unwrap_or(Stdio::null()));
+            cmd.stderr(f.try_clone().map(Stdio::from).unwrap_or(Stdio::null()));
+        }
+        None => {
+            cmd.stdout(Stdio::null()).stderr(Stdio::null());
+        }
+    }
+    // Below normal priority: answering a test question can wait a moment, your apps can't.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000 | 0x0000_4000); // CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS
+    }
+    #[cfg(not(windows))]
+    hidden(&mut cmd);
+    match cmd.spawn() {
+        Ok(child) => {
+            with_laya(|l| {
+                l.server = Some(child);
+                l.started_in = Some(home.clone());
+            });
+            let first = own && !hf.join("hub").exists();
+            set(app, "starting", if first { t("Starting Laya. The first time it downloads its model (about 850 MB)…") } else { t("Starting Laya…") });
+            wait_ready(app.clone(), port);
+        }
+        Err(_) => set(app, "error", t("Laya couldn't be started.")),
+    }
+}
+
+/// Polls Laya's health until it is ready: up to 20 minutes for a first model download.
+fn wait_ready(app: AppHandle, port: u16) {
+    use crate::i18n::t;
+    std::thread::spawn(move || {
+        for _ in 0..600 {
+            std::thread::sleep(Duration::from_secs(2));
+            if !with_laya(|l| l.server.is_some() || l.status.external) {
+                return;
+            }
+            if probe(port) == Some(true) {
+                set(&app, "ready", t("Laya is ready on this computer."));
+                return;
+            }
+        }
+        set(&app, "error", t("Laya didn't start. See laya.log in Coucou's folder."));
+    });
+}
+
+/// Stops the Laya Coucou started; one started outside Coucou is only let go.
+fn stop_server() {
+    with_laya(|l| l.status.external = false);
+    if let Some(mut child) = with_laya(|l| {
+        l.started_in = None;
+        l.server.take()
+    }) {
+        // laya-serve.exe starts python.exe: the whole tree goes.
+        let mut kill = Command::new("taskkill");
+        kill.args(["/PID", &child.id().to_string(), "/T", "/F"]).stdout(Stdio::null()).stderr(Stdio::null());
+        let _ = hidden(&mut kill).status();
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+}
+
+#[tauri::command]
+pub fn laya_status(app: AppHandle) -> LayaStatus {
+    publish(&app);
+    with_laya(|l| l.status.clone())
+}
+
+#[tauri::command]
+pub fn laya_start(app: AppHandle) {
+    *USED.lock().unwrap() = Some(Instant::now());
+    // Off the main thread: it asks Laya's health first.
+    std::thread::spawn(move || start_server(&app));
+}
+
+#[tauri::command]
+pub fn laya_stop(app: AppHandle) {
+    stop_server();
+    set(&app, "idle", String::new());
+}
+
+/// "Remove Laya": stops it and deletes Coucou's own copy (its whole folder). A
+/// Laya picked in Settings is never touched.
+#[tauri::command]
+pub fn laya_remove(app: AppHandle) {
+    stop_server();
+    let _ = std::fs::remove_dir_all(laya_dir());
+    set(&app, "idle", String::new());
+}
+
+// ── Settings applied ──────────────────────────────────────────────────────────
+
+fn marker() -> PathBuf {
+    crate::platform::local_dir().join("fix-loop.on")
+}
+
+/// The relay's marker follows the fix loop.
+fn write_marker(c: &Config) {
+    if c.fix_loop {
+        let _ = std::fs::write(marker(), b"1");
+    } else {
+        let _ = std::fs::remove_file(marker());
+    }
+}
+
+/// When Laya was last asked or started: it goes once it hasn't been used for a while.
+static USED: Mutex<Option<Instant>> = Mutex::new(None);
+/// Laya unused for this long goes: its model holds gigabytes.
+const LAYA_IDLE: Duration = Duration::from_secs(15 * 60);
+/// Free memory Laya's model needs to load without the machine swapping.
+const LAYA_MEMORY_GB: f64 = 2.5;
+
+/// Memory free right now (GB), as Task Manager's "Available".
+#[cfg(windows)]
+fn available_gb() -> Option<f64> {
+    use ::windows::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
+    let mut status = MEMORYSTATUSEX { dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32, ..Default::default() };
+    unsafe { GlobalMemoryStatusEx(&mut status) }.ok()?;
+    Some(status.ullAvailPhys as f64 / 1_073_741_824.0)
+}
+
+#[cfg(not(windows))]
+fn available_gb() -> Option<f64> {
+    None
+}
+
+/// Why Laya can't answer this check now, starting it when it isn't running: on demand
+/// only, so its model is loaded when there is a question for it, never just in case.
+fn laya_not_ready(app: &AppHandle) -> Option<String> {
+    use crate::i18n::t;
+    let (phase, running, busy) = with_laya(|l| (l.status.phase.clone(), l.server.is_some() || l.status.external, l.busy));
+    if phase == "ready" && running {
+        return None;
+    }
+    if phase == "starting" || busy {
+        return Some(t("Laya is still loading its model…"));
+    }
+    if !installed(&config(app)) {
+        return Some(t("couldn't reach Laya: is it running?"));
+    }
+    if STARTING.try_lock().is_ok() {
+        let app = app.clone();
+        std::thread::spawn(move || start_server(&app));
+    }
+    Some(t("Laya is starting: it checks the next unclear test run."))
+}
+
+/// At launch: only the relay's marker. Laya loads only when there is a question for
+/// it (laya_not_ready) or you press Start: its model takes a core for minutes and
+/// gigabytes of memory. A watch lets it go once it hasn't been used for a while.
+pub fn launched(app: &AppHandle) {
+    write_marker(&config(app));
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(60));
+        let idle = USED.lock().unwrap().is_none_or(|at| at.elapsed() > LAYA_IDLE);
+        if idle && with_laya(|l| l.server.is_some()) {
+            crate::log::line("laya: unused for 15 minutes, stopped");
+            stop_server();
+            set(&app, "idle", String::new());
+        }
+    });
+}
+
+/// After every save: the relay's marker follows the fix loop; Laya goes when the
+/// double-check is no longer on this computer (it starts only when needed).
+pub fn settings_saved(app: &AppHandle) {
+    let c = config(app);
+    write_marker(&c);
+    if c.mode != "local" {
+        stop_server();
+    }
+}
+
+pub fn shutdown() {
+    stop_server();
+}
+
+// ── Fix loop ──────────────────────────────────────────────────────────────────
+// Its decisions are the island's (island/loop.ts, dotpals' rules); the relay waits
+// for them only while the marker is there (settings_saved).
+
+/// Git's view of the test files in `cwd` (dotpals' testDiff, bridge/ground.js): the
+/// `-U0` diff against HEAD of the files that look like tests, or None outside a
+/// repository. The island compares two of them to see a test weakened by any
+/// means, not only by an edit tool. Read only: git is never asked to change anything.
+#[tauri::command]
+pub async fn tests_git_diff(cwd: String) -> Option<String> {
+    if cwd.trim().is_empty() || !Path::new(&cwd).is_dir() {
+        return None;
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let globs = ["**/*test*", "**/*spec*", "**/test/**", "**/tests/**", "**/__tests__/**", "**/spec/**"]
+            .map(|g| format!(":(top,glob){g}"));
+        let mut cmd = Command::new("git");
+        cmd.args(["-c", "core.quotepath=off", "diff", "-U0", "--no-color", "--no-ext-diff", "HEAD", "--"])
+            .args(&globs)
+            .current_dir(&cwd)
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+        let out = hidden(&mut cmd).output().ok()?;
+        // The island reads 8000 characters of changed lines at most.
+        out.status.success().then(|| String::from_utf8_lossy(&out.stdout).chars().take(200_000).collect())
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn secrets_emails_ips_and_home_are_taken_out() {
+        let home = r"C:\Users\umar0";
+        assert_eq!(redact_line(r"at C:\Users\umar0\app\x.py:3", home), r"at ~\app\x.py:3");
+        assert_eq!(redact_line("mail me@example.com now", home), "mail [redacted] now");
+        assert_eq!(redact_line("server 192.168.1.20 down", home), "server [redacted] down");
+        assert_eq!(redact_line("PASSWORD=hunter2 rest", home), "[redacted]");
+        assert_eq!(redact_line("key sk1234567890abcdefXYZ9Qw used", home), "key [redacted] used");
+        assert_eq!(redact_line("test_tokenizer FAILED", home), "test_tokenizer FAILED");
+        assert_eq!(redact_line("3 passed, 1 failed", home), "3 passed, 1 failed");
+        assert_eq!(redact_line("tests/test_math.py::test_sum FAILED", home), "tests/test_math.py::test_sum FAILED");
+    }
+
+    #[test]
+    fn a_laya_folder_runs_its_own_script_else_its_laya_serve() {
+        let dir = std::env::temp_dir().join(format!("coucou-laya-{}", std::process::id()));
+        let scripts = dir.join(".venv").join("Scripts");
+        std::fs::create_dir_all(&scripts).unwrap();
+        assert!(runner(&dir).is_none());
+        std::fs::write(scripts.join("laya-serve.exe"), b"").unwrap();
+        assert_eq!(runner(&dir).unwrap().0, scripts.join("laya-serve.exe"));
+        std::fs::write(scripts.join("python.exe"), b"").unwrap();
+        std::fs::write(dir.join("laya_serve.py"), b"").unwrap();
+        let (program, args) = runner(&dir).unwrap();
+        assert_eq!(program, scripts.join("python.exe"));
+        assert_eq!(args, ["laya_serve.py"]);
+        assert!(runner(Path::new("D:Laya")).is_none());
+        let c = Config { mode: "local".into(), laya_url: String::new(), laya_dir: format!(" {} ", dir.display()), fix_loop: false };
+        assert_eq!(laya_home(&c), dir);
+        assert!(installed(&c));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn laya_is_only_ever_asked_on_this_computer() {
+        let c = |u: &str| Config { mode: "local".into(), laya_url: u.into(), laya_dir: String::new(), fix_loop: false };
+        assert_eq!(laya_url(&c("http://127.0.0.1:9000/")), "http://127.0.0.1:9000");
+        assert_eq!(laya_url(&c("https://evil.example.com")), LAYA_URL);
+        assert_eq!(laya_url(&c("")), LAYA_URL);
+    }
+}

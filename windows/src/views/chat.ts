@@ -22,6 +22,9 @@ const STRINGS = {
   placeholderFirst: N_("Ask me anything…"),
   placeholderNext: N_("Continue…"),
   send: N_("Send"),
+  dictate: N_("Dictate"),
+  stopDictation: N_("Stop dictation"),
+  transcribing: N_("Transcribing…"),
   switchModel: N_("Switch provider or model"),
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
@@ -30,6 +33,9 @@ const STRINGS = {
 };
 
 let nextId = 1;
+
+/** SF Symbols' "mic", drawn in a 24-unit box. */
+const MIC_PATH = "M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zm-7 9a1 1 0 0 1 2 0 5 5 0 0 0 10 0 1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V20h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 11z";
 
 function bubble(message: ChatMessage): HTMLElement {
   if (message.role === "user") {
@@ -211,7 +217,46 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     spellcheck: "false",
   }) as HTMLInputElement;
   const send = h("button", { class: "send-btn", title: tl(STRINGS.send) }, svg(ICONS.arrowUp, 11));
-  const bar = h("div", { class: "chat-bar" }, input, send);
+  // Dictate instead of typing (MacDictation): Flow's on-device model, the words land here.
+  const mic = h("button", { class: "mic-btn", title: tl(STRINGS.dictate) }, svg(MIC_PATH, 12));
+  const bar = h("div", { class: "chat-bar" }, input, mic, send);
+  let dictating: "off" | "listening" | "transcribing" = "off";
+
+  function paintMic() {
+    mic.classList.toggle("on", dictating !== "off");
+    mic.title = t(dictating === "off" ? STRINGS.dictate : STRINGS.stopDictation);
+    (mic as HTMLButtonElement).disabled = dictating === "transcribing" || sending;
+    if (dictating === "transcribing") input.placeholder = t(STRINGS.transcribing);
+  }
+
+  async function toggleDictation() {
+    if (dictating === "listening") {
+      dictating = "transcribing";
+      paintMic();
+      const words = (await Bridge.chatDictateStop()) ?? "";
+      dictating = "off";
+      if (words) {
+        const before = input.value;
+        input.value = before && !before.endsWith(" ") ? `${before} ${words}` : before + words;
+      }
+      paintMic();
+      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      input.focus();
+      return;
+    }
+    if (dictating !== "off" || sending) return;
+    try {
+      await Bridge.chatDictateStart();
+      dictating = "listening";
+      Sound.play("attach");
+    } catch (err) {
+      State.noteMessage = String(err).replace(/^Error:\s*/, "");
+      State.view = "note";
+      State.notify();
+    }
+    paintMic();
+  }
+  mic.addEventListener("click", () => void toggleDictation());
 
   const modelDot = h("i", { class: "model-dot" });
   const modelName = h("span", { class: "model-name" });
@@ -267,6 +312,12 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   async function submit() {
     const query = input.value.trim();
     if (!query || sending) return;
+    if (dictating === "listening") {
+      // Sent while still listening: the microphone goes off, what it heard is dropped.
+      dictating = "off";
+      void Bridge.chatDictateCancel();
+      paintMic();
+    }
     if (picker.isOpen) picker.close();
     input.value = "";
     sending = true;
@@ -278,9 +329,18 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     State.notify();
     onHeightChange();
 
+    // A file just dropped is still being copied: the question waits for the copy,
+    // or it would go with a path the chat refuses.
+    if (State.droppedFileReady) await State.droppedFileReady;
     const file = State.droppedFile;
-    const context: ChatContext | null =
-      State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
+    const attached = State.promptContext;
+    const context: ChatContext | null = State.chatHistory.length !== 1
+      ? null
+      : file
+        ? { kind: "file", name: file.name, path: file.path }
+        : attached?.kind === "window"
+          ? { kind: "window", appName: attached.appName, title: attached.title, url: attached.url }
+          : null;
 
     try {
       const reply = await Bridge.chatSend(query, context);
@@ -320,7 +380,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     el,
     sync() {
       const file = State.droppedFile;
-      const wantChip = file?.name ?? "";
+      const attached = State.promptContext;
+      // A window attached with Ctrl+Alt+F shows as its app (ContextChip).
+      const wantChip = file?.name ?? (attached?.kind === "window" ? attached.appName : "");
       if (chipRow.dataset.label !== wantChip) {
         chipRow.dataset.label = wantChip;
         clear(chipRow);
@@ -339,9 +401,17 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
       // Leaving the chat folds the picker away.
       if (State.view !== "prompt" && picker.isOpen) picker.close();
+      // …and turns the microphone off.
+      if ((State.view !== "prompt" || State.mode !== "expanded") && dictating === "listening") {
+        dictating = "off";
+        void Bridge.chatDictateCancel();
+      }
+      paintMic();
       drawModelButton();
 
-      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      if (dictating !== "transcribing") {
+        input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      }
       input.disabled = sending;
     },
     focus() {

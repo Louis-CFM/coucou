@@ -40,6 +40,11 @@ fn xdg(var: &str, fallback: &str) -> PathBuf {
 }
 
 /// ~/.config/coucou — preferences.
+/// Only Windows installs Coucou in a folder of its own (windows.rs).
+pub fn own_folder() -> Option<PathBuf> {
+    None
+}
+
 pub fn config_dir() -> PathBuf {
     xdg("XDG_CONFIG_HOME", ".config").join("coucou")
 }
@@ -239,6 +244,15 @@ pub fn no_console(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
+/// How long the system has been running (the login settling wait is Windows'; here it is never waited on).
+pub fn uptime() -> std::time::Duration {
+    std::fs::read_to_string("/proc/uptime")
+        .ok()
+        .and_then(|s| s.split_whitespace().next()?.parse::<f64>().ok())
+        .map(std::time::Duration::from_secs_f64)
+        .unwrap_or(std::time::Duration::from_secs(3600))
+}
+
 pub fn open_url(url: &str) {
     let _ = Command::new("xdg-open").arg(url).spawn();
 }
@@ -299,6 +313,12 @@ pub fn codex_candidates() -> Vec<PathBuf> {
 /// Nothing polls the cursor here: the page reports it over the island, and the
 /// input region decides click-through (see the top of this file).
 pub const CURSOR_POLL: bool = false;
+
+/// Not looked up on Linux: the browser rule (island::spawn_browser_watch) is
+/// Windows-only.
+pub fn foreground_exe() -> Option<String> {
+    None
+}
 
 pub fn cursor_physical() -> Option<(f64, f64)> {
     None

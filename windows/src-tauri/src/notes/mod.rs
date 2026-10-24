@@ -8,6 +8,8 @@
 // people should be told it is recorded.
 
 pub mod builder;
+pub mod echo;
+pub mod repair;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -69,6 +71,11 @@ pub struct Note {
 /// has not taken yet.
 struct Channel {
     writer: Option<audio::WavWriter>,
+    /// When the recording started. Set for the computer's sound: WASAPI's loopback
+    /// sends nothing while nothing plays, so the silence it skipped is written in,
+    /// and both recordings share one clock (the echo and the order of the lines
+    /// line up). The Mac's ChannelRecorder does the same for its late start.
+    origin: Option<std::time::Instant>,
     /// Samples since the last live chunk.
     live: Vec<f32>,
     /// Where `live` starts, in samples from the start of the recording.
@@ -78,10 +85,30 @@ struct Channel {
 
 impl Channel {
     fn new(path: &std::path::Path) -> std::io::Result<Channel> {
-        Ok(Channel { writer: Some(audio::WavWriter::create(path)?), live: Vec::new(), live_start: 0, total: 0 })
+        Ok(Channel { writer: Some(audio::WavWriter::create(path)?), origin: None, live: Vec::new(), live_start: 0, total: 0 })
+    }
+
+    fn clocked(path: &std::path::Path, origin: std::time::Instant) -> std::io::Result<Channel> {
+        let mut c = Channel::new(path)?;
+        c.origin = Some(origin);
+        Ok(c)
     }
 
     fn push(&mut self, samples: &[f32]) {
+        if let Some(origin) = self.origin {
+            let rate = speech::SAMPLE_RATE as f64;
+            let expected = (origin.elapsed().as_secs_f64() * rate) as usize;
+            let have = self.total + samples.len();
+            // More than 200 ms short: the device was silent, not late. At most a minute at once.
+            if expected > have + (rate * 0.2) as usize {
+                let gap = (expected - have).min((rate * 60.0) as usize);
+                self.write(&vec![0.0; gap]);
+            }
+        }
+        self.write(samples);
+    }
+
+    fn write(&mut self, samples: &[f32]) {
         if let Some(w) = self.writer.as_mut() {
             let _ = w.write(samples);
         }
@@ -279,6 +306,8 @@ fn start_inner(app: &AppHandle, taker: &Arc<NoteTaker>) -> Result<String, String
     };
     let dir = note_dir(&id);
     crate::platform::ensure_private_dir(&dir).map_err(|e| e.to_string())?;
+    // One clock for both recordings, so the computer's sound lines up with the microphone.
+    let origin = std::time::Instant::now();
     let mic_channel = Arc::new(Mutex::new(Channel::new(&dir.join("mic.wav")).map_err(|e| e.to_string())?));
     let mic_pref = crate::flow::get(app).map(|f| f.store.lock().unwrap().prefs.mic.clone()).unwrap_or_default();
     let sink = mic_channel.clone();
@@ -291,7 +320,7 @@ fn start_inner(app: &AppHandle, taker: &Arc<NoteTaker>) -> Result<String, String
         t("Coucou can't hear you: the microphone is not allowed or not available.")
     })?;
     // Without the computer's sound, the call is noted from the microphone alone.
-    let (system, system_channel) = match Channel::new(&dir.join("system.wav")) {
+    let (system, system_channel) = match Channel::clocked(&dir.join("system.wav"), origin) {
         Ok(channel) => {
             let channel = Arc::new(Mutex::new(channel));
             let sink = channel.clone();
@@ -353,7 +382,7 @@ fn spawn_live(
                 }
                 let end = start + samples.len() as f64 / speech::SAMPLE_RATE as f64;
                 taker.change(&app, &id, |n| {
-                    n.lines.push(Line { id: crate::flow::text::new_id(), speaker: speaker.into(), start, end, text });
+                    n.lines.push(Line { id: crate::flow::text::new_id(), speaker: speaker.into(), start, end, text, raw: None });
                     n.lines.sort_by(|a, b| a.start.partial_cmp(&b.start).unwrap_or(std::cmp::Ordering::Equal));
                 });
             }
@@ -435,6 +464,7 @@ fn process(app: &AppHandle, id: &str) {
     if result.is_ok() {
         let engine = crate::flow::get(app).map(|f| f.store.lock().unwrap().prefs.summary_engine).unwrap_or_default();
         if engine == SummaryEngine::Claude && crate::flow::cleanup::has_key() {
+            correct(app, id);
             summarize(app, id);
         }
         let title = taker.note(id).map(|n| n.title).unwrap_or_default();
@@ -458,15 +488,22 @@ fn transcript(app: &AppHandle, taker: &Arc<NoteTaker>, id: &str) -> Result<(), S
         return Err(t("The recording of this call is gone."));
     }
     let me = t("Me");
-    let (mine, mic_samples) = words_in(&mic_path)?;
+    let (mut mine, mic_samples) = words_in(&mic_path)?;
     let (theirs, system_samples) = words_in(&system_path)?;
     let built = if theirs.len() >= 5 {
-        // A call: you on the microphone, the others on the computer's sound.
-        let turns = speech::diarize(&system_samples);
+        // A call: you on the microphone, the others on the computer's sound. Without
+        // headphones the others also come back into the microphone: that echo is
+        // taken out of your words, by the sound, then word by word (NoteEcho.swift).
+        let heard = mine.len();
+        let rate = speech::SAMPLE_RATE as f64;
+        let (by_ear, _) = echo::removing(&mine, echo::levels(&mic_samples, rate), echo::levels(&system_samples, rate));
+        mine = repair::removing_echo_words(&by_ear, &theirs);
+        crate::log::line(format!("notes: echo: {} of {heard} microphone words were the others", heard - mine.len()));
+        let turns = repair::merging_fragments(&speech::diarize(&system_samples), &[]);
         builder::build(&mine, &theirs, &turns, &me, person_name)
     } else if mine.len() >= 20 {
         // People around the computer: one recording, the voices told apart.
-        let turns = speech::diarize(&mic_samples);
+        let turns = repair::merging_fragments(&speech::diarize(&mic_samples), &[]);
         let voices: std::collections::HashSet<&str> = turns.iter().map(|t| t.speaker.as_str()).collect();
         if voices.len() > 1 {
             builder::build_room(&mine, &turns, person_name)
@@ -499,6 +536,99 @@ fn plain_transcript(note: &Note) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+// ── Correcting the transcript (NoteTaker.correct, Mac 0.5.0) ──────────────────
+
+fn claude_model(app: &AppHandle) -> String {
+    app.try_state::<crate::Shared>()
+        .map(|s| s.settings.lock().unwrap().model.clone())
+        .filter(|m| !m.is_empty())
+        .unwrap_or_else(|| crate::claude::DEFAULT_MODEL.to_string())
+}
+
+fn vocabulary_path() -> PathBuf {
+    folder().join("vocabulary.json")
+}
+
+/// Words and names learnt from your corrections, newest first: Claude gets them
+/// with every transcript to correct, so a word fixed once is heard right next time.
+pub fn vocabulary() -> Vec<String> {
+    std::fs::read(vocabulary_path()).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+}
+
+fn learn(terms: Vec<String>) {
+    let mut words = vocabulary();
+    let fresh: Vec<String> = terms
+        .into_iter()
+        .filter(|t| !words.iter().any(|w| w.to_lowercase() == t.to_lowercase()))
+        .collect();
+    if fresh.is_empty() {
+        return;
+    }
+    words.splice(0..0, fresh);
+    words.truncate(300);
+    let _ = crate::platform::ensure_private_dir(&folder());
+    if let Err(err) = serde_json::to_vec(&words).map_err(|e| e.to_string()).and_then(|b| std::fs::write(vocabulary_path(), b).map_err(|e| e.to_string())) {
+        crate::log::line(format!("notes: could not save the vocabulary: {err}"));
+    }
+}
+
+/// Claude fixes the words the speech recognition got wrong (with the Claude key,
+/// when Claude writes the summaries). What was heard stays in each line's `raw`.
+fn correct(app: &AppHandle, id: &str) {
+    let Some(taker) = get(app) else { return };
+    let Some(note) = taker.note(id) else { return };
+    if note.lines.is_empty() || !crate::flow::cleanup::has_key() {
+        return;
+    }
+    taker.working.lock().unwrap().push(id.to_string());
+    let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", id);
+    let model = claude_model(app);
+    let mut seen = std::collections::HashSet::new();
+    let dictionary = crate::flow::get(app).map(|f| f.store.lock().unwrap().words.words.clone()).unwrap_or_default();
+    let terms: Vec<String> = vocabulary()
+        .into_iter()
+        .chain(dictionary)
+        .filter(|w| seen.insert(w.to_lowercase()))
+        .take(400)
+        .collect();
+    let mut total = repair::Correction::default();
+    for range in repair::batches(&note.lines, 2_500) {
+        let mut request = String::new();
+        if !terms.is_empty() {
+            request.push_str(&format!("<vocabulary>\n{}\n</vocabulary>\n", terms.join(", ")));
+        }
+        request.push_str(&format!("<transcript>\n{}\n</transcript>", repair::numbered_transcript(&note.lines, &note.speakers, range.clone())));
+        let reply = tauri::async_runtime::block_on(async {
+            match crate::claude::complete(&model, repair::CORRECTION_INSTRUCTIONS, &request, 8_000, Duration::from_secs(180)).await {
+                Ok(text) => Some(text),
+                Err(_) if model != crate::flow::cleanup::MODEL => crate::claude::complete(
+                    crate::flow::cleanup::MODEL, repair::CORRECTION_INSTRUCTIONS, &request, 8_000, Duration::from_secs(180),
+                )
+                .await
+                .ok(),
+                Err(_) => None,
+            }
+        });
+        let Some(c) = reply.as_deref().and_then(repair::parse_correction) else { continue };
+        total.lines.extend(c.lines.into_iter().filter(|(i, _)| range.contains(i)));
+        for (k, v) in c.speakers {
+            total.speakers.entry(k).or_insert(v);
+        }
+    }
+    taker.working.lock().unwrap().retain(|w| w != id);
+    let mut fixed = 0;
+    taker.change(app, id, |n| {
+        // Edited, reassigned or deleted meanwhile: only the lines still as they were are fixed.
+        let same = n.lines.iter().map(|l| &l.id).eq(note.lines.iter().map(|l| &l.id));
+        if !same {
+            return;
+        }
+        total.lines.retain(|i, _| n.lines[*i].text == note.lines[*i].text);
+        fixed = repair::applying(&total, &mut n.lines, &mut n.speakers, person_name);
+    });
+    crate::log::line(format!("notes: correction: {fixed} of {} lines fixed", note.lines.len()));
 }
 
 /// Writes (or writes again) the summary, key points and to-dos of a note.
@@ -651,9 +781,80 @@ pub fn notes_rename_speaker(app: AppHandle, taker: State<Arc<NoteTaker>>, id: St
     if name.is_empty() {
         return;
     }
+    let mut learnt = false;
     taker.change(&app, &id, |n| {
-        if let Some(s) = n.speakers.iter_mut().find(|s| s.id == speaker) {
-            s.name = name;
+        let Some(index) = n.speakers.iter().position(|s| s.id == speaker) else { return };
+        let is_me = n.speakers[index].is_me;
+        // Given the name of another person of the call, the two are one: the
+        // diarizer had cut one voice in two, and their lines are put together.
+        let other = (!is_me)
+            .then(|| n.speakers.iter().find(|s| s.id != speaker && !s.is_me && s.name.to_lowercase() == name.to_lowercase()))
+            .flatten()
+            .map(|s| s.id.clone());
+        match other {
+            Some(other) => {
+                for l in n.lines.iter_mut().filter(|l| l.speaker == speaker) {
+                    l.speaker = other.clone();
+                }
+                n.speakers.remove(index);
+            }
+            None => n.speakers[index].name = name.clone(),
+        }
+        learnt = !is_me;
+    });
+    if learnt {
+        learn(vec![name]);
+    }
+}
+
+/// You fix a line: the words you brought in are learnt for the next calls.
+#[tauri::command]
+pub fn notes_edit_line(app: AppHandle, taker: State<Arc<NoteTaker>>, id: String, line: String, text: String) {
+    let text = text.trim().to_string();
+    if text.is_empty() {
+        return;
+    }
+    let mut terms = Vec::new();
+    taker.change(&app, &id, |n| {
+        let Some(l) = n.lines.iter_mut().find(|l| l.id == line) else { return };
+        if l.text == text {
+            return;
+        }
+        terms = repair::new_terms(&l.text, &text);
+        if l.raw.is_none() {
+            l.raw = Some(l.text.clone());
+        }
+        l.text = text;
+    });
+    learn(terms);
+}
+
+/// A line said by someone else than shown (an echo left, a voice taken for another).
+#[tauri::command]
+pub fn notes_assign_line(app: AppHandle, taker: State<Arc<NoteTaker>>, id: String, line: String, speaker: String) {
+    taker.change(&app, &id, |n| {
+        if !n.speakers.iter().any(|s| s.id == speaker) {
+            return;
+        }
+        if let Some(l) = n.lines.iter_mut().find(|l| l.id == line) {
+            l.speaker = speaker;
+        }
+    });
+}
+
+#[tauri::command]
+pub fn notes_delete_line(app: AppHandle, taker: State<Arc<NoteTaker>>, id: String, line: String) {
+    taker.change(&app, &id, |n| n.lines.retain(|l| l.id != line));
+}
+
+/// Correct the transcript again, then the summary from it.
+#[tauri::command]
+pub fn notes_correct_again(app: AppHandle, id: String) {
+    std::thread::spawn(move || {
+        correct(&app, &id);
+        let engine = crate::flow::get(&app).map(|f| f.store.lock().unwrap().prefs.summary_engine).unwrap_or_default();
+        if engine != SummaryEngine::Off {
+            summarize(&app, &id);
         }
     });
 }

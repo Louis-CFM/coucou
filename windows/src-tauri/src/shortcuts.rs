@@ -62,13 +62,19 @@ pub const ACTIONS: &[ActionDef] = &[
     action("openChat", "Ctrl+Alt+Space", true, true),
     action("goToAlert", "Ctrl+Alt+A", true, true),
     action("jumpToTerminal", "Ctrl+Alt+T", true, true),
-    // Dragging Mochi onto a window is not in this version.
-    action("attachFrontWindow", "Ctrl+Alt+F", true, false),
+    // The front window's app and title go with the next chat question. No key by
+    // default: Ctrl+Alt+F belongs to other apps too (code editors format with it),
+    // and taken globally it opened the island in their place. Set one in Settings.
+    action("attachFrontWindow", "", true, true),
     action("nextPill", "Ctrl+Alt+Right", true, true),
     action("prevPill", "Ctrl+Alt+Left", true, true),
     action("muteToggle", "Ctrl+Alt+S", true, true),
     action("desktopToggle", "Ctrl+Alt+D", true, true),
     action("wardrobeToggle", "Ctrl+Alt+G", true, true),
+    // « OK Coucou » without saying it. No key by default, as on the Mac.
+    action("talkToCoucou", "", true, true),
+    // The Mac's ⌃⌥X: a part of the screen for Claude (capture.rs).
+    action("captureScreen", "Ctrl+Alt+X", true, true),
 ];
 
 pub fn find(id: &str) -> Option<&'static ActionDef> {
@@ -92,6 +98,8 @@ pub fn description(id: &str) -> &'static str {
         "muteToggle" => n_("Mute or unmute Mochi"),
         "desktopToggle" => n_("Send Mochi to the desktop"),
         "wardrobeToggle" => n_("Open the wardrobe"),
+        "talkToCoucou" => n_("Talk to Coucou"),
+        "captureScreen" => n_("Capture part of the screen for Claude"),
         _ => "Coucou",
     }
 }
@@ -324,9 +332,42 @@ pub fn dispatch<R: Runtime>(app: &AppHandle<R>, action: &str) {
     crate::log::line(format!("shortcut {action}"));
     if action == "wardrobeToggle" {
         let _ = app.emit_to(WINDOW_LABEL, "open-wardrobe", ());
+    } else if action == "talkToCoucou" {
+        crate::voice::talk_now();
+    } else if action == "attachFrontWindow" {
+        // Read now, while the window is still in front (the chat opening takes the focus).
+        let _ = app.emit_to(WINDOW_LABEL, "attach-window", front_window());
     } else {
         let _ = app.emit_to(WINDOW_LABEL, "shortcut", action.to_string());
     }
+}
+
+/// The window in front: its program's name and its title (WindowContextCapture.captureActive).
+/// None when it is Coucou's own, or the desktop.
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontWindow {
+    app_name: String,
+    title: String,
+}
+
+#[cfg(windows)]
+fn front_window() -> Option<FrontWindow> {
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW};
+    let (id, app_name) = crate::flow::os::foreground_app()?;
+    if id.eq_ignore_ascii_case("coucou") || crate::flow::is_shell(&id) {
+        return None;
+    }
+    let hwnd = unsafe { GetForegroundWindow() };
+    let mut buf = [0u16; 512];
+    let n = unsafe { GetWindowTextW(hwnd, &mut buf) }.max(0) as usize;
+    let title = String::from_utf16_lossy(&buf[..n.min(buf.len())]).trim().to_string();
+    Some(FrontWindow { app_name, title })
+}
+
+#[cfg(not(windows))]
+fn front_window() -> Option<FrontWindow> {
+    None
 }
 
 /// Unregisters everything Coucou holds.
@@ -641,7 +682,8 @@ mod wayland {
             assert_eq!(of(&r, "desktopToggle").status, Status::Refused);
             // Never handed over: untouched.
             assert_eq!(of(&r, "toggleIsland").status, Status::Off);
-            assert_eq!(of(&r, "attachFrontWindow").status, Status::NotPorted);
+            // No key by default: off, like the island toggle.
+            assert_eq!(of(&r, "attachFrontWindow").status, Status::Off);
         }
 
         #[test]
@@ -688,9 +730,9 @@ mod wayland {
 mod tests {
     use super::*;
 
-    const MAC_IDS: [&str; 10] = [
+    const MAC_IDS: [&str; 12] = [
         "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
-        "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
+        "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle", "talkToCoucou", "captureScreen",
     ];
 
     fn never(_: &Shortcut) -> Option<String> {
@@ -707,7 +749,8 @@ mod tests {
     // testAllDefaultsHaveModifier
     #[test]
     fn every_default_parses_and_has_a_modifier() {
-        for def in ACTIONS {
+        // talkToCoucou has no key by default, as on the Mac.
+        for def in ACTIONS.iter().filter(|d| !d.default_keys.is_empty()) {
             let shortcut = parse(def.default_keys)
                 .unwrap_or_else(|| panic!("{} default does not parse", def.id));
             assert!(is_altgr_like(&shortcut), "{} default is not Ctrl+Alt", def.id);
@@ -718,7 +761,7 @@ mod tests {
     #[test]
     fn no_two_defaults_share_a_combination() {
         let mut seen = HashSet::new();
-        for def in ACTIONS {
+        for def in ACTIONS.iter().filter(|d| !d.default_keys.is_empty()) {
             assert!(seen.insert(parse(def.default_keys).unwrap().id()), "{} duplicates", def.id);
         }
     }
@@ -732,14 +775,14 @@ mod tests {
     }
 
     #[test]
-    fn the_action_not_ported_yet_is_reserved_not_registered() {
+    fn every_action_is_ported_and_registered_by_default() {
         let plan = plan(&Bindings::new(), never);
         for (def, outcome) in plan {
-            let reserved = def.id == "attachFrontWindow";
-            assert_eq!(def.ported, !reserved);
+            assert!(def.ported, "{}", def.id);
             match outcome {
-                Ok(_) => assert!(def.ported && def.enabled_by_default, "{}", def.id),
-                Err(s) if reserved => assert_eq!(s.status, Status::NotPorted),
+                Ok(_) => assert!(def.enabled_by_default, "{}", def.id),
+                // No key by default (talkToCoucou, as on the Mac): off until one is set.
+                Err(s) if def.default_keys.is_empty() => assert_eq!(s.status, Status::Off),
                 Err(s) => assert_eq!((def.id, s.status), ("toggleIsland", Status::Off)),
             }
         }
@@ -798,7 +841,7 @@ mod tests {
         // Same key, other modifiers: not a duplicate.
         stored.insert("jumpToTerminal".into(), Binding { keys: "Ctrl+Shift+A".into(), enabled: true });
         let plan = super::plan(&stored, never);
-        assert!(plan.iter().all(|(d, o)| o.is_ok() || !d.ported || d.id == "toggleIsland"));
+        assert!(plan.iter().all(|(d, o)| o.is_ok() || !d.ported || d.id == "toggleIsland" || d.default_keys.is_empty()));
 
         // A disabled action doesn't hold its keys.
         stored.insert("goToAlert".into(), Binding { keys: "Ctrl+Alt+A".into(), enabled: false });
@@ -855,7 +898,7 @@ mod tests {
         assert_eq!(from_args(&args(&["coucou", "--shortcut"])), None);
         assert_eq!(from_args(&args(&["coucou", "--shortcut", "rm -rf"])), None);
         assert_eq!(from_args(&args(&["coucou", "--shortcut", "desktopToggle"])), Some("desktopToggle"));
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "attachFrontWindow"])), None);
+        assert_eq!(from_args(&args(&["coucou", "--shortcut", "attachFrontWindow"])), Some("attachFrontWindow"));
         assert_eq!(from_args(&args(&["coucou"])), None);
     }
 }

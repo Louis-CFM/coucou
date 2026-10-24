@@ -92,6 +92,22 @@ test("a work event leaves an island that is already showing where it is", () => 
   assert.deepEqual(asked, []);
 });
 
+test("an agent at work doesn't bring a hidden island back on every tool call, only for its finish", () => {
+  hook({ hook_event_name: "UserPromptSubmit", cwd: "/p", prompt: "fix it" });
+  assert.deepEqual(asked, ["reveal"]);
+  // The island hid itself while Claude works: tool after tool, it stays hidden.
+  asked = [];
+  for (const command of ["ls", "npm test", "git diff"]) {
+    hook({ hook_event_name: "PreToolUse", cwd: "/p", tool_name: "Bash", tool_input: { command } });
+    hook({ hook_event_name: "PostToolUse", cwd: "/p", tool_name: "Bash", tool_input: { command } });
+  }
+  assert.deepEqual(asked, []);
+  assert.equal(task().state, "working");
+  // The finish is worth showing.
+  hook({ hook_event_name: "Stop", cwd: "/p" });
+  assert.deepEqual(asked, ["alert:finished"]);
+});
+
 test("a submitted prompt shows as thinking, with the prompt as the step", () => {
   hook({ hook_event_name: "UserPromptSubmit", cwd: "/p", prompt: "x".repeat(80) });
   assert.equal(task().state, "thinking");

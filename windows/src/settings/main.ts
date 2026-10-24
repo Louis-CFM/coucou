@@ -4,7 +4,7 @@
 // island's settings are drawn here, one Notch page at a time.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
+import { Bridge, onEvent, type ClaudeAccountStatus, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
@@ -21,9 +21,9 @@ import { h, clear } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
+import { testsSection } from "./tests";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
-import { WHATSAPP_ID } from "../core/whatsapp";
 import { updateRows, updatesListener } from "./updates";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
@@ -272,6 +272,26 @@ function planSection(status: HookStatus): HTMLElement {
     redraw();
   };
 
+  // Your Claude account (claude_account.rs): live numbers from claude.ai.
+  const account = h("div", { class: "row" });
+  const drawAccount = (s: ClaudeAccountStatus | null) => {
+    const live = s?.connected === true && s.signedIn !== false && s.updatedAt != null;
+    const word = !s?.connected
+      ? (s?.signingIn ? t("Waiting for you to sign in…") : t("Not connected"))
+      : s.signedIn === false ? t("Signed out of claude.ai") : live ? t("Connected") : t("Connecting…");
+    account.replaceChildren(
+      h("label", { text: t("Claude account") }),
+      statusDot(live),
+      h("span", { class: "hint", text: word }),
+      s?.connected && s.signedIn !== false
+        ? h("button", { class: "danger", text: t("Disconnect"), onclick: () => void Bridge.claudeAccountDisconnect() })
+        : h("button", { class: "primary", text: s?.connected ? t("Sign in again…") : t("Connect…"), onclick: () => void Bridge.claudeAccountConnect() }),
+    );
+  };
+  drawAccount(null);
+  void Bridge.claudeAccountStatus().then(drawAccount);
+  void onEvent<ClaudeAccountStatus>("claude-account", drawAccount);
+
   function draw() {
     // The switch shows "on" while the install it asked for is being reviewed.
     const sw = toggle(settings.showPlanInNotch, (on) => {
@@ -296,6 +316,8 @@ function planSection(status: HookStatus): HTMLElement {
         text: PLAN_SETTINGS_TEXT.claude,
       }),
       h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
+      h("div", { class: "hint", text: t("Live numbers, the same the Claude app shows: connect your Claude account and sign in to claude.ai once, in Coucou's own window. Your password goes to claude.ai only; Coucou keeps the session in its folder and only reads your usage.") }),
+      account,
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),
@@ -520,7 +542,7 @@ const CHAT_STRINGS = {
 };
 
 interface CloudDef {
-  id: "google" | "openai" | "openrouter";
+  id: "google" | "openai" | "openrouter" | "deepseek" | "qwen" | "moonshot";
   name: string;
   placeholder: string;
   where: string;
@@ -530,6 +552,9 @@ const CLOUD: CloudDef[] = [
   { id: "google", name: "Google AI", placeholder: "AIza…", where: "aistudio.google.com" },
   { id: "openai", name: "OpenAI", placeholder: "sk-…", where: "platform.openai.com" },
   { id: "openrouter", name: "OpenRouter", placeholder: "sk-or-…", where: "openrouter.ai/keys" },
+  { id: "deepseek", name: "DeepSeek", placeholder: "sk-…", where: "platform.deepseek.com" },
+  { id: "qwen", name: "Qwen", placeholder: "sk-…", where: "dashscope.console.aliyun.com" },
+  { id: "moonshot", name: "Moonshot", placeholder: "sk-…", where: "platform.moonshot.cn" },
 ];
 
 function chatProvidersSection(
@@ -792,13 +817,19 @@ const INTEGRATIONS: IntegrationDef[] = [
       { key: "n8n-api-key", label: N_("API key"), placeholder: "…", secret: true },
     ] },
   { id: "integration_resend", name: "Resend", color: "#22C55E",
-    fields: [{ key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true }] },
+    fields: [
+      { key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true },
+      // "Send by email" sends from this address (it must be on a domain verified in Resend).
+      { key: "resend-from", label: N_("Sender address"), placeholder: "you@yourdomain.com", secret: false },
+    ] },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C",
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Its own block below (settings/whatsapp.ts): gateway, QR, filters.
+  { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -830,7 +861,20 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       if (on) {
         settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== def.id);
       } else {
-        if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
+        if (settings.activeIntegrations.length >= MAX_ACTIVE) {
+          // Every slot is taken: say so, rather than a switch that seems broken.
+          note.textContent = t("All {max} pill slots are in use. Turn one off to add {name}.", { max: MAX_ACTIVE, name: def.name });
+          note.style.color = "#F5A524";
+          sw.animate(
+            [{ transform: "translateX(0)" }, { transform: "translateX(-4px)" }, { transform: "translateX(4px)" }, { transform: "translateX(0)" }],
+            { duration: 260 },
+          );
+          window.setTimeout(() => {
+            note.style.color = "";
+            updateNote();
+          }, 4000);
+          return;
+        }
         settings.activeIntegrations = [...settings.activeIntegrations, def.id];
       }
       sw.classList.toggle("on", !on);
@@ -869,6 +913,9 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.id === "integration_whatsapp") {
+      rows.append(whatsappSection(() => settings.activeIntegrations.includes(def.id)));
+    }
     if (def.id === "integration_spotify") {
       // As on the Mac's row: said only when there is no Spotify to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
@@ -892,27 +939,6 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   updateNote();
   return h("section", {}, h("h2", {}, h("span", { text: t("Integrations") })), note, list);
-}
-
-/** WhatsApp (experimental), under the other integrations: its pill is turned on from its own switch. */
-function whatsappSections(): HTMLElement[] {
-  if (!availablePills().some((p) => p.id === WHATSAPP_ID)) return [];
-  return [whatsappSection({
-    toggle,
-    maxPills: MAX_ACTIVE,
-    pillActive: () => settings.activeIntegrations.includes(WHATSAPP_ID),
-    setPill: (on) => {
-      const has = settings.activeIntegrations.includes(WHATSAPP_ID);
-      if (on && !has && settings.activeIntegrations.length < MAX_ACTIVE) {
-        settings.activeIntegrations = [...settings.activeIntegrations, WHATSAPP_ID];
-      } else if (!on && has) {
-        settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== WHATSAPP_ID);
-      } else {
-        return;
-      }
-      declaredChanged();
-    },
-  })];
 }
 
 // ── General section ───────────────────────────────────────────────────────────
@@ -990,10 +1016,20 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
     h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
     h("div", { class: "row" },
+      h("label", { text: t("Open for every pill’s alerts") }),
+      toggle(settings.alertsFromAllPills === true, (v) => { settings.alertsFromAllPills = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("When a pill other than the one shown finishes or hits an error, the notch shows it for a moment, then the pill you had comes back.") }),
+    h("div", { class: "row" },
       h("label", { text: t("Open on hover") }),
       toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Mochi and your computer") }),
+      toggle(settings.mochiFeelsComputer !== false, (v) => { settings.mochiFeelsComputer = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("He sweats when the processor is at full load, flushes when the computer is hot, puffs up when memory is short and gets sleepy when the battery is low. Point at Mochi to see why. Read only while Mochi is on screen; nothing leaves your computer.") }),
     h("div", { class: "row" },
       h("label", { text: t("Show clock in the island") }),
       toggle(settings.showClock, (v) => { settings.showClock = v; void save(); }),
@@ -1366,7 +1402,7 @@ async function render() {
 
   const keys = [
     "stripe-api-key", "github-token", "gitlab-url", "gitlab-token", "gitea-url", "gitea-token", "vercel-token",
-    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "n8n-url", "n8n-api-key", "resend-api-key", "resend-from", "notion-api-key", "calcom-api-key",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
@@ -1400,9 +1436,9 @@ async function render() {
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
-    agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
+    agents: () => [claudeSection(status), agentsSection(agents), planSection(status), testsSection(() => settings, () => void save())],
     chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
-    integrations: () => [integrationsSection(present), ...whatsappSections()],
+    integrations: () => [integrationsSection(present)],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],
   };

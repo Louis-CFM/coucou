@@ -2,12 +2,16 @@
 
 mod agent_hooks;
 mod agents;
+mod capture;
 mod chat;
 mod claude;
+mod claude_account;
+mod claude_plan;
 mod codex_plan;
 mod config_file;
 mod desktop;
 mod files;
+mod gemini;
 mod flow;
 mod github;
 mod hooks;
@@ -17,6 +21,7 @@ mod integrations;
 mod island;
 mod local_chat;
 mod log;
+mod mail;
 mod net;
 mod notes;
 mod openai_compat;
@@ -31,9 +36,11 @@ mod session_window;
 mod settings;
 mod shortcuts;
 mod sounds;
+mod tests_check;
 mod speech;
 mod spotify;
 mod tray;
+mod vitals;
 mod update;
 mod voice;
 #[cfg(windows)]
@@ -131,7 +138,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
-    whatsapp::sync(&settings.active_integrations);
+    tests_check::settings_saved(&app);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -517,6 +524,12 @@ fn approval_ack(app: AppHandle, request_id: String) {
 
 /// Nobody can act on this request — the island is paused, or another card is
 /// already up. Claude Code falls back to asking in the terminal immediately.
+/// The fix loop's word for a relay that waits (island/loop.ts).
+#[tauri::command]
+fn loop_answer(app: AppHandle, id: String, answer: Option<String>) {
+    pipe::loop_answer(&app, &id, answer);
+}
+
 #[tauri::command]
 fn approval_decline(app: AppHandle, request_id: String) {
     recap::forget_request(&app, &request_id);
@@ -766,6 +779,24 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
 const AUTOSTART_ARG: &str = "--autostart";
 
 /// Coucou started with the computer, not opened by the user: the window stays hidden.
+/// The island after a login: once Windows has been up a minute (and at least
+/// a few seconds from now), with its transparent background said again.
+fn show_island_when_settled(app: AppHandle) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        while platform::uptime() < std::time::Duration::from_secs(60) {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            if let Some(win) = island::window(&handle) {
+                let _ = win.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
+                let _ = win.show();
+            }
+        });
+    });
+}
+
 pub fn launched_at_login() -> bool {
     std::env::args().any(|a| a == AUTOSTART_ARG)
 }
@@ -780,6 +811,14 @@ pub fn run() {
     let loaded = settings::load();
     i18n::set_picked(&loaded.language);
     let gate = Arc::new(PollGate::new());
+
+    let mut context = tauri::generate_context!();
+    // Installed in a folder of its own (D:\Coucou): the windows' browser data lives
+    // there too, not in %LOCALAPPDATA%.
+    if let Some(dir) = platform::own_folder() {
+        context.config_mut().app.app_directories_override =
+            Some(tauri::utils::config::AppDirectoriesOverride::Root(dir.join("WebView")));
+    }
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
@@ -912,17 +951,44 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
-            whatsapp::whatsapp_island,
+            whatsapp::whatsapp_state,
+            whatsapp::whatsapp_set_prefs,
+            whatsapp::whatsapp_test,
+            whatsapp::whatsapp_install,
             whatsapp::whatsapp_open,
             whatsapp::whatsapp_close,
             whatsapp::whatsapp_send,
             whatsapp::whatsapp_ignore,
             whatsapp::whatsapp_unignore,
-            whatsapp::whatsapp_settings,
-            whatsapp::whatsapp_set_options,
-            whatsapp::whatsapp_save_gateway,
-            whatsapp::whatsapp_test,
-            whatsapp::whatsapp_install,
+            whatsapp::whatsapp_open_app,
+            flow::chat::chat_dictate_start,
+            flow::chat::chat_dictate_stop,
+            flow::chat::chat_dictate_cancel,
+            mail::mail_send,
+            claude_plan::claude_desktop_plan,
+            claude_plan::claude_live_plan,
+            claude_account::claude_account_connect,
+            claude_account::claude_account_disconnect,
+            claude_account::claude_account_status,
+            tests_check::tests_check,
+            tests_check::tests_check_ping,
+            tests_check::tests_git_diff,
+            loop_answer,
+            tests_check::laya_status,
+            tests_check::laya_setup,
+            tests_check::laya_start,
+            tests_check::laya_stop,
+            tests_check::laya_remove,
+            vitals::vitals_set_active,
+            capture::capture_begin,
+            capture::capture_paste,
+            capture::capture_copy,
+            capture::capture_on_island,
+            capture::capture_dismiss,
+            capture::capture_annotate,
+            capture::capture_image,
+            capture::capture_annotated,
+            voice::voice_talk,
             flow::flow_status,
             flow::flow_set_prefs,
             flow::flow_history,
@@ -949,6 +1015,10 @@ pub fn run() {
             notes::notes_stop,
             notes::notes_rename,
             notes::notes_rename_speaker,
+            notes::notes_edit_line,
+            notes::notes_assign_line,
+            notes::notes_delete_line,
+            notes::notes_correct_again,
             notes::notes_toggle_todo,
             notes::notes_delete,
             notes::notes_summarize,
@@ -991,7 +1061,17 @@ pub fn run() {
                 #[cfg(windows)]
                 webview_drop::install(&handle);
                 island::apply_geometry(&handle, &loaded.screen, false);
-                let _ = win.show();
+                // Said outright, not only in the config: a webview whose background
+                // isn't transparent paints the whole window black.
+                let _ = win.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
+                if launched_at_login() {
+                    // Right after Windows starts, its compositor and the GPU aren't ready:
+                    // a transparent window shown then stays a black rectangle. Wait for the
+                    // desktop to settle, then show it.
+                    show_island_when_settled(handle.clone());
+                } else {
+                    let _ = win.show();
+                }
             }
             gate.collapsed.store(false, Ordering::Relaxed);
             // Nothing drawn yet, so nothing takes the mouse until the page
@@ -1001,6 +1081,8 @@ pub fn run() {
             }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
+            island::spawn_wake_poll(handle.clone(), gate.clone());
+            island::spawn_browser_watch(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
@@ -1008,8 +1090,11 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
-            // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
-            whatsapp::start(&handle, &loaded.active_integrations);
+            whatsapp::start(&handle);
+            // Live plan usage from claude.ai, once you connected your account.
+            claude_account::start(&handle);
+            // The relay's fix-loop marker. Laya waits for an agent session (tests_check.rs).
+            tests_check::launched(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());
@@ -1024,15 +1109,15 @@ pub fn run() {
             }
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building Coucou")
         .run(|app, event| {
             // Withdraw the phone link's announcement on the local network before the process ends.
             if let tauri::RunEvent::Exit = event {
                 phone_link::stop_on_exit(app);
                 notes::shutdown(app);
-                // GOWA started by Coucou stops with it; the conversations were only in memory.
                 whatsapp::shutdown();
+                tests_check::shutdown();
             }
         });
 }
