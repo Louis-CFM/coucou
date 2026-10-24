@@ -331,12 +331,6 @@ function planSection(status: HookStatus): HTMLElement {
 
 // ── Claude API section ────────────────────────────────────────────────────────
 
-const MODELS: [string, string][] = [
-  ["claude-opus-5", "Claude Opus 5"],
-  ["claude-sonnet-5", "Claude Sonnet 5"],
-  ["claude-haiku-4-5", "Claude Haiku 4.5"],
-];
-
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
   const state = h("span", { class: "hint", text: hasKey ? t("Key saved in the {store}.", { store: KEY_STORE }) : t("No key yet — the chat needs one.") });
@@ -353,6 +347,30 @@ function apiSection(hasKey: boolean): HTMLElement {
   const clearBtn = h("button", { class: "danger", text: t("Remove") });
   const feedback = h("div", {});
 
+  const model = h("select", {}) as HTMLSelectElement;
+  const modelContainer = h("div", { class: "row" }, h("label", { text: t("Model") }), model);
+
+  async function refreshModels() {
+    clear(model);
+    try {
+      const models = await Bridge.chatModels("anthropic");
+      if (models && models.length > 0) {
+        for (const m of models) {
+          model.append(h("option", { value: m.id, text: m.label }));
+        }
+        if (!models.some((m) => m.id === settings.model)) {
+          model.append(h("option", { value: settings.model, text: settings.model }));
+        }
+        model.value = settings.model || models[0].id;
+      } else {
+        model.append(h("option", { value: "", text: t("No models available") }));
+      }
+    } catch (err) {
+      model.append(h("option", { value: "", text: t("Could not load models") }));
+      console.error("Failed to load Claude models:", err);
+    }
+  }
+
   async function refresh() {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
     dot.style.background = present ? "#22c55e" : "#f4505e";
@@ -361,6 +379,9 @@ function apiSection(hasKey: boolean): HTMLElement {
       : t("No key yet — the chat needs one.");
     field.placeholder = present ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
+    if (present) {
+      await refreshModels();
+    }
   }
 
   saveBtn.addEventListener("click", async () => {
@@ -388,12 +409,6 @@ function apiSection(hasKey: boolean): HTMLElement {
     }
   });
 
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
   model.addEventListener("change", () => {
     settings.model = model.value;
     void save();
@@ -401,13 +416,18 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   clearBtn.style.display = hasKey ? "" : "none";
 
+  // Load models on initialization if key exists
+  if (hasKey) {
+    void refreshModels();
+  }
+
   return h(
     "section",
     {},
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
     h("div", { class: "row" }, h("label", { text: t("API key") }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
+    modelContainer,
     feedback,
   );
 }
