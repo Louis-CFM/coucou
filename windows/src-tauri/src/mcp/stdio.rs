@@ -61,8 +61,23 @@ impl StdioClient {
             }
         }
 
-        // Apply explicitly configured environment variables from config
-        cmd.envs(env);
+        // Apply explicitly configured environment variables from config, filtering internal secrets
+        let blocked_prefixes = [
+            "COUCOU_",
+            "NOTCH_",
+            "ANTHROPIC_",
+            "OPENAI_",
+            "CLAUDE_",
+            "GEMINI_",
+            "GENTLE_PI_",
+            "PI_CODING_AGENT_",
+        ];
+        for (k, v) in env {
+            let upper = k.to_uppercase();
+            if !blocked_prefixes.iter().any(|prefix| upper.starts_with(prefix)) {
+                cmd.env(k, v);
+            }
+        }
         cmd.stdin(Stdio::piped());
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
@@ -191,5 +206,43 @@ impl StdioClient {
             .ok_or_else(|| "Invalid response for tools/call".to_string())?;
 
         Ok(jsonrpc::parse_tool_call_result(result.as_ref(), error.as_ref()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_blocked_env_prefixes() {
+        let blocked_prefixes = [
+            "COUCOU_",
+            "NOTCH_",
+            "ANTHROPIC_",
+            "OPENAI_",
+            "CLAUDE_",
+            "GEMINI_",
+            "GENTLE_PI_",
+            "PI_CODING_AGENT_",
+        ];
+        let mut test_env = HashMap::new();
+        test_env.insert("SAFE_VAR".to_string(), "1".to_string());
+        test_env.insert("coucou_secret".to_string(), "2".to_string());
+        test_env.insert("ANTHROPIC_KEY".to_string(), "3".to_string());
+        test_env.insert("gentle_pi_child".to_string(), "4".to_string());
+
+        let mut filtered = HashMap::new();
+        for (k, v) in &test_env {
+            let upper = k.to_uppercase();
+            if !blocked_prefixes.iter().any(|prefix| upper.starts_with(prefix)) {
+                filtered.insert(k.clone(), v.clone());
+            }
+        }
+
+        assert_eq!(filtered.len(), 1);
+        assert!(filtered.contains_key("SAFE_VAR"));
+        assert!(!filtered.contains_key("coucou_secret"));
+        assert!(!filtered.contains_key("ANTHROPIC_KEY"));
+        assert!(!filtered.contains_key("gentle_pi_child"));
     }
 }

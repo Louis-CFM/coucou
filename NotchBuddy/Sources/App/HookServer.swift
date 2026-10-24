@@ -948,7 +948,7 @@ final class HookServer: @unchecked Sendable {
         // Handle MCP Tool approval from chat
         if AppState.shared.pendingApproval?.pillId == "mcp_tool" {
             let isAllowed = (decision == "allow" || decision == "always")
-            MCPApprovalManager.shared.handleDecision(isAllowed: isAllowed)
+            MCPApprovalManager.shared.handleDecision(isAllowed: isAllowed, for: id)
             return
         }
 

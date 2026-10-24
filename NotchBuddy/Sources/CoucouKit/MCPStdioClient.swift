@@ -41,14 +41,11 @@ actor MCPStdioClient: MCPClientProtocol {
         try? FileManager.default.createDirectory(at: tmpFolder, withIntermediateDirectories: true)
         proc.currentDirectoryURL = tmpFolder
 
-        var procEnv = ProcessInfo.processInfo.environment
-        let basePATH = [URL(fileURLWithPath: resolvedCommand).deletingLastPathComponent().path,
-                        "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin",
-                        "\(NSHomeDirectory())/.nvm/versions/node",
-                        "\(NSHomeDirectory())/.local/bin",
-                        procEnv["PATH"] ?? ""].joined(separator: ":")
-        procEnv["PATH"] = basePATH
-        procEnv.merge(env) { _, new in new }
+        let procEnv = Self.sanitizedEnvironment(
+            resolvedCommand: resolvedCommand,
+            customEnv: env,
+            baseEnv: ProcessInfo.processInfo.environment
+        )
         proc.environment = procEnv
 
         let inPipe = Pipe()
@@ -220,6 +217,68 @@ actor MCPStdioClient: MCPClientProtocol {
             "\(home)/.nvm/versions/node/current/bin/\(command)"
         ]
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/\(command)"
+    }
+
+    // MARK: - Environment Sanitization
+
+    /// Builds a sanitized environment for child MCP subprocesses.
+    /// Following the Gentle Dot hardening pattern, child processes do not inherit Coucou's full environment.
+    /// Internal app secrets, API keys, IPC tokens, and parent process descriptors are stripped.
+    static func sanitizedEnvironment(
+        resolvedCommand: String,
+        customEnv: [String: String],
+        baseEnv: [String: String]
+    ) -> [String: String] {
+        var clean: [String: String] = [:]
+
+        // Whitelisted safe system variables
+        let allowedKeys = [
+            "HOME", "USER", "LOGNAME", "SHELL", "TMPDIR", "LANG", "LC_ALL", "TERM"
+        ]
+        for key in allowedKeys {
+            if let val = baseEnv[key] {
+                clean[key] = val
+            }
+        }
+
+        // Standard developer PATH construction
+        let home = NSHomeDirectory()
+        let commandDir = URL(fileURLWithPath: resolvedCommand).deletingLastPathComponent().path
+        let basePATH = [
+            commandDir,
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/bin",
+            "/usr/sbin",
+            "/sbin",
+            "\(home)/.local/bin",
+            "\(home)/.nvm/versions/node/current/bin",
+            baseEnv["PATH"] ?? ""
+        ].filter { !$0.isEmpty }.joined(separator: ":")
+        clean["PATH"] = basePATH
+
+        // Blacklist patterns to ensure no Coucou secrets or IPC variables leak
+        let blockedPrefixes = [
+            "COUCOU_",
+            "NOTCH_",
+            "ANTHROPIC_",
+            "OPENAI_",
+            "CLAUDE_",
+            "GEMINI_",
+            "GENTLE_PI_",
+            "PI_CODING_AGENT_"
+        ]
+
+        for (k, v) in customEnv {
+            let upper = k.uppercased()
+            if blockedPrefixes.contains(where: { upper.hasPrefix($0) }) {
+                continue
+            }
+            clean[k] = v
+        }
+
+        return clean
     }
 }
 #else

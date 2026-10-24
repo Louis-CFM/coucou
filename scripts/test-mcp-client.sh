@@ -7,5 +7,6 @@ swiftc -swift-version 6 -strict-concurrency=complete \
     NotchBuddy/Sources/CoucouKit/MCPModels.swift \
     NotchBuddy/Sources/CoucouKit/MCPJSONRPC.swift \
     NotchBuddy/Sources/CoucouKit/MCPScanner.swift \
+    NotchBuddy/Sources/CoucouKit/MCPStdioClient.swift \
     tests/MCPClientTests.swift -o "$TEST_DIR/mcp-client-tests"
 "$TEST_DIR/mcp-client-tests"

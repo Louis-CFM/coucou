@@ -132,6 +132,35 @@ enum MCPClientTests {
         let decodedDict = try JSONDecoder().decode([String: AnyCodable].self, from: encodedData)
         check(decodedDict == dict, "AnyCodable encodes and decodes losslessly")
 
+        // MARK: - Stdio Environment Sanitization
+        let baseEnv: [String: String] = [
+            "HOME": "/Users/test",
+            "USER": "testuser",
+            "PATH": "/usr/bin:/bin",
+            "COUCOU_INTERNAL_SECRET": "should_be_stripped",
+            "ANTHROPIC_API_KEY": "sk-ant-secret",
+            "GENTLE_PI_AGENTS_CHILD": "1"
+        ]
+        let customEnv: [String: String] = [
+            "MY_API_KEY": "valid_user_secret",
+            "COUCOU_OVERRIDE": "blocked_attempt",
+            "OPENAI_KEY": "blocked_leak"
+        ]
+        let sanitized = MCPStdioClient.sanitizedEnvironment(
+            resolvedCommand: "/opt/homebrew/bin/node",
+            customEnv: customEnv,
+            baseEnv: baseEnv
+        )
+        check(sanitized["HOME"] == "/Users/test", "whitelisted HOME preserved")
+        check(sanitized["USER"] == "testuser", "whitelisted USER preserved")
+        check(sanitized["COUCOU_INTERNAL_SECRET"] == nil, "unwhitelisted base env secret excluded")
+        check(sanitized["ANTHROPIC_API_KEY"] == nil, "unwhitelisted base api key excluded")
+        check(sanitized["GENTLE_PI_AGENTS_CHILD"] == nil, "subagent IPC var excluded")
+        check(sanitized["MY_API_KEY"] == "valid_user_secret", "custom user config preserved")
+        check(sanitized["COUCOU_OVERRIDE"] == nil, "blocked prefix in custom env scrubbed")
+        check(sanitized["OPENAI_KEY"] == nil, "blocked OPENAI prefix scrubbed")
+        check(sanitized["PATH"]?.contains("/opt/homebrew/bin") == true, "command directory in PATH")
+
         print("All \(cases) MCPClient tests passed.")
     }
 }
