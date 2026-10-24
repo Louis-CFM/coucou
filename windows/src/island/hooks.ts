@@ -279,7 +279,7 @@ function handleHook(island: Island, payload: HookPayload) {
     if (State.mode === "expanded") {
       if (isAlert) island.setView(view);
     } else if (isAlert) {
-      island.alert(view);
+      island.alert(view, { auto: true });
     } else if (State.mode === "hidden") {
       island.reveal();
     }
@@ -519,7 +519,7 @@ function handleHook(island: Island, payload: HookPayload) {
       Sound.play(view);
       // Any agent's card (Claude Code, Codex, Copilot CLI, Muse Code) comes up
       // the same way: beginApproval brought its pill to the front.
-      island.alert(view);
+      island.alert(view, { auto: true });
       // Coucou answers within 108 s or not at all; after that the terminal has
       // taken over and the card would be lying.
       pendingTimeout = window.setTimeout(() => {

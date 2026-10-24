@@ -14,8 +14,13 @@ const CLAUDE = "integration_claude";
 
 /** What the handler asked the island to do, in order. */
 let asked;
+/** The options each alert came with (an automatic open says so: click-outside.ts). */
+let alertOptions;
 const island = {
-  alert: (view) => asked.push(`alert:${view}`),
+  alert: (view, options) => {
+    asked.push(`alert:${view}`);
+    alertOptions.push(options);
+  },
   setView: (view) => asked.push(`setView:${view}`),
   reveal: () => asked.push("reveal"),
   dropPin: () => asked.push("dropPin"),
@@ -30,6 +35,7 @@ beforeEach(() => {
   setLanguage("en");
   mock.timers.enable({ apis: ["setTimeout"] });
   asked = [];
+  alertOptions = [];
   calls.length = 0;
   State.tasks = [];
   State.focusId = null;
@@ -162,6 +168,14 @@ test("a finished session opens the finished view, then goes idle after 5.2 s", (
   assert.equal(task().state, "finished");
   seconds(0.1);
   assert.equal(task().state, "idle");
+});
+
+test("an island a hook opens is marked as opened automatically", () => {
+  hook({ hook_event_name: "Stop" });
+  assert.deepEqual(alertOptions, [{ auto: true }]);
+  alertOptions = [];
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", tool_name: "Bash" });
+  assert.deepEqual(alertOptions, [{ auto: true }]);
 });
 
 test("an alert on an island that is already open only switches its view", () => {

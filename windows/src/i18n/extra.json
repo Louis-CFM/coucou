@@ -6091,6 +6091,32 @@
       "id": "Matikan pil lain untuk memberi tempat bagi WhatsApp (maksimal {max}).",
       "de": "Schalte eine andere Pill aus, um Platz für WhatsApp zu schaffen (höchstens {max}).",
       "tr": "WhatsApp’a yer açmak için başka bir hapı kapat (en fazla {max})."
+    },
+    "Fold when I click outside": {
+      "zh-Hans": "点击外部时收起",
+      "hi": "बाहर क्लिक करने पर सिमटें",
+      "es": "Plegar al hacer clic fuera",
+      "ar": "الطي عند النقر خارجها",
+      "fr": "Replier au clic à l'extérieur",
+      "bn": "বাইরে ক্লিক করলে গুটিয়ে যাক",
+      "pt-BR": "Fechar ao clicar fora",
+      "ru": "Сворачивать при щелчке снаружи",
+      "id": "Tutup saat klik di luar",
+      "de": "Beim Klick außerhalb zuklappen",
+      "tr": "Dışarı tıklayınca kapat"
+    },
+    "Click anywhere outside the open island to fold it. A request that is waiting keeps waiting.": {
+      "zh-Hans": "在已打开的岛外任意位置点按即可将其收起。等待中的请求会继续等待。",
+      "hi": "खुले आइलैंड को समेटने के लिए उसके बाहर कहीं भी क्लिक करें। प्रतीक्षा कर रहा अनुरोध प्रतीक्षा में ही रहता है।",
+      "es": "Haz clic en cualquier parte fuera de la isla abierta para plegarla. Una solicitud en espera sigue esperando.",
+      "ar": "انقر في أي مكان خارج الجزيرة المفتوحة لطيّها. يظل الطلب المنتظر في الانتظار.",
+      "fr": "Cliquez n'importe où en dehors de l'île ouverte pour la replier. Une demande en attente reste en attente.",
+      "bn": "খোলা আইল্যান্ড গুটিয়ে নিতে তার বাইরে যেকোনো জায়গায় ক্লিক করুন। অপেক্ষমাণ অনুরোধ অপেক্ষাতেই থাকে।",
+      "pt-BR": "Clique em qualquer lugar fora da ilha aberta para fechá-la. Um pedido em espera continua esperando.",
+      "ru": "Щёлкните в любом месте за пределами открытого острова, чтобы свернуть его. Ожидающий запрос продолжает ждать.",
+      "id": "Klik di mana saja di luar pulau yang terbuka untuk menutupnya. Permintaan yang menunggu tetap menunggu.",
+      "de": "Klicke irgendwo außerhalb der geöffneten Insel, um sie zuzuklappen. Eine wartende Anfrage bleibt bestehen.",
+      "tr": "Açık adanın dışında herhangi bir yere tıkla, ada kapansın. Bekleyen bir istek beklemeye devam eder."
     }
   }
 }
