@@ -117,6 +117,8 @@ class IslandOverlay(
     private val onAllow: (fingerprint: String) -> Unit,
     private val onDeny: (fingerprint: String) -> Unit,
     private val onOpen: () -> Unit,
+    /** The user swiped the island up: what it showed now belongs in the notification shade. */
+    private val onSwiped: (IslandSpec) -> Unit = {},
 ) {
     private val wm = context.getSystemService(WindowManager::class.java)
     private val main = Handler(Looper.getMainLooper())
@@ -162,8 +164,10 @@ class IslandOverlay(
 
     /** The user swiped the island up (or chose "Dismiss" in TalkBack): it goes back into the notch until something new happens. */
     fun swipeAway() = safely {
+        val shown = timeline.current?.takeIf { timeline.phase == IslandTimeline.Phase.OPEN }
         timeline.swipeAway()
         sync()
+        shown?.let(onSwiped)
     }
 
     /** Close at once, without animation (Coucou came to the front, the switch went off, the link dropped). */

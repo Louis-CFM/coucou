@@ -334,7 +334,19 @@ class AppModel(private val context: Context) : LinkListener {
         onAllow = { notifier.openAllow(it) },
         onDeny = { decide(it, allow = false) },
         onOpen = { notifier.openApp() },
+        onSwiped = { shadeAfterSwipe(it) },
     )
+
+    /** The island went up: leave what it showed in the notification shade (quietly), so nothing is lost with the swipe. */
+    private fun shadeAfterSwipe(spec: com.coucou.android.core.IslandSpec) {
+        when (IslandPlan.shadeFor(spec.kind)) {
+            IslandPlan.Shade.STATUS_NOTE -> notifier.showStatus(spec.pillId, spec.agent, spec.state, spec.text)
+            IslandPlan.Shade.REQUEST_NOTE ->
+                approvals.firstOrNull { it.fingerprint == spec.fingerprint }
+                    ?.let { notifier.showApproval(it, agentName(it.pillId), OverlayPolicy.ApprovalAlert.QUIET) }
+            IslandPlan.Shade.ONGOING -> Unit // the ongoing notification already says who is working
+        }
+    }
 
     fun overlayPermitted() = overlay.permitted()
 
