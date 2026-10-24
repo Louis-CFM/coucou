@@ -103,6 +103,8 @@ export interface Settings {
   autoCloseInterval: number;
   /** Hovering the island opens it all the way (off: hovering only peeks). */
   openOnHover: boolean;
+  /** A left click outside the open island folds it, as Esc does. */
+  foldOnClickOutside: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
   absenceInterval: number;
@@ -171,6 +173,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   openOnHover: false,
+  foldOnClickOutside: true,
   showClock: false,
   absenceInterval: 180,
   activeIntegrations: [

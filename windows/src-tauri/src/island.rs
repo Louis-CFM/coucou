@@ -53,6 +53,67 @@ pub struct IslandRect {
     pub h: f64,
 }
 
+impl IslandRect {
+    /// Whether a window-logical point is on the island, margin included. `None`
+    /// while nothing is drawn yet: there is no island to be on or off.
+    fn hit(&self, x: f64, y: f64) -> Option<bool> {
+        if self.w <= 0.0 {
+            return None;
+        }
+        Some(
+            x >= self.x - HIT_MARGIN
+                && x <= self.x + self.w + HIT_MARGIN
+                && y >= self.y - HIT_MARGIN
+                && y <= self.y + self.h + HIT_MARGIN,
+        )
+    }
+}
+
+/// What the left button did on one tick, as far as "click outside" cares.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum ButtonEdge {
+    Nothing,
+    /// A press that began outside the island.
+    PressOutside,
+    /// The release of a press that began outside, also outside.
+    ClickOutside,
+}
+
+/// Follows the left button across ticks. It lives for one run of the cursor
+/// thread: the thread resets it on every wake, so a button already held when the
+/// island comes back is never a new press.
+#[derive(Default)]
+struct ClickTracker {
+    was_down: bool,
+    press_outside: bool,
+}
+
+impl ClickTracker {
+    fn reset(&mut self, down: bool) {
+        self.was_down = down;
+        self.press_outside = false;
+    }
+
+    /// `on_island` is `None` when nothing is drawn: no island, so no event.
+    fn tick(&mut self, down: bool, on_island: Option<bool>) -> ButtonEdge {
+        let outside = on_island == Some(false);
+        let edge = match (self.was_down, down) {
+            (false, true) => {
+                self.press_outside = outside;
+                if outside { ButtonEdge::PressOutside } else { ButtonEdge::Nothing }
+            }
+            (true, false) => {
+                let click = self.press_outside && outside;
+                self.press_outside = false;
+                if click { ButtonEdge::ClickOutside } else { ButtonEdge::Nothing }
+            }
+            _ => ButtonEdge::Nothing,
+        };
+        self.was_down = down;
+        edge
+    }
+}
+
 /// Wakes / parks the cursor poll thread so a hidden island costs literally nothing.
 pub struct PollGate {
     active: Mutex<bool>,
@@ -332,6 +393,103 @@ mod zoom_tests {
 }
 
 
+#[cfg(test)]
+mod click_tests {
+    use super::*;
+    use ButtonEdge::{ClickOutside, Nothing, PressOutside};
+
+    const OUT: Option<bool> = Some(false);
+    const IN: Option<bool> = Some(true);
+
+    #[test]
+    fn a_press_and_release_outside_is_a_click() {
+        let mut t = ClickTracker::default();
+        assert_eq!(t.tick(false, OUT), Nothing);
+        assert_eq!(t.tick(true, OUT), PressOutside);
+        assert_eq!(t.tick(true, OUT), Nothing);
+        assert_eq!(t.tick(false, OUT), ClickOutside);
+        assert_eq!(t.tick(false, OUT), Nothing);
+    }
+
+    #[test]
+    fn a_click_with_a_still_cursor_still_counts() {
+        // The same position on every tick: nothing in the tracker looks at movement.
+        let mut t = ClickTracker::default();
+        let seen: Vec<_> = [false, true, false].map(|down| t.tick(down, OUT)).to_vec();
+        assert_eq!(seen, [Nothing, PressOutside, ClickOutside]);
+    }
+
+    #[test]
+    fn a_press_inside_never_folds() {
+        let mut t = ClickTracker::default();
+        assert_eq!(t.tick(true, IN), Nothing);
+        assert_eq!(t.tick(true, OUT), Nothing);
+        assert_eq!(t.tick(false, OUT), Nothing);
+    }
+
+    #[test]
+    fn a_press_outside_released_inside_never_folds() {
+        // Dragging a file from Explorer onto the island.
+        let mut t = ClickTracker::default();
+        assert_eq!(t.tick(true, OUT), PressOutside);
+        assert_eq!(t.tick(true, IN), Nothing);
+        assert_eq!(t.tick(false, IN), Nothing);
+    }
+
+    #[test]
+    fn crossing_the_island_and_ending_outside_is_a_click() {
+        let mut t = ClickTracker::default();
+        assert_eq!(t.tick(true, OUT), PressOutside);
+        assert_eq!(t.tick(true, IN), Nothing);
+        assert_eq!(t.tick(true, OUT), Nothing);
+        assert_eq!(t.tick(false, OUT), ClickOutside);
+    }
+
+    #[test]
+    fn a_button_held_across_a_park_is_not_a_press() {
+        let mut t = ClickTracker::default();
+        // The thread wakes with the button already down.
+        t.reset(true);
+        assert_eq!(t.tick(true, OUT), Nothing);
+        assert_eq!(t.tick(false, OUT), Nothing);
+        // And a press in flight when the thread parks does not survive the wake.
+        assert_eq!(t.tick(true, OUT), PressOutside);
+        t.reset(true);
+        assert_eq!(t.tick(false, OUT), Nothing);
+    }
+
+    #[test]
+    fn nothing_drawn_means_no_events() {
+        let mut t = ClickTracker::default();
+        assert_eq!(t.tick(true, None), Nothing);
+        assert_eq!(t.tick(false, None), Nothing);
+        // The island appearing mid press does not turn it into a click.
+        assert_eq!(t.tick(true, OUT), PressOutside);
+        assert_eq!(t.tick(false, None), Nothing);
+    }
+
+    #[test]
+    fn the_margin_counts_as_the_island() {
+        let r = IslandRect { x: 100.0, y: 0.0, w: 200.0, h: 80.0 };
+        assert_eq!(r.hit(100.0 - HIT_MARGIN, 10.0), Some(true));
+        assert_eq!(r.hit(100.0 - HIT_MARGIN - 1.0, 10.0), Some(false));
+        assert_eq!(r.hit(150.0, 80.0 + HIT_MARGIN), Some(true));
+        assert_eq!(r.hit(150.0, 80.0 + HIT_MARGIN + 1.0), Some(false));
+        assert_eq!(IslandRect::default().hit(0.0, 0.0), None);
+    }
+
+    #[test]
+    fn another_monitor_is_outside_whatever_its_coordinates() {
+        // The window-logical point of a pointer on a monitor left of and above
+        // the island's one, on a 150 % display: negative, and nowhere near it.
+        let r = IslandRect { x: 100.0, y: 0.0, w: 200.0, h: 80.0 };
+        let (window_x, scale) = (1920.0, 1.5);
+        let (cursor_x, cursor_y) = (-1000.0, -300.0);
+        let (x, y) = ((cursor_x - window_x) / scale, cursor_y / scale);
+        assert_eq!(r.hit(x, y), Some(false));
+    }
+}
+
 pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     match target_monitor(app, pref) {
         Some(m) => {
@@ -411,7 +569,8 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 /// visible. Parked on a condvar the rest of the time.
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
-        let mut was_down = false;
+        let mut was_down: bool;
+        let mut clicks = ClickTracker::default();
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
@@ -423,6 +582,9 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
+            // A button held while the thread was parked is not a new press.
+            was_down = left_button_down();
+            clicks.reset(was_down);
             while gate.is_active() {
                 std::thread::sleep(Duration::from_millis(period));
 
@@ -453,6 +615,29 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
+
+                // The button is read on every tick, before the still-cursor skip
+                // below: most clicks are made without moving the mouse.
+                let r = *gate.rect.lock().unwrap();
+                let hit = r.hit(x, y);
+                let down = left_button_down();
+                match clicks.tick(down, hit) {
+                    ButtonEdge::Nothing => {}
+                    ButtonEdge::PressOutside => {
+                        let _ = app.emit_to(WINDOW_LABEL, "press-outside", ());
+                    }
+                    ButtonEdge::ClickOutside => {
+                        let _ = app.emit_to(WINDOW_LABEL, "click-outside", ());
+                    }
+                }
+                // A press may be the start of a drag: make sure the drop target is
+                // ours before the file arrives.
+                if down && !was_down {
+                    let handle = app.clone();
+                    let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
+                }
+                was_down = down;
+
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                     continue;
                 }
@@ -461,12 +646,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // Click-through: the window only takes the mouse over the island
                 // shape. A small entry margin means the flag is already off by the
                 // time a moving cursor reaches a button.
-                let r = *gate.rect.lock().unwrap();
-                let on_island = r.w > 0.0
-                    && x >= r.x - HIT_MARGIN
-                    && x <= r.x + r.w + HIT_MARGIN
-                    && y >= r.y - HIT_MARGIN
-                    && y <= r.y + r.h + HIT_MARGIN;
+                let on_island = hit == Some(true);
 
                 // A file being dragged has to be able to find us. WS_EX_TRANSPARENT
                 // — what click-through is on Windows — hides the window from
@@ -475,15 +655,6 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // registered destinations whatever ignoresMouseEvents says. So while
                 // a button is held anywhere over the panel, the whole panel takes
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
-                // A press may be the start of a drag: make sure the drop target is
-                // ours before the file arrives.
-                let down = left_button_down();
-                if down && !was_down {
-                    let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
-                }
-                was_down = down;
-
                 let dragging = down
                     && x >= 0.0
                     && x <= size.0

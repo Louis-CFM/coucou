@@ -61,6 +61,8 @@ async function main() {
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
+  await onEvent<null>("press-outside", () => island.onPressOutside());
+  await onEvent<null>("click-outside", () => island.onClickOutside());
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {

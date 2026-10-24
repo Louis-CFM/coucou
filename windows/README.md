@@ -60,6 +60,7 @@ You can also [build it yourself](#build-it-yourself).
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
+| Click anywhere outside the open island | It folds to the compact bar, like `Esc` (Windows only). A waiting permission or question keeps waiting, and an island you pinned with `Ctrl+P` stays open. Turn it off with **Settings → General → Fold when I click outside** |
 | Put a file named like one of Mochi's sounds (`finish.wav`, `approval.mp3`, `greet.m4a`…) in the sounds folder | It replaces that sound after **Settings → General → Reload sounds**. **Open sounds folder** shows the folder: `~/.config/coucou/sounds` on Linux, `%APPDATA%\Coucou\sounds` on Windows |
 | Tray icon | Open, Weekly recap, Wardrobe…, Settings…, Pause, Quit — and **Update Coucou to X…** while a new version is out |
 | `Ctrl+Alt+Space` | Opens the chat, from any app |

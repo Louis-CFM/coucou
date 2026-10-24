@@ -19,6 +19,9 @@ pub struct Settings {
     /// Hovering the island opens it all the way, and it folds again shortly
     /// after the pointer leaves (the Mac's "Open on hover"). Off by default.
     pub open_on_hover: bool,
+    /// A left click anywhere outside the open island folds it, as Esc does.
+    /// On by default. The front end applies it; Rust only stores it.
+    pub fold_on_click_outside: bool,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
@@ -131,6 +134,7 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             open_on_hover: false,
+            fold_on_click_outside: true,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -425,6 +429,7 @@ mod tests {
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
   "openOnHover": true,
+  "foldOnClickOutside": false,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
@@ -722,6 +727,14 @@ mod tests {
     }
 
     #[test]
+    fn folding_on_a_click_outside_is_on_unless_the_file_says_otherwise() {
+        assert!(Settings::default().fold_on_click_outside);
+        // A settings.json saved before the switch existed.
+        assert!(parse(&custom_with("foldOnClickOutside", None)).unwrap().fold_on_click_outside);
+        assert!(!parse(&custom_with("foldOnClickOutside", Some(json!(false)))).unwrap().fold_on_click_outside);
+    }
+
+    #[test]
     fn a_field_of_the_wrong_type_takes_its_default_and_the_rest_are_kept() {
         for (key, wrong) in [
             ("soundVolume", json!("loud")),
@@ -943,6 +956,7 @@ mod tests {
                 "soundVolume",
                 "autoCloseInterval",
                 "openOnHover",
+                "foldOnClickOutside",
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",
