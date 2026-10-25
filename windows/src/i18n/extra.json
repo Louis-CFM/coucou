@@ -4948,6 +4948,32 @@
       "de": "Die kompakte Insel bleibt oben am Bildschirm, statt nach einer Minute zu verschwinden.",
       "tr": "Kompakt ada bir dakika sonra gizlenmek yerine ekranın üstünde kalır."
     },
+    "Show the pill": {
+      "zh-Hans": "显示胶囊",
+      "hi": "पिल दिखाएँ",
+      "es": "Mostrar la píldora",
+      "ar": "إظهار الحبة",
+      "fr": "Afficher la pilule",
+      "bn": "পিল দেখান",
+      "pt-BR": "Mostrar a pílula",
+      "ru": "Показывать пилюлю",
+      "id": "Tampilkan pil",
+      "de": "Diktierleiste anzeigen",
+      "tr": "Dikte aracını göster"
+    },
+    "Off, the pill only appears while you dictate, record a call or « OK Coucou » answers.": {
+      "zh-Hans": "关闭后，胶囊只在你听写、录制通话或「OK Coucou」回答时出现。",
+      "hi": "बंद होने पर, पिल सिर्फ़ तब दिखती है जब आप बोलकर लिखते हैं, कॉल रिकॉर्ड करते हैं या « OK Coucou » जवाब देता है।",
+      "es": "Desactivada, la píldora solo aparece mientras dictas, grabas una llamada o « OK Coucou » responde.",
+      "ar": "عند الإيقاف، لا تظهر الحبة إلا أثناء الإملاء أو تسجيل مكالمة أو عندما يجيب « OK Coucou ».",
+      "fr": "Désactivée, la pilule n'apparaît que pendant une dictée, l'enregistrement d'un call ou une réponse de « OK Coucou ».",
+      "bn": "বন্ধ থাকলে পিল শুধু তখনই দেখা যায় যখন আপনি ডিক্টেট করেন, কল রেকর্ড করেন বা « OK Coucou » উত্তর দেয়।",
+      "pt-BR": "Desativada, a pílula só aparece enquanto você dita, grava uma chamada ou o « OK Coucou » responde.",
+      "ru": "Если выключено, пилюля появляется только во время диктовки, записи звонка или ответа « OK Coucou ».",
+      "id": "Jika mati, pil hanya muncul saat Anda mendikte, merekam panggilan, atau « OK Coucou » menjawab.",
+      "de": "Aus: Die Diktierleiste erscheint nur, während du diktierst, ein Gespräch aufnimmst oder « OK Coucou » antwortet.",
+      "tr": "Kapalıyken dikte aracı yalnızca dikte ederken, görüşme kaydederken veya « OK Coucou » yanıt verirken görünür."
+    },
     "Get new versions from the island?": {
       "zh-Hans": "在岛里获取新版本？",
       "hi": "नए वर्ज़न आइलैंड में पाएँ?",

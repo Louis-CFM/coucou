@@ -28,6 +28,8 @@ export interface FlowPrefs {
   enabled: boolean;
   key: FlowKey;
   edge: Edge;
+  /** The pill rests on screen while dictation is on (off: it only shows while it works). */
+  showPill: boolean;
   mic: string;
   keepDays: number;
   cleanup: boolean;

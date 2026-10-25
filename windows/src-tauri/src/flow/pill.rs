@@ -37,7 +37,8 @@ pub struct PillState {
     /// When the call being recorded started (ms since 1970), or none.
     pub note_started_at: Option<u64>,
     pub announcement: Option<Announcement>,
-    /// Dictation is on (the resting pill shows).
+    /// The resting pill shows: dictation is on and the pill isn't turned off
+    /// in Flow → Settings.
     pub enabled: bool,
     /// « OK Coucou » is talking with you.
     pub voice: Option<crate::voice::VoiceView>,
@@ -282,7 +283,7 @@ pub fn set_hot(app: &AppHandle, rects: Vec<(f64, f64, f64, f64)>) {
 }
 
 /// Windows: ~30 times a second while the pill shows, the window takes the
-/// mouse only over the pill and its bubble.
+/// mouse only over the pill and its bubble. Hidden, it takes none at all.
 fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
     std::thread::spawn(move || {
         let mut ignoring: Option<bool> = None;
@@ -290,6 +291,17 @@ fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
             {
                 let (lock, cv) = &pill.poll;
                 let mut on = lock.lock().unwrap();
+                // Windows doesn't always keep the window parked off screen (it
+                // may cascade it to the top left at launch), and an idle pill
+                // window there swallowed every click over it. So the hidden
+                // window lets clicks through wherever it is. Asked from this
+                // thread, it lands after the last tick's own request: setters
+                // from here are queued in order.
+                if !*on && ignoring != Some(true) {
+                    if let Some(win) = window(&app) {
+                        let _ = win.set_ignore_cursor_events(true);
+                    }
+                }
                 while !*on {
                     ignoring = None;
                     on = cv.wait(on).unwrap();

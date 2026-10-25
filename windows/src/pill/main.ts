@@ -240,6 +240,12 @@ let capsule: HTMLElement | null = null;
 let lastKey = "";
 
 function render() {
+  // Hidden, nothing is drawn: Windows may leave the window on screen.
+  root.style.display = visible ? "" : "none";
+  if (!visible) {
+    void FlowBridge.pillHot([]);
+    return;
+  }
   const l = look();
   const open = l !== "resting";
   const length = open ? openLength(l) : RESTING_LENGTH;
@@ -277,6 +283,8 @@ function render() {
 }
 
 function reportHot() {
+  // A report still due from before the pill hid.
+  if (!visible) return;
   const rects: [number, number, number, number][] = [];
   const W = window.innerWidth;
   const H = window.innerHeight;
@@ -493,7 +501,7 @@ async function main() {
   const status = await FlowBridge.status();
   if (status) platform = status.platform;
   state = (await FlowBridge.pillState()) ?? state;
-  visible = state.enabled || state.noteStartedAt !== null || state.announcement !== null || state.voice !== null;
+  visible = state.enabled || state.noteStartedAt !== null || state.announcement !== null || state.voice !== null || state.phase !== "idle";
   render();
   void onEvent<PillState>("pill-state", (s) => {
     state = s;

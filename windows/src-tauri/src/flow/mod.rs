@@ -170,7 +170,7 @@ fn enable(app: &AppHandle, flow: &Arc<Flow>) {
     *running = Some(Running { tx, _listener: listener });
     drop(running);
     speech::preload();
-    pill::update(app, |s| s.enabled = true);
+    pill::update(app, |s| s.enabled = prefs.show_pill);
     crate::log::line(format!("flow dictation on ({})", prefs.key.label()));
 }
 
@@ -497,6 +497,10 @@ pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
     }
     if prefs.enabled && (!before.enabled || restart) {
         enable(&app, &flow);
+    }
+    if before.show_pill != prefs.show_pill {
+        let resting = prefs.show_pill && flow.running.lock().unwrap().is_some();
+        pill::update(&app, |s| s.enabled = resting);
     }
     if before.voice != prefs.voice || before.mic != prefs.mic {
         if before.mic != prefs.mic {
