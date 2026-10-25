@@ -4922,6 +4922,32 @@
       "de": "Datum und Uhrzeit in der Mitte der Insel, wenn sie kompakt ist.",
       "tr": "Ada kompaktken ortasında tarih ve saat."
     },
+    "Always show the island": {
+      "zh-Hans": "始终显示灵动岛",
+      "hi": "आइलैंड हमेशा दिखाएँ",
+      "es": "Mostrar siempre la isla",
+      "ar": "إظهار الجزيرة دائمًا",
+      "fr": "Toujours afficher l'îlot",
+      "bn": "আইল্যান্ড সবসময় দেখান",
+      "pt-BR": "Sempre mostrar a ilha",
+      "ru": "Всегда показывать остров",
+      "id": "Selalu tampilkan pulau",
+      "de": "Insel immer anzeigen",
+      "tr": "Adayı her zaman göster"
+    },
+    "The compact island stays at the top of the screen instead of hiding after a minute.": {
+      "zh-Hans": "收起的岛一直停留在屏幕顶部，不会在一分钟后隐藏。",
+      "hi": "छोटा आइलैंड एक मिनट बाद छिपने के बजाय स्क्रीन के ऊपर बना रहता है।",
+      "es": "La isla compacta se queda arriba de la pantalla en lugar de ocultarse al cabo de un minuto.",
+      "ar": "تبقى الجزيرة المصغّرة أعلى الشاشة بدلًا من أن تختفي بعد دقيقة.",
+      "fr": "L'îlot compact reste en haut de l'écran au lieu de se cacher au bout d'une minute.",
+      "bn": "ছোট আইল্যান্ড এক মিনিট পরে লুকিয়ে না গিয়ে স্ক্রিনের ওপরে থেকে যায়।",
+      "pt-BR": "A ilha compacta fica no topo da tela em vez de se esconder depois de um minuto.",
+      "ru": "Свёрнутый остров остаётся вверху экрана, а не прячется через минуту.",
+      "id": "Pulau ringkas tetap di atas layar alih-alih bersembunyi setelah satu menit.",
+      "de": "Die kompakte Insel bleibt oben am Bildschirm, statt nach einer Minute zu verschwinden.",
+      "tr": "Kompakt ada bir dakika sonra gizlenmek yerine ekranın üstünde kalır."
+    },
     "Get new versions from the island?": {
       "zh-Hans": "在岛里获取新版本？",
       "hi": "नए वर्ज़न आइलैंड में पाएँ?",
