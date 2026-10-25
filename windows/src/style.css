@@ -424,6 +424,16 @@ body {
   flex: 1 1 auto;
 }
 
+/* A file's diff open: the left card takes the whole island, like the chat. */
+.overview.diff-open > .left {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.overview.diff-open > .right {
+  display: none;
+}
+
 .card-body {
   position: relative;
   z-index: 1;

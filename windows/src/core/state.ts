@@ -247,6 +247,8 @@ class AppState {
   private sessionDiffTimers = new Map<string, number>();
   /** Never reset, so an id can never point at a newer diff than the one tapped. */
   private nextDiffId = 0;
+  /** A file's diff is open in the overview: the island grows to DIFF_H for it. */
+  diffOpen = false;
   /** Ctrl+↑ / Ctrl+↓: the highlighted row of the card's list (AppState.cardSelection). */
   cardSelection: number | null = null;
   /** Rows in the list on screen, 0 when there is none (AppState.cardItemCount). */

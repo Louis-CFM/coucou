@@ -176,9 +176,19 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 
-function buildOverview(actions: ViewActions): ViewHost {
+function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHost {
   /** The diff open in the left card (a FileDiff id), as activeDiffId on macOS. */
   let activeDiffId: number | null = null;
+  /**
+   * While a diff is open the island grows (State.diffOpen, DIFF_H) and the
+   * left card takes the whole width, like the chat, so the lines can be read.
+   */
+  const showDiffOpen = (open: boolean) => {
+    el.classList.toggle("diff-open", open);
+    if (State.diffOpen === open) return;
+    State.diffOpen = open;
+    onHeightChange();
+  };
   const closeDiff = () => {
     if (activeDiffId == null) return;
     activeDiffId = null;
@@ -231,6 +241,9 @@ function buildOverview(actions: ViewActions): ViewHost {
   State.subscribe(() => {
     if (activeDiffId != null && (State.view !== "overview" || State.mode !== "expanded")) {
       activeDiffId = null;
+      // The island is changing size for that anyway: back to the overview's own.
+      State.diffOpen = false;
+      el.classList.remove("diff-open");
     }
   });
   // Escape steps back out of the diff before it closes the island.
@@ -326,6 +339,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       // A diff that has since been dropped (cap, expiry, session end) just closes.
       const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
       if (!diff) activeDiffId = null;
+      showDiffOpen(!planOpen && diff != null);
 
       if (planOpen) {
         if (mode !== "plan") {
@@ -826,10 +840,11 @@ function buildPlaceholder(title: Msg, sub: string): ViewHost {
 
 export function buildViews(
   actions: ViewActions,
-  onChatHeightChange: () => void,
+  /** A view changed its own height: the chat as it grows, the overview opening a diff. */
+  onHeightChange: () => void,
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
-  map.set("overview", buildOverview(actions));
+  map.set("overview", buildOverview(actions, onHeightChange));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
   map.set("question", buildQuestion(actions));
@@ -838,7 +853,7 @@ export function buildViews(
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
-  map.set("prompt", buildPrompt(onChatHeightChange));
+  map.set("prompt", buildPrompt(onHeightChange));
   map.set("upload", buildUpload());
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));
