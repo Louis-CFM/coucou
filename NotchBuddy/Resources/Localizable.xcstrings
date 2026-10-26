@@ -23656,7 +23656,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "像其他 App 一樣開啟 Coucou；按一下圖示即可返回此視窗。關閉時，Coucou 只會顯示在選單列。"
+            "value" : "像其他 App 一樣開啟 Coucou；按一下圖示即可返回此視窗。關閉此選項後，Coucou 僅顯示於選單列。"
           }
         }
       }

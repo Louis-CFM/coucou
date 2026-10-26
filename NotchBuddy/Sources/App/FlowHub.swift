@@ -140,9 +140,9 @@ final class FlowHubController {
     static let showInDockKey = "coucouShowInDock"
     static let openAtLaunchKey = "coucouOpenAtLaunch"
 
-    /// Coucou in the Dock, like a regular app (on by default in the GitHub build).
+    /// Keep Coucou in the menu bar unless the user chooses to show it in the Dock.
     static var showInDock: Bool {
-        get { UserDefaults.standard.object(forKey: showInDockKey) as? Bool ?? true }
+        get { UserDefaults.standard.object(forKey: showInDockKey) as? Bool ?? false }
         set {
             UserDefaults.standard.set(newValue, forKey: showInDockKey)
             NSApp.setActivationPolicy(newValue ? .regular : .accessory)
