@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.coucou.android.core.IconKind
@@ -21,8 +23,12 @@ import com.coucou.android.core.IconSpec
 
 /** Draws an icon from core/IconSpec.kt: stroked, round ends and joins, scaled from the 24 grid to [size]. No icon library. */
 @Composable
-fun CoucouIcon(kind: IconKind, modifier: Modifier = Modifier, tint: Color = tokens().text.c(), size: Dp = 24.dp) {
-    Canvas(modifier.size(size)) { drawIcon(kind, tint) }
+fun CoucouIcon(kind: IconKind, modifier: Modifier = Modifier, tint: Color = tokens().text.c(), size: Dp = 24.dp, mirror: Boolean = true) {
+    Canvas(modifier.size(size)) {
+        // Back, send and the chevron point along the reading direction: flipped in a right-to-left language (pass mirror = false for a chevron turned to point down).
+        if (mirror && IconSpec.mirrorsInRtl(kind) && layoutDirection == LayoutDirection.Rtl) scale(-1f, 1f) { drawIcon(kind, tint) }
+        else drawIcon(kind, tint)
+    }
 }
 
 private fun DrawScope.drawIcon(kind: IconKind, tint: Color) {

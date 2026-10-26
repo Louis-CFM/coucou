@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Team widget: up to four agents the user picked, two by two. Each cell is Mochi's small face in the agent's state, its name
+     and a dot with the state word. An agent picked and not running says "Not running". With no agent to show, a centred empty state
+     fills the card (the same two lines as the List). Plain RemoteViews. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/team_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_card">
+
+    <FrameLayout
+        android:id="@+id/team_tint"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="1dp"
+        android:background="@drawable/widget_tint_muted" />
+
+    <LinearLayout
+        android:id="@+id/team_grid"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:id="@+id/team_row0"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/team_cell0"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/widget_row_min"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp">
+
+                <ImageView
+                    android:id="@+id/team_face0"
+                    android:importantForAccessibility="no"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/preview_face_idle" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/team_name0"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/widget_text"
+                        android:textSize="@dimen/widget_text_state"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/team_dot0"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/widget_dot"
+                            android:tint="@color/widget_tone_muted" />
+
+                        <TextView
+                            android:id="@+id/team_state0"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/widget_text_secondary"
+                            android:textSize="@dimen/widget_text_secondary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/team_cell1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/widget_row_min"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp">
+
+                <ImageView
+                    android:id="@+id/team_face1"
+                    android:importantForAccessibility="no"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/preview_face_idle" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/team_name1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/widget_text"
+                        android:textSize="@dimen/widget_text_state"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/team_dot1"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/widget_dot"
+                            android:tint="@color/widget_tone_muted" />
+
+                        <TextView
+                            android:id="@+id/team_state1"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/widget_text_secondary"
+                            android:textSize="@dimen/widget_text_secondary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/team_row1"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/team_cell2"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/widget_row_min"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp">
+
+                <ImageView
+                    android:id="@+id/team_face2"
+                    android:importantForAccessibility="no"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/preview_face_idle" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/team_name2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/widget_text"
+                        android:textSize="@dimen/widget_text_state"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/team_dot2"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/widget_dot"
+                            android:tint="@color/widget_tone_muted" />
+
+                        <TextView
+                            android:id="@+id/team_state2"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/widget_text_secondary"
+                            android:textSize="@dimen/widget_text_secondary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/team_cell3"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/widget_row_min"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp">
+
+                <ImageView
+                    android:id="@+id/team_face3"
+                    android:importantForAccessibility="no"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/preview_face_idle" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/team_name3"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/widget_text"
+                        android:textSize="@dimen/widget_text_state"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/team_dot3"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/widget_dot"
+                            android:tint="@color/widget_tone_muted" />
+
+                        <TextView
+                            android:id="@+id/team_state3"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/widget_text_secondary"
+                            android:textSize="@dimen/widget_text_secondary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/team_empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/team_empty_face"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="@string/widget_team_label"
+            android:scaleType="fitCenter"
+            android:src="@drawable/preview_mochi_idle" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/team_empty_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/widget_initial_title"
+                android:textColor="@color/widget_text"
+                android:textSize="@dimen/widget_text_name"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/team_empty_icon"
+                    android:layout_width="@dimen/widget_icon"
+                    android:layout_height="@dimen/widget_icon"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_widget_offline" />
+
+                <TextView
+                    android:id="@+id/team_empty_line"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="@string/widget_initial_line"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="@dimen/widget_text_state" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

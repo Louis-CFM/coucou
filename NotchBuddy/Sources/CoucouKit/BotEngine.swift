@@ -70,6 +70,8 @@ enum BadgeType {
     case bang(CGColor)
     case question(CGColor)
     case dot(CGColor)
+    /// A new Coucou is waiting (Mac GitHub build): a white up arrow.
+    case arrow(CGColor)
 }
 
 // MARK: - Mochi track constants (from PISTES.mochi)
@@ -172,6 +174,11 @@ let BotStates: [BotState: BotStateCfg] = [
 final class BotEngine: ObservableObject {
     var isMini: Bool = false
     var bodyColor: CGColor? = nil    // override for mini bots
+    /// A new version waits (BotCanvasView sets it while Mochi has nothing else to say):
+    /// the blue up-arrow badge instead of the state's own.
+    private(set) var updateHint = false
+    /// #3B82F6: Mochi's colour while an update waits.
+    static let updateBlue = CGColor(red: 0.231, green: 0.510, blue: 0.965, alpha: 1)
 
     // Animation state (mirrors prototype 's' object)
     var yaw:    CGFloat = 0
@@ -309,7 +316,7 @@ final class BotEngine: ObservableObject {
         colT = cgColorToTuple(cfg.color)
         setTarget(key: "tint", value: cfg.tint)
         setTarget(key: "tilt", value: cfg.tilt)
-        setBadge(cfg.badge)
+        setBadge(updateHint && (newState == .idle || newState == .sleeping) ? .arrow(Self.updateBlue) : cfg.badge)
 
         switch newState {
         case .finished:
@@ -338,6 +345,14 @@ final class BotEngine: ObservableObject {
         default:
             if prev != .idle || newState != .idle { blink() }
         }
+    }
+
+    /// The caller decides when (an update waits, Mochi idle or asleep); the badge follows.
+    func setUpdateHint(_ on: Bool) {
+        guard on != updateHint else { return }
+        updateHint = on
+        setBadge(on ? .arrow(Self.updateBlue) : cfg.badge)
+        if on { blink() }
     }
 
     func setBadge(_ b: BadgeType?) {
@@ -1706,6 +1721,27 @@ final class BotEngine: ObservableObject {
             var inner = Path()
             inner.addEllipse(in: CGRect(x: -R*0.135, y: -R*0.135, width: R*0.27, height: R*0.27))
             ctx.fill(inner, with: .color(Color(cgColor: col)))
+
+        case .arrow(let col):
+            // Same ring as "!" and "?", with an up arrow that rises a little now and then.
+            var ring = Path()
+            ring.addEllipse(in: CGRect(x: -R*0.3, y: -R*0.3, width: R*0.6, height: R*0.6))
+            ctx.fill(ring, with: .color(.black))
+            var inner = Path()
+            inner.addEllipse(in: CGRect(x: -R*0.23, y: -R*0.23, width: R*0.46, height: R*0.46))
+            ctx.fill(inner, with: .color(Color(cgColor: col)))
+            if !isMini {
+                let phase = (now * 0.8).truncatingRemainder(dividingBy: 1)
+                let lift = phase < 0.25 ? -sin(phase / 0.25 * .pi) * R * 0.035 : 0
+                var arrow = Path()
+                arrow.move(to: CGPoint(x: 0, y: R*0.12 + lift))
+                arrow.addLine(to: CGPoint(x: 0, y: -R*0.11 + lift))
+                arrow.move(to: CGPoint(x: -R*0.09, y: -R*0.02 + lift))
+                arrow.addLine(to: CGPoint(x: 0, y: -R*0.11 + lift))
+                arrow.addLine(to: CGPoint(x: R*0.09, y: -R*0.02 + lift))
+                ctx.stroke(arrow, with: .color(.white),
+                           style: StrokeStyle(lineWidth: R*0.055, lineCap: .round, lineJoin: .round))
+            }
         }
     }
 
@@ -1844,6 +1880,7 @@ private func badgeString(_ b: BadgeType?) -> String {
     case .bang(let c):     return "bang-\(hex(c))"
     case .question(let c): return "q-\(hex(c))"
     case .dot(let c):      return "dot-\(hex(c))"
+    case .arrow(let c):    return "arrow-\(hex(c))"
     }
 }
 
@@ -1895,6 +1932,7 @@ extension BadgeType: Equatable {
         case (.bang, .bang): return true
         case (.question, .question): return true
         case (.dot, .dot): return true
+        case (.arrow, .arrow): return true
         default: return false
         }
     }

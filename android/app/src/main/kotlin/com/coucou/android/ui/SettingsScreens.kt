@@ -1,5 +1,20 @@
 package com.coucou.android.ui
 
+import com.coucou.android.core.AgentMute
+import com.coucou.android.core.TeamChoice
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.content.Intent
+import com.coucou.android.core.HistoryExport
+import com.coucou.android.core.Languages
+import com.coucou.android.app.AppLanguage
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +29,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.alpha
 import com.coucou.android.core.IconKind
@@ -45,7 +63,11 @@ import com.coucou.android.app.AppModel
 import com.coucou.android.app.Mode
 import com.coucou.android.core.HistoryDays
 import com.coucou.android.core.HomeText
+import com.coucou.android.core.MotionChoice
 import com.coucou.android.core.QuietHours
+import com.coucou.android.core.ThemeChoice
+import com.coucou.android.core.ThemePolicy
+import com.coucou.android.core.VibrationChoice
 import com.coucou.android.core.RelayLineKind
 import com.coucou.android.core.RelayStatus
 import com.coucou.android.link.LinkState
@@ -117,8 +139,65 @@ private fun TimeRow(label: String, minutes: Int, enabled: Boolean, onChange: (In
     ) {
         Text(label, Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()))
         StepButton("−", "$label, ${QuietHours.STEP} minutes earlier", enabled) { onChange(minutes - QuietHours.STEP) }
-        Text(clock(minutes), Modifier.width(56.dp), style = TypeScale.BODY.style(t.text.c()).copy(fontFamily = FontFamily.Monospace), maxLines = 1)
+        Text(clock(minutes), Modifier.widthIn(min = 56.dp), style = TypeScale.BODY.style(t.text.c()).copy(fontFamily = FontFamily.Monospace), maxLines = 1)
         StepButton("+", "$label, ${QuietHours.STEP} minutes later", enabled) { onChange(minutes + QuietHours.STEP) }
+    }
+}
+
+/** A title over a row of choices, one of them selected (read as radio buttons by TalkBack). */
+@Composable
+private fun <T> ChoiceRow(title: String, options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
+    val t = tokens()
+    Column(Modifier.padding(horizontal = Spacing.INSIDE.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = TypeScale.BODY.style(t.text.c()))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for ((value, label) in options) {
+                PillButton(
+                    label, { onSelect(value) },
+                    Modifier.weight(1f).semantics { this.selected = value == selected; role = Role.RadioButton },
+                    if (value == selected) PillKind.PRIMARY else PillKind.SECONDARY,
+                )
+            }
+        }
+    }
+}
+
+/** The language of the app: the row shows the one in force; a tap opens the list (the phone's own first, then each language by its own name). */
+@Composable
+private fun LanguageRow() {
+    val context = LocalContext.current
+    val t = tokens()
+    var open by remember { mutableStateOf(false) }
+    val current = AppLanguage.current(context)
+    val system = stringResource(R.string.language_system)
+    val currentName = Languages.ALL.firstOrNull { it.tag == current }?.name ?: system
+    ListRow(
+        stringResource(R.string.settings_language), hint = currentName, onClick = { open = true },
+        trailing = { CoucouIcon(IconKind.CHEVRON, tint = t.textDim.c(), size = 20.dp) },
+    )
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) } },
+            title = { Text(stringResource(R.string.settings_language)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(stringResource(R.string.language_picker_hint), Modifier.padding(bottom = 8.dp), style = TypeScale.SECONDARY.style(t.textDim.c()))
+                    val options = listOf(Languages.SYSTEM to system) + Languages.ALL.map { it.tag to it.name }
+                    for ((tag, label) in options) {
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = Spacing.MIN_TOUCH.dp)
+                                .selectable(selected = tag == current, role = Role.RadioButton) { open = false; AppLanguage.set(context, tag) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(label, Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()))
+                            if (tag == current) CoucouIcon(IconKind.CHECK, tint = t.online.c(), size = 22.dp)
+                        }
+                    }
+                }
+            },
+        )
     }
 }
 
@@ -166,7 +245,7 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
             }
         }
 
-        if (model.mode == Mode.PAIRED) {
+        if (RelayStatus.sectionVisible(model.mode == Mode.PAIRED, model.hasRelay)) {
             item { SectionHeading(stringResource(R.string.settings_section_away)) }
             item { RelayCard(model) }
         }
@@ -174,7 +253,44 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
         if (model.batteryHintVisible) item { BatteryCard(model) }
 
         item { SectionHeading(stringResource(R.string.settings_section_display)) }
-        item { Panel { SettingSwitch(stringResource(R.string.overlay_title), stringResource(R.string.overlay_hint), model.overlayOn, onOverlay) } }
+        item {
+            Panel {
+                LanguageRow()
+                RowDivider()
+                ChoiceRow(
+                    stringResource(R.string.settings_theme),
+                    listOf(
+                        ThemeChoice.SYSTEM to stringResource(R.string.theme_system),
+                        ThemeChoice.LIGHT to stringResource(R.string.theme_light),
+                        ThemeChoice.DARK to stringResource(R.string.theme_dark),
+                    ),
+                    s.theme,
+                ) { model.updateSettings(s.copy(theme = it)) }
+                if (ThemePolicy.dynamicAvailable(android.os.Build.VERSION.SDK_INT)) {
+                    RowDivider()
+                    SettingSwitch(stringResource(R.string.settings_dynamic), stringResource(R.string.settings_dynamic_hint), s.dynamicColour) {
+                        model.updateSettings(s.copy(dynamicColour = it))
+                    }
+                }
+                RowDivider()
+                SettingSwitch(stringResource(R.string.overlay_title), stringResource(R.string.overlay_hint), model.overlayOn, onOverlay)
+                RowDivider()
+                ChoiceRow(
+                    stringResource(R.string.settings_motion),
+                    listOf(
+                        MotionChoice.SYSTEM to stringResource(R.string.motion_system),
+                        MotionChoice.REDUCE to stringResource(R.string.motion_on),
+                        MotionChoice.FULL to stringResource(R.string.motion_off),
+                    ),
+                    s.motion,
+                ) { model.updateSettings(s.copy(motion = it)) }
+                Text(
+                    stringResource(R.string.settings_motion_hint),
+                    Modifier.padding(horizontal = Spacing.INSIDE.dp).padding(bottom = 12.dp),
+                    style = TypeScale.SECONDARY.style(t.textDim.c()),
+                )
+            }
+        }
 
         item { SectionHeading(stringResource(R.string.settings_section_sound)) }
         item {
@@ -194,6 +310,30 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
             }
         }
 
+        item { SectionHeading(stringResource(R.string.settings_section_requests)) }
+        item {
+            Panel {
+                SettingSwitch(stringResource(R.string.settings_no_wake), stringResource(R.string.settings_no_wake_hint), s.keepScreenOff) {
+                    model.updateSettings(s.copy(keepScreenOff = it))
+                }
+                RowDivider()
+                ChoiceRow(
+                    stringResource(R.string.settings_vibration),
+                    listOf(
+                        VibrationChoice.STANDARD to stringResource(R.string.vibration_standard),
+                        VibrationChoice.SHORT to stringResource(R.string.vibration_short),
+                        VibrationChoice.OFF to stringResource(R.string.vibration_off),
+                    ),
+                    s.vibration,
+                ) { model.updateSettings(s.copy(vibration = it)) }
+                Text(
+                    stringResource(R.string.settings_requests_note),
+                    Modifier.padding(horizontal = Spacing.INSIDE.dp).padding(bottom = 12.dp),
+                    style = TypeScale.SECONDARY.style(t.textDim.c()),
+                )
+            }
+        }
+
         item { SectionHeading(stringResource(R.string.settings_section_notices)) }
         item {
             Panel {
@@ -210,6 +350,8 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
                 TimeRow(stringResource(R.string.quiet_to), s.quiet.toMin, s.quiet.enabled) {
                     model.updateSettings(s.copy(quiet = s.quiet.copy(toMin = QuietHours.wrap(it))))
                 }
+                RowDivider()
+                MutedAgentsRows(s.mutedAgents) { id, mute -> model.updateSettings(s.copy(mutedAgents = AgentMute.with(s.mutedAgents, id, mute))) }
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -230,10 +372,10 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
         item {
             Panel {
                 Column(Modifier.padding(Spacing.INSIDE.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.about_unofficial), style = TypeScale.BODY.style(t.text.c()))
+                    Text(stringResource(R.string.about_credit), style = TypeScale.BODY.style(t.text.c()))
                     Text(
                         stringResource(R.string.about_repo),
-                        Modifier.clickable(role = Role.Button) { runCatching { uri.openUri(Attribution.REPO_URL) } },
+                        Modifier.heightIn(min = Spacing.MIN_TOUCH.dp).clickable(role = Role.Button) { runCatching { uri.openUri(Attribution.REPO_URL) } }.padding(vertical = 14.dp),
                         style = TypeScale.BODY.style(t.text.c()).copy(textDecoration = TextDecoration.Underline),
                     )
                     Text(stringResource(R.string.about_assets), style = TypeScale.SECONDARY.style(t.textDim.c()))
@@ -254,14 +396,29 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
 fun HistoryScreen(model: AppModel, onBack: () -> Unit) {
     val zone = remember { ZoneId.systemDefault() }
     val now = System.currentTimeMillis()
-    val groups = HistoryDays.group(model.decisions, now, zone)
+    var query by rememberSaveable { mutableStateOf("") }
+    val shown = HistoryExport.filter(model.decisions, query)
+    val groups = HistoryDays.group(shown, now, zone)
+    val context = LocalContext.current
+    val exportHeader = stringResource(R.string.history_export_header)
     val dateFormat = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
     val timeFormat = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
     val t = tokens()
     LazyColumn(Modifier.padding(horizontal = Gutter), verticalArrangement = Arrangement.spacedBy(Gap)) {
         item { ScreenTitle(stringResource(R.string.history_title), onBack) }
         item { Text(stringResource(R.string.history_note), Modifier.padding(horizontal = 4.dp), style = TypeScale.SECONDARY.style(t.textDim.c())) }
-        if (groups.isEmpty()) {
+        if (model.decisions.isNotEmpty()) {
+            item {
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it.take(HistoryExport.MAX_QUERY) }, singleLine = true,
+                    label = { Text(stringResource(R.string.history_search)) }, modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        if (model.decisions.isNotEmpty() && groups.isEmpty()) {
+            item { Panel { Text(stringResource(R.string.history_no_match), Modifier.padding(Gutter), style = TypeScale.BODY.style(t.textDim.c())) } }
+        }
+        if (groups.isEmpty() && model.decisions.isEmpty()) {
             item { Panel { Text(stringResource(R.string.history_empty), Modifier.padding(Gutter), style = TypeScale.BODY.style(t.textDim.c())) } }
         }
         for ((key, list) in groups) {
@@ -295,6 +452,19 @@ fun HistoryScreen(model: AppModel, onBack: () -> Unit) {
             }
         }
         if (groups.isNotEmpty()) {
+            item {
+                PillButton(
+                    stringResource(R.string.history_export),
+                    {
+                        // Plain text to Android's share sheet: it stays on the phone until the user picks where it goes.
+                        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, HistoryExport.text(shown, exportHeader, zone))
+                        context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    },
+                    Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        if (groups.isNotEmpty() && query.isBlank()) {
             item { PillButton(stringResource(R.string.history_clear), { model.clearDecisions() }, Modifier.fillMaxWidth(), PillKind.DANGER) }
         }
         item { Spacer(Modifier.height(Gutter)) }
@@ -330,5 +500,24 @@ private fun RelayCard(model: AppModel) {
             RowDivider()
         }
         Text(line, Modifier.padding(Spacing.INSIDE.dp), style = TypeScale.SECONDARY.style(t.textDim.c()))
+    }
+}
+
+/**
+ * "Mute an agent's notices": a row that opens the list of agents, each with a switch. Only the finished / failed / limit notices of the agent
+ * go quiet; its requests and questions always come through (said under the list).
+ */
+@Composable
+private fun MutedAgentsRows(muted: Set<String>, onChange: (String, Boolean) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    ListRow(
+        stringResource(R.string.mute_agents), hint = stringResource(R.string.mute_agents_hint), onClick = { open = !open },
+        trailing = { if (muted.isNotEmpty()) Text(muted.size.toString(), style = TypeScale.SECONDARY.style(tokens().textDim.c())) },
+    )
+    if (open) {
+        for (pill in AgentMute.candidates) {
+            RowDivider()
+            SettingSwitch(TeamChoice.nameOf(pill.id), null, pill.id in muted) { onChange(pill.id, it) }
+        }
     }
 }

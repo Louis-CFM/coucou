@@ -43,6 +43,9 @@ CHANGES=$(awk -v head="## $VERSION" '
 [ -n "$CHANGES" ] || die "CHANGELOG.md has no '## $VERSION' section"
 
 grep -q "| \[$VERSION\]" README.md || die "README.md has no row for $VERSION in the Versions table"
+# Mochi shows it once in the notch after the update: an entry in every language.
+python3 scripts/test-whats-new.py mac >/dev/null \
+  || { python3 scripts/test-whats-new.py mac; die "NotchBuddy/Resources/whats-new.json needs a complete entry for $VERSION (CLAUDE.md, Releases)"; }
 
 if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
   die "tag $TAG already exists here"
