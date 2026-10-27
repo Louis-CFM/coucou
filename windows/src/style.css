@@ -3026,3 +3026,102 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* ── Mail view ──────────────────────────────────────────────────────────── */
+
+.mail-card {
+  padding: 0;
+}
+
+.mail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 18px 8px 92px;
+  box-sizing: border-box;
+}
+
+.mail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 18px;
+}
+
+.mail-title {
+  font: 600 12px var(--font);
+  color: var(--ink);
+}
+
+.mail-sub {
+  font: 400 12px var(--font);
+  color: #8e939c;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mail-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.mail-label {
+  font: 500 12.5px var(--font);
+  color: #80858e;
+  width: 44px;
+  flex-shrink: 0;
+}
+
+.mail-input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: 400 12px var(--font);
+  color: #f5f6f8;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.mail-body {
+  width: 100%;
+  min-height: 44px;
+  max-height: 56px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  font: 400 12px var(--font);
+  color: #f5f6f8;
+  box-sizing: border-box;
+}
+
+.mail-status {
+  font: 500 11px var(--font);
+  min-height: 14px;
+  line-height: 14px;
+}
+
+.mail-status.error {
+  color: #ff8d97;
+}
+
+.mail-status.success {
+  color: #22c55e;
+}
+
+.mail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+

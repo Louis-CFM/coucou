@@ -13,6 +13,7 @@ import {
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
+import { MUSIC_ID, MUSIC_RED } from "../core/music";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -204,6 +205,7 @@ export class Island {
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === "integration_gitea") void Bridge.openGitea();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
+        else if (task.id === MUSIC_ID) void Bridge.musicOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -303,6 +305,9 @@ export class Island {
           ? { kind: "file", name: State.droppedFile.name, path: State.droppedFile.path }
           : null;
         this.setView("prompt");
+      },
+      mail: () => {
+        this.setView("mail");
       },
       cancel: () => this.discardDrop(),
     });
@@ -1114,6 +1119,8 @@ export class Island {
     if (!ctx) return;
 
     const focus = State.focusTask;
+    const musicTask = State.tasks.find((x) => x.id === MUSIC_ID);
+    const musicColor = musicTask?.color ?? MUSIC_RED;
     // A new Coucou waits: over an idle or sleeping Mochi, the blue and the arrow
     // badge (whats-new.ts). Anything Mochi has to say comes first.
     this.engine.setUpdateHint(this.updateHintOn() ? UPDATE_BLUE_RGB : null);
@@ -1124,7 +1131,9 @@ export class Island {
         ? UPDATE_BLUE_RGB
         : focus?.isIntegration
           ? hexToRGB(focus.color)
-          : null;
+          : (State.appleMusicPlaying && State.mode !== "expanded")
+            ? hexToRGB(musicColor)
+            : null;
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
@@ -1149,7 +1158,7 @@ export class Island {
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
     this.engine.setDancing(islandDances({
-      music: State.spotifyPlaying,
+      music: State.musicPlaying,
       state: State.effectiveState,
       mode: State.mode,
       view: State.view,

@@ -8,6 +8,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
+import type { MusicState } from "./music";
 import type { UpdateStatus } from "./update";
 import type { WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
 
@@ -444,6 +445,40 @@ export const Bridge = {
   /** Whether there is a Spotify to launch (Settings). */
   spotifyInstalled: () => call<boolean>("spotify_installed"),
 
+  // ── Apple Music (src-tauri/src/apple_music.rs) ────────────────────────────
+  /** Reads the player again (the card came on screen) and reports it. */
+  musicRefresh: () => call<MusicState | null>("music_refresh"),
+  /** True when Apple Music took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
+  musicControl: (action: MusicAction, value?: number) =>
+    call<boolean>("music_control", { action, value: value ?? null }),
+  /** Brings Apple Music forward or starts it; without it, its download page. */
+  musicOpen: () => call<boolean>("music_open"),
+  /** Whether there is an Apple Music to launch. */
+  musicInstalled: () => call<boolean>("music_installed"),
+
+  // ── Email ─────────────────────────────────────────────────────────────────
+  sendEmail: (req: { to: string; subject: string; body: string; filePath?: string }) =>
+    callOrThrow<void>("send_email", { req }),
+
+  // ── Discord ───────────────────────────────────────────────────────────────
+  discordGetStatus: () =>
+    call<{
+      enabled: boolean;
+      clientId?: string;
+      mode: string;
+      customDetails: string;
+      customState: string;
+      connectedUser?: string | null;
+    }>("discord_get_status"),
+  discordSetStatus: (status: {
+    enabled: boolean;
+    clientId?: string;
+    mode: string;
+    customDetails: string;
+    customState: string;
+    connectedUser?: string | null;
+  }) => callOrThrow<void>("discord_set_status", { status }),
+
   // ── WhatsApp (src-tauri/src/whatsapp) ─────────────────────────────────────
   /** The island's copy, asked once at start (then the "whatsapp" event). Island only. */
   whatsappIsland: () => call<WaIslandView>("whatsapp_island"),
@@ -488,6 +523,7 @@ export const Bridge = {
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
+export type MusicAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
 
 export type ShortcutStatus =
   | "active" | "off" | "inUse" | "duplicate" | "invalid"

@@ -22,6 +22,7 @@ pub const KNOWN_KEYS: &[&str] = &[
     "gitea-token",
     "stripe-api-key",
     "resend-api-key",
+    "resend-from",
     "notion-api-key",
     "calcom-api-key",
     // « OK Coucou »'s answers in an ElevenLabs voice.

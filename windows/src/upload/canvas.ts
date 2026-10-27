@@ -17,9 +17,10 @@ const FONT = `system-ui, "Segoe UI Variable Text", "Segoe UI", ${SCRIPT_FONTS}, 
 
 /** The card's inner right edge: no text runs past it. */
 const TEXT_RIGHT = USC.CARD_X + USC.CARD_W - 16;
-/** The two choose buttons, as drawn and as hit areas. */
+/** The choose buttons, as drawn and as hit areas. */
 const ASK_BTN = { x: 114, w: 168 };
-const CANCEL_BTN = { x: 290, w: 120 };
+const MAIL_BTN = { x: 290, w: 120 };
+const CANCEL_BTN = { x: 418, w: 76 };
 /** Drop-zone chips (English keys, shown with `t()`). */
 const CHIPS = [N_("PDF"), N_("Images"), N_("Code"), N_("Docs")];
 
@@ -109,12 +110,14 @@ function fitted(ctx: CanvasRenderingContext2D, s: string, maxW: number, weight: 
 export interface UploadCanvasActions {
   /** Primary button — hand the file to the chat. */
   ask(): void;
-  /** Secondary button. */
+  /** Send by email. */
+  mail(): void;
+  /** Cancel button. */
   cancel(): void;
 }
 
 export class UploadCanvas {
-  /** Wrapper holding the canvas and the two invisible choose buttons. */
+  /** Wrapper holding the canvas and the choose buttons. */
   readonly el: HTMLElement;
 
   private canvas: HTMLCanvasElement;
@@ -140,7 +143,11 @@ export class UploadCanvas {
     };
     this.overlay = document.createElement("div");
     this.overlay.id = "upload-overlay";
-    this.overlay.append(mk(ASK_BTN.x, ASK_BTN.w, actions.ask), mk(CANCEL_BTN.x, CANCEL_BTN.w, actions.cancel));
+    this.overlay.append(
+      mk(ASK_BTN.x, ASK_BTN.w, actions.ask),
+      mk(MAIL_BTN.x, MAIL_BTN.w, actions.mail),
+      mk(CANCEL_BTN.x, CANCEL_BTN.w, actions.cancel),
+    );
 
     this.el = document.createElement("div");
     this.el.id = "upload-layer";
@@ -348,6 +355,16 @@ export class UploadCanvas {
     ctx.fill();
     const ask = fitted(ctx, t("Ask a question about it"), ASK_BTN.w - 14, 500, 12.5);
     text(ctx, ask.s, ASK_BTN.x + ASK_BTN.w / 2, 126, ask.font, "#0B0C0E", "center");
+
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    rr(ctx, MAIL_BTN.x, 113, MAIL_BTN.w, 26, 13);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 1;
+    rr(ctx, MAIL_BTN.x + 0.5, 113.5, MAIL_BTN.w - 1, 25, 12.5);
+    ctx.stroke();
+    const mail = fitted(ctx, t("Send by email"), MAIL_BTN.w - 14, 500, 12.5);
+    text(ctx, mail.s, MAIL_BTN.x + MAIL_BTN.w / 2, 126, mail.font, "#FFFFFF", "center");
 
     ctx.fillStyle = "rgba(255,255,255,0.09)";
     rr(ctx, CANCEL_BTN.x, 113, CANCEL_BTN.w, 26, 13);

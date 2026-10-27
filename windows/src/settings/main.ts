@@ -797,7 +797,8 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
-  // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
+  // Nothing to enter: Apple Music and Spotify are read from the OS.
+  { id: "integration_music", name: "Apple Music", color: "#FA2D48", fields: [] },
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
 
@@ -869,6 +870,13 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.id === "integration_music") {
+      const hint = h("div", { class: "hint", style: "padding-top:5px" });
+      rows.append(hint);
+      void Bridge.musicInstalled().then((ok) => {
+        hint.textContent = ok === false ? t("Not installed") : "";
+      });
+    }
     if (def.id === "integration_spotify") {
       // As on the Mac's row: said only when there is no Spotify to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
@@ -913,6 +921,148 @@ function whatsappSections(): HTMLElement[] {
       declaredChanged();
     },
   })];
+}
+
+function discordSection(): HTMLElement {
+  let status: {
+    enabled: boolean;
+    clientId?: string;
+    mode: string;
+    customDetails: string;
+    customState: string;
+    connectedUser?: string | null;
+  } = { enabled: false, clientId: "", mode: "mochi", customDetails: "", customState: "", connectedUser: null };
+
+  const card = h("div", { class: "setting-card" });
+  const sw = h("button", { class: "switch" });
+  const statusBadge = h("span", { class: "badge", style: "font-size:11px;opacity:0.8;" });
+
+  const modeSelect = h("select", { style: "padding: 5px 8px; border-radius: 6px; background: rgba(255,255,255,0.06); color: var(--ink); border: 1px solid rgba(255,255,255,0.1);" },
+    h("option", { value: "mochi", text: t("Chilling with Mochi") }),
+    h("option", { value: "code", text: t("Coding Session") }),
+    h("option", { value: "focus", text: t("Focus Mode") }),
+    h("option", { value: "music", text: t("Listening to Music") }),
+    h("option", { value: "custom", text: t("Custom status") }),
+  ) as HTMLSelectElement;
+
+  const clientIdInput = h("input", {
+    type: "text",
+    placeholder: t("Application ID (optional, default if empty)"),
+    style: "width:100%;font-size:12px;margin-top:4px;",
+  }) as HTMLInputElement;
+
+  const customRows = h("div", { style: "display:none;flex-direction:column;gap:8px;margin-top:8px;" });
+  const detailsInput = h("input", { type: "text", placeholder: t("Details"), style: "width:100%" }) as HTMLInputElement;
+  const stateInput = h("input", { type: "text", placeholder: t("State"), style: "width:100%" }) as HTMLInputElement;
+  customRows.append(detailsInput, stateInput);
+
+  function syncMode() {
+    customRows.style.display = modeSelect.value === "custom" ? "flex" : "none";
+  }
+
+  function updateBadge() {
+    if (!status.enabled) {
+      statusBadge.textContent = t("Off");
+      statusBadge.style.color = "var(--dim-2)";
+    } else if (status.connectedUser) {
+      statusBadge.textContent = `🟢 ${t("Connected")}: ${status.connectedUser}`;
+      statusBadge.style.color = "#22C55E";
+    } else {
+      statusBadge.textContent = `🟡 ${t("Waiting for Discord Desktop…")}`;
+      statusBadge.style.color = "#F5A524";
+    }
+  }
+
+  const saveAll = () => {
+    status.mode = modeSelect.value;
+    status.clientId = clientIdInput.value.trim();
+    status.customDetails = detailsInput.value || "Coucou";
+    status.customState = stateInput.value || "Windows";
+    void Bridge.discordSetStatus(status);
+    updateBadge();
+  };
+
+  let saveTimer: number | null = null;
+  const debouncedSave = () => {
+    if (saveTimer) window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(saveAll, 500);
+  };
+
+  modeSelect.addEventListener("change", () => {
+    syncMode();
+    saveAll();
+  });
+  clientIdInput.addEventListener("input", debouncedSave);
+  clientIdInput.addEventListener("change", saveAll);
+  detailsInput.addEventListener("input", debouncedSave);
+  detailsInput.addEventListener("change", saveAll);
+  stateInput.addEventListener("input", debouncedSave);
+  stateInput.addEventListener("change", saveAll);
+
+  sw.addEventListener("click", () => {
+    status.enabled = !status.enabled;
+    sw.classList.toggle("on", status.enabled);
+    saveAll();
+  });
+
+  let initialLoaded = false;
+  const pollStatus = () => {
+    void Bridge.discordGetStatus().then((s) => {
+      if (s) {
+        status.connectedUser = s.connectedUser;
+        updateBadge();
+
+        if (!initialLoaded) {
+          initialLoaded = true;
+          status = s;
+          sw.classList.toggle("on", s.enabled);
+          modeSelect.value = s.mode;
+          clientIdInput.value = s.clientId || "";
+          detailsInput.value = s.customDetails;
+          stateInput.value = s.customState;
+          syncMode();
+          updateBadge();
+        }
+      }
+    });
+  };
+  pollStatus();
+  const pollTimer = window.setInterval(pollStatus, 3000);
+  window.addEventListener("unload", () => {
+    window.clearInterval(pollTimer);
+    if (saveTimer) window.clearTimeout(saveTimer);
+  });
+
+  const header = h("div", { style: "display:flex;align-items:center;justify-content:space-between;" },
+    h("div", { style: "display:flex;align-items:center;gap:8px;" },
+      h("span", { style: "font-weight:600;", text: t("Discord Rich Presence") }),
+      statusBadge,
+    ),
+    sw,
+  );
+
+  const desc = h("div", {
+    class: "hint",
+    text: t("Broadcasts your status to the Discord desktop app via local IPC without needing any tokens or login."),
+  });
+
+  const clientRow = h("div", { style: "margin-top:10px;" },
+    h("span", { class: "label", style: "font-size:12px;opacity:0.8;", text: t("Application ID") }),
+    clientIdInput,
+    h("div", {
+      class: "hint",
+      style: "font-size:11px;margin-top:2px;opacity:0.65;",
+      text: t("Leave empty for default app, or create one at discord.com/developers/applications"),
+    }),
+  );
+
+  const row = h("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-top:10px;" },
+    h("span", { class: "label", text: t("Status mode") }),
+    modeSelect,
+  );
+
+  card.append(header, desc, clientRow, row, customRows);
+  return card;
 }
 
 // ── General section ───────────────────────────────────────────────────────────
@@ -1402,7 +1552,7 @@ async function render() {
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
     chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
-    integrations: () => [integrationsSection(present), ...whatsappSections()],
+    integrations: () => [integrationsSection(present), discordSection(), ...whatsappSections()],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],
   };

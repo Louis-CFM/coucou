@@ -94,13 +94,12 @@ test("IDs are unique", () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test("this build leaves out what only macOS has, and Claude Desktop on Linux", () => {
+test("this build leaves out what only macOS has, and Claude Desktop/Apple Music on Linux", () => {
   const windows = availablePills("windows").map((p) => p.id);
   const linux = availablePills("linux").map((p) => p.id);
-  for (const id of ["integration_music"]) {
-    assert.ok(!windows.includes(id), id);
-    assert.ok(!linux.includes(id), id);
-  }
+  // Apple Music is now supported on Windows via GSMTC, but not on Linux
+  assert.ok(windows.includes("integration_music"));
+  assert.ok(!linux.includes("integration_music"));
   // Their plugins are written from Settings → Agents, and the chat talks to
   // every provider (port/chat-providers), on both systems.
   for (const id of ["agent_opencode", "agent_amp", "agent_hermes", "ai_google", "ai_openai", "ai_ollama", "ai_lmstudio"]) {
@@ -112,7 +111,23 @@ test("this build leaves out what only macOS has, and Claude Desktop on Linux", (
   // Spotify: MPRIS on Linux, the system media controls on Windows.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(windows.includes("integration_spotify"));
-  assert.deepEqual(linux, windows.filter((id) => id !== "agent_claude-desktop"));
+  assert.deepEqual(linux, windows.filter((id) => id !== "agent_claude-desktop" && id !== "integration_music"));
+});
+
+test("Apple Music: a service on Windows with nothing to set up", () => {
+  const def = pillDefinition("integration_music");
+  assert.equal(def.support, "windows");
+  assert.deepEqual(def.connect, { kind: "none" });
+  assert.equal(def.category, "service");
+  assert.ok(!isComingSoon("integration_music"));
+  assert.ok(!isHookPill("integration_music"));
+  assert.ok(!mainPillChoices("windows").some((p) => p.id === "integration_music"));
+});
+
+test("Apple Music can be declared on Windows, but not Linux", () => {
+  const empty = { mainPill: "integration_claude", activeIntegrations: [] };
+  assert.equal(toggleDeclared(empty, "integration_music", "linux"), null);
+  assert.deepEqual(toggleDeclared(empty, "integration_music", "windows"), ["integration_music"]);
 });
 
 test("Spotify: a service on both systems with nothing to set up", () => {

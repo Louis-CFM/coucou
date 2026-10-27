@@ -121,11 +121,14 @@ pub fn setup(app: &AppHandle) {
     pill::setup(app);
     let prefs = flow.store.lock().unwrap().prefs.clone();
     pill::update(app, |s| {
+        s.enabled = prefs.enabled;
         s.edge = pill::edge_name(prefs.edge).into();
         s.key = key_id(prefs.key);
     });
     if prefs.enabled {
         enable(app, &flow);
+    } else {
+        pill::hide(app);
     }
     crate::voice::sync(app);
 }

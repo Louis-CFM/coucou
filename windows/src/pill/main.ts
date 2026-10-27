@@ -240,6 +240,15 @@ let capsule: HTMLElement | null = null;
 let lastKey = "";
 
 function render() {
+  if (!visible) {
+    root.style.display = "none";
+    root.replaceChildren();
+    capsule = null;
+    lastKey = "";
+    void FlowBridge.pillHot([]);
+    return;
+  }
+  root.style.display = "";
   const l = look();
   const open = l !== "resting";
   const length = open ? openLength(l) : RESTING_LENGTH;
@@ -277,6 +286,10 @@ function render() {
 }
 
 function reportHot() {
+  if (!visible) {
+    void FlowBridge.pillHot([]);
+    return;
+  }
   const rects: [number, number, number, number][] = [];
   const W = window.innerWidth;
   const H = window.innerHeight;
@@ -485,7 +498,9 @@ async function say(s: Say) {
   }
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+function isVisible(s: PillState): boolean {
+  return s.enabled || s.noteStartedAt !== null || s.announcement !== null || s.voice !== null || s.phase !== "idle";
+}
 
 async function main() {
   const boot = await Bridge.boot();
@@ -493,10 +508,11 @@ async function main() {
   const status = await FlowBridge.status();
   if (status) platform = status.platform;
   state = (await FlowBridge.pillState()) ?? state;
-  visible = state.enabled || state.noteStartedAt !== null || state.announcement !== null || state.voice !== null;
+  visible = isVisible(state);
   render();
   void onEvent<PillState>("pill-state", (s) => {
     state = s;
+    visible = isVisible(s);
     if (s.phase === "listening") target.fill(0);
     render();
   });

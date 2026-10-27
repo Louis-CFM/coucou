@@ -15,7 +15,7 @@ import {
 } from "../core/providers";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
-import type { ViewHost } from "./views";
+import type { ViewActions, ViewHost } from "./views";
 import { N_, t, tl } from "../i18n/i18n";
 
 const STRINGS = {
@@ -201,7 +201,7 @@ function buildPicker(onChange: () => void): Picker {
 
 // ── View ──────────────────────────────────────────────────────────────────────
 
-export function buildPrompt(onHeightChange: () => void): ViewHost {
+export function buildPrompt(actions: ViewActions | undefined, onHeightChange: () => void): ViewHost {
   const chipRow = h("div", { class: "chip-row" });
   const log = h("div", { class: "chat-log" });
   const input = h("input", {
@@ -324,7 +324,26 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (chipRow.dataset.label !== wantChip) {
         chipRow.dataset.label = wantChip;
         clear(chipRow);
-        if (wantChip) chipRow.append(contextChip(wantChip));
+        if (wantChip) {
+          chipRow.append(contextChip(wantChip));
+          if (actions) {
+            const mailBtn = h(
+              "button",
+              {
+                class: "chip mail-shortcut-chip",
+                style: "cursor:pointer;background:rgba(255,255,255,0.08);color:var(--ink);gap:6px;border:1px solid rgba(255,255,255,0.12);",
+                title: tl("Send by email"),
+                onclick: (e: Event) => {
+                  e.stopPropagation();
+                  actions.setView("mail");
+                },
+              },
+              svg(ICONS.doc, 11),
+              h("span", { text: tl("Send by email") }),
+            );
+            chipRow.append(mailBtn);
+          }
+        }
       }
 
       const thinking = State.stateOverride === "thinking";

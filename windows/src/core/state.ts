@@ -13,6 +13,7 @@ import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
 import { Spotify, musicPlaying } from "./spotify";
+import { Music, appleMusicPlaying } from "./music";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -287,9 +288,18 @@ class AppState {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
   }
 
-  /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
+  /** Spotify plays on a declared pill: Mochi dances. */
   get spotifyPlaying(): boolean {
     return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
+  }
+
+  /** Apple Music plays on a declared pill: Mochi dances. */
+  get appleMusicPlaying(): boolean {
+    return appleMusicPlaying(Music.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
+  }
+
+  get musicPlaying(): boolean {
+    return this.spotifyPlaying || this.appleMusicPlaying;
   }
 
   get otherTasks(): AgentTask[] {

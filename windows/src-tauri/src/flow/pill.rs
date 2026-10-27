@@ -120,6 +120,8 @@ pub fn setup(app: &AppHandle) {
                 if !platform::prepare_pill_window(&win, mode) {
                     let _ = win.destroy();
                     mode = DesktopMode::Off;
+                } else if park {
+                    let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
                 }
             }
             Err(err) => {
@@ -189,6 +191,13 @@ pub fn update(app: &AppHandle, change: impl FnOnce(&mut PillState)) {
     }
     if visible != was {
         show(app, &pill, visible);
+    }
+}
+
+pub fn hide(app: &AppHandle) {
+    if let Some(pill) = get(app) {
+        pill.shown.store(false, Ordering::Relaxed);
+        show(app, &pill, false);
     }
 }
 
