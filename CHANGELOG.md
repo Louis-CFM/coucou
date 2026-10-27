@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Windows: Apple Music in the island** — Apple Music pill now supports Windows via GSMTC: real-time track metadata (title, artist, album, duration, elapsed time), album artwork with stale stream mitigation, volume slider via WASAPI Core Audio session matching, direct app foreground activation, and dancing Mochi
+- **Windows: Discord Rich Presence** — connect Coucou to Discord via local named pipe IPC (`\\.\pipe\discord-ipc-0`..`9`): preset activity modes ("Chilling with Mochi", "Coding Session", "Focus Mode", "Listening to Music"), custom status text, custom Application ID support, and debounced settings persistence
+- **Windows: Send by email file drop shortcut** — dropping files onto the island now includes a dedicated "Send by email" button and inline chat prompt action that launches the default Windows mail client with recipient, subject, and file details pre-filled
+- **Windows: Dictation startup fix** — fixed "Hold a key to dictate anywhere" toggle state persistence so it no longer turns on unexpectedly after reboot
 - **Mac: WhatsApp statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the WhatsApp pill (#901, same fix as #910)
 
 ## Windows and Linux 0.5.3 — October 22, 2026
