@@ -3026,3 +3026,27 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────
+   The island animates a lot: the shimmer sweep, the typing dots, the dashed
+   borders that march and breathe, the integration pulse, the pill's pop and the
+   update bar. Someone who asked their system to reduce motion gets the same
+   information with the movement removed — nothing is hidden, and every state is
+   still readable from colour, text and opacity. `transition: none` on a
+   progress bar still snaps to the right width, so no value is lost. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep the states that were only carried by a pulse legible. */
+  #update-bar .fill,
+  .update-bar .fill {
+    transition: none;
+  }
+}
