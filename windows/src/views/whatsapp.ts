@@ -30,6 +30,8 @@ export interface WhatsAppCardHost {
 export interface WhatsAppCard {
   el: HTMLElement;
   sync(): void;
+  /** A conversation is open: the overview gives the card the whole island for it. */
+  readonly conversationOpen: boolean;
 }
 
 /** Initials on WhatsApp green: no photo is ever fetched (they live on WhatsApp's servers). */
@@ -89,6 +91,8 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     host.keyboard(true);
     window.setTimeout(() => field.focus(), 120);
     sync();
+    // The overview grows the island for the conversation.
+    State.notify();
   }
 
   function close() {
@@ -115,7 +119,12 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     field.focus();
   }
 
-  back.addEventListener("click", close);
+  // Back to the list: the overview gives the island its own size back.
+  const closeAndShrink = () => {
+    close();
+    State.notify();
+  };
+  back.addEventListener("click", closeAndShrink);
   sendBtn.addEventListener("click", () => void send());
   field.addEventListener("input", () => {
     host.holdOpen(field.value.trim().length > 0);
@@ -130,7 +139,7 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
       // Back to the list, not the island folding away.
       e.preventDefault();
       e.stopPropagation();
-      close();
+      closeAndShrink();
     }
   });
 
@@ -254,5 +263,11 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     else syncList();
   }
 
-  return { el, sync };
+  return {
+    el,
+    sync,
+    get conversationOpen() {
+      return openChat != null;
+    },
+  };
 }

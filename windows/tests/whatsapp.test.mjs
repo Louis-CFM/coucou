@@ -201,7 +201,8 @@ function card() {
     keyboard: (on) => calls.keyboard.push(on),
     holdOpen: (on) => calls.hold.push(on),
   });
-  return { ...built, calls };
+  // Onto the card itself, so `conversationOpen` stays a live getter.
+  return Object.assign(built, { calls });
 }
 
 const key = (el, k, shiftKey = false) => {
@@ -320,4 +321,24 @@ test("the conversation closes when WhatsApp is turned off or the island folds", 
   WhatsApp.view = { ...IDLE_WHATSAPP };
   c.sync();
   assert.equal(sent("whatsapp_close").length, closes + 2);
+});
+
+test("an open conversation asks for the whole island, and gives it back", () => {
+  const c = card();
+  WhatsApp.view = connected({ unread: 1, conversations: [conversation()] });
+  State.mode = "expanded";
+  State.view = "overview";
+  State.focusId = WHATSAPP_ID;
+  c.sync();
+  assert.equal(c.conversationOpen, false, "the list keeps the overview's size");
+  let notified = 0;
+  const stop = State.subscribe(() => notified++);
+  c.el.find(".wa-row")[0].fire("click");
+  assert.equal(c.conversationOpen, true);
+  assert.ok(notified > 0, "the overview hears of it and grows the island");
+  notified = 0;
+  key(c.el.find("TEXTAREA")[0], "Escape");
+  assert.equal(c.conversationOpen, false);
+  assert.ok(notified > 0, "and gives the island its size back");
+  stop();
 });

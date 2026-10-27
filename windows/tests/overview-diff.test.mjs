@@ -1,5 +1,5 @@
 // The overview with a file's diff open (src/views/views.ts): the island grows
-// to DIFF_H and the left card takes the whole width, like the chat; closing the
+// to WIDE_CARD_H and the left card takes the whole width, like the chat; closing the
 // diff or leaving the overview gives the overview its own size back.
 
 import { afterEach, beforeEach, mock, test } from "node:test";
@@ -15,7 +15,7 @@ document.createDocumentFragment ??= () => document.createElement("div");
 const { buildViews } = await import("../src/views/views.ts");
 const { registerHookHandlers } = await import("../src/island/hooks.ts");
 const { DEFAULT_SETTINGS, State } = await import("../src/core/state.ts");
-const { DIFF_H, islandSize } = await import("../src/core/layout.ts");
+const { WIDE_CARD_H, islandSize } = await import("../src/core/layout.ts");
 
 registerHookHandlers({ alert() {}, setView() {}, reveal() {}, dropPin() {} });
 
@@ -46,21 +46,21 @@ beforeEach(() => {
   State.setFocus(CLAUDE);
   State.mode = "expanded";
   State.view = "overview";
-  State.diffOpen = false;
+  State.wideCard = false;
   heightChanges = 0;
   overview = buildViews(actions, () => heightChanges++).get("overview");
   overview.sync();
 });
 
 test("opening a diff grows the island and gives the left card the whole width", () => {
-  assert.equal(State.diffOpen, false);
+  assert.equal(State.wideCard, false);
   overview.command("toggleDiff"); // Ctrl+E: the latest edit
   overview.sync();
-  assert.equal(State.diffOpen, true);
-  assert.ok(overview.el.classList.contains("diff-open"));
+  assert.equal(State.wideCard, true);
+  assert.ok(overview.el.classList.contains("wide"));
   assert.equal(heightChanges, 1);
   assert.ok(overview.el.find(".diff-card").length === 1);
-  assert.ok(DIFF_H > islandSize("expanded", "overview").h);
+  assert.ok(WIDE_CARD_H > islandSize("expanded", "overview").h);
 });
 
 test("closing the diff gives the overview its own size back", () => {
@@ -68,8 +68,8 @@ test("closing the diff gives the overview its own size back", () => {
   overview.sync();
   overview.command("toggleDiff");
   overview.sync();
-  assert.equal(State.diffOpen, false);
-  assert.ok(!overview.el.classList.contains("diff-open"));
+  assert.equal(State.wideCard, false);
+  assert.ok(!overview.el.classList.contains("wide"));
   assert.equal(heightChanges, 2);
 });
 
@@ -78,6 +78,6 @@ test("leaving the overview closes the diff and its size with it", () => {
   overview.sync();
   State.view = "prompt";
   State.notify();
-  assert.equal(State.diffOpen, false);
-  assert.ok(!overview.el.classList.contains("diff-open"));
+  assert.equal(State.wideCard, false);
+  assert.ok(!overview.el.classList.contains("wide"));
 });

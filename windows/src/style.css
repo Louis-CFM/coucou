@@ -425,12 +425,12 @@ body {
 }
 
 /* A file's diff open: the left card takes the whole island, like the chat. */
-.overview.diff-open > .left {
+.overview.wide > .left {
   flex: 1 1 auto;
   width: auto;
 }
 
-.overview.diff-open > .right {
+.overview.wide > .right {
   display: none;
 }
 

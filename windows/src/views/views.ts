@@ -180,13 +180,14 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
   /** The diff open in the left card (a FileDiff id), as activeDiffId on macOS. */
   let activeDiffId: number | null = null;
   /**
-   * While a diff is open the island grows (State.diffOpen, DIFF_H) and the
-   * left card takes the whole width, like the chat, so the lines can be read.
+   * While a diff or a WhatsApp conversation is open the island grows
+   * (State.wideCard, WIDE_CARD_H) and the left card takes the whole width,
+   * like the chat, so the lines and the messages can be read.
    */
-  const showDiffOpen = (open: boolean) => {
-    el.classList.toggle("diff-open", open);
-    if (State.diffOpen === open) return;
-    State.diffOpen = open;
+  const showWide = (open: boolean) => {
+    el.classList.toggle("wide", open);
+    if (State.wideCard === open) return;
+    State.wideCard = open;
     onHeightChange();
   };
   const closeDiff = () => {
@@ -238,13 +239,12 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
   let shownSelection: number | null = null;
 
   // Leaving the overview or folding the island closes the diff, as on macOS.
+  // The island is changing size for that anyway: back to the overview's own.
   State.subscribe(() => {
-    if (activeDiffId != null && (State.view !== "overview" || State.mode !== "expanded")) {
-      activeDiffId = null;
-      // The island is changing size for that anyway: back to the overview's own.
-      State.diffOpen = false;
-      el.classList.remove("diff-open");
-    }
+    if (State.view === "overview" && State.mode === "expanded") return;
+    activeDiffId = null;
+    State.wideCard = false;
+    el.classList.remove("wide");
   });
   // Escape steps back out of the diff before it closes the island.
   window.addEventListener(
@@ -339,7 +339,6 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
       // A diff that has since been dropped (cap, expiry, session end) just closes.
       const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
       if (!diff) activeDiffId = null;
-      showDiffOpen(!planOpen && diff != null);
 
       if (planOpen) {
         if (mode !== "plan") {
@@ -416,6 +415,8 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
           leftBody.append(renderIntegrationCard(task, hooks));
         }
       }
+
+      showWide(mode === "diff" || (mode === "whatsapp" && whatsappCard.conversationOpen));
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
 
