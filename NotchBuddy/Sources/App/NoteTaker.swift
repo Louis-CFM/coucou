@@ -11,6 +11,8 @@ import FoundationModels
 enum NoteSummaryEngine: String, CaseIterable, Identifiable {
     /// The Claude key of Settings → Chat (the transcript goes to Anthropic).
     case claude
+    /// The native ChatGPT account connected in Settings → Chat.
+    case codex
     /// Apple Intelligence, on the Mac (macOS 26).
     case apple
     case off
@@ -20,6 +22,7 @@ enum NoteSummaryEngine: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .claude: return String(localized: "notes.engine.claude")
+        case .codex: return String(localized: "notes.engine.codex")
         case .apple:  return String(localized: "notes.engine.apple")
         case .off:    return String(localized: "notes.engine.off")
         }
@@ -45,6 +48,8 @@ final class NoteTaker: ObservableObject {
     @Published var startError: String?
     /// Notes whose transcript or summary is being written.
     @Published private(set) var working: Set<UUID> = []
+    @Published private(set) var aiErrors: [UUID: String] = [:]
+    private var aiWorking: Set<UUID> = []
 
     /// Words and names learnt from your corrections (newest first): Claude gets them with every
     /// transcript to correct, so a word fixed once is heard right in the next calls.
@@ -293,10 +298,10 @@ final class NoteTaker: ObservableObject {
             replace(current)
             return
         }
-        if summaryEngine == .claude, !note.lines.isEmpty {
+        if (summaryEngine == .claude || summaryEngine == .codex), !note.lines.isEmpty {
             await correct(id)
         }
-        if summaryEngine != .off, !note.lines.isEmpty {
+        if summaryEngine != .off, !note.lines.isEmpty, aiErrors[id] == nil {
             await summarize(id)
         }
         // The notes are ready: the pill says so, with a way to open them.
@@ -376,14 +381,17 @@ final class NoteTaker: ObservableObject {
     Put only the lines you changed.
     """
 
-    /// Claude fixes the words the speech recognition got wrong (with the Claude key of Settings,
-    /// when Claude writes the summaries). What was heard stays in each line's `raw`.
+    /// The selected cloud engine fixes recognition mistakes; each line keeps its original `raw`.
     func correct(_ id: UUID) async {
-        guard summaryEngine == .claude, let note = self.note(id), !note.lines.isEmpty else { return }
-        let key = KeychainStore.shared.get("anthropic-api-key") ?? ""
-        guard !key.isEmpty else { return }
+        let engine = summaryEngine
+        guard engine == .claude || engine == .codex, let note = self.note(id), !note.lines.isEmpty,
+              aiWorking.insert(id).inserted else { return }
+        let wasWorking = working.contains(id)
         working.insert(id)
-        defer { working.remove(id) }
+        aiErrors[id] = nil
+        defer { aiWorking.remove(id); if !wasWorking { working.remove(id) } }
+        let key = engine == .claude ? (KeychainStore.shared.get("anthropic-api-key") ?? "") : ""
+        guard engine != .claude || !key.isEmpty else { return }
         let model = AppState.shared.claudeModel.isEmpty ? AppState.defaultClaudeModel : AppState.shared.claudeModel
         var seen = Set<String>()
         let terms = (vocabulary + FlowStore.shared.words).filter { seen.insert($0.lowercased()).inserted }.prefix(400)
@@ -392,15 +400,30 @@ final class NoteTaker: ObservableObject {
             var request = ""
             if !terms.isEmpty { request += "<vocabulary>\n" + terms.joined(separator: ", ") + "\n</vocabulary>\n" }
             request += "<transcript>\n" + NoteBuilder.numberedTranscript(note, range: range) + "\n</transcript>"
-            guard let reply = await Self.claude(system: Self.correctionInstructions, user: request, key: key,
-                                                model: model, maxTokens: 8_000),
-                  let correction = NoteBuilder.parseCorrection(reply) else { continue }
+            let reply: String?
+            if engine == .codex {
+                do {
+                    reply = try await CodexTextService.complete(system: Self.correctionInstructions, user: request,
+                                                               model: AppState.shared.codexModel, timeout: 180)
+                    guard let reply, NoteBuilder.parseCorrection(reply) != nil else { throw CodexServiceError.invalidResponse }
+                } catch {
+                    if !Task.isCancelled, self.note(id) != nil, summaryEngine == engine { aiErrors[id] = error.localizedDescription }
+                    return
+                }
+            } else {
+                reply = await Self.claude(system: Self.correctionInstructions, user: request, key: key,
+                                          model: model, maxTokens: 8_000)
+            }
+            guard !Task.isCancelled, summaryEngine == engine else { return }
+            guard let reply, let correction = NoteBuilder.parseCorrection(reply) else { continue }
             total.lines.merge(correction.lines.filter { range.contains($0.key) }) { $1 }
             total.speakers.merge(correction.speakers) { first, _ in first }
         }
         // Edited, reassigned or deleted meanwhile: only the lines still as they were are fixed.
         guard let current = self.note(id), current.lines.map(\.id) == note.lines.map(\.id) else { return }
-        total.lines = total.lines.filter { current.lines[$0.key].text == note.lines[$0.key].text }
+        total.lines = total.lines.filter {
+            current.lines[$0.key].text == note.lines[$0.key].text && current.lines[$0.key].speaker == note.lines[$0.key].speaker
+        }
         let result = NoteBuilder.applying(total, to: current, personName: Self.personName)
         replace(result.note)
         appendAppLog("nb.log", "[Notetaker] correction: \(result.fixed) of \(note.lines.count) lines fixed")
@@ -445,22 +468,37 @@ final class NoteTaker: ObservableObject {
 
     /// Writes (or writes again) the summary, key points and to-dos of a note.
     func summarize(_ id: UUID) async {
-        guard let note = self.note(id), !note.lines.isEmpty else { return }
+        let engine = summaryEngine
+        guard engine != .off, let note = self.note(id), !note.lines.isEmpty, aiWorking.insert(id).inserted else { return }
+        let wasWorking = working.contains(id)
         working.insert(id)
-        defer { working.remove(id) }
+        aiErrors[id] = nil
+        defer { aiWorking.remove(id); if !wasWorking { working.remove(id) } }
         let transcript = NoteBuilder.plainTranscript(note)
         let reply: String?
-        switch summaryEngine {
+        switch engine {
         case .claude:
             let key = KeychainStore.shared.get("anthropic-api-key") ?? ""
             let model = AppState.shared.claudeModel.isEmpty ? AppState.defaultClaudeModel : AppState.shared.claudeModel
             reply = key.isEmpty ? nil : await Self.claudeSummary(transcript, key: key, model: model)
+        case .codex:
+            do {
+                reply = try await CodexTextService.complete(
+                    system: Self.summaryInstructions, user: "<transcript>\n\(transcript.prefix(400_000))\n</transcript>",
+                    model: AppState.shared.codexModel, timeout: 180)
+                guard let reply, NoteBuilder.parseSummary(reply) != nil else { throw CodexServiceError.invalidResponse }
+            } catch {
+                if !Task.isCancelled, self.note(id) != nil, summaryEngine == engine { aiErrors[id] = error.localizedDescription }
+                return
+            }
         case .apple:
             reply = await Self.appleSummary(transcript)
         case .off:
             reply = nil
         }
-        guard let reply, var current = self.note(id) else { return }
+        guard !Task.isCancelled, summaryEngine == engine, let reply, var current = self.note(id),
+              current.lines == note.lines, current.speakers == note.speakers,
+              current.summary == note.summary, current.keyPoints == note.keyPoints, current.todos == note.todos else { return }
         if let parsed = NoteBuilder.parseSummary(reply) {
             if let title = parsed.title, current.titleEdited != true { current.title = title }
             current.summary = parsed.summary
@@ -574,11 +612,20 @@ final class NoteTaker: ObservableObject {
     /// Correct the transcript again, then the summary from it.
     func correctAgain(_ id: UUID) async {
         await correct(id)
-        if summaryEngine != .off { await summarize(id) }
+        if summaryEngine != .off, aiErrors[id] == nil { await summarize(id) }
     }
 
     var canCorrect: Bool {
-        summaryEngine == .claude && FlowCleanup.hasKey
+        summaryEngine == .codex ? CodexTextService.isAvailable : summaryEngine == .claude && FlowCleanup.hasKey
+    }
+
+    var canSummarize: Bool {
+        switch summaryEngine {
+        case .codex: return CodexTextService.isAvailable
+        case .claude: return FlowCleanup.hasKey
+        case .apple: return Self.appleModelAvailable
+        case .off: return false
+        }
     }
 
     // MARK: - Vocabulary
@@ -611,6 +658,7 @@ final class NoteTaker: ObservableObject {
 
     func delete(_ id: UUID) {
         guard recording?.id != id, !working.contains(id) else { return }
+        aiErrors[id] = nil
         notes.removeAll { $0.id == id }
         try? FileManager.default.removeItem(at: Self.folder(for: id))
     }

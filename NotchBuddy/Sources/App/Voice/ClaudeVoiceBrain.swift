@@ -3,7 +3,7 @@ import Foundation
 
 // MARK: - ClaudeVoiceBrain
 //
-// "OK Coucou, …" handled by Claude (the user's Anthropic key, Settings → Voice), not by
+// "OK Coucou, …" handled by the selected Claude/Codex provider (Settings → Chat), not by
 // the phrase parser or the on-device model: Claude understands any wording, keeps the
 // thread of the conversation and calls Coucou's tools to act.
 //
@@ -20,25 +20,38 @@ final class ClaudeVoiceBrain {
         let text: String      // spoken and shown
         let acted: Bool       // a tool changed something (pills, music, mail…)
         let failed: Bool      // nothing usable came back
+        var discarded = false // cancelled/reset turns must not fall back to the phrase parser
     }
 
-    /// Claude is Coucou's brain whenever an Anthropic key is saved (Settings → Chat).
+    /// Use the selected provider; a missing Codex connection never falls back to an API key.
     static var isActive: Bool {
-        !(ClaudeService.shared.apiKey ?? "").isEmpty
+        AppState.shared.chatProvider == .codex ? CodexTextService.isAvailable
+            : !(ClaudeService.shared.apiKey ?? "").isEmpty
     }
 
     private var messages: [[String: Any]] = []
     /// One turn at a time: a second "OK Coucou" during the wait must not interleave.
     private var busy = false
+    private var generation = 0
 
-    func reset() { messages = [] }
+    func reset() { generation += 1; messages = [] }
 
     // MARK: Turn
 
     func respond(to transcript: String) async -> Reply? {
-        guard !busy else { return nil }
+        guard !busy, Self.isActive else { return nil }
         busy = true
-        defer { busy = false; repairHistory() }
+        let epoch = generation
+        defer { busy = false; if generation == epoch { repairHistory() } }
+        let provider = AppState.shared.chatProvider
+        let codex = provider == .codex
+        let account = codex ? CodexChatService.shared.authenticationEpoch : nil
+        func current() -> Bool {
+            generation == epoch && AppState.shared.chatProvider == provider && !Task.isCancelled
+                && (!codex || VoiceSettings.isEnabled && CodexTextService.isAvailable)
+                && (!codex || CodexChatService.shared.authenticationEpoch == account)
+        }
+        var completedActions: [String: (String, Bool)] = [:]
         messages.append(["role": "user", "content": transcript])
         trimHistory()
         var acted = false
@@ -46,9 +59,11 @@ final class ClaudeVoiceBrain {
 
         // Claude may call several tools in a row (look up, then act): at most 5 rounds.
         for _ in 0..<5 {
-            guard let turn = await ClaudeService.shared.voiceTurn(system: Self.systemPrompt(),
-                                                                   messages: messages,
-                                                                   tools: Self.tools) else {
+            let response = await ClaudeService.shared.voiceTurn(system: Self.systemPrompt(),
+                                                                messages: messages,
+                                                                tools: Self.tools)
+            guard current() else { return Reply(text: "", acted: acted, failed: true, discarded: true) }
+            guard let turn = response else {
                 // Leave the history coherent: drop the question that got no answer.
                 if let last = messages.last, last["role"] as? String == "user",
                    last["content"] is String { messages.removeLast() }
@@ -56,6 +71,7 @@ final class ClaudeVoiceBrain {
                 // parser must not do it again. Say it's done.
                 return acted ? Reply(text: "", acted: true, failed: false) : nil
             }
+            // A reset/provider change while awaiting the model must not run old actions.
             messages.append(["role": "assistant", "content": turn.content])
             if let text = claudeResponseText(fromContent: turn.content) { spoken = text }
 
@@ -65,11 +81,21 @@ final class ClaudeVoiceBrain {
 
             var results: [[String: Any]] = []
             for use in uses {
+                guard current() else { return Reply(text: "", acted: acted, failed: true, discarded: true) }
                 let id = use["id"] as? String ?? ""
                 let name = use["name"] as? String ?? ""
                 let input = use["input"] as? [String: Any] ?? [:]
-                let (result, didAct) = await run(tool: name, input: input)
+                let actionKey = codex ? CodexVoiceTurn.actionKey(name: name, input: input) : nil
+                let outcome: (String, Bool)
+                if let actionKey, let previous = completedActions[actionKey] {
+                    outcome = (previous.0, false)
+                } else {
+                    outcome = await run(tool: name, input: input, isCurrent: current)
+                    if let actionKey { completedActions[actionKey] = outcome }
+                }
+                let (result, didAct) = outcome
                 if didAct { acted = true }
+                guard current() else { return Reply(text: "", acted: acted, failed: true, discarded: true) }
                 results.append(["type": "tool_result", "tool_use_id": id, "content": result])
             }
             messages.append(["role": "user", "content": results])
@@ -124,7 +150,7 @@ final class ClaudeVoiceBrain {
         Everything you write is read aloud: answer in \(language) (the user may speak French or English), \
         in one or two short sentences, no markdown, no lists, no emojis, no links.
         Act with the tools instead of describing: pills, music, service_info for the user's own data \
-        (Stripe sales, GitHub, Vercel, Resend, n8n, Notion, Cal.com, agent sessions like Claude Code, \
+        (Stripe sales, GitHub, Vercel, Resend, n8n, Notion, Cal.com, agent sessions like Claude Code or Codex, \
         plan usage, music), open_app, prepare_email, and web_search for anything current \
         (weather, news, scores, prices, facts you are not sure of). Never invent the user's data.
         Email: gather the recipient, the subject and what to say (write the text yourself from what \
@@ -217,12 +243,14 @@ final class ClaudeVoiceBrain {
     // MARK: Running a tool
 
     /// Returns the text sent back to Claude, and whether something changed.
-    private func run(tool: String, input: [String: Any]) async -> (String, Bool) {
+    private func run(tool: String, input: [String: Any], isCurrent: () -> Bool) async -> (String, Bool) {
+        guard isCurrent() else { return ("cancelled", false) }
         let runner = VoiceActionRunner.shared
         let pills = PillCatalog.available
         runner.commandLocale = VoiceSettings.answerLocale
         func perform(_ intent: VoiceIntent) async -> VoiceActionResult {
-            let r = await runner.run(intent, availablePills: pills)
+            let r = await runner.run(intent, availablePills: pills, isCurrent: isCurrent)
+            guard isCurrent() else { return r }
             // The runner may ask its own follow-up (4-pill limit…): Claude asks instead.
             runner.pendingQuestion = nil
             return r
@@ -238,6 +266,7 @@ final class ClaudeVoiceBrain {
             var lines: [String] = []
             var acted = false
             for name in names {
+                guard isCurrent() else { return (lines.joined(separator: "\n"), acted) }
                 guard let id = EntityResolver.resolve(name, from: pills) else {
                     lines.append("\(name): unknown pill"); continue
                 }
@@ -291,14 +320,14 @@ final class ClaudeVoiceBrain {
             return (r.message, r.outcome == .success)
 
         case "prepare_email":
-            return await prepareEmail(input)
+            return await prepareEmail(input, isCurrent: isCurrent)
 
         default:
             return ("unknown tool \(tool)", false)
         }
     }
 
-    private func prepareEmail(_ input: [String: Any]) async -> (String, Bool) {
+    private func prepareEmail(_ input: [String: Any], isCurrent: () -> Bool) async -> (String, Bool) {
         let info = LiveVoiceInfo.shared
         let recipient = (input["recipient"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let subject = input["subject"] as? String ?? ""
@@ -307,6 +336,7 @@ final class ClaudeVoiceBrain {
         guard let address = await info.resolveEmail(recipient) else {
             return ("No email address found for \(recipient) in the contacts. Ask the user to spell the address.", false)
         }
+        guard isCurrent() else { return ("cancelled", false) }
         var file: URL? = nil
         var note = ""
         if let name = input["attachment_file"] as? String, !name.trimmingCharacters(in: .whitespaces).isEmpty {

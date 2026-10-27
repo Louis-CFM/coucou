@@ -181,6 +181,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         ENABLE_SANDBOX: NO
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/App/CodexAccess.h
       configs:
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
@@ -218,6 +219,8 @@ targets:
           - "Phone/**"
           - "Widgets/**"
           - "NotificationContent/**"
+          - "App/CodexAccess.h"
+          - "App/CodexAccess.m"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds

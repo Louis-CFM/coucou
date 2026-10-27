@@ -162,6 +162,7 @@ import AppKit
  private(set) var opened:[URL]=[]
  func open(_ url:URL)->Bool { opened.append(url);return true }
 }
+@MainActor enum CodexTextService { static var disables = 0; static func disable() { disables += 1 } }
 enum ChatProvider { case codex, anthropic }
 enum ChatRole { case user, assistant }
 enum PromptContext { case window(appName:String,title:String,url:String?);case file(name:String,fileURL:URL?) }
@@ -288,6 +289,7 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   connection.releaseConnection(lease)
   assert(!connection.isConnected && chat.authenticationStatus == .connected,"Idle transport close discarded persisted authorization")
   chat.disconnect()
+  assert(CodexTextService.disables == 1)
   assert(chat.authenticationStatus == .disconnected)
   let before=methods()
   await chat.refreshAuthentication()

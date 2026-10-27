@@ -1521,6 +1521,14 @@ final class HookServer: @unchecked Sendable {
         RecapStore.shared.recordFileDiff(sessionId: sessionId, path: diff.path, added: diff.added, removed: diff.removed)
     }
 
+    #if !APPSTORE
+    @MainActor
+    func reconcileCodexDiffs(_ diffs: [FileDiff], threadId: String, turnId: String, moves: [String: String]) {
+        AppState.shared.replaceCodexSessionDiffs(diffs, threadId: threadId, turnId: turnId, moves: moves)
+        RecapStore.shared.replaceCodexFileDiffs(sessionId: threadId, diffs: diffs)
+    }
+    #endif
+
     // MARK: - Badge helpers
 
     @MainActor

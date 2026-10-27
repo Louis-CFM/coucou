@@ -70,6 +70,14 @@ struct OverviewView: View {
     #endif
     @State private var showingN8nDetail = false
     @State private var activeDiffId: Int? = nil
+    #if !APPSTORE
+    @State private var showingCodexTurnPlan = false
+    private var codexTurnPlan: CodexTurnPlan? {
+        guard let task = agent, task.id == "agent_codex", task.codexManaged,
+              let plan = state.codexTurnPlan, plan.threadId == task.codexThreadId, plan.turnId == task.codexTurnId else { return nil }
+        return plan
+    }
+    #endif
 
     var agent: AgentTask? { state.focusTask }
 
@@ -165,13 +173,36 @@ struct OverviewView: View {
                    let task = agent,
                    let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
                     CardBackground(wash: nil)
-                    DiffCardView(diff: diff, onDismiss: { activeDiffId = nil })
+                    DiffCardView(diff: diff, files: task.id == "agent_codex" ? state.sessionDiffs[task.id] ?? [] : [],
+                                 onSelect: { activeDiffId = $0 }, onDismiss: { activeDiffId = nil })
                         .transition(.opacity)
                 }
 
+                #if !APPSTORE
+                if let plan = codexTurnPlan, !state.showingPlanDetail, activeDiffId == nil {
+                    if showingCodexTurnPlan {
+                        CardBackground(wash: nil)
+                        CodexTurnPlanView(plan: plan, onDismiss: { showingCodexTurnPlan = false })
+                    } else {
+                        Button(action: { showingCodexTurnPlan = true }) {
+                            Image(systemName: "list.bullet.rectangle")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#A9ADB5"))
+                                .frame(width: 16, height: 16)
+                        }
+                        .buttonStyle(.plain)
+                        .help(String(localized: "codex.turn-plan", defaultValue: "Codex plan"))
+                        .accessibilityLabel(String(localized: "codex.turn-plan", defaultValue: "Codex plan"))
+                        .padding(.top, 8)
+                        .padding(.trailing, 32)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
+                #endif
+
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
                 #if !APPSTORE
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil || (showingCodexTurnPlan && codexTurnPlan != nil)
                 #else
                 let hideJumpButton = showingN8nDetail || activeDiffId != nil
                 #endif
@@ -201,13 +232,17 @@ struct OverviewView: View {
             showingN8nDetail = false
             activeDiffId = nil
             #if !APPSTORE
+            showingCodexTurnPlan = false
+            #endif
+            #if !APPSTORE
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             #endif
             if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
         }
         #if !APPSTORE
+        .onChange(of: codexTurnPlan?.turnId) { _, _ in showingCodexTurnPlan = false }
         .onChange(of: state.view) { _, v in
-            if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
+            if v != .overview { state.showingPlanDetail = false; activeDiffId = nil; showingCodexTurnPlan = false }
         }
         #endif
         .onChange(of: state.mode) { _, m in
@@ -830,10 +865,68 @@ struct FinishedView: View {
     }
 }
 
+#if !APPSTORE
+private struct CodexTurnPlanView: View {
+    let plan: CodexTurnPlan
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Button(action: onDismiss) {
+                    Label(String(localized: "codex.turn-plan", defaultValue: "Codex plan"), systemImage: "chevron.left")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 2)
+                if !plan.steps.isEmpty {
+                    Text(verbatim: "\(plan.steps.filter { $0.status == .completed }.count)/\(plan.steps.count)")
+                        .font(.system(size: 10).monospacedDigit())
+                }
+            }
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 5) {
+                    if !plan.explanation.isEmpty { Text(plan.explanation) }
+                    ForEach(Array(plan.steps.enumerated()), id: \.offset) { _, step in
+                        HStack(alignment: .top, spacing: 5) {
+                            Image(systemName: step.status == .completed ? "checkmark.circle.fill" : step.status == .inProgress ? "ellipsis.circle" : "circle")
+                                .foregroundColor(step.status == .completed ? Color(hex: "#22C55E") : Color(hex: "#A9ADB5"))
+                                .accessibilityLabel(statusLabel(step.status))
+                            Text(step.text)
+                        }
+                    }
+                    if !plan.text.isEmpty { Text(plan.text) }
+                    Text(String(localized: "codex.plan-read-only", defaultValue: "Progress only. Permissions are requested separately."))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+                .font(.system(size: 10.5))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .foregroundColor(Color(hex: "#F5F6F8"))
+        .padding(.leading, 108)
+        .padding(.trailing, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onExitCommand { onDismiss() }
+    }
+
+    private func statusLabel(_ status: CodexTurnPlan.Step.Status) -> String {
+        switch status {
+        case .pending: return String(localized: "codex.plan-pending", defaultValue: "Pending")
+        case .inProgress: return String(localized: "codex.plan-in-progress", defaultValue: "In progress")
+        case .completed: return String(localized: "codex.plan-completed", defaultValue: "Completed")
+        }
+    }
+}
+#endif
+
 // MARK: - Diff Card
 
 struct DiffCardView: View {
     let diff: FileDiff
+    var files: [FileDiff] = []
+    var onSelect: ((Int) -> Void)? = nil
     let onDismiss: () -> Void
 
     private var allLines: [DiffLine] { diff.hunks.flatMap { $0.lines } }
@@ -854,6 +947,20 @@ struct DiffCardView: View {
                 }
                 .buttonStyle(.plain)
                 Spacer(minLength: 2)
+                if files.count > 1 {
+                    Menu {
+                        ForEach(files, id: \.id) { file in
+                            Button(file.path) { onSelect?(file.id) }
+                        }
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 10))
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help(String(localized: "codex.changed-files", defaultValue: "Changed files"))
+                    .accessibilityLabel(String(localized: "codex.changed-files", defaultValue: "Changed files"))
+                }
                 if diff.added > 0 {
                     Text("+\(diff.added)")
                         .font(.system(size: 10, weight: .medium).monospaced())
@@ -883,7 +990,7 @@ struct DiffCardView: View {
                     .font(.system(size: 10.5))
                     .foregroundColor(Color(hex: "#6B7079"))
             } else if allLines.isEmpty {
-                Text("No changes")
+                Text(files.isEmpty ? String(localized: "No changes") : String(localized: "codex.no-line-changes", defaultValue: "File operation with no line changes"))
                     .font(.system(size: 10.5))
                     .foregroundColor(Color(hex: "#6B7079"))
             } else {

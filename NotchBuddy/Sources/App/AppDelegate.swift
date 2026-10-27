@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         #if !APPSTORE
+        CodexTextService.shutdown()
         NoteTaker.shared.shutdown()
         // The GOWA gateway Coucou started never outlives it.
         WhatsAppGOWAProcess.shared.stopNow()
@@ -340,6 +341,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HookServer.shared.start()
         #if !APPSTORE
         CodexEventAdapter.shared.start()
+        if AppState.shared.chatProvider == .codex
+            || UserDefaults.standard.string(forKey: NoteTaker.engineKey) == NoteSummaryEngine.codex.rawValue {
+            Task { await CodexChatService.shared.refreshAuthentication() }
+        }
         _ = VoiceEngine.shared  // registers system observers; starts mic only if the user enabled voice
         FlowDictation.shared.start()  // watches the dictation key only if Flow dictation is on
         #endif

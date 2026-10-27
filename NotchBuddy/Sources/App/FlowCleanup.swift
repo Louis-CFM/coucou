@@ -1,11 +1,8 @@
 #if !APPSTORE
 import Foundation
 
-/// The clean-up of Flow dictation: Claude removes the "euh", the repeats and the corrections said
-/// on the way ("at 3, no, at 4" → "at 4"), fixes the punctuation and writes in the app's style.
-/// Only when it is turned on in the Coucou Flow window and a Claude key is set in Settings; the words
-/// then go to Anthropic with that key, and nowhere else. Any problem (no network, slow answer, odd
-/// reply) and the words are pasted as they were heard.
+/// Optional dictation rewriting with the selected Codex account, or the existing Claude key.
+/// Any failure keeps the words as heard; Codex never falls back to another provider.
 enum FlowCleanup {
     static let model = "claude-haiku-4-5"
     /// Past this, the words are pasted as heard rather than keeping you waiting.
@@ -15,9 +12,26 @@ enum FlowCleanup {
         !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
     }
 
-    static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> String {
-        guard style != .verbatim, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty,
-              FlowText.wordCount(text) >= 3 else { return text }
+    @MainActor static var usesCodex: Bool { AppState.shared.chatProvider == .codex }
+
+    @MainActor static var isAvailable: Bool {
+        usesCodex ? CodexTextService.isAvailable : hasKey
+    }
+
+    @MainActor static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> String {
+        guard style != .verbatim, FlowText.wordCount(text) >= 3 else { return text }
+        if usesCodex {
+            do {
+                let reply = try await CodexTextService.complete(
+                    system: system(style: style, app: app, words: words),
+                    user: "<dictation>\n\(text)\n</dictation>", model: AppState.shared.codexModel, timeout: timeout)
+                let cleaned = reply.replacingOccurrences(of: "<dictation>", with: "")
+                    .replacingOccurrences(of: "</dictation>", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return plausible(cleaned, from: text) ? cleaned : text
+            } catch { return text }
+        }
+        guard let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return text }
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         request.httpMethod = "POST"
         request.timeoutInterval = timeout
@@ -52,10 +66,21 @@ enum FlowCleanup {
     /// Prompt mode and translation: one call that cleans the words, shapes them as a prompt when
     /// asked, and writes them in the chosen language. Like the clean-up, any problem and the words
     /// are pasted as heard.
-    static func transform(_ text: String, prompt: Bool, language: FlowLanguage?, style: FlowStyle,
+    @MainActor static func transform(_ text: String, prompt: Bool, language: FlowLanguage?, style: FlowStyle,
                           app: String?, words: [String]) async -> String {
-        guard prompt || language != nil, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty,
-              FlowText.wordCount(text) >= 1 else { return text }
+        guard prompt || language != nil, FlowText.wordCount(text) >= 1 else { return text }
+        if usesCodex {
+            do {
+                let reply = try await CodexTextService.complete(
+                    system: transformSystem(prompt: prompt, language: language, style: style, app: app, words: words),
+                    user: "<dictation>\n\(text)\n</dictation>", model: AppState.shared.codexModel, timeout: prompt ? 12 : 8)
+                let out = reply.replacingOccurrences(of: "<dictation>", with: "")
+                    .replacingOccurrences(of: "</dictation>", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return plausibleTransform(out, from: text, prompt: prompt) ? out : text
+            } catch { return text }
+        }
+        guard let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return text }
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         request.httpMethod = "POST"
         // A prompt takes a little longer to write than a clean-up.

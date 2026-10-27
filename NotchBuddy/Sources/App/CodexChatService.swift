@@ -63,6 +63,7 @@ final class CodexChatService: ObservableObject {
     private var loginCompletion: CheckedContinuation<Void, Error>?
     private var loginDeadline: Task<Void, Never>?
     private var authenticationGeneration = UUID()
+    var authenticationEpoch: UUID { authenticationGeneration }
     private var authenticationRefresh: UUID?
     private var explicitlyDisconnected = false
     private enum AttachmentContext: Sendable {
@@ -128,6 +129,7 @@ final class CodexChatService: ObservableObject {
 
     /// Disconnect Coucou without removing the login shared by Codex Desktop and CLI.
     func disconnect() {
+        CodexTextService.disable()
         explicitlyDisconnected = true
         authenticationGeneration = UUID()
         authenticationRefresh = nil

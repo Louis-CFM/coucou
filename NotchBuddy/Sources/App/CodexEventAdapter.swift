@@ -9,6 +9,9 @@ final class CodexEventAdapter {
     private var threads: [String: (root: String, cwd: String, path: String?)] = [:]
     private var completedItems = Set<String>()
     private var finalMessage = ""
+    private var turnOpen = false
+    private var turnPlan: CodexTurnPlan?
+    private var turnDiffs = CodexTurnDiffState()
 
     func start() {
         guard observer == nil else { return }
@@ -29,6 +32,8 @@ final class CodexEventAdapter {
         HookServer.shared.resolveCodexRequests(threadId: id)
         emit("SessionEnd", threadId: id, params: [:])
         threads.removeValue(forKey: id)
+        if turnPlan?.threadId == id { turnOpen = false; turnPlan = nil; turnDiffs = CodexTurnDiffState() }
+        if AppState.shared.codexTurnPlan?.threadId == id { AppState.shared.codexTurnPlan = nil }
     }
 
     func isManagedHookSession(_ sessionId: String) -> Bool {
@@ -75,6 +80,10 @@ final class CodexEventAdapter {
         case "turn/started":
             server.resolveCodexRequests(threadId: threadId)
             completedItems.removeAll(); finalMessage = ""
+            turnOpen = true
+            turnPlan = CodexTurnPlan(threadId: threadId, turnId: turnId)
+            turnDiffs = CodexTurnDiffState()
+            if AppState.shared.codexTurnPlan?.threadId == threadId { AppState.shared.codexTurnPlan = nil }
             emit("UserPromptSubmit", threadId: threadId, params: params, turnId: turnId)
         case "item/started", "item/completed":
             guard let item = params["item"] as? [String: Any], let type = item["type"] as? String else { return }
@@ -88,18 +97,11 @@ final class CodexEventAdapter {
                      extra: ["tool_name": "Bash", "tool_input": ["command": command], "tool_response": ["exit_code": item["exitCode"] as? Int ?? 0, "status": item["status"] as? String ?? ""]])
             case "fileChange":
                 if done, item["status"] as? String == "completed" {
-                    for change in item["changes"] as? [[String: Any]] ?? [] {
-                        guard let originalPath = change["path"] as? String, let text = change["diff"] as? String else { continue }
-                        let kind = change["kind"] as? [String: Any]
-                        let path = kind?["move_path"] as? String ?? originalPath
-                        let parsed = DiffEngine.fromUnifiedDiff(text, path: path)
-                        if parsed.isEmpty, text.isEmpty, let kind,
-                           ["add", "delete", "update"].contains(kind["type"] as? String ?? "") {
-                            diffs.append(FileDiff(path: path, added: 0, removed: 0, hunks: [], tooLarge: false, isNewFile: kind["type"] as? String == "add"))
-                        } else { diffs += parsed }
-                    }
-                    for diff in diffs { server.recordCodexDiff(diff, sessionId: threadId) }
+                    guard turnOpen, turnPlan?.threadId == threadId, turnPlan?.turnId == turnId else { return }
+                    diffs = turnDiffs.recordItem(item["changes"] as? [[String: Any]] ?? [], cwd: threads[threadId]!.cwd, itemId: item["id"] as? String ?? "")
+                    server.reconcileCodexDiffs(turnDiffs.files, threadId: threadId, turnId: turnId, moves: turnDiffs.moveSources)
                 } else if !done {
+                    if turnOpen { turnDiffs.itemStarted(item["id"] as? String ?? "") }
                     emit("PreToolUse", threadId: threadId, params: params, turnId: turnId,
                          extra: ["tool_name": "apply_patch", "tool_input": [:]])
                 } else if item["status"] as? String == "failed" {
@@ -116,12 +118,26 @@ final class CodexEventAdapter {
                 if done, item["phase"] as? String != "commentary", let text = item["text"] as? String {
                     finalMessage = String(text.prefix(24_000))
                 }
+            case "plan":
+                if done, turnOpen, let text = item["text"] as? String, turnPlan?.threadId == threadId, turnPlan?.turnId == turnId {
+                    turnPlan?.text = String(text.prefix(8000))
+                    publishPlan(threadId: threadId, turnId: turnId)
+                }
             case "reasoning": if !done { AppState.shared.updateTask(id: "agent_codex", state: .thinking) }
             default: break
             }
+        case "turn/plan/updated":
+            guard turnOpen, turnPlan?.threadId == threadId, turnPlan?.turnId == turnId else { return }
+            turnPlan?.update(params)
+            publishPlan(threadId: threadId, turnId: turnId)
         case "turn/diff/updated":
-            diffs = DiffEngine.fromUnifiedDiff(params["diff"] as? String ?? "")
+            guard turnOpen, turnPlan?.threadId == threadId, turnPlan?.turnId == turnId,
+                  let text = params["diff"] as? String,
+                  turnDiffs.updateSnapshot(text, cwd: threads[threadId]!.cwd) else { return }
+            diffs = turnDiffs.files
+            server.reconcileCodexDiffs(diffs, threadId: threadId, turnId: turnId, moves: turnDiffs.moveSources)
         case "turn/completed":
+            turnOpen = false
             server.resolveCodexRequests(threadId: threadId)
             let status = turn["status"] as? String ?? ""
             guard ["completed", "failed", "interrupted"].contains(status) else {
@@ -144,6 +160,13 @@ final class CodexEventAdapter {
         #if PHONE_LINK
         TurnRecorder.shared.recordCodex(method: method, params: params, diffs: diffs)
         #endif
+    }
+
+    private func publishPlan(threadId: String, turnId: String) {
+        guard AppState.shared.tasks.contains(where: {
+            $0.id == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId
+        }) else { return }
+        AppState.shared.codexTurnPlan = turnPlan?.isEmpty == false ? turnPlan : nil
     }
 
     private func showError(_ error: [String: Any], threadId: String) {

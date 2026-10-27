@@ -155,6 +155,7 @@ struct AgentTask {
     static let shared = AppState()
     var tasks = [AgentTask()]
     var noteMessage = ""
+    var codexTurnPlan: CodexTurnPlan?
     func updateTask(id: String, state: BotState) {
         if let index = tasks.firstIndex(where: { $0.id == id }) { tasks[index].state = state }
     }
@@ -183,6 +184,7 @@ struct AgentTask {
     var requests: [String] = []
     var resolutions = 0
     var files: [FileDiff] = []
+    var snapshots = 0
     func receiveCodexEvent(name: String, payload: [String: Any]) {
         events.append((name, payload))
         var task = AppState.shared.tasks[0]
@@ -193,7 +195,10 @@ struct AgentTask {
     }
     func receiveCodexRequest(method: String, params: [String: Any], id: Any) { requests.append(method) }
     func resolveCodexRequests(threadId: String? = nil, requestId: Any? = nil) { resolutions += 1 }
-    func recordCodexDiff(_ diff: FileDiff, sessionId: String) { files.append(diff) }
+    func reconcileCodexDiffs(_ diffs: [FileDiff], threadId: String, turnId: String, moves: [String: String]) {
+        guard AppState.shared.tasks.contains(where: { $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId }) else { return }
+        files = diffs; snapshots += 1
+    }
 }
 @MainActor final class TurnRecorder {
     static let shared = TurnRecorder()
@@ -231,6 +236,35 @@ struct AgentTask {
                "Previous turn reached adapter while a new turn was awaiting its ID")
         CodexChatService.shared.turnId = "t1"
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t1"]])
+        connection.emit("turn/plan/updated", ["threadId": "child", "turnId": "t1", "explanation": "Working through the change", "plan": [["step": "Inspect", "status": "completed"], ["step": "Edit", "status": "inProgress"], ["step": "Verify", "status": "pending"]]])
+        assert(AppState.shared.codexTurnPlan?.steps.map(\.status) == [.completed, .inProgress, .pending])
+        connection.emit("item/completed", ["threadId": "child", "turnId": "t1", "item": ["id": "plan", "type": "plan", "text": "Proposed implementation"]])
+        assert(AppState.shared.codexTurnPlan?.text == "Proposed implementation")
+        connection.emit("turn/plan/updated", ["threadId": "child", "turnId": "old-turn", "plan": []])
+        assert(AppState.shared.codexTurnPlan?.steps.count == 3)
+        connection.emit("turn/plan/updated", ["threadId": "child", "turnId": "t1", "plan": [["step": "Unknown", "status": "future"]]])
+        assert(AppState.shared.codexTurnPlan?.steps.count == 3, "Unknown plan status replaced known state")
+        let aggregate = "diff --git a/aggregate.swift b/aggregate.swift\n--- a/aggregate.swift\n+++ b/aggregate.swift\n@@ -1 +1 @@\n-old\n+new\n"
+        connection.emit("turn/diff/updated", ["threadId": "child", "turnId": "t1", "diff": aggregate])
+        assert(server.files.count == 1 && server.files[0].path == "/chosen/aggregate.swift" && server.files[0].added == 1)
+        connection.emit("turn/diff/updated", ["threadId": "child", "turnId": "t1", "diff": aggregate])
+        assert(server.files.count == 1 && server.files[0].added == 1, "Repeated aggregate doubled counts")
+        let snapshots = server.snapshots
+        connection.emit("turn/diff/updated", ["threadId": "child", "turnId": "old-turn", "diff": ""])
+        assert(server.snapshots == snapshots)
+        AppState.shared.tasks[0].codexManaged = false
+        connection.emit("turn/plan/updated", ["threadId": "child", "turnId": "t1", "plan": []])
+        connection.emit("turn/diff/updated", ["threadId": "child", "turnId": "t1", "diff": aggregate])
+        assert(AppState.shared.codexTurnPlan?.steps.count == 3 && server.snapshots == snapshots, "Native update touched an external display owner")
+        AppState.shared.tasks[0].codexManaged = true
+        let laterChange: [String: Any] = ["id": "later-edit", "type": "fileChange", "status": "completed", "changes": [["path": "aggregate.swift", "kind": ["type": "update"], "diff": "--- a/aggregate.swift\n+++ b/aggregate.swift\n@@ -1 +1,2 @@\n-new\n+newer\n+extra\n"]]]
+        connection.emit("item/started", ["threadId": "child", "turnId": "t1", "item": laterChange])
+        connection.emit("item/completed", ["threadId": "child", "turnId": "t1", "item": laterChange])
+        assert(server.files.count == 1 && server.files[0].added == 3 && server.files[0].removed == 2,
+               "Same-path edit after aggregate was lost before completion")
+        let laterSnapshots = server.snapshots
+        connection.emit("item/completed", ["threadId": "child", "turnId": "t1", "item": laterChange])
+        assert(server.snapshots == laterSnapshots && server.files[0].added == 3)
         let command: [String: Any] = ["id": "command", "type": "commandExecution", "command": "false", "exitCode": 1, "status": "completed"]
         connection.emit("item/started", ["threadId": "child", "turnId": "t1", "item": command])
         connection.emit("item/completed", ["threadId": "child", "turnId": "t1", "item": command])
@@ -254,8 +288,13 @@ struct AgentTask {
         connection.emit("turn/completed", ["threadId": "child", "turn": ["id": "t1", "status": "completed", "items": []]])
         assert(server.events.last?.name == "Stop")
         assert(server.events.last?.payload["last_assistant_message"] as? String == "Finished answer")
+        let closedSnapshots = server.snapshots
+        connection.emit("turn/diff/updated", ["threadId": "child", "turnId": "t1", "diff": ""])
+        connection.emit("turn/plan/updated", ["threadId": "child", "turnId": "t1", "plan": []])
+        assert(server.snapshots == closedSnapshots && AppState.shared.codexTurnPlan?.steps.count == 3, "Completed turn accepted a delayed update")
         CodexChatService.shared.turnId = "t2"
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t2"]])
+        assert(AppState.shared.codexTurnPlan == nil, "New turn kept old plan")
         let before = server.events.count
         let resolutions = server.resolutions
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t1"]])
@@ -318,5 +357,5 @@ struct AgentTask {
 }
 SWIFT
 swiftc -swift-version 6 -D PHONE_LINK NotchBuddy/Sources/CoucouKit/DiffEngine.swift \
-    NotchBuddy/Sources/App/CodexEventAdapter.swift "$task_tmp/AdapterCheck.swift" -o "$task_tmp/adapter-check"
+    NotchBuddy/Sources/App/CodexTurnState.swift NotchBuddy/Sources/App/CodexEventAdapter.swift "$task_tmp/AdapterCheck.swift" -o "$task_tmp/adapter-check"
 "$task_tmp/adapter-check"

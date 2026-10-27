@@ -35,6 +35,7 @@ final class CodexConnection {
     private(set) var cliVersion: String?
     private var observers: [UUID: Observer] = [:]
     private var process: Process?
+    private var stoppedProcess: Process?
     private var input: FileHandle?
     private var output: FileHandle?
     private var diagnostics: FileHandle?
@@ -55,12 +56,17 @@ final class CodexConnection {
     let executable: URL?
     let arguments: [String]
     let requestTimeout: TimeInterval
+    private let launchEnvironment: [String: String]?
+    private let workingDirectory: URL?
     var isConnected: Bool { ready && process?.isRunning == true }
 
-    init(executable: URL? = nil, arguments: [String] = ["app-server", "--stdio"], requestTimeout: TimeInterval = 20) {
+    init(executable: URL? = nil, arguments: [String] = ["app-server", "--stdio"], requestTimeout: TimeInterval = 20,
+         launchEnvironment: [String: String]? = nil, workingDirectory: URL? = nil) {
         self.executable = executable ?? Self.findExecutable()
         self.arguments = arguments
         self.requestTimeout = requestTimeout
+        self.launchEnvironment = launchEnvironment
+        self.workingDirectory = workingDirectory
     }
 
     static func findExecutable() -> URL? {
@@ -136,7 +142,7 @@ final class CodexConnection {
                     "capabilities": ["experimentalApi": true]
                 ])
                 if let userAgent = initialized["userAgent"] as? String,
-                   let range = userAgent.range(of: #"codex_cli_rs/[0-9]+(?:\.[0-9]+)+"#, options: .regularExpression) {
+                   let range = userAgent.range(of: #"(?:codex_cli_rs|coucou)/[0-9]+(?:\.[0-9]+)+"#, options: .regularExpression) {
                     self.cliVersion = String(userAgent[range].split(separator: "/").last ?? "")
                 }
                 try self.write(["method": "initialized", "params": [:]])
@@ -154,10 +160,11 @@ final class CodexConnection {
         let current = UUID(); generation = current
         child.executableURL = executable
         child.arguments = arguments
-        var environment = ProcessInfo.processInfo.environment
+        var environment = launchEnvironment ?? ProcessInfo.processInfo.environment
         environment["PATH"] = [executable.deletingLastPathComponent().path, "/opt/homebrew/bin", "/usr/local/bin",
                                "/usr/bin", "/bin", environment["PATH"] ?? ""].joined(separator: ":")
         child.environment = environment
+        child.currentDirectoryURL = workingDirectory
         // Never use a shell or copy credentials. Codex manages its existing login.
         child.standardInput = stdin; child.standardOutput = stdout; child.standardError = stderr
         input = stdin.fileHandleForWriting; output = stdout.fileHandleForReading
@@ -279,6 +286,7 @@ final class CodexConnection {
         process?.terminationHandler = nil
         let handles = [input, output, diagnostics].compactMap { $0 }
         let child = process
+        stoppedProcess = child ?? stoppedProcess
         input = nil; output = nil; diagnostics = nil; process = nil; buffer.removeAll(keepingCapacity: false)
         for write in queuedWrites.values { write.cancellation.cancel() }
         queuedWrites.removeAll(); queuedBytes = 0
@@ -296,6 +304,19 @@ final class CodexConnection {
             for callback in Array(observers.values) { callback("$connection/disconnected", [:], nil) }
             onDisconnect?()
         }
+    }
+
+    func stopAndWait() async {
+        let child = process ?? stoppedProcess
+        stop()
+        guard let child, child.processIdentifier > 0 else { return }
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                child.waitUntilExit()
+                continuation.resume()
+            }
+        }
+        stoppedProcess = nil
     }
 }
 #endif

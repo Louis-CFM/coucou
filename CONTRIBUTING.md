@@ -44,6 +44,24 @@ bash scripts/test-codex-plugin-mac.sh
 These use subprocess/socketpair fixtures. Desktop plugin installation, live model
 requests and UI acceptance remain separate manual checks.
 
+Check the Codex assistant feature paths and owned-turn updates:
+
+```sh
+bash scripts/test-codex-text.sh
+bash scripts/test-codex-flow-notes.sh
+bash scripts/test-codex-voice.sh
+bash scripts/test-codex-voice-actions.sh
+bash scripts/test-codex-voice-controller.sh
+bash scripts/test-codex-turn-state.sh
+bash scripts/test-codex-parity.sh
+```
+
+These fixtures use fake credentials/models and in-memory boundaries. They check
+isolated text requests, original-text/note preservation, the voice action allowlist,
+stale/cancelled actions, plan progress and cumulative Mac diff reconciliation.
+They do not validate a live ChatGPT account, voice hardware, Contacts, Music,
+Desktop plugin trust or the UI. Keep those manual acceptance checks separate.
+
 
 Check auto-close timing and live setting changes:
 

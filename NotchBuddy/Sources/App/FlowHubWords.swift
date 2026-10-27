@@ -211,22 +211,24 @@ struct HubSnippetsPage: View {
 struct HubStylesPage: View {
     @ObservedObject var router: HubRouter
     @ObservedObject private var store = FlowStore.shared
+    @ObservedObject private var state = AppState.shared
+    @ObservedObject private var codexChat = CodexChatService.shared
 
     var body: some View {
         HubPageScaffold(title: String(localized: "hub.page.styles"),
-                        subtitle: String(localized: "hub.styles-sub")) {
+                        subtitle: FlowCleanup.usesCodex ? String(localized: "hub.styles-sub-codex") : String(localized: "hub.styles-sub")) {
             HubCard {
                 HubRow(title: String(localized: "hub.cleanup"), detail: String(localized: "hub.cleanup-detail")) {
                     Toggle("", isOn: $store.cleanupEnabled)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .disabled(!FlowCleanup.hasKey && !store.cleanupEnabled)
+                        .disabled(!FlowCleanup.isAvailable && !store.cleanupEnabled)
                 }
-                if !FlowCleanup.hasKey {
+                if !FlowCleanup.isAvailable {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
                             .foregroundColor(HubTheme.accent)
-                        Text("hub.cleanup-key")
+                        Text(FlowCleanup.usesCodex ? CodexTextService.unavailableMessage : String(localized: "hub.cleanup-key"))
                             .font(.system(size: 12.5))
                             .foregroundColor(Color(hex: "#C7CAD0"))
                             .fixedSize(horizontal: false, vertical: true)
@@ -290,7 +292,7 @@ struct HubStylesPage: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                Text("hub.cleanup-privacy")
+                Text(FlowCleanup.usesCodex ? String(localized: "flow.codex-privacy") : String(localized: "hub.cleanup-privacy"))
                     .font(.system(size: 12))
                     .foregroundColor(HubTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)

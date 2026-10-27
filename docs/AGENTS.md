@@ -103,6 +103,20 @@ The plugin uses the existing same-user Unix socket, one live question per bridge
 
 Completion controls use the observed source: **Open Codex** for Desktop (including the ChatGPT host), **Continue chat** for Coucou-managed chat, and **Open editor** for IDE sessions. Unknown sources show an unavailable-source note. Plugin question headers/return actions capture their own Desktop source even when another Codex session owns the shared pill.
 
+## Managed Codex plan and changes
+
+In a Coucou-created native conversation, the plan button shows Codex's plan text and
+pending, in-progress and completed steps. It shows progress only; approval cards
+continue to request permissions separately.
+
+Mac diff cards consume both completed file changes and cumulative turn snapshots.
+Repeated or corrected snapshots replace the current turn's data, preserving file
+IDs and other sessions. A later edit remains visible as another chunk until the
+next cumulative snapshot corrects the exact net counts. The file menu exposes up
+to 50 files, including renames and empty-file operations. External sessions keep
+their existing hook transport; an aggregate notification does not take ownership
+of them.
+
 ## Declared pills
 
 A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabled in **Settings → Active pills**. When a session ends for a declared pill, the pill stays visible and resets to idle instead of disappearing.

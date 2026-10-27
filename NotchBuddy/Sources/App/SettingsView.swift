@@ -40,6 +40,9 @@ struct SettingsView: View {
     #if !APPSTORE
     @ObservedObject private var codexInfo = CodexAgentsInfo.shared
     @ObservedObject private var codexChat = CodexChatService.shared
+    @AppStorage("codexTextToolsEnabled") private var codexTextEnabled = false
+    @State private var codexTextPreparing = false
+    @State private var codexTextError: String?
     @State private var showStatusLineDiff: Bool = false
     @State private var pendingStatusLineJSON: String = ""
     @State private var statusLinePendingInstall: Bool = true
@@ -1145,6 +1148,34 @@ struct SettingsView: View {
                         ProgressView().controlSize(.small)
                     }
                 }
+                if codexChat.authenticationStatus == .connected {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(String(localized: "codex.text.title")).font(.system(size: 12, weight: .semibold))
+                        Text(codexTextEnabled ? String(localized: "codex.text.enabled") : String(localized: "codex.text.disabled"))
+                            .font(.system(size: 11))
+                            .foregroundColor(codexTextEnabled ? .green : .secondary)
+                        Text(String(localized: "codex.text.setup-help"))
+                            .font(.system(size: 11)).foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            Button(codexTextEnabled ? String(localized: "codex.text.reauthorize") : String(localized: "codex.text.enable")) {
+                                codexTextPreparing = true
+                                codexTextError = nil
+                                Task {
+                                    do { try await CodexTextService.enable(timeout: 120) }
+                                    catch { if !(error is CancellationError) { codexTextError = error.localizedDescription } }
+                                    codexTextPreparing = false
+                                }
+                            }
+                            .disabled(codexTextPreparing)
+                            if codexTextEnabled || codexTextPreparing {
+                                Button(String(localized: "codex.text.disable")) { CodexTextService.disable() }
+                            }
+                            if codexTextPreparing { ProgressView().controlSize(.small) }
+                        }
+                        if let codexTextError { Text(codexTextError).font(.system(size: 11)).foregroundColor(.red) }
+                    }
+                }
                 HStack {
                     Text(state.codexProjectPath.isEmpty ? String(localized: "codex.chat.project-none") : state.codexProjectPath)
                         .font(.system(size: 11)).foregroundColor(.secondary).lineLimit(2).textSelection(.enabled)
@@ -1530,6 +1561,15 @@ struct SettingsView: View {
     @AppStorage("voicePitchFemale")    private var pitchFemale: Double = VoiceSettings.defaultPitchFemale
     @AppStorage("voicePitchMale")      private var pitchMale: Double = VoiceSettings.defaultPitchMale
     @State private var webKeySaved: Bool = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
+    private var voiceProviderReady: Bool {
+        state.chatProvider == .codex ? CodexTextService.isAvailable : webKeySaved
+    }
+    private var voiceProviderDetail: String {
+        if state.chatProvider == .codex {
+            return voiceProviderReady ? String(localized: "voice.codex-connected") : CodexTextService.unavailableMessage
+        }
+        return webKeySaved ? String(localized: "voice.setting-web-desc") : String(localized: "voice.setting-web-nokey")
+    }
     @State private var elevenKeyDraft: String = ""
     @State private var elevenKeySaved: Bool = KeychainStore.shared.get(ElevenLabsTTS.keyName) != nil
 
@@ -1544,18 +1584,16 @@ struct SettingsView: View {
         // Flow dictation: hold a key anywhere, speak, the words are pasted where you type.
         FlowSettingsBox()
 
-        // Claude is Coucou's brain: no model, language or feature switches any more,
-        // only the wake word, the Anthropic key it needs, and Coucou's voice.
+        // The Chat provider also supplies the voice brain; voice remains opt-in.
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
                 HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: webKeySaved ? "checkmark.circle.fill" : "exclamationmark.circle")
-                        .foregroundColor(webKeySaved ? .green : .orange)
-                    Text(webKeySaved ? String(localized: "voice.setting-web-desc")
-                                     : String(localized: "voice.setting-web-nokey"))
+                    Image(systemName: voiceProviderReady ? "checkmark.circle.fill" : "exclamationmark.circle")
+                        .foregroundColor(voiceProviderReady ? .green : .orange)
+                    Text(voiceProviderDetail)
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

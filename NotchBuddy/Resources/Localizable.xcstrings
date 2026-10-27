@@ -77830,6 +77830,431 @@
           }
         }
       }
+    },
+    "codex.changed-files" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changed files"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已修改的檔案"
+          }
+        }
+      }
+    },
+    "codex.no-line-changes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File operation with no line changes"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "檔案操作沒有行內容變更"
+          }
+        }
+      }
+    },
+    "codex.plan-completed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Completed"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成"
+          }
+        }
+      }
+    },
+    "codex.plan-in-progress" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In progress"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "進行中"
+          }
+        }
+      }
+    },
+    "codex.plan-pending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待處理"
+          }
+        }
+      }
+    },
+    "codex.plan-read-only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progress only. Permissions are requested separately."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅顯示進度；權限會另外詢問。"
+          }
+        }
+      }
+    },
+    "codex.turn-plan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex plan"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex 計畫"
+          }
+        }
+      }
+    },
+    "flow.codex-connect" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect your ChatGPT account in Settings → Chat to use Codex for this feature."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請到「設定 → 聊天」連結 ChatGPT 帳號，即可使用這項 Codex 功能。"
+          }
+        }
+      }
+    },
+    "flow.codex-privacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When enabled, dictated text is sent through your connected Codex account for rewriting. No Anthropic API key is used."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "啟用後，聽寫文字會透過已連結的 Codex 帳號傳送以進行改寫，不會使用 Anthropic API 金鑰。"
+          }
+        }
+      }
+    },
+    "hub.styles-sub-codex" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex cleans up what you say, in the style of the app you write in."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex 會依照目前輸入應用程式的風格，整理你說的內容。"
+          }
+        }
+      }
+    },
+    "notes.codex-privacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcripts are sent through your connected Codex account for summaries and corrections. No Anthropic API key is used."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "逐字稿會透過已連結的 Codex 帳號傳送，以產生摘要和修正內容，不會使用 Anthropic API 金鑰。"
+          }
+        }
+      }
+    },
+    "notes.engine-detail-providers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude and Codex send transcripts to their respective services. Apple Intelligence works on your Mac. Off keeps transcripts without AI summaries."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude 和 Codex 會將逐字稿傳送至各自的服務；Apple Intelligence 在 Mac 上處理。選擇關閉會保留逐字稿，但不產生 AI 摘要。"
+          }
+        }
+      }
+    },
+    "notes.engine.codex" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex (ChatGPT)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex（ChatGPT）"
+          }
+        }
+      }
+    },
+    "voice.codex-connected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice commands use your connected Codex account and Coucou’s existing actions. Speech leaves your Mac when voice commands are enabled. Web search follows Settings → Chat. No Anthropic API key is used."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語音指令會透過已連結的 Codex 帳號，使用 Coucou 既有的操作功能。啟用語音指令後，語音文字會傳送至服務；網路搜尋依「設定 → 聊天」的選項執行，不會使用 Anthropic API 金鑰。"
+          }
+        }
+      }
+    },
+    "Codex text tools require an accessible native ChatGPT sign-in, Keychain access, and macOS sandbox support. Sign in with the Codex CLI, then try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex text tools require an accessible native ChatGPT sign-in, Keychain access, and macOS sandbox support. Sign in with the Codex CLI, then try again."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex 文字功能需要可存取的原生 ChatGPT 登入、鑰匙圈存取權限及 macOS 沙盒支援。請先使用 Codex CLI 登入，再重試。"
+          }
+        }
+      }
+    },
+    "Update the Codex CLI to use isolated text tools." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update the Codex CLI to use isolated text tools."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請更新 Codex CLI，即可使用隔離的文字功能。"
+          }
+        }
+      }
+    },
+    "Refresh your ChatGPT sign-in in Codex, then try again. Coucou cannot change the native credentials." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh your ChatGPT sign-in in Codex, then try again. Coucou cannot change the native credentials."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在 Codex 中更新 ChatGPT 登入，再重試。Coucou 不會更改原生登入憑證。"
+          }
+        }
+      }
+    },
+    "codex.text.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow, notes and voice"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow、筆記與語音"
+          }
+        }
+      }
+    },
+    "codex.text.enabled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Background Codex features are enabled."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已啟用 Codex 背景功能。"
+          }
+        }
+      }
+    },
+    "codex.text.disabled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Background Codex features are not enabled."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未啟用 Codex 背景功能。"
+          }
+        }
+      }
+    },
+    "codex.text.enable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable background features"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "啟用背景功能"
+          }
+        }
+      }
+    },
+    "codex.text.reauthorize" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reauthorize background features"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新授權背景功能"
+          }
+        }
+      }
+    },
+    "codex.text.disable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disable background features"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停用背景功能"
+          }
+        }
+      }
+    },
+    "codex.text.setup-help" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use your ChatGPT sign-in for Flow, notes and voice. During setup, macOS may ask you to allow Coucou or Codex to access its Keychain item. Choose Always Allow for the Codex Auth or Coucou temporary Codex access item. No Anthropic API key is needed."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 ChatGPT 登入來處理 Flow、筆記和語音。設定時，macOS 可能要求允許 Coucou 或 Codex 存取鑰匙圈項目；針對 Codex Auth 或 Coucou temporary Codex access 項目，請選擇「永遠允許」。不需要 Anthropic API 金鑰。"
+          }
+        }
+      }
+    },
+    "codex.text.enable-required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable background Codex features in Settings → Chat to use Flow, notes and voice."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請到「設定 → 聊天」啟用 Codex 背景功能，即可使用 Flow、筆記和語音。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

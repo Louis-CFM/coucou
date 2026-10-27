@@ -124,6 +124,9 @@ final class AppState: ObservableObject {
     @Published var chatProvider: ChatProvider = .anthropic {
         didSet {
             UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider")
+            #if !APPSTORE
+            if oldValue != chatProvider { ClaudeVoiceBrain.shared.reset() }
+            #endif
             if oldValue != chatProvider, oldValue == .codex || chatProvider == .codex {
                 #if !APPSTORE
                 CodexChatService.shared.reset()
@@ -492,10 +495,53 @@ final class AppState: ObservableObject {
         return d.id
     }
 
+    #if !APPSTORE
+    @Published var codexTurnPlan: CodexTurnPlan? = nil
+    private var codexDiffTurn = ""
+    private var codexDiffIDs: Set<Int> = []
+
+    /// Replace only this native turn's entries; hooks and other turns retain their own IDs.
+    @discardableResult
+    func replaceCodexSessionDiffs(_ diffs: [FileDiff], threadId: String, turnId: String,
+                                 moves: [String: String]) -> Bool {
+        guard let index = tasks.firstIndex(where: {
+            $0.id == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId
+        }) else { return false }
+        let identity = "\(threadId)/\(turnId)"
+        if codexDiffTurn != identity { codexDiffTurn = identity; codexDiffIDs = [] }
+        let old = sessionDiffs["agent_codex"] ?? []
+        let owned = old.filter { codexDiffIDs.contains($0.id) }
+        let replacedIDs = codexDiffIDs
+        var next: [FileDiff] = []
+        for var diff in diffs.prefix(50) {
+            if let previous = owned.first(where: { $0.path == diff.path || moves[$0.path] == diff.path }) {
+                diff.id = previous.id
+            } else {
+                diff.id = nextDiffId; nextDiffId += 1
+            }
+            next.append(diff)
+        }
+        codexDiffIDs = Set(next.map(\.id))
+        sessionDiffs["agent_codex"] = Array((old.filter { !replacedIDs.contains($0.id) } + next).suffix(50))
+        let retained = tasks[index].steps.filter { step in
+            step.parseDiffStep().map { !replacedIDs.contains($0.diffId) } ?? true
+        }
+        tasks[index].steps = Array((retained + next.map {
+            String.makeDiffStep(filename: $0.name, added: $0.added, removed: $0.removed, diffId: $0.id)
+        }).suffix(20))
+        tasks[index].stepIndex = max(0, tasks[index].steps.count - 1)
+        resetSessionDiffTimer(for: "agent_codex")
+        return true
+    }
+    #endif
+
     func clearSessionDiffs(for pillId: String) {
         sessionDiffTimers[pillId]?.cancel()
         sessionDiffTimers.removeValue(forKey: pillId)
         sessionDiffs.removeValue(forKey: pillId)
+        #if !APPSTORE
+        if pillId == "agent_codex" { codexDiffIDs = []; codexDiffTurn = "" }
+        #endif
         // nextDiffId intentionally NOT reset — ids remain unique across sessions
     }
 
