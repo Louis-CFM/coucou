@@ -22,6 +22,7 @@ enum KoreanSpeechLevelTests {
         check("other languages are left alone", rules.allSatisfy { $0.contains("other languages") })
         check("each level gives an example", rules.allSatisfy { $0.contains("Example:") && $0.contains("→") })
         check("the pronoun is handled, not only the ending", rules.allSatisfy { $0.contains("너") })
+        check("the sentence type is kept", rules.allSatisfy { $0.contains("suggestion") })
         check("stored as a stable raw value", KoreanSpeechLevel(rawValue: "haeyo") == .haeyo
               && KoreanSpeechLevel(rawValue: "") == nil)
         print(failures == 0 ? "\nAll good.\n" : "\n\(failures) failed.\n")

@@ -35,6 +35,7 @@ enum KoreanSpeechLevel: String, CaseIterable, Identifiable, Codable, Sendable {
         return "When the result is in Korean, write every sentence in \(level). "
             + "Rewrite each sentence the way a native speaker would say it at that level, not by only changing the verb ending: "
             + "also adjust the words that go with it: drop or replace 너 and 니가 when the level is polite or formal, use the honorific -시- for what the listener does, and prefer the fuller words over the clipped spoken ones (뭐 → 어떤 걸 or 무엇을, 걔 → 그 사람); in the casual level use 너 and the short spoken forms, and no honorific. "
+            + "Keep the type of each sentence: a question stays a question, a statement a statement, a request a request, and a suggestion a suggestion (저녁 먹자 → 저녁 먹어요 or 저녁 먹을까요, never a question about the listener's will like 저녁 먹을래요). "
             + "Do not change the meaning or anything else, and leave text in other languages as it is."
     }
 }
