@@ -18,6 +18,7 @@ import { startClaudeDesktopPlan } from "./views/usage";
 import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
 import { WhatsNew } from "./whats-new/controller";
+import type { ClipItem } from "./core/clipboard";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
@@ -71,6 +72,17 @@ async function main() {
   await onEvent<null>("capture-used", () => island.onCaptureUsed());
   await onEvent<boolean>("browser-foreground", (on) => island.setBrowserForeground(on));
   await onEvent<string | null>("front-exe", (exe) => { State.frontExe = exe; });
+  // The notch's Clipboard: what was copied, newest first (clipboard.rs).
+  await onEvent<ClipItem[]>("clipboard", (items) => {
+    State.clipboard = items;
+    State.notify();
+  });
+  void Bridge.clipboardItems().then((items) => {
+    if (items) {
+      State.clipboard = items;
+      State.notify();
+    }
+  });
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {

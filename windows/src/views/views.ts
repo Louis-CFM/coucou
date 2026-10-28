@@ -29,6 +29,7 @@ import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { buildMail } from "./mail";
+import { buildClipboard } from "./clipboard";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
@@ -126,6 +127,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  const tabClip = h("button", { class: "tab", title: tl("Clipboard"), onclick: () => go("clipboard") }, svg(ICONS.clipboard, 13, { stroke: 2 }));
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
@@ -161,7 +163,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabClip),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, minimizeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -173,6 +175,9 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
+      tabClip.classList.toggle("on", v === "clipboard");
+      // Off in Settings: no tab.
+      tabClip.style.display = State.settings.clipboardHistory === false ? "none" : "";
       gearBtn.classList.toggle("on", v === "settings");
       const gear = v === "settings" ? ICONS.gearFill : ICONS.gear;
       if (gear !== gearIcon) {
@@ -934,6 +939,7 @@ export function buildViews(
   map.set("capture", buildCapture(actions));
   map.set("update", buildUpdate());
   map.set("whatsNew", buildWhatsNew());
+  map.set("clipboard", buildClipboard());
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildMail(actions));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

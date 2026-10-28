@@ -58,6 +58,8 @@ export class Island {
   private root: HTMLElement;
   private islandEl!: HTMLElement;
   private clipEl!: HTMLElement;
+  /** The neon that runs around the edge when a notification comes (neon()). */
+  private neonEl = h("div", { id: "neon" }, h("div", { class: "ring" }));
   private contentEl!: HTMLElement;
   private viewsEl!: HTMLElement;
   private botCanvas!: HTMLCanvasElement;
@@ -334,6 +336,7 @@ export class Island {
       this.miniGrid,
       this.clockEl,
       this.countdown,
+      this.neonEl,
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -678,6 +681,21 @@ export class Island {
   emote(name: BotEmoteName) {
     this.engine.triggerEmote(name);
     this.ensureRunning();
+  }
+
+  /**
+   * A notification came: a neon light runs twice around the island's edge in its
+   * colour (NEON), then fades. Off in Settings, nothing; the hidden island
+   * neither, as a ring around its 6 px strip would only flash at the top of
+   * the screen.
+   */
+  neon(color: string) {
+    if (State.settings.neonNotifications === false || State.mode === "hidden") return;
+    const el = this.neonEl;
+    el.style.setProperty("--neon", color);
+    el.classList.remove("run");
+    void el.offsetWidth;
+    el.classList.add("run");
   }
 
   /** Ctrl+P: keep the open island from folding away, or let it fold again. */

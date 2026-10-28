@@ -3902,3 +3902,435 @@ html[data-dir="rtl"] #views .mail-stack {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
+/* ── The notch's Clipboard (views/clipboard.ts) ─────────────────────────────
+   Mochi on the left like the other cards; a toolbar, then a row of cards that
+   scrolls sideways. Each kind has its accent: links blue, code violet, files
+   amber, images green, colours their own colour. */
+
+.clip-cardbox {
+  background:
+    radial-gradient(420px 160px at 0% 0%, rgba(99, 102, 241, 0.10), transparent 70%),
+    radial-gradient(360px 160px at 100% 100%, rgba(34, 211, 238, 0.07), transparent 70%),
+    var(--card);
+}
+
+.clip-root {
+  position: absolute;
+  inset: 0;
+  padding: 10px 12px 11px 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clip-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  flex: none;
+}
+
+.clip-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 13px var(--font);
+  color: var(--ink);
+}
+
+.clip-count {
+  font: 600 10.5px var(--font);
+  color: var(--dim);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.clip-chips {
+  display: flex;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.clip-chip,
+.clip-clear {
+  font: 500 11px var(--font);
+  color: var(--dim-2);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  padding: 3px 9px;
+  cursor: default;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.clip-chip:hover,
+.clip-clear:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.clip-chip.on {
+  color: #0b0c0e;
+  background: var(--ink);
+  border-color: transparent;
+}
+
+.clip-clear.off {
+  visibility: hidden;
+}
+
+.clip-strip {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  padding: 3px 2px 2px;
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
+}
+
+.clip-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.clip-strip.off {
+  display: none;
+}
+
+.clip-empty {
+  display: none;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--dim-3);
+  font: 400 12px var(--font);
+}
+
+.clip-empty.on {
+  display: flex;
+}
+
+.clip-card {
+  --accent: #e5e7eb;
+  position: relative;
+  flex: none;
+  width: 158px;
+  border-radius: 14px;
+  padding: 8px 10px 9px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  cursor: default;
+  transition: transform 0.16s cubic-bezier(0.3, 1.3, 0.5, 1), border-color 0.16s, box-shadow 0.16s;
+}
+
+.clip-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.55;
+}
+
+.clip-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.clip-card.look-link { --accent: #60a5fa; }
+.clip-card.look-code { --accent: #a78bfa; }
+.clip-card.look-files { --accent: #fbbf24; }
+.clip-card.look-image { --accent: #34d399; }
+.clip-card.look-color { --accent: #f472b6; }
+.clip-card.pinned { border-color: rgba(245, 165, 36, 0.35); }
+
+.clip-top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 500 10px var(--font);
+  color: var(--dim-3);
+  min-width: 0;
+}
+
+.clip-kind {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 6px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  flex: none;
+}
+
+.clip-app {
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.clip-time {
+  margin-left: auto;
+  white-space: nowrap;
+  flex: none;
+}
+
+.clip-pinmark {
+  color: var(--amber);
+  display: inline-grid;
+  flex: none;
+}
+
+.clip-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.clip-text {
+  font: 400 11.5px/1.35 var(--font);
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.clip-code {
+  margin: 0;
+  font: 400 10px/1.4 var(--mono);
+  color: #d8ccff;
+  white-space: pre;
+  overflow: hidden;
+  max-height: 100%;
+  mask-image: linear-gradient(180deg, #000 70%, transparent);
+}
+
+.clip-host {
+  font: 600 14px var(--font);
+  color: #bfdbfe;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clip-url {
+  margin-top: 3px;
+  font: 400 10px/1.35 var(--font);
+  color: var(--dim);
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.clip-colorbody {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.clip-swatch {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  flex: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 4px 14px -4px rgba(0, 0, 0, 0.6);
+}
+
+.clip-hex {
+  font: 600 12px var(--mono);
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.clip-imgbody {
+  margin: 0 -4px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.clip-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 9px;
+}
+
+.clip-filesbody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  color: var(--accent);
+}
+
+.clip-fname {
+  font: 500 11.5px var(--font);
+  color: var(--ink-2);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clip-fmore {
+  font: 400 10px var(--font);
+  color: var(--dim);
+}
+
+/* The buttons slide up on hover. */
+.clip-acts {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.14s, transform 0.14s;
+}
+
+.clip-card:hover .clip-acts {
+  opacity: 1;
+  transform: none;
+}
+
+.clip-act {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(20, 21, 24, 0.92);
+  color: #c7cad0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.09);
+  cursor: default;
+  transition: background 0.12s, color 0.12s;
+}
+
+.clip-act:hover {
+  background: #2a2c31;
+  color: var(--ink);
+}
+
+.clip-act.primary {
+  background: var(--ink);
+  color: #0b0c0e;
+}
+
+.clip-act.on {
+  color: var(--amber);
+}
+
+/* "✓ Copied" for a moment after a click. */
+.clip-done {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: 600 12px var(--font);
+  color: #0b0c0e;
+  background: color-mix(in srgb, var(--green-2) 92%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.clip-card.done .clip-done {
+  animation: clip-done 1.1s ease-out;
+}
+
+@keyframes clip-done {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Neon around the island's edge when a notification comes (Island.neon) ──
+   A bright head with a tail runs twice around the edge in the notification's
+   colour, then fades. The ring is masked to the border; its parent's
+   drop-shadow makes it glow. */
+
+@property --neon-a {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+#neon {
+  --neon: #60a5fa;
+  position: absolute;
+  inset: -2px;
+  top: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  filter: drop-shadow(0 0 3px var(--neon)) drop-shadow(0 0 8px var(--neon)) drop-shadow(0 0 16px var(--neon));
+}
+
+#neon .ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2.5px;
+  background: conic-gradient(
+    from var(--neon-a),
+    transparent 0deg,
+    transparent 200deg,
+    color-mix(in srgb, var(--neon) 35%, transparent) 280deg,
+    var(--neon) 330deg,
+    #fff 352deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+#neon.run {
+  animation: neon-run 2.6s cubic-bezier(0.45, 0.05, 0.35, 1) both;
+}
+
+@keyframes neon-run {
+  0% { --neon-a: 0deg; opacity: 0; }
+  10% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { --neon-a: 720deg; opacity: 0; }
+}
+
+/* Reduce motion (Windows' setting): the edge glows once instead of running. */
+@media (prefers-reduced-motion: reduce) {
+  #neon .ring {
+    background: var(--neon);
+  }
+  #neon.run {
+    animation: neon-glow 1.8s ease-in-out both;
+  }
+  @keyframes neon-glow {
+    0%, 100% { opacity: 0; }
+    35%, 65% { opacity: 0.8; }
+  }
+}

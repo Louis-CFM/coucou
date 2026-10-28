@@ -300,6 +300,21 @@ pub fn paste_for_dictation(app: &AppHandle, front_app: Option<&str>) -> bool {
     pasted
 }
 
+/// The image on the clipboard, as PNG (the notch's Clipboard keeps a copy).
+pub(crate) fn clipboard_image() -> Option<Vec<u8>> {
+    os::clipboard_png()
+}
+
+/// An image back on the clipboard, for good (clipboard.rs).
+pub(crate) fn set_clipboard_image(png: &[u8]) -> bool {
+    os::set_clipboard_png(png, false)
+}
+
+/// Ctrl+V in the app in front.
+pub(crate) fn send_ctrl_v() -> bool {
+    os::send_paste_image(false)
+}
+
 // ── Windows: clipboard images, keys, windows ──────────────────────────────────
 
 #[cfg(windows)]

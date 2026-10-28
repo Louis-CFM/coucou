@@ -10,6 +10,7 @@ import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { WhatsAppPrefs, WhatsAppState } from "./whatsapp";
 import type { UpdateStatus } from "./update";
+import type { ClipItem } from "./clipboard";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -396,6 +397,18 @@ export const Bridge = {
   vitalsSetActive: (on: boolean) => call<void>("vitals_set_active", { on }),
   // Screen capture for Claude (capture.rs).
   captureBegin: () => call<void>("capture_begin"),
+
+  // ── The notch's Clipboard (src-tauri/src/clipboard.rs) ────────────────────
+  clipboardItems: () => call<ClipItem[]>("clipboard_items"),
+  /** An image item as a data URL, for its card. */
+  clipboardImage: (id: number) => call<string | null>("clipboard_image", { id }),
+  clipboardCopy: (id: number) => call<boolean>("clipboard_copy", { id }),
+  /** Copies it, then Ctrl+V in the app in front. */
+  clipboardPaste: (id: number) => call<boolean>("clipboard_paste", { id }),
+  clipboardPin: (id: number, pinned: boolean) => call<boolean>("clipboard_pin", { id, pinned }),
+  clipboardDelete: (id: number) => call<void>("clipboard_delete", { id }),
+  /** Everything but what is pinned. */
+  clipboardClear: () => call<void>("clipboard_clear"),
   capturePaste: () => call<boolean>("capture_paste"),
   captureCopy: () => call<boolean>("capture_copy"),
   captureOnIsland: (on: boolean) => call<void>("capture_on_island", { on }),

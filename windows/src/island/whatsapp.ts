@@ -8,6 +8,7 @@ import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { WHATSAPP_ID, WhatsApp, type WhatsAppState } from "../core/whatsapp";
+import { NEON } from "../core/layout";
 
 export interface WhatsAppHost {
   /** The compact island, by the island's usual rules. */
@@ -15,6 +16,8 @@ export interface WhatsAppHost {
   /** The island open on a view, whatever is in front (a message counts as important). */
   alert(view: "overview"): void;
   emote(name: "happy"): void;
+  /** The neon around the island's edge (Island.neon); a host without an edge has none. */
+  neon?(color: string): void;
 }
 
 let quietTimer: number | null = null;
@@ -77,6 +80,7 @@ function announce(island: WhatsAppHost, name: string, chat: string, react: boole
     island.emote("happy");
     Sound.play("pop");
     if (!shown) island.reveal();
+    island.neon?.(NEON.message);
   }
   if (quietTimer != null) window.clearTimeout(quietTimer);
   quietTimer = window.setTimeout(() => {

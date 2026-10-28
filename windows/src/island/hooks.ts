@@ -17,6 +17,7 @@ import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
 import { recordTestRun } from "./tests";
 import { decideLoop, observeLoop, type LoopDecision } from "./loop";
+import { NEON } from "../core/layout";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -475,6 +476,7 @@ function handleHook(island: Island, payload: HookPayload) {
         State.updateTask(agentId, "question");
         State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
         Sound.play("question");
+        island.neon?.(NEON.question);
         surface("overview", true);
       } else {
         // Already at work (thinking or on an earlier tool): the island it showed may
@@ -548,7 +550,10 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       // In front of the session's own window: only the badge (Mac #9e95732).
       const quiet = hostInFront(agentId, payload);
-      if (!quiet) Sound.play("finish");
+      if (!quiet) {
+        Sound.play("finish");
+        island.neon?.(NEON.finished);
+      }
       // A card waiting for an answer is never covered by another alert.
       if (!quiet && !State.pendingApproval && (focused || borrowFocusForAlert(agentId, island.browserFront))) {
         surface("finished", true);
@@ -580,7 +585,10 @@ function handleHook(island: Island, payload: HookPayload) {
       supersedeStop();
       State.updateTask(agentId, "error");
       const quietError = hostInFront(agentId, payload);
-      if (!quietError) Sound.play("error");
+      if (!quietError) {
+        Sound.play("error");
+        island.neon?.(NEON.error);
+      }
       if (!quietError && !State.pendingApproval && (focused || borrowFocusForAlert(agentId, island.browserFront))) {
         surface("error", true);
       } else State.setPillBadge(agentId, "error");
@@ -653,6 +661,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // Any agent's card (Claude Code, Codex, Copilot CLI, Muse Code) comes up
       // the same way: beginApproval brought its pill to the front.
       island.alert(view);
+      island.neon?.(view === "question" ? NEON.question : NEON.approval);
       // Coucou answers within 108 s or not at all; after that the terminal has
       // taken over and the card would be lying.
       pendingTimeout = window.setTimeout(() => {

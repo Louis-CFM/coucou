@@ -9,6 +9,7 @@ import {
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
+import type { ClipItem } from "./clipboard";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
@@ -107,6 +108,10 @@ export interface Settings {
   mochiFeelsComputer: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
+  /** The notch's Clipboard tab keeps the last things copied, in memory only. On by default. */
+  clipboardHistory: boolean;
+  /** A neon light runs around the island's edge when a notification comes. On by default. */
+  neonNotifications: boolean;
   /** Another pill's finish or error opens the island for a moment (Mac #683). */
   alertsFromAllPills: boolean;
   /** Double-check unclear test results: Laya here, Jev in the cloud. */
@@ -184,6 +189,8 @@ export const DEFAULT_SETTINGS: Settings = {
   openOnHover: false,
   mochiFeelsComputer: true,
   showClock: false,
+  clipboardHistory: true,
+  neonNotifications: true,
   alertsFromAllPills: false,
   testChecker: "off",
   layaUrl: "",
@@ -278,6 +285,8 @@ class AppState {
 
   /** The screen capture on the island (capture.rs), until it is used or dismissed. */
   capture: { path: string; dataUrl: string } | null = null;
+  /** The Clipboard tab's items, newest first (clipboard.rs, the "clipboard" event). */
+  clipboard: ClipItem[] = [];
 
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;

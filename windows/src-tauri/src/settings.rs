@@ -106,6 +106,11 @@ pub struct Settings {
     pub mochi_feels_computer: bool,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// The notch's Clipboard tab keeps the last things copied (clipboard.rs), in
+    /// memory only. On by default.
+    pub clipboard_history: bool,
+    /// A neon light runs around the island's edge when a notification comes. On by default.
+    pub neon_notifications: bool,
     /// Another pill's finish or error opens the island for a moment (Mac #683). Off by default.
     pub alerts_from_all_pills: bool,
     /// Double-check unclear test results: "off", "local" (Laya) or "cloud" (Jev).
@@ -184,6 +189,8 @@ impl Default for Settings {
             phone_relay_url: String::new(),
             mochi_feels_computer: true,
             show_clock: false,
+            clipboard_history: true,
+            neon_notifications: true,
             alerts_from_all_pills: false,
             test_checker: "off".into(),
             laya_url: String::new(),
@@ -479,6 +486,8 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "mochiFeelsComputer": false,
   "showClock": true,
+  "clipboardHistory": false,
+  "neonNotifications": false,
   "alertsFromAllPills": true,
   "testChecker": "local",
   "layaUrl": "http://127.0.0.1:8001",
@@ -1003,6 +1012,8 @@ mod tests {
                 "phoneRelayUrl",
                 "mochiFeelsComputer",
                 "showClock",
+                "clipboardHistory",
+                "neonNotifications",
                 "alertsFromAllPills",
                 "testChecker",
                 "layaUrl",

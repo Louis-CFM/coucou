@@ -393,6 +393,7 @@ const CHECKED = ["src/views", "src/settings", "src/island", "src/upload", "src/r
 /** Literals that are a translated word but are values in the code, not text on screen. */
 const NOT_TEXT = new Set([
   "file", // the kind of a chat context: { kind: "file" }
+  "files", // a Clipboard item's kind and filter (core/clipboard.ts)
   "finished", // a task state and a pill badge
   "failed", // a test verdict state (core/tests.ts), like "finished"
   "running", // a step's state in the fix loop (island/loop.ts)

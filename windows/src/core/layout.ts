@@ -26,7 +26,8 @@ export type IslandViewName =
   | "wardrobe"
   | "capture"
   | "update"
-  | "whatsNew";
+  | "whatsNew"
+  | "clipboard";
 
 export type BotStateName =
   | "idle"
@@ -107,6 +108,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   // After an update: what the new version brings, then "Your Coucou so far".
   // Taller than a card, for two rows of items with their line.
   whatsNew: { height: 222, botX: 62, botY: null, botDiameter: 58, agentMode: "none" },
+  // The Clipboard tab: Mochi small on the left, a toolbar and a row of cards.
+  clipboard: { height: 214, botX: 48, botY: 124, botDiameter: 40, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually
@@ -188,6 +191,16 @@ export function botPosition(
     }
   }
 }
+
+/** The neon that runs around the island's edge when a notification comes, by kind. */
+export const NEON = {
+  approval: "#F5A524",
+  question: "#A78BFA",
+  error: "#F4505E",
+  finished: "#34D399",
+  message: "#25D366",
+  update: "#60A5FA",
+} as const;
 
 export function botGlowColor(s: BotStateName): string {
   switch (s) {

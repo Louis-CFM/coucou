@@ -4,6 +4,7 @@ mod agent_hooks;
 mod agents;
 mod capture;
 mod chat;
+mod clipboard;
 mod claude;
 mod claude_account;
 mod claude_plan;
@@ -980,6 +981,13 @@ pub fn run() {
             tests_check::laya_stop,
             tests_check::laya_remove,
             vitals::vitals_set_active,
+            clipboard::clipboard_items,
+            clipboard::clipboard_image,
+            clipboard::clipboard_copy,
+            clipboard::clipboard_paste,
+            clipboard::clipboard_pin,
+            clipboard::clipboard_delete,
+            clipboard::clipboard_clear,
             capture::capture_begin,
             capture::capture_paste,
             capture::capture_copy,
@@ -1093,6 +1101,8 @@ pub fn run() {
             whatsapp::start(&handle);
             // Live plan usage from claude.ai, once you connected your account.
             claude_account::start(&handle);
+            // The notch's Clipboard: the last things copied, in memory only.
+            clipboard::start(&handle);
             // The relay's fix-loop marker. Laya waits for an agent session (tests_check.rs).
             tests_check::launched(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);
