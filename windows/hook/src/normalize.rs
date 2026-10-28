@@ -123,9 +123,21 @@ pub fn fields(map: &mut Map<String, Value>, env: &dyn Fn(&str) -> Option<String>
 
 /// The event once the payload is known: a stop that reports an error (Cursor's
 /// `status: "error"`) is a StopFailure.
+/// Antigravity tool calls requiring permission or user response (run_command,
+/// ask_question) are refined to PermissionRequest so Coucou's card can handle them.
 pub fn refine(event: &str, map: &Map<String, Value>) -> String {
     if event == "Stop" && map.get("status").and_then(Value::as_str) == Some("error") {
         return "StopFailure".into();
+    }
+    if event == "PreToolUse" {
+        let agent = map.get("coucou_agent").and_then(Value::as_str).unwrap_or_default();
+        if agent.eq_ignore_ascii_case("antigravity") {
+            let tool = map.get("tool_name").and_then(Value::as_str).unwrap_or_default();
+            let base = tool.rsplit(':').next().unwrap_or(tool);
+            if matches!(base, "run_command" | "ask_question") {
+                return "PermissionRequest".into();
+            }
+        }
     }
     event.to_string()
 }
@@ -263,5 +275,17 @@ mod tests {
             assert_eq!(refine("Stop", &obj(json!({ "status": status }))), "Stop");
         }
         assert_eq!(refine("PreToolUse", &obj(json!({ "status": "error" }))), "PreToolUse");
+    }
+
+    #[test]
+    fn antigravity_approval_tools_are_refined_to_permission_request() {
+        for tool in ["run_command", "ask_question", "default_api:run_command", "default_api:ask_question"] {
+            let m = obj(json!({ "coucou_agent": "antigravity", "tool_name": tool }));
+            assert_eq!(refine("PreToolUse", &m), "PermissionRequest", "failed for {tool}");
+        }
+        let m = obj(json!({ "coucou_agent": "antigravity", "tool_name": "view_file" }));
+        assert_eq!(refine("PreToolUse", &m), "PreToolUse");
+        let m = obj(json!({ "coucou_agent": "claude", "tool_name": "run_command" }));
+        assert_eq!(refine("PreToolUse", &m), "PreToolUse");
     }
 }

@@ -224,6 +224,12 @@ export class Island {
         if (!req) return;
         Sound.play("approve");
         void Bridge.approvalAnswer(req.requestId, answers);
+        const text = Object.values(answers)
+          .map((a) => (Array.isArray(a) ? a.join(", ") : String(a)))
+          .join("; ");
+        if (text && typeof navigator !== "undefined" && navigator.clipboard) {
+          void navigator.clipboard.writeText(text).catch(() => {});
+        }
         this.closeApproval();
       },
       answerInTerminal: () => {

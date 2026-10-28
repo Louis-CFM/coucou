@@ -187,9 +187,17 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     add_terminal_context(map, env);
 
-    // Kept whole: what goes back to Claude Code must be its own input, not the
+    // Kept whole: what goes back to Claude Code / Antigravity must be its own input, not the
     // shortened copy the island is shown.
-    let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))
+    let is_question = map
+        .get("tool_name")
+        .and_then(Value::as_str)
+        .map(|s| {
+            let base = s.rsplit(':').next().unwrap_or(s);
+            base == "AskUserQuestion" || base == "ask_question"
+        })
+        .unwrap_or(false);
+    let question = is_question
         .then(|| map.get("tool_input").cloned())
         .flatten();
 

@@ -245,7 +245,7 @@ test("an agent's pill goes away when its session ends, or 5.2 s after it stops",
 });
 
 test("an agent's permission request is declined, never shown as Claude Code's", () => {
-  for (const agent of ["gemini", "antigravity", "cursor", "opencode", "amp", "hermes", "my-tool"]) {
+  for (const agent of ["gemini", "cursor", "opencode", "amp", "hermes", "my-tool"]) {
     calls.length = 0;
     hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: agent, tool_name: "Bash" });
     assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], agent);
@@ -254,8 +254,8 @@ test("an agent's permission request is declined, never shown as Claude Code's", 
   }
 });
 
-test("Codex, Copilot CLI and Muse Code get the card on their own pill", () => {
-  for (const agent of ["codex", "copilot", "muse"]) {
+test("Codex, Copilot CLI, Muse Code and Antigravity get the card on their own pill", () => {
+  for (const agent of ["codex", "copilot", "muse", "antigravity"]) {
     State.pendingApproval = null;
     State.focusId = CLAUDE;
     calls.length = 0;
@@ -304,14 +304,29 @@ test("an agent's card comes up at once when its pill has the focus", () => {
   assert.deepEqual(asked, ["alert:approval"]);
 });
 
-test("only Claude Code's questions become a question card", () => {
+test("Antigravity's ask_question becomes a question card with string options", () => {
   hook({
-    hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", coucou_agent: "codex",
-    tool_name: "AskUserQuestion",
-    tool_input: { questions: [{ question: "Which?", options: [{ label: "A" }, { label: "B" }] }] },
+    hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", coucou_agent: "antigravity",
+    tool_name: "ask_question",
+    tool_input: { questions: [{ question: "Pilih?", options: ["Opsi A", "Opsi B"], is_multi_select: false }] },
+  });
+  assert.deepEqual(State.pendingApproval.questions, [
+    { question: "Pilih?", options: [{ label: "Opsi A", description: "" }, { label: "Opsi B", description: "" }], multiSelect: false },
+  ]);
+  assert.equal(task("agent_antigravity").state, "question");
+  assert.deepEqual(asked, ["alert:question"]);
+});
+
+test("Antigravity's run_command becomes an approval card", () => {
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r2", session_id: "s1", coucou_agent: "antigravity",
+    tool_name: "run_command",
+    tool_input: { command: "cargo test" },
   });
   assert.equal(State.pendingApproval.questions, undefined);
-  assert.equal(task("agent_codex").state, "approval");
+  assert.equal(State.pendingApproval.command, "run_command · cargo test");
+  assert.equal(task("agent_antigravity").state, "approval");
+  assert.deepEqual(asked, ["alert:approval"]);
 });
 
 test("the end of the turn takes a waiting card down and releases the relay", () => {

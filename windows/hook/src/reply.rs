@@ -9,10 +9,10 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
+/// (no `--agent`), Codex, Copilot CLI, Muse Code and Antigravity. Any decision for another
 /// agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "antigravity")
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -47,6 +47,24 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
                 Some(word) => Some(json!({ "permissionDecision": word }).to_string()),
                 None if agent == "copilot" => Some(json!({ "permissionDecision": "ask" }).to_string()),
                 None => None,
+            }
+        }
+        "antigravity" => {
+            let word = match decision.map(str::trim) {
+                Some("allow" | "always") => Some("allow"),
+                Some("deny") => Some("deny"),
+                Some(d) if d.starts_with('{') => {
+                    let has_answers = serde_json::from_str::<Value>(d)
+                        .ok()
+                        .and_then(|v| v.get("answers").cloned())
+                        .is_some_and(|a| a.is_object());
+                    if has_answers { Some("allow") } else { None }
+                }
+                _ => None,
+            };
+            match word {
+                Some(word) => Some(json!({ "decision": word }).to_string()),
+                None => Some(json!({ "decision": "ask" }).to_string()),
             }
         }
         // Claude Code and Codex share the documented hookSpecificOutput. Only
@@ -201,8 +219,12 @@ mod tests {
         // Copilot is fail-closed: no decision is an explicit "ask", never silence.
         assert_eq!(stdout("copilot", "PermissionRequest", None, None).unwrap(), r#"{"permissionDecision":"ask"}"#);
         assert_eq!(stdout("muse", "PermissionRequest", None, None), None);
-        // Antigravity needs a decision on PreToolUse: "ask" leaves it to Antigravity's own prompt;
-        // other lifecycle events receive "{}".
+        // Antigravity handles PermissionRequest when forwarded, and PreToolUse falls back to "ask"
+        assert_eq!(stdout("antigravity", "PermissionRequest", Some("allow"), None).unwrap(), r#"{"decision":"allow"}"#);
+        assert_eq!(stdout("antigravity", "PermissionRequest", Some("always"), None).unwrap(), r#"{"decision":"allow"}"#);
+        assert_eq!(stdout("antigravity", "PermissionRequest", Some(r#"{"answers":{"Q":"A"}}"#), None).unwrap(), r#"{"decision":"allow"}"#);
+        assert_eq!(stdout("antigravity", "PermissionRequest", Some("deny"), None).unwrap(), r#"{"decision":"deny"}"#);
+        assert_eq!(stdout("antigravity", "PermissionRequest", None, None).unwrap(), r#"{"decision":"ask"}"#);
         assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"ask"}"#);
         for event in ["PostToolUse", "UserPromptSubmit", "Stop"] {
             assert_eq!(stdout("antigravity", event, None, None).unwrap(), "{}");

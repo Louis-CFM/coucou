@@ -267,7 +267,7 @@ impl Agent {
     /// Whether the island can answer this agent's permission requests. Must
     /// match `takes_decisions` in the relay (hook/src/reply.rs).
     fn approvals(self) -> bool {
-        matches!(self, Agent::Codex | Agent::Copilot | Agent::Muse)
+        matches!(self, Agent::Codex | Agent::Copilot | Agent::Muse | Agent::Antigravity)
     }
 }
 

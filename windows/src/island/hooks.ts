@@ -170,24 +170,41 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
   return tool;
 }
 
+function isQuestionTool(tool: string): boolean {
+  const base = tool.includes(":") ? tool.slice(tool.lastIndexOf(":") + 1) : tool;
+  return base === "AskUserQuestion" || base === "ask_question";
+}
+
 /**
- * The questions of an AskUserQuestion call, if the island can show all of them
- * as options to pick from. Anything it cannot is left to the terminal.
+ * The questions of an AskUserQuestion or ask_question call, if the island can
+ * show all of them as options to pick from. Anything it cannot is left to the
+ * terminal or IDE.
  */
 function askedQuestions(tool: string, input: Record<string, unknown>): AskedQuestion[] | null {
-  if (tool !== "AskUserQuestion" || !Array.isArray(input.questions)) return null;
+  if (!isQuestionTool(tool) || !Array.isArray(input.questions)) return null;
   const out: AskedQuestion[] = [];
   for (const raw of input.questions as Record<string, unknown>[]) {
     const question = typeof raw?.question === "string" ? raw.question : "";
-    const options = (Array.isArray(raw?.options) ? (raw.options as Record<string, unknown>[]) : [])
-      .filter((o) => typeof o?.label === "string" && o.label)
-      .map((o) => ({
-        label: o.label as string,
-        description: typeof o.description === "string" ? o.description : "",
-      }));
+    const rawOptions = Array.isArray(raw?.options) ? raw.options : [];
+    const options: { label: string; description: string }[] = [];
+    for (const o of rawOptions) {
+      if (typeof o === "string" && o.trim()) {
+        options.push({ label: o.trim(), description: "" });
+      } else if (o && typeof (o as Record<string, unknown>).label === "string") {
+        const obj = o as Record<string, unknown>;
+        const label = (obj.label as string).trim();
+        if (label) {
+          options.push({
+            label,
+            description: typeof obj.description === "string" ? obj.description : "",
+          });
+        }
+      }
+    }
     // A question cut short by the relay would be answered under the wrong text.
     if (!question || question.endsWith("…") || options.length < 2) return null;
-    out.push({ question, options, multiSelect: raw.multiSelect === true });
+    const multiSelect = raw.multiSelect === true || raw.is_multi_select === true;
+    out.push({ question, options, multiSelect });
   }
   return out.length > 0 ? out : null;
 }
@@ -371,9 +388,9 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PostToolUse":
       supersedeStop();
-      // The question was answered in the terminal: the card would be lying.
+      // The question was answered in the terminal / IDE: the card would be lying.
       if (
-        payload.tool_name === "AskUserQuestion" &&
+        isQuestionTool(payload.tool_name ?? "") &&
         State.pendingApproval?.questions &&
         State.pendingApproval.sessionId === (payload.session_id ?? "")
       ) {
@@ -496,10 +513,9 @@ function handleHook(island: Island, payload: HookPayload) {
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
-      // Claude Code asking a question is not a permission to grant: the island
-      // shows the options and sends back the one that was picked. Only Claude
-      // Code asks questions this way.
-      const questions = isExternalAgent ? null : askedQuestions(tool, input);
+      // Claude Code and Antigravity asking a question is not a permission to grant: the island
+      // shows the options and sends back the one that was picked.
+      const questions = isExternalAgent && validAgent !== "antigravity" ? null : askedQuestions(tool, input);
       const view = questions ? "question" : "approval";
       // The card always comes up, even over another pill or an island that is
       // already open: its pill comes to the front, and the one you were on
