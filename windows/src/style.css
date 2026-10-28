@@ -3125,3 +3125,38 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   margin-top: 2px;
 }
 
+.mail-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font: 400 11px var(--font);
+  color: #8e939c;
+  line-height: 1.3;
+}
+
+.mail-notice-text {
+  flex: 1;
+}
+
+.mail-notice-link {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  cursor: pointer;
+  padding: 0;
+  font: 500 11px var(--font);
+  color: #22c55e;
+  text-decoration: underline;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mail-notice-link:hover {
+  color: #4ade80;
+}
+

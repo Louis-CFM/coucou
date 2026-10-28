@@ -1,7 +1,7 @@
-// Email sending for dropped files: Resend API if configured, otherwise default system mail client.
+// Email sending for dropped files: Resend API if configured, otherwise Gmail Web composer.
 // Port of MailView from IslandViewContent.swift.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tauri::command;
 
 #[derive(Debug, Deserialize)]
@@ -11,6 +11,13 @@ pub struct SendEmailRequest {
     pub subject: String,
     pub body: String,
     pub file_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendEmailResult {
+    pub method: String, // "resend" | "gmail"
+    pub sent: bool,
 }
 
 fn percent_encode(s: &str) -> String {
@@ -26,7 +33,7 @@ fn percent_encode(s: &str) -> String {
 }
 
 #[command]
-pub async fn send_email(req: SendEmailRequest) -> Result<(), String> {
+pub async fn send_email(req: SendEmailRequest) -> Result<SendEmailResult, String> {
     let to = req.to.trim();
     if to.is_empty() {
         return Err("Missing recipient.".into());
@@ -75,9 +82,14 @@ pub async fn send_email(req: SendEmailRequest) -> Result<(), String> {
             return Err(format!("Resend error ({status}): {body}"));
         }
 
-        Ok(())
+        Ok(SendEmailResult {
+            method: "resend".into(),
+            sent: true,
+        })
     } else {
-        // Fallback: Default email client via mailto: URL
+        // Fallback: Open Gmail Web compose directly with recipient & subject pre-filled.
+        // mailto: protocol on Windows defaults to Chrome/Edge which opens blank if unconfigured,
+        // and cannot attach local files.
         let mut body_text = req.body.clone();
         if let Some(ref path) = req.file_path {
             if !body_text.is_empty() {
@@ -89,9 +101,15 @@ pub async fn send_email(req: SendEmailRequest) -> Result<(), String> {
         let to_enc = percent_encode(to);
         let subj_enc = percent_encode(if req.subject.trim().is_empty() { "File" } else { req.subject.trim() });
         let body_enc = percent_encode(&body_text);
-        let mailto = format!("mailto:{}?subject={}&body={}", to_enc, subj_enc, body_enc);
+        let gmail_url = format!(
+            "https://mail.google.com/mail/?view=cm&fs=1&to={}&su={}&body={}",
+            to_enc, subj_enc, body_enc
+        );
 
-        crate::platform::open_url(&mailto);
-        Ok(())
+        crate::platform::open_url(&gmail_url);
+        Ok(SendEmailResult {
+            method: "gmail".into(),
+            sent: false,
+        })
     }
 }

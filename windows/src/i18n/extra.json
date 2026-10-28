@@ -6338,6 +6338,84 @@
       "id": "Kosongkan untuk aplikasi default, atau buat di discord.com/developers/applications",
       "de": "Leer lassen für Standard-App oder auf discord.com/developers/applications erstellen",
       "tr": "Varsayılan uygulama için boş bırakın veya discord.com/developers/applications adresinden oluşturun"
+    },
+    "Open in Gmail": {
+      "zh-Hans": "在 Gmail 中打开",
+      "hi": "Gmail में खोलें",
+      "es": "Abrir en Gmail",
+      "ar": "فتح في Gmail",
+      "fr": "Ouvrir dans Gmail",
+      "bn": "Gmail-এ খুলুন",
+      "pt-BR": "Abrir no Gmail",
+      "ru": "Открыть в Gmail",
+      "id": "Buka di Gmail",
+      "de": "In Gmail öffnen",
+      "tr": "Gmail'de aç"
+    },
+    "Opening…": {
+      "zh-Hans": "打开中…",
+      "hi": "खोल रहे हैं…",
+      "es": "Abriendo…",
+      "ar": "جارٍ الفتح…",
+      "fr": "Ouverture…",
+      "bn": "খোলা হচ্ছে…",
+      "pt-BR": "Abrindo…",
+      "ru": "Открытие…",
+      "id": "Membuka…",
+      "de": "Wird geöffnet…",
+      "tr": "Açılıyor…"
+    },
+    "✓ Opened in Gmail": {
+      "zh-Hans": "✓ 已在 Gmail 中打开",
+      "hi": "✓ Gmail में खोला गया",
+      "es": "✓ Abierto en Gmail",
+      "ar": "✓ تم الفتح في Gmail",
+      "fr": "✓ Ouvert dans Gmail",
+      "bn": "✓ Gmail-এ খোলা হয়েছে",
+      "pt-BR": "✓ Aberto no Gmail",
+      "ru": "✓ Открыто в Gmail",
+      "id": "✓ Dibuka di Gmail",
+      "de": "✓ In Gmail geöffnet",
+      "tr": "✓ Gmail'de açıldı"
+    },
+    "✓ Opened in Gmail (file path copied to clipboard)": {
+      "zh-Hans": "✓ 已在 Gmail 中打开（文件路径已复制到剪贴板）",
+      "hi": "✓ Gmail में खोला गया (फ़ाइल पथ क्लिपबोर्ड पर कॉपी किया गया)",
+      "es": "✓ Abierto en Gmail (ruta del archivo copiada al portapapeles)",
+      "ar": "✓ تم الفتح في Gmail (تم نسخ مسار الملف إلى الحافظة)",
+      "fr": "✓ Ouvert dans Gmail (chemin du fichier copié dans le presse-papier)",
+      "bn": "✓ Gmail-এ খোলা হয়েছে (ফাইলের পাথ ক্লিপবোর্ডে কপি করা হয়েছে)",
+      "pt-BR": "✓ Aberto no Gmail (caminho do arquivo copiado para a área de transferência)",
+      "ru": "✓ Открыто в Gmail (путь к файлу скопирован в буфер обмена)",
+      "id": "✓ Dibuka di Gmail (path file disalin ke clipboard)",
+      "de": "✓ In Gmail geöffnet (Dateipfad in die Zwischenablage kopiert)",
+      "tr": "✓ Gmail'de açıldı (dosya yolu panoya kopyalandı)"
+    },
+    "Resend not set: opens Gmail. For direct send with file attachment:": {
+      "zh-Hans": "未配置 Resend：在 Gmail 中打开。如需直接发送并附加文件：",
+      "hi": "Resend सेट नहीं है: Gmail खुलता है। फ़ाइल अटैचमेंट के साथ सीधे भेजने के लिए:",
+      "es": "Resend no configurado: abre Gmail. Para envío directo con archivo adjunto:",
+      "ar": "لم يتم إعداد Resend: يفتح Gmail. للإرسال المباشر مع المرفقات:",
+      "fr": "Resend non configuré : ouvre Gmail. Pour un envoi direct avec pièce jointe :",
+      "bn": "Resend সেট করা নেই: Gmail খুলবে। ফাইল সংযুক্তি সহ সরাসরি পাঠাতে:",
+      "pt-BR": "Resend não configurado: abre o Gmail. Para envio direto com anexo:",
+      "ru": "Resend не настроен: открывает Gmail. Для прямой отправки с вложением:",
+      "id": "Resend belum diatur: membuka Gmail. Untuk kirim langsung dengan lampiran file:",
+      "de": "Resend nicht konfiguriert: öffnet Gmail. Für direkten Versand mit Dateianhang:",
+      "tr": "Resend ayarlanmadı: Gmail'i açar. Dosya ekiyle doğrudan göndermek için:"
+    },
+    "Settings → Resend": {
+      "zh-Hans": "设置 → Resend",
+      "hi": "सेटिंग्स → Resend",
+      "es": "Ajustes → Resend",
+      "ar": "الإعدادات ← Resend",
+      "fr": "Réglages → Resend",
+      "bn": "সেটিংস → Resend",
+      "pt-BR": "Ajustes → Resend",
+      "ru": "Настройки → Resend",
+      "id": "Pengaturan → Resend",
+      "de": "Einstellungen → Resend",
+      "tr": "Ayarlar → Resend"
     }
   }
 }

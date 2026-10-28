@@ -89,3 +89,55 @@ test("clicking cancel returns to choose view", () => {
   cancelBtn.fire("click");
   assert.equal(lastView, "choose");
 });
+
+test("when Resend is not configured, shows notice and 'Open in Gmail' button", async () => {
+  answers.secret_present = (args) => args?.key === "resend-api-key" ? false : false;
+  view.sync();
+  await flush();
+
+  const notice = view.el.querySelector(".mail-notice");
+  assert.ok(notice);
+  assert.notEqual(notice.style.display, "none");
+  assert.ok(notice.textContent.includes("Resend not set: opens Gmail"));
+
+  const sendBtn = view.el.querySelector(".btn.primary");
+  assert.equal(sendBtn.textContent, "Open in Gmail");
+
+  // Clicking Settings link in notice opens Settings
+  let settingsOpened = false;
+  actions.openSettingsWindow = () => { settingsOpened = true; };
+  const link = notice.querySelector(".mail-notice-link");
+  assert.ok(link);
+  link.fire("click");
+  assert.equal(settingsOpened, true);
+});
+
+test("when Resend is configured, notice is hidden and button says 'Send'", async () => {
+  answers.secret_present = (args) => args?.key === "resend-api-key" ? true : false;
+  view.sync();
+  await flush();
+
+  const notice = view.el.querySelector(".mail-notice");
+  assert.equal(notice.style.display, "none");
+
+  const sendBtn = view.el.querySelector(".btn.primary");
+  assert.equal(sendBtn.textContent, "Send");
+});
+
+test("sending via Gmail fallback updates status to Opened in Gmail", async () => {
+  answers.secret_present = () => false;
+  answers.send_email = { method: "gmail", sent: false };
+  view.sync();
+  await flush();
+
+  const inputs = view.el.find(".mail-input");
+  inputs[0].value = "user@example.com";
+
+  const sendBtn = view.el.querySelector(".btn.primary");
+  sendBtn.fire("click");
+  await flush();
+
+  const status = view.el.querySelector(".mail-status");
+  assert.ok(status.textContent.includes("Opened in Gmail"));
+  assert.ok(status.classList.contains("success"));
+});

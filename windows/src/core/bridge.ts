@@ -458,7 +458,7 @@ export const Bridge = {
 
   // ── Email ─────────────────────────────────────────────────────────────────
   sendEmail: (req: { to: string; subject: string; body: string; filePath?: string }) =>
-    callOrThrow<void>("send_email", { req }),
+    callOrThrow<{ method: string; sent: boolean }>("send_email", { req }),
 
   // ── Discord ───────────────────────────────────────────────────────────────
   discordGetStatus: () =>

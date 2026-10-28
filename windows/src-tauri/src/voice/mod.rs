@@ -394,13 +394,13 @@ pub fn run_tool(app: &AppHandle, name: &str, input: &Value) -> (String, bool) {
                     .collect()
             };
             let url = format!(
-                "mailto:{}?subject={}&body={}",
-                enc(&to).replace("%40", "@"),
+                "https://mail.google.com/mail/?view=cm&fs=1&to={}&su={}&body={}",
+                enc(&to),
                 enc(input["subject"].as_str().unwrap_or("")),
                 enc(input["body"].as_str().unwrap_or(""))
             );
             crate::platform::open_url(&url);
-            (format!("The mail app opened with the email to {to}. Nothing is sent until the user sends it."), true)
+            (format!("Gmail opened with the email to {to}. Nothing is sent until the user sends it."), true)
         }
         _ => (format!("unknown tool {name}"), false),
     }
