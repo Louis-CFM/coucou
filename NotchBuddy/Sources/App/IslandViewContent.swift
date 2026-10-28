@@ -4334,9 +4334,11 @@ struct MusicCardView: View {
     @ObservedObject private var controller = MusicController.shared
     @ObservedObject private var appState = AppState.shared
 
+    private let red = Color(hex: "#FA2D48")
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if appState.musicAutomationDenied {
+            if appState.musicAutomationDenied && controller.trackTitle == nil {
                 // Automation denied — prompt user to fix
                 HStack(spacing: 6) {
                     Circle()
@@ -4364,55 +4366,65 @@ struct MusicCardView: View {
                     .padding(.leading, 108)
                     .padding(.top, 2)
             } else {
-                // Line 1: dot + title
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color(hex: "#FA2D48"))
-                        .frame(width: 7, height: 7)
-                    if let title = controller.trackTitle {
-                        Text(title)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color(hex: "#F5F6F8"))
-                            .lineLimit(1).truncationMode(.tail)
-                            .frame(maxWidth: 150, alignment: .leading)
+                HStack(alignment: .center, spacing: 12) {
+                    NowPlayingArtwork(image: controller.artwork, accent: red)
+                        .frame(width: 44, height: 44)
+                        .onTapGesture { controller.openMusic() }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        // Line 1: dot + title
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(red)
+                                .frame(width: 6, height: 6)
+                            if let title = controller.trackTitle {
+                                Text(title)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(Color(hex: "#F5F6F8"))
+                                    .lineLimit(1).truncationMode(.tail)
+                                    .frame(maxWidth: 220, alignment: .leading)
+                            }
+                        }
+
+                        // Line 2: artist / app
+                        if let artist = controller.artist {
+                            let appName = controller.currentApp ?? ""
+                            let sub = appName.isEmpty ? artist : (artist + " · " + appName)
+                            Text(sub)
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .lineLimit(1).truncationMode(.tail)
+                                .frame(maxWidth: 220, alignment: .leading)
+                        }
+
+                        // Line 3: controls
+                        HStack(spacing: 12) {
+                            Button(action: { MusicController.shared.previousTrack() }) {
+                                Image(systemName: "backward.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color(hex: "#8E939C"))
+                            }
+                            .buttonStyle(.plain)
+                            Button(action: { MusicController.shared.playPause() }) {
+                                Image(systemName: appState.musicPlaying ? "pause.fill" : "play.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(red)
+                            }
+                            .buttonStyle(.plain)
+                            Button(action: { MusicController.shared.nextTrack() }) {
+                                Image(systemName: "forward.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color(hex: "#8E939C"))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.top, 2)
                     }
+                    Spacer(minLength: 0)
                 }
                 .padding(.top, 6)
                 .padding(.leading, 108)
-
-                // Line 2: artist
-                if let artist = controller.artist {
-                    Text(artist)
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "#8E939C"))
-                        .lineLimit(1).truncationMode(.tail)
-                        .frame(maxWidth: 150, alignment: .leading)
-                        .padding(.leading, 108)
-                }
-
-                // Line 3: controls
-                HStack(spacing: 8) {
-                    Button(action: { MusicController.shared.previousTrack() }) {
-                        Image(systemName: "backward.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#8E939C"))
-                    }
-                    .buttonStyle(.plain)
-                    Button(action: { MusicController.shared.playPause() }) {
-                        Image(systemName: appState.musicPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#FA2D48"))
-                    }
-                    .buttonStyle(.plain)
-                    Button(action: { MusicController.shared.nextTrack() }) {
-                        Image(systemName: "forward.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#8E939C"))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.leading, 108)
-                .padding(.top, 6)
+                .padding(.trailing, 16)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)

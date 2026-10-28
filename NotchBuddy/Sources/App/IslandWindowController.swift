@@ -1276,6 +1276,14 @@ final class IslandWindowController: NSWindowController {
             MacUpdater.shared.prepareCard()
             return .update
         }
+        if state.musicPlaying {
+            if !state.activeIntegrations.contains("integration_music") {
+                state.activeIntegrations.insert("integration_music")
+                state.loadIntegrationTasks()
+            }
+            state.focusId = "integration_music"
+            return .overview
+        }
         #endif
         return state.tasks.isEmpty ? .empty : .overview
     }
@@ -1439,8 +1447,14 @@ final class IslandPanel: NSPanel {
 
     func currentIslandFrame(nw: CGFloat, nh: CGFloat) -> CGRect {
         let s = AppState.shared
+        #if !APPSTORE
+        let (w, fixedH) = islandSize(mode: s.mode, view: s.view,
+                                      progress: s.uploadProgress, nw: nw, nh: nh,
+                                      musicPlaying: s.musicPlaying)
+        #else
         let (w, fixedH) = islandSize(mode: s.mode, view: s.view,
                                       progress: s.uploadProgress, nw: nw, nh: nh)
+        #endif
         let h: CGFloat
         if s.mode == .expanded && s.view == .prompt {
             let base: CGFloat = 240
@@ -2050,10 +2064,16 @@ extension Notification.Name {
 func islandSize(mode: IslandMode, view: IslandView,
                 progress: Double = 0,
                 nw: CGFloat = IslandConst.notchWidth,
-                nh: CGFloat = IslandConst.notchHeight) -> (CGFloat, CGFloat) {
+                nh: CGFloat = IslandConst.notchHeight,
+                musicPlaying: Bool = false) -> (CGFloat, CGFloat) {
     switch mode {
     case .hidden:   return (nw, nh)
-    case .compact:  return (nw + 160, nh)
+    case .compact:
+        #if !APPSTORE
+        return musicPlaying ? (nw + 340, nh) : (nw + 160, nh)
+        #else
+        return (nw + 160, nh)
+        #endif
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
         if view == .question, let h = QuestionLayout.height {

@@ -125,21 +125,42 @@ struct IslandContainer: View {
 
             Group {
                 if state.mode == .compact {
+                    #if !APPSTORE
+                    if state.musicPlaying, MusicController.shared.trackTitle != nil {
+                        CompactNowPlayingView(state: state)
+                            .position(x: islandWidth - 85, y: islandHeight / 2)
+                            .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                    } else {
+                        CompactMiniGrid(state: state)
+                            .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
+                            .position(x: islandWidth - 40, y: islandHeight / 2)
+                            .transition(.opacity)
+                    }
+                    #else
                     CompactMiniGrid(state: state)
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
                         .transition(.opacity)
+                    #endif
                 }
             }
+            .animation(.easeInOut(duration: 0.25), value: state.musicPlaying)
             .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
         }
         .frame(width: islandWidth, height: islandHeight, alignment: .topLeading)
         .onChange(of: state.mode) { oldMode, newMode in
             let shrinking = modeOrder(newMode) < modeOrder(oldMode)
             let anim = shrinking ? closeEase : openSpring
+            #if !APPSTORE
+            let (w, h) = islandSize(mode: newMode, view: state.view,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    musicPlaying: state.musicPlaying)
+            #else
             let (w, h) = islandSize(mode: newMode, view: state.view,
                                     progress: state.uploadProgress,
                                     nw: state.notchWidth, nh: state.notchHeight)
+            #endif
             let cr  = newMode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
             let tr: CGFloat = 0
             withAnimation(anim) {
@@ -149,6 +170,19 @@ struct IslandContainer: View {
                 islandTopRadius  = tr
             }
         }
+        #if !APPSTORE
+        .onChange(of: state.musicPlaying) { _, newPlaying in
+            guard state.mode == .compact else { return }
+            let (w, h) = islandSize(mode: .compact, view: state.view,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    musicPlaying: newPlaying)
+            withAnimation(newPlaying ? openSpring : closeEase) {
+                islandWidth  = w
+                islandHeight = h
+            }
+        }
+        #endif
         .onChange(of: state.view) { _, newView in
             guard state.mode == .expanded else { return }
             // Deactivate engine if user navigates outside the upload flow
@@ -169,9 +203,16 @@ struct IslandContainer: View {
             withAnimation(openSpring) { islandHeight = chatPromptHeight }
         }
         .onAppear {
+            #if !APPSTORE
+            let (w, h) = islandSize(mode: state.mode, view: state.view,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    musicPlaying: state.musicPlaying)
+            #else
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
                                     nw: state.notchWidth, nh: state.notchHeight)
+            #endif
             islandWidth      = w
             islandHeight     = state.view == .prompt ? chatPromptHeight : h
             cornerRadius     = state.mode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
@@ -182,9 +223,16 @@ struct IslandContainer: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandScreenChanged)) { _ in
             // New screen, new resting size (notch ↔ bar): snap without animation.
+            #if !APPSTORE
+            let (w, h) = islandSize(mode: state.mode, view: state.view,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    musicPlaying: state.musicPlaying)
+            #else
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
                                     nw: state.notchWidth, nh: state.notchHeight)
+            #endif
             islandWidth  = w
             islandHeight = (state.mode == .expanded && state.view == .prompt) ? chatPromptHeight : h
         }
@@ -725,3 +773,103 @@ struct CompactMiniGrid: View {
         .frame(width: 28, height: 28)
     }
 }
+
+// MARK: - Compact Now Playing View (BoringNotch style in resting notch)
+
+#if !APPSTORE
+struct CompactNowPlayingView: View {
+    @ObservedObject private var controller = MusicController.shared
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        HStack(spacing: 7) {
+            // Album artwork (19x19)
+            ZStack {
+                if let art = controller.artwork {
+                    Image(nsImage: art)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 19, height: 19)
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                        )
+                        .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(LinearGradient(
+                                colors: [Color(hex: "#FA2D48"), Color(hex: "#C2185B")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ))
+                        Image(systemName: "music.note")
+                            .font(.system(size: 9.5, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 19, height: 19)
+                }
+            }
+
+            // Title & Artist
+            VStack(alignment: .leading, spacing: 0.5) {
+                if let title = controller.trackTitle {
+                    Text(title)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                if let artist = controller.artist, !artist.isEmpty {
+                    Text(artist)
+                        .font(.system(size: 8.5, weight: .medium))
+                        .foregroundColor(Color(hex: "#9CA3AF"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            .frame(maxWidth: 110, alignment: .leading)
+
+            Spacer(minLength: 0)
+
+            // Animated waveform
+            NowPlayingWaveform(isPlaying: controller.isPlaying)
+                .frame(width: 12, height: 12)
+                .padding(.trailing, 2)
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 10)
+        .frame(width: 170, height: state.notchHeight, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            controller.expandToMusicCard()
+        }
+    }
+}
+
+/// Dynamic sound bars visualizer
+struct NowPlayingWaveform: View {
+    let isPlaying: Bool
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 1.5) {
+            bar(duration: 0.65, minH: 3, maxH: 10)
+            bar(duration: 0.45, minH: 5, maxH: 12)
+            bar(duration: 0.8, minH: 2, maxH: 9)
+        }
+    }
+
+    @ViewBuilder
+    private func bar(duration: Double, minH: CGFloat, maxH: CGFloat) -> some View {
+        TimelineView(.animation(paused: !isPlaying)) { ctx in
+            let phase = ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: duration) / duration
+            let sinVal = CGFloat(abs(sin(phase * .pi * 2)))
+            let h = isPlaying ? (minH + sinVal * (maxH - minH)) : 3.0
+            RoundedRectangle(cornerRadius: 1)
+                .fill(Color(hex: "#FA2D48"))
+                .frame(width: 2, height: h)
+        }
+    }
+}
+#endif
