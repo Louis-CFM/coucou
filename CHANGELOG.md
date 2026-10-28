@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Mac: WhatsApp statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the WhatsApp pill (#901, same fix as #910)
+- **Windows: Claude Code in WSL** — Claude Code sessions running inside WSL show up in the island; hooks install per distro from Settings (#52)
 
 ## Windows and Linux 0.5.3 — October 22, 2026
 

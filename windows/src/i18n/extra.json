@@ -6091,6 +6091,32 @@
       "id": "Matikan pil lain untuk memberi tempat bagi WhatsApp (maksimal {max}).",
       "de": "Schalte eine andere Pill aus, um Platz für WhatsApp zu schaffen (höchstens {max}).",
       "tr": "WhatsApp’a yer açmak için başka bir hapı kapat (en fazla {max})."
+    },
+    "Claude Code in WSL · {distro}": {
+      "zh-Hans": "WSL 中的 Claude Code · {distro}",
+      "hi": "WSL में Claude Code · {distro}",
+      "es": "Claude Code en WSL · {distro}",
+      "ar": "Claude Code في WSL · {distro}",
+      "fr": "Claude Code dans WSL · {distro}",
+      "bn": "WSL-এ Claude Code · {distro}",
+      "pt-BR": "Claude Code no WSL · {distro}",
+      "ru": "Claude Code в WSL · {distro}",
+      "id": "Claude Code di WSL · {distro}",
+      "de": "Claude Code in WSL · {distro}",
+      "tr": "WSL'de Claude Code · {distro}"
+    },
+    "Starting {distro}…": {
+      "zh-Hans": "正在启动 {distro}…",
+      "hi": "{distro} शुरू हो रहा है…",
+      "es": "Iniciando {distro}…",
+      "ar": "جارٍ تشغيل {distro}…",
+      "fr": "Démarrage de {distro}…",
+      "bn": "{distro} চালু হচ্ছে…",
+      "pt-BR": "Iniciando {distro}…",
+      "ru": "Запуск {distro}…",
+      "id": "Memulai {distro}…",
+      "de": "{distro} wird gestartet…",
+      "tr": "{distro} başlatılıyor…"
     }
   }
 }

@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
-use crate::agents::{self, Shell};
+use crate::agents::{self, Relay, Shell};
 use crate::config_file::{self, FileEdit};
 use crate::{platform, settings};
 
@@ -47,6 +47,8 @@ pub struct HookStatus {
     pub installed: bool,
     /// Coucou's status line relay (plan usage) is the one in settings.json.
     pub plan_relay_installed: bool,
+    /// None for Windows itself, the distro name for a WSL distro.
+    pub distro: Option<String>,
     pub settings_path: String,
     pub hook_path: String,
     pub hook_ready: bool,
@@ -67,11 +69,49 @@ pub fn settings_path() -> PathBuf {
     platform::home_dir().join(".claude").join("settings.json")
 }
 
+/// One settings.json to install into: this machine's own, or a WSL distro's.
+pub struct Target {
+    distro: Option<String>,
+    path: PathBuf,
+    /// The relay as the shell running the hook sees it.
+    relay: Relay,
+}
+
+impl Target {
+    pub fn local() -> Self {
+        Self { distro: None, path: settings_path(), relay: Relay::current() }
+    }
+
+    /// Starts the distro if it is stopped; settings window only.
+    pub fn wsl(distro: &str) -> Result<Self, String> {
+        let exe = settings::hook_exe_path().to_string_lossy().to_string();
+        let (path, exe) = crate::wsl::locate(distro, &exe)?;
+        Ok(Self { distro: Some(distro.to_string()), path, relay: Relay { exe, windows: false } })
+    }
+
+    pub fn from(distro: Option<&str>) -> Result<Self, String> {
+        distro.map_or_else(|| Ok(Self::local()), Self::wsl)
+    }
+
+    /// WSL: the exe through interop, plus the distro so the relay can turn the
+    /// Linux cwd into a path Windows can open. A missing exe (app uninstalled,
+    /// interop off) must stay silent, hence the redirect and `|| true`.
+    fn command(&self, event: &str) -> String {
+        match &self.distro {
+            None => self.relay.command(Shell::Sh, event),
+            Some(d) => format!(
+                "{} 2>/dev/null || true",
+                self.relay.command(Shell::Sh, &format!("{event} {}", agents::sh_quote(d)))
+            ),
+        }
+    }
+}
+
 /// The settings as they are, or an empty object when we cannot tell. Only for
 /// read-only paths like `status()`, which must never fail loudly; anything that
 /// writes goes through `config_file`, which surfaces the error instead.
-fn read_settings_lossy() -> Value {
-    config_file::read(&settings_path())
+fn read_settings_lossy(path: &Path) -> Value {
+    config_file::read(path)
         .ok()
         .and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json").ok())
         .unwrap_or_else(|| json!({}))
@@ -107,7 +147,7 @@ fn status_line_is_ours(v: &Value) -> bool {
 /// Settings with Coucou's hooks added; everything else is left untouched. A
 /// `hooks` (or one of its events) that is not what Claude Code documents is
 /// refused rather than replaced.
-fn merged(existing: &Value) -> Result<Value, String> {
+fn merged(existing: &Value, target: &Target) -> Result<Value, String> {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = match root.get("hooks") {
         None => Map::new(),
@@ -125,7 +165,7 @@ fn merged(existing: &Value) -> Result<Value, String> {
         list.push(json!({
             "hooks": [{
                 "type": "command",
-                "command": hook_command(event),
+                "command": target.command(event),
                 "timeout": timeout,
             }]
         }));
@@ -171,19 +211,19 @@ fn without_ours(existing: &Value) -> Result<Value, String> {
     Ok(Value::Object(root))
 }
 
-fn edits(install: bool) -> Vec<FileEdit<'static>> {
+fn edits(target: &Target, install: bool) -> Vec<FileEdit<'_>> {
     vec![FileEdit {
-        path: settings_path(),
+        path: target.path.clone(),
         edit: config_file::json_edit("settings.json".into(), move |current| {
-            if install { merged(current).map(Some) } else { without_ours(current).map(Some) }
+            if install { merged(current, target).map(Some) } else { without_ours(current).map(Some) }
         }),
     }]
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-pub fn status() -> HookStatus {
-    let current = read_settings_lossy();
+pub fn status(target: &Target) -> HookStatus {
+    let current = read_settings_lossy(&target.path);
     let installed = current
         .get("hooks")
         .and_then(Value::as_object)
@@ -199,14 +239,15 @@ pub fn status() -> HookStatus {
     HookStatus {
         installed,
         plan_relay_installed: plan_relay_installed(&current),
-        settings_path: settings_path().to_string_lossy().to_string(),
+        distro: target.distro.clone(),
+        settings_path: target.path.to_string_lossy().to_string(),
         hook_ready: hook_path.exists(),
         hook_path: hook_path.to_string_lossy().to_string(),
     }
 }
 
-pub fn preview(install: bool) -> Result<HookPreview, String> {
-    Ok(plan_to_preview(config_file::preview(&edits(install))?))
+pub fn preview(target: &Target, install: bool) -> Result<HookPreview, String> {
+    Ok(plan_to_preview(config_file::preview(&edits(target, install))?))
 }
 
 fn plan_to_preview(plan: config_file::Plan) -> HookPreview {
@@ -223,8 +264,8 @@ fn plan_to_preview(plan: config_file::Plan) -> HookPreview {
 ///
 /// `fingerprint` is the one the preview was computed from: a settings.json that
 /// changed in between is refused rather than overwritten (see config_file).
-pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
-    let backups = config_file::apply(&edits(install), fingerprint)?;
+pub fn write(target: &Target, install: bool, fingerprint: &str) -> Result<String, String> {
+    let backups = config_file::apply(&edits(target, install), fingerprint)?;
     Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
 }
 
@@ -429,9 +470,9 @@ mod tests {
     #[test]
     fn the_hooks_leave_the_status_line_alone() {
         let theirs = json!({ "statusLine": { "type": "command", "command": "~/bin/my-line" } });
-        assert_eq!(merged(&theirs).unwrap()["statusLine"], theirs["statusLine"]);
+        assert_eq!(merged(&theirs, &Target::local()).unwrap()["statusLine"], theirs["statusLine"]);
         assert_eq!(without_ours(&theirs).unwrap()["statusLine"], theirs["statusLine"]);
-        assert!(merged(&json!({})).unwrap().get("statusLine").is_none());
+        assert!(merged(&json!({}), &Target::local()).unwrap().get("statusLine").is_none());
     }
 
     #[test]
@@ -487,7 +528,7 @@ mod tests {
             }
         });
 
-        let after = merged(&existing).unwrap();
+        let after = merged(&existing, &Target::local()).unwrap();
         assert_eq!(after["model"], "claude-opus-5");
         assert_eq!(after["theme"], "dark");
         assert_eq!(after["enabledPlugins"], serde_json::json!(["a", "b"]));
@@ -503,7 +544,7 @@ mod tests {
         // Installing twice still leaves one entry of ours per event. (Compared
         // by count: another test points HOME elsewhere meanwhile, which moves
         // the relay path.)
-        let twice = merged(&after).unwrap();
+        let twice = merged(&after, &Target::local()).unwrap();
         assert_eq!(twice["hooks"]["PreToolUse"].as_array().unwrap().iter().filter(|e| entry_is_ours(e)).count(), 1);
 
         // And removing ours puts it back exactly as it was.
@@ -518,12 +559,28 @@ mod tests {
             json!({ "hooks": [1, 2] }),
             json!({ "hooks": { "PreToolUse": { "not": "a list" } } }),
         ] {
-            assert!(merged(&odd).is_err(), "{odd}");
+            assert!(merged(&odd, &Target::local()).is_err(), "{odd}");
         }
         assert!(without_ours(&json!({ "hooks": 3 })).is_err());
         // An event we do not install stays as it is, whatever its shape.
         let kept = json!({ "hooks": { "Custom": "anything" } });
         assert_eq!(without_ours(&kept).unwrap(), kept);
+    }
+
+    #[test]
+    fn a_wsl_command_is_sh_quoted_and_still_ours() {
+        let target = Target {
+            distro: Some("Ubuntu".into()),
+            path: PathBuf::from(r"\\wsl$\Ubuntu\home\me\.claude\settings.json"),
+            relay: Relay { exe: "/mnt/c/Users/Jo G/AppData/Local/Coucou/bin/coucou-hook.exe".into(), windows: false },
+        };
+        assert_eq!(
+            target.command("Stop"),
+            "'/mnt/c/Users/Jo G/AppData/Local/Coucou/bin/coucou-hook.exe' Stop 'Ubuntu' 2>/dev/null || true"
+        );
+        let after = merged(&json!({}), &target).unwrap();
+        assert!(after["hooks"]["Stop"].as_array().unwrap().iter().any(entry_is_ours));
+        assert_eq!(without_ours(&after).unwrap(), json!({}));
     }
 
     /// Everything filesystem-shaped lives in one test on purpose: it points
@@ -536,6 +593,7 @@ mod tests {
         std::env::set_var(platform::HOME_VAR, &tmp);
 
         let path = settings_path();
+        let local = Target::local();
         assert!(path.starts_with(&tmp), "the test must not touch the real home");
 
         // A real-shaped file, written the way PowerShell 5 would: UTF-8 with BOM.
@@ -545,9 +603,9 @@ mod tests {
         std::fs::write(&path, &bytes).unwrap();
 
         // Install.
-        let plan = preview(true).expect("a BOM must not stop the preview");
+        let plan = preview(&local, true).expect("a BOM must not stop the preview");
         assert!(plan.diff.contains("coucou-hook"), "the diff must show what changes");
-        let backup = write(true, &plan.fingerprint).expect("install should succeed");
+        let backup = write(&local, true, &plan.fingerprint).expect("install should succeed");
 
         // The backup holds the original bytes, BOM and all.
         assert_eq!(std::fs::read(&backup).unwrap(), bytes);
@@ -559,20 +617,20 @@ mod tests {
         assert_eq!(after["tui"]["x"], 1);
         let pre = after["hooks"]["PreToolUse"].as_array().unwrap();
         assert!(pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("other-tool.exe")));
-        assert!(status().installed);
+        assert!(status(&local).installed);
 
         // A file that moved since the preview is refused, and left alone.
-        let stale = preview(false).unwrap();
+        let stale = preview(&local, false).unwrap();
         std::fs::write(&path, br#"{"model":"someone-else-edited-this"}"#).unwrap();
-        let err = write(false, &stale.fingerprint).unwrap_err();
+        let err = write(&local, false, &stale.fingerprint).unwrap_err();
         assert!(err.contains("changed since the preview"), "got: {err}");
         let untouched: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(untouched["model"], "someone-else-edited-this");
 
         // Content we cannot parse is refused before anything is written.
         std::fs::write(&path, b"{ broken").unwrap();
-        assert!(preview(true).is_err());
-        assert!(write(true, "whatever").is_err());
+        assert!(preview(&local, true).is_err());
+        assert!(write(&local, true, "whatever").is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
 
         let _ = std::fs::remove_dir_all(&tmp);

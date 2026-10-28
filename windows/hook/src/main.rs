@@ -17,8 +17,9 @@
 //!   island is the whole point. No answer means no decision, and the agent asks
 //!   in its terminal exactly as if Coucou were not installed.
 //!
-//! Usage: `coucou-hook [--agent <name>] [<EventName>]` (the event name is also
-//! read from the JSON; `--agent` is absent for Claude Code), or
+//! Usage: `coucou-hook [--agent <name>] [<EventName> [<WslDistro>]]` (the event
+//! name is also read from the JSON; `--agent` is absent for Claude Code; the
+//! distro is set by hooks installed inside WSL, where `cwd` is a Linux path), or
 //! `coucou-hook --statusline` as Claude Code's status line command (plan usage,
 //! see statusline.rs): it passes the plan limits on and runs the status line the
 //! user had before, so that keeps working.
@@ -69,24 +70,29 @@ mod unix;
 #[cfg(target_os = "linux")]
 use unix::connect;
 
-/// What the command line says: `--agent <name>` and the event name.
+/// What the command line says: `--agent <name>`, the event name and the WSL
+/// distro.
 struct Args {
     agent: String,
     event: String,
+    distro: String,
 }
 
 fn args() -> Args {
     let mut agent = String::new();
     let mut event = String::new();
+    let mut distro = String::new();
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         if arg == "--agent" {
             agent = it.next().unwrap_or_default();
         } else if event.is_empty() {
             event = arg;
+        } else if distro.is_empty() {
+            distro = arg;
         }
     }
-    Args { agent, event }
+    Args { agent, event, distro }
 }
 
 /// One event, ready to forward.
@@ -183,6 +189,16 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     if map.get("cwd").and_then(Value::as_str).map(str::is_empty).unwrap_or(true) && !cwd.is_empty() {
         map.insert("cwd".into(), Value::String(cwd.to_string()));
+    }
+
+    // From WSL: `/home/me/proj` means nothing to Windows. `\\wsl$\<distro>\…`
+    // is a folder Explorer and VS Code can open, and its last component is
+    // still the project name.
+    if !args.distro.is_empty() {
+        if let Some(unc) = map.get("cwd").and_then(Value::as_str).and_then(|c| wsl_unc(&args.distro, c)) {
+            map.insert("cwd".into(), Value::String(unc));
+        }
+        map.insert("wsl_distro".into(), Value::String(args.distro.clone()));
     }
 
     add_terminal_context(map, env);
@@ -303,6 +319,14 @@ fn cap_diff_strings(value: &mut serde_json::Value, budget: &mut usize, cut_any: 
     }
 }
 
+/// `/home/me/proj` in `Ubuntu` → `\\wsl$\Ubuntu\home\me\proj`. None for a path
+/// that is not a Linux one. Same mapping as `wsl::unc` in the app
+/// (src-tauri/src/wsl.rs); keep the two in step.
+fn wsl_unc(distro: &str, cwd: &str) -> Option<String> {
+    cwd.starts_with('/')
+        .then(|| format!(r"\\wsl$\{distro}{}", cwd.replace('/', "\\")))
+}
+
 /// Caps every string in the payload. A single Write can carry a whole file.
 fn truncate_strings(value: &mut Value) {
     match value {
@@ -366,7 +390,7 @@ mod tests {
     use super::*;
 
     fn run(raw: &str, agent: &str, event: &str) -> (Value, Event) {
-        let args = Args { agent: agent.into(), event: event.into() };
+        let args = Args { agent: agent.into(), event: event.into(), distro: String::new() };
         let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here").expect("forwarded");
         let v = serde_json::from_str(ev.line.trim_end()).unwrap();
         (v, ev)
@@ -404,6 +428,18 @@ mod tests {
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
         assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+    }
+
+    #[test]
+    fn a_wsl_cwd_becomes_a_path_windows_can_open() {
+        assert_eq!(wsl_unc("Ubuntu", "/home/me/proj").unwrap(), r"\\wsl$\Ubuntu\home\me\proj");
+        assert!(wsl_unc("Ubuntu", r"C:\work").is_none());
+
+        let args = Args { agent: String::new(), event: "Stop".into(), distro: "Ubuntu".into() };
+        let event = prepare(br#"{"cwd":"/home/me/proj"}"#, &args, &env_of(&[]), "").unwrap();
+        let sent: Value = serde_json::from_str(&event.line).unwrap();
+        assert_eq!(sent["cwd"], r"\\wsl$\Ubuntu\home\me\proj");
+        assert_eq!(sent["wsl_distro"], "Ubuntu");
     }
 
     #[test]
@@ -457,7 +493,7 @@ mod tests {
 
     #[test]
     fn what_cannot_be_read_is_not_forwarded() {
-        let args = Args { agent: "copilot".into(), event: "preToolUse".into() };
+        let args = Args { agent: "copilot".into(), event: "preToolUse".into(), distro: String::new() };
         for raw in ["", "not json", "[1,2]"] {
             assert!(prepare(raw.as_bytes(), &args, &|_| None, "/").is_none());
         }
