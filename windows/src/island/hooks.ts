@@ -372,8 +372,29 @@ function handleHook(island: Island, payload: HookPayload) {
       supersedeStop();
       clearFinalLine(agentId);
       const tool = payload.tool_name ?? "Tool";
-      const isQuestion = tool === "ask_question" || tool.endsWith(":ask_question");
-      if (isQuestion) {
+      const isQuestion = isQuestionTool(tool);
+      const questions = isQuestion ? askedQuestions(tool, payload.tool_input ?? {}) : null;
+      if (questions) {
+        if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+        const requestId = payload.request_id ?? `ag_q_${Date.now()}`;
+        State.beginApproval({
+          requestId,
+          sessionId,
+          pillId: agentId,
+          tool,
+          command: approvalTarget(tool, payload.tool_input ?? {}),
+          questions,
+        });
+        if (payload.request_id) void Bridge.approvalAck(payload.request_id);
+        State.updateTask(agentId, "question");
+        State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
+        Sound.play("question");
+        island.alert("question");
+        pendingTimeout = window.setTimeout(() => {
+          pendingTimeout = null;
+          dropPendingCard(island);
+        }, 108000);
+      } else if (isQuestion) {
         State.updateTask(agentId, "question");
         State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
         Sound.play("question");

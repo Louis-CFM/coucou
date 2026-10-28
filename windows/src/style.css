@@ -348,7 +348,7 @@ body {
   padding: 7px 13px;
   border: 0;
   border-radius: 999px;
-  cursor: default;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -815,11 +815,31 @@ body {
   gap: 8px;
 }
 
-/* Options to pick from when Claude Code asks a question. */
+/* Options to pick from when an agent asks a question. */
 .actions.options {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  max-height: 105px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 4px 2px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.actions.options::-webkit-scrollbar {
+  width: 4px;
+}
+
+.actions.options::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.actions.options::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
 .question-text {

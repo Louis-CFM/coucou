@@ -3,6 +3,7 @@
 
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { FlowBridge } from "../core/flow";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -227,8 +228,11 @@ export class Island {
         const text = Object.values(answers)
           .map((a) => (Array.isArray(a) ? a.join(", ") : String(a)))
           .join("; ");
-        if (text && typeof navigator !== "undefined" && navigator.clipboard) {
-          void navigator.clipboard.writeText(text).catch(() => {});
+        if (text) {
+          void FlowBridge.copy(text).catch(() => {});
+          if (typeof navigator !== "undefined" && navigator.clipboard) {
+            void navigator.clipboard.writeText(text).catch(() => {});
+          }
         }
         this.closeApproval();
       },
