@@ -687,15 +687,19 @@ export class Island {
    * A notification came: a neon light runs twice around the island's edge in its
    * colour (NEON), then fades. Off in Settings, nothing; the hidden island
    * neither, as a ring around its 6 px strip would only flash at the top of
-   * the screen.
+   * the screen. Asked for before the alert that opens the island (a finish,
+   * an error), it waits for that: the island is looked at once it is up.
    */
   neon(color: string) {
-    if (State.settings.neonNotifications === false || State.mode === "hidden") return;
-    const el = this.neonEl;
-    el.style.setProperty("--neon", color);
-    el.classList.remove("run");
-    void el.offsetWidth;
-    el.classList.add("run");
+    if (State.settings.neonNotifications === false) return;
+    window.setTimeout(() => {
+      if (State.mode === "hidden") return;
+      const el = this.neonEl;
+      el.style.setProperty("--neon", color);
+      el.classList.remove("run");
+      void el.offsetWidth;
+      el.classList.add("run");
+    }, 0);
   }
 
   /** Ctrl+P: keep the open island from folding away, or let it fold again. */
