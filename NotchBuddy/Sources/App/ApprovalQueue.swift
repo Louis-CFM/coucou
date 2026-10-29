@@ -23,6 +23,8 @@ struct QueuedApproval: Equatable, Sendable {
     var bundleId: String = ""
     /// When the request arrived (for the log: how long it waited).
     var received = Date()
+    /// tool_input.command, nil when the tool runs none. Auto-approve rules match on this only.
+    var rawCommand: String? = nil
 }
 
 struct ApprovalQueue: Sendable {
@@ -66,6 +68,14 @@ struct ApprovalQueue: Sendable {
     mutating func remove(id: UUID) -> QueuedApproval? {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return nil }
         return entries.remove(at: idx)
+    }
+
+    /// Puts this entry at the head, so the card shows it next. The others keep their order.
+    @discardableResult
+    mutating func promote(id: UUID) -> Bool {
+        guard let idx = entries.firstIndex(where: { $0.id == id }) else { return false }
+        entries.insert(entries.remove(at: idx), at: 0)
+        return true
     }
 
     /// Entries made moot by a later hook event of the same agent. Matching is per request

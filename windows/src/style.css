@@ -466,6 +466,57 @@ body {
   z-index: 2;
 }
 
+/* "1/3" on a permission card: lists every request waiting, a click puts one on the card. */
+.queue-count {
+  font: 600 12px var(--font);
+  color: var(--dim-2);
+  font-variant-numeric: tabular-nums;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.queue-count.on,
+.queue-count:hover {
+  color: var(--ink);
+}
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 92px;
+  overflow-y: auto;
+}
+.queue-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c5c8cd;
+  font: 400 11px var(--font);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.queue-row.current,
+.queue-row:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.queue-row .n {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.queue-row .c {
+  font-family: var(--mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Folds a waiting permission card or question away without answering it. */
 .fold {
   position: absolute;
