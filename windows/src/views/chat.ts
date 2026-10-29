@@ -299,7 +299,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       drawModelButton();
       State.notify();
       onHeightChange();
-      input.focus();
+      // Back to typing without a click. The field was disabled while the
+      // answer came, which took the focus away, and the sync that enables it
+      // again is a frame away: a disabled field can't take the focus.
+      if (State.view === "prompt") {
+        input.disabled = false;
+        input.focus();
+      }
     }
   }
 

@@ -57,7 +57,9 @@ struct IslandContainer: View {
             // Black island shape
             IslandShape(width: islandWidth, height: islandHeight,
                         cornerRadius: cornerRadius, topRadius: islandTopRadius)
-                .fill(Color.black)
+                // Hidden over a real notch: draw nothing. A black copy of the notch would slide
+                // away with the Space on a desktop swipe, while the real notch stays.
+                .fill(Color.black.opacity(state.mode == .hidden && state.hasNotch ? 0 : 1))
 
             // Content
             if state.mode == .expanded {

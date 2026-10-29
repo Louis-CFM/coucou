@@ -1157,8 +1157,13 @@ export class Island {
     }));
 
     this.engine.update(dt);
+    // Cleared in device pixels, the whole canvas. At a fractional scale (150 %)
+    // the canvas is a whole number of pixels but `hCss * dpr` is not: clearing
+    // in CSS units left the last row half-cleared, and whatever once passed
+    // through it (a hat in a roll) piled up there into a coloured bar.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.botCanvas.width, this.botCanvas.height);
     ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
-    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
     ctx.save();
     this.engine.applyDance(ctx, w, hCss);
     this.engine.draw(ctx, w, hCss);

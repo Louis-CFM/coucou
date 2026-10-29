@@ -122,3 +122,34 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.deepEqual(State.chatHistory.map((m) => m.role), ["user", "assistant"]);
   assert.ok(!$(".model-btn").disabled);
 });
+
+test("once the answer is in, the field takes the focus back, enabled", async () => {
+  let finish;
+  answers.chat_send = () => new Promise((resolve) => (finish = resolve));
+  const input = $(".chat-input");
+  const focused = [];
+  input.focus = () => focused.push(input.disabled ? "disabled" : "enabled");
+  input.value = "hello";
+  $(".send-btn").fire("click");
+  await flush();
+  view.sync(); // mid-answer: the field is disabled
+  assert.ok(input.disabled);
+
+  finish({ text: "Hi!" });
+  await flush(); // no sync yet: in the island it runs on the next frame
+  assert.equal(input.disabled, false);
+  assert.deepEqual(focused, ["enabled"]);
+});
+
+test("a failed answer leaves the chat for the note without taking the focus", async () => {
+  answers.chat_send = () => Promise.reject(new Error("no key"));
+  const input = $(".chat-input");
+  const focused = [];
+  input.focus = () => focused.push(true);
+  input.value = "hello";
+  $(".send-btn").fire("click");
+  await flush();
+  await flush();
+  assert.equal(State.view, "note");
+  assert.deepEqual(focused, []);
+});

@@ -647,6 +647,12 @@ own window.
 
 ## Linux
 
+To check toolbar collapse even when WebKitGTK loses the pointer-leave event,
+run `python3 scripts/test-linux-pill-hover.py target/release/coucou` from
+`windows/` after building. This native regression test uses a separate Xvfb
+display and temporary preferences; it requires Xvfb, xdotool, xwd, a C compiler
+and GTK3 development headers. It leaves captures under `target/pill-hover-test/`.
+
 The same app builds for Linux: everything that differs lives in
 `src-tauri/src/platform/`, and the relay's transport in `hook/src/unix.rs`.
 

@@ -48,6 +48,15 @@ body {
   padding-right: 2px;
 }
 
+/* On a side the pill keeps the edge and its bubble opens inward beside it.
+   The bubble comes first in the DOM (right for the bottom, where it sits
+   above), which on a side would put it at the edge and push the pill inward,
+   out of the zone that takes the mouse. */
+#pill.left .capsule,
+#pill.right .capsule {
+  order: -1;
+}
+
 .capsule {
   position: relative;
   flex: 0 0 auto;

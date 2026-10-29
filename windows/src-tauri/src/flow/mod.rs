@@ -669,6 +669,10 @@ pub fn pill_hover(app: AppHandle, inside: bool) {
     if let Some(p) = pill::get(&app) {
         p.hovered.store(inside, Ordering::Relaxed);
     }
+    #[cfg(target_os = "linux")]
+    if inside {
+        pill::watch_pointer_leave(&app);
+    }
 }
 
 #[tauri::command]

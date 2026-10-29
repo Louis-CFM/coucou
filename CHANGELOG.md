@@ -4,6 +4,24 @@
 
 - **Mac: WhatsApp statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the WhatsApp pill (#901, same fix as #910)
 
+### Reliability (Mac, Windows, Linux)
+
+Bugs reported by @romainb82 and others, fixed by the community.
+
+- **The hook server never gives up** — one failed connection no longer stops Coucou from hearing Claude Code until the next launch (#872 by @seongj-un, #853)
+- **Your own hooks are safe** — installing or removing Coucou's hooks only touches Coucou's own entries, never a hook of yours whose path mentions "coucou" (#944 by @rahul05ranjan, #854); on Windows, the hooks go where `CLAUDE_CONFIG_DIR` points (#810 by @afpruivo)
+- **Mac: no crash without a microphone** (#950 by @gabbe-swe, #949)
+- **Mac: "Hide after" is used** — the delay set in Settings now hides the compact island (#780 by @Ohualtex, #675)
+- **Mac: nothing drawn over the real notch while hidden** (#789 by @orrrrli); a third-party agent's finished card no longer says "Claude Code finished" (#865 by @Ohualtex, #593)
+- **Service pills tell the truth** — n8n no longer replays an old run as new at launch, and keeps each run's real time (#948, #861); Stripe no longer adds different currencies together (#938, #860); GitHub counts the stars of all your repositories, past the first 100 (#939, #862); Kraken keeps tickers such as XTZ and ZRX whole (#926, #863). All by @Ohualtex
+- **Windows: an approval card goes once the terminal has taken over** (#890 by @afpruivo, #857); the relay pipe no longer crashes under many connections (mio 1.2.4, #911 by @afpruivo)
+- **Windows/Linux: settings saved at the same moment no longer collide** (#888 by @Ohualtex, #858)
+- **Windows/Linux: the Flow pill's buttons take clicks** and the pill keeps its edge (#760 by @arnavaggarwal-dev, #759); on Linux its toolbar folds even when the leave event is lost (#946 by @dougkusanagi, #584)
+- **Windows: the Settings window opens even when creating it at startup failed** (#807 by @afpruivo, #775); the last edit stays on the ticker after Claude Code finishes (#846 by @afpruivo, #840); the chat field keeps the focus after an answer (#931 by @ce017); no coloured bar under Mochi at 150 % scale (#867 by @PythonTilk)
+- **WhatsApp groups show their names** instead of "Group <id>" (#907 by @arnavaggarwal-dev)
+- **OpenCode 2 sessions finish properly in the island** (#808 by @afpruivo, #717)
+- **Linux: 24-bit microphones work for Flow and notes** (#785 by @eduardo-qts); on Arch, the desktop entry uses the portal's app id (#947 by @rahul05ranjan, #804); the build has no warnings left (#893 by @ZouaouiB)
+
 ## Windows and Linux 0.5.3 — October 22, 2026
 
 WhatsApp comes to Windows and Linux, as on the Mac.

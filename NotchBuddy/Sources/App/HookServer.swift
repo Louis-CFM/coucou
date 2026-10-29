@@ -420,7 +420,14 @@ final class HookServer: @unchecked Sendable {
 
         while true {
             let clientFD = Darwin.accept(fd, nil, nil)
-            guard clientFD >= 0 else { break }
+            guard clientFD >= 0 else {
+                // Never end the server on a failed accept (#853); pause unless it was transient.
+                // A listening socket that is gone for good (closed, not a socket) ends the loop.
+                let err = errno
+                if err == EBADF || err == EINVAL || err == ENOTSOCK { break }
+                if err != EINTR && err != ECONNABORTED { usleep(100_000) }
+                continue
+            }
             // Reject connections from other users (same-UID check)
             var euid: uid_t = 0
             var egid: gid_t = 0
@@ -1883,7 +1890,9 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("coucou") == true } ?? false }
+            // Remove only our own nb-hook entries, not whole groups that merely
+            // mention us: a user hook like ~/dev/coucou/scripts/lint.sh must survive.
+            existing = removeNbHookEntries(from: existing)
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -1908,12 +1917,9 @@ final class HookServer: @unchecked Sendable {
 
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true ||
-                        ($0["command"] as? String)?.contains("coucou") == true
-                    } ?? false
-                }
+                // Per-entry removal, like the Gemini path: user hooks that merely
+                // mention "coucou"/"NotchBuddy" are kept, only nb-hook commands go.
+                matchers = removeNbHookEntries(from: matchers)
                 if matchers.isEmpty { hooks.removeValue(forKey: key) }
                 else { hooks[key] = matchers }
             }
@@ -2084,12 +2090,9 @@ final class HookServer: @unchecked Sendable {
         guard var hooks = settings["hooks"] as? [String: Any] else { return }
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("coucou") == true ||
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true
-                    } ?? false
-                }
+                // Per-entry removal, like the Gemini path: user hooks that merely
+                // mention "coucou"/"NotchBuddy" are kept, only nb-hook commands go.
+                matchers = removeNbHookEntries(from: matchers)
                 if matchers.isEmpty { hooks.removeValue(forKey: key) }
                 else { hooks[key] = matchers }
             }
@@ -2121,10 +2124,9 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("coucou") == true ||
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false }
+            // Remove only our own nb-hook entries, not whole groups that merely
+            // mention us: a user hook like ~/dev/coucou/scripts/lint.sh must survive.
+            existing = removeNbHookEntries(from: existing)
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -2157,6 +2159,28 @@ final class HookServer: @unchecked Sendable {
         else { return false }
         return coucouHooksPresent(inSettings: json)
         #endif
+    }
+
+    // MARK: - Removing Coucou's own hook entries (both builds)
+
+    /// Removes entries containing "nb-hook" from a Gemini- or Claude-format groups array
+    /// (matcher + hooks[]), handling the legacy flat format too (command at top level).
+    /// Used by both paths' install/uninstall so only Coucou's own entries are removed;
+    /// whole groups are dropped only when every entry in them was ours.
+    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
+        groups.compactMap { group -> [String: Any]? in
+            // Legacy flat entry — command at group level
+            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
+            // Group format — filter inner hooks
+            if var innerHooks = group["hooks"] as? [[String: Any]] {
+                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
+                if innerHooks.isEmpty { return nil }
+                var updated = group
+                updated["hooks"] = innerHooks
+                return updated
+            }
+            return group
+        }
     }
 
     // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
@@ -2408,25 +2432,6 @@ final class HookServer: @unchecked Sendable {
         }
         try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
-    }
-
-    /// Removes entries containing "nb-hook" from a Gemini-format groups array.
-    /// Handles both new group format (matcher + hooks[]) and legacy flat format (command at top level).
-    /// Returns the cleaned array; empty groups (after inner-hook removal) are dropped.
-    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
-        groups.compactMap { group -> [String: Any]? in
-            // Legacy flat entry — command at group level
-            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
-            // Group format — filter inner hooks
-            if var innerHooks = group["hooks"] as? [[String: Any]] {
-                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
-                if innerHooks.isEmpty { return nil }
-                var updated = group
-                updated["hooks"] = innerHooks
-                return updated
-            }
-            return group
-        }
     }
 
     // MARK: - Codex hook installer  (#if !APPSTORE only)

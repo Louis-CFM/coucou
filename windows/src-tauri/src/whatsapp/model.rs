@@ -116,6 +116,14 @@ pub fn display_number(jid: &str) -> String {
     }
 }
 
+/// A chat's name that names nothing: empty, only its number, or GOWA's stand-in for a group it
+/// hasn't named yet ("Group 120363…").
+pub fn unnamed(jid: &str, name: &str) -> bool {
+    let name = name.trim();
+    let id = user_part(jid);
+    name.is_empty() || name == display_number(jid) || name == id || name.strip_prefix("Group ") == Some(id)
+}
+
 /// The same person under its several forms: "33612345678:12@s.whatsapp.net" and
 /// "33612345678@c.us" are one chat.
 pub fn normalized(jid: &str) -> String {
@@ -206,7 +214,7 @@ impl Inbox {
         } else {
             Some(message.sender_name.clone())
         };
-        let given = name.map(str::to_string).or_else(|| message.chat_name.clone()).filter(|n| !n.is_empty());
+        let given = name.map(str::to_string).or_else(|| message.chat_name.clone()).filter(|n| !unnamed(&chat, n));
         let mut conversation = self.conversations.remove(&chat).unwrap_or_else(|| Conversation {
             id: chat.clone(),
             name: given.clone().or_else(|| person_name.clone()).unwrap_or_else(|| number.clone()),
@@ -534,6 +542,10 @@ mod tests {
         assert!(!text_mentions("hey @33612345678", None));
         assert_eq!(display_number("33612345678:3@s.whatsapp.net"), "+33612345678");
         assert_eq!(display_number("abc@lid"), "abc");
+        assert!(unnamed("120363401@g.us", "+120363401"));
+        assert!(unnamed("120363401@g.us", "Group 120363401"));
+        assert!(!unnamed("120363401@g.us", "Group chat"));
+        assert!(!unnamed("120363401@g.us", "Famille"));
         assert_eq!(normalized("33612345678:12@c.us"), "33612345678@s.whatsapp.net");
         assert_eq!(normalized("nojid"), "nojid");
     }
