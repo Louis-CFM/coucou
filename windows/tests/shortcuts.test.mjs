@@ -285,6 +285,7 @@ const host = {
   canLeaveIsland: () => desktopSupported,
   flyOutOrHome: () => did.push("desktop"),
   viewCommand: (c) => did.push(`view:${c}`),
+  decide: (d) => did.push(`decide:${d}`),
 };
 let desktopSupported = true;
 const resume = () => did.push("resume");
@@ -349,6 +350,71 @@ test("island keys are read before the chat field sees them, and only while open"
   const plain = ev({ key: "k", code: "KeyK" });
   keydown.fn(plain);
   assert.equal(plain.prevented, false);
+});
+
+test("pending approval shortcuts: Y allows, N denies, ignored in text fields and for questions", () => {
+  const keydown = listeners.find((l) => l.type === "keydown");
+  const ev = (over) => {
+    const e = { ...press(over), target: null, stopped: false, prevented: false };
+    e.preventDefault = () => { e.prevented = true; };
+    e.stopPropagation = () => { e.stopped = true; };
+    return e;
+  };
+
+  State.mode = "expanded";
+  State.pendingApproval = { requestId: "r1", sessionId: "s", pillId: "integration_claude", tool: "Bash", command: "ls" };
+
+  // Y triggers allow
+  const yKey = ev({ key: "y", code: "KeyY" });
+  keydown.fn(yKey);
+  assert.ok(yKey.prevented && yKey.stopped);
+  assert.deepEqual(did, ["decide:allow"]);
+
+  // N triggers deny
+  did = [];
+  const nKey = ev({ key: "n", code: "KeyN" });
+  keydown.fn(nKey);
+  assert.ok(nKey.prevented && nKey.stopped);
+  assert.deepEqual(did, ["decide:deny"]);
+
+  // Uppercase Y / N also work
+  did = [];
+  const upperY = ev({ key: "Y", code: "KeyY" });
+  keydown.fn(upperY);
+  assert.deepEqual(did, ["decide:allow"]);
+
+  // In an input or textarea, Y / N are ignored
+  did = [];
+  const inInput = ev({ key: "y", code: "KeyY" });
+  inInput.target = { tagName: "INPUT" };
+  keydown.fn(inInput);
+  assert.equal(inInput.prevented, false);
+  assert.deepEqual(did, []);
+
+  // When modifiers like Ctrl are held, bare Y/N handler does not intercept
+  did = [];
+  const ctrlY = ev({ key: "y", code: "KeyY", ctrlKey: true });
+  keydown.fn(ctrlY);
+  assert.deepEqual(did, []);
+
+  // When pending approval has questions (interactive survey), Y/N do not decide
+  did = [];
+  State.pendingApproval = {
+    requestId: "r2", sessionId: "s", pillId: "integration_claude", tool: "AskUserQuestion", command: "",
+    questions: [{ question: "Pick one?", options: [], multiSelect: false }],
+  };
+  const qY = ev({ key: "y", code: "KeyY" });
+  keydown.fn(qY);
+  assert.equal(qY.prevented, false);
+  assert.deepEqual(did, []);
+
+  // When no pending approval, Y/N do nothing
+  did = [];
+  State.pendingApproval = null;
+  const noReq = ev({ key: "y", code: "KeyY" });
+  keydown.fn(noReq);
+  assert.equal(noReq.prevented, false);
+  assert.deepEqual(did, []);
 });
 
 test("the island toggle opens with the keyboard, and closes an open island", () => {
