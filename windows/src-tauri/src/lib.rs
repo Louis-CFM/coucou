@@ -19,6 +19,7 @@ mod local_chat;
 mod log;
 mod net;
 mod notes;
+mod omniroute;
 mod openai_compat;
 mod phone_link;
 mod pipe;
@@ -855,6 +856,7 @@ pub fn run() {
             chat_models,
             local_connect,
             local_set_key,
+            omniroute::omniroute_status, omniroute::omniroute_start, omniroute::omniroute_set_key, omniroute::omniroute_key_saved, omniroute::omniroute_dashboard,
             chat_reset,
             ingest_file,
             secret_present,
@@ -988,6 +990,7 @@ pub fn run() {
             desktop::setup(&handle);
             flow::setup(&handle);
             notes::setup(&handle);
+            omniroute::setup(&handle);
 
             if let Some(win) = island::window(&handle) {
                 // Where Tauri takes the drop itself (Linux), its paths are the
