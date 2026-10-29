@@ -48,6 +48,8 @@ struct SettingsView: View {
     @State private var showAgyDiff: Bool = false
     @State private var pendingAgyJSON: String = ""
     @State private var agyPendingInstall: Bool = true
+    @AppStorage(HookServer.agyApprovalsKey) private var agyApprovalsEnabled = false
+    @State private var agyHookTimeout: Int? = HookServer.agyPreToolTimeout()
 
     @State private var codexHooksInstalled: Bool = HookServer.codexHooksInstalled()
     @State private var showCodexDiff: Bool = false
@@ -713,6 +715,24 @@ struct SettingsView: View {
                             .buttonStyle(.borderedProminent)
                         Button(String(localized: "Cancel")) { showAgyDiff = false; pendingAgyJSON = "" }
                             .buttonStyle(.bordered)
+                    }
+                }
+
+                if agyHooksInstalled {
+                    Divider()
+                    Toggle(String(localized: "hooks.antigravity.approvals"), isOn: $agyApprovalsEnabled)
+                    Text(agyApprovalsEnabled
+                         ? String(localized: "hooks.antigravity.approvals.on")
+                         : String(localized: "hooks.antigravity.approvals.off"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // Hooks written by an older Coucou give Antigravity 10 s: too short to wait for a click.
+                    if agyApprovalsEnabled, (agyHookTimeout ?? 0) < HookServer.agyApprovalHookTimeout {
+                        Text(String(localized: "hooks.antigravity.approvals.update"))
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -1829,6 +1849,7 @@ struct SettingsView: View {
             showAgyDiff = false
             pendingAgyJSON = ""
             agyHooksInstalled = agyPendingInstall
+            agyHookTimeout = HookServer.agyPreToolTimeout()
             statusMessage = agyPendingInstall
                 ? String(localized: "status.agy-hooks-installed")
                 : String(localized: "status.agy-hooks-removed")

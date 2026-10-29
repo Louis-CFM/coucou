@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Mac: WhatsApp statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the WhatsApp pill (#901, same fix as #910)
+- **Mac: approve Antigravity commands from the notch** *(GitHub build, optional)* — turn on Settings → Antigravity → **Approve commands from the notch**, and a shell command that none of your Antigravity rules covers waits for you on the approval card, as with Claude Code: **Allow**, **Deny**, or **Reply in terminal** for Antigravity's own prompt (and its *Always allow*). Commands your rules allow or deny are left to Antigravity, and with no answer in 2 min, or Coucou closed, Antigravity asks in its terminal as before. Coucou can't see Antigravity's mode, so in Auto mode the notch also asks about commands Antigravity would have run on its own. Install the Antigravity hooks once more, then restart Antigravity: its command hook now waits up to 2 min
 
 ### Reliability (Mac, Windows, Linux)
 

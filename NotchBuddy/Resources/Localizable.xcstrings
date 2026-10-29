@@ -41417,6 +41417,358 @@
         }
       }
     },
+    "hooks.antigravity.approvals" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الموافقة على الأوامر من الشريط"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নচ থেকে কমান্ড অনুমোদন করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Befehle in der Notch bestätigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approve commands from the notch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobar comandos desde el notch"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approuver les commandes depuis le notch"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नॉच से कमांड स्वीकृत करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setujui perintah dari notch"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprovar comandos pelo notch"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтверждать команды в notch"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุมัติคำสั่งจากแถบ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Komutları adadan onayla"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在刘海中批准命令"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在瀏海中核准指令"
+          }
+        }
+      }
+    },
+    "hooks.antigravity.approvals.off" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يطلب Antigravity الإذن في طرفيته كالمعتاد."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity আগের মতোই তার টার্মিনালে অনুমতি চায়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity fragt wie gewohnt in seinem Terminal nach der Berechtigung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity asks for permission in its terminal, as usual."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity pide permiso en su terminal, como siempre."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity demande l'autorisation dans son terminal, comme d'habitude."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity हमेशा की तरह अपने टर्मिनल में अनुमति मांगता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity meminta izin di terminalnya, seperti biasa."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Antigravity pede permissão no terminal dele, como de costume."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity, как обычно, запрашивает разрешение в своём терминале."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity จะขออนุญาตในเทอร์มินัลของตัวเองตามปกติ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity her zamanki gibi kendi terminalinde izin ister."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 照常在其终端中请求权限。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 照常在其終端機中請求權限。"
+          }
+        }
+      }
+    },
+    "hooks.antigravity.approvals.on" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "قبل أن يشغّل Antigravity أمر shell لا تغطيه أي من قواعده، يسألك الشريط أولاً: السماح أو رفض أو الرد في الطرفية. ينتظر Antigravity حتى دقيقتين، ثم يسأل في طرفيته. لا يرى Coucou وضع Antigravity، لذا في وضع Auto يسأل الشريط أيضاً عن أوامر كان Antigravity سيشغّلها بنفسه."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity এমন কোনো shell কমান্ড চালানোর আগে যা তার কোনো নিয়মে পড়ে না, নচ আগে আপনাকে জিজ্ঞাসা করে: অনুমতি দিন, প্রত্যাখ্যান বা টার্মিনালে উত্তর দিন। Antigravity ২ মিনিট পর্যন্ত অপেক্ষা করে, তারপর তার টার্মিনালে জিজ্ঞাসা করে। Coucou Antigravity-এর মোড দেখতে পায় না, তাই Auto মোডে নচ এমন কমান্ড সম্পর্কেও জিজ্ঞাসা করে যা Antigravity নিজেই চালাত।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bevor Antigravity einen Shell-Befehl ausführt, den keine seiner Regeln abdeckt, fragt dich zuerst die Notch: Zulassen, Ablehnen oder Im Terminal antworten. Antigravity wartet bis zu 2 Min. und fragt dann in seinem Terminal. Coucou sieht den Modus von Antigravity nicht: Im Auto-Modus fragt die Notch auch bei Befehlen, die Antigravity selbst ausgeführt hätte."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before Antigravity runs a shell command that none of its rules covers, the notch asks you first: Allow, Deny or Reply in terminal. Antigravity waits up to 2 min, then asks in its terminal. Coucou can't see Antigravity's mode, so in Auto mode the notch also asks about commands Antigravity would have run on its own."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes de que Antigravity ejecute un comando de shell que ninguna de sus reglas cubre, el notch te pregunta primero: Permitir, Denegar o Responder en terminal. Antigravity espera hasta 2 min y luego pregunta en su terminal. Coucou no ve el modo de Antigravity: en modo Auto, el notch también pregunta por comandos que Antigravity habría ejecutado por su cuenta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avant qu'Antigravity lance une commande shell qu'aucune de ses règles ne couvre, le notch te demande d'abord : Autoriser, Refuser ou Répondre dans le terminal. Antigravity attend jusqu'à 2 min, puis demande dans son terminal. Coucou ne voit pas le mode d'Antigravity : en mode Auto, le notch demande aussi pour les commandes qu'Antigravity aurait lancées seul."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity कोई ऐसा shell कमांड चलाने से पहले जो उसके किसी नियम में शामिल नहीं है, नॉच पहले आपसे पूछता है: अनुमति दें, अस्वीकार या टर्मिनल में उत्तर दें। Antigravity 2 मिनट तक प्रतीक्षा करता है, फिर अपने टर्मिनल में पूछता है। Coucou, Antigravity का मोड नहीं देख सकता, इसलिए Auto मोड में नॉच उन कमांड के बारे में भी पूछता है जिन्हें Antigravity खुद चला देता।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sebelum Antigravity menjalankan perintah shell yang tidak dicakup aturannya, notch bertanya dulu: Izinkan, Tolak, atau Balas di terminal. Antigravity menunggu hingga 2 menit, lalu bertanya di terminalnya. Coucou tidak dapat melihat mode Antigravity, jadi dalam mode Auto notch juga bertanya tentang perintah yang akan dijalankan Antigravity sendiri."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes de o Antigravity executar um comando de shell que nenhuma das regras dele cobre, o notch pergunta primeiro: Permitir, Negar ou Responder no terminal. O Antigravity espera até 2 min e depois pergunta no terminal dele. O Coucou não vê o modo do Antigravity: no modo Auto, o notch também pergunta sobre comandos que o Antigravity teria executado sozinho."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прежде чем Antigravity выполнит shell-команду, которую не покрывает ни одно из его правил, notch сначала спросит тебя: Разрешить, Отклонить или Ответить в терминале. Antigravity ждёт до 2 мин, затем спрашивает в своём терминале. Coucou не видит режим Antigravity, поэтому в режиме Auto notch спрашивает и о командах, которые Antigravity выполнил бы сам."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ก่อนที่ Antigravity จะรันคำสั่ง shell ที่ไม่มีกฎใดครอบคลุม แถบจะถามคุณก่อน: อนุญาต ปฏิเสธ หรือตอบกลับในเทอร์มินัล Antigravity จะรอได้นานสุด 2 นาที แล้วจึงถามในเทอร์มินัลของตัวเอง Coucou มองไม่เห็นโหมดของ Antigravity ดังนั้นในโหมด Auto แถบจะถามถึงคำสั่งที่ Antigravity จะรันเองด้วย"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity, kurallarından hiçbirinin kapsamadığı bir kabuk komutunu çalıştırmadan önce ada sana sorar: İzin ver, Reddet veya Terminalde yanıtla. Antigravity en fazla 2 dk bekler, sonra kendi terminalinde sorar. Coucou, Antigravity'nin modunu göremez; Auto modunda ada, Antigravity'nin kendi başına çalıştıracağı komutları da sorar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 运行其规则未涵盖的 shell 命令前，刘海会先询问你：允许、拒绝或在终端回复。Antigravity 最多等待 2 分钟，然后在其终端中询问。Coucou 无法看到 Antigravity 的模式，因此在 Auto 模式下，刘海也会询问 Antigravity 本会自行运行的命令。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 執行其規則未涵蓋的 shell 指令前，瀏海會先詢問你：允許、拒絕或在終端機中回覆。Antigravity 最多等待 2 分鐘，之後在其終端機中詢問。Coucou 無法看到 Antigravity 的模式，因此在 Auto 模式下，瀏海也會詢問 Antigravity 原本會自行執行的指令。"
+          }
+        }
+      }
+    },
+    "hooks.antigravity.approvals.update" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "انقر على تثبيت الخطافات مرة أخرى، ثم أعِد تشغيل Antigravity: خطافات إصدار أقدم من Coucou لا تسمح له بانتظار إجابتك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "আবার হুক ইনস্টল করুন-এ ক্লিক করুন, তারপর Antigravity রিস্টার্ট করুন: Coucou-এর পুরোনো সংস্করণের হুক আপনার উত্তরের জন্য অপেক্ষা করতে দেয় না।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klicke noch einmal auf Hooks installieren und starte Antigravity neu: Hooks einer älteren Coucou-Version lassen es nicht auf deine Antwort warten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click Install hooks once more, then restart Antigravity: hooks from an older Coucou don't let it wait for your answer."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz clic otra vez en Instalar hooks y reinicia Antigravity: los hooks de una versión anterior de Coucou no le dejan esperar tu respuesta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clique encore une fois sur Installer les hooks, puis redémarre Antigravity : les hooks d'un ancien Coucou ne le laissent pas attendre ta réponse."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "हुक इंस्टॉल करें पर एक बार और क्लिक करें, फिर Antigravity रीस्टार्ट करें: Coucou के पुराने संस्करण के हुक उसे आपके उत्तर की प्रतीक्षा नहीं करने देते।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klik Pasang hooks sekali lagi, lalu mulai ulang Antigravity: hooks dari Coucou versi lama tidak membiarkannya menunggu jawaban Anda."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clique em Instalar hooks mais uma vez e reinicie o Antigravity: os hooks de uma versão antiga do Coucou não o deixam esperar sua resposta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажми «Установить хуки» ещё раз и перезапусти Antigravity: хуки от старой версии Coucou не дают ему дождаться твоего ответа."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คลิก ติดตั้ง Hooks อีกครั้ง แล้วเริ่ม Antigravity ใหม่: Hooks จาก Coucou เวอร์ชันเก่าไม่ให้ Antigravity รอคำตอบของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hook'ları kur'a bir kez daha tıkla, ardından Antigravity'yi yeniden başlat: eski bir Coucou'nun hook'ları yanıtını beklemesine izin vermez."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请再点一次“安装 Hooks”，然后重启 Antigravity：旧版 Coucou 写入的 hooks 无法让它等待你的回答。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請再按一次「安裝 hooks」，然後重新啟動 Antigravity：舊版 Coucou 寫入的 hooks 無法讓它等待你的回答。"
+          }
+        }
+      }
+    },
     "hooks.antigravity.installed" : {
       "localizations" : {
         "ar" : {

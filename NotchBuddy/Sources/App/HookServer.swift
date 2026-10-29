@@ -73,6 +73,7 @@ final class HookServer: @unchecked Sendable {
         case "agent_copilot": return "Handled in Copilot CLI."
         case "agent_muse":    return "Handled in Muse Code."
         case "agent_hermes":  return "Handled in Hermes."
+        case "agent_antigravity": return "Handled in Antigravity."
         default:              return "Handled in \(claudeHostName)."
         }
     }
@@ -86,6 +87,7 @@ final class HookServer: @unchecked Sendable {
         case "agent_copilot": return "Still waiting in Copilot CLI."
         case "agent_muse":    return "Still waiting in Muse Code."
         case "agent_hermes":  return "Still waiting in Hermes."
+        case "agent_antigravity": return "Still waiting in Antigravity."
         default:              return "Still waiting in \(claudeHostName)."
         }
     }
@@ -401,6 +403,25 @@ final class HookServer: @unchecked Sendable {
         }
 
         let eventName = payload["hook_event_name"] as? String ?? ""
+
+        // Antigravity PreToolUse: its hook waits for an answer. "ask" right away leaves the tool
+        // to Antigravity's own rules and prompt; a command it has no rule for waits for a click
+        // in the notch when that is turned on in Settings.
+        if coucouKind == "agy_pre_tool" {
+            let gate = Self.agyApprovalGate(payload)
+            Task { @MainActor in
+                self.processEvent(name: eventName, payload: payload)
+                if let gate {
+                    self.processAgyApproval(fd: fd, payload: payload, command: gate.command,
+                                            waitSeconds: gate.waitSeconds)
+                }
+            }
+            if gate == nil {
+                sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
 
         if eventName == "PermissionRequest" {
             // Hold fd open — Claude Code waits for our decision (up to 120s)
@@ -947,6 +968,114 @@ final class HookServer: @unchecked Sendable {
         showApprovalHead()
     }
 
+    // MARK: - Antigravity command approval (blocking — its PreToolUse hook waits)
+
+    /// UserDefaults key of Settings → Antigravity → Approve commands from the notch.
+    static let agyApprovalsKey = "agyApprovalsEnabled"
+
+    /// Antigravity's PreToolUse hook needs this long (seconds) for a card to wait for a click:
+    /// the hooks Coucou wrote before had 10 s and must be installed again.
+    static let agyApprovalHookTimeout = 120
+
+    /// The command to put on a card, and how long it may wait, when Antigravity is about to
+    /// run a shell command it has no rule for; nil when Antigravity decides on its own.
+    /// Runs on the socket's thread: reads UserDefaults and Antigravity's small config files.
+    private static func agyApprovalGate(_ payload: [String: Any]) -> (command: String, waitSeconds: Double)? {
+        #if APPSTORE
+        return nil
+        #else
+        guard UserDefaults.standard.bool(forKey: agyApprovalsKey),
+              payload["coucou_agent"] as? String == "antigravity" else { return nil }
+        let tool = payload["tool_name"] as? String ?? ""
+        guard tool == "run_command" || tool.hasSuffix(":run_command") else { return nil }
+        let input = payload["tool_input"] as? [String: Any] ?? [:]
+        let command = (input["command"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !command.isEmpty else { return nil }
+        // Coucou gives up 10 s before Antigravity stops waiting for the hook.
+        guard let timeout = agyPreToolTimeout(), timeout >= agyApprovalHookTimeout else { return nil }
+        let rules = AgyPermissionRules.load(cwd: payload["cwd"] as? String ?? "")
+        guard rules.verdict(for: command) == .unknown else { return nil }
+        return (command, min(Double(timeout - 10), 110))
+        #endif
+    }
+
+    /// Antigravity is waiting on its PreToolUse hook for a command: puts it on the approval
+    /// card. Allow and Deny answer the hook; Reply in terminal, the timeout or Antigravity
+    /// giving up hand the choice back to Antigravity's own prompt.
+    @MainActor
+    private func processAgyApproval(fd: Int32, payload: [String: Any], command: String, waitSeconds: Double) {
+        let sessionId = payload["session_id"] as? String ?? "unknown"
+        let cwd = payload["cwd"] as? String ?? ""
+        let projectName = sessionName(payload, cwd: cwd)
+        let pillId = "agent_antigravity"
+        let tool = payload["tool_name"] as? String ?? "run_command"
+        let inputKey = Self.approvalInputKey(payload["tool_input"] as? [String: Any] ?? [:])
+        nbLog("Antigravity command waits for the notch [\(sessionId.prefix(8))]")
+
+        let entry = QueuedApproval(id: UUID(), fd: fd, sessionId: sessionId, pillId: pillId,
+                                   projectName: projectName, cwd: cwd, tool: tool,
+                                   command: command, inputKey: inputKey)
+        guard approvals.enqueue(entry) == .accepted else {
+            nbLog("Antigravity command: \(ApprovalQueue.maxPending) already waiting, asked in Antigravity")
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
+        // Tells the hook the card is up, so it waits for a click instead of giving up after a
+        // few seconds. Written before anything else can answer or close this fd.
+        sendLine(fd: fd, text: #"{"pending":true}"#)
+        activeSessionId = sessionId
+
+        // Same display as the session's other events (processEvent: an external agent pill).
+        upsertTask(pill: pillId,
+                   display: PillSessionRegistry.Display(session: sessionId, projectName: "antigravity",
+                                                        cwd: "", hostApp: nil,
+                                                        bundleId: payload["bundle_id"] as? String ?? ""),
+                   working: true, externalAgent: "antigravity")
+        AppState.shared.updateTask(id: pillId, state: .approval)
+        SoundEngine.shared.play("approval")
+
+        // The hook hung up (Antigravity stopped waiting, or the turn was cancelled): drop the
+        // card. The cancel handler closes the fd — never close it anywhere else.
+        let entryId = entry.id
+        let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
+        source.setEventHandler { [weak self] in
+            guard let self, self.approvals.contains(id: entryId) else { return }
+            self.removeApproval(id: entryId, note: self.handledNote(pill: pillId))
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        approvalSources[entryId] = source
+
+        // Give up before Antigravity does: the hook then answers "ask" and Antigravity asks itself.
+        DispatchQueue.main.asyncAfter(deadline: .now() + waitSeconds) { [weak self] in
+            guard let self, self.approvals.contains(id: entryId) else { return }
+            self.removeApproval(id: entryId, note: self.waitingNote(pill: pillId))
+        }
+
+        showApprovalHead()
+    }
+
+    #if !APPSTORE
+    /// Timeout (seconds) of Coucou's PreToolUse hook in ~/.gemini/config/hooks.json, nil if absent.
+    static func agyPreToolTimeout() -> Int? {
+        guard let data = try? Data(contentsOf: agyHooksURL),
+              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let coucou = root["coucou"] as? [String: Any],
+              let groups = coucou["PreToolUse"] as? [[String: Any]] else { return nil }
+        for group in groups {
+            for hook in group["hooks"] as? [[String: Any]] ?? [] {
+                guard let cmd = hook["command"] as? String, cmd.contains("nb-hook") else { continue }
+                // Antigravity's default when no timeout is written is 30 s.
+                return (hook["timeout"] as? NSNumber)?.intValue ?? 30
+            }
+        }
+        return nil
+    }
+    #endif
+
     /// Called by ApprovalView buttons and the iPhone. Writes the decision to the waiting
     /// nb-hook of request `id` — the one that was on screen. A click that lands after the
     /// card moved on to another request is ignored, so it can never answer the wrong one.
@@ -988,9 +1117,9 @@ final class HookServer: @unchecked Sendable {
         case "plan_change":  json = #"{"permissionDecision":"change_plan"}"#
         default:       json = #"{"permissionDecision":"deny"}"#
         }
-        // The recap only counts allow / always / deny.
+        // The recap only counts allow / always / deny ("ask" hands the choice back to the agent).
         let recapDecision = ["plan_auto": "allow", "plan_default": "allow", "plan_change": "deny"][decision] ?? decision
-        RecapStore.shared.recordDecision(pillId: head.pillId, decision: recapDecision)
+        if decision != "ask" { RecapStore.shared.recordDecision(pillId: head.pillId, decision: recapDecision) }
         removeApproval(id: head.id, answer: json)
         if decision == "plan_change" { ClaudeHost.activate(head.hostApp) }
     }
@@ -1956,11 +2085,13 @@ final class HookServer: @unchecked Sendable {
         let base = hookBase()
         // PreToolUse / PostToolUse: tool-level hooks — use matcher group
         // PreInvocation / PostInvocation / Stop: lifecycle hooks — direct handler, no matcher
+        // PreToolUse may wait for a click in the notch (Approve commands from the notch):
+        // it answers in a moment otherwise, so the long timeout costs nothing.
         var coucou: [String: Any] = [:]
         for event in ["PreToolUse", "PostToolUse"] {
             let hook: [String: Any] = ["type": "command",
                                        "command": "\(base) --agent antigravity \(event)",
-                                       "timeout": 10]
+                                       "timeout": event == "PreToolUse" ? Self.agyApprovalHookTimeout : 10]
             coucou[event] = [["matcher": "*", "hooks": [hook]]]
         }
         for event in ["PreInvocation", "PostInvocation", "Stop"] {
@@ -3255,11 +3386,14 @@ if [ -n "$out" ]; then
     printf '%s\\n' "$out"
 else
     # Copilot is fail-closed — must always output valid JSON even when python3 is absent or crashes.
-    _cop=0; _perm=0
+    # Antigravity needs a decision on PreToolUse: "ask" leaves it to its own rules and prompt.
+    _cop=0; _perm=0; _agy=0; _pre=0
     for _a in "$@"; do
         case "$_a" in
             copilot) _cop=1 ;;
+            antigravity) _agy=1 ;;
             permissionRequest|PermissionRequest) _perm=1 ;;
+            PreToolUse) _pre=1 ;;
         esac
     done
     if [ "$_cop" -eq 1 ]; then
@@ -3268,6 +3402,8 @@ else
         else
             printf '{}\\n'
         fi
+    elif [ "$_agy" -eq 1 ] && [ "$_pre" -eq 1 ]; then
+        printf '{"decision":"ask"}\\n'
     fi
 fi
 exit 0
@@ -3516,6 +3652,45 @@ def main():
     event = payload.get('hook_event_name', '')
     # socket_path is already defined above
 
+    # Antigravity runs its PreToolUse hook before its own permission check, and waits for it.
+    # Coucou answers at once unless the notch shows the command (Settings → Antigravity →
+    # Approve commands from the notch): then {"pending":true} comes first, the click later.
+    # Only a click on Allow prints "allow"; anything else ("ask", no answer, Coucou closed)
+    # leaves the tool to Antigravity's own rules and prompt.
+    if agent == 'antigravity' and event == 'PreToolUse':
+        out = {'decision': 'ask'}
+        try:
+            payload['coucou_kind'] = 'agy_pre_tool'
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(3)
+            s.connect(socket_path)
+            s.sendall((json.dumps(payload) + '\\n').encode())
+            buf = b''
+            reply = None
+            while reply is None:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+                while reply is None and b'\\n' in buf:
+                    line, buf = buf.split(b'\\n', 1)
+                    obj = json.loads(line.decode() or '{}')
+                    if isinstance(obj, dict) and obj.get('pending'):
+                        s.settimeout(115)  # the card is up; Coucou gives up first
+                    else:
+                        reply = obj
+            s.close()
+            decision = reply.get('permissionDecision', '') if isinstance(reply, dict) else ''
+            if decision in ('allow', 'always'):
+                out = {'decision': 'allow'}
+            elif decision == 'deny':
+                out = {'decision': 'deny', 'reason': 'Denied from Coucou'}
+        except Exception:
+            pass
+        sys.stdout.write(json.dumps(out) + '\\n')
+        sys.stdout.flush()
+        sys.exit(0)
+
     if event == 'PermissionRequest':
         # Block and wait for Coucou's decision (Claude Code allows up to 120s)
         try:
@@ -3610,12 +3785,8 @@ def main():
     except Exception:
         pass  # Always exit cleanly — never block the agent
 
-    # Antigravity needs a decision on PreToolUse ({} reads as a denial). "ask" keeps its own
-    # permission prompt (and the user's Always Allow); Coucou never allows a tool by itself.
-    if agent == 'antigravity' and event == 'PreToolUse':
-        sys.stdout.write('{"decision":"ask"}\\n')
-        sys.stdout.flush()
-    elif agent in ('gemini', 'antigravity', 'muse', 'copilot'):
+    # Antigravity's PreToolUse is answered above; its other events, like Gemini CLI's, read "{}".
+    if agent in ('gemini', 'antigravity', 'muse', 'copilot'):
         sys.stdout.write('{}\\n')
         sys.stdout.flush()
 
@@ -3868,6 +4039,45 @@ def main():
     event = payload.get('hook_event_name', '')
     # socket_path is already defined above
 
+    # Antigravity runs its PreToolUse hook before its own permission check, and waits for it.
+    # Coucou answers at once unless the notch shows the command (Settings → Antigravity →
+    # Approve commands from the notch): then {"pending":true} comes first, the click later.
+    # Only a click on Allow prints "allow"; anything else ("ask", no answer, Coucou closed)
+    # leaves the tool to Antigravity's own rules and prompt.
+    if agent == 'antigravity' and event == 'PreToolUse':
+        out = {'decision': 'ask'}
+        try:
+            payload['coucou_kind'] = 'agy_pre_tool'
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(3)
+            s.connect(socket_path)
+            s.sendall((json.dumps(payload) + '\\n').encode())
+            buf = b''
+            reply = None
+            while reply is None:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+                while reply is None and b'\\n' in buf:
+                    line, buf = buf.split(b'\\n', 1)
+                    obj = json.loads(line.decode() or '{}')
+                    if isinstance(obj, dict) and obj.get('pending'):
+                        s.settimeout(115)  # the card is up; Coucou gives up first
+                    else:
+                        reply = obj
+            s.close()
+            decision = reply.get('permissionDecision', '') if isinstance(reply, dict) else ''
+            if decision in ('allow', 'always'):
+                out = {'decision': 'allow'}
+            elif decision == 'deny':
+                out = {'decision': 'deny', 'reason': 'Denied from Coucou'}
+        except Exception:
+            pass
+        sys.stdout.write(json.dumps(out) + '\\n')
+        sys.stdout.flush()
+        sys.exit(0)
+
     if event == 'PermissionRequest':
         # Block and wait for Coucou's decision (Claude Code allows up to 120s)
         try:
@@ -3961,12 +4171,8 @@ def main():
     except Exception:
         pass  # Always exit cleanly — never block the agent
 
-    # Antigravity needs a decision on PreToolUse ({} reads as a denial). "ask" keeps its own
-    # permission prompt (and the user's Always Allow); Coucou never allows a tool by itself.
-    if agent == 'antigravity' and event == 'PreToolUse':
-        sys.stdout.write('{"decision":"ask"}\\n')
-        sys.stdout.flush()
-    elif agent in ('gemini', 'antigravity', 'muse', 'copilot'):
+    # Antigravity's PreToolUse is answered above; its other events, like Gemini CLI's, read "{}".
+    if agent in ('gemini', 'antigravity', 'muse', 'copilot'):
         sys.stdout.write('{}\\n')
         sys.stdout.flush()
 

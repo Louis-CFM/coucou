@@ -140,6 +140,33 @@ island's `tool_name` / `session_id`.
 | `PostInvocation` | `PostToolUse` |
 | `Stop` | `Stop` |
 
+Antigravity has no permission-request event: it runs `PreToolUse` before its own permission
+check and waits for the hook's `decision` (`allow`, `deny`, `ask` or `force_ask`). By default
+the relay answers `{"decision":"ask"}` at once, so Antigravity's own rules and prompt decide.
+
+**Approve commands from the notch** (Settings → Antigravity, off by default). When it is on,
+a `run_command` that none of Antigravity's `command(...)` rules covers waits for the approval
+card instead. Coucou reads those rules from `~/.gemini/antigravity-cli/settings.json`
+(`permissions`), `~/.gemini/config/config.json` (`globalPermissionGrants`) and the project in
+`~/.gemini/config/projects/` that holds the session's folder. A command those rules allow or
+deny gets no card: Antigravity applies its rule.
+
+| On the card | The hook prints |
+|---|---|
+| **Allow** | `{"decision":"allow"}` — this one command runs |
+| **Deny** | `{"decision":"deny","reason":"Denied from Coucou"}` |
+| **Reply in terminal** | `{"decision":"ask"}` — Antigravity shows its own prompt (where *Always allow* lives) |
+| No click in 110 s, Coucou closed or hung, card full | `{"decision":"ask"}` |
+
+The relay sends the payload tagged `coucou_kind: agy_pre_tool` and reads one line back:
+`{"permissionDecision":"ask"}` right away, or `{"pending":true}` once the card is up and then
+the decision. It waits 3 s for the first line and 115 s for the decision; the `PreToolUse`
+hook is installed with a 120 s timeout (hooks written by an older Coucou have 10 s and must be
+installed again before cards show). Coucou cannot see Antigravity's mode (`--mode auto`,
+Shift+Tab, *Always proceed*), so with the setting on, Auto mode also asks about commands
+Antigravity would have run on its own. Other tools (file edits, URLs, MCP) are left to
+Antigravity.
+
 ### GitHub Copilot CLI (macOS)
 
 Coucou supports Copilot CLI out of the box via **Settings → GitHub Copilot CLI Hooks → Install hooks**.
