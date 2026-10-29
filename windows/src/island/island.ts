@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { t } from "../i18n/i18n";
+import { t, tl } from "../i18n/i18n";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
@@ -23,7 +23,8 @@ import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
-import { h } from "../views/dom";
+import { h, svg } from "../views/dom";
+import { inToolsZone } from "../core/layout";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { restoreAlertFocus } from "./hooks";
@@ -58,6 +59,11 @@ export class Island {
   private root: HTMLElement;
   private islandEl!: HTMLElement;
   private clipEl!: HTMLElement;
+  /** The Tools tile shown while a file is dragged over the island (TOOLS_ZONE). */
+  private toolsZone = h("div", { id: "tools-zone" },
+    svg("M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 3.5v5M12 15.5v5M3.5 12h5M15.5 12h5", 22, { stroke: 1.7 }),
+    h("span", { text: tl("Convert & tools") }),
+  );
   /** The neon that runs around the edge when a notification comes (neon()). */
   private neonEl = h("div", { id: "neon" }, h("div", { class: "ring" }));
   private contentEl!: HTMLElement;
@@ -336,6 +342,7 @@ export class Island {
       this.miniGrid,
       this.clockEl,
       this.countdown,
+      this.toolsZone,
       this.neonEl,
     );
 
@@ -750,6 +757,7 @@ export class Island {
       case "over": {
         if (State.fileDragOver) return;
         State.fileDragOver = true;
+        this.toolsZone.classList.add("on");
         this.engine.animateMorph(1);
         // enterZone must run before the island expands, so the sequence is
         // already active by the time the view becomes `upload`.
@@ -760,6 +768,7 @@ export class Island {
       case "leave": {
         if (!State.fileDragOver) return;
         State.fileDragOver = false;
+        this.toolsZone.classList.remove("on", "over");
         this.engine.animateMorph(0);
         // The island deliberately stays open: the drag session is still alive.
         UploadSeq.exitZone();
@@ -768,7 +777,17 @@ export class Island {
       }
       case "drop": {
         State.fileDragOver = false;
+        this.toolsZone.classList.remove("on", "over");
         const path = e.paths?.[0];
+        // On the Tools tile: the wheel opens around the pointer, nothing is eaten.
+        if (path && inToolsZone(State.mouseInIsland.x, State.mouseInIsland.y)) {
+          this.engine.animateMorph(0);
+          UploadSeq.deactivate();
+          void Bridge.wheelOpen(e.paths ?? [path]);
+          this.setView(State.defaultView());
+          this.collapse();
+          return;
+        }
         if (!path) {
           this.engine.animateMorph(0);
           this.setView(State.defaultView());
@@ -1091,6 +1110,9 @@ export class Island {
     // fed from the Win32 cursor poll instead — it runs throughout the drag.
     if (UploadSeq.isActive && !UploadSeq.dropped) {
       UploadSeq.updateCursor(State.mouseInIsland.x, State.mouseInIsland.y);
+    }
+    if (State.fileDragOver) {
+      this.toolsZone.classList.toggle("over", inToolsZone(State.mouseInIsland.x, State.mouseInIsland.y));
     }
 
     const inIsland =

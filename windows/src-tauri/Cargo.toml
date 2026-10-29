@@ -16,6 +16,8 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 # Screen capture for Claude (capture.rs): the clipboard's bitmaps as PNG.
 png = "0.17"
+# The wheel's image conversions and tools (wheel/image_ops.rs). MIT/Apache-2.0.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "tiff", "bmp", "ico", "gif"] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
@@ -55,6 +57,8 @@ sherpa-onnx = { version = "1.13.8", default-features = false, features = ["stati
 cpal = "0.18"
 
 [target.'cfg(windows)'.dependencies]
+# The wheel's "Move": Windows' own folder picker. MIT.
+rfd = { version = "0.15", default-features = false }
 # Screen capture for Claude (capture.rs): images on the clipboard, as PNG and bitmap.
 clipboard-win = "5.4"
 keyring = { version = "3", features = ["windows-native"] }

@@ -398,6 +398,10 @@ export const Bridge = {
   // Screen capture for Claude (capture.rs).
   captureBegin: () => call<void>("capture_begin"),
 
+  // ── The wheel (src-tauri/src/wheel) ───────────────────────────────────────
+  /** Files dropped on the Tools tile: the wheel opens around the pointer. */
+  wheelOpen: (paths: string[]) => call<void>("wheel_open", { paths }),
+
   // ── The notch's Clipboard (src-tauri/src/clipboard.rs) ────────────────────
   clipboardItems: () => call<ClipItem[]>("clipboard_items"),
   /** An image item as a data URL, for its card. */

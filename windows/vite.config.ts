@@ -66,6 +66,8 @@ export default defineConfig({
         mochi: resolve(__dirname, "mochi.html"),
         pill: resolve(__dirname, "pill.html"),
         annotate: resolve(__dirname, "annotate.html"),
+        wheel: resolve(__dirname, "wheel.html"),
+        editor: resolve(__dirname, "editor.html"),
       },
     },
   },

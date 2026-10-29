@@ -4334,3 +4334,40 @@ html[data-dir="rtl"] #views .mail-stack {
     35%, 65% { opacity: 0.8; }
   }
 }
+/* ── The Tools tile, while a file is dragged over the island (wheel/) ──────── */
+
+#tools-zone {
+  position: absolute;
+  left: 478px;
+  top: 48px;
+  width: 146px;
+  height: 112px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #ffd2bd;
+  font: 600 12px var(--font);
+  text-align: center;
+  background: linear-gradient(160deg, rgba(255, 122, 61, 0.16), rgba(255, 90, 31, 0.06));
+  border: 1.5px dashed rgba(255, 122, 61, 0.45);
+  opacity: 0;
+  transform: scale(0.94);
+  pointer-events: none;
+  transition: opacity 0.18s, transform 0.18s, background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+#tools-zone.on {
+  opacity: 1;
+  transform: none;
+}
+
+#tools-zone.over {
+  color: #fff;
+  border-style: solid;
+  border-color: #ff7a3d;
+  background: linear-gradient(160deg, #ff7a3d, #ff5a1f);
+  box-shadow: 0 0 22px rgba(255, 90, 31, 0.45);
+}

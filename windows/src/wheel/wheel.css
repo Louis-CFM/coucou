@@ -1,0 +1,302 @@
+/* The wheel (Tangerine's look): soft peach glass wedges around a white hub that
+   holds the file, a dark size pill and a blue name tag; the wedge under the
+   pointer turns orange. Transparent around it. */
+
+:root {
+  color-scheme: light;
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI", "Microsoft YaHei UI", sans-serif;
+  --wedge: rgba(255, 240, 231, 0.9);
+  --wedge-edge: rgba(255, 255, 255, 0.95);
+  --wedge-ink: #3b2a22;
+  --hot: #ff5a1f;
+  --hot-2: #ff7a3d;
+  --ring: rgba(255, 255, 255, 0.42);
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--font);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#wheel {
+  position: relative;
+  width: 500px;
+  height: 500px;
+  opacity: 0;
+  transform: scale(0.86);
+  transition: opacity 0.16s ease-out, transform 0.22s cubic-bezier(0.3, 1.35, 0.5, 1);
+}
+
+#wheel.on {
+  opacity: 1;
+  transform: scale(1);
+}
+
+svg.ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.backdrop {
+  fill: var(--ring);
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 18px 38px rgba(70, 30, 10, 0.35));
+}
+
+.wedge path {
+  fill: var(--wedge);
+  stroke: var(--wedge-edge);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  transition: fill 0.12s ease-out;
+}
+
+.wedge text {
+  font: 700 15px var(--font);
+  fill: var(--wedge-ink);
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.wedge.small text {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wedge .icon {
+  fill: none;
+  stroke: var(--wedge-ink);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.wedge.hot path {
+  fill: var(--hot);
+}
+
+.wedge.hot text {
+  fill: #fff;
+}
+
+.wedge.hot .icon {
+  stroke: #fff;
+}
+
+.ring.busy .wedge {
+  opacity: 0.45;
+}
+
+/* The hub. */
+.hub {
+  position: absolute;
+  left: 50%;
+  top: 236px;
+  width: 168px;
+  height: 168px;
+  margin: -84px 0 0 -84px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.95), 0 6px 20px rgba(80, 40, 20, 0.18);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.hub img {
+  position: absolute;
+  inset: 12px;
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.hub .glyph {
+  width: 54px;
+  height: 54px;
+  fill: none;
+  stroke: #8a6a58;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pill {
+  position: relative;
+  z-index: 1;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(45, 30, 24, 0.72);
+  color: #fff;
+  font: 600 13px var(--font);
+  white-space: nowrap;
+}
+
+/* What the hub says while working, done or with a choice to make. */
+.hub-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 50%;
+  color: var(--wedge-ink);
+  font: 600 12.5px/1.3 var(--font);
+}
+
+.hub-panel.on {
+  display: flex;
+}
+
+.hub-panel .big {
+  font-size: 14px;
+}
+
+.hub-panel .dim {
+  font-weight: 500;
+  font-size: 11.5px;
+  color: #7b6255;
+  word-break: break-word;
+}
+
+.hub-panel button {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font: 600 12px var(--font);
+  background: rgba(59, 42, 34, 0.08);
+  color: var(--wedge-ink);
+  cursor: default;
+}
+
+.hub-panel button:hover {
+  background: rgba(59, 42, 34, 0.16);
+}
+
+.hub-panel button.primary {
+  background: var(--hot);
+  color: #fff;
+}
+
+.hub-panel button.primary:hover {
+  background: var(--hot-2);
+}
+
+.hub-panel.error {
+  color: #b42318;
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 90, 31, 0.2);
+  border-top-color: var(--hot);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.check {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: grid;
+  place-items: center;
+}
+
+.check svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.name-tag {
+  position: absolute;
+  left: 50%;
+  top: 336px;
+  transform: translateX(-50%);
+  max-width: 260px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: #1d6ff2;
+  color: #fff;
+  font: 600 12.5px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(29, 111, 242, 0.35);
+  pointer-events: none;
+}
+
+/* Convert · Tools · Actions. */
+.rings {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(40, 28, 22, 0.72);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.rings button {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font: 600 12px var(--font);
+  color: rgba(255, 255, 255, 0.78);
+  background: transparent;
+  cursor: default;
+}
+
+.rings button:hover {
+  color: #fff;
+}
+
+.rings button.on {
+  background: #fff;
+  color: #2b1d16;
+}
+
+.rings button:disabled {
+  opacity: 0.35;
+}
+
+.rings kbd {
+  font: 600 10px var(--font);
+  opacity: 0.55;
+  margin-left: 5px;
+}

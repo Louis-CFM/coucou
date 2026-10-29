@@ -44,6 +44,7 @@ mod tray;
 mod vitals;
 mod update;
 mod voice;
+mod wheel;
 #[cfg(windows)]
 mod webview_drop;
 mod whatsapp;
@@ -988,6 +989,17 @@ pub fn run() {
             clipboard::clipboard_pin,
             clipboard::clipboard_delete,
             clipboard::clipboard_clear,
+            wheel::wheel_open,
+            wheel::wheel_close,
+            wheel::wheel_current,
+            wheel::wheel_preview,
+            wheel::wheel_run,
+            wheel::wheel_save_edit,
+            wheel::wheel_reveal,
+            wheel::wheel_editor,
+            wheel::wheel_editing,
+            wheel::wheel_editor_done,
+            wheel::wheel_editor_close,
             capture::capture_begin,
             capture::capture_paste,
             capture::capture_copy,

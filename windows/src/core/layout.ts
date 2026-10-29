@@ -192,6 +192,16 @@ export function botPosition(
   }
 }
 
+/**
+ * Where a dragged file opens the wheel instead of being eaten (wheel/, the
+ * Tools tile at the drop card's right end), in island coordinates.
+ */
+export const TOOLS_ZONE = { x: 478, y: 48, w: 146, h: 112 };
+
+export function inToolsZone(x: number, y: number): boolean {
+  return x >= TOOLS_ZONE.x && x <= TOOLS_ZONE.x + TOOLS_ZONE.w && y >= TOOLS_ZONE.y && y <= TOOLS_ZONE.y + TOOLS_ZONE.h;
+}
+
 /** The neon that runs around the island's edge when a notification comes, by kind. */
 export const NEON = {
   approval: "#F5A524",
