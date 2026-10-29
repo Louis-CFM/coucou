@@ -96,7 +96,7 @@ pub fn setup(app: &AppHandle) {
         crate::log::line("flow pill: no way to place it on this desktop");
     } else {
         let park = cfg!(windows);
-        let mut builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
+        let builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
             .additional_browser_args(crate::BROWSER_ARGS)
             .title("Coucou")
             .inner_size(BOTTOM.0, BOTTOM.1)
@@ -114,11 +114,14 @@ pub fn setup(app: &AppHandle) {
             .disable_drag_drop_handler()
             .focusable(false)
             .visible(park);
-        if park {
-            builder = builder.position(PARKED.0 as f64, PARKED.1 as f64);
-        }
         match builder.build() {
             Ok(win) => {
+                // tao only opens a window on a display: asked for the parked
+                // spot, it falls back to Windows' default place, in sight, and
+                // the resting pill stayed there until dictation first showed it.
+                if park {
+                    let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
+                }
                 if !platform::prepare_pill_window(&win, mode) {
                     let _ = win.destroy();
                     mode = DesktopMode::Off;

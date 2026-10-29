@@ -162,6 +162,15 @@ code,
   background: var(--green);
 }
 
+/* The generic button hover would turn a switch that is on grey. */
+.switch:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.switch.on:hover:not(:disabled) {
+  background: var(--green);
+}
+
 .switch::after {
   content: "";
   position: absolute;

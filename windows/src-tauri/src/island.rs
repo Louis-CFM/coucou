@@ -498,6 +498,15 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
                 let _ = win.emit("cursor", CursorPayload { x, y });
             }
+            // A tick already under way when the island collapsed still ran to
+            // the end, and with the pointer off the island it made the window
+            // click-through again: the wake strip then never sees the pointer,
+            // and the island only comes back for an agent event. This thread
+            // has the last word, so the strip always takes the mouse.
+            if platform::CURSOR_POLL && gate.collapsed.load(Ordering::Relaxed) {
+                set_ignore_cursor(&app, false);
+                gate.forget_ignore_state();
+            }
         }
     });
 }

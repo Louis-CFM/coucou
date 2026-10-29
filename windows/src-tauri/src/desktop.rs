@@ -309,7 +309,7 @@ fn page_url(app: &AppHandle) -> WebviewUrl {
 }
 
 fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
-    let mut builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
+    let builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
         .additional_browser_args(crate::BROWSER_ARGS)
         .title("Mochi")
         .inner_size(SIZE, SIZE)
@@ -329,12 +329,16 @@ fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
         .disable_drag_drop_handler()
         .focusable(false)
         .visible(PARK);
-    if PARK {
-        builder = builder.position(PARKED.0, PARKED.1);
-    }
     let built = builder.build();
     match built {
-        Ok(win) => Some(win),
+        Ok(win) => {
+            // tao only opens a window on a display: asked for the parked spot,
+            // it falls back to Windows' default place, in sight. Park it now.
+            if PARK {
+                let _ = win.set_position(PhysicalPosition::new(PARKED.0 as i32, PARKED.1 as i32));
+            }
+            Some(win)
+        }
         Err(err) => {
             crate::log::line(format!("desktop Mochi window failed: {err}"));
             None
