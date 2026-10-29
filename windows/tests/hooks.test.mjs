@@ -38,6 +38,7 @@ beforeEach(() => {
   State.paused = false;
   State.isPinned = false;
   State.pendingApproval = null;
+  State.lastFinished = null;
   State.settings = { ...DEFAULT_SETTINGS };
   State.loadIntegrationTasks();
 });
@@ -376,6 +377,35 @@ test("a Claude Desktop session gets the Claude Desktop pill, in its colour (Mac 
   assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
 });
 
+test("Open terminal still finds a Claude Desktop session once its pill has gone (#604)", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "C:\p\proj", session_id: "d1", coucou_agent: "claude-desktop" });
+  hook({ hook_event_name: "Stop", cwd: "C:\p\proj", session_id: "d1", coucou_agent: "claude-desktop" });
+  seconds(6);
+  assert.equal(task("agent_claude-desktop"), undefined);
+  assert.equal(State.terminalTarget.id, "agent_claude-desktop");
+  // A pill in front with its own session wins.
+  hook({ hook_event_name: "SessionStart", cwd: "/p/other", session_id: "s2" });
+  State.setFocus(CLAUDE);
+  assert.equal(State.terminalTarget.sessionId, "s2");
+});
+
+test("a Claude Desktop session that finishes takes the front only when nothing else is going on", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "C:\p\proj", session_id: "d1", coucou_agent: "claude-desktop" });
+  hook({ hook_event_name: "Stop", cwd: "C:\p\proj", session_id: "d1", coucou_agent: "claude-desktop" });
+  assert.equal(State.focusId, "agent_claude-desktop");
+  assert.ok(asked.includes("alert:finished"));
+
+  // The pill in front is busy: a badge, as before.
+  seconds(6);
+  State.setFocus(CLAUDE);
+  hook({ hook_event_name: "PreToolUse", cwd: "/p/proj", tool_name: "Bash", tool_input: { command: "ls" } });
+  asked = [];
+  hook({ hook_event_name: "SessionStart", cwd: "C:\p\proj", session_id: "d2", coucou_agent: "claude-desktop" });
+  hook({ hook_event_name: "Stop", cwd: "C:\p\proj", session_id: "d2", coucou_agent: "claude-desktop" });
+  assert.equal(State.focusId, CLAUDE);
+  assert.ok(!asked.includes("alert:finished"));
+});
+
 // ── Main tool and Cursor ──────────────────────────────────────────────────────
 
 test("Claude Code in Cursor's terminal works on the Cursor pill, made for the session", () => {
@@ -553,6 +583,7 @@ test("a card answered in time leaves nothing for the 110 s timer to undo", () =>
   ask("r1");
   // What the Allow button does to the state before the timer fires.
   State.pendingApproval = null;
+  State.lastFinished = null;
   State.updateTask(CLAUDE, "working");
   asked = [];
   seconds(110);

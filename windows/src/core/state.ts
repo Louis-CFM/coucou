@@ -229,6 +229,8 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** The session that finished last: an agent's pill goes a few seconds after. */
+  lastFinished: { id: string; sessionId: string; sessionCwd: string } | null = null;
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;
 
@@ -281,6 +283,18 @@ class AppState {
 
   get focusTask(): AgentTask | null {
     return this.tasks.find((t) => t.id === this.focusId) ?? this.tasks[0] ?? null;
+  }
+
+  /**
+   * What "Open terminal" goes back to: the pill in front when it has a session
+   * (or is the Claude Desktop one), else the session that finished last. A
+   * Claude Desktop or other agent pill is removed seconds after it finishes, so
+   * by the time the user asks, the pill in front is usually another one.
+   */
+  get terminalTarget(): { id: string; sessionId?: string | null; sessionCwd?: string | null } | null {
+    const task = this.focusTask;
+    if (task && (task.sessionId || task.id === "agent_claude-desktop")) return task;
+    return this.lastFinished ?? task;
   }
 
   get effectiveState(): BotStateName {
