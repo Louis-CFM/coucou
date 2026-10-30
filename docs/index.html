@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>A tiny friend in your notch — Coucou</title><link rel="icon" href="media/icon.png"><link rel="stylesheet" href="site.css"></head><body><div class="wrap">
+<title>A tiny friend in your notch — Coucou</title><link rel="icon" href="media/icon.png"><link rel="stylesheet" href="site.css"><script src="site.js" defer></script></head><body><div class="wrap">
 <header><a href="index.html"><img src="media/icon.png" alt=""></a><span class="name">Coucou</span>
 <nav><a href="index.html" class="on">Home</a><a href="iphone.html">iPhone</a><a href="android.html">Android</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
 <div class="hero">
@@ -21,7 +21,46 @@
 <div class="tip-text"><b>Coucou is free and open source.</b><br>If it saves you time, you can buy Mochi a coffee.</div>
 <a class="btn tip-btn" href="https://buy.stripe.com/dRm6oGbfa7Kqcqs0hxes003" target="_blank" rel="noopener">☕ Buy Mochi a coffee</a>
 </div>
-<img class="demo" src="media/demo.gif" alt="Coucou in action">
+<div class="sim-container" id="notch-simulator">
+<div class="sim-header-bar">
+<span>✨ Interactive Live Preview (Click Notch or Test States)</span>
+<div class="sim-tabs">
+<button class="sim-tab active" data-view="interactive" type="button">⚡ Interactive Notch</button>
+<button class="sim-tab" data-view="gif" type="button">🎬 Video GIF</button>
+</div>
+</div>
+<div class="sim-interactive-area">
+<div class="sim-screen">
+<div class="sim-bezel"></div>
+<div class="sim-island state-idle" title="Click to interact with Mochi and the Island">
+<div class="sim-island-header">
+<svg class="sim-mochi-icon" viewBox="0 0 120 104">
+<path d="M14 40c0-17 9-25 34-25s38 6 39 23c1 18-4 35-20 38-18 3-37 3-46-4C14 66 14 54 14 40z" fill="#ffffff" stroke="#d9dbe0" stroke-width="1"/>
+<ellipse cx="38" cy="45" rx="4.2" ry="6" fill="#1b1c20"/>
+<ellipse cx="58" cy="44" rx="4.2" ry="6" fill="#1b1c20"/>
+<circle cx="39.3" cy="42.6" r="1.4" fill="#fff"/>
+<circle cx="59.3" cy="41.6" r="1.4" fill="#fff"/>
+<ellipse cx="30" cy="55" rx="5" ry="3" fill="#f6a8be" opacity=".8"/>
+<ellipse cx="67" cy="54" rx="5" ry="3" fill="#f6a8be" opacity=".8"/>
+</svg>
+<span class="sim-status">Mochi is resting in the notch</span>
+</div>
+<div class="sim-prompt"></div>
+</div>
+</div>
+<div class="sim-controls">
+<span class="sim-controls-label">Test States:</span>
+<button class="sim-pill-btn active" data-state="idle" type="button">💤 Idle Notch</button>
+<button class="sim-pill-btn" data-state="working" type="button">🟢 Antigravity Working</button>
+<button class="sim-pill-btn" data-state="approval" type="button">⚠️ Permission Request</button>
+<button class="sim-pill-btn" data-state="chat" type="button">💬 « OK Coucou » Chat</button>
+<button class="sim-pill-btn" data-state="iphone" type="button">📱 iPhone Island</button>
+</div>
+</div>
+<div class="sim-gif-area">
+<img class="demo" src="media/demo.gif" alt="Coucou in action" style="width:100%;display:block">
+</div>
+</div>
 </div>
 <h2>Dictation, notes and your voice</h2>
 <p>Coucou now has its own window, on the Mac, Windows and Linux, with everything it does in one place.</p>
