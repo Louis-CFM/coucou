@@ -121,8 +121,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
         drawStatus();
       });
       prefsWrite = save.catch(error => { prefsError.textContent = String(error); prefsError.hidden = false; });
-      return save;
-    },
+      return save;    },
     hero: (page, title, subtitle, actions = [], compact = false) => hero(page, title, subtitle, actions, compact),
   };
 

@@ -96,6 +96,7 @@ pub fn keys_supported() -> Result<(), &'static str> {
 }
 
 pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListener, String> {
+    if key == FlowKey::Copilot { return Err("The Copilot dictation key is supported on Windows".into()); }
     let (conn, screen) = x11rb::connect(None).map_err(|e| e.to_string())?;
     let root = conn.setup().roots[screen].root;
     let version = conn.xinput_xi_query_version(2, 0).map_err(|e| e.to_string())?.reply().map_err(|e| e.to_string())?;
@@ -124,7 +125,7 @@ fn run(conn: RustConnection, keymap: Keymap, key: FlowKey, tx: Sender<(KeyEvent,
         FlowKey::RightCtrl => keymap.has(code, XK_CONTROL_R),
         FlowKey::RightAlt => keymap.has(code, XK_ALT_R) || keymap.has(code, XK_ISO_LEVEL3_SHIFT),
         FlowKey::RightShift => keymap.has(code, XK_SHIFT_R),
-        FlowKey::LeftCtrlSuper => false,
+        FlowKey::LeftCtrlSuper | FlowKey::Copilot => false,
     };
     let mut combo = 0u8;
     while !stop.load(Ordering::Relaxed) {

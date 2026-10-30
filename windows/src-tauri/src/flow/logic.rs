@@ -137,8 +137,8 @@ impl KeyLogic {
     }
 }
 
-/// The key held to dictate. A key that is a modifier on its own, so holding it
-/// does nothing in any app.
+/// The key held to dictate. Modifiers are observed; the optional Windows
+/// Copilot chord is consumed while dictation is enabled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum FlowKey {
@@ -147,6 +147,7 @@ pub enum FlowKey {
     RightAlt,
     RightShift,
     LeftCtrlSuper,
+    Copilot,
 }
 
 impl FlowKey {
@@ -156,6 +157,7 @@ impl FlowKey {
             FlowKey::RightCtrl => "Right Ctrl",
             FlowKey::RightAlt => "Right Alt",
             FlowKey::RightShift => "Right Shift",
+            FlowKey::Copilot => "Copilot",
             FlowKey::LeftCtrlSuper => {
                 if cfg!(windows) {
                     "Ctrl + Win"

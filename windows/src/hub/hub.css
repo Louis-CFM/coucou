@@ -942,6 +942,10 @@ button.hub-icon svg {
   box-shadow: 0 0 6px rgba(255, 69, 58, 0.7);
 }
 
+.hub-rec[hidden] {
+  display: none;
+}
+
 @media (max-width: 1000px) {
   .hub-side {
     width: 190px;
