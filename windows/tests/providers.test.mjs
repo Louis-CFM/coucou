@@ -12,8 +12,11 @@ const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 
 test("the ids and key names match the Rust side and the Mac", () => {
   assert.deepEqual(PROVIDERS.map((p) => p.id), [
-    "anthropic", "google", "openai", "openrouter", "deepseek", "qwen", "moonshot", "ollama", "lmstudio", "custom",
+    "anthropic", "google", "openai", "openrouter", "deepseek", "qwen", "moonshot", "ollama", "lmstudio", "custom", "cursor", "copilot",
   ]);
+  // Cursor and Copilot answer only through the subscription: no key, no address.
+  assert.equal(providerDef("cursor").key, null);
+  assert.equal(providerDef("copilot").urlField, null);
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
   assert.equal(providerDef("openrouter").key, "openrouter-api-key");
@@ -42,6 +45,14 @@ test("model servers show in the picker once connected, or while in use", () => {
   assert.deepEqual(ids(settings()), cloud);
   assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), [...cloud, "ollama"]);
   assert.deepEqual(ids(settings({ chatProvider: "custom" })), [...cloud, "custom"]);
+});
+
+test("Cursor and Copilot show once their subscription is on, or while in use", () => {
+  const ids = (s, on) => visibleProviders(s, on).map((p) => p.id);
+  const cloud = ["anthropic", "google", "openai", "openrouter", "deepseek", "qwen", "moonshot"];
+  assert.deepEqual(ids(settings(), new Set(["cursor"])), [...cloud, "cursor"]);
+  assert.deepEqual(ids(settings({ chatSubscriptions: { copilot: true } })), [...cloud, "copilot"]);
+  assert.deepEqual(ids(settings({ chatProvider: "copilot" })), [...cloud, "copilot"]);
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {

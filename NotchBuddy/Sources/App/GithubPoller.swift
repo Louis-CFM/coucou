@@ -69,20 +69,34 @@ final class GithubPoller: @unchecked Sendable {
         }.resume()
     }
 
-    private func fetchStars(token: String, totalRepos: Int) {
-        guard let url = URL(string: "https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed") else { return }
+    private func fetchStars(token: String, totalRepos: Int, page: Int = 1, accumulatedStars: Int = 0) {
+        guard let url = URL(string: "https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed&page=\(page)") else { return }
         var req = URLRequest(url: url, timeoutInterval: 15)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
-        URLSession.shared.dataTask(with: req) { data, response, _ in
+        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200,
-                  let repos = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
+                  let repos = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                if accumulatedStars > 0 {
+                    DispatchQueue.main.async {
+                        AppState.shared.githubStats = GitHubStats(totalRepos: totalRepos, totalStars: accumulatedStars)
+                    }
+                }
+                return
+            }
 
-            let totalStars = repos.reduce(0) { $0 + (($1["stargazers_count"] as? Int) ?? 0) }
-            DispatchQueue.main.async {
-                AppState.shared.githubStats = GitHubStats(totalRepos: totalRepos, totalStars: totalStars)
+            let pageStars = repos.reduce(0) { $0 + (($1["stargazers_count"] as? Int) ?? 0) }
+            let totalSoFar = accumulatedStars + pageStars
+            let maxPages = max(1, min(50, (totalRepos + 99) / 100))
+
+            if repos.count >= 100 && page < maxPages {
+                self?.fetchStars(token: token, totalRepos: totalRepos, page: page + 1, accumulatedStars: totalSoFar)
+            } else {
+                DispatchQueue.main.async {
+                    AppState.shared.githubStats = GitHubStats(totalRepos: totalRepos, totalStars: totalSoFar)
+                }
             }
         }.resume()
     }

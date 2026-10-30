@@ -23,6 +23,12 @@ struct QueuedApproval: Equatable, Sendable {
     var bundleId: String = ""
     /// When the request arrived (for the log: how long it waited).
     var received = Date()
+    /// The pill the request shows on when its session popped out of `pillId` (SessionBoard),
+    /// nil when it shows on `pillId` itself.
+    var shownPill: String? = nil
+
+    /// Where the card, the focus and the iPhone find the request.
+    var displayPill: String { shownPill ?? pillId }
 }
 
 struct ApprovalQueue: Sendable {

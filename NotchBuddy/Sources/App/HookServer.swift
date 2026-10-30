@@ -44,21 +44,25 @@ final class HookServer: @unchecked Sendable {
     /// One read source per queued request: it notices the client hanging up, and its
     /// cancel handler is the only place the request's fd is closed.
     private var approvalSources: [UUID: any DispatchSourceRead] = [:]
-    private var pendingQuestionFD: Int32 = -1         // held open while user answers AskUserQuestion
-    private var questionFDSource: (any DispatchSourceRead)? = nil  // monitors pendingQuestionFD
+    /// AskUserQuestions waiting for an answer, oldest first, one per session; the head is on
+    /// the card. Each one holds its nb-hook connection open until it is answered or dropped.
+    private var questions = QuestionQueue()
+    /// One read source per waiting question: it notices the client hanging up, and its
+    /// cancel handler is the only place the question's fd is closed.
+    private var questionSources: [UUID: any DispatchSourceRead] = [:]
+    private var shownQuestion: UUID? = nil            // the question the card shows
 
     /// True when a real nb-hook connection is holding the approval fd open.
     @MainActor var hasRealPendingApproval: Bool { !approvals.isEmpty }
-    /// True when a real nb-hook connection is holding the question fd open.
-    @MainActor var hasRealPendingQuestion: Bool { pendingQuestionFD >= 0 }
-    private var questionPillId: String = ""           // pill that owns the pending question
-    private var questionSessionId: String = ""        // sessionId for the pending question (recap tracking)
+    /// True when a real nb-hook connection is holding a question fd open.
+    @MainActor var hasRealPendingQuestion: Bool { !questions.isEmpty }
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
     private var activeSessionId: String? = nil        // current Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
     private var focusBeforeAlert: String? = nil       // saved focus while another pill's card shows
     private var alertPill: String? = nil              // the pill that took the focus for its alert
     private var sessions = PillSessionRegistry()      // live sessions behind each pill
+    private var board = SessionBoard()                // what each of those sessions shows
 
     private init() {}
 
@@ -67,26 +71,26 @@ final class HookServer: @unchecked Sendable {
     /// Note shown when a request was answered outside Coucou.
     @MainActor
     private func handledNote(pill: String) -> String {
-        switch pill {
+        switch PillCatalog.basePillId(pill) {
         case "agent_cursor":  return "Handled in Cursor."
         case "agent_codex":   return "Handled in Codex."
         case "agent_copilot": return "Handled in Copilot CLI."
         case "agent_muse":    return "Handled in Muse Code."
         case "agent_hermes":  return "Handled in Hermes."
-        default:              return "Handled in \(claudeHostName)."
+        default:              return "Handled in \(claudeHostName(pill: pill))."
         }
     }
 
     /// Note shown when a request waited too long and went back to the agent.
     @MainActor
     private func waitingNote(pill: String) -> String {
-        switch pill {
+        switch PillCatalog.basePillId(pill) {
         case "agent_cursor":  return "Still waiting in Cursor."
         case "agent_codex":   return "Still waiting in Codex."
         case "agent_copilot": return "Still waiting in Copilot CLI."
         case "agent_muse":    return "Still waiting in Muse Code."
         case "agent_hermes":  return "Still waiting in Hermes."
-        default:              return "Still waiting in \(claudeHostName)."
+        default:              return "Still waiting in \(claudeHostName(pill: pill))."
         }
     }
 
@@ -100,17 +104,17 @@ final class HookServer: @unchecked Sendable {
             if shown.queueCount != approvals.count { state.pendingApproval?.queueCount = approvals.count }
             return
         }
-        state.updateTask(id: head.pillId, state: .approval)
+        syncPill(head.pillId)
         state.pendingApproval = ApprovalInfo(sessionId: head.sessionId, tool: head.tool,
                                               command: head.command, inputKey: head.inputKey,
-                                              pillId: head.pillId, id: head.id,
+                                              pillId: head.displayPill, id: head.id,
                                               queueCount: approvals.count,
                                               projectName: head.projectName)
         state.isPinned = true
         // Approval always forces the island open — the user must be able to respond.
         // Save the focus once, so it comes back when the last request is gone.
         if focusBeforeApproval == nil { focusBeforeApproval = state.focusId }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = head.pillId }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = head.displayPill }
         expandIfNeeded(to: .approval)
     }
 
@@ -137,9 +141,10 @@ final class HookServer: @unchecked Sendable {
         }
 
         let state = AppState.shared
-        if !approvals.hasEntries(forPill: entry.pillId) {
-            state.updateTask(id: entry.pillId, state: .working)
-            clearPillBadge(id: entry.pillId)
+        // The session's pill leaves its approval state; a popped-out one folds back soon after.
+        syncPill(entry.pillId)
+        if !approvals.entries.contains(where: { $0.displayPill == entry.displayPill }) {
+            clearPillBadge(id: entry.displayPill)
         }
         if approvals.head != nil {
             showApprovalHead()
@@ -150,7 +155,7 @@ final class HookServer: @unchecked Sendable {
         state.isPinned = false
         if let prev = focusBeforeApproval {
             focusBeforeApproval = nil
-            if state.focusId == entry.pillId, state.tasks.contains(where: { $0.id == prev }) {
+            if state.focusId == entry.displayPill, state.tasks.contains(where: { $0.id == prev }) {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
             }
         }
@@ -165,103 +170,260 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
-    // MARK: - Question fd helpers
+    // MARK: - Sessions on the board
 
-    @MainActor
-    private func cancelQuestionFDSource() {
-        questionFDSource?.cancel()
-        questionFDSource = nil
+    /// A session's key on the board: its id, or for one that sends none its pill and folder
+    /// (the same key the recap and the question queue use).
+    private static func boardKey(_ session: String, pill: String, cwd: String) -> String {
+        (session == "unknown" || session.isEmpty) ? "\(pill)+\(cwd)" : session
     }
 
+    /// Records what an event says about a session of `pill` on the board.
     @MainActor
-    private func dismissQuestionCard(note: String) {
-        cancelQuestionFDSource()
-        pendingQuestionFD = -1
+    private func record(pill: String, session key: String, raw: String, title: String,
+                        _ change: (inout BoardSession) -> Void = { _ in }) {
+        board.update(pill: pill, session: key, rawSession: raw, title: title, now: Date(), change)
+    }
+
+    /// The sessions of `pill` waiting for you, with what they wait for (a permission first).
+    @MainActor
+    private func waitingSessions(pill: String) -> [String: BotState] {
+        var waiting: [String: BotState] = [:]
+        for q in questions.entries where q.pillId == pill { waiting[q.sessionId] = .question }
+        for a in approvals.entries where a.pillId == pill {
+            waiting[Self.boardKey(a.sessionId, pill: pill, cwd: a.cwd)] = .approval
+        }
+        return waiting
+    }
+
+    /// A session that starts waiting while it shares `pill` with another pops out into a pill
+    /// of its own. Returns that pill, nil when the session stays (it is alone in its pill).
+    @MainActor
+    private func popOutIfShared(pill: String, session key: String, raw: String, title: String) -> String? {
+        record(pill: pill, session: key, raw: raw, title: title)
+        let popped = board.popOut(pill: pill, session: key, now: Date())
+        if let popped { nbLog("\(key.prefix(8)) waits: out of \(pill) into \(popped)") }
+        return popped
+    }
+
+    /// Writes the board to `pill` and to the pills popped out of it: the session the pill
+    /// shows (name, steps, state, last message, terminal), the list the open card shows when
+    /// several share it, each popped-out session's own pill, and the folding back of those
+    /// no longer waiting.
+    @MainActor
+    private func syncPill(_ pill: String) {
         let state = AppState.shared
-        let pillId = questionPillId
-        state.pendingQuestion = nil
-        state.isPinned = false
-        state.updateTask(id: pillId, state: .working)
-        clearPillBadge(id: pillId)
-        if let prev = focusBeforeQuestion {
-            focusBeforeQuestion = nil
-            if state.focusId == pillId, state.tasks.contains(where: { $0.id == prev }) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+        let now = Date()
+        var gone = board.keep(pill: pill) { sessions.display(pill: pill, session: $0.rawSession) != nil }
+        let waiting = waitingSessions(pill: pill)
+        let (folded, recheck) = board.fold(pill: pill, waiting: Set(waiting.keys), now: now)
+        gone += folded
+        for id in gone where state.tasks.contains(where: { $0.id == id }) {
+            if state.focusId == id { state.focusId = pill }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.removeTask(id: id) }
+        }
+        if let recheck {
+            DispatchQueue.main.asyncAfter(deadline: .now() + max(0.05, recheck.timeIntervalSince(now))) { [weak self] in
+                self?.syncPill(pill)
             }
         }
-        if !note.isEmpty {
-            state.noteMessage = note
-            state.view = .note
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                NotificationCenter.default.post(name: .islandCollapse, object: nil)
-            }
-        } else {
-            state.view = state.tasks.isEmpty ? .empty : .overview
+        guard let client = state.tasks.first(where: { $0.id == pill }) else { return }
+        for (session, popped) in board.poppedOut(pill: pill) {
+            showPoppedOut(popped, of: client, session: session, waiting: waiting[session])
         }
-    }
-
-    /// Called by QuestionView. Sends answers JSON and cleans up.
-    @MainActor
-    func sendQuestionAnswers(_ answers: [String: Any]) {
-        // Only intercept a demo question — real questions always have a live fd.
-        if DemoEngine.shared.isActive, pendingQuestionFD < 0 {
-            AppState.shared.pendingQuestion = nil
-            AppState.shared.isPinned = false
-            AppState.shared.view = AppState.shared.tasks.isEmpty ? .empty : .overview
-            DemoEngine.shared.handleQuestionAnswered(answers: answers)
+        guard let index = state.tasks.firstIndex(where: { $0.id == pill }) else { return }
+        guard let shown = board.shown(pill: pill, waiting: Set(waiting.keys), now: now),
+              let session = board.session(pill: pill, session: shown) else {
+            if !state.tasks[index].sessionLines.isEmpty { state.tasks[index].sessionLines = [] }
             return
         }
-        let fd = pendingQuestionFD
-        pendingQuestionFD = -1
-        let source = questionFDSource
-        questionFDSource = nil
-        let sid = questionSessionId
-        questionSessionId = ""
-        if fd >= 0, let data = try? JSONSerialization.data(withJSONObject: ["permissionDecision": "answer", "answers": answers], options: .withoutEscapingSlashes),
-           let json = String(data: data, encoding: .utf8) {
+        write(session, waiting: waiting[shown], client: pill, to: index)
+        let lines = board.lines(pill: pill).map { line in
+            SessionLine(id: line.session, title: line.value.title,
+                        state: waiting[line.session] ?? line.value.state,
+                        lastStep: Self.readableStep(line.value.steps.last ?? ""),
+                        isShown: line.session == shown)
+        }
+        if state.tasks[index].sessionLines != lines { state.tasks[index].sessionLines = lines }
+    }
+
+    /// Puts one session's state, steps, last message, title and terminal on the task at `index`.
+    @MainActor
+    private func write(_ session: BoardSession, waiting: BotState?, client: String, to index: Int) {
+        let state = AppState.shared
+        var task = state.tasks[index]
+        task.state = waiting ?? session.state
+        if task.steps != session.steps {
+            task.steps = session.steps
+            task.stepIndex = max(0, session.steps.count - 1)
+        }
+        task.finalLine = session.finalLine
+        // A third-party agent's pill keeps the agent's name; Claude Code's and Codex's take the session's.
+        if !session.title.isEmpty, task.isIntegration || task.pill == "agent_claude-desktop" || task.id != task.pill {
+            task.name = session.title
+        }
+        if let display = sessions.display(pill: client, session: session.rawSession) {
+            if !display.cwd.isEmpty { task.sessionCwd = display.cwd }
+            if task.pill == "integration_claude" { task.hostApp = display.hostApp }
+            if !display.bundleId.isEmpty { task.sessionBundleId = display.bundleId }
+        }
+        if state.tasks[index] != task { state.tasks[index] = task }
+    }
+
+    /// Creates or refreshes the pill a waiting session popped out into, right after its
+    /// client's pills, in the client's color.
+    @MainActor
+    private func showPoppedOut(_ id: String, of client: AgentTask, session: String, waiting: BotState?) {
+        guard let value = board.session(pill: client.id, session: session) else { return }
+        let state = AppState.shared
+        if !state.tasks.contains(where: { $0.id == id }) {
+            var task = AgentTask(id: id, name: value.title, color: client.color, state: waiting ?? value.state,
+                                 steps: [], source: client.source, isIntegration: client.isIntegration)
+            task.hostApp = client.hostApp
+            let at = (state.tasks.lastIndex(where: { $0.pill == client.pill }) ?? state.tasks.count - 1) + 1
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.tasks.insert(task, at: at) }
+        }
+        guard let index = state.tasks.firstIndex(where: { $0.id == id }) else { return }
+        write(value, waiting: waiting, client: client.id, to: index)
+    }
+
+    /// A step as the open card lists it: a file edit reads "name +3 −1".
+    private static func readableStep(_ step: String) -> String {
+        guard let diff = step.parseDiffStep() else { return step }
+        return "\(diff.filename) +\(diff.added) −\(diff.removed)"
+    }
+
+    // MARK: - Question queue helpers
+
+    /// Puts the oldest waiting question on the card. When the card already shows it, only
+    /// the list the card and the iPhone read is refreshed (no sound, no focus change).
+    @MainActor
+    private func showQuestionHead() {
+        let state = AppState.shared
+        state.waitingQuestions = questions.entries
+        guard let head = questions.head, shownQuestion != head.id else { return }
+        shownQuestion = head.id
+        state.pendingQuestion = head.question
+        state.isPinned = true
+        if focusBeforeQuestion == nil { focusBeforeQuestion = state.focusId }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = head.displayPill }
+        expandIfNeeded(to: .question)
+    }
+
+    /// Takes one question out of the queue. With `answer`, the line is written to its nb-hook
+    /// first; without, the connection just closes and the agent asks again itself. The cancel
+    /// handler of its source closes the fd — never close it directly. The next question then
+    /// takes the card; when none is left the card closes.
+    @MainActor
+    private func removeQuestion(id: UUID, answer json: String? = nil) {
+        guard let entry = questions.remove(id: id) else { return }
+        let source = questionSources.removeValue(forKey: id)
+        if let json {
+            let fd = entry.fd
             Task.detached { [weak self] in
+                // Write while the fd is still valid, then cancel → the cancel handler closes it.
                 self?.sendLine(fd: fd, text: json)
                 DispatchQueue.main.async { source?.cancel() }
             }
         } else {
             source?.cancel()
         }
-        if !sid.isEmpty { RecapStore.shared.recordQuestionAnswered(sessionId: sid) }
-        dismissQuestionCard(note: "")
+
+        let state = AppState.shared
+        // The session's pill leaves its question state; a popped-out one folds back soon after.
+        syncPill(entry.pillId)
+        if !questions.entries.contains(where: { $0.displayPill == entry.displayPill })
+            && !approvals.entries.contains(where: { $0.displayPill == entry.displayPill }) {
+            clearPillBadge(id: entry.displayPill)
+        }
+        if questions.head != nil {
+            showQuestionHead()
+            return
+        }
+        state.waitingQuestions = []
+        closeQuestionCard(pill: entry.displayPill)
     }
 
-    /// Called by QuestionView.onDisappear — card left screen without an explicit answer.
-    /// Sends "ask" immediately to unblock nb-hook; does NOT navigate (view already changed).
+    /// No question left: close the card and give the focus back.
+    @MainActor
+    private func closeQuestionCard(pill: String?) {
+        let state = AppState.shared
+        shownQuestion = nil
+        state.pendingQuestion = nil
+        state.isPinned = false
+        if let prev = focusBeforeQuestion {
+            focusBeforeQuestion = nil
+            if let pill, state.focusId == pill, state.tasks.contains(where: { $0.id == prev }) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+            }
+        }
+        state.view = state.tasks.isEmpty ? .empty : .overview
+    }
+
+    /// The question `id` (the one the card or the iPhone showed), else the card's.
+    /// nil when that question no longer waits.
+    @MainActor
+    private func waitingQuestion(_ id: UUID?) -> QueuedQuestion? {
+        guard let id else { return questions.head }
+        guard let entry = questions.entry(id: id) else {
+            nbLog("Answer for a question no longer waiting, ignored")
+            return nil
+        }
+        return entry
+    }
+
+    /// Called by QuestionView and the iPhone. Sends the answers to the session that asked
+    /// question `id` (the card's when nil), then the next question takes the card.
+    @MainActor
+    func sendQuestionAnswers(_ answers: [String: Any], for id: UUID? = nil) {
+        // Only intercept a demo question — real questions always have a live fd.
+        if DemoEngine.shared.isActive, questions.isEmpty {
+            AppState.shared.pendingQuestion = nil
+            AppState.shared.isPinned = false
+            AppState.shared.view = AppState.shared.tasks.isEmpty ? .empty : .overview
+            DemoEngine.shared.handleQuestionAnswered(answers: answers)
+            return
+        }
+        guard !questions.isEmpty else { closeQuestionCard(pill: nil); return }
+        guard let entry = waitingQuestion(id) else { return }
+        guard let data = try? JSONSerialization.data(withJSONObject: ["permissionDecision": "answer", "answers": answers], options: .withoutEscapingSlashes),
+              let json = String(data: data, encoding: .utf8) else {
+            removeQuestion(id: entry.id)
+            return
+        }
+        RecapStore.shared.recordQuestionAnswered(sessionId: entry.sessionId)
+        removeQuestion(id: entry.id, answer: json)
+    }
+
+    /// Called by QuestionView.onDisappear — the card left the screen without an answer.
+    /// Every waiting question goes back to its terminal ("ask") at once, since none of them
+    /// is on screen any more; does NOT navigate (view already changed).
     @MainActor
     func releaseQuestionFD() {
-        guard pendingQuestionFD >= 0 else { return }
-        let fd = pendingQuestionFD
-        pendingQuestionFD = -1
-        let source = questionFDSource
-        questionFDSource = nil
-        AppState.shared.pendingQuestion = nil
-        Task.detached { [weak self] in
-            self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
-            DispatchQueue.main.async { source?.cancel() }
-        }
-    }
-
-    /// Called by QuestionView "Reply in terminal" button.
-    @MainActor
-    func sendQuestionAsk() {
-        let fd = pendingQuestionFD
-        pendingQuestionFD = -1
-        let source = questionFDSource
-        questionFDSource = nil
-        if fd >= 0 {
+        guard !questions.isEmpty else { return }
+        let state = AppState.shared
+        let gone = questions.removeAll()
+        for entry in gone {
+            let source = questionSources.removeValue(forKey: entry.id)
+            let fd = entry.fd
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 DispatchQueue.main.async { source?.cancel() }
             }
-        } else {
-            source?.cancel()
         }
-        dismissQuestionCard(note: "")
+        shownQuestion = nil
+        state.waitingQuestions = []
+        state.pendingQuestion = nil
+        for pill in Set(gone.map(\.pillId)) { syncPill(pill) }
+    }
+
+    /// Called by QuestionView "Reply in terminal" button: question `id` (the card's when nil)
+    /// goes back to its terminal.
+    @MainActor
+    func sendQuestionAsk(for id: UUID? = nil) {
+        guard !questions.isEmpty else { closeQuestionCard(pill: nil); return }
+        guard let entry = waitingQuestion(id) else { return }
+        removeQuestion(id: entry.id, answer: #"{"permissionDecision":"ask"}"#)
     }
 
     /// Returns the tool_input serialized as sorted-keys JSON, "" if absent or empty.
@@ -319,7 +481,14 @@ final class HookServer: @unchecked Sendable {
 
         while true {
             let clientFD = Darwin.accept(fd, nil, nil)
-            guard clientFD >= 0 else { break }
+            guard clientFD >= 0 else {
+                // Never end the server on a failed accept (#853); pause unless it was transient.
+                // A listening socket that is gone for good (closed, not a socket) ends the loop.
+                let err = errno
+                if err == EBADF || err == EINVAL || err == ENOTSOCK { break }
+                if err != EINTR && err != ECONNABORTED { usleep(100_000) }
+                continue
+            }
             // Reject connections from other users (same-UID check)
             var euid: uid_t = 0
             var egid: gid_t = 0
@@ -471,7 +640,6 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        let focused = state.focusId == agentId
         // The user is looking at the session's terminal: a finish or an error is already in
         // front of them, so the pill only takes a badge (no sound, no reveal). Warp exposes
         // no active tab, so a sibling session in another tab of the same terminal is quiet too.
@@ -503,7 +671,7 @@ final class HookServer: @unchecked Sendable {
             let eventKey = Self.approvalInputKey(payload["tool_input"] as? [String: Any] ?? [:])
             for entry in approvals.resolved(byEvent: name, sessionId: sessionId, pillId: agentId,
                                             tool: eventTool, inputKey: eventKey) {
-                removeApproval(id: entry.id, note: handledNote(pill: entry.pillId))
+                removeApproval(id: entry.id, note: handledNote(pill: entry.displayPill))
             }
             // A session still waiting on a decision is held back (its parallel tool calls
             // would pull the pill out of its approval state). Other sessions go through.
@@ -511,10 +679,15 @@ final class HookServer: @unchecked Sendable {
                 return
             }
         }
-        // A sibling session's event must not take the pill out of its approval state.
-        defer {
-            if approvals.hasEntries(forPill: agentId) { state.updateTask(id: agentId, state: .approval) }
+        // What the event says goes to its session on the board, and the pill shows the board:
+        // the session it shows, its steps and state; a session waiting for you keeps that state.
+        let key = recapSessionId
+        let now = Date()
+        func note(_ change: (inout BoardSession) -> Void = { _ in }) {
+            record(pill: agentId, session: key, raw: sessionId, title: projectName, change)
         }
+        func step(_ text: String) { note { $0.appendStep(text) } }
+        defer { syncPill(agentId) }
 
         switch name {
 
@@ -522,7 +695,7 @@ final class HookServer: @unchecked Sendable {
             activeSessionId = sessionId
             upsertTask(pill: agentId, display: display, working: false,
                        externalAgent: isExternalAgent ? validAgent : nil)
-            if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
+            note { $0.finalLine = nil }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
             if state.isPresent { expandIfNeeded(to: .overview) }
@@ -530,17 +703,18 @@ final class HookServer: @unchecked Sendable {
             if agentId == "agent_hermes", let platform = payload["platform"] as? String,
                !platform.isEmpty, platform != "cli" {
                 let capitalized = platform.prefix(1).uppercased() + platform.dropFirst()
-                appendStep(id: agentId, step: String(capitalized))
+                step(String(capitalized))
             }
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
             upsertTask(pill: agentId, display: display, working: true,
                        externalAgent: isExternalAgent ? validAgent : nil)
-            if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
-            state.updateTask(id: agentId, state: .thinking)
-            if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
-                appendStep(id: agentId, step: String(prompt.prefix(60)))
+            note {
+                $0.state = .thinking
+                $0.finalLine = nil
+                $0.endedAt = nil
+                if let prompt = payload["prompt"] as? String, !prompt.isEmpty { $0.appendStep(String(prompt.prefix(60))) }
             }
             RecapStore.shared.userPromptSubmit(sessionId: recapSessionId, pillId: agentId, project: projectName)
             NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
@@ -549,7 +723,7 @@ final class HookServer: @unchecked Sendable {
         case "PreToolUse":
             activeSessionId = sessionId
             let tool = payload["tool_name"] as? String ?? "Tool"
-            if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
+            note { $0.finalLine = nil }
             RecapStore.shared.preToolUse(sessionId: recapSessionId, tool: tool)
             // AskUserQuestion is handled via the dedicated --ask hook.
             // Skip state/step update here to avoid flickering over the question card.
@@ -557,10 +731,13 @@ final class HookServer: @unchecked Sendable {
             upsertTask(pill: agentId, display: display, working: true,
                        externalAgent: isExternalAgent ? validAgent : nil)
             let isQuestion = tool == "ask_question" || tool.hasSuffix(":ask_question")
-            state.updateTask(id: agentId, state: isQuestion ? .question : .working)
             let input = payload["tool_input"] as? [String: Any] ?? [:]
-            let step = localizedStep(tool: tool, input: input)
-            appendStep(id: agentId, step: step)
+            let label = localizedStep(tool: tool, input: input)
+            note {
+                $0.state = isQuestion ? .question : .working
+                $0.endedAt = nil
+                $0.appendStep(label)
+            }
             if isQuestion {
                 SoundEngine.shared.play("question")
                 if state.isPresent { expandIfNeeded(to: .overview) }
@@ -569,105 +746,117 @@ final class HookServer: @unchecked Sendable {
 
         case "PostToolUse":
             sessions.note(pill: agentId, display: display, working: true)
-            state.updateTask(id: agentId, state: .working)
+            note { $0.state = .working }
             // Live diff for Edit / MultiEdit / Write
             let diffTool = payload["tool_name"] as? String ?? ""
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
             if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
                 let idx = state.appendSessionDiff(diff, for: agentId)
-                let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
-                appendStep(id: agentId, step: step)
+                step(String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx))
                 RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
             }
 
         case "PostToolUseFailure":
             sessions.note(pill: agentId, display: display, working: true)
-            state.updateTask(id: agentId, state: .working)
-            appendStep(id: agentId, step: "⚠ failed")
+            note {
+                $0.state = .working
+                $0.appendStep("⚠ failed")
+            }
 
         case "Notification":
             sessions.note(pill: agentId, display: display, working: false)
             let message = payload["message"] as? String ?? ""
             let lower = message.lowercased()
             if lower.contains("rate limit") || lower.contains("limite d") {
-                state.updateTask(id: agentId, state: .ratelimit)
+                note { $0.state = .ratelimit }
                 SoundEngine.shared.play("rate")
             } else if message.hasSuffix("?") {
-                state.updateTask(id: agentId, state: .question)
-                appendStep(id: agentId, step: message)
+                note {
+                    $0.state = .question
+                    $0.appendStep(message)
+                }
             }
 
         case "Stop":
-            let scope = sessions.endTurn(pill: agentId, session: sessionId)
-            // A turn ending can hand the name to a sibling session that is still working.
-            applyDisplayOwner(pill: agentId)
+            // Each session finishes on its own: its sound, its "finished", its last message,
+            // even while a sibling behind the same pill is still working. For a moment the pill
+            // shows the session that finished (SessionBoard.finishMoment), then the busy one again.
+            _ = sessions.endTurn(pill: agentId, session: sessionId)
             let rawFinal = (payload["last_assistant_message"] as? String)
                 ?? (payload["message"] as? String) ?? ""
             let finalText = DiffEngine.toOneLine(rawFinal)
-            // The step log is shared, so the conclusion is worth showing either way.
-            if !finalText.isEmpty { appendStep(id: agentId, step: finalText) }
+            note {
+                $0.state = .finished
+                $0.endedAt = now
+                if !finalText.isEmpty {
+                    $0.finalLine = finalText
+                    $0.appendStep(finalText)
+                }
+            }
             RecapStore.shared.stop(sessionId: recapSessionId)
-            // Another session is still mid-turn behind this pill: the finished state, the
-            // sound and the idle reset below would land on its work. Its own Stop comes later.
-            guard scope == .pill else {
-                nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
-                break
-            }
-            state.updateTask(id: agentId, state: .finished)
-            if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
-                state.tasks[idx].finalLine = finalText
-            }
+            let working = sessions.workingCount(pill: agentId)
+            if working > 0 { nbLog("Stop \(sessionId.prefix(8)) — \(working) other session(s) still working on \(agentId)") }
+            syncPill(agentId)
+            let finished = board.poppedPill(pill: agentId, session: key) ?? agentId
             if !terminalInFront { SoundEngine.shared.play("finish") }
-            if !terminalInFront && showsAlert(for: agentId, focused: focused) {
+            if !terminalInFront && showsAlert(for: finished, focused: state.focusId == finished) {
                 expandIfNeeded(to: .finished)
             } else {
-                setPillBadge(id: agentId, badge: .finished)
+                setPillBadge(id: finished, badge: .finished)
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
-                // A session (this one or a sibling) may have started a new turn meanwhile.
+            DispatchQueue.main.asyncAfter(deadline: .now() + SessionBoard.finishMoment) {
+                // The session (or a sibling) may have started a new turn meanwhile.
+                self.board.amend(pill: agentId, session: key) { if $0.state == .finished && $0.endedAt == now { $0.state = .idle } }
+                self.syncPill(agentId)
                 guard self.sessions.workingCount(pill: agentId) == 0 else { return }
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
-                    AppState.shared.updateTask(id: agentId, state: .idle)
                     self.clearPillBadge(id: agentId)
                 }
             }
 
         case "StopFailure":
             RecapStore.shared.stop(sessionId: recapSessionId)
-            let failScope = sessions.endTurn(pill: agentId, session: sessionId)
-            applyDisplayOwner(pill: agentId)
-            guard failScope == .pill else { break }
+            _ = sessions.endTurn(pill: agentId, session: sessionId)
             nbLog("StopFailure \(sessionId.prefix(8)) — \(payload.keys.sorted().joined(separator: ", ")): \(Self.stopFailureDetail(payload) ?? "no detail")")
-            state.updateTask(id: agentId, state: .error)
             // The error view shows what went wrong (finalLine), not the last thing said before it.
-            if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
-                state.tasks[idx].finalLine = Self.stopFailureDetail(payload)
+            note {
+                $0.state = .error
+                $0.endedAt = now
+                $0.finalLine = Self.stopFailureDetail(payload)
             }
+            syncPill(agentId)
+            let failed = board.poppedPill(pill: agentId, session: key) ?? agentId
             if !terminalInFront { SoundEngine.shared.play("error") }
-            if !terminalInFront && showsAlert(for: agentId, focused: focused) {
+            if !terminalInFront && showsAlert(for: failed, focused: state.focusId == failed) {
                 expandIfNeeded(to: .error)
             } else {
-                setPillBadge(id: agentId, badge: .error)
+                setPillBadge(id: failed, badge: .error)
             }
+            // After the error moment a sibling's work takes the pill again.
+            DispatchQueue.main.asyncAfter(deadline: .now() + SessionBoard.errorMoment + 0.1) { self.syncPill(agentId) }
 
         case "Interrupt":
             // Codex: user stopped the turn
             RecapStore.shared.stop(sessionId: recapSessionId)
             let interruptScope = sessions.endTurn(pill: agentId, session: sessionId)
-            applyDisplayOwner(pill: agentId)
+            note { $0.state = .idle }
             guard interruptScope == .pill else { break }
             activeSessionId = nil
-            state.updateTask(id: agentId, state: .idle)
             clearPillBadge(id: agentId)
 
         case "SessionEnd":
-            // Only the last session behind the pill may take the card and its diffs down.
+            // A popped-out session that ends takes its own pill down; the client's pill goes
+            // only with the last session behind it.
+            if let popped = board.remove(pill: agentId, session: key),
+               state.tasks.contains(where: { $0.id == popped }) {
+                if state.focusId == popped { state.focusId = agentId }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.removeTask(id: popped) }
+            }
             guard sessions.endSession(pill: agentId, session: sessionId) == .pill else {
                 RecapStore.shared.sessionEnd(sessionId: recapSessionId)
                 nbLog("SessionEnd \(sessionId.prefix(8)) — \(sessions.liveCount(pill: agentId)) session(s) left on \(agentId)")
-                applyDisplayOwner(pill: agentId)
                 break
             }
             activeSessionId = nil
@@ -677,10 +866,10 @@ final class HookServer: @unchecked Sendable {
             RecapStore.shared.sessionEnd(sessionId: recapSessionId)
 
         case "SubagentStart":
-            appendStep(id: agentId, step: "+ subagent")
+            step("+ subagent")
 
         case "SubagentStop":
-            appendStep(id: agentId, step: "• subagent done")
+            step("• subagent done")
 
         default:
             break
@@ -893,10 +1082,16 @@ final class HookServer: @unchecked Sendable {
 
         // Several requests can wait at once (several sessions or agents): they queue, the
         // card shows the oldest. Past the cap, the newest goes back to its own terminal.
-        let entry = QueuedApproval(id: UUID(), fd: fd, sessionId: sessionId, pillId: pillId,
+        // A session that shares its pill with another pops out into a pill of its own while
+        // it waits (SessionBoard), so the request shows under its own title.
+        var entry = QueuedApproval(id: UUID(), fd: fd, sessionId: sessionId, pillId: pillId,
                                    projectName: projectName, cwd: cwd, tool: tool,
                                    command: command, inputKey: inputKey,
                                    hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        if approvals.count < ApprovalQueue.maxPending {
+            entry.shownPill = popOutIfShared(pill: pillId, session: Self.boardKey(sessionId, pill: pillId, cwd: cwd),
+                                             raw: sessionId, title: projectName)
+        }
         guard approvals.enqueue(entry) == .accepted else {
             nbLog("PermissionRequest \(tool): \(ApprovalQueue.maxPending) already waiting, asked in the terminal")
             Task.detached { [weak self] in
@@ -912,13 +1107,13 @@ final class HookServer: @unchecked Sendable {
                                                         cwd: cwd, hostApp: terminalHost?.bundleId,
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
-        state.updateTask(id: pillId, state: .approval)
+        syncPill(pillId)
         SoundEngine.shared.play("approval")
 
         // Monitor fd: if the agent closes the connection (answered in its own UI), drop the
         // request. The cancel handler closes the fd — never close it anywhere else.
         let entryId = entry.id
-        let capturedPillId = pillId
+        let capturedPillId = entry.displayPill
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
         source.setEventHandler { [weak self] in
             guard let self, self.approvals.contains(id: entryId) else { return }
@@ -1039,66 +1234,71 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        // Displace any previous question waiting for an answer.
-        if pendingQuestionFD >= 0 {
-            let old = pendingQuestionFD
-            let oldSrc = questionFDSource
-            questionFDSource = nil
-            Task.detached { [weak self] in
-                self?.sendLine(fd: old, text: #"{"permissionDecision":"ask"}"#)
-                DispatchQueue.main.async { oldSrc?.cancel() }
-            }
+        // Several sessions can wait on a question at once: they queue, the card shows the
+        // oldest, and each answer goes back to the session that asked. A session asking again
+        // replaces its own older question; past the cap, the newest goes back to its terminal.
+        // A session that shares its pill with another pops out into a pill of its own while
+        // it waits (SessionBoard), so the question shows under its own title.
+        let key = Self.boardKey(sessionId, pill: pillId, cwd: cwd)
+        var entry = QueuedQuestion(id: UUID(), fd: fd, sessionId: key,
+                                   pillId: pillId, projectName: projectName, cwd: cwd, question: parsed)
+        if questions.count < QuestionQueue.maxPending
+            || questions.entries.contains(where: { $0.sessionId == key && $0.pillId == pillId }) {
+            entry.shownPill = popOutIfShared(pill: pillId, session: key, raw: sessionId, title: projectName)
         }
-        pendingQuestionFD = fd
+        switch questions.enqueue(entry) {
+        case .rejectedFull:
+            nbLog("Question: \(QuestionQueue.maxPending) already waiting, asked in the terminal")
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        case .accepted(let replaced?):
+            let oldSource = questionSources.removeValue(forKey: replaced.id)
+            let oldFD = replaced.fd
+            Task.detached { [weak self] in
+                self?.sendLine(fd: oldFD, text: #"{"permissionDecision":"ask"}"#)
+                DispatchQueue.main.async { oldSource?.cancel() }
+            }
+        case .accepted(nil):
+            break
+        }
         activeSessionId = sessionId
-        questionPillId = pillId
-        questionSessionId = (sessionId == "unknown" || sessionId.isEmpty)
-            ? "\(pillId)+\(cwd)"
-            : sessionId
 
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
                                                         cwd: cwd, hostApp: terminalHost?.bundleId,
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
-        state.updateTask(id: pillId, state: .question)
-        state.pendingQuestion = parsed
-        state.isPinned = true
+        syncPill(pillId)
         SoundEngine.shared.play("approval")
 
-        if focusBeforeQuestion == nil { focusBeforeQuestion = state.focusId }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = pillId }
-        expandIfNeeded(to: .question)
-
+        // Monitor fd: if the agent closes the connection (stopped or answered in its own UI),
+        // drop the question. The cancel handler closes the fd — never close it anywhere else.
+        let entryId = entry.id
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
         source.setEventHandler { [weak self] in
-            guard let self, self.pendingQuestionFD == fd else { return }
-            self.dismissQuestionCard(note: "")
+            guard let self, self.questions.contains(id: entryId) else { return }
+            self.removeQuestion(id: entryId)
         }
         source.setCancelHandler { close(fd) }
         source.resume()
-        questionFDSource = source
+        questionSources[entryId] = source
 
-        let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
-            guard let self, self.pendingQuestionFD == captured else { return }
+            guard let self, self.questions.contains(id: entryId) else { return }
             // Send "ask" so nb-hook exits cleanly; Claude Code re-asks in terminal.
-            let askFD = self.pendingQuestionFD
-            self.pendingQuestionFD = -1
-            let src = self.questionFDSource
-            self.questionFDSource = nil
-            Task.detached { [weak self] in
-                self?.sendLine(fd: askFD, text: #"{"permissionDecision":"ask"}"#)
-                DispatchQueue.main.async { src?.cancel() }
-            }
-            self.dismissQuestionCard(note: "")
+            self.removeQuestion(id: entryId, answer: #"{"permissionDecision":"ask"}"#)
         }
+
+        showQuestionHead()
     }
 
-    /// "VS Code", "Warp"… — where the Claude Code pill's current session runs.
+    /// "VS Code", "Warp"… — where the session behind a Claude Code pill runs.
     @MainActor
-    private var claudeHostName: String {
-        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.hostApp)
+    private func claudeHostName(pill: String) -> String {
+        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == pill }?.hostApp)
     }
 
     /// Records the session an event came from, then refreshes its card.
@@ -1117,23 +1317,10 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
-    /// Writes the pill's name, cwd and terminal from the session that owns it: used when
-    /// the owner ends and a sibling session inherits the card.
-    @MainActor
-    private func applyDisplayOwner(pill: String) {
-        guard let owner = sessions.displayOwner(of: pill),
-              let idx = AppState.shared.tasks.firstIndex(where: { $0.id == pill }),
-              !owner.projectName.isEmpty else { return }
-        let state = AppState.shared
-        state.tasks[idx].name = owner.projectName
-        if !owner.cwd.isEmpty { state.tasks[idx].sessionCwd = owner.cwd }
-        if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp }
-        if !owner.bundleId.isEmpty { state.tasks[idx].sessionBundleId = owner.bundleId }
-    }
-
-    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
-    /// If the task already exists (persistent), just updates name/cwd.
-    /// If missing (transient), creates it and inserts after the main pill.
+    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task, or a session's
+    /// own pill. If the task already exists (persistent), just updates name/cwd.
+    /// If missing (transient), creates it and inserts after the main pill (a session's own
+    /// pill: after its client's).
     /// Name, cwd and terminal belong to the session that owns the pill (the oldest one
     /// still running), so a second session under the same client cannot rename the card,
     /// or send "Open terminal" elsewhere, out from under the first.
@@ -1144,7 +1331,7 @@ final class HookServer: @unchecked Sendable {
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
+            if PillCatalog.basePillId(id) == "integration_claude" { state.tasks[idx].hostApp = hostApp }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
         }
@@ -1154,9 +1341,12 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp }
+        if task.pill == "integration_claude" { task.hostApp = hostApp }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
-        if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
+        // A session's own pill goes after its client's other pills, so they stay together.
+        if let sibling = state.tasks.lastIndex(where: { $0.pill == task.pill }) {
+            state.tasks.insert(task, at: sibling + 1)
+        } else if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
         } else {
             state.tasks.insert(task, at: 0)
@@ -1179,15 +1369,6 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
         state.tasks[idx].pillBadge = nil
-    }
-
-    @MainActor
-    private func appendStep(id: String, step: String) {
-        let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
-        state.tasks[idx].steps.append(step)
-        if state.tasks[idx].steps.count > 20 { state.tasks[idx].steps.removeFirst() }
-        state.tasks[idx].stepIndex = state.tasks[idx].steps.count - 1
     }
 
     // MARK: - Project name alias mapping
@@ -1478,7 +1659,9 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("coucou") == true } ?? false }
+            // Remove only our own nb-hook entries, not whole groups that merely
+            // mention us: a user hook like ~/dev/coucou/scripts/lint.sh must survive.
+            existing = removeNbHookEntries(from: existing)
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -1503,12 +1686,9 @@ final class HookServer: @unchecked Sendable {
 
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true ||
-                        ($0["command"] as? String)?.contains("coucou") == true
-                    } ?? false
-                }
+                // Per-entry removal, like the Gemini path: user hooks that merely
+                // mention "coucou"/"NotchBuddy" are kept, only nb-hook commands go.
+                matchers = removeNbHookEntries(from: matchers)
                 if matchers.isEmpty { hooks.removeValue(forKey: key) }
                 else { hooks[key] = matchers }
             }
@@ -1679,12 +1859,9 @@ final class HookServer: @unchecked Sendable {
         guard var hooks = settings["hooks"] as? [String: Any] else { return }
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("coucou") == true ||
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true
-                    } ?? false
-                }
+                // Per-entry removal, like the Gemini path: user hooks that merely
+                // mention "coucou"/"NotchBuddy" are kept, only nb-hook commands go.
+                matchers = removeNbHookEntries(from: matchers)
                 if matchers.isEmpty { hooks.removeValue(forKey: key) }
                 else { hooks[key] = matchers }
             }
@@ -1716,10 +1893,9 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("coucou") == true ||
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false }
+            // Remove only our own nb-hook entries, not whole groups that merely
+            // mention us: a user hook like ~/dev/coucou/scripts/lint.sh must survive.
+            existing = removeNbHookEntries(from: existing)
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -1752,6 +1928,28 @@ final class HookServer: @unchecked Sendable {
         else { return false }
         return coucouHooksPresent(inSettings: json)
         #endif
+    }
+
+    // MARK: - Removing Coucou's own hook entries (both builds)
+
+    /// Removes entries containing "nb-hook" from a Gemini- or Claude-format groups array
+    /// (matcher + hooks[]), handling the legacy flat format too (command at top level).
+    /// Used by both paths' install/uninstall so only Coucou's own entries are removed;
+    /// whole groups are dropped only when every entry in them was ours.
+    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
+        groups.compactMap { group -> [String: Any]? in
+            // Legacy flat entry — command at group level
+            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
+            // Group format — filter inner hooks
+            if var innerHooks = group["hooks"] as? [[String: Any]] {
+                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
+                if innerHooks.isEmpty { return nil }
+                var updated = group
+                updated["hooks"] = innerHooks
+                return updated
+            }
+            return group
+        }
     }
 
     // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
@@ -2003,25 +2201,6 @@ final class HookServer: @unchecked Sendable {
         }
         try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
-    }
-
-    /// Removes entries containing "nb-hook" from a Gemini-format groups array.
-    /// Handles both new group format (matcher + hooks[]) and legacy flat format (command at top level).
-    /// Returns the cleaned array; empty groups (after inner-hook removal) are dropped.
-    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
-        groups.compactMap { group -> [String: Any]? in
-            // Legacy flat entry — command at group level
-            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
-            // Group format — filter inner hooks
-            if var innerHooks = group["hooks"] as? [[String: Any]] {
-                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
-                if innerHooks.isEmpty { return nil }
-                var updated = group
-                updated["hooks"] = innerHooks
-                return updated
-            }
-            return group
-        }
     }
 
     // MARK: - Codex hook installer  (#if !APPSTORE only)
@@ -3231,16 +3410,24 @@ extension Notification.Name {
 // MARK: - nb-hook shell wrapper (same for both GitHub and App Store)
 // Invoked by Claude Code via /bin/sh or directly via shebang.
 // Always exits 0 — never blocks Claude Code.
-// Checks xcode-select before running python3 to avoid triggering the
+// On macOS, checks xcode-select before running python3 to avoid triggering the
 // "install developer tools" dialog on machines without Xcode CLI tools.
+// Elsewhere (the hook copied to a Linux machine reached over SSH, docs/REMOTE.md)
+// it runs the python3 found in PATH.
 
 private let nbHookShellWrapper = """
 #!/bin/sh
 # Coucou hook relay — always exits 0, never blocks Claude Code
 HOOK_DIR="$(dirname "$0")"
+PY=""
+if [ "$(uname -s)" = "Darwin" ]; then
+    xcode-select -p >/dev/null 2>&1 && PY=/usr/bin/python3
+else
+    PY=$(command -v python3 2>/dev/null)
+fi
 out=""
-if xcode-select -p >/dev/null 2>&1; then
-    out=$(/usr/bin/python3 "$HOOK_DIR/nb-hook.py" "$@" 2>/dev/null)
+if [ -n "$PY" ]; then
+    out=$("$PY" "$HOOK_DIR/nb-hook.py" "$@" 2>/dev/null)
     rc=$?
     if [ "$rc" -ne 0 ] || [ -z "$out" ]; then
         out=""
@@ -3333,9 +3520,12 @@ def normalize_tool_fields(payload):
         payload['cwd'] = payload['workdir']
 
 def add_session_name(payload):
-    # Name the pill after the folder the session started in, not the current cwd (the
-    # agent may cd into subfolders), or after the session's /rename title. Both come
-    # from the transcript: its first lines and the last custom-title entry.
+    # Name the pill after the session's title, else the folder the session started in,
+    # not the current cwd (the agent may cd into subfolders). Both come from the
+    # transcript: its first lines, and its last custom-title entry (/rename), else its
+    # last ai-title one (the title Claude Code gives a session; VS Code sessions only
+    # have that). Entries are told by their type: a message that merely quotes one is not
+    # a title. Claude Code writes the title again every 40-80 KB, hence a 256 KB tail.
     path = payload.get('transcript_path') or ''
     if not path:
         return
@@ -3350,17 +3540,34 @@ def add_session_name(payload):
                     payload['session_root'] = root
                     break
             f.seek(0, os.SEEK_END)
-            start = max(0, f.tell() - 65536)
+            start = max(0, f.tell() - 262144)
             f.seek(start)
             lines = f.read().splitlines()
+            ai_title = ''
             for line in reversed(lines[1:] if start else lines):
-                if b'"custom-title"' in line:
-                    title = json.loads(line).get('customTitle')
-                    if title:
-                        payload['session_title'] = title
-                    break
+                if b'"type":"custom-title"' not in line and b'"type":"ai-title"' not in line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except Exception:
+                    continue
+                if entry.get('type') == 'custom-title' and entry.get('customTitle'):
+                    payload['session_title'] = entry['customTitle']
+                    return
+                if entry.get('type') == 'ai-title' and not ai_title:
+                    ai_title = entry.get('aiTitle') or ''
+            if ai_title:
+                payload['session_title'] = ai_title
     except Exception:
         pass
+
+def term_program(env):
+    # VS Code's Claude Code extension on a remote machine (Remote - SSH) has neither
+    # TERM_PROGRAM nor the app's bundle ID; its entrypoint still says where it runs.
+    term = env.get('TERM_PROGRAM', '')
+    if not term and not env.get('__CFBundleIdentifier') and env.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-vscode':
+        return 'vscode'
+    return term
 
 def main():
     raw = b''
@@ -3376,8 +3583,10 @@ def main():
         if '--statusline' not in sys.argv[1:]:
             return
 
+    # COUCOU_SOCKET points the relay at another socket, for instance the one an
+    # `ssh -R` tunnel forwards from the Mac to a remote machine (docs/REMOTE.md).
     socket_path = os.path.expanduser(
-        '~/Library/Application Support/NotchBuddy/nb.sock'
+        os.environ.get('COUCOU_SOCKET') or '~/Library/Application Support/NotchBuddy/nb.sock'
     )
 
     # --statusline mode: relay rate_limits to Coucou, then delegate to saved previous
@@ -3419,7 +3628,7 @@ def main():
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        payload.setdefault('term_program', term_program(env))
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3487,7 +3696,7 @@ def main():
 
     # Enrich with terminal context
     env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('term_program', term_program(env))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3686,9 +3895,12 @@ def normalize_tool_fields(payload):
         payload['cwd'] = payload['workdir']
 
 def add_session_name(payload):
-    # Name the pill after the folder the session started in, not the current cwd (the
-    # agent may cd into subfolders), or after the session's /rename title. Both come
-    # from the transcript: its first lines and the last custom-title entry.
+    # Name the pill after the session's title, else the folder the session started in,
+    # not the current cwd (the agent may cd into subfolders). Both come from the
+    # transcript: its first lines, and its last custom-title entry (/rename), else its
+    # last ai-title one (the title Claude Code gives a session; VS Code sessions only
+    # have that). Entries are told by their type: a message that merely quotes one is not
+    # a title. Claude Code writes the title again every 40-80 KB, hence a 256 KB tail.
     path = payload.get('transcript_path') or ''
     if not path:
         return
@@ -3703,17 +3915,34 @@ def add_session_name(payload):
                     payload['session_root'] = root
                     break
             f.seek(0, os.SEEK_END)
-            start = max(0, f.tell() - 65536)
+            start = max(0, f.tell() - 262144)
             f.seek(start)
             lines = f.read().splitlines()
+            ai_title = ''
             for line in reversed(lines[1:] if start else lines):
-                if b'"custom-title"' in line:
-                    title = json.loads(line).get('customTitle')
-                    if title:
-                        payload['session_title'] = title
-                    break
+                if b'"type":"custom-title"' not in line and b'"type":"ai-title"' not in line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except Exception:
+                    continue
+                if entry.get('type') == 'custom-title' and entry.get('customTitle'):
+                    payload['session_title'] = entry['customTitle']
+                    return
+                if entry.get('type') == 'ai-title' and not ai_title:
+                    ai_title = entry.get('aiTitle') or ''
+            if ai_title:
+                payload['session_title'] = ai_title
     except Exception:
         pass
+
+def term_program(env):
+    # VS Code's Claude Code extension on a remote machine (Remote - SSH) has neither
+    # TERM_PROGRAM nor the app's bundle ID; its entrypoint still says where it runs.
+    term = env.get('TERM_PROGRAM', '')
+    if not term and not env.get('__CFBundleIdentifier') and env.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-vscode':
+        return 'vscode'
+    return term
 
 def main():
     raw = b''
@@ -3729,8 +3958,10 @@ def main():
         if '--statusline' not in sys.argv[1:]:
             return
 
+    # COUCOU_SOCKET points the relay at another socket, for instance the one an
+    # `ssh -R` tunnel forwards from the Mac to a remote machine (docs/REMOTE.md).
     socket_path = os.path.expanduser(
-        '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'
+        os.environ.get('COUCOU_SOCKET') or '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'
     )
 
     # --statusline mode: relay rate_limits to Coucou, then delegate to saved previous
@@ -3772,7 +4003,7 @@ def main():
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        payload.setdefault('term_program', term_program(env))
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3839,7 +4070,7 @@ def main():
         payload['coucou_agent'] = 'claude-desktop'
 
     env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('term_program', term_program(env))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))

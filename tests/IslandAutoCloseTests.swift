@@ -82,7 +82,45 @@ enum IslandAutoCloseTests {
         heldCountdown.mouseLeft()
         try await waitForCompact(heldCountdown, )
 
-        print("Island auto-close: 8 cases passed")
+        // A configured petitToHiddenDelay hides the compact island after mouse leaves.
+        let compactMachine = IslandStateMachine()
+        compactMachine.petitToHiddenDelay = 0.05
+        compactMachine.mouseEntered()
+        precondition(compactMachine.state == .petit)
+        compactMachine.mouseLeft()
+        try await waitForHidden(compactMachine)
+
+        // Editing petitToHiddenDelay during a pending countdown replaces its timer.
+        let editedPetit = IslandStateMachine()
+        editedPetit.petitToHiddenDelay = 15
+        editedPetit.mouseEntered()
+        editedPetit.mouseLeft()
+        editedPetit.petitToHiddenDelay = 0.05
+        try await waitForHidden(editedPetit)
+
+        // Increasing petitToHiddenDelay cancels previous shorter timer.
+        let extendedPetit = IslandStateMachine()
+        extendedPetit.petitToHiddenDelay = 0.05
+        extendedPetit.mouseEntered()
+        extendedPetit.mouseLeft()
+        extendedPetit.petitToHiddenDelay = 3
+        try await Task.sleep(for: .milliseconds(600))
+        precondition(extendedPetit.state == .petit)
+        extendedPetit.petitToHiddenDelay = 0.05
+        try await waitForHidden(extendedPetit)
+
+        // Returning to the compact island cancels the hide countdown; leaving starts it again.
+        let hoveredPetit = IslandStateMachine()
+        hoveredPetit.petitToHiddenDelay = 0.05
+        hoveredPetit.mouseEntered()
+        hoveredPetit.mouseLeft()
+        hoveredPetit.mouseEntered()
+        try await Task.sleep(for: .milliseconds(100))
+        precondition(hoveredPetit.state == .petit)
+        hoveredPetit.mouseLeft()
+        try await waitForHidden(hoveredPetit)
+
+        print("Island auto-close: 12 cases passed")
     }
 
     @MainActor
@@ -103,5 +141,15 @@ enum IslandAutoCloseTests {
             try await Task.sleep(for: .milliseconds(10))
         }
         precondition(machine.state == .petit, "Auto-close did not fire within \(timeout) seconds")
+    }
+
+    @MainActor
+    private static func waitForHidden(_ machine: IslandStateMachine,
+                                      timeout: TimeInterval = 5) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while machine.state != .hidden && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        precondition(machine.state == .hidden, "Petit to hidden did not fire within \(timeout) seconds")
     }
 }

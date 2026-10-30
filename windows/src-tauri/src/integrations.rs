@@ -399,6 +399,27 @@ fn status_error(code: u16, unauthorised_hint: &str) -> String {
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
+fn parse_stripe_balance(json: &Value) -> (i64, String) {
+    let mut buckets: Vec<Value> = Vec::new();
+    for k in ["available", "pending"] {
+        if let Some(arr) = json.get(k).and_then(Value::as_array) {
+            buckets.extend(arr.iter().cloned());
+        }
+    }
+    let currency = buckets
+        .first()
+        .and_then(|b| b.get("currency"))
+        .and_then(Value::as_str)
+        .unwrap_or("eur")
+        .to_string();
+    let amount: i64 = buckets
+        .iter()
+        .filter(|b| b.get("currency").and_then(Value::as_str) == Some(&currency))
+        .filter_map(|b| b.get("amount").and_then(Value::as_i64))
+        .sum();
+    (amount, currency)
+}
+
 async fn poll_stripe(app: AppHandle) {
     let Some(key) = secrets::get("stripe-api-key") else { return };
     let auth = format!("Basic {}", crate::claude::base64_for(format!("{key}:").as_bytes()));
@@ -413,23 +434,7 @@ async fn poll_stripe(app: AppHandle) {
     let (amount, currency) = match balance {
         Ok(r) if r.status().is_success() => {
             let json: Value = r.json().await.unwrap_or(json!({}));
-            let mut buckets: Vec<Value> = Vec::new();
-            for k in ["available", "pending"] {
-                if let Some(arr) = json.get(k).and_then(Value::as_array) {
-                    buckets.extend(arr.iter().cloned());
-                }
-            }
-            let currency = buckets
-                .first()
-                .and_then(|b| b.get("currency"))
-                .and_then(Value::as_str)
-                .unwrap_or("eur")
-                .to_string();
-            let amount: i64 = buckets
-                .iter()
-                .filter_map(|b| b.get("amount").and_then(Value::as_i64))
-                .sum();
-            (amount, currency)
+            parse_stripe_balance(&json)
         }
         Ok(r) => {
             let code = r.status().as_u16();
@@ -549,30 +554,51 @@ async fn poll_github(app: AppHandle) {
         .and_then(Value::as_i64)
         .unwrap_or(0);
 
-    let repos = http
-        .get("https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
-        .send()
-        .await;
-    let stars: i64 = match repos {
-        Ok(r) if r.status().is_success() => r
-            .json::<Value>()
-            .await
-            .ok()
-            .and_then(|v| v.as_array().cloned())
-            .map(|list| {
-                list.iter()
-                    .filter_map(|r| r.get("stargazers_count").and_then(Value::as_i64))
-                    .sum()
-            })
-            .unwrap_or(0),
-        _ => 0,
-    };
+    let total_repos = public + private;
+    let max_pages = calculate_repo_pages(total_repos);
+    let mut stars: i64 = 0;
 
-    GITHUB.cache.lock().unwrap().stats = Some((public + private, stars));
+    for page in 1..=max_pages {
+        let url = format!(
+            "https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed&page={page}"
+        );
+        let resp = http
+            .get(&url)
+            .header("Authorization", format!("Bearer {token}"))
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "Coucou")
+            .send()
+            .await;
+        match resp {
+            Ok(r) if r.status().is_success() => {
+                let Ok(list) = r.json::<Vec<Value>>().await else { break };
+                let count = list.len();
+                stars += sum_repo_stars(&list);
+                if count < 100 {
+                    break;
+                }
+            }
+            _ => break,
+        }
+    }
+
+    GITHUB.cache.lock().unwrap().stats = Some((total_repos, stars));
     emit_github(&app);
+}
+
+pub(crate) fn calculate_repo_pages(total_repos: i64) -> usize {
+    if total_repos <= 0 {
+        1
+    } else {
+        usize::try_from((total_repos + 99) / 100).unwrap_or(1).clamp(1, 50)
+    }
+}
+
+pub(crate) fn sum_repo_stars(repos: &[Value]) -> i64 {
+    repos
+        .iter()
+        .filter_map(|r| r.get("stargazers_count").and_then(Value::as_i64))
+        .sum()
 }
 
 // ── GitHub pulse and activity (GithubPoller.swift) ────────────────────────────
@@ -1104,8 +1130,8 @@ async fn poll_n8n(app: AppHandle) {
 
     // Same two shapes as the Swift poller: the public API first, then /rest.
     let list_urls = [
-        format!("{base}/api/v1/executions?limit=1&includeData=false"),
-        format!("{base}/rest/executions?limit=1&includeData=false"),
+        format!("{base}/api/v1/executions?limit=10&includeData=false"),
+        format!("{base}/rest/executions?limit=10&includeData=false"),
     ];
 
     let mut items: Option<Vec<Value>> = None;
@@ -1130,17 +1156,10 @@ async fn poll_n8n(app: AppHandle) {
         }
     }
 
-    let Some(first) = items.and_then(|list| list.into_iter().next()) else { return };
-    let id = match first.get("id") {
-        Some(Value::String(s)) => s.clone(),
-        Some(Value::Number(n)) => n.to_string(),
-        _ => return,
-    };
+    let Some(first) = items.as_deref().and_then(find_terminal_execution) else { return };
+    let Some(id) = parse_execution_id(first) else { return };
 
     let status = first.get("status").and_then(Value::as_str).unwrap_or("");
-    if !["success", "error", "crashed", "canceled", "failed"].contains(&status) {
-        return;
-    }
     if !is_new("n8n", &id) {
         return;
     }
@@ -1252,6 +1271,24 @@ fn fmt_value(v: &Value) -> String {
     }
 }
 
+pub(crate) fn find_terminal_execution(list: &[Value]) -> Option<&Value> {
+    const TERMINAL: [&str; 5] = ["success", "error", "crashed", "canceled", "failed"];
+    list.iter().find(|item| {
+        item.get("status")
+            .and_then(Value::as_str)
+            .map(|s| TERMINAL.contains(&s))
+            .unwrap_or(false)
+    })
+}
+
+pub(crate) fn parse_execution_id(item: &Value) -> Option<String> {
+    match item.get("id") {
+        Some(Value::String(s)) => Some(s.clone()),
+        Some(Value::Number(n)) => Some(n.to_string()),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1311,5 +1348,64 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+
+    #[test]
+    fn stripe_balance_does_not_mix_different_currencies() {
+        let payload = json!({
+            "available": [
+                { "amount": 10000, "currency": "eur" },
+                { "amount": 5000, "currency": "usd" }
+            ],
+            "pending": [
+                { "amount": 2000, "currency": "eur" },
+                { "amount": 3000, "currency": "usd" }
+            ]
+        });
+        let (amount, currency) = parse_stripe_balance(&payload);
+        assert_eq!(currency, "eur");
+        assert_eq!(amount, 12000);
+    }
+
+    #[test]
+    fn calculate_repo_pages_bounds_correctly() {
+        assert_eq!(calculate_repo_pages(0), 1);
+        assert_eq!(calculate_repo_pages(1), 1);
+        assert_eq!(calculate_repo_pages(100), 1);
+        assert_eq!(calculate_repo_pages(101), 2);
+        assert_eq!(calculate_repo_pages(200), 2);
+        assert_eq!(calculate_repo_pages(500), 5);
+        assert_eq!(calculate_repo_pages(5000), 50);
+        assert_eq!(calculate_repo_pages(9999), 50);
+    }
+
+    #[test]
+    fn sum_repo_stars_sums_stargazers_count() {
+        let repos = vec![
+            json!({ "name": "repo1", "stargazers_count": 42 }),
+            json!({ "name": "repo2", "stargazers_count": 10 }),
+            json!({ "name": "repo3" }),
+            json!({ "name": "repo4", "stargazers_count": 0 }),
+        ];
+        assert_eq!(sum_repo_stars(&repos), 52);
+    }
+
+    #[test]
+    fn find_terminal_execution_skips_running_and_finds_terminal() {
+        let list = vec![
+            json!({ "id": "1", "status": "running" }),
+            json!({ "id": "2", "status": "waiting" }),
+            json!({ "id": "3", "status": "error" }),
+            json!({ "id": "4", "status": "success" }),
+        ];
+        let term = find_terminal_execution(&list).unwrap();
+        assert_eq!(term["id"], "3");
+    }
+
+    #[test]
+    fn parse_execution_id_handles_string_and_number() {
+        assert_eq!(parse_execution_id(&json!({ "id": "abc-123" })), Some("abc-123".to_string()));
+        assert_eq!(parse_execution_id(&json!({ "id": 42 })), Some("42".to_string()));
+        assert_eq!(parse_execution_id(&json!({ "foo": "bar" })), None);
     }
 }

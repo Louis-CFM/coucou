@@ -65,6 +65,8 @@ pub struct Pill {
     shown: AtomicBool,
     /// The pointer is on the pill or its bubble: a message waits for it to leave.
     pub hovered: AtomicBool,
+    #[cfg(target_os = "linux")]
+    pointer_watch: AtomicBool,
     /// Parks the Windows cursor poll while the pill is hidden.
     poll: (Mutex<bool>, Condvar),
     announce_seq: std::sync::atomic::AtomicU64,
@@ -134,6 +136,8 @@ pub fn setup(app: &AppHandle) {
         hot: Mutex::new(Vec::new()),
         shown: AtomicBool::new(false),
         hovered: AtomicBool::new(false),
+        #[cfg(target_os = "linux")]
+        pointer_watch: AtomicBool::new(false),
         poll: (Mutex::new(false), Condvar::new()),
         announce_seq: std::sync::atomic::AtomicU64::new(1),
     });
@@ -150,6 +154,52 @@ pub fn dictating(app: &AppHandle) -> bool {
 
 pub fn get(app: &AppHandle) -> Option<Arc<Pill>> {
     app.try_state::<Arc<Pill>>().map(|s| s.inner().clone())
+}
+
+/// WebKitGTK can miss pointerleave when the window's input region changes.
+/// Check GTK's pointer focus while hovered, as the island does, and park the
+/// timer as soon as the page folds the toolbar or the pill is hidden.
+#[cfg(target_os = "linux")]
+pub fn watch_pointer_leave(app: &AppHandle) {
+    use gtk::prelude::*;
+
+    let Some(pill) = get(app) else { return };
+    if pill.pointer_watch.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let app_for_watch = app.clone();
+    let watched = pill.clone();
+    if app.run_on_main_thread(move || {
+        let Some(win) = window(&app_for_watch) else {
+            watched.pointer_watch.store(false, Ordering::Relaxed);
+            return;
+        };
+        let Ok(gw) = win.gtk_window() else {
+            watched.pointer_watch.store(false, Ordering::Relaxed);
+            return;
+        };
+        gtk::glib::timeout_add_local(Duration::from_millis(100), move || {
+            if !watched.shown.load(Ordering::Relaxed)
+                || !watched.hovered.load(Ordering::Relaxed)
+                || !gw.is_visible()
+            {
+                watched.pointer_watch.store(false, Ordering::Relaxed);
+                return gtk::glib::ControlFlow::Break;
+            }
+            if let (Some(ours), Some(pointer)) = (
+                gw.window(),
+                gtk::gdk::Display::default().and_then(|d| d.default_seat()).and_then(|s| s.pointer()),
+            ) {
+                let (under, _, _) = pointer.window_at_position();
+                if !under.is_some_and(|w| w.toplevel() == ours.toplevel()) {
+                    let _ = win.emit("pill-pointer", false);
+                }
+            }
+            gtk::glib::ControlFlow::Continue
+        });
+    }).is_err() {
+        pill.pointer_watch.store(false, Ordering::Relaxed);
+    }
 }
 
 fn window(app: &AppHandle) -> Option<WebviewWindow> {

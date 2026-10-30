@@ -141,6 +141,20 @@ pub fn duration(seconds: u32) -> String {
     format!("{}:{:02}", seconds / 60, seconds % 60)
 }
 
+/// "33612345678:3@s.whatsapp.net" → "33612345678": who, without the device or the server.
+fn user_part(jid: &str) -> &str {
+    let user = jid.split('@').next().unwrap_or(jid);
+    user.split(':').next().unwrap_or(user)
+}
+
+/// A chat's name that names nothing: empty, only its number, or GOWA's stand-in for a group it
+/// hasn't named yet ("Group 120363…").
+pub fn unnamed(jid: &str, name: &str) -> bool {
+    let name = name.trim();
+    let id = user_part(jid);
+    name.is_empty() || name == display_number(jid) || name == id || name.strip_prefix("Group ") == Some(id)
+}
+
 /// The same person under its several forms: "33612345678:12@s.whatsapp.net" and
 /// "33612345678@c.us" are one chat.
 pub fn normalized(jid: &str) -> String {
@@ -229,7 +243,7 @@ impl Inbox {
         let number = display_number(&chat);
         // In a private chat the other person names it: never your own name on your own message.
         let person = (!group && !message.from_me && !message.sender_name.is_empty()).then(|| message.sender_name.clone());
-        let given = name.map(String::from).or_else(|| message.chat_name.clone()).filter(|n| !n.is_empty());
+        let given = name.map(String::from).or_else(|| message.chat_name.clone()).filter(|n| !unnamed(&chat, n));
         let conversation = self.conversations.entry(chat.clone()).or_insert_with(|| Conversation {
             id: chat.clone(),
             name: given.clone().or_else(|| person.clone()).unwrap_or_else(|| number.clone()),
@@ -522,6 +536,11 @@ mod tests {
         assert_eq!((initials("Marie Dupont").as_str(), initials("+33 6").as_str()), ("MD", "#"));
         assert_eq!(display_number("33612345678@s.whatsapp.net"), "+33612345678");
         assert!(is_group("1203@g.us") && !is_group("33@s.whatsapp.net"));
+        // A group GOWA hasn't named yet is no name (upstream).
+        assert!(unnamed("120363401@g.us", "+120363401"));
+        assert!(unnamed("120363401@g.us", "Group 120363401"));
+        assert!(!unnamed("120363401@g.us", "Group chat"));
+        assert!(!unnamed("120363401@g.us", "Famille"));
         let mut v = Message::new("v", "c", "c", "", "", 0.0);
         v.media = Media::Voice { seconds: Some(12) };
         assert_eq!(v.preview_key(), ("Voice message", "0:12".to_string()));

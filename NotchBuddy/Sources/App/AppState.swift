@@ -167,6 +167,22 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        #if !APPSTORE
+        // Through the subscription: Claude Code takes the model aliases; the other tools
+        // use the model chosen in them.
+        if usesSubscription(provider) {
+            providerModelFetchError.removeValue(forKey: provider)
+            if provider == .anthropic {
+                var models = Self.claudeCodeModels
+                if !models.contains(where: { $0.id == claudeModel }) { models.insert((claudeModel, claudeModel), at: 0) }
+                fetchedProviderModels[provider] = models
+            } else {
+                let tool = (provider.installedCLI ?? provider.subscriptionCLIs.first)?.displayName ?? provider.displayName
+                fetchedProviderModels[provider] = [("", String(format: String(localized: "chat.subscriptions.default-model"), tool))]
+            }
+            return
+        }
+        #endif
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -218,6 +234,7 @@ final class AppState: ObservableObject {
             case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
             case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
             case .ollama, .lmstudio: models = []  // handled above
+            case .cursor, .copilot:  models = []  // subscription only, handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -249,11 +266,16 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == moonshotChatModel }) {
                         moonshotChatModel = models.first!.id
                     }
-                case .ollama, .lmstudio: break
+                case .ollama, .lmstudio, .cursor, .copilot: break
                 }
             }
         }
     }
+
+    /// The models offered when Claude Code answers: its aliases always point at the latest.
+    static let claudeCodeModels: [(id: String, label: String)] = [
+        ("sonnet", "Claude Sonnet"), ("opus", "Claude Opus"), ("haiku", "Claude Haiku"),
+    ]
 
     /// The model currently active for chat (provider-aware).
     var activeChatModel: String {
@@ -266,6 +288,7 @@ final class AppState: ObservableObject {
         case .deepseek:  return deepseekChatModel
         case .qwen:      return qwenChatModel
         case .moonshot:  return moonshotChatModel
+        case .cursor, .copilot: return ""
         }
     }
 
@@ -310,7 +333,7 @@ final class AppState: ObservableObject {
     }
 
     // Absence interval — persisted
-    var absenceInterval: TimeInterval = 3 * 60 {
+    @Published var absenceInterval: TimeInterval = 3 * 60 {
         didSet { UserDefaults.standard.set(absenceInterval, forKey: "absenceInterval") }
     }
 
@@ -413,6 +436,10 @@ final class AppState: ObservableObject {
     @Published var pendingQuestion: AskQuestion? = nil {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
     }
+
+    /// Every AskUserQuestion waiting for an answer, oldest first: the first one is on the
+    /// card (`pendingQuestion`). Written by HookServer only; empty for a demo question.
+    @Published var waitingQuestions: [QueuedQuestion] = []
 
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
@@ -581,6 +608,15 @@ final class AppState: ObservableObject {
 
     var focusTask: AgentTask? {
         tasks.first { $0.id == focusId } ?? tasks.first
+    }
+
+    /// The places beside the focused pill (4, SessionBoard.slots): the pills as they come, a
+    /// waiting one (a session popped out of its client's pill, or a pill waiting itself) in the
+    /// place of an idle or finished pill, and "+N" for the waiting ones left over.
+    var gridSlots: [SessionBoard.Slot] {
+        SessionBoard.slots(tasks.filter { $0.id != focusId }.map {
+            SessionBoard.Cell(id: $0.id, state: $0.state, poppedOut: $0.id != $0.pill)
+        })
     }
 
     var effectiveState: BotState {
