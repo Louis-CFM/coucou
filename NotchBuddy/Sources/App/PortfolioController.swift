@@ -14,6 +14,29 @@ struct PortfolioHolding: Identifiable, Equatable, Sendable {
     var value: Double { amount * price }
 }
 
+
+enum OKXRegion: String, CaseIterable, Sendable, Codable {
+    case global = "global"
+    case eea = "eea"
+    case us = "us"
+
+    var name: String {
+        switch self {
+        case .global: return "Global (www.okx.com)"
+        case .eea:    return "Europe – EEA (eea.okx.com)"
+        case .us:     return "United States (us.okx.com)"
+        }
+    }
+
+    var baseURL: String {
+        switch self {
+        case .global: return "https://www.okx.com"
+        case .eea:    return "https://eea.okx.com"
+        case .us:     return "https://us.okx.com"
+        }
+    }
+}
+
 enum ExchangeKind: String, CaseIterable, Sendable, Codable {
     case binance, okx, bybit, kraken, coinbase
     var name: String {
@@ -129,12 +152,24 @@ struct PortfolioAccount: Identifiable, Equatable, Sendable {
 
 enum PortfolioSettings {
     private static let walletsKey = "portfolioWallets"
+    private static let okxRegionKey = "portfolio-okx-region"
 
     static func key(for ex: ExchangeKind)        -> String? { KeychainStore.shared.get("\(ex.keychainPrefix)-key") }
     static func secret(for ex: ExchangeKind)     -> String? { KeychainStore.shared.get("\(ex.keychainPrefix)-secret") }
     static func passphrase(for ex: ExchangeKind) -> String? { KeychainStore.shared.get("\(ex.keychainPrefix)-passphrase") }
 
-    static func save(exchange: ExchangeKind, key: String, secret: String, passphrase: String = "") {
+    static var okxRegion: OKXRegion {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: okxRegionKey),
+                  let reg = OKXRegion(rawValue: raw) else { return .global }
+            return reg
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: okxRegionKey)
+        }
+    }
+
+    static func save(exchange: ExchangeKind, key: String, secret: String, passphrase: String = "", okxRegion: OKXRegion = .global) {
         KeychainStore.shared.set("\(exchange.keychainPrefix)-key",    value: key)
         KeychainStore.shared.set("\(exchange.keychainPrefix)-secret", value: secret)
         if exchange.needsPassphrase {
@@ -520,7 +555,8 @@ private enum ExchangeFetcher {
         let path = "/api/v5/account/balance"
         let message = "\(ts)GET\(path)"
         let sig = HMACHelper.sha256b64(key: secretData, message: message)
-        guard let url = URL(string: "https://www.okx.com\(path)") else {
+        let base = PortfolioSettings.okxRegion.baseURL
+        guard let url = URL(string: "\(base)\(path)") else {
             throw FetchError.badResponse("Invalid URL")
         }
         var req = URLRequest(url: url, timeoutInterval: 10)
@@ -981,12 +1017,14 @@ private enum WalletFetcher {
 extension PortfolioController {
     /// Tests credentials by attempting a real fetch. Returns nil on success, error string on failure.
     static func validate(exchange: ExchangeKind,
-                         key: String, secret: String, passphrase: String = "") async -> String? {
+                         key: String, secret: String, passphrase: String = "",
+                         okxRegion: OKXRegion = .global) async -> String? {
         // Temporarily set, test, then restore.
         let prevKey        = PortfolioSettings.key(for: exchange) ?? ""
         let prevSecret     = PortfolioSettings.secret(for: exchange) ?? ""
         let prevPassphrase = PortfolioSettings.passphrase(for: exchange) ?? ""
-        PortfolioSettings.save(exchange: exchange, key: key, secret: secret, passphrase: passphrase)
+        let prevRegion     = PortfolioSettings.okxRegion
+        PortfolioSettings.save(exchange: exchange, key: key, secret: secret, passphrase: passphrase, okxRegion: okxRegion)
         do {
             let holdings = try await ExchangeFetcher.fetch(exchange)
             _ = holdings   // success: at least an empty list is fine
@@ -994,7 +1032,7 @@ extension PortfolioController {
         } catch {
             // Restore previous credentials on failure
             PortfolioSettings.save(exchange: exchange,
-                                   key: prevKey, secret: prevSecret, passphrase: prevPassphrase)
+                                   key: prevKey, secret: prevSecret, passphrase: prevPassphrase, okxRegion: prevRegion)
             return error.localizedDescription
         }
     }
