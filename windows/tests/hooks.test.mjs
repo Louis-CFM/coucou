@@ -371,9 +371,35 @@ test("a Claude Desktop session gets the Claude Desktop pill, in its colour (Mac 
   assert.equal(desktop.color, "#D97757");
   assert.equal(desktop.sessionId, "d1");
   assert.equal(task().state, "idle");
-  // Its permission requests are answered in the app, as on macOS.
-  hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: "claude-desktop", tool_name: "Bash" });
-  assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
+});
+
+test("a Claude Desktop session gets its cards: it is Claude Code under another pill", () => {
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r1", session_id: "d1", coucou_agent: "claude-desktop",
+    tool_name: "Bash", tool_input: { command: "ls" },
+  });
+  assert.deepEqual(sent("approval_decline"), []);
+  assert.deepEqual(sent("approval_ack"), [{ requestId: "r1" }]);
+  assert.equal(task("agent_claude-desktop").state, "approval");
+  assert.ok(asked.includes("alert:approval"));
+});
+
+test("a question asked from Claude Desktop becomes a question card", () => {
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "q1", session_id: "d1", coucou_agent: "claude-desktop",
+    tool_name: "AskUserQuestion",
+    tool_input: {
+      questions: [{
+        question: "Which one?", multiSelect: false,
+        options: [{ label: "A", description: "first" }, { label: "B", description: "second" }],
+      }],
+    },
+  });
+  assert.deepEqual(sent("approval_decline"), []);
+  assert.equal(State.pendingApproval.questions.length, 1);
+  assert.equal(State.pendingApproval.questions[0].question, "Which one?");
+  assert.equal(task("agent_claude-desktop").state, "question");
+  assert.ok(asked.includes("alert:question"));
 });
 
 // ── Main tool and Cursor ──────────────────────────────────────────────────────
