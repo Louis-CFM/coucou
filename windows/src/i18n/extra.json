@@ -2656,6 +2656,19 @@
       "ko": "주소는 http:// 또는 https://로 시작해야 해요.",
       "ja": "アドレスは http:// または https:// で始まる必要があります。"
     },
+    "The answer reached the length limit. Say “continue” to get the rest.": {
+      "zh-Hans": "回复已达到长度上限。说“继续”以获取剩余内容。",
+      "hi": "जवाब लंबाई की सीमा तक पहुँच गया। बाकी के लिए “जारी रखो” कहें।",
+      "es": "La respuesta llegó al límite de longitud. Di “continúa” para ver el resto.",
+      "ar": "بلغ الرد حدّ الطول. قل “تابع” للحصول على الباقي.",
+      "fr": "La réponse a atteint la limite de longueur. Dis « continue » pour avoir la suite.",
+      "bn": "উত্তর দৈর্ঘ্যের সীমায় পৌঁছেছে। বাকিটা পেতে “চালিয়ে যাও” বলুন।",
+      "pt-BR": "A resposta atingiu o limite de tamanho. Diga “continue” para ver o resto.",
+      "ru": "Ответ достиг предела длины. Напишите «продолжай», чтобы получить остальное.",
+      "id": "Jawaban mencapai batas panjang. Ketik “lanjutkan” untuk sisanya.",
+      "de": "Die Antwort hat die Längengrenze erreicht. Sag „weiter“ für den Rest.",
+      "tr": "Yanıt uzunluk sınırına ulaştı. Devamı için “devam et” de."
+    },
     "The file is removed.": {
       "zh-Hans": "该文件将被删除。",
       "hi": "फ़ाइल हटा दी जाती है।",
@@ -2760,6 +2773,19 @@
       "tr": "Sunucu anahtarı reddetti. Kontrol edip tekrar bağlan.",
       "ko": "서버가 키를 거절했어요. 확인하고 다시 연결해 주세요.",
       "ja": "サーバーがキーを拒否しました。確認してから、もう一度接続してください。"
+    },
+    "The server stopped sending the answer. Try again.": {
+      "zh-Hans": "服务器停止发送回复。请重试。",
+      "hi": "सर्वर ने जवाब भेजना बंद कर दिया। फिर से कोशिश करें।",
+      "es": "El servidor dejó de enviar la respuesta. Inténtalo de nuevo.",
+      "ar": "توقّف الخادم عن إرسال الرد. حاول مجددًا.",
+      "fr": "Le serveur a cessé d'envoyer la réponse. Réessaie.",
+      "bn": "সার্ভার উত্তর পাঠানো বন্ধ করেছে। আবার চেষ্টা করুন।",
+      "pt-BR": "O servidor parou de enviar a resposta. Tente de novo.",
+      "ru": "Сервер перестал отправлять ответ. Попробуйте снова.",
+      "id": "Server berhenti mengirim jawaban. Coba lagi.",
+      "de": "Der Server sendet die Antwort nicht mehr. Versuche es erneut.",
+      "tr": "Sunucu yanıtı göndermeyi bıraktı. Tekrar dene."
     },
     "The server's answer is too large.": {
       "zh-Hans": "服务器的回复过大。",

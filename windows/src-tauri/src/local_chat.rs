@@ -26,7 +26,20 @@ use crate::{net, secrets};
 /// Credential store entry of the key of the user's own OpenAI-compatible server.
 pub const CUSTOM_KEY: &str = "openai-compatible-key";
 
-const MAX_TOKENS: u32 = 4096;
+/// Room for a long answer (code, a document): a model whose own limit is lower
+/// stops there. One that stops at this one says so under its answer.
+const MAX_TOKENS: u32 = 16_384;
+/// Earlier turns are sent up to this much text (some 50 000 tokens), newest
+/// first; past it the oldest go, a question and its answer at a time. A router
+/// in front of a hosted model (GitHub Copilot through a router) refuses a
+/// conversation longer than its window.
+const MAX_HISTORY_BYTES: usize = 200_000;
+/// How long the server may stay silent: before the answer starts (it may load
+/// the model, or think first), then between two pieces of it. An answer that
+/// keeps coming is never cut, short of the last ceiling.
+const FIRST_BYTE_TIMEOUT: Duration = Duration::from_secs(300);
+const IDLE_TIMEOUT: Duration = Duration::from_secs(120);
+const MAX_STREAM: Duration = Duration::from_secs(30 * 60);
 /// A text file is sent inline up to this many characters; the rest is cut.
 const MAX_INLINE_CHARS: usize = 24_000;
 /// The island is told about new text at most this often.
@@ -246,9 +259,28 @@ fn user_text(first: bool, context: Option<&ChatContext>, query: &str) -> String 
     }
 }
 
+/// The latest turns of `history` that fit in `budget` bytes of text, whole
+/// question-and-answer pairs only.
+fn recent(history: &[Value], budget: usize) -> &[Value] {
+    let size = |m: &Value| match &m["content"] {
+        Value::String(s) => s.len(),
+        other => other.to_string().len(),
+    };
+    let (mut start, mut kept) = (history.len(), 0);
+    while start >= 2 {
+        let pair = size(&history[start - 2]) + size(&history[start - 1]);
+        if kept + pair > budget {
+            break;
+        }
+        kept += pair;
+        start -= 2;
+    }
+    &history[start..]
+}
+
 fn request_body(model: &str, system: &str, history: &[Value], user: &Value) -> Value {
     let mut messages = vec![json!({ "role": "system", "content": system })];
-    messages.extend(history.iter().cloned());
+    messages.extend(recent(history, MAX_HISTORY_BYTES).iter().cloned());
     messages.push(user.clone());
     json!({ "model": model, "messages": messages, "stream": true, "max_tokens": MAX_TOKENS })
 }
@@ -285,13 +317,19 @@ pub async fn send_with(
     let user = json!({ "role": "user", "content": user_text(turn.first, context.as_ref(), &query) });
     let body = request_body(model, &chat::system_prompt(false), &turn.history, &user);
 
-    let answer = stream(&base, server.key.as_deref(), model, &body, on_delta).await?;
+    let Streamed { text: answer, cut } = stream(&base, server.key.as_deref(), model, &body, on_delta).await?;
     if answer.is_empty() {
         return Err(t("No response text."));
     }
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": answer }), &plain, &answer);
-    Ok(ChatReply { text: answer })
+    // The note is for the user only: the model's history keeps its own words.
+    let text = if cut {
+        format!("{answer}\n\n*{}*", t("The answer reached the length limit. Say “continue” to get the rest."))
+    } else {
+        answer
+    };
+    Ok(ChatReply { text })
 }
 
 // ── Streaming ─────────────────────────────────────────────────────────────────
@@ -309,6 +347,15 @@ fn parse_sse_line(line: &str) -> Option<Result<String, String>> {
         return Some(Err(msg.to_string()));
     }
     json.pointer("/choices/0/delta/content")?.as_str().map(|s| Ok(s.to_string()))
+}
+
+/// Whether an event line says the answer stopped at `max_tokens`.
+fn stopped_at_limit(line: &str) -> bool {
+    line.contains("\"length\"")
+        && line
+            .strip_prefix("data:")
+            .and_then(|payload| serde_json::from_str::<Value>(payload.trim_start()).ok())
+            .is_some_and(|json| json.pointer("/choices/0/finish_reason").and_then(Value::as_str) == Some("length"))
 }
 
 /// Removes finished `<think>…</think>` blocks (reasoning models such as DeepSeek-R1).
@@ -334,22 +381,34 @@ fn progressive_filter(text: &str) -> String {
     }
 }
 
+/// A streamed answer without its thinking, and whether it stopped at `max_tokens`.
+#[derive(Debug)]
+struct Streamed {
+    text: String,
+    cut: bool,
+}
+
+fn stalled() -> String {
+    t("The server stopped sending the answer. Try again.")
+}
+
 /// Posts the request and reads the event stream. `on_delta` gets the visible
-/// text at most 15 times a second, and once more at the end; the result is the
-/// whole answer without its thinking.
+/// text at most 15 times a second, and once more at the end.
 async fn stream(
     base: &Url,
     key: Option<&str>,
     model: &str,
     body: &Value,
     mut on_delta: impl FnMut(String),
-) -> Result<String, String> {
-    let mut reply = net::client(base, Duration::from_secs(300))?
+) -> Result<Streamed, String> {
+    let request = net::client(base, MAX_STREAM)?
         .post(net::join(base, "v1/chat/completions"))
         .header("Authorization", bearer(key))
         .json(body)
-        .send()
+        .send();
+    let mut reply = tokio::time::timeout(FIRST_BYTE_TIMEOUT, request)
         .await
+        .map_err(|_| stalled())?
         .map_err(|_| unreachable(base))?;
 
     let status = reply.status();
@@ -363,14 +422,21 @@ async fn stream(
     }
 
     let mut accumulated = String::new();
+    let mut cut = false;
     let mut pending = Vec::<u8>::new();
     let mut last = Instant::now().checked_sub(DELTA_INTERVAL).unwrap_or_else(Instant::now);
-    while let Some(chunk) = reply.chunk().await.map_err(|_| unreachable(base))? {
+    // Silence, or a connection dropped mid-answer, both end it the same way.
+    while let Some(chunk) = tokio::time::timeout(IDLE_TIMEOUT, reply.chunk())
+        .await
+        .map_err(|_| stalled())?
+        .map_err(|_| stalled())?
+    {
         pending.extend_from_slice(&chunk);
         // Whole lines only: a chunk may end in the middle of one, or of a character.
         while let Some(end) = pending.iter().position(|b| *b == b'\n') {
             let line: Vec<u8> = pending.drain(..=end).collect();
             let line = String::from_utf8_lossy(&line);
+            cut |= stopped_at_limit(line.trim_end());
             match parse_sse_line(line.trim_end()) {
                 Some(Ok(delta)) => accumulated.push_str(&delta),
                 Some(Err(message)) => return Err(message),
@@ -386,12 +452,14 @@ async fn stream(
         }
     }
     // A last line without its newline.
-    if let Some(Ok(delta)) = parse_sse_line(String::from_utf8_lossy(&pending).trim_end()) {
+    let rest = String::from_utf8_lossy(&pending);
+    cut |= stopped_at_limit(rest.trim_end());
+    if let Some(Ok(delta)) = parse_sse_line(rest.trim_end()) {
         accumulated.push_str(&delta);
     }
     // The last state always goes out, whatever the throttle skipped.
     on_delta(progressive_filter(&accumulated));
-    Ok(filter_thinking_blocks(&accumulated))
+    Ok(Streamed { text: filter_thinking_blocks(&accumulated), cut })
 }
 
 #[cfg(test)]
@@ -507,9 +575,45 @@ mod tests {
         let u = serve_once("200 OK", "Content-Type: text/event-stream\r\n", body.into_bytes());
         let mut seen = Vec::new();
         let answer = block_on(stream(&url(&u), None, "m", &json!({}), |v| seen.push(v))).unwrap();
-        assert_eq!(answer, "## Answer\n\n- **item 1**\n```python\nprint('hello')\n```");
-        assert_eq!(seen.last().unwrap(), &answer);
+        assert_eq!(answer.text, "## Answer\n\n- **item 1**\n```python\nprint('hello')\n```");
+        assert!(!answer.cut);
+        assert_eq!(seen.last().unwrap(), &answer.text);
         assert!(seen.iter().all(|v| !v.contains("step") && !v.contains("internal")));
+    }
+
+    #[test]
+    fn an_answer_stopped_at_max_tokens_is_marked_cut() {
+        assert!(stopped_at_limit(r#"data: {"choices":[{"delta":{},"finish_reason":"length"}]}"#));
+        assert!(!stopped_at_limit(r#"data: {"choices":[{"delta":{},"finish_reason":"stop"}]}"#));
+        // The word in the text is not the reason.
+        assert!(!stopped_at_limit(r#"data: {"choices":[{"delta":{"content":"\"length\""}}]}"#));
+        assert!(!stopped_at_limit("data: [DONE]"));
+
+        let body = concat!(
+            "data: {\"choices\":[{\"delta\":{\"content\":\"Half\"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"length\"}]}\n\n",
+            "data: [DONE]\n\n",
+        );
+        let u = serve_once("200 OK", "Content-Type: text/event-stream\r\n", body.as_bytes().to_vec());
+        let answer = block_on(stream(&url(&u), None, "m", &json!({}), |_| {})).unwrap();
+        assert_eq!(answer.text, "Half");
+        assert!(answer.cut);
+    }
+
+    #[test]
+    fn only_the_latest_turns_that_fit_are_sent_in_whole_pairs() {
+        let turn = |role, n: usize| json!({ "role": role, "content": "x".repeat(n) });
+        let history = vec![turn("user", 50), turn("assistant", 50), turn("user", 30), turn("assistant", 30)];
+        assert_eq!(recent(&history, 1000).len(), 4);
+        assert_eq!(recent(&history, 100), &history[2..]);
+        // Never half a pair: the question would be sent without its answer.
+        assert_eq!(recent(&history, 90), &history[2..]);
+        assert!(recent(&history, 10).is_empty());
+        assert!(recent(&[], 10).is_empty());
+        let big = vec![turn("user", MAX_HISTORY_BYTES), turn("assistant", 10), turn("user", 1), turn("assistant", 1)];
+        let body = request_body("m", "sys", &big, &json!({"role":"user","content":"c"}));
+        assert_eq!(body["messages"].as_array().unwrap().len(), 4);
+        assert_eq!(body["max_tokens"], MAX_TOKENS);
     }
 
     #[test]
