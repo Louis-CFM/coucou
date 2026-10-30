@@ -28,6 +28,8 @@ export interface FlowPrefs {
   enabled: boolean;
   key: FlowKey;
   edge: Edge;
+  /** The pill rests on the screen while dictation is on. Off, it only shows while you dictate, record a call or get a message. */
+  showPill: boolean;
   mic: string;
   keepDays: number;
   cleanup: boolean;
@@ -170,6 +172,8 @@ export interface PillState {
   noteStartedAt: number | null;
   announcement: Announcement | null;
   enabled: boolean;
+  /** The resting pill may show (Settings → Pill visibility). */
+  showPill: boolean;
   /** « OK Coucou » is talking with you. */
   voice: VoiceView | null;
 }

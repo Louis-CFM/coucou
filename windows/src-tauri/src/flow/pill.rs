@@ -39,6 +39,8 @@ pub struct PillState {
     pub announcement: Option<Announcement>,
     /// Dictation is on (the resting pill shows).
     pub enabled: bool,
+    /// The resting pill may show (Settings → Pill visibility).
+    pub show_pill: bool,
     /// « OK Coucou » is talking with you.
     pub voice: Option<crate::voice::VoiceView>,
 }
@@ -132,7 +134,7 @@ pub fn setup(app: &AppHandle) {
     }
     let pill = Arc::new(Pill {
         mode,
-        state: Mutex::new(PillState { phase: "idle".into(), edge: "bottom".into(), ..Default::default() }),
+        state: Mutex::new(PillState { phase: "idle".into(), edge: "bottom".into(), show_pill: true, ..Default::default() }),
         hot: Mutex::new(Vec::new()),
         shown: AtomicBool::new(false),
         hovered: AtomicBool::new(false),
@@ -232,7 +234,7 @@ pub fn update(app: &AppHandle, change: impl FnOnce(&mut PillState)) {
         (s.clone(), s.edge != edge_before)
     };
     let _ = app.emit_to(LABEL, "pill-state", &state);
-    let visible = state.enabled || state.note_started_at.is_some() || state.announcement.is_some() || state.voice.is_some() || state.phase != "idle";
+    let visible = (state.enabled && state.show_pill) || state.note_started_at.is_some() || state.announcement.is_some() || state.voice.is_some() || state.phase != "idle";
     let was = pill.shown.swap(visible, Ordering::Relaxed);
     if visible && (!was || edge_changed) {
         place(app, &pill, &state.edge, state.phase == "listening");

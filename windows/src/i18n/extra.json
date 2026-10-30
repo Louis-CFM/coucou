@@ -4999,6 +4999,45 @@
       "ko": "다시 붙여넣기",
       "ja": "もう一度貼り付け"
     },
+    "Pill visibility": {
+      "zh-Hans": "胶囊显示",
+      "hi": "पिल की दृश्यता",
+      "es": "Visibilidad de la píldora",
+      "ar": "ظهور الحبة",
+      "fr": "Visibilité de la pilule",
+      "bn": "পিলের দৃশ্যমানতা",
+      "pt-BR": "Visibilidade da pílula",
+      "ru": "Видимость пилюли",
+      "id": "Visibilitas pil",
+      "de": "Sichtbarkeit der Diktierleiste",
+      "tr": "Dikte aracının görünürlüğü"
+    },
+    "The pill stays on your screen, ready to dictate: click its microphone or hold the key.": {
+      "zh-Hans": "胶囊留在屏幕上，随时可以听写：点击它的麦克风或按住按键。",
+      "hi": "पिल आपकी स्क्रीन पर रहती है, डिक्टेट करने के लिए तैयार: उसके माइक्रोफ़ोन पर क्लिक करें या कुंजी दबाए रखें।",
+      "es": "La píldora se queda en tu pantalla, lista para dictar: haz clic en su micrófono o mantén pulsada la tecla.",
+      "ar": "تبقى الحبة على شاشتك، جاهزة للإملاء: انقر على الميكروفون فيها أو اضغط مطولًا على المفتاح.",
+      "fr": "La pilule reste sur ton écran, prête à dicter : clique sur son micro ou maintiens la touche.",
+      "bn": "পিল আপনার স্ক্রিনে থাকে, ডিক্টেট করার জন্য প্রস্তুত: এর মাইক্রোফোনে ক্লিক করুন বা কীটি চেপে ধরে রাখুন।",
+      "pt-BR": "A pílula fica na sua tela, pronta para ditar: clique no microfone dela ou segure a tecla.",
+      "ru": "Пилюля остаётся на экране и готова к диктовке: нажмите на её микрофон или удерживайте клавишу.",
+      "id": "Pil tetap di layarmu, siap untuk mendikte: klik mikrofonnya atau tahan tombolnya.",
+      "de": "Die Diktierleiste bleibt auf deinem Bildschirm, bereit zum Diktieren: Klick auf ihr Mikrofon oder halte die Taste gedrückt.",
+      "tr": "Dikte aracı ekranında kalır, dikteye hazırdır: mikrofonuna tıkla veya tuşu basılı tut."
+    },
+    "The pill is hidden, your screen is all yours. It still shows while you dictate.": {
+      "zh-Hans": "胶囊已隐藏，屏幕完全属于你。听写时它仍会出现。",
+      "hi": "पिल छिपी है, आपकी स्क्रीन पूरी तरह आपकी है। डिक्टेट करते समय यह फिर भी दिखती है।",
+      "es": "La píldora está oculta, tu pantalla es toda tuya. Sigue apareciendo mientras dictas.",
+      "ar": "الحبة مخفية، وشاشتك كلها لك. تظهر مع ذلك أثناء الإملاء.",
+      "fr": "La pilule est cachée, ton écran est tout à toi. Elle apparaît quand même pendant que tu dictes.",
+      "bn": "পিল লুকানো আছে, আপনার স্ক্রিন পুরোটাই আপনার। ডিক্টেট করার সময় এটি তবুও দেখা যায়।",
+      "pt-BR": "A pílula está oculta, sua tela é toda sua. Ela ainda aparece enquanto você dita.",
+      "ru": "Пилюля скрыта, экран полностью ваш. Во время диктовки она всё равно появляется.",
+      "id": "Pil disembunyikan, layarmu sepenuhnya milikmu. Pil tetap muncul saat kamu mendikte.",
+      "de": "Die Diktierleiste ist ausgeblendet, dein Bildschirm gehört ganz dir. Beim Diktieren erscheint sie trotzdem.",
+      "tr": "Dikte aracı gizli, ekranın tamamen senin. Dikte ederken yine de görünür."
+    },
     "Coucou can't watch the keyboard here: use the pill's microphone to dictate.": {
       "zh-Hans": "Coucou 在这里无法监听键盘：请用胶囊上的麦克风听写。",
       "hi": "Coucou यहाँ कीबोर्ड नहीं देख सकता: बोलकर लिखने के लिए पिल का माइक्रोफ़ोन इस्तेमाल करें।",

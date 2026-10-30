@@ -141,7 +141,7 @@ against its SHA-256, kept in Coucou's data folder under `Models`).
 |---|---|
 | Hold **right Ctrl** anywhere, speak, let go | Your words are pasted where you type. Pick another key in Flow → Settings: right Alt, right Shift, Ctrl + Win (Ctrl + Super on Linux) |
 | Tap the key twice | Hands-free: speak as long as you like, tap once to paste. `Esc` cancels |
-| Hover the pill at the bottom of the screen | Dictate, record a call, open Coucou. Put the pill on the left or right edge in Flow → Settings |
+| Hover the pill at the bottom of the screen | Dictate, record a call, open Coucou. Put the pill on the left or right edge in Flow → Settings, or turn off **Pill visibility** there to show it only while you dictate |
 | Click **Record a call** | Your microphone and what the computer plays, transcribed live, then written person by person with a summary and to-dos by Claude (your key). The audio is deleted once the transcript is written |
 | Say **« OK Coucou »**, then ask | Claude (your key) answers in the pill and out loud: pills, Spotify, your services' numbers, your agents, web search, open an app, an email prepared in your mail app. Turn it on in Notch → OK Coucou |
 

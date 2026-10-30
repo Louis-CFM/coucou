@@ -18,7 +18,7 @@ const RESTING_THICKNESS = 8;
 const OPEN_THICKNESS = 34;
 const BANDS = 9;
 
-let state: PillState = { phase: "idle", edge: "bottom", key: "right_ctrl", noteStartedAt: null, announcement: null, enabled: false, voice: null };
+let state: PillState = { phase: "idle", edge: "bottom", key: "right_ctrl", noteStartedAt: null, announcement: null, enabled: false, showPill: true, voice: null };
 let platform: "windows" | "linux" = navigator.userAgent.includes("Windows") ? "windows" : "linux";
 let hovered = false;
 let tooltip: string | null = null;
@@ -499,7 +499,7 @@ async function main() {
   const status = await FlowBridge.status();
   if (status) platform = status.platform;
   state = (await FlowBridge.pillState()) ?? state;
-  visible = state.enabled || state.noteStartedAt !== null || state.announcement !== null || state.voice !== null;
+  visible = (state.enabled && state.showPill) || state.noteStartedAt !== null || state.announcement !== null || state.voice !== null;
   render();
   void onEvent<PillState>("pill-state", (s) => {
     state = s;

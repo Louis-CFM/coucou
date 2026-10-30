@@ -69,6 +69,14 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
   ];
   const edges: [Edge, string][] = [["bottom", t("Bottom")], ["left", t("Left")], ["right", t("Right")]];
   page.append(label(t("Keys")));
+  const pillDetail = (on: boolean) => on
+    ? t("The pill stays on your screen, ready to dictate: click its microphone or hold the key.")
+    : t("The pill is hidden, your screen is all yours. It still shows while you dictate.");
+  const pillRow = row(t("Pill visibility"), pillDetail(prefs.showPill), toggle(prefs.showPill, (on) => {
+    const detail = pillRow.querySelector(".detail");
+    if (detail) detail.textContent = pillDetail(on);
+    void ctx.setPrefs((p) => (p.showPill = on));
+  }));
   const keysCard = card(
     row(t("Hold a key to dictate anywhere"), null, toggle(prefs.enabled, (on) => void ctx.setPrefs((p) => (p.enabled = on)))),
     divider(),
@@ -78,6 +86,8 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
         select(keys, prefs.key, (key) => void ctx.setPrefs((p) => (p.key = key)).then(() => ctx.navigate("flowsettings")))),
     divider(),
     row(t("Where the pill is"), null, segmented(edges, prefs.edge, (edge) => void ctx.setPrefs((p) => (p.edge = edge)))),
+    divider(),
+    pillRow,
     divider(),
     row(t("Hands-free"), t("Tap twice, speak as long as you like, tap once to paste."), keyKeycap(status.keys === "wayland" ? "wayland" : prefs.key, status.platform, true)),
     divider(),
