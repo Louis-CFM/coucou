@@ -10,6 +10,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Bridge } from "../core/bridge";
 import { language, resolveLanguage, setLanguage, systemLanguages, t } from "../i18n/i18n";
 import { fileSize, labelPoint, wedgeAt, wedgePath, type Ring } from "./geometry";
+import { refract, type Pieces } from "./lens";
 import { COMPRESS_LEVELS, EDITOR_TOOLS, iconFor, labelFor, ringLabel, type RingName } from "./labels";
 
 interface FileInfo {
@@ -66,21 +67,28 @@ function svgEl(tag: string, attrs: Record<string, string | number> = {}): SVGEle
 // ── The pieces ──────────────────────────────────────────────────────────────
 
 const svg = svgEl("svg", { class: "ring", viewBox: `0 0 ${VIEW_W} ${VIEW_H}`, width: VIEW_W, height: VIEW_H }) as SVGSVGElement;
-// The glass: a top light across the disc, and its rim.
+// The glass: almost clear, lit at its rims where the light catches it (top
+// left and bottom right of each piece), a faint light across the disc's top.
 const defs = svgEl("defs");
 defs.innerHTML = `
   <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#fff" stop-opacity="0.34"/>
-    <stop offset="0.55" stop-color="#fff" stop-opacity="0.12"/>
-    <stop offset="1" stop-color="#fff" stop-opacity="0.06"/>
+    <stop offset="0" stop-color="#fff" stop-opacity="0.12"/>
+    <stop offset="0.5" stop-color="#fff" stop-opacity="0.03"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0.07"/>
+  </linearGradient>
+  <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.95"/>
+    <stop offset="0.35" stop-color="#fff" stop-opacity="0.18"/>
+    <stop offset="0.65" stop-color="#fff" stop-opacity="0.12"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0.75"/>
   </linearGradient>
   <linearGradient id="hot" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#ff8a4c"/>
-    <stop offset="1" stop-color="#ff4b12"/>
+    <stop offset="0" stop-color="#ff8a4c" stop-opacity="0.78"/>
+    <stop offset="1" stop-color="#ff4b12" stop-opacity="0.62"/>
   </linearGradient>
-  <radialGradient id="sheen" cx="0.35" cy="0.12" r="0.8">
-    <stop offset="0" stop-color="#fff" stop-opacity="0.38"/>
-    <stop offset="0.45" stop-color="#fff" stop-opacity="0.05"/>
+  <radialGradient id="sheen" cx="0.3" cy="0.08" r="0.75">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.22"/>
+    <stop offset="0.5" stop-color="#fff" stop-opacity="0.03"/>
     <stop offset="1" stop-color="#fff" stop-opacity="0"/>
   </radialGradient>`;
 svg.append(defs);
@@ -108,10 +116,13 @@ const ringButtons = RING_ORDER.map((r, i) => {
   return b;
 });
 ringBar.append(...ringButtons);
-// The liquid glass: what is behind the wheel, blurred, cut to the disc and the pill.
-const glassDisc = el("div", "glass disc");
-const glassBar = el("div", "glass bar");
-root.append(glassDisc, glassBar, svg, hub, nameTag, ringBar);
+// The liquid glass: what is behind the wheel, bent by each piece (lens.ts).
+const glass = el("canvas", "glass");
+root.append(glass, svg, hub, nameTag, ringBar);
+/** The screen behind, as pixels, while the wheel is open. */
+let behind: ImageData | null = null;
+/** How many wedges the glass was last drawn for. */
+let glassFor = -1;
 
 // ── Drawing ─────────────────────────────────────────────────────────────────
 
@@ -149,6 +160,32 @@ function drawWedges() {
   }
 }
 
+function drawGlass() {
+  const n = choices().length;
+  if (!behind || n === glassFor) return;
+  glassFor = n;
+  const pieces: Pieces = { ring: RING, n, hub: 52, disc: RING.outer + 9, bar: { x: 10, y: 318, w: 300, h: 30, r: 15 } };
+  glass.getContext("2d")!.putImageData(refract(behind, pieces, behind.width / VIEW_W), 0, 0);
+}
+
+/** The backdrop's pixels, or null when there is none. */
+async function pixels(url: string | null | undefined): Promise<ImageData | null> {
+  if (!url) return null;
+  const img = new Image();
+  img.src = url;
+  try {
+    await img.decode();
+  } catch {
+    return null;
+  }
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const ctx = c.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 function setHot(i: number) {
   if (i === hot) return;
   hot = i;
@@ -161,6 +198,7 @@ function switchRing(r: RingName) {
   hot = -1;
   showPanel(null);
   drawWedges();
+  drawGlass();
 }
 
 /** The hub's panel: null shows the file again. */
@@ -331,9 +369,10 @@ function close() {
 type Opened = { files: FileInfo[]; rings: Rings; backdrop?: string | null; dark?: boolean };
 
 async function open(payload: Opened) {
-  const behind = payload.backdrop ? `url("${payload.backdrop}")` : "none";
-  glassDisc.style.backgroundImage = behind;
-  glassBar.style.backgroundImage = behind;
+  behind = await pixels(payload.backdrop);
+  glassFor = -1;
+  glass.width = behind?.width ?? 0;
+  glass.height = behind?.height ?? 0;
   root.classList.toggle("dark", !!payload.dark);
   files = payload.files;
   rings = payload.rings;
@@ -349,6 +388,7 @@ async function open(payload: Opened) {
   hubGlyph.style.display = "";
   showPanel(null);
   drawWedges();
+  drawGlass();
   root.classList.remove("on");
   void root.offsetWidth;
   root.classList.add("on");

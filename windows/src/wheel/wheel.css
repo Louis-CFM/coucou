@@ -38,23 +38,14 @@ body {
   transform: scale(1);
 }
 
-/* The glass: the screen behind the wheel (a picture taken as it opens, and
-   blurred then: wheel/glass.rs), livelier, cut crisp to the disc and to the pill. */
+/* The glass: the screen behind the wheel (a picture taken as it opens:
+   wheel/glass.rs), bent at each piece's edges (wheel/lens.ts). */
 .glass {
   position: absolute;
   inset: 0;
-  background-size: 320px 352px;
-  background-repeat: no-repeat;
-  filter: saturate(1.7) brightness(1.08);
+  width: 320px;
+  height: 352px;
   pointer-events: none;
-}
-
-.glass.disc {
-  clip-path: circle(150px at 160px 158px);
-}
-
-.glass.bar {
-  clip-path: inset(318px 10px 4px 10px round 15px);
 }
 
 svg.ring {
@@ -63,11 +54,11 @@ svg.ring {
   overflow: visible;
 }
 
-/* The disc's glass under the wedges: barely tinted, a white rim. */
+/* The disc's glass under the wedges: clear, its rim lit. */
 .backdrop {
-  fill: rgba(255, 255, 255, 0.05);
-  stroke: rgba(255, 255, 255, 0.75);
-  stroke-width: 1.2;
+  fill: rgba(255, 255, 255, 0.02);
+  stroke: url(#rim);
+  stroke-width: 1.4;
 }
 
 /* A light across the top of the disc, over everything (but the clicks). */
@@ -78,14 +69,14 @@ svg.ring {
 
 .wedge path {
   fill: url(#glass);
-  stroke: rgba(255, 255, 255, 0.85);
-  stroke-width: 1;
+  stroke: url(#rim);
+  stroke-width: 1.2;
   stroke-linejoin: round;
   transition: fill 0.1s ease-out;
 }
 
 .wedge:hover path {
-  fill: rgba(255, 255, 255, 0.42);
+  fill: rgba(255, 255, 255, 0.22);
 }
 
 /* Over a dark screen the glass is dark: light labels, a softer hover. */
@@ -98,7 +89,7 @@ svg.ring {
 }
 
 #wheel.dark .wedge:hover path {
-  fill: rgba(255, 255, 255, 0.24);
+  fill: rgba(255, 255, 255, 0.14);
 }
 
 #wheel.dark .hub .glyph {
@@ -168,8 +159,10 @@ svg.ring {
   height: 104px;
   margin: -52px 0 0 -52px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.18));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.95), inset 0 -6px 14px rgba(255, 255, 255, 0.35), 0 4px 14px rgba(40, 20, 10, 0.18);
+  /* A clear lens: lit along its top left and bottom right edges. */
+  background: radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.03) 60%);
+  box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.9), inset -1px -1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 12px rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 0, 0, 0.18);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -336,8 +329,10 @@ svg.ring {
   gap: 2px;
   padding: 3px;
   border-radius: 15px;
-  background: rgba(255, 255, 255, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  /* Clear glass (lens.ts bends what is behind it), lit along the top. */
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
 }
 
 .rings button {
@@ -356,9 +351,9 @@ svg.ring {
 }
 
 .rings button.on {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.7);
   color: var(--ink);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 4px rgba(0, 0, 0, 0.14);
 }
 
 .rings button:disabled {
