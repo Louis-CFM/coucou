@@ -431,3 +431,45 @@ html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="t
 /* Settings → Android phone: the pairing QR code (an SVG from Rust, black on white). */
 .qr { width: 220px; max-width: 100%; background: #fff; border-radius: 8px; padding: 4px; }
 .qr svg { display: block; width: 100%; height: auto; }
+
+/* GitLab → Projects: a filter over the projects, grouped as GitLab groups them. */
+.gl-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-left: 112px;
+}
+
+.gl-projects[hidden] {
+  display: none;
+}
+
+.gl-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gl-group {
+  margin-top: 6px;
+  font: 600 11px var(--font);
+  color: var(--dim);
+}
+
+.gl-group:first-child {
+  margin-top: 0;
+}
+
+.gl-project {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 6px;
+  font: 400 12.5px var(--font);
+  cursor: pointer;
+}

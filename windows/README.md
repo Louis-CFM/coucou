@@ -563,6 +563,26 @@ own window.
   speaks if installed.
 - No notch, so the island lives at the top centre of the screen and retracts into
   the top edge instead of hiding in a notch.
+- GitLab, which the Mac doesn't have, on gitlab.com or your own instance
+  (Settings… → Integrations, a token with the `read_api` and `read_user`
+  scopes). The card is GitHub's: your merge requests and their CI, the reviews
+  asked of you, the default branch's CI and your year of activity. Under them,
+  **Inbox** opens the news and your To-Do list. The news comes every minute:
+  your To-Do list (review requests, assignments, mentions, failed pipelines on
+  your merge requests…), your merge requests being approved or merged, someone
+  else commenting on or updating a merge request you authored, are assigned or
+  review, and every pipeline you started finishing, in any project you were
+  active in over the last week (ten at most). Everything new in a minute
+  arrives as one notification. The notification's Details, and a click on a
+  piece of news in the Inbox, unfold what happened: the comment or what was
+  done on an MR (commits pushed, approval, title changed…), what a mention
+  said, who merged or approved, what started a pipeline, how long it took and
+  which jobs failed. The Inbox keeps the last ten pieces of news, details
+  included, through a restart too (in `news-gitlab.json`, next to the log).
+  **Projects → Choose…** lists your projects by group: tick the ones to follow,
+  and only their merge requests, pipelines and default-branch CI are watched
+  (twenty at most for pipelines); your To-Do list stays complete. None ticked
+  follows every project.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's

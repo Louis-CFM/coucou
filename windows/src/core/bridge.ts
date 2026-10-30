@@ -399,6 +399,10 @@ export const Bridge = {
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /** The configured GitLab instance, or `path` on it (e.g. "/dashboard/merge_requests"). */
+  openGitlab: (path: string | null = null) => call<void>("open_gitlab", { path }),
+  /** Settings: the GitLab projects the user is a member of, sorted by group then name. */
+  gitlabProjects: () => callOrThrow<GitlabProject[]>("gitlab_projects"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
@@ -608,6 +612,13 @@ export interface AgentHookPlan {
   backup: string;
   path: string;
   fingerprint: string;
+}
+
+export interface GitlabProject {
+  id: number;
+  name: string;
+  /** The group it sits in, as GitLab names it ("Team / Backend"). */
+  group: string;
 }
 
 export interface HookPreview {

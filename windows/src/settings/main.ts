@@ -4,7 +4,7 @@
 // island's settings are drawn here, one Notch page at a time.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport, type SubscriptionStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport, type SubscriptionStatus, type GitlabProject } from "../core/bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
@@ -880,6 +880,97 @@ function declaredChanged() {
   void save();
 }
 
+/**
+ * The GitLab projects followed: their merge requests and pipelines only — the
+ * To-Do list stays whole. None ticked follows every project. The list is asked
+ * of the instance only when opened, grouped as GitLab groups the projects, with
+ * a filter for long lists.
+ */
+function gitlabProjectsBlock(): HTMLElement {
+  const summary = h("span", { class: "hint", style: "flex:1 1 auto;min-width:0" });
+  const choose = h("button", { text: t("Choose…") }) as HTMLButtonElement;
+  const filter = h("input", {
+    type: "text", placeholder: t("Filter"), spellcheck: "false", style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const all = h("button", { text: t("Follow all") }) as HTMLButtonElement;
+  const list = h("div", { class: "gl-list" });
+  const panel = h("div", { class: "gl-projects" }, h("div", { class: "row" }, filter, all), list);
+  panel.hidden = true;
+  let projects: GitlabProject[] | null = null;
+  let refreshTimer: number | null = null;
+
+  const sync = () => {
+    const n = settings.gitlabProjects.length;
+    summary.textContent = n ? tn("{count} project followed", "{count} projects followed", n) : t("All projects");
+    all.disabled = n === 0;
+  };
+
+  /** The poller picks the new list up at once, not at its next minute. */
+  const changed = () => {
+    sync();
+    void save();
+    if (refreshTimer != null) window.clearTimeout(refreshTimer);
+    refreshTimer = window.setTimeout(() => {
+      refreshTimer = null;
+      if (settings.activeIntegrations.includes("integration_gitlab")) void Bridge.refreshIntegration("integration_gitlab");
+    }, 800);
+  };
+
+  function draw() {
+    clear(list);
+    const q = filter.value.trim().toLowerCase();
+    let group: string | null = null;
+    for (const p of projects ?? []) {
+      if (q && !`${p.group} ${p.name}`.toLowerCase().includes(q)) continue;
+      if (p.group !== group) {
+        group = p.group;
+        list.append(h("div", { class: "gl-group", text: p.group }));
+      }
+      const box = h("input", { type: "checkbox" }) as HTMLInputElement;
+      box.checked = settings.gitlabProjects.includes(p.id);
+      box.addEventListener("change", () => {
+        settings.gitlabProjects = box.checked
+          ? [...settings.gitlabProjects, p.id]
+          : settings.gitlabProjects.filter((x) => x !== p.id);
+        changed();
+      });
+      list.append(h("label", { class: "gl-project", title: `${p.group} / ${p.name}` }, box, h("span", { text: p.name })));
+    }
+    if (!list.childElementCount) list.append(h("div", { class: "hint", text: t("No project") }));
+  }
+
+  async function load() {
+    clear(list);
+    list.append(h("div", { class: "hint", text: t("Loading…") }));
+    try {
+      projects = await Bridge.gitlabProjects();
+      draw();
+    } catch (err) {
+      projects = null;
+      clear(list);
+      list.append(h("div", { class: "hint", text: `${t("Couldn't load the projects")} — ${String(err).replace(/^Error:\s*/, "")}` }));
+    }
+  }
+
+  choose.addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden && !projects) void load();
+  });
+  filter.addEventListener("input", draw);
+  all.addEventListener("click", () => {
+    settings.gitlabProjects = [];
+    changed();
+    draw();
+  });
+
+  sync();
+  return h("div", { style: "display:flex;flex-direction:column;gap:6px" },
+    h("div", { class: "row" }, h("label", { style: "min-width:104px", text: t("Projects") }), summary, choose),
+    panel,
+    h("div", { class: "hint", text: t("Only these projects' merge requests and pipelines are followed; your To-Do list stays complete.") }),
+  );
+}
+
 function integrationsSection(present: Record<string, boolean>): HTMLElement {
   const note = h("div", { class: "hint" });
   const list = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
@@ -938,6 +1029,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.id === "integration_gitlab") rows.append(gitlabProjectsBlock());
     if (def.id === "integration_spotify") {
       // As on the Mac's row: said only when there is no Spotify to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
@@ -1437,6 +1529,7 @@ async function render() {
   const keys = [
     "stripe-api-key", "github-token", "gitlab-url", "gitlab-token", "gitea-url", "gitea-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "gitlab-url", "gitlab-token",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
