@@ -54,6 +54,9 @@ jobs:
       - name: Test Flow text (snippets, dictionary, numbers)
         run: bash scripts/test-flow-text.sh
 
+      - name: Test the work streak (Mochi sleepy after long work, fresh after a break)
+        run: bash scripts/test-work-streak.sh
+
       - name: Test Notetaker transcript (speakers, echo, summary, Markdown)
         run: bash scripts/test-notetaker.sh
 

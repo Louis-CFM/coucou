@@ -4,7 +4,8 @@ import Darwin
 import IOKit.ps
 
 /// How the Mac is doing, as Mochi shows it: a busy processor makes him sweat, a warm Mac
-/// flushes him, short memory puffs him up, a low battery makes him tired, then asleep.
+/// flushes him, short memory puffs him up, a low battery makes him tired, then asleep. Long
+/// hours with the agents and no break make him sleepy too (WorkStreak).
 ///
 /// It only reads while Mochi is on screen (the island showing, or Mochi on the desktop), every
 /// few seconds: a hidden island costs nothing. Everything stays on the Mac.
@@ -41,6 +42,7 @@ final class MachineVitals: ObservableObject {
     private var lastProcessTimes: [pid_t: UInt64] = [:]
     private var topProcesses: [String] = []
     private var battery: (percent: Int, onPower: Bool)? = nil
+    private var streak = WorkStreak()
 
     private init() {}
 
@@ -88,6 +90,17 @@ final class MachineVitals: ObservableObject {
         }
     }
 
+    /// An agent did something (a hook event): the work streak goes on, or starts over after a break.
+    func agentWorked() {
+        streak.activity(at: Date(), userIdle: Self.userIdleSeconds())
+    }
+
+    /// Seconds since the last keyboard or mouse event (no permission needed).
+    private static func userIdleSeconds() -> TimeInterval {
+        guard let any = CGEventType(rawValue: ~0) else { return 0 }
+        return CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: any)
+    }
+
     // MARK: - Reading the Mac
 
     private func sample() {
@@ -123,6 +136,8 @@ final class MachineVitals: ObservableObject {
             next.tired = b.percent < 20 ? 1 : 0
             next.asleep = b.percent < 10
         }
+        // Hours with the agents and no break: sleepy too.
+        next.tired = max(next.tired, CGFloat(streak.tiredness(at: Date(), userIdle: Self.userIdleSeconds())))
         if next != mood { mood = next }
         let line = Self.describe(next, cpu: cpu, battery: battery, top: topProcesses)
         if line != summary { summary = line }
@@ -153,7 +168,7 @@ final class MachineVitals: ObservableObject {
         else if mood.hot > 0 { parts.append(String(localized: "vitals.warm")) }
         if mood.full >= 1 { parts.append(String(localized: "vitals.memory-full")) }
         else if mood.full > 0 { parts.append(String(localized: "vitals.memory-short")) }
-        if let b = battery, mood.tired > 0 || mood.asleep {
+        if let b = battery, !b.onPower, b.percent < 20 {
             parts.append(String(format: String(localized: "vitals.battery %lld"), b.percent))
         }
         return parts.isEmpty ? nil : parts.prefix(2).joined(separator: " · ")
