@@ -16,8 +16,8 @@ class LanguagesTest {
         .findAll(read("../scripts/gen-strings.mjs")).map { Triple(it.groupValues[1], it.groupValues[2], it.groupValues[3]) }.toList()
     private val translations = File("../i18n/translations").listFiles { f -> f.extension == "json" }.orEmpty().map { it.nameWithoutExtension }.sorted()
 
-    @Test fun theGeneratorKnowsNineLanguages() {
-        assertEquals(listOf("fr", "es", "pt-BR", "zh-Hans", "hi", "bn", "ru", "id", "ar"), table.map { it.first })
+    @Test fun theGeneratorKnowsTenLanguages() {
+        assertEquals(listOf("it", "fr", "es", "pt-BR", "zh-Hans", "hi", "bn", "ru", "id", "ar"), table.map { it.first })
     }
 
     @Test fun thePickerOffersExactlyTheLanguagesThatAreTranslated() {
@@ -55,6 +55,8 @@ class LanguagesTest {
     }
 
     @Test fun theChoiceMapsToALanguageTheAppHas() {
+        assertEquals("it", Languages.match("it-IT"))
+        assertEquals("it", Languages.match("it-CH"))
         assertEquals("fr", Languages.match("fr"))
         assertEquals("fr", Languages.match("fr-CA"))
         assertEquals("pt-BR", Languages.match("pt-PT"))
