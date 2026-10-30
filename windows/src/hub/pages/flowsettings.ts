@@ -110,7 +110,7 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
     h("div", { class: "hub-note", text: t("Your voice never leaves this computer: Parakeet turns it into text here, and the recording is dropped as soon as it is pasted.") }),
   ));
 
-  const performance = status.performance;
+  const performance = status.performance ?? { availableThreads: 4, threads: 4, automatic: true, tuning: false, measured: false, error: null };
   const choices: [string, string][] = [["0", t("Automatic (measured on this computer)")]];
   for (let n = 1; n <= performance.availableThreads; n++) choices.push([String(n), t("CPU · {0} threads", { 0: n })]);
   const performanceText = h("div", { class: "hub-note" });

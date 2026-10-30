@@ -5746,40 +5746,6 @@
       "th": "เสียงของคุณไม่ออกจากคอมพิวเตอร์นี้: Parakeet แปลงเป็นข้อความในเครื่อง และทิ้งเสียงทันทีที่วางข้อความ",
       "zh-Hant": "你的聲音不會離開這臺電腦：Parakeet 在本機把它轉成文字，貼上后錄音即被丟棄。"
     },
-    "With Claude, the transcript (never the audio) goes to Anthropic with your key from Notch → Chat.": {
-      "zh-Hans": "使用 Claude 时，文字记录（绝不包括音频）会通过你在“Notch → 聊天”中设置的密钥发送给 Anthropic。",
-      "hi": "Claude के साथ, ट्रांसक्रिप्ट (ऑडियो कभी नहीं) Notch → चैट में दी गई आपकी कुंजी के साथ Anthropic को जाता है।",
-      "es": "Con Claude, la transcripción (nunca el audio) va a Anthropic con tu clave de Notch → Chat.",
-      "ar": "مع Claude، يذهب النص المكتوب (لا الصوت أبدًا) إلى Anthropic بمفتاحك من Notch ← الدردشة.",
-      "fr": "Avec Claude, la transcription (jamais l'audio) part chez Anthropic avec ta clé de Notch → Chat.",
-      "bn": "Claude-এ, ট্রান্সক্রিপ্ট (অডিও কখনো নয়) Notch → চ্যাট থেকে আপনার কী দিয়ে Anthropic-এ যায়।",
-      "pt-BR": "Com o Claude, a transcrição (nunca o áudio) vai para a Anthropic com sua chave de Notch → Chat.",
-      "ru": "С Claude расшифровка (но никогда не звук) уходит в Anthropic с вашим ключом из Notch → Чат.",
-      "id": "Dengan Claude, transkrip (tidak pernah audionya) dikirim ke Anthropic dengan kuncimu dari Notch → Obrolan.",
-      "de": "Mit Claude wird das Transkript mit deinem Schlüssel aus Notch → Chat an Anthropic gesendet, niemals das Audio.",
-      "tr": "Claude ile döküm, Çentik → Sohbet bölümündeki anahtarınla Anthropic'e gönderilir; ses asla gönderilmez.",
-      "ko": "Claude를 쓰면 녹취록(오디오는 안 보내요)이 노치 → 채팅의 내 키와 함께 Anthropic으로 가요.",
-      "ja": "Claude を使う場合、文字起こし（音声は送られません）が ノッチ → チャット のキーで Anthropic に送られます。",
-      "th": "เมื่อใช้ Claude ข้อความถอดเสียง (ไม่ใช่เสียง) จะถูกส่งไปยัง Anthropic โดยใช้คีย์ของคุณจาก Notch → แชท",
-      "zh-Hant": "使用 Claude 時，逐字稿（不含音訊）會透過你在 Notch → 聊天中設定的金鑰傳送至 Anthropic。"
-    },
-    "Everything stays on this computer. Tell the people in the call that you are recording.": {
-      "zh-Hans": "所有内容都留在这台电脑上。请告知通话中的人你正在录音。",
-      "hi": "सब कुछ इसी कंप्यूटर पर रहता है। कॉल में मौजूद लोगों को बताएँ कि आप रिकॉर्ड कर रहे हैं।",
-      "es": "Todo se queda en este ordenador. Avisa a las personas de la llamada de que estás grabando.",
-      "ar": "يبقى كل شيء على هذا الحاسوب. أخبر المشاركين في المكالمة أنك تسجّل.",
-      "fr": "Tout reste sur cet ordinateur. Préviens les personnes de l'appel que tu enregistres.",
-      "bn": "সবকিছু এই কম্পিউটারেই থাকে। কলে থাকা মানুষদের জানান যে আপনি রেকর্ড করছেন।",
-      "pt-BR": "Tudo fica neste computador. Avise as pessoas da chamada que você está gravando.",
-      "ru": "Всё остаётся на этом компьютере. Предупредите участников звонка, что вы ведёте запись.",
-      "id": "Semuanya tetap di komputer ini. Beri tahu orang di panggilan bahwa kamu merekam.",
-      "de": "Alles bleibt auf diesem Computer. Informiere die Gesprächsteilnehmer über die Aufnahme.",
-      "tr": "Her şey bu bilgisayarda kalır. Görüşmedeki kişilere kayıt yaptığını söyle.",
-      "ko": "모든 내용은 이 컴퓨터에만 남아요. 녹음 중이라고 통화 상대에게 꼭 알려 주세요!",
-      "ja": "すべてこのパソコンに残ります。通話の参加者に録音していることを伝えてください。",
-      "th": "ทุกอย่างอยู่บนคอมพิวเตอร์นี้ แจ้งผู้ร่วมสายว่าคุณกำลังบันทึก",
-      "zh-Hant": "所有內容都留在這臺電腦上。請告知通話中的人你正在錄音。"
-    },
     "Not when Coucou starts with the computer.": {
       "zh-Hans": "Coucou 随电脑启动时不会打开。",
       "hi": "जब Coucou कंप्यूटर के साथ शुरू होता है तब नहीं।",
@@ -8191,7 +8157,8 @@
       "bn": "স্বয়ংক্রিয় (এই কম্পিউটারে মাপা)",
       "ko": "자동 (이 컴퓨터에서 측정)",
       "ja": "自動（このコンピューターで測定）",
-      "zh-Hant": "自動（在此電腦上實測）"
+      "zh-Hant": "自動（在此電腦上實測）",
+      "th": "อัตโนมัติ (วัดบนคอมพิวเตอร์นี้)"
     },
     "Automatic tuning starts after a dictation of at least three seconds. Audio stays in memory and is never saved for tuning.": {
       "fr": "Le réglage automatique commence après une dictée d’au moins trois secondes. L’audio reste en mémoire et n’est jamais enregistré pour ce réglage.",
@@ -8207,7 +8174,8 @@
       "bn": "অন্তত তিন সেকেন্ডের ডিক্টেশনের পর স্বয়ংক্রিয় সমন্বয় শুরু হয়। অডিও মেমোরিতে থাকে এবং সমন্বয়ের জন্য কখনও সংরক্ষণ করা হয় না।",
       "ko": "3초 이상 받아쓰기를 하면 자동 조정이 시작됩니다. 오디오는 메모리에만 유지되며 조정을 위해 저장되지 않습니다.",
       "ja": "3 秒以上の音声入力後に自動調整が始まります。音声はメモリ内にのみ保持され、調整のために保存されることはありません。",
-      "zh-Hant": "自動調校會在至少三秒的聽寫後開始。音訊僅保留在記憶體中，不會為調校而儲存。"
+      "zh-Hant": "自動調校會在至少三秒的聽寫後開始。音訊僅保留在記憶體中，不會為調校而儲存。",
+      "th": "การปรับอัตโนมัติจะเริ่มหลังจากพิมพ์ด้วยเสียงอย่างน้อยสามวินาที เสียงจะอยู่ในหน่วยความจำและจะไม่ถูกบันทึกเพื่อการปรับแต่ง"
     },
     "CPU · {0} threads": {
       "fr": "CPU · {0} threads",
@@ -8223,7 +8191,8 @@
       "bn": "CPU · {0} থ্রেড",
       "ko": "CPU · 스레드 {0}개",
       "ja": "CPU · {0} スレッド",
-      "zh-Hant": "CPU · {0} 個執行緒"
+      "zh-Hant": "CPU · {0} 個執行緒",
+      "th": "CPU · {0} เธรด"
     },
     "Measure again": {
       "fr": "Mesurer à nouveau",
@@ -8239,7 +8208,8 @@
       "bn": "আবার মাপুন",
       "ko": "다시 측정",
       "ja": "再測定",
-      "zh-Hant": "重新測量"
+      "zh-Hant": "重新測量",
+      "th": "วัดอีกครั้ง"
     },
     "Measured choice: CPU · {0} threads": {
       "fr": "Choix mesuré : CPU · {0} threads",
@@ -8255,7 +8225,8 @@
       "bn": "মাপ অনুযায়ী নির্বাচন: CPU · {0} থ্রেড",
       "ko": "측정 결과: CPU · 스레드 {0}개",
       "ja": "測定結果: CPU · {0} スレッド",
-      "zh-Hant": "實測選擇：CPU · {0} 個執行緒"
+      "zh-Hant": "實測選擇：CPU · {0} 個執行緒",
+      "th": "ตัวเลือกที่วัดได้: CPU · {0} เธรด"
     },
     "Measuring speech performance…": {
       "fr": "Mesure des performances vocales…",
@@ -8271,7 +8242,8 @@
       "bn": "কণ্ঠের কর্মক্ষমতা মাপা হচ্ছে…",
       "ko": "음성 처리 성능 측정 중…",
       "ja": "音声処理の性能を測定中…",
-      "zh-Hant": "正在測量語音效能…"
+      "zh-Hant": "正在測量語音效能…",
+      "th": "กำลังวัดประสิทธิภาพเสียง…"
     },
     "Speech performance": {
       "fr": "Performances vocales",
@@ -8287,7 +8259,8 @@
       "bn": "কণ্ঠের কর্মক্ষমতা",
       "ko": "음성 처리 성능",
       "ja": "音声処理の性能",
-      "zh-Hant": "語音效能"
+      "zh-Hant": "語音效能",
+      "th": "ประสิทธิภาพเสียง"
     },
     "This build uses the CPU. Automatic mode measures supported thread counts and remembers the fastest result.": {
       "fr": "Cette version utilise le CPU. Le mode automatique mesure les nombres de threads pris en charge et mémorise le plus rapide.",
@@ -8303,7 +8276,8 @@
       "bn": "এই সংস্করণ CPU ব্যবহার করে। স্বয়ংক্রিয় মোড সমর্থিত থ্রেডের সংখ্যা মেপে দ্রুততম ফল মনে রাখে।",
       "ko": "이 빌드는 CPU를 사용합니다. 자동 모드는 지원되는 스레드 수를 측정하고 가장 빠른 결과를 기억합니다.",
       "ja": "このビルドは CPU を使用します。自動モードは対応するスレッド数で性能を測定し、最も速い結果を記憶します。",
-      "zh-Hant": "此版本使用 CPU。自動模式會測量支援的執行緒數量，並記住最快的結果。"
+      "zh-Hant": "此版本使用 CPU。自動模式會測量支援的執行緒數量，並記住最快的結果。",
+      "th": "บิลด์นี้ใช้ CPU โหมดอัตโนมัติจะวัดจำนวนเธรดที่รองรับและจดจำผลลัพธ์ที่เร็วที่สุด"
     },
     "Summaries use the selected provider and its model from Chat. Only the transcript is sent; chat history is not included.": {
       "fr": "Les résumés utilisent le fournisseur sélectionné et son modèle choisi dans Chat. Seule la transcription est envoyée, sans l’historique du chat.",
@@ -8319,7 +8293,8 @@
       "hi": "सारांश चुने गए प्रदाता और Chat में चुने गए उसके मॉडल का उपयोग करते हैं। केवल प्रतिलेख भेजा जाता है, चैट का इतिहास नहीं।",
       "bn": "সারাংশ নির্বাচিত প্রদানকারী ও Chat-এ বেছে নেওয়া তার মডেল ব্যবহার করে। শুধু প্রতিলিপি পাঠানো হয়, চ্যাটের ইতিহাস নয়।",
       "ko": "요약은 선택한 제공업체와 Chat에서 선택한 모델을 사용합니다. 대화 기록 없이 녹취록만 전송합니다.",
-      "ja": "要約には、選択したプロバイダーと Chat で選んだモデルを使用します。文字起こしのみを送信し、チャット履歴は含めません。"
+      "ja": "要約には、選択したプロバイダーと Chat で選んだモデルを使用します。文字起こしのみを送信し、チャット履歴は含めません。",
+      "th": "สรุปใช้ผู้ให้บริการและโมเดลที่เลือกจากแชท ส่งเฉพาะข้อความถอดเสียงเท่านั้น ไม่รวมประวัติการแชท"
     },
     "The model server timed out.": {
       "fr": "Le serveur du modèle n’a pas répondu à temps.",
@@ -8335,7 +8310,8 @@
       "hi": "मॉडल सर्वर की समय-सीमा समाप्त हो गई।",
       "bn": "মডেল সার্ভারের অপেক্ষার সময় শেষ হয়েছে।",
       "ko": "모델 서버 응답 시간이 초과되었습니다.",
-      "ja": "モデルサーバーがタイムアウトしました。"
+      "ja": "モデルサーバーがタイムアウトしました。",
+      "th": "เซิร์ฟเวอร์โมเดลหมดเวลา"
     },
     "The model server stopped before finishing its reply. Try again.": {
       "fr": "Le serveur du modèle s’est arrêté avant de terminer sa réponse. Réessayez.",
@@ -8351,7 +8327,8 @@
       "hi": "मॉडल सर्वर उत्तर पूरा होने से पहले रुक गया। फिर से कोशिश करें।",
       "bn": "উত্তর শেষ করার আগেই মডেল সার্ভার থেমে গেছে। আবার চেষ্টা করুন।",
       "ko": "모델 서버가 응답을 완료하기 전에 중단되었습니다. 다시 시도하세요.",
-      "ja": "モデルサーバーが回答を完了する前に停止しました。もう一度お試しください。"
+      "ja": "モデルサーバーが回答を完了する前に停止しました。もう一度お試しください。",
+      "th": "เซิร์ฟเวอร์โมเดลหยุดก่อนที่จะตอบกลับเสร็จสิ้น โปรดลองอีกครั้ง"
     },
     "Audio and transcripts are stored on this computer. Summaries send text to the provider selected in Flow Settings. Tell the people in the call that you are recording.": {
       "zh-Hant": "音頻和轉錄保存在這臺電腦上。生成摘要時，文本會發送給 Flow 設置中選擇的提供商。請告知通話參與者你正在錄音。",
@@ -8384,7 +8361,8 @@
       "tr": "Ağ",
       "ko": "네트워크",
       "ja": "ネットワーク",
-      "zh-Hant": "網路"
+      "zh-Hant": "網路",
+      "th": "เครือข่าย"
     },
     "Public address": {
       "zh-Hans": "公开地址",
@@ -8400,7 +8378,8 @@
       "tr": "Genel adres",
       "ko": "공개 주소",
       "ja": "公開アドレス",
-      "zh-Hant": "公開地址"
+      "zh-Hant": "公開地址",
+      "th": "ที่อยู่สาธารณะ"
     },
     "Label (optional)": {
       "zh-Hans": "标签（可选）",
@@ -8416,7 +8395,8 @@
       "tr": "Etiket (isteğe bağlı)",
       "ko": "라벨 (선택 사항)",
       "ja": "ラベル（任意）",
-      "zh-Hant": "標籤（選填）"
+      "zh-Hant": "標籤（選填）",
+      "th": "ป้ายกำกับ (ไม่บังคับ)"
     },
     "Passphrase": {
       "zh-Hans": "口令",
@@ -8432,7 +8412,8 @@
       "tr": "Parola ifadesi",
       "ko": "암호문",
       "ja": "パスフレーズ",
-      "zh-Hant": "口令"
+      "zh-Hant": "口令",
+      "th": "รหัสผ่าน"
     },
     "Key name": {
       "zh-Hans": "密钥名称",
@@ -8448,7 +8429,8 @@
       "tr": "Anahtar adı",
       "ko": "키 이름",
       "ja": "キー名",
-      "zh-Hant": "金鑰名稱"
+      "zh-Hant": "金鑰名稱",
+      "th": "ชื่อคีย์"
     },
     "Private key": {
       "zh-Hans": "私钥",
@@ -8464,7 +8446,8 @@
       "tr": "Özel anahtar",
       "ko": "개인 키",
       "ja": "秘密鍵",
-      "zh-Hant": "私密金鑰"
+      "zh-Hant": "私密金鑰",
+      "th": "ไพรเวทคีย์"
     },
     "Total": {
       "zh-Hans": "总计",
@@ -8480,7 +8463,8 @@
       "tr": "Toplam",
       "ko": "합계",
       "ja": "合計",
-      "zh-Hant": "總計"
+      "zh-Hant": "總計",
+      "th": "ทั้งหมด"
     },
     "Partial total": {
       "zh-Hans": "部分合计",
@@ -8496,7 +8480,8 @@
       "tr": "Kısmi toplam",
       "ko": "부분 합계",
       "ja": "一部の合計",
-      "zh-Hant": "部分合計"
+      "zh-Hant": "部分合計",
+      "th": "ยอดรวมบางส่วน"
     },
     "Unpriced assets: {n}": {
       "zh-Hans": "无报价资产：{n}",
@@ -8512,7 +8497,8 @@
       "tr": "Fiyatı bulunamayan varlıklar: {n}",
       "ko": "가격을 알 수 없는 자산: {n}",
       "ja": "価格不明の資産: {n}",
-      "zh-Hant": "無報價資產：{n}"
+      "zh-Hant": "無報價資產：{n}",
+      "th": "สินทรัพย์ที่ไม่มีราคา: {n}"
     },
     "Failed accounts: {n}": {
       "zh-Hans": "读取失败的账户：{n}",
@@ -8528,7 +8514,8 @@
       "tr": "Yüklenemeyen hesaplar: {n}",
       "ko": "조회에 실패한 계정: {n}",
       "ja": "取得に失敗したアカウント: {n}",
-      "zh-Hant": "讀取失敗的帳戶：{n}"
+      "zh-Hant": "讀取失敗的帳戶：{n}",
+      "th": "บัญชีที่ล้มเหลว: {n}"
     },
     "Read-only balances. Use keys with read permission only. Wallet addresses show native coins only.": {
       "zh-Hans": "仅查看余额。请使用只有读取权限的密钥。钱包地址仅显示原生币。",
@@ -8544,7 +8531,8 @@
       "tr": "Bakiyeler salt okunurdur. Yalnızca okuma izni olan anahtarlar kullanın. Cüzdan adresleri yalnızca ağın yerel coinlerini gösterir.",
       "ko": "잔액은 읽기 전용입니다. 읽기 권한만 있는 키를 사용하세요. 지갑 주소는 해당 네트워크의 기본 코인만 표시합니다.",
       "ja": "残高は読み取り専用です。読み取り権限のみのキーを使用してください。ウォレットアドレスにはネットワーク固有のコインのみが表示されます。",
-      "zh-Hant": "僅查看餘額。請使用只有讀取權限的金鑰。錢包地址僅顯示原生幣。"
+      "zh-Hant": "僅查看餘額。請使用只有讀取權限的金鑰。錢包地址僅顯示原生幣。",
+      "th": "ยอดคงเหลือแบบอ่านอย่างเดียว ใช้คีย์ที่มีสิทธิ์อ่านเท่านั้น ที่อยู่วอลเล็ตแสดงเฉพาะเหรียญเนทีฟ"
     }
   }
 }
