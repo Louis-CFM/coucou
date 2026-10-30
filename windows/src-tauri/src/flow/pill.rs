@@ -336,12 +336,14 @@ pub fn set_hot(app: &AppHandle, rects: Vec<(f64, f64, f64, f64)>) {
 fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
     std::thread::spawn(move || {
         let mut ignoring: Option<bool> = None;
+        let mut unhover_ticks: usize = 0;
         loop {
             {
                 let (lock, cv) = &pill.poll;
                 let mut on = lock.lock().unwrap();
                 while !*on {
                     ignoring = None;
+                    unhover_ticks = 0;
                     on = cv.wait(on).unwrap();
                 }
             }
@@ -351,10 +353,21 @@ fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
             let scale = win.scale_factor().unwrap_or(1.0);
             let (x, y) = ((cx - origin.x as f64) / scale, (cy - origin.y as f64) / scale);
             let over = pill.hot.lock().unwrap().iter().any(|&(rx, ry, rw, rh)| x >= rx && x <= rx + rw && y >= ry && y <= ry + rh);
-            if ignoring != Some(!over) {
-                ignoring = Some(!over);
-                let _ = win.set_ignore_cursor_events(!over);
-                let _ = win.emit("pill-pointer", over);
+            if over {
+                unhover_ticks = 0;
+                if ignoring != Some(false) {
+                    ignoring = Some(false);
+                    let _ = win.set_ignore_cursor_events(false);
+                    let _ = win.emit("pill-pointer", true);
+                }
+            } else {
+                unhover_ticks += 1;
+                // Wait ~200ms (6 ticks of 33ms) before making window click-through
+                if unhover_ticks >= 6 && ignoring != Some(true) {
+                    ignoring = Some(true);
+                    let _ = win.set_ignore_cursor_events(true);
+                    let _ = win.emit("pill-pointer", false);
+                }
             }
         }
     });

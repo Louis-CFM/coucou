@@ -278,6 +278,7 @@ function render() {
   mochi.setState(state.phase === "thinking" || state.voice?.phase === "thinking" ? "thinking" : "idle");
   wake();
   // Where the mouse is taken, once the sizes have settled.
+  reportHot();
   setTimeout(reportHot, 60);
   setTimeout(reportHot, 420);
 }
@@ -286,21 +287,22 @@ function reportHot() {
   const rects: [number, number, number, number][] = [];
   const W = window.innerWidth;
   const H = window.innerHeight;
-  const open = look() !== "resting";
+  const open = look() !== "resting" || hovered;
   // The pill: a generous zone around the small resting one, the capsule once open.
   if (state.edge === "bottom") {
-    const w = open ? 200 : 96;
-    const h = open ? 46 : 26;
-    rects.push([(W - w) / 2, H - h, w, h]);
+    const w = open ? 240 : 120;
+    const h = open ? 64 : 36;
+    rects.push([(W - w) / 2, H - h - 10, w, h + 20]);
   } else {
-    const w = open ? 46 : 26;
-    const h = open ? 200 : 96;
-    rects.push([state.edge === "left" ? 0 : W - w, (H - h) / 2, w, h]);
+    const w = open ? 70 : 40;
+    const h = open ? 240 : 120;
+    const x = state.edge === "left" ? -10 : W - w;
+    rects.push([x, (H - h) / 2 - 10, w + 20, h + 20]);
   }
   const b = root.querySelector<HTMLElement>(".bubble");
   if (b) {
     const r = b.getBoundingClientRect();
-    rects.push([r.left - 6, r.top - 6, r.width + 12, r.height + 12]);
+    rects.push([r.left - 10, r.top - 10, r.width + 20, r.height + 20]);
   }
   void FlowBridge.pillHot(rects);
 }
@@ -326,7 +328,7 @@ function setHovered(inside: boolean) {
       tooltip = null;
       void FlowBridge.pillHover(false);
       render();
-    }, 250);
+    }, 400);
   }
 }
 
