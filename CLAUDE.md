@@ -18,8 +18,6 @@ cd NotchBuddy && xcodegen && xcodebuild -scheme NotchBuddy -configuration Debug 
 To run it day to day on the Mac (signed, iPhone link, permissions kept across builds): `./scripts/dev-install.sh` — it installs the only Coucou in /Applications and removes the copies earlier builds left.
 Windows and Linux: `cd windows && npm install && npm run tauri dev`
 
-NetBird is not embedded in Coucou. `windows/docs/netbird.md` separates available external remote-access workflows from a possible opt-in integration. Do not treat a connected peer or CLI sign-in as authorization for remote commands or management API access.
-
 ## Rules
 - Swift 6, SwiftUI + AppKit. No third-party dependencies unless truly unavoidable. The character is drawn in code (`Canvas` + `TimelineView`), no Rive/Lottie/images.
 - Secrets live in the Keychain, never on disk or in git.
