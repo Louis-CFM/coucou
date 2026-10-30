@@ -125,7 +125,24 @@ extension HubPage {
 
 @MainActor
 final class HubRouter: ObservableObject {
-    @Published var page: HubPage = .dictation
+    /// Any other way to a page (the sidebar, the tray, a link) forgets the setting a search led to.
+    @Published var page: HubPage = .dictation {
+        didSet { if !opening { find = nil } }
+    }
+    /// The setting a search result led to, to scroll to and light once its page is drawn.
+    @Published var find: HubFindRequest?
+    private var findCount = 0
+    private var opening = false
+
+    /// Opens a page, and the setting on it a search result led to (nil: just the page).
+    func open(_ page: HubPage, find target: String?) {
+        opening = true
+        defer { opening = false }
+        self.page = page
+        guard let target else { find = nil; return }
+        findCount += 1
+        find = HubFindRequest(target: target, token: findCount)
+    }
 }
 
 /// Opens the Coucou Flow window: the history of the dictations, the Notetaker, the numbers, the
@@ -220,6 +237,7 @@ struct FlowHubView: View {
         .tint(HubTheme.accent)
         .environment(\.hubVisible, windowState.visible)
         .environment(\.hubPage, router.page)
+        .environment(\.hubFind, router.find)
     }
 
     @ViewBuilder private var page: some View {
@@ -250,6 +268,8 @@ struct FlowHubView: View {
 private struct HubSidebar: View {
     @ObservedObject var router: HubRouter
     @ObservedObject private var flow = FlowDictation.shared
+    @State private var query = ""
+    @State private var active = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -264,18 +284,26 @@ private struct HubSidebar: View {
             .padding(.horizontal, 8)
             // Halfway between the window's buttons and "FLOW".
             .padding(.top, 25)
-            .padding(.bottom, 31)
+            .padding(.bottom, 14)
+
+            HubSidebarSearch(router: router, query: $query, active: $active)
+                .padding(.bottom, 14)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
-                    HubSidebarHeader(text: "Flow")
-                    ForEach(HubPage.flowPages) { page in
-                        HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
-                    }
-                    HubSidebarHeader(text: String(localized: "hub.section.notch"))
-                        .padding(.top, 14)
-                    ForEach(HubPage.notchPages) { page in
-                        HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+                    if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                        HubSidebarHeader(text: "Flow")
+                        ForEach(HubPage.flowPages) { page in
+                            HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+                        }
+                        HubSidebarHeader(text: String(localized: "hub.section.notch"))
+                            .padding(.top, 14)
+                        ForEach(HubPage.notchPages) { page in
+                            HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+                        }
+                    } else {
+                        // While something is typed, the results take the place of the pages.
+                        HubSidebarResults(router: router, query: $query, active: $active)
                     }
                 }
             }
@@ -395,6 +423,7 @@ struct HubPageScaffold<Trailing: View, Content: View>: View {
             .frame(maxWidth: 1100, alignment: .leading)
         }
         .scrollIndicators(.automatic)
+        .hubScrollsToFind()
     }
 }
 

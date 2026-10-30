@@ -105,6 +105,76 @@ body.hub-window {
   font-weight: 600;
 }
 
+/* The search box: while something is typed, its results replace the pages. */
+.hub-search {
+  width: 100%;
+  margin: 0 0 6px;
+}
+
+.hub-side.searching .hub-group,
+.hub-side.searching .hub-item {
+  display: none;
+}
+
+.hub-hits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hub-hit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 6px 12px;
+  border-radius: 9px;
+  background: transparent;
+  color: #c7cad0;
+  text-align: start;
+}
+
+.hub-hit:hover:not(:disabled),
+.hub-hit.on {
+  background: rgba(255, 255, 255, 0.07);
+  transform: none;
+}
+
+.hub-hit:active:not(:disabled) {
+  transform: none;
+}
+
+.hub-hit .name {
+  font: 500 13px var(--font);
+  color: var(--hub-text);
+}
+
+.hub-hit .where {
+  font: 400 11.5px var(--font);
+  color: var(--hub-muted);
+}
+
+.hub-hits-empty {
+  padding: 8px 12px;
+  color: var(--hub-muted);
+  font-size: 12.5px;
+}
+
+/* The setting a search result led to. */
+.hub-found {
+  text-decoration: underline;
+  text-decoration-color: var(--hub-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  animation: hub-found 2.4s ease-out 1;
+}
+
+@keyframes hub-found {
+  0%, 60% { background: rgba(251, 146, 60, 0.28); }
+  100% { background: transparent; }
+}
+
 .hub-side .spacer {
   flex: 1 1 auto;
   min-height: 12px;
