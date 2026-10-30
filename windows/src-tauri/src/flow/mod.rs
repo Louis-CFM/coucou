@@ -169,7 +169,6 @@ fn enable(app: &AppHandle, flow: &Arc<Flow>) {
         .ok();
     *running = Some(Running { tx, _listener: listener });
     drop(running);
-    speech::preload();
     pill::update(app, |s| s.enabled = true);
     crate::log::line(format!("flow dictation on ({})", prefs.key.label()));
 }
@@ -322,6 +321,9 @@ fn begin(app: &AppHandle, flow: &Arc<Flow>) -> Option<Listening> {
     });
     match capture {
         Ok(capture) => {
+            // Warm the model while the user speaks, not merely because the
+            // dictation shortcut is enabled at startup.
+            speech::preload();
             let app_front = os::foreground_app().filter(|(id, _)| !is_shell(id));
             pill::update(app, |s| s.phase = "listening".into());
             Some(Listening { capture, take, started: Instant::now(), app: app_front })
