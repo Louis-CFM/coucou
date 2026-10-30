@@ -62,6 +62,7 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
 
   // ── Keys ──
   const keys: [FlowKey, string][] = [
+    ...(status.platform === "windows" ? [["copilot", "Copilot"] as [FlowKey, string]] : []),
     ["right_ctrl", t("Right {0}", { 0: "Ctrl" })],
     ["right_alt", t("Right {0}", { 0: "Alt" })],
     ["right_shift", t("Right {0}", { 0: "Shift" })],

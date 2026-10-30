@@ -20,7 +20,7 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
   return invoke<T>(cmd, args);
 }
 
-export type FlowKey = "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super";
+export type FlowKey = "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super" | "copilot";
 export type Edge = "bottom" | "left" | "right";
 export type Style = "verbatim" | "natural" | "polished";
 
