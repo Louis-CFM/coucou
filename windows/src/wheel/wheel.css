@@ -26,12 +26,12 @@ body {
 
 #wheel {
   position: relative;
-  width: 320px;
-  height: 352px;
+  width: 272px;
+  height: 300px;
   opacity: 0;
-  transform: scale(0.9);
-  transform-origin: 160px 158px;
-  transition: opacity 0.14s ease-out, transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1);
+  transform: scale(0.86);
+  transform-origin: 136px 132px;
+  transition: opacity 0.16s ease-out, transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1);
 }
 
 #wheel.on {
@@ -44,8 +44,8 @@ body {
 .glass {
   position: absolute;
   inset: 0;
-  width: 320px;
-  height: 352px;
+  width: 272px;
+  height: 300px;
   pointer-events: none;
 }
 
@@ -73,7 +73,32 @@ svg.ring {
   stroke: url(#rim);
   stroke-width: 1;
   stroke-linejoin: round;
-  transition: fill 0.1s ease-out;
+  transition: fill 0.12s ease-out;
+}
+
+/* Each wedge comes in after the one before it (--i), from the hub, and lifts
+   a little outwards (--dx, --dy, set per wedge) under the pointer. */
+.wedge {
+  transform-box: view-box;
+  transform-origin: 136px 132px;
+  transition: transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+#wheel.on .wedge {
+  animation: pop 0.34s cubic-bezier(0.3, 1.5, 0.5, 1) backwards;
+  animation-delay: calc(var(--i) * 28ms + 40ms);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+}
+
+.wedge:hover,
+.wedge.hot {
+  transform: translate(var(--dx), var(--dy));
 }
 
 .wedge:hover path {
@@ -81,7 +106,7 @@ svg.ring {
 }
 
 .wedge text {
-  font: 700 12px var(--font);
+  font: 700 11px var(--font);
   fill: var(--ink);
   letter-spacing: 0.02em;
   text-anchor: middle;
@@ -90,7 +115,7 @@ svg.ring {
 }
 
 .wedge.small text {
-  font-size: 7.4px;
+  font-size: 6.8px;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -99,7 +124,7 @@ svg.ring {
 .wedge .icon {
   fill: none;
   stroke: var(--ink);
-  stroke-width: 2.3;
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none;
@@ -107,7 +132,8 @@ svg.ring {
 
 .wedge.hot path {
   fill: url(#hot);
-  stroke: rgba(255, 210, 190, 0.9);
+  stroke: rgba(255, 220, 200, 0.95);
+  filter: drop-shadow(0 0 6px rgba(255, 90, 31, 0.55));
 }
 
 .wedge.hot text {
@@ -125,11 +151,11 @@ svg.ring {
 /* The hub: frosted glass holding the file's picture in a white ring. */
 .hub {
   position: absolute;
-  left: 160px;
-  top: 158px;
-  width: 104px;
-  height: 104px;
-  margin: -52px 0 0 -52px;
+  left: 136px;
+  top: 132px;
+  width: 88px;
+  height: 88px;
+  margin: -44px 0 0 -44px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.55);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9), 0 2px 10px rgba(0, 0, 0, 0.12);
@@ -140,17 +166,17 @@ svg.ring {
 
 .hub img {
   position: absolute;
-  inset: 5px;
-  width: calc(100% - 10px);
-  height: calc(100% - 10px);
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 0 0 2px #fff;
 }
 
 .hub .glyph {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   fill: none;
   stroke: #8e8e93;
   stroke-width: 1.4;
@@ -161,12 +187,12 @@ svg.ring {
 .pill {
   position: relative;
   z-index: 1;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   color: var(--ink);
-  font: 700 10.5px var(--font);
+  font: 700 9.5px var(--font);
   white-space: nowrap;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
@@ -182,12 +208,12 @@ svg.ring {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 10px;
+  padding: 8px;
   text-align: center;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   color: var(--ink);
-  font: 700 10.5px/1.25 var(--font);
+  font: 700 9.5px/1.2 var(--font);
 }
 
 .hub-panel.on {
@@ -195,7 +221,7 @@ svg.ring {
 }
 
 .hub-panel .big {
-  font-size: 11.5px;
+  font-size: 10.5px;
 }
 
 .hub-panel .dim {
@@ -203,7 +229,7 @@ svg.ring {
   font-size: 9.5px;
   color: #6e6e73;
   word-break: break-word;
-  max-width: 86px;
+  max-width: 72px;
 }
 
 .hub-panel button {
@@ -270,15 +296,15 @@ svg.ring {
 /* The name, Finder-style, on the hub's lower edge. */
 .name-tag {
   position: absolute;
-  left: 160px;
-  top: 200px;
+  left: 136px;
+  top: 166px;
   transform: translateX(-50%);
-  max-width: 150px;
+  max-width: 130px;
   padding: 2px 7px;
   border-radius: 4px;
   background: #1d6ff2;
   color: #fff;
-  font: 600 11px var(--font);
+  font: 600 10.5px var(--font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -290,15 +316,15 @@ svg.ring {
 /* Convert · Tools · Actions: a frosted pill exactly where the window's shape leaves room. */
 .rings {
   position: absolute;
-  left: 10px;
-  top: 318px;
-  width: 300px;
-  height: 30px;
+  left: 26px;
+  top: 270px;
+  width: 220px;
+  height: 26px;
   box-sizing: border-box;
   display: flex;
   gap: 2px;
   padding: 3px;
-  border-radius: 15px;
+  border-radius: 13px;
   background: rgba(255, 255, 255, 0.5);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
 }
@@ -306,8 +332,8 @@ svg.ring {
 .rings button {
   flex: 1;
   border: 0;
-  border-radius: 12px;
-  font: 700 11px var(--font);
+  border-radius: 10px;
+  font: 700 10px var(--font);
   color: rgba(58, 58, 60, 0.75);
   background: transparent;
   cursor: default;

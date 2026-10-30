@@ -9768,6 +9768,36 @@
       "tr": "Zaten olabildiğince küçük",
       "ko": "이미 가장 작습니다",
       "ja": "これ以上小さくできません"
+    },
+    "Documents need Microsoft Word or LibreOffice.": {
+      "zh-Hans": "文档需要 Microsoft Word 或 LibreOffice。",
+      "hi": "दस्तावेज़ों के लिए Microsoft Word या LibreOffice चाहिए।",
+      "es": "Los documentos necesitan Microsoft Word o LibreOffice.",
+      "ar": "تحتاج المستندات إلى Microsoft Word أو LibreOffice.",
+      "fr": "Les documents ont besoin de Microsoft Word ou de LibreOffice.",
+      "bn": "নথির জন্য Microsoft Word বা LibreOffice লাগবে।",
+      "pt-BR": "Os documentos precisam do Microsoft Word ou do LibreOffice.",
+      "ru": "Для документов нужен Microsoft Word или LibreOffice.",
+      "id": "Dokumen memerlukan Microsoft Word atau LibreOffice.",
+      "de": "Dokumente brauchen Microsoft Word oder LibreOffice.",
+      "tr": "Belgeler için Microsoft Word veya LibreOffice gerekir.",
+      "ko": "문서에는 Microsoft Word 또는 LibreOffice가 필요합니다.",
+      "ja": "ドキュメントには Microsoft Word か LibreOffice が必要です。"
+    },
+    "Removing a document's details needs Microsoft Word.": {
+      "zh-Hans": "删除文档的详细信息需要 Microsoft Word。",
+      "hi": "दस्तावेज़ का विवरण हटाने के लिए Microsoft Word चाहिए।",
+      "es": "Quitar los datos de un documento necesita Microsoft Word.",
+      "ar": "تتطلب إزالة تفاصيل المستند برنامج Microsoft Word.",
+      "fr": "Retirer les informations d'un document demande Microsoft Word.",
+      "bn": "নথির বিবরণ সরাতে Microsoft Word লাগবে।",
+      "pt-BR": "Remover os dados de um documento precisa do Microsoft Word.",
+      "ru": "Чтобы удалить сведения документа, нужен Microsoft Word.",
+      "id": "Menghapus detail dokumen memerlukan Microsoft Word.",
+      "de": "Die Angaben eines Dokuments zu entfernen braucht Microsoft Word.",
+      "tr": "Bir belgenin bilgilerini kaldırmak için Microsoft Word gerekir.",
+      "ko": "문서의 세부 정보를 지우려면 Microsoft Word가 필요합니다.",
+      "ja": "ドキュメントの詳細情報を削除するには Microsoft Word が必要です。"
     }
   }
 }

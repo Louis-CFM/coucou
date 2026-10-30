@@ -33,10 +33,13 @@ interface RunResult {
 }
 
 const NS = "http://www.w3.org/2000/svg";
-// The disc: centre (160, 158) in a 320 × 352 window, as wheel/mod.rs shapes it.
-const RING: Ring = { cx: 160, cy: 158, inner: 58, outer: 141, gap: 3.5, corner: 9 };
-const VIEW_W = 320;
-const VIEW_H = 352;
+// The disc: centre (136, 132) in a 272 × 300 window, as wheel/mod.rs shapes it.
+const RING: Ring = { cx: 136, cy: 132, inner: 49, outer: 120, gap: 3, corner: 8 };
+const VIEW_W = 272;
+const VIEW_H = 300;
+/** The hub's and the whole disc's radius (the frosted rim around the wedges). */
+const HUB = 44;
+const DISC = RING.outer + 8;
 const RING_ORDER: RingName[] = ["convert", "tools", "actions"];
 
 const root = document.getElementById("wheel")!;
@@ -93,10 +96,10 @@ defs.innerHTML = `
     <stop offset="1" stop-color="#fff" stop-opacity="0"/>
   </radialGradient>`;
 svg.append(defs);
-svg.append(svgEl("circle", { class: "backdrop", cx: RING.cx, cy: RING.cy, r: RING.outer + 9 }));
+svg.append(svgEl("circle", { class: "backdrop", cx: RING.cx, cy: RING.cy, r: DISC }));
 const wedges = svgEl("g") as SVGGElement;
 svg.append(wedges);
-svg.append(svgEl("circle", { class: "sheen", cx: RING.cx, cy: RING.cy, r: RING.outer + 9 }));
+svg.append(svgEl("circle", { class: "sheen", cx: RING.cx, cy: RING.cy, r: DISC }));
 
 const hub = el("div", "hub");
 const hubImg = el("img");
@@ -137,13 +140,16 @@ function drawWedges() {
   const n = list.length;
   list.forEach((id, i) => {
     const g = svgEl("g", { class: `wedge${ring === "convert" ? "" : " small"}${i === hot ? " hot" : ""}` });
+    // It comes in after the one before it, and lifts outwards under the pointer.
+    const mid = ((i + 0.5) / n) * 2 * Math.PI;
+    g.setAttribute("style", `--i:${i};--dx:${(Math.sin(mid) * 3).toFixed(2)}px;--dy:${(-Math.cos(mid) * 3).toFixed(2)}px`);
     g.append(svgEl("path", { d: wedgePath(RING, i, n) }));
     const [x, y] = labelPoint(RING, i, n);
     const icon = iconFor(id);
     if (icon && ring !== "convert") {
-      const ic = svgEl("path", { class: "icon", d: icon, transform: `translate(${x - 7.5} ${y - 15}) scale(0.62)` });
+      const ic = svgEl("path", { class: "icon", d: icon, transform: `translate(${x - 6.6} ${y - 13.5}) scale(0.55)` });
       g.append(ic);
-      const label = svgEl("text", { x, y: y + 8 });
+      const label = svgEl("text", { x, y: y + 7 });
       label.textContent = labelFor(ring, id);
       g.append(label);
     } else {
@@ -165,7 +171,7 @@ function drawGlass() {
   const n = choices().length;
   if (!behind || n === glassFor) return;
   glassFor = n;
-  const pieces: Pieces = { ring: RING, n, hub: 52, disc: RING.outer + 9, bar: { x: 10, y: 318, w: 300, h: 30, r: 15 } };
+  const pieces: Pieces = { ring: RING, n, hub: HUB, disc: DISC, bar: { x: 26, y: 270, w: 220, h: 26, r: 13 } };
   glass.getContext("2d")!.putImageData(refract(behind, pieces, behind.width / VIEW_W), 0, 0);
 }
 
@@ -339,6 +345,11 @@ function succeeded(id: string, r: RunResult) {
 }
 
 function failed(message: string) {
+  if (message.includes("needs-office") || message.includes("needs-word")) {
+    const what = message.includes("needs-word") ? t("Removing a document's details needs Microsoft Word.") : t("Documents need Microsoft Word or LibreOffice.");
+    showPanel([el("div", "big", what), button(t("Back"), () => showPanel(null))], "error");
+    return;
+  }
   if (message.includes("already-small")) {
     showPanel([el("div", "big", t("Already as small as it gets")), button(t("Back"), () => showPanel(null))]);
     return;
@@ -417,7 +428,7 @@ svg.addEventListener("click", (e) => {
   const [x, y] = local(e);
   const i = wedgeAt(RING, choices().length, x, y);
   if (i >= 0) void choose(i);
-  else if (Math.hypot(x - RING.cx, y - RING.cy) > RING.outer + 9) close();
+  else if (Math.hypot(x - RING.cx, y - RING.cy) > DISC) close();
 });
 // Outside the circle (the window's transparent corners): close.
 document.addEventListener("click", (e) => {

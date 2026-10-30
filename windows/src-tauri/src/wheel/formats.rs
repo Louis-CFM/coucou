@@ -110,6 +110,14 @@ pub fn rings(paths: &[&Path]) -> Rings {
             }
             Rings { kind, convert, tools, actions }
         }
+        // A PDF isn't offered: hidden Word stops on its "convert this PDF?" question.
+        Kind::Document if paths.iter().all(|p| super::documents::READABLE.contains(&ext(p).as_str())) => {
+            use super::documents::{CLEANABLE, DOCUMENT_TARGETS};
+            let same = paths.first().map(|p| ext(p)).filter(|e| paths.iter().all(|p| ext(p) == *e));
+            let convert = DOCUMENT_TARGETS.iter().filter(|t| same.as_deref() != Some(**t)).map(|s| s.to_string()).collect();
+            let tools = if paths.iter().all(|p| CLEANABLE.contains(&ext(p).as_str())) { vec!["metadata".to_string()] } else { Vec::new() };
+            Rings { kind, convert, tools, actions }
+        }
         _ => Rings { kind, convert: Vec::new(), tools: Vec::new(), actions },
     }
 }
@@ -209,6 +217,25 @@ mod tests {
         assert_eq!(r.tools, vec!["compress", "trim"]);
         let (x, y) = (p("a.mp3"), p("b.wav"));
         assert_eq!(rings(&[x.as_path(), y.as_path()]).tools, vec!["compress"], "no trim for several");
+    }
+
+    #[test]
+    fn documents_and_pdfs_get_their_formats() {
+        let d = p("C:/x/CV Details.docx");
+        let r = rings(&[d.as_path()]);
+        assert_eq!(r.kind, Kind::Document);
+        assert!(r.convert.contains(&"pdf".to_string()) && r.convert.contains(&"txt".to_string()));
+        assert!(!r.convert.contains(&"docx".to_string()), "not into what it is");
+        assert_eq!(r.tools, vec!["metadata"]);
+        let t = p("notes.txt");
+        let r = rings(&[t.as_path()]);
+        assert!(r.convert.contains(&"docx".to_string()) && r.tools.is_empty(), "a text file has no author to remove");
+        let f = p("scan.pdf");
+        let r = rings(&[f.as_path()]);
+        assert_eq!(r.kind, Kind::Pdf);
+        assert!(r.convert.is_empty() && !r.actions.is_empty(), "a PDF has its actions only, for now");
+        let e = p("book.epub");
+        assert!(rings(&[e.as_path()]).convert.is_empty(), "nothing opens an EPUB here");
     }
 
     #[test]

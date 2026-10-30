@@ -1,8 +1,9 @@
-// The wheel: drop files on the notch's Tools zone and a ring of choices opens on
-// the screen around the pointer (Tangerine's wheel): Convert, Tools, Actions.
+// The wheel: drop files on the notch's Tools zone and a ring of choices opens in
+// the middle of the screen (Tangerine's wheel): Convert, Tools, Actions.
 // Everything runs on this computer; the results go next to the originals.
 
 pub mod actions;
+pub mod documents;
 pub mod formats;
 mod glass;
 pub mod image_ops;
@@ -18,14 +19,14 @@ use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWi
 pub const LABEL: &str = "wheel";
 /// The wheel's window, in logical pixels: the disc, and the ring switcher under it
 /// (src/wheel/wheel.css keeps the same numbers).
-const WIDTH: f64 = 320.0;
-const HEIGHT: f64 = 352.0;
+const WIDTH: f64 = 272.0;
+const HEIGHT: f64 = 300.0;
 /// The disc's centre and radius in the window.
-const CX: f64 = 160.0;
-const CY: f64 = 158.0;
-const DISC: f64 = 152.0;
+const CX: f64 = 136.0;
+const CY: f64 = 132.0;
+const DISC: f64 = 130.0;
 /// The ring switcher: left, top, right, bottom, corner radius.
-const BAR: (f64, f64, f64, f64, f64) = (10.0, 318.0, 310.0, 348.0, 30.0);
+const BAR: (f64, f64, f64, f64, f64) = (26.0, 270.0, 246.0, 296.0, 26.0);
 /// Where the hidden wheel waits: off the screen. A hidden WebView2 still sets
 /// the cursor for its page where its rectangle is (claude_account.rs).
 const AWAY: (i32, i32) = (-32000, -32000);
@@ -103,28 +104,28 @@ fn shape(win: &tauri::WebviewWindow) {
 #[cfg(not(windows))]
 fn shape(_win: &tauri::WebviewWindow) {}
 
-/// The window placed so the disc is centred on the pointer, inside its screen;
-/// where it went, in physical pixels.
-fn place_at_pointer(win: &tauri::WebviewWindow) -> (i32, i32) {
-    let Some((cx, cy)) = crate::platform::cursor_physical() else {
+/// The window placed so the disc is in the middle of the screen the pointer is
+/// on (clear of the notch, whose window would take the clicks above it); where
+/// it went, in physical pixels.
+fn place_in_middle(win: &tauri::WebviewWindow) -> (i32, i32) {
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let monitor = crate::platform::cursor_physical()
+        .and_then(|(x, y)| win.monitor_from_point(x, y).ok().flatten())
+        .or_else(|| win.primary_monitor().ok().flatten());
+    let Some(m) = monitor else {
         let _ = win.center();
         return win.outer_position().map(|p| (p.x, p.y)).unwrap_or((0, 0));
     };
-    let scale = win.scale_factor().unwrap_or(1.0);
-    let (w, h) = (WIDTH * scale, HEIGHT * scale);
-    let (mut x, mut y) = (cx - CX * scale, cy - CY * scale);
-    if let Ok(Some(m)) = win.monitor_from_point(cx, cy) {
-        let (mx, my) = (m.position().x as f64, m.position().y as f64);
-        let (mw, mh) = (m.size().width as f64, m.size().height as f64);
-        x = x.clamp(mx, (mx + mw - w).max(mx));
-        y = y.clamp(my, (my + mh - h).max(my));
-    }
+    let (mx, my) = (m.position().x as f64, m.position().y as f64);
+    let (mw, mh) = (m.size().width as f64, m.size().height as f64);
+    let x = mx + mw / 2.0 - CX * scale;
+    let y = my + mh / 2.0 - CY * scale;
     let (x, y) = (x.round() as i32, y.round() as i32);
     let _ = win.set_position(PhysicalPosition::new(x, y));
     (x, y)
 }
 
-/// Files dropped on the Tools zone: the wheel opens around the pointer.
+/// Files dropped on the Tools zone: the wheel opens in the middle of the screen.
 #[tauri::command]
 pub async fn wheel_open(app: AppHandle, paths: Vec<String>) -> Result<(), String> {
     let list: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).filter(|p| p.exists()).collect();
@@ -144,7 +145,14 @@ pub async fn wheel_open(app: AppHandle, paths: Vec<String>) -> Result<(), String
         .collect();
     *FILES.lock().unwrap() = list;
     let win = window(&app).ok_or("no wheel window")?;
-    let (x, y) = place_at_pointer(&win);
+    if win.is_visible().unwrap_or(false) {
+        // Opened again while it shows: out of the way first, or its glass would
+        // be a picture of the wheel itself. Moved, not hidden: hidden, its page
+        // would lose focus and close it just after it opens again.
+        let _ = win.set_position(PhysicalPosition::new(AWAY.0, AWAY.1));
+        tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+    }
+    let (x, y) = place_in_middle(&win);
     // Again each time: the region is in pixels, and the screen's scale may differ.
     shape(&win);
     let scale = win.scale_factor().unwrap_or(1.0);
@@ -247,6 +255,13 @@ fn run(paths: &[PathBuf], ring: &str, id: &str, option: Option<&str>, progress: 
     // Video and sound need FFmpeg: the wheel offers to get it.
     if media && ring != "actions" && !media::ready() {
         return Err("needs-ffmpeg".into());
+    }
+    if matches!(kind, formats::Kind::Document | formats::Kind::Pdf) {
+        match (ring, id) {
+            ("convert", target) => return Ok(done(paths, documents::convert(paths, target, progress)?)),
+            ("tools", "metadata") => return Ok(done(paths, documents::remove_metadata(paths, progress)?)),
+            _ => {}
+        }
     }
     if media {
         match (ring, id) {
