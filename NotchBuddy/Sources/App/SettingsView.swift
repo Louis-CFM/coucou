@@ -1469,6 +1469,7 @@ struct SettingsView: View {
     @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
     @AppStorage("voicePitchFemale")    private var pitchFemale: Double = VoiceSettings.defaultPitchFemale
     @AppStorage("voicePitchMale")      private var pitchMale: Double = VoiceSettings.defaultPitchMale
+    @AppStorage(VoiceSettings.rateKey) private var speechRate: Double = VoiceSettings.defaultRate
     @State private var webKeySaved: Bool = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
     @State private var elevenKeyDraft: String = ""
     @State private var elevenKeySaved: Bool = KeychainStore.shared.get(ElevenLabsTTS.keyName) != nil
@@ -1617,6 +1618,15 @@ struct SettingsView: View {
                                in: 0.8...1.6, step: 0.05,
                                onEditingChanged: { editing in
                                    // Released: hear the new pitch right away.
+                                   if !editing { speakVoiceSample() }
+                               })
+                        .frame(maxWidth: 180)
+                    }
+                    HStack(spacing: 8) {
+                        Text(String(localized: "voice.tts-speed"))
+                        Slider(value: $speechRate, in: 0.7...1.5, step: 0.05,
+                               onEditingChanged: { editing in
+                                   // Released: hear the new speed right away.
                                    if !editing { speakVoiceSample() }
                                })
                         .frame(maxWidth: 180)
