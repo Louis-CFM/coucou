@@ -29,6 +29,12 @@ struct IslandContainer: View {
     // topRadius > 0 → convex expanded corners; < 0 → concave ear cutouts
     @State private var islandTopRadius: CGFloat = 0
     @State private var greetNotif: Bool = false
+    @AppStorage(IslandTheme.storageKey) private var theme = IslandTheme.classic.rawValue
+    private var terminal: Bool { theme == IslandTheme.terminal.rawValue }
+    /// Bottom corners: the Terminal theme's open island is almost square.
+    private var corner: CGFloat {
+        terminal && state.mode == .expanded ? min(cornerRadius, TerminalStyle.corner) : cornerRadius
+    }
 
     private let openSpring = Animation.spring(response: 0.5, dampingFraction: 0.72)
     private let closeEase  = Animation.timingCurve(0.45, 0, 0.2, 1, duration: 0.34)
@@ -56,7 +62,7 @@ struct IslandContainer: View {
         return ZStack(alignment: .topLeading) {
             // Black island shape
             IslandShape(width: islandWidth, height: islandHeight,
-                        cornerRadius: cornerRadius, topRadius: islandTopRadius)
+                        cornerRadius: corner, topRadius: islandTopRadius)
                 // Hidden over a real notch: draw nothing. A black copy of the notch would slide
                 // away with the Space on a desktop swipe, while the real notch stays.
                 .fill(Color.black.opacity(state.mode == .hidden && state.hasNotch ? 0 : 1))
@@ -69,14 +75,14 @@ struct IslandContainer: View {
                         .frame(width: IslandConst.expandedWidth, height: 150)
                         .offset(x: (islandWidth - IslandConst.expandedWidth) / 2)
                         .clipShape(IslandShape(width: islandWidth, height: islandHeight,
-                                              cornerRadius: cornerRadius, topRadius: islandTopRadius))
+                                              cornerRadius: corner, topRadius: islandTopRadius))
                         .transition(.opacity)
                 } else if uploadActive {
                     ZStack(alignment: .topLeading) {
                         UploadCanvasView(state: state)
                             .frame(width: islandWidth, height: islandHeight)
                             .clipShape(IslandShape(width: islandWidth, height: islandHeight,
-                                                  cornerRadius: cornerRadius, topRadius: islandTopRadius))
+                                                  cornerRadius: corner, topRadius: islandTopRadius))
                         // Header overlaid: canvas CARD_Y=42 aligns exactly with header bottom,
                         // matching normal view proportions (8pt top + 34pt header + card + 10pt bottom).
                         IslandHeader(state: state)
@@ -89,9 +95,21 @@ struct IslandContainer: View {
                         .frame(width: islandWidth, height: islandHeight - earOffset)
                         .offset(y: earOffset)
                         .clipShape(IslandShape(width: islandWidth, height: islandHeight,
-                                              cornerRadius: cornerRadius, topRadius: islandTopRadius))
+                                              cornerRadius: corner, topRadius: islandTopRadius))
                         .transition(.opacity)
                 }
+            }
+
+            // Terminal theme: faint scanlines and a thin grey edge on the open island.
+            if terminal && state.mode == .expanded {
+                TerminalScanlines()
+                    .frame(width: islandWidth, height: islandHeight)
+                    .clipShape(IslandShape(width: islandWidth, height: islandHeight,
+                                           cornerRadius: corner, topRadius: islandTopRadius))
+                IslandShape(width: islandWidth, height: islandHeight,
+                            cornerRadius: corner, topRadius: islandTopRadius)
+                    .stroke(TerminalStyle.border, lineWidth: 1)
+                    .allowsHitTesting(false)
             }
 
             // Single BotPlacement — always alive in the view tree so spring animations
@@ -283,6 +301,8 @@ struct BotPlacement: View {
     @ObservedObject var state: AppState
     let islandW: CGFloat
     let islandH: CGFloat
+    @AppStorage(IslandTheme.storageKey) private var theme = IslandTheme.classic.rawValue
+    private var terminal: Bool { theme == IslandTheme.terminal.rawValue }
 
     var body: some View {
         let (cx, cy, diameter, opacity) = botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: state.uploadProgress, hasNotch: state.hasNotch)
@@ -292,7 +312,7 @@ struct BotPlacement: View {
 
         Group {
             // No glow in uploading mode — the tiny dot doesn't need it
-            if state.mode == .expanded && !isUploading {
+            if state.mode == .expanded && !isUploading && !terminal {
                 Circle()
                     .fill(RadialGradient(
                         gradient: Gradient(stops: [
@@ -331,6 +351,18 @@ struct BotPlacement: View {
                         .position(x: uploadCx, y: cy)
                 }
                 .transition(.scale(scale: 0.01, anchor: .center).combined(with: .opacity))
+            } else if terminal {
+                // Terminal theme: Mochi in characters, a bit wider than the round Mochi.
+                let compact = state.mode != .expanded
+                TerminalMochiView(mood: AsciiMood(state.effectiveState),
+                                  paused: state.mode == .hidden || state.mochiOnDesktop)
+                    .frame(width: diameter * (compact ? 2.2 : 1.7), height: diameter * (compact ? 1.6 : 1.35))
+                    .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
+                    .position(x: cx, y: cy)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.72), value: cx)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.72), value: cy)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.72), value: diameter)
+                    .transition(.opacity)
             } else {
                 // Invisible while Mochi lives on the desktop: no drawing either.
                 BotCanvasView(state: state, particleOverhang: overhang, paused: state.mochiOnDesktop)
@@ -483,6 +515,7 @@ struct CountdownBar: View {
 
 struct IslandContentView: View {
     @ObservedObject var state: AppState
+    @AppStorage(IslandTheme.storageKey) private var theme = IslandTheme.classic.rawValue
 
     var body: some View {
         VStack(spacing: 0) {
@@ -520,6 +553,14 @@ struct IslandContentView: View {
         .padding(.top, 8)
         .padding(.bottom, 10)
         .foregroundColor(Color(hex: "#F5F6F8"))
+        .terminalFont(theme == IslandTheme.terminal.rawValue)
+    }
+}
+
+extension View {
+    /// Terminal theme: every text of the island in the monospaced system font.
+    @ViewBuilder func terminalFont(_ on: Bool) -> some View {
+        if on { self.fontDesign(.monospaced) } else { self }
     }
 }
 
@@ -530,6 +571,7 @@ struct IslandHeader: View {
     @State private var gearHovered  = false
     @State private var soundHovered = false
     @State private var closeHovered = false
+    @AppStorage(IslandTheme.storageKey) private var theme = IslandTheme.classic.rawValue
 
     /// Pending approval or mail draft: the island refuses to fold (fsm.isHeldOpen), so the
     /// close cross is not shown.
@@ -570,17 +612,25 @@ struct IslandHeader: View {
                             state.view = .settings
                         }
                     }) {
-                        Image(systemName: state.view == .settings ? "gearshape.fill" : "gearshape")
-                            .font(.system(size: 14))
-                            .foregroundColor(state.view == .settings || gearHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                        if theme == IslandTheme.terminal.rawValue {
+                            TerminalKey(label: "SET", on: state.view == .settings, hovered: gearHovered)
+                        } else {
+                            Image(systemName: state.view == .settings ? "gearshape.fill" : "gearshape")
+                                .font(.system(size: 14))
+                                .foregroundColor(state.view == .settings || gearHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                        }
                     }
                     .buttonStyle(.plain)
                     .onHover { gearHovered = $0 }
 
                     Button(action: { state.soundEnabled.toggle() }) {
-                        Image(systemName: state.soundEnabled ? "speaker.wave.2" : "speaker.slash")
-                            .font(.system(size: 14))
-                            .foregroundColor(soundHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                        if theme == IslandTheme.terminal.rawValue {
+                            TerminalKey(label: state.soundEnabled ? "SND" : "MUTE", on: false, hovered: soundHovered)
+                        } else {
+                            Image(systemName: state.soundEnabled ? "speaker.wave.2" : "speaker.slash")
+                                .font(.system(size: 14))
+                                .foregroundColor(soundHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                        }
                     }
                     .buttonStyle(.plain)
                     .onHover { soundHovered = $0 }
@@ -590,9 +640,13 @@ struct IslandHeader: View {
                         Button(action: {
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 14))
-                                .foregroundColor(closeHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                            if theme == IslandTheme.terminal.rawValue {
+                                TerminalKey(label: "[x]", on: false, hovered: closeHovered)
+                            } else {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(closeHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                            }
                         }
                         .buttonStyle(.plain)
                         .help(String(localized: "Close"))
@@ -612,6 +666,17 @@ struct TabButton: View {
     @ObservedObject var state: AppState
     var preAction: (() -> Void)? = nil
     @State private var isHovered = false
+    @AppStorage(IslandTheme.storageKey) private var theme = IslandTheme.classic.rawValue
+
+    /// The tab's name in the Terminal theme.
+    private var terminalLabel: String {
+        switch view {
+        case .overview: return "HOME"
+        case .prompt: return "CHAT"
+        case .upload: return "NEW"
+        default: return view.rawValue.uppercased()
+        }
+    }
 
     private var isOn: Bool {
         if view == .overview { return state.view == .overview || state.view == .empty }
@@ -625,15 +690,19 @@ struct TabButton: View {
                 state.view = view
             }
         }) {
-            Image(systemName: icon)
-                .font(.system(size: 13))
-                .foregroundColor(isOn ? Color(hex: "#F5F6F8") : (isHovered ? Color(hex: "#B0B5BE") : Color(hex: "#8E939C")))
-                .frame(width: 30, height: 22)
-                .background(
-                    isOn ? Color(hex: "#1D1F23") :
-                    isHovered ? Color.white.opacity(0.07) : Color.clear
-                )
-                .clipShape(Capsule())
+            if theme == IslandTheme.terminal.rawValue {
+                TerminalKey(label: terminalLabel, on: isOn, hovered: isHovered)
+            } else {
+                Image(systemName: icon)
+                    .font(.system(size: 13))
+                    .foregroundColor(isOn ? Color(hex: "#F5F6F8") : (isHovered ? Color(hex: "#B0B5BE") : Color(hex: "#8E939C")))
+                    .frame(width: 30, height: 22)
+                    .background(
+                        isOn ? Color(hex: "#1D1F23") :
+                        isHovered ? Color.white.opacity(0.07) : Color.clear
+                    )
+                    .clipShape(Capsule())
+            }
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }

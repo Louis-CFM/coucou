@@ -384,6 +384,15 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                Picker(String(localized: "appearance.theme"), selection: $state.islandTheme) {
+                    Text(String(localized: "appearance.classic")).tag(IslandTheme.classic)
+                    Text(String(localized: "appearance.terminal")).tag(IslandTheme.terminal)
+                }
+                .frame(maxWidth: 360)
+                Text(String(localized: "appearance.footer"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(6)
             .onAppear { refreshConnectedScreens() }

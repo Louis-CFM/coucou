@@ -61,6 +61,12 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
     }
 
+    // How the island looks: Classic, or the ASCII Terminal theme — persisted.
+    // Views that only need the look read it with @AppStorage(IslandTheme.storageKey).
+    @Published var islandTheme: IslandTheme = IslandTheme.stored {
+        didSet { UserDefaults.standard.set(islandTheme.rawValue, forKey: IslandTheme.storageKey) }
+    }
+
     // Weekly recap — persisted
     @Published var recapEnabled: Bool = (UserDefaults.standard.object(forKey: "recapEnabled") as? Bool) ?? true {
         didSet { UserDefaults.standard.set(recapEnabled, forKey: "recapEnabled") }

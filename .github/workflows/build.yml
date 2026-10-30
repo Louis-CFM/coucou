@@ -48,6 +48,9 @@ jobs:
       - name: Test the chat on your subscription (Claude Code, Antigravity, Gemini, Codex, Cursor, Copilot)
         run: bash scripts/test-cli-relay.sh
 
+      - name: Test the Terminal theme's ASCII Mochi
+        run: bash scripts/test-ascii-mochi.sh
+
       - name: Test Flow dictation keys
         run: bash scripts/test-flow-keys.sh
 
