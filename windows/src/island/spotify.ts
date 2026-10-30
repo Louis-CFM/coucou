@@ -6,7 +6,8 @@
 
 import { Bridge, onEvent } from "../core/bridge";
 import { pillDefinition } from "../core/pills";
-import { SPOTIFY_ID, Spotify, isAd, type SpotifyState } from "../core/spotify";
+import { isAd, type MediaState } from "../core/media-state";
+import { SPOTIFY_ID, Spotify } from "../core/spotify";
 import { State } from "../core/state";
 import { t } from "../i18n/i18n";
 
@@ -16,7 +17,7 @@ export interface SpotifyHost {
 }
 
 export function registerSpotifyHandlers(island: SpotifyHost) {
-  void onEvent<SpotifyState>("spotify", (s) => applySpotify(island, s));
+  void onEvent<MediaState>("spotify", (s) => applySpotify(island, s));
   void onEvent<{ artUrl: string; dataUrl: string }>("spotify-artwork", (art) => {
     Spotify.artwork = art;
     State.notify();
@@ -28,7 +29,7 @@ export function registerSpotifyHandlers(island: SpotifyHost) {
 }
 
 /** A report from Rust (or the answer to a refresh). */
-export function applySpotify(island: SpotifyHost, next: SpotifyState) {
+export function applySpotify(island: SpotifyHost, next: MediaState) {
   const wasPlaying = State.spotifyPlaying;
   Spotify.state = next;
   syncPillName();
