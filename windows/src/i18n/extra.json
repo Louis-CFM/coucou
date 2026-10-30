@@ -7232,7 +7232,8 @@
       "hi": "अपने आप (इस कंप्यूटर पर मापा गया)",
       "bn": "স্বয়ংক্রিয় (এই কম্পিউটারে মাপা)",
       "ko": "자동 (이 컴퓨터에서 측정)",
-      "ja": "自動（このコンピューターで測定）"
+      "ja": "自動（このコンピューターで測定）",
+      "zh-Hant": "自動（在此電腦上實測）"
     },
     "Automatic tuning starts after a dictation of at least three seconds. Audio stays in memory and is never saved for tuning.": {
       "fr": "Le réglage automatique commence après une dictée d’au moins trois secondes. L’audio reste en mémoire et n’est jamais enregistré pour ce réglage.",
@@ -7247,7 +7248,8 @@
       "hi": "कम से कम तीन सेकंड की डिक्टेशन के बाद अपने आप अनुकूलन शुरू होता है। ऑडियो मेमोरी में रहता है और अनुकूलन के लिए कभी सहेजा नहीं जाता।",
       "bn": "অন্তত তিন সেকেন্ডের ডিক্টেশনের পর স্বয়ংক্রিয় সমন্বয় শুরু হয়। অডিও মেমোরিতে থাকে এবং সমন্বয়ের জন্য কখনও সংরক্ষণ করা হয় না।",
       "ko": "3초 이상 받아쓰기를 하면 자동 조정이 시작됩니다. 오디오는 메모리에만 유지되며 조정을 위해 저장되지 않습니다.",
-      "ja": "3 秒以上の音声入力後に自動調整が始まります。音声はメモリ内にのみ保持され、調整のために保存されることはありません。"
+      "ja": "3 秒以上の音声入力後に自動調整が始まります。音声はメモリ内にのみ保持され、調整のために保存されることはありません。",
+      "zh-Hant": "自動調校會在至少三秒的聽寫後開始。音訊僅保留在記憶體中，不會為調校而儲存。"
     },
     "CPU · {0} threads": {
       "fr": "CPU · {0} threads",
@@ -7262,7 +7264,8 @@
       "hi": "CPU · {0} थ्रेड",
       "bn": "CPU · {0} থ্রেড",
       "ko": "CPU · 스레드 {0}개",
-      "ja": "CPU · {0} スレッド"
+      "ja": "CPU · {0} スレッド",
+      "zh-Hant": "CPU · {0} 個執行緒"
     },
     "Measure again": {
       "fr": "Mesurer à nouveau",
@@ -7277,7 +7280,8 @@
       "hi": "दोबारा मापें",
       "bn": "আবার মাপুন",
       "ko": "다시 측정",
-      "ja": "再測定"
+      "ja": "再測定",
+      "zh-Hant": "重新測量"
     },
     "Measured choice: CPU · {0} threads": {
       "fr": "Choix mesuré : CPU · {0} threads",
@@ -7292,7 +7296,8 @@
       "hi": "माप के अनुसार चयन: CPU · {0} थ्रेड",
       "bn": "মাপ অনুযায়ী নির্বাচন: CPU · {0} থ্রেড",
       "ko": "측정 결과: CPU · 스레드 {0}개",
-      "ja": "測定結果: CPU · {0} スレッド"
+      "ja": "測定結果: CPU · {0} スレッド",
+      "zh-Hant": "實測選擇：CPU · {0} 個執行緒"
     },
     "Measuring speech performance…": {
       "fr": "Mesure des performances vocales…",
@@ -7307,7 +7312,8 @@
       "hi": "आवाज़ का प्रदर्शन मापा जा रहा है…",
       "bn": "কণ্ঠের কর্মক্ষমতা মাপা হচ্ছে…",
       "ko": "음성 처리 성능 측정 중…",
-      "ja": "音声処理の性能を測定中…"
+      "ja": "音声処理の性能を測定中…",
+      "zh-Hant": "正在測量語音效能…"
     },
     "Speech performance": {
       "fr": "Performances vocales",
@@ -7322,7 +7328,8 @@
       "hi": "आवाज़ का प्रदर्शन",
       "bn": "কণ্ঠের কর্মক্ষমতা",
       "ko": "음성 처리 성능",
-      "ja": "音声処理の性能"
+      "ja": "音声処理の性能",
+      "zh-Hant": "語音效能"
     },
     "This build uses the CPU. Automatic mode measures supported thread counts and remembers the fastest result.": {
       "fr": "Cette version utilise le CPU. Le mode automatique mesure les nombres de threads pris en charge et mémorise le plus rapide.",
@@ -7337,7 +7344,8 @@
       "hi": "यह संस्करण CPU का उपयोग करता है। अपने आप वाला मोड समर्थित थ्रेड संख्याएँ मापकर सबसे तेज़ परिणाम याद रखता है।",
       "bn": "এই সংস্করণ CPU ব্যবহার করে। স্বয়ংক্রিয় মোড সমর্থিত থ্রেডের সংখ্যা মেপে দ্রুততম ফল মনে রাখে।",
       "ko": "이 빌드는 CPU를 사용합니다. 자동 모드는 지원되는 스레드 수를 측정하고 가장 빠른 결과를 기억합니다.",
-      "ja": "このビルドは CPU を使用します。自動モードは対応するスレッド数で性能を測定し、最も速い結果を記憶します。"
+      "ja": "このビルドは CPU を使用します。自動モードは対応するスレッド数で性能を測定し、最も速い結果を記憶します。",
+      "zh-Hant": "此版本使用 CPU。自動模式會測量支援的執行緒數量，並記住最快的結果。"
     }
   }
 }
