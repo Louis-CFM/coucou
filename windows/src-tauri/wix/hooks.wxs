@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <!-- Referencing this group links the entire fragment, including the action. -->
+    <ComponentGroup Id="CoucouHookCleanup" />
+
+    <!-- Path is the main executable's file id in Tauri's WiX template. Hooks
+         belong to the invoking user, so never run cleanup as LocalSystem. -->
+    <CustomAction Id="CoucouUninstallHooks"
+                  FileKey="Path"
+                  ExeCommand="--uninstall-hooks"
+                  Execute="deferred"
+                  Impersonate="yes"
+                  Return="check" />
+
+    <InstallExecuteSequence>
+      <!-- A failed cleanup aborts uninstall before the app and relay are removed.
+           Major upgrades retain hooks for the replacement installation. -->
+      <Custom Action="CoucouUninstallHooks" Before="RemoveFiles">
+        <![CDATA[Installed AND REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE]]>
+      </Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>
