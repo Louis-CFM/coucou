@@ -6,6 +6,7 @@ import { t } from "../../i18n/i18n";
 import { FlowBridge, type Replacement, type Snippet } from "../../core/flow";
 import type { HubContext } from "../shell";
 import { emptyState } from "../hero";
+import { pageSave } from "../save";
 import { button, card, icon, iconButton, label } from "../ui";
 
 function newId(): string {
@@ -22,19 +23,24 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
   const data = (await FlowBridge.words()) ?? { words: [], replacements: [] };
   let words = data.words;
   let replacements: Replacement[] = data.replacements;
-  const save = () => void FlowBridge.setWords({ words, replacements });
   page.append(ctx.hero("dictionary", t("Dictionary"), t("Names and words Coucou must always spell right.")));
+  const write = pageSave(page);
+  const save = async (next: typeof data) => {
+    if (await write(() => FlowBridge.setWords(next)) !== "saved") return false;
+    words = next.words;
+    replacements = next.replacements;
+    drawWords();
+    drawReplacements();
+    return true;
+  };
 
   // ── Words ──
   const chips = h("div", { class: "hub-chips" });
   const wordInput = input(t("Add a word, e.g. Supabase"), () => addWord());
-  const addWord = () => {
+  const addWord = async () => {
     const w = wordInput.value.trim();
     if (!w || words.some((x) => x.toLowerCase() === w.toLowerCase())) return;
-    words = [...words, w];
-    wordInput.value = "";
-    save();
-    drawWords();
+    if (await save({ words: [...words, w], replacements })) wordInput.value = "";
   };
   const drawWords = () => {
     clear(chips);
@@ -46,9 +52,7 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
       const remove = h("button", { title: t("Delete"), "aria-label": t("Delete") });
       remove.append(icon("x"));
       remove.addEventListener("click", () => {
-        words = words.filter((x) => x !== w);
-        save();
-        drawWords();
+        void save({ words: words.filter((x) => x !== w), replacements });
       });
       chips.append(h("span", { class: "hub-chip" }, h("span", { text: w }), remove));
     }
@@ -62,15 +66,14 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
   const list = h("div", {});
   const from = input(t("Heard, e.g. cloud code"));
   const to = input(t("Written, e.g. Claude Code"), () => addReplacement());
-  const addReplacement = () => {
+  const addReplacement = async () => {
     const f = from.value.trim();
     const w = to.value.trim();
     if (!f || !w) return;
-    replacements = [...replacements.filter((r) => r.from.toLowerCase() !== f.toLowerCase()), { id: newId(), from: f, to: w }];
-    from.value = "";
-    to.value = "";
-    save();
-    drawReplacements();
+    if (await save({ words, replacements: [...replacements.filter((r) => r.from.toLowerCase() !== f.toLowerCase()), { id: newId(), from: f, to: w }] })) {
+      from.value = "";
+      to.value = "";
+    }
   };
   const drawReplacements = () => {
     clear(list);
@@ -81,9 +84,7 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
           h("span", { class: "arrow", text: "→" }),
           h("b", { text: r.to, style: "font-weight:600" }),
           iconButton("trash", t("Delete"), () => {
-            replacements = replacements.filter((x) => x.id !== r.id);
-            save();
-            drawReplacements();
+            void save({ words, replacements: replacements.filter((x) => x.id !== r.id) });
           }),
         ),
       ));
@@ -95,26 +96,28 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
 
 export async function snippetsPage(page: HTMLElement, ctx: HubContext) {
   let snippets: Snippet[] = (await FlowBridge.snippets()) ?? [];
-  const save = () => void FlowBridge.setSnippets(snippets);
   page.append(ctx.hero("snippets", t("Snippets"), t("Say the trigger while dictating: Coucou pastes the whole text in its place.")));
+  const write = pageSave(page);
+  const save = async (next: Snippet[]) => {
+    if (await write(() => FlowBridge.setSnippets(next)) !== "saved") return false;
+    snippets = next;
+    draw();
+    return true;
+  };
 
   let editing: Snippet | null = null;
   const formTitle = h("div", { style: "font:700 14px var(--font)" });
   const trigger = h("input", { class: "hub-input", placeholder: t("What you say, e.g. my signature") }) as HTMLInputElement;
   const text = h("textarea", { class: "hub-textarea", placeholder: t("The text Coucou pastes") }) as HTMLTextAreaElement;
   const cancel = button(t("Cancel"), () => edit(null));
-  const saveButton = button(t("Save"), () => {
+  const saveButton = button(t("Save"), async () => {
     const tr = trigger.value.trim();
     const tx = text.value;
     if (!tr || !tx.trim()) return;
-    if (editing) {
-      snippets = snippets.map((s) => (s.id === editing!.id ? { ...s, trigger: tr, text: tx } : s));
-    } else {
-      snippets = [...snippets, { id: newId(), trigger: tr, text: tx }];
-    }
-    save();
-    edit(null);
-    draw();
+    const next = editing
+      ? snippets.map((s) => (s.id === editing!.id ? { ...s, trigger: tr, text: tx } : s))
+      : [...snippets, { id: newId(), trigger: tr, text: tx }];
+    if (await save(next)) edit(null);
   }, "primary");
   const edit = (s: Snippet | null) => {
     editing = s;
@@ -143,10 +146,8 @@ export async function snippetsPage(page: HTMLElement, ctx: HubContext) {
           edit(s);
           trigger.focus();
         }),
-        iconButton("trash", t("Delete"), () => {
-          snippets = snippets.filter((x) => x.id !== s.id);
-          save();
-          draw();
+        iconButton("trash", t("Delete"), async () => {
+          if (await save(snippets.filter((x) => x.id !== s.id)) && editing?.id === s.id) edit(null);
         }),
       ));
     }
