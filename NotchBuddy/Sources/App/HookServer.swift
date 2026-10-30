@@ -426,6 +426,18 @@ final class HookServer: @unchecked Sendable {
         removeQuestion(id: entry.id, answer: #"{"permissionDecision":"ask"}"#)
     }
 
+    /// An agent ran the tests: Mochi is proud when they pass, breaks into a cold sweat when they
+    /// fail. Only the command and its output are read; an interrupted run gets no reaction.
+    private func reactToTestRun(_ payload: [String: Any], toolFailed: Bool) {
+        let input = payload["tool_input"] as? [String: Any] ?? [:]
+        guard let command = TestRunReaction.command(from: input) else { return }
+        if let response = payload["tool_response"] as? [String: Any], response["interrupted"] as? Bool == true { return }
+        let output = TestRunReaction.output(from: payload)
+        guard let outcome = TestRunReaction.outcome(command: command, output: output, toolFailed: toolFailed) else { return }
+        nbLog("Test run \(outcome == .passed ? "passed" : "failed"): \(command.prefix(80))")
+        NotificationCenter.default.post(name: .triggerEmote, object: outcome == .passed ? BotEmote.proud : BotEmote.sweat)
+    }
+
     /// Returns the tool_input serialized as sorted-keys JSON, "" if absent or empty.
     /// Same computation used in processPermissionRequest and processEvent to match PostToolUse.
     private static func approvalInputKey(_ input: [String: Any]) -> String {
@@ -755,6 +767,7 @@ final class HookServer: @unchecked Sendable {
                 step(String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx))
                 RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
             }
+            reactToTestRun(payload, toolFailed: false)
 
         case "PostToolUseFailure":
             sessions.note(pill: agentId, display: display, working: true)
@@ -762,6 +775,7 @@ final class HookServer: @unchecked Sendable {
                 $0.state = .working
                 $0.appendStep("⚠ failed")
             }
+            reactToTestRun(payload, toolFailed: true)
 
         case "Notification":
             sessions.note(pill: agentId, display: display, working: false)
