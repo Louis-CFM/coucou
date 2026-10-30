@@ -24,6 +24,9 @@ enum AsciiMochiTests {
         precondition(g.text == "b   \n    ")
         precondition(AsciiMath.lerpColor(0x000000, 0xFFFFFF, 0.5) == 0x808080)
         precondition(AsciiMath.hash(1, 2, 3) == AsciiMath.hash(1, 2, 3))
+        precondition(AsciiMath.seg(1, 5, 5) == 0)
+        precondition(AsciiMochi.glitch(mood: .idle, t: 1.0, rows: 0) == nil)
+        precondition(AsciiMochi.glitch(mood: .idle, t: 1.0, rows: -1) == nil)
     }
 
     static func cells(_ g: AsciiGrid, where f: (Character) -> Bool) -> Int {
