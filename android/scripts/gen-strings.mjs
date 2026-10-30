@@ -22,6 +22,7 @@ const review = argv.includes("--review");
 // Every language the app can have: the BCP 47 tag, the folder qualifier of its resources, its name in its own language (the picker shows
 // it so a person can find their language whatever the phone speaks), and the plural categories Android needs for it (CLDR).
 export const LANGUAGES = [
+  { tag: "it", qualifier: "it", name: "Italiano", plural: ["one", "many", "other"] },
   { tag: "fr", qualifier: "fr", name: "Français", plural: ["one", "many", "other"] },
   { tag: "es", qualifier: "es", name: "Español", plural: ["one", "many", "other"] },
   { tag: "pt-BR", qualifier: "pt-rBR", name: "Português (Brasil)", plural: ["one", "many", "other"] },

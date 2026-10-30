@@ -478,6 +478,7 @@ struct SettingsView: View {
                     Text("ไทย").tag("th")
                     Text("한국어").tag("ko")
                     Text("日本語").tag("ja")
+                    Text("Italiano").tag("it")
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()

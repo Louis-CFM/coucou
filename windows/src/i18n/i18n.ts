@@ -18,7 +18,7 @@
 import MAC from "./strings.json";
 import EXTRA from "./extra.json";
 
-export const LANGUAGE_CODES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja"] as const;
+export const LANGUAGE_CODES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja", "it"] as const;
 export type Language = (typeof LANGUAGE_CODES)[number];
 
 /** The picker's entries, each in its own language, in the Mac's order. */
@@ -37,6 +37,7 @@ export const LANGUAGES: readonly { code: Language; name: string }[] = [
   { code: "tr", name: "Türkçe" },
   { code: "ko", name: "한국어" },
   { code: "ja", name: "日本語" },
+  { code: "it", name: "Italiano" },
 ];
 
 export type Vars = Record<string, string | number>;
