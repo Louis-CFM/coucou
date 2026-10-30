@@ -10,7 +10,6 @@ import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { MediaState } from "./media-state";
 import type { MarketPrefs } from "./markets";
 import type { PortfolioWallet, PortfolioSettings, PortfolioCredentials } from "./portfolio";
-import type { SpotifyState } from "./spotify";
 import type { UpdateStatus } from "./update";
 import type { WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
 
