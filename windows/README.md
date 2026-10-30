@@ -51,6 +51,7 @@ You can also [build it yourself](#build-it-yourself).
 | What you do | What happens |
 |---|---|
 | Move the mouse to the very top-centre of the screen | Mochi peeks out |
+| Look at the small island | Mochi and the pills sit close together on a 149 px bar. With **Settings → General → Show clock in the island** it is 233 px wide and shows the time, with the date below it, between them. On Windows the time follows your Windows 12 or 24 hour setting and the date its day or month order; the names follow the Coucou language. It updates once a minute, only while the small island shows |
 | Click the small island | It opens. With **Settings → General → Open on hover**, resting the pointer on it is enough, and it folds again shortly after the pointer leaves (click inside to keep it open) |
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |

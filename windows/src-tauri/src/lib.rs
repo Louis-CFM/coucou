@@ -184,6 +184,12 @@ fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width:
     }
 }
 
+/// The user's short time and date patterns, for the compact bar's clock. Nothing is stored.
+#[tauri::command]
+fn regional_format() -> platform::RegionalFormat {
+    platform::regional_format()
+}
+
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
     let Some(win) = island::window(&app) else { return };
@@ -854,6 +860,7 @@ pub fn run() {
             set_system_languages,
             set_collapsed,
             set_island_rect,
+            regional_format,
             focus_window,
             reposition,
             fit_zoom,
