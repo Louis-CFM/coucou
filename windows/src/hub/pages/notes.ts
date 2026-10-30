@@ -97,7 +97,7 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
       if (n.status === "recording") item.querySelector(".m")!.prepend(h("span", { class: "hub-rec", style: "margin-inline-end:6px" }));
       listEl.append(item);
     }
-    listEl.append(h("div", { style: "flex:1" }), h("div", { class: "hub-note", style: "padding:10px;border-radius:10px;background:rgba(255,255,255,0.04)", text: t("Everything stays on this computer. Tell the people in the call that you are recording.") }));
+    listEl.append(h("div", { style: "flex:1" }), h("div", { class: "hub-note", style: "padding:10px;border-radius:10px;background:rgba(255,255,255,0.04)", text: t("Audio and transcripts are stored on this computer. Summaries send text to the provider selected in Flow Settings. Tell the people in the call that you are recording.") }));
   }
 
   function drawDetail() {
@@ -185,7 +185,8 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
       detail.append(emptyState(t("Coucou is writing the transcript, person by person…"), "working", "#3B9EFF"));
       return;
     }
-    if (note.status === "failed") {
+    if (note.error && note.status !== "failed") detail.append(h("div", { class: "hub-warn", text: note.error }));
+      if (note.status === "failed") {
       detail.append(h("div", { class: "hub-warn", text: `${t("The transcript could not be written.")} ${note.error ?? ""}` }));
       detail.append(button(t("Retry"), () => void FlowBridge.retryNote(note.id)));
       return;
