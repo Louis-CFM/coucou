@@ -13446,97 +13446,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "كلاهما يستخدم Claude، باشتراكك عبر Claude Code أو بمفتاحك: الكلمات فقط تذهب إلى Anthropic، وصوتك لا يغادر جهاز Mac. إذا لم يرد Claude في الوقت المناسب، تُلصق الكلمات كما سُمعت."
+            "value" : "كلاهما يستخدم Claude، باشتراكك عبر Claude Code أو بمفتاحك: الكلمات فقط تذهب إلى Anthropic، وصوتك لا يغادر جهاز Mac. إذا لم يرد Claude في الوقت المناسب، تُلصق الكلمات كما سُمعت. عبر Claude Code يستغرق الأمر وقتًا أطول قليلًا مما يستغرقه بالمفتاح."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "দুটোই Claude ব্যবহার করে, Claude Code দিয়ে আপনার প্ল্যানে অথবা আপনার নিজের কী দিয়ে: শুধু কথাগুলো Anthropic-এ যায়, আপনার কণ্ঠ কখনো নয়, সেটি আপনার Mac-এ থাকে। Claude সময়মতো উত্তর না দিলে কথাগুলো যেমন শোনা গেছে তেমনই পেস্ট হয়।"
+            "value" : "দুটোই Claude ব্যবহার করে, Claude Code দিয়ে আপনার প্ল্যানে অথবা আপনার নিজের কী দিয়ে: শুধু কথাগুলো Anthropic-এ যায়, আপনার কণ্ঠ কখনো নয়, সেটি আপনার Mac-এ থাকে। Claude সময়মতো উত্তর না দিলে কথাগুলো যেমন শোনা গেছে তেমনই পেস্ট হয়। Claude Code দিয়ে কী-এর চেয়ে একটু বেশি সময় লাগে।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beide nutzen Claude, mit deinem Abo über Claude Code oder mit deinem eigenen Schlüssel: Nur der Text geht an Anthropic, niemals deine Stimme, die auf deinem Mac bleibt. Wenn Claude nicht rechtzeitig antwortet, werden deine Worte wie gehört eingefügt."
+            "value" : "Beide nutzen Claude, mit deinem Abo über Claude Code oder mit deinem eigenen Schlüssel: Nur der Text geht an Anthropic, niemals deine Stimme, die auf deinem Mac bleibt. Wenn Claude nicht rechtzeitig antwortet, werden deine Worte wie gehört eingefügt. Über Claude Code dauert es etwas länger als mit einem Schlüssel."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Both use Claude, on your Claude plan through Claude Code or with your own key: only the words go to Anthropic, never your voice, which stays on your Mac. If Claude doesn't answer in time, the words are pasted as heard."
+            "value" : "Both use Claude, on your Claude plan through Claude Code or with your own key: only the words go to Anthropic, never your voice, which stays on your Mac. If Claude doesn't answer in time, the words are pasted as heard. Through Claude Code it takes a little longer than with a key."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ambos usan Claude, con tu plan a través de Claude Code o con tu propia clave: solo las palabras van a Anthropic, nunca tu voz, que se queda en tu Mac. Si Claude no responde a tiempo, las palabras se pegan tal cual."
+            "value" : "Ambos usan Claude, con tu plan a través de Claude Code o con tu propia clave: solo las palabras van a Anthropic, nunca tu voz, que se queda en tu Mac. Si Claude no responde a tiempo, las palabras se pegan tal cual. Con Claude Code tarda un poco más que con una clave."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les deux passent par Claude, avec ton abonnement via Claude Code ou avec ta propre clé : seuls les mots partent chez Anthropic, jamais ta voix, qui reste sur ton Mac. Si Claude ne répond pas à temps, les mots sont collés tels qu'entendus."
+            "value" : "Les deux passent par Claude, avec ton abonnement via Claude Code ou avec ta propre clé : seuls les mots partent chez Anthropic, jamais ta voix, qui reste sur ton Mac. Si Claude ne répond pas à temps, les mots sont collés tels qu'entendus. Via Claude Code, c'est un peu plus long qu'avec une clé."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "दोनों Claude का उपयोग करते हैं, Claude Code के ज़रिए आपके प्लान पर या आपकी अपनी कुंजी से: सिर्फ़ शब्द Anthropic को जाते हैं, आपकी आवाज़ कभी नहीं, वह आपके Mac पर रहती है। अगर Claude समय पर जवाब न दे, तो शब्द जैसे सुने गए वैसे पेस्ट होते हैं।"
+            "value" : "दोनों Claude का उपयोग करते हैं, Claude Code के ज़रिए आपके प्लान पर या आपकी अपनी कुंजी से: सिर्फ़ शब्द Anthropic को जाते हैं, आपकी आवाज़ कभी नहीं, वह आपके Mac पर रहती है। अगर Claude समय पर जवाब न दे, तो शब्द जैसे सुने गए वैसे पेस्ट होते हैं। Claude Code के ज़रिए कुंजी की तुलना में थोड़ा ज़्यादा समय लगता है।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keduanya memakai Claude, dengan paketmu lewat Claude Code atau dengan kuncimu sendiri: hanya kata-kata yang dikirim ke Anthropic, suaramu tidak pernah, tetap di Mac-mu. Jika Claude tidak menjawab tepat waktu, kata-kata ditempel apa adanya."
+            "value" : "Keduanya memakai Claude, dengan paketmu lewat Claude Code atau dengan kuncimu sendiri: hanya kata-kata yang dikirim ke Anthropic, suaramu tidak pernah, tetap di Mac-mu. Jika Claude tidak menjawab tepat waktu, kata-kata ditempel apa adanya. Lewat Claude Code, prosesnya sedikit lebih lama daripada dengan kunci."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "どちらも Claude を使います（Claude Code 経由のプラン、または自分のキー）。Anthropic に送られるのは言葉だけで、声は送られず Mac に残ります。Claude が時間内に応答しない場合は、聞き取ったとおりに貼り付けられます。"
+            "value" : "どちらも Claude を使います（Claude Code 経由のプラン、または自分のキー）。Anthropic に送られるのは言葉だけで、声は送られず Mac に残ります。Claude が時間内に応答しない場合は、聞き取ったとおりに貼り付けられます。Claude Code 経由だと、キーを使う場合より少し時間がかかります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "둘 다 Claude를 사용해요. Claude Code로 내 요금제를 쓰거나 내 키를 써요. Anthropic으로는 단어만 가고, 음성은 보내지 않고 Mac에만 남아요. Claude가 제때 답하지 않으면 들린 그대로 붙여넣어요."
+            "value" : "둘 다 Claude를 사용해요. Claude Code로 내 요금제를 쓰거나 내 키를 써요. Anthropic으로는 단어만 가고, 음성은 보내지 않고 Mac에만 남아요. Claude가 제때 답하지 않으면 들린 그대로 붙여넣어요. Claude Code를 거치면 키를 쓸 때보다 조금 더 걸려요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Os dois usam o Claude, com seu plano pelo Claude Code ou com sua própria chave: só as palavras vão para a Anthropic, nunca sua voz, que fica no seu Mac. Se o Claude não responder a tempo, as palavras são coladas como foram ouvidas."
+            "value" : "Os dois usam o Claude, com seu plano pelo Claude Code ou com sua própria chave: só as palavras vão para a Anthropic, nunca sua voz, que fica no seu Mac. Se o Claude não responder a tempo, as palavras são coladas como foram ouvidas. Pelo Claude Code, leva um pouco mais de tempo do que com uma chave."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Оба режима используют Claude — по вашей подписке через Claude Code или с вашим ключом: в Anthropic уходят только слова, а голос остаётся на вашем Mac. Если Claude не ответит вовремя, слова вставятся как услышаны."
+            "value" : "Оба режима используют Claude — по вашей подписке через Claude Code или с вашим ключом: в Anthropic уходят только слова, а голос остаётся на вашем Mac. Если Claude не ответит вовремя, слова вставятся как услышаны. Через Claude Code это чуть дольше, чем с ключом."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ทั้งสองโหมดใช้ Claude ผ่านแพ็กเกจของคุณด้วย Claude Code หรือด้วยคีย์ของคุณ โดยส่งเฉพาะข้อความไปยัง Anthropic ไม่ส่งเสียง ซึ่งยังคงอยู่บน Mac ของคุณ หาก Claude ไม่ตอบทันเวลา ระบบจะพิมพ์ข้อความตามที่ได้ยิน"
+            "value" : "ทั้งสองโหมดใช้ Claude ผ่านแพ็กเกจของคุณด้วย Claude Code หรือด้วยคีย์ของคุณ โดยส่งเฉพาะข้อความไปยัง Anthropic ไม่ส่งเสียง ซึ่งยังคงอยู่บน Mac ของคุณ หาก Claude ไม่ตอบทันเวลา ระบบจะพิมพ์ข้อความตามที่ได้ยิน ผ่าน Claude Code จะใช้เวลานานกว่าการใช้คีย์เล็กน้อย"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İkisi de Claude'u kullanır; Claude Code üzerinden planınla ya da kendi anahtarınla: Anthropic'e yalnızca metin gönderilir; sesin her zaman Mac'inde kalır. Claude zamanında yanıt vermezse sözlerin duyulduğu gibi yapıştırılır."
+            "value" : "İkisi de Claude'u kullanır; Claude Code üzerinden planınla ya da kendi anahtarınla: Anthropic'e yalnızca metin gönderilir; sesin her zaman Mac'inde kalır. Claude zamanında yanıt vermezse sözlerin duyulduğu gibi yapıştırılır. Claude Code üzerinden, anahtarla olduğundan biraz daha uzun sürer."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "两者都使用 Claude：通过 Claude Code 使用你的套餐，或使用你自己的密钥。只有文字会发送给 Anthropic，声音始终留在你的 Mac 上。如果 Claude 没有及时回复，就按听到的原文粘贴。"
+            "value" : "两者都使用 Claude：通过 Claude Code 使用你的套餐，或使用你自己的密钥。只有文字会发送给 Anthropic，声音始终留在你的 Mac 上。如果 Claude 没有及时回复，就按听到的原文粘贴。通过 Claude Code 会比用密钥稍慢一些。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "這兩項功能都使用 Claude：透過 Claude Code 使用你的方案，或使用你的金鑰；只會將文字傳送給 Anthropic，語音會留在 Mac 上。若 Claude 未及時回應，會貼上辨識到的原始文字。"
+            "value" : "這兩項功能都使用 Claude：透過 Claude Code 使用你的方案，或使用你的金鑰；只會將文字傳送給 Anthropic，語音會留在 Mac 上。若 Claude 未及時回應，會貼上辨識到的原始文字。透過 Claude Code 會比使用金鑰稍慢一些。"
           }
         }
       }
@@ -20599,97 +20599,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "عند تشغيل التنقيح يُرسل النص (وليس صوتك أبدًا) إلى Anthropic، عبر Claude Code لديك أو بمفتاح Claude الخاص بك. وعند إيقافه يبقى كل شيء على جهاز Mac."
+            "value" : "عند تشغيل التنقيح يُرسل النص (وليس صوتك أبدًا) إلى Anthropic، عبر Claude Code لديك أو بمفتاح Claude الخاص بك. عبر Claude Code يستغرق الأمر وقتًا أطول قليلًا مما يستغرقه بالمفتاح. وعند إيقافه يبقى كل شيء على جهاز Mac."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "পরিষ্কার চালু থাকলে লেখা (কখনো আপনার কণ্ঠ নয়) আপনার Claude Code দিয়ে বা আপনার Claude কী দিয়ে Anthropic-এ যায়। বন্ধ থাকলে সব আপনার Mac-এই থাকে।"
+            "value" : "পরিষ্কার চালু থাকলে লেখা (কখনো আপনার কণ্ঠ নয়) আপনার Claude Code দিয়ে বা আপনার Claude কী দিয়ে Anthropic-এ যায়। Claude Code দিয়ে কী-এর চেয়ে একটু বেশি সময় লাগে। বন্ধ থাকলে সব আপনার Mac-এই থাকে।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bei aktivierter Überarbeitung wird der Text über dein Claude Code oder mit deinem Claude-Schlüssel an Anthropic gesendet, niemals deine Stimme. Ist sie aus, bleibt alles auf deinem Mac."
+            "value" : "Bei aktivierter Überarbeitung wird der Text über dein Claude Code oder mit deinem Claude-Schlüssel an Anthropic gesendet, niemals deine Stimme. Über Claude Code dauert es etwas länger als mit einem Schlüssel. Ist sie aus, bleibt alles auf deinem Mac."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "With the clean-up on, the text (never your voice) goes to Anthropic, through your Claude Code or with your Claude key. Off, everything stays on your Mac."
+            "value" : "With the clean-up on, the text (never your voice) goes to Anthropic, through your Claude Code or with your Claude key. Through Claude Code it takes a little longer than with a key. Off, everything stays on your Mac."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con la limpieza activada, el texto (nunca tu voz) va a Anthropic, a través de tu Claude Code o con tu clave de Claude. Desactivada, todo se queda en tu Mac."
+            "value" : "Con la limpieza activada, el texto (nunca tu voz) va a Anthropic, a través de tu Claude Code o con tu clave de Claude. Con Claude Code tarda un poco más que con una clave. Desactivada, todo se queda en tu Mac."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avec le nettoyage, le texte (jamais ta voix) part chez Anthropic, via ton Claude Code ou avec ta clé Claude. Sans, tout reste sur ton Mac."
+            "value" : "Avec le nettoyage, le texte (jamais ta voix) part chez Anthropic, via ton Claude Code ou avec ta clé Claude. Via Claude Code, c'est un peu plus long qu'avec une clé. Sans, tout reste sur ton Mac."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सफ़ाई चालू होने पर टेक्स्ट (आपकी आवाज़ कभी नहीं) आपके Claude Code के ज़रिए या आपकी Claude कुंजी के साथ Anthropic को जाता है। बंद होने पर सब कुछ आपके Mac पर रहता है।"
+            "value" : "सफ़ाई चालू होने पर टेक्स्ट (आपकी आवाज़ कभी नहीं) आपके Claude Code के ज़रिए या आपकी Claude कुंजी के साथ Anthropic को जाता है। Claude Code के ज़रिए कुंजी की तुलना में थोड़ा ज़्यादा समय लगता है। बंद होने पर सब कुछ आपके Mac पर रहता है।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saat perapian aktif, teksnya (bukan suaramu) dikirim ke Anthropic lewat Claude Code-mu atau dengan kunci Claude-mu. Saat mati, semuanya tetap di Mac-mu."
+            "value" : "Saat perapian aktif, teksnya (bukan suaramu) dikirim ke Anthropic lewat Claude Code-mu atau dengan kunci Claude-mu. Lewat Claude Code, prosesnya sedikit lebih lama daripada dengan kunci. Saat mati, semuanya tetap di Mac-mu."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整える機能がオンのとき、テキスト（声は送られません）が Claude Code 経由、またはあなたの Claude キーで Anthropic に送られます。オフならすべて Mac に残ります。"
+            "value" : "整える機能がオンのとき、テキスト（声は送られません）が Claude Code 経由、またはあなたの Claude キーで Anthropic に送られます。Claude Code 経由だと、キーを使う場合より少し時間がかかります。オフならすべて Mac に残ります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다듬기를 켜면 텍스트(음성은 전송되지 않아요)가 내 Claude Code를 거치거나 Claude 키와 함께 Anthropic으로 전송돼요. 끄면 모든 게 Mac에만 남아요."
+            "value" : "다듬기를 켜면 텍스트(음성은 전송되지 않아요)가 내 Claude Code를 거치거나 Claude 키와 함께 Anthropic으로 전송돼요. Claude Code를 거치면 키를 쓸 때보다 조금 더 걸려요. 끄면 모든 게 Mac에만 남아요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Com a limpeza ligada, o texto (nunca sua voz) vai para a Anthropic, pelo seu Claude Code ou com sua chave do Claude. Desligada, tudo fica no seu Mac."
+            "value" : "Com a limpeza ligada, o texto (nunca sua voz) vai para a Anthropic, pelo seu Claude Code ou com sua chave do Claude. Pelo Claude Code, leva um pouco mais de tempo do que com uma chave. Desligada, tudo fica no seu Mac."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Когда чистка включена, текст (но не голос) уходит в Anthropic — через ваш Claude Code или с вашим ключом Claude. Когда выключена, всё остаётся на Mac."
+            "value" : "Когда чистка включена, текст (но не голос) уходит в Anthropic — через ваш Claude Code или с вашим ключом Claude. Через Claude Code это чуть дольше, чем с ключом. Когда выключена, всё остаётся на Mac."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "เมื่อเปิดใช้ ระบบจะส่งข้อความ (ไม่ใช่เสียง) ไปยัง Anthropic ผ่าน Claude Code ของคุณหรือด้วยคีย์ Claude ของคุณ เมื่อปิด ทุกอย่างจะอยู่บน Mac"
+            "value" : "เมื่อเปิดใช้ ระบบจะส่งข้อความ (ไม่ใช่เสียง) ไปยัง Anthropic ผ่าน Claude Code ของคุณหรือด้วยคีย์ Claude ของคุณ ผ่าน Claude Code จะใช้เวลานานกว่าการใช้คีย์เล็กน้อย เมื่อปิด ทุกอย่างจะอยู่บน Mac"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Düzenleme açıkken metin, Claude Code'un üzerinden ya da Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Kapalıyken her şey Mac'inde kalır."
+            "value" : "Düzenleme açıkken metin, Claude Code'un üzerinden ya da Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Claude Code üzerinden, anahtarla olduğundan biraz daha uzun sürer. Kapalıyken her şey Mac'inde kalır."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "开启整理时，文字（绝不是你的声音）会通过你的 Claude Code 或用你的 Claude 密钥发送给 Anthropic。关闭时，一切都留在你的 Mac 上。"
+            "value" : "开启整理时，文字（绝不是你的声音）会通过你的 Claude Code 或用你的 Claude 密钥发送给 Anthropic。通过 Claude Code 会比用密钥稍慢一些。关闭时，一切都留在你的 Mac 上。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟文字整理時，會透過你的 Claude Code 或使用你的 Claude 金鑰將文字傳送至 Anthropic，不會傳送語音。關閉時，所有資料都留在 Mac 上。"
+            "value" : "開啟文字整理時，會透過你的 Claude Code 或使用你的 Claude 金鑰將文字傳送至 Anthropic，不會傳送語音。透過 Claude Code 會比使用金鑰稍慢一些。關閉時，所有資料都留在 Mac 上。"
           }
         }
       }
