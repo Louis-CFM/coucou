@@ -265,8 +265,11 @@ final class FlowDictation: ObservableObject {
 
     /// One listen, from the key press to the paste. Cancelling it drops its words.
     @MainActor private final class Listen {
-        /// The Mac's recognizer, or Parakeet when it is chosen and downloaded.
-        let apple: MacDictation?
+        /// The Mac's recognizer (its newer model when it knows the languages), or Parakeet when it
+        /// is chosen and downloaded. The Mac's is picked when the listen starts.
+        private(set) var apple: MacDictation?
+        /// `AnalyzerDictation`, kept untyped so Listen stays available before macOS 26.
+        private(set) var analyzer: AnyObject?
         let parakeet: ParakeetDictation?
         var cancelled = false
         /// The app the words go to, seen when the key went down.
@@ -275,29 +278,47 @@ final class FlowDictation: ObservableObject {
         var stoppedAt: Date?
 
         init(useParakeet: Bool) {
-            apple = useParakeet ? nil : MacDictation()
             parakeet = useParakeet ? ParakeetDictation() : nil
         }
 
-        var isRecording: Bool { apple?.isRecording ?? parakeet?.isRecording ?? false }
+        var isRecording: Bool {
+            if #available(macOS 26.0, *), let analyzer = analyzer as? AnalyzerDictation { return analyzer.isRecording }
+            return apple?.isRecording ?? parakeet?.isRecording ?? false
+        }
 
         func start(bands: FlowAudioBands) async {
-            if let apple {
-                apple.bands = bands
-                await apple.start(from: "")
-            } else if let parakeet {
+            if let parakeet {
                 parakeet.bands = bands
                 await parakeet.start()
+                return
             }
+            if #available(macOS 26.0, *) {
+                let language = UserDefaults.standard.string(forKey: MacDictation.languageKey) ?? MacDictation.automatic
+                if let locales = await AnalyzerDictation.locales(for: language) {
+                    let analyzer = AnalyzerDictation(locales: locales)
+                    analyzer.bands = bands
+                    self.analyzer = analyzer
+                    await analyzer.start()
+                    if analyzer.isRecording || cancelled { return }
+                    // The newer model couldn't start: the Mac's recognizer listens instead.
+                    self.analyzer = nil
+                }
+            }
+            let apple = MacDictation()
+            apple.bands = bands
+            self.apple = apple
+            await apple.start(from: "")
         }
 
         func finish() async -> String {
+            if #available(macOS 26.0, *), let analyzer = analyzer as? AnalyzerDictation { return await analyzer.finish() }
             if let apple { return await apple.finish() }
             if let parakeet { return await parakeet.finish() }
             return ""
         }
 
         func stop() {
+            if #available(macOS 26.0, *), let analyzer = analyzer as? AnalyzerDictation { analyzer.stop() }
             apple?.stop()
             parakeet?.stop()
         }
