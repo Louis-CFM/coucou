@@ -534,6 +534,33 @@ pub fn pin_to_monitor(win: &WebviewWindow, x: i32, y: i32) {
     unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), mon_ptr) };
 }
 
+/// How far below the top edge of the display at logical (`x`, `y`) the island
+/// has to sit, in logical pixels. GNOME draws its top bar over every X11
+/// window, docks included, so there the island goes just under the bar (the
+/// top of the display's work area). Zero for a layer surface, which sits over
+/// any panel, and on other desktops.
+pub fn top_inset(win: &WebviewWindow, x: i32, y: i32) -> i32 {
+    if LAYER_SURFACE.load(Ordering::Relaxed) || !is_gnome(&std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default()) {
+        return 0;
+    }
+    let Ok(gw) = win.gtk_window() else { return 0 };
+    let display = gw.display();
+    let monitor = (0..display.n_monitors())
+        .filter_map(|i| display.monitor(i))
+        .find(|m| {
+            let g = m.geometry();
+            g.x() == x && g.y() == y
+        });
+    monitor.map(|m| panel_inset(m.geometry().y(), m.workarea().y())).unwrap_or(0)
+}
+
+/// The top bar's height from the display's and its work area's top edges,
+/// within reason: a work area pushed further down is not a top bar.
+fn panel_inset(display_top: i32, workarea_top: i32) -> i32 {
+    let inset = workarea_top - display_top;
+    if (1..=100).contains(&inset) { inset } else { 0 }
+}
+
 /// Temporarily allow keyboard focus so a text field inside the island can be
 /// typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
@@ -797,6 +824,14 @@ mod tests {
         assert!(!is_private_dir(&base.join("missing")));
 
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn the_island_clears_a_top_bar_but_not_a_display_without_one() {
+        assert_eq!(panel_inset(1080, 1112), 32);
+        assert_eq!(panel_inset(0, 0), 0);
+        assert_eq!(panel_inset(0, -5), 0);
+        assert_eq!(panel_inset(0, 400), 0);
     }
 
     #[test]

@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, FLOAT_GAP, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
@@ -74,6 +74,8 @@ export class Island {
   private radius = new Tracked(ROUNDED_CORNER);
   private botCx = new Spring(46);
   private botCy = new Spring(16);
+  /** How far the island sits below the window's top edge: FLOAT_GAP while floating, else 0. */
+  private floatTop = 0;
   private botSize = new Spring(10);
 
   private engine = new BotEngine();
@@ -710,13 +712,23 @@ export class Island {
     this.ensureRunning();
   }
 
+  /**
+   * Under a top bar the island can't reach the screen edge (GNOME draws its bar
+   * over every other window), so it floats below it as a pill rounded all round.
+   */
+  setFloating(on: boolean) {
+    this.floatTop = on ? FLOAT_GAP : 0;
+    this.applyGeometry();
+  }
+
   private applyGeometry() {
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
+    this.islandEl.style.top = `${this.floatTop}px`;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    this.islandEl.style.borderRadius = this.floatTop > 0 ? `${r}px` : `0 0 ${r}px ${r}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
@@ -727,9 +739,9 @@ export class Island {
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
     const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
-    const rect = { x: (viewportW - w) / 2, y: 0, w, h: hh };
+    const rect = { x: (viewportW - w) / 2, y: this.floatTop, w, h: hh };
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
+    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.y - rect.y) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
       void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
     }
@@ -740,7 +752,7 @@ export class Island {
     const w = this.width.value;
     const hh = this.height.value;
     const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
-    return { x: (viewportW - w) / 2, y: 0, w, h: hh };
+    return { x: (viewportW - w) / 2, y: this.floatTop, w, h: hh };
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -1178,7 +1190,7 @@ export class Island {
   }
 
   private lookY(): number {
-    return -Math.tanh((State.mouse.y - this.botCy.value) / 200);
+    return -Math.tanh((State.mouse.y - this.floatTop - this.botCy.value) / 200);
   }
 
   private updateCountdown(nowMs: number) {

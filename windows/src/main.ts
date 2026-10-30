@@ -43,6 +43,8 @@ async function main() {
 
   const island = new Island(root);
 
+  // Listening before boot, so a placement that lands in between is not missed.
+  await onEvent<boolean>("island-floating", (on) => island.setFloating(on));
   const boot = await Bridge.boot();
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
@@ -57,6 +59,7 @@ async function main() {
   island.applySettings();
   State.loadIntegrationTasks();
   if (boot && !boot.cursorPoll) island.followPageCursor();
+  if (boot?.floating) island.setFloating(true);
   await island.desktop.init();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
