@@ -365,7 +365,10 @@ final class FlowDictation: ObservableObject {
             let text = FlowText.finish(body, snippets: prepared.snippets)
             if !text.isEmpty {
                 let spoken = (listen.stoppedAt ?? Date()).timeIntervalSince(listen.startedAt)
-                store.record(text: text, app: listen.app?.localizedName, seconds: spoken)
+                // What would have gone in without Claude, kept beside the rewrite in the history.
+                let original = FlowText.finish(prepared.text, snippets: prepared.snippets)
+                store.record(text: text, heard: original == text ? nil : original,
+                             app: listen.app?.localizedName, seconds: spoken)
             }
             // A new listen may have begun meanwhile: its pill is left alone, but these words still go in.
             let latest = self.current === listen
