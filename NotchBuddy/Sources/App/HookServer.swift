@@ -428,6 +428,8 @@ final class HookServer: @unchecked Sendable {
 
     /// An agent ran the tests: Mochi is proud when they pass, breaks into a cold sweat when they
     /// fail. Only the command and its output are read; an interrupted run gets no reaction.
+    /// A hidden island shows up quietly first, so the reaction is seen without a click.
+    @MainActor
     private func reactToTestRun(_ payload: [String: Any], toolFailed: Bool) {
         let input = payload["tool_input"] as? [String: Any] ?? [:]
         guard let command = TestRunReaction.command(from: input) else { return }
@@ -435,7 +437,16 @@ final class HookServer: @unchecked Sendable {
         let output = TestRunReaction.output(from: payload)
         guard let outcome = TestRunReaction.outcome(command: command, output: output, toolFailed: toolFailed) else { return }
         nbLog("Test run \(outcome == .passed ? "passed" : "failed"): \(command.prefix(80))")
-        NotificationCenter.default.post(name: .triggerEmote, object: outcome == .passed ? BotEmote.proud : BotEmote.sweat)
+        let emote = outcome == .passed ? BotEmote.proud : BotEmote.sweat
+        guard AppState.shared.mode == .hidden else {
+            NotificationCenter.default.post(name: .triggerEmote, object: emote)
+            return
+        }
+        NotificationCenter.default.post(name: .quietReveal, object: nil)
+        // Once the island has opened and Mochi is on screen.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            NotificationCenter.default.post(name: .triggerEmote, object: emote)
+        }
     }
 
     /// Returns the tool_input serialized as sorted-keys JSON, "" if absent or empty.
