@@ -213,7 +213,7 @@ export const FlowBridge = {
   summarize: (id: string) => call<void>("notes_summarize", { id }),
   retryNote: (id: string) => call<void>("notes_retry", { id }),
   markdown: (id: string) => call<string>("notes_markdown", { id }),
-  exportNote: (id: string) => callOrThrow<string>("notes_export", { id }),
+  exportNote: (id: string) => callOrThrow<string | null>("notes_export", { id }),
 
   pillState: () => call<PillState>("pill_state"),
   pillHot: (rects: [number, number, number, number][]) => call<void>("pill_hot", { rects }),
