@@ -17,6 +17,7 @@ mod i18n;
 mod identity;
 mod integrations;
 mod calcom;
+mod markets;
 mod island;
 mod local_chat;
 mod text_ai;
@@ -974,6 +975,12 @@ pub fn run() {
             sounds::custom_sound,
             sounds::reveal_sounds_folder,
             sounds::reload_sounds,
+            markets::portfolio::portfolio_settings,
+            markets::portfolio::portfolio_save_wallets,
+            markets::portfolio::portfolio_connect,
+            markets::portfolio::portfolio_disconnect,
+            markets::markets_prefs,
+            markets::markets_save,
             spotify::spotify_refresh,
             apple_music::apple_music_refresh,
             apple_music::apple_music_control,

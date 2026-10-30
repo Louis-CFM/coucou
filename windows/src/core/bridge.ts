@@ -8,6 +8,9 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { MediaState } from "./media-state";
+import type { MarketPrefs } from "./markets";
+import type { PortfolioWallet, PortfolioSettings, PortfolioCredentials } from "./portfolio";
+import type { SpotifyState } from "./spotify";
 import type { UpdateStatus } from "./update";
 import type { WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
 
@@ -368,7 +371,12 @@ export const Bridge = {
   appleMusicRefresh: () => call<MediaState | null>("apple_music_refresh"),
   appleMusicControl: (action: string, value?: number) => call<boolean>("apple_music_control", { action, value: value ?? null }),
   appleMusicOpen: () => call<boolean>("apple_music_open"),
-  /**
+  portfolioSettings: () => call<PortfolioSettings>("portfolio_settings"),
+  portfolioSaveWallets: (wallets: PortfolioWallet[]) => invoke<void>("portfolio_save_wallets", { wallets }),
+  portfolioConnect: (exchange: string, credentials: PortfolioCredentials) => invoke<void>("portfolio_connect", { exchange, credentials }),
+  portfolioDisconnect: (exchange: string) => invoke<void>("portfolio_disconnect", { exchange }),
+  marketPrefs: () => call<MarketPrefs>("markets_prefs"),
+  marketSave: (prefs: MarketPrefs) => invoke<MarketPrefs>("markets_save", { prefs }),  /**
    * The models a provider offers, for the picker in the chat view. Rust asks
    * the provider only when it has a key (or a server address).
    */
