@@ -6,7 +6,7 @@ import { t } from "../i18n/i18n";
 export type RingName = "convert" | "tools" | "actions";
 
 /** Tools that open the editor window (one image). */
-export const EDITOR_TOOLS = new Set(["crop", "edit", "annotate", "redact", "background"]);
+export const EDITOR_TOOLS = new Set(["crop", "edit", "annotate", "redact", "background", "trim"]);
 
 const ICON: Record<string, string> = {
   compress: "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5",
@@ -17,6 +17,8 @@ const ICON: Record<string, string> = {
   redact: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zM9.5 12a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0M4 4l16 16",
   background: "M4.5 5.5h15v13h-15zM8 15l3-3 2 2 3-3 3 3",
   mergePdf: "M7.5 3.5h8l3 3v11h-11zM4.5 7v13.5h11",
+  trim: "M6.5 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM6.5 15a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM8.6 8 19.5 18M8.6 16 19.5 6",
+  mute: "M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9.5l5 5M20.5 9.5l-5 5",
   copy: "M8.6 8.6h10.8v10.8H8.6zM15.4 8.6V4.6H4.6v10.8h4",
   copyPath: "M6 3.5h9l3 3v14H6zM9 10h6M9 14h6M9 18h3",
   move: "M3.5 6.5h6l2 2h9v11h-17zM9.5 14h7M13.5 11l3 3-3 3",
@@ -47,6 +49,10 @@ export function labelFor(ring: RingName, id: string): string {
       return t("Background");
     case "mergePdf":
       return t("One PDF");
+    case "trim":
+      return t("Trim");
+    case "mute":
+      return t("No sound");
     case "copy":
       return t("Copy");
     case "copyPath":

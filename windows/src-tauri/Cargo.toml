@@ -93,6 +93,8 @@ windows = { version = "0.61", features = [
   "Win32_UI_WindowsAndMessaging",
   # Cloaked windows (suspended apps) are skipped when Mochi is dropped on one.
   "Win32_Graphics_Dwm",
+  # The wheel's window takes its round shape (wheel/mod.rs).
+  "Win32_Graphics_Gdi",
   # Flow dictation's keyboard hook.
   "Win32_System_LibraryLoader",
   # Mochi feels the computer (vitals.rs): the battery and the thermal zones.

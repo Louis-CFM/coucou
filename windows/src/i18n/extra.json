@@ -8210,6 +8210,97 @@
    "id": "Pas",
    "de": "Passend",
    "tr": "Sığdır"
+  },
+  "Trim": {
+   "zh-Hans": "剪辑",
+   "hi": "ट्रिम",
+   "es": "Recortar",
+   "ar": "قص المقطع",
+   "fr": "Couper",
+   "bn": "ট্রিম",
+   "pt-BR": "Cortar",
+   "ru": "Обрезать",
+   "id": "Potong",
+   "de": "Kürzen",
+   "tr": "Kırp"
+  },
+  "No sound": {
+   "zh-Hans": "去除声音",
+   "hi": "बिना आवाज़",
+   "es": "Sin sonido",
+   "ar": "بدون صوت",
+   "fr": "Sans le son",
+   "bn": "শব্দ ছাড়া",
+   "pt-BR": "Sem som",
+   "ru": "Без звука",
+   "id": "Tanpa suara",
+   "de": "Ohne Ton",
+   "tr": "Sessiz"
+  },
+  "Video and sound need FFmpeg: about 110 MB, downloaded once.": {
+   "zh-Hans": "视频和音频需要 FFmpeg：约 110 MB，只需下载一次。",
+   "hi": "वीडियो और ऑडियो के लिए FFmpeg चाहिए: लगभग 110 MB, एक बार डाउनलोड।",
+   "es": "El vídeo y el sonido necesitan FFmpeg: unos 110 MB, se descarga una vez.",
+   "ar": "يحتاج الفيديو والصوت إلى FFmpeg: نحو 110 ميغابايت، يُنزَّل مرة واحدة.",
+   "fr": "La vidéo et le son ont besoin de FFmpeg : environ 110 Mo, téléchargé une fois.",
+   "bn": "ভিডিও ও অডিওর জন্য FFmpeg লাগবে: প্রায় ১১০ MB, একবারই ডাউনলোড।",
+   "pt-BR": "Vídeo e som precisam do FFmpeg: cerca de 110 MB, baixado uma vez.",
+   "ru": "Для видео и звука нужен FFmpeg: около 110 МБ, загружается один раз.",
+   "id": "Video dan suara memerlukan FFmpeg: sekitar 110 MB, diunduh sekali.",
+   "de": "Video und Ton brauchen FFmpeg: etwa 110 MB, einmal heruntergeladen.",
+   "tr": "Video ve ses için FFmpeg gerekir: yaklaşık 110 MB, bir kez indirilir."
+  },
+  "Downloading FFmpeg…": {
+   "zh-Hans": "正在下载 FFmpeg…",
+   "hi": "FFmpeg डाउनलोड हो रहा है…",
+   "es": "Descargando FFmpeg…",
+   "ar": "جارٍ تنزيل FFmpeg…",
+   "fr": "Téléchargement de FFmpeg…",
+   "bn": "FFmpeg ডাউনলোড হচ্ছে…",
+   "pt-BR": "Baixando o FFmpeg…",
+   "ru": "Загрузка FFmpeg…",
+   "id": "Mengunduh FFmpeg…",
+   "de": "FFmpeg wird geladen…",
+   "tr": "FFmpeg indiriliyor…"
+  },
+  "End": {
+   "zh-Hans": "结束",
+   "hi": "अंत",
+   "es": "Final",
+   "ar": "النهاية",
+   "fr": "Fin",
+   "bn": "শেষ",
+   "pt-BR": "Fim",
+   "ru": "Конец",
+   "id": "Akhir",
+   "de": "Ende",
+   "tr": "Bitiş"
+  },
+  "Kept": {
+   "zh-Hans": "保留",
+   "hi": "रखा गया",
+   "es": "Se conserva",
+   "ar": "المُبقى",
+   "fr": "Conservé",
+   "bn": "রাখা হবে",
+   "pt-BR": "Mantido",
+   "ru": "Останется",
+   "id": "Disimpan",
+   "de": "Bleibt",
+   "tr": "Kalan"
+  },
+  "Already as small as it gets": {
+   "zh-Hans": "已经是最小了",
+   "hi": "यह पहले से ही सबसे छोटा है",
+   "es": "Ya no puede ser más pequeño",
+   "ar": "إنه بالفعل أصغر ما يمكن",
+   "fr": "Déjà aussi léger que possible",
+   "bn": "এটি ইতিমধ্যেই যতটা সম্ভব ছোট",
+   "pt-BR": "Já está o menor possível",
+   "ru": "Меньше уже не сделать",
+   "id": "Sudah sekecil mungkin",
+   "de": "Schon so klein wie möglich",
+   "tr": "Zaten olabildiğince küçük"
   }
  }
 }

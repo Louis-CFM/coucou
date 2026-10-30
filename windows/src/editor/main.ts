@@ -8,12 +8,14 @@ import { Bridge } from "../core/bridge";
 import { resolveLanguage, setLanguage, systemLanguages, t } from "../i18n/i18n";
 import { backgroundLayout, cropToAspect, initialCrop, rectFrom, type Rect } from "./geometry";
 
-type Tool = "crop" | "edit" | "annotate" | "redact" | "background";
+type Tool = "crop" | "edit" | "annotate" | "redact" | "background" | "trim";
 interface Editing {
   path: string;
   name: string;
   tool: Tool;
   image: string;
+  /** Trimming: the length, in seconds. */
+  duration: number | null;
 }
 
 type MarkTool = "arrow" | "box" | "pen" | "text";
@@ -68,6 +70,27 @@ const FILLS: Record<string, string[]> = {
 const COLORS = ["#ff3b30", "#ff9f0a", "#30d158", "#0a84ff", "#ffffff"];
 
 const strokeWidth = () => Math.max(3, Math.round(Math.max(W, H) / 280));
+
+// Trimming: the part kept, in seconds, and which end moved last (its frame shows).
+const trim = { start: 0, end: 0, length: 0, showing: 0 };
+let frameTimer: number | null = null;
+
+/** "1:05.3", "12:00.0". */
+function clock(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds - m * 60;
+  return `${m}:${s.toFixed(1).padStart(4, "0")}`;
+}
+
+/** The frame at `at`, a moment after the slider stops. */
+function showFrame(at: number) {
+  trim.showing = at;
+  if (frameTimer != null) window.clearTimeout(frameTimer);
+  frameTimer = window.setTimeout(async () => {
+    const url = await invoke<string | null>("wheel_frame", { at }).catch(() => null);
+    if (url && trim.showing === at) img.src = url;
+  }, 140);
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -287,6 +310,21 @@ function render() {
   fit();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (tool === "trim") {
+    ctx.setTransform(scale, 0, 0, scale, ox, oy);
+    if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, W, H);
+    else {
+      // A sound: a note instead of a picture.
+      ctx.fillStyle = "#1d1e22";
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#ff7a3d";
+      ctx.font = `${Math.round(H / 2.4)}px system-ui, "Segoe UI Symbol", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("♪", W / 2, H / 2);
+    }
+    return;
+  }
   if (tool === "background") {
     ctx.setTransform(1, 0, 0, 1, ox, oy);
     composeBackground(ctx, scale);
@@ -480,6 +518,8 @@ function toolTitle(): string {
       return t("Redact");
     case "background":
       return t("Background");
+    case "trim":
+      return t("Trim");
   }
 }
 
@@ -532,6 +572,32 @@ function buildTop() {
       choice<"black" | "pixelate">([["black", t("Black box")], ["pixelate", t("Pixelate")]], () => redactMode, (v) => (redactMode = v)),
       button(t("Undo"), undo),
     );
+  } else if (tool === "trim") {
+    const startLabel = el("output", "", clock(trim.start));
+    const endLabel = el("output", "", clock(trim.end));
+    const keptLabel = el("span", "hint");
+    const range = (value: () => number, set: (v: number) => void, label: HTMLElement) => {
+      const input = el("input");
+      input.type = "range";
+      input.min = "0";
+      input.max = String(trim.length);
+      input.step = "0.1";
+      input.value = String(value());
+      input.addEventListener("input", () => {
+        set(Number(input.value));
+        input.value = String(value());
+        label.textContent = clock(value());
+        keptLabel.textContent = `${t("Kept")}: ${clock(trim.end - trim.start)}`;
+        showFrame(value());
+      });
+      return input;
+    };
+    const startBox = el("label", "slider");
+    startBox.append(document.createTextNode(t("Start")), range(() => trim.start, (v) => (trim.start = Math.min(v, trim.end - 0.1)), startLabel), startLabel);
+    const endBox = el("label", "slider");
+    endBox.append(document.createTextNode(t("End")), range(() => trim.end, (v) => (trim.end = Math.max(v, trim.start + 0.1)), endLabel), endLabel);
+    keptLabel.textContent = `${t("Kept")}: ${clock(trim.end - trim.start)}`;
+    top.append(startBox, endBox, keptLabel);
   } else if (tool === "background") {
     const shapes: [number | null, string][] = [[null, t("Fit")], [1, "1:1"], [16 / 9, "16:9"], [4 / 3, "4:3"], [9 / 16, "9:16"]];
     top.append(
@@ -556,10 +622,17 @@ function buildBottom() {
 async function doSave(save: HTMLButtonElement) {
   save.disabled = true;
   try {
+    if (tool === "trim") {
+      save.textContent = t("Working…");
+      const path = await invoke<string>("wheel_trim", { start: trim.start, end: trim.end });
+      showSaved(path);
+      return;
+    }
     const path = await invoke<string | null>("wheel_editor_done", { dataUrl: exportImage() });
     if (path) showSaved(path);
   } catch (e) {
     save.disabled = false;
+    save.textContent = t("Save");
     alert(String(e));
   }
 }
@@ -604,6 +677,23 @@ async function main() {
   if (!editing) return void invoke("wheel_editor_close");
   tool = editing.tool;
   document.title = `${toolTitle()} · ${editing.name}`;
+  if (tool === "trim") {
+    trim.length = editing.duration ?? 0;
+    trim.end = trim.length;
+    // The stage keeps a 16:9 frame; a video's own frames fill it as they come.
+    W = 1280;
+    H = 720;
+    img.onload = () => {
+      W = img.naturalWidth || W;
+      H = img.naturalHeight || H;
+      render();
+    };
+    if (editing.image) img.src = editing.image;
+    buildTop();
+    buildBottom();
+    render();
+    return;
+  }
   img.onload = () => {
     W = img.naturalWidth;
     H = img.naturalHeight;

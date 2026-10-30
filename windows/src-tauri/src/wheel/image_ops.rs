@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
-use image::{DynamicImage, GenericImageView, ImageFormat, ImageReader, RgbImage};
+use image::{DynamicImage, ImageFormat, ImageReader, RgbImage};
 
 use super::formats::{ext, output_path};
 use super::pdf;
@@ -116,7 +116,7 @@ fn preset(level: &str) -> (u8, Option<u32>) {
 /// transparency stays a PNG, compressed as hard as PNG goes.
 pub fn compress(paths: &[PathBuf], level: &str) -> Result<Vec<PathBuf>, String> {
     let (quality, max_side) = preset(level);
-    let mut out = Vec::new();
+    let mut pairs = Vec::new();
     for path in paths {
         let mut img = open(path)?;
         if let Some(max) = max_side {
@@ -128,9 +128,9 @@ pub fn compress(paths: &[PathBuf], level: &str) -> Result<Vec<PathBuf>, String> 
         let (bytes, format) = if transparent { (png(&img)?, "png") } else { (jpeg(&img, quality)?, "jpg") };
         let dest = output_path(path, Some("compressed"), format);
         write(&dest, &bytes)?;
-        out.push(dest);
+        pairs.push((path.clone(), dest));
     }
-    Ok(out)
+    super::formats::keep_smaller(pairs)
 }
 
 /// A JPEG without what it says about where, when and with what it was taken:

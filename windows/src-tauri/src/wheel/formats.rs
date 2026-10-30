@@ -54,6 +54,10 @@ pub const IMAGE_INPUTS: &[&str] = &["jpg", "png", "webp", "tiff", "bmp", "ico", 
 /// The image tools: those with an editor open the editor window.
 pub const IMAGE_TOOLS: &[&str] = &["compress", "metadata", "crop", "edit", "annotate", "redact", "background"];
 
+/// What videos and sounds become (wheel/media.rs, through FFmpeg).
+pub const VIDEO_TARGETS: &[&str] = &["mp4", "mov", "mkv", "webm", "avi", "gif", "mp3"];
+pub const AUDIO_TARGETS: &[&str] = &["mp3", "m4a", "wav", "flac", "ogg", "opus", "aiff"];
+
 /// What can be done with any file or folder.
 pub const ACTIONS: &[&str] = &["copy", "copyPath", "move", "terminal", "reveal"];
 
@@ -92,8 +96,40 @@ pub fn rings(paths: &[&Path]) -> Rings {
             }
             Rings { kind, convert, tools, actions }
         }
+        Kind::Video | Kind::Audio => {
+            let targets = if kind == Kind::Video { VIDEO_TARGETS } else { AUDIO_TARGETS };
+            let same = paths.first().map(|p| ext(p)).filter(|e| paths.iter().all(|p| ext(p) == *e));
+            let convert = targets.iter().filter(|t| same.as_deref() != Some(**t)).map(|s| s.to_string()).collect();
+            let mut tools = vec!["compress".to_string()];
+            // Trimming needs the editor, for one file.
+            if paths.len() == 1 {
+                tools.push("trim".into());
+            }
+            if kind == Kind::Video {
+                tools.push("mute".into());
+            }
+            Rings { kind, convert, tools, actions }
+        }
         _ => Rings { kind, convert: Vec::new(), tools: Vec::new(), actions },
     }
+}
+
+/// A compressed result that isn't smaller than its original is no use: it is
+/// removed. Err("already-small") when none of them came out smaller.
+pub fn keep_smaller(pairs: Vec<(std::path::PathBuf, std::path::PathBuf)>) -> Result<Vec<std::path::PathBuf>, String> {
+    let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).unwrap_or(0);
+    let mut kept = Vec::new();
+    for (input, output) in pairs {
+        if size(&output) > 0 && size(&output) < size(&input) {
+            kept.push(output);
+        } else {
+            let _ = std::fs::remove_file(&output);
+        }
+    }
+    if kept.is_empty() {
+        return Err("already-small".into());
+    }
+    Ok(kept)
 }
 
 /// Where a result goes: next to the original, `stem.ext`, or `stem (2).ext` when
@@ -160,12 +196,46 @@ mod tests {
     }
 
     #[test]
+    fn videos_and_sounds_get_their_formats_and_tools() {
+        let v = p("C:/x/clip.mov");
+        let r = rings(&[v.as_path()]);
+        assert_eq!(r.kind, Kind::Video);
+        assert!(r.convert.contains(&"mp4".to_string()) && r.convert.contains(&"gif".to_string()) && r.convert.contains(&"mp3".to_string()));
+        assert!(!r.convert.contains(&"mov".to_string()));
+        assert_eq!(r.tools, vec!["compress", "trim", "mute"]);
+        let a = p("song.flac");
+        let r = rings(&[a.as_path()]);
+        assert!(r.convert.contains(&"mp3".to_string()) && !r.convert.contains(&"flac".to_string()));
+        assert_eq!(r.tools, vec!["compress", "trim"]);
+        let (x, y) = (p("a.mp3"), p("b.wav"));
+        assert_eq!(rings(&[x.as_path(), y.as_path()]).tools, vec!["compress"], "no trim for several");
+    }
+
+    #[test]
     fn anything_else_gets_the_actions() {
         let (a, b) = (p("a.jpg"), p("setup.exe"));
         let r = rings(&[a.as_path(), b.as_path()]);
         assert_eq!(r.kind, Kind::Other);
         assert!(r.convert.is_empty() && r.tools.is_empty());
         assert!(!r.actions.is_empty());
+    }
+
+    #[test]
+    fn a_compressed_file_is_only_kept_when_smaller() {
+        let dir = std::env::temp_dir().join(format!("coucou-small-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let (a, a2, b, b2) = (dir.join("a"), dir.join("a2"), dir.join("b"), dir.join("b2"));
+        std::fs::write(&a, vec![0; 100]).unwrap();
+        std::fs::write(&a2, vec![0; 40]).unwrap();
+        std::fs::write(&b, vec![0; 10]).unwrap();
+        std::fs::write(&b2, vec![0; 50]).unwrap();
+        assert_eq!(keep_smaller(vec![(a, a2.clone()), (b, b2.clone())]).unwrap(), vec![a2]);
+        assert!(!b2.exists(), "the bigger one is removed");
+        let (c, c2) = (dir.join("c"), dir.join("c2"));
+        std::fs::write(&c, vec![0; 10]).unwrap();
+        std::fs::write(&c2, vec![0; 10]).unwrap();
+        assert_eq!(keep_smaller(vec![(c, c2)]).unwrap_err(), "already-small");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

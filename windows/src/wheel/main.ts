@@ -32,7 +32,10 @@ interface RunResult {
 }
 
 const NS = "http://www.w3.org/2000/svg";
-const RING: Ring = { cx: 250, cy: 236, inner: 92, outer: 206, gap: 2.2 };
+// The disc: centre (160, 158) in a 320 × 352 window, as wheel/mod.rs shapes it.
+const RING: Ring = { cx: 160, cy: 158, inner: 58, outer: 141, gap: 1.6 };
+const VIEW_W = 320;
+const VIEW_H = 352;
 const RING_ORDER: RingName[] = ["convert", "tools", "actions"];
 
 const root = document.getElementById("wheel")!;
@@ -42,6 +45,10 @@ let ring: RingName = "convert";
 let hot = -1;
 let busy = false;
 let closeTimer: number | null = null;
+/** "Working… 42%": the line the progress events update. */
+let progressLine: HTMLElement | null = null;
+/** The choice waiting for FFmpeg's download. */
+let pending: { id: string; option: string | null } | null = null;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -58,10 +65,29 @@ function svgEl(tag: string, attrs: Record<string, string | number> = {}): SVGEle
 
 // ── The pieces ──────────────────────────────────────────────────────────────
 
-const svg = svgEl("svg", { class: "ring", viewBox: "0 0 500 500", width: 500, height: 500 }) as SVGSVGElement;
-svg.append(svgEl("circle", { class: "backdrop", cx: RING.cx, cy: RING.cy, r: RING.outer + 14 }));
+const svg = svgEl("svg", { class: "ring", viewBox: `0 0 ${VIEW_W} ${VIEW_H}`, width: VIEW_W, height: VIEW_H }) as SVGSVGElement;
+// The glass: a top light across the disc, and its rim.
+const defs = svgEl("defs");
+defs.innerHTML = `
+  <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.34"/>
+    <stop offset="0.55" stop-color="#fff" stop-opacity="0.12"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0.06"/>
+  </linearGradient>
+  <linearGradient id="hot" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ff8a4c"/>
+    <stop offset="1" stop-color="#ff4b12"/>
+  </linearGradient>
+  <radialGradient id="sheen" cx="0.35" cy="0.12" r="0.8">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.38"/>
+    <stop offset="0.45" stop-color="#fff" stop-opacity="0.05"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>`;
+svg.append(defs);
+svg.append(svgEl("circle", { class: "backdrop", cx: RING.cx, cy: RING.cy, r: RING.outer + 9 }));
 const wedges = svgEl("g") as SVGGElement;
 svg.append(wedges);
+svg.append(svgEl("circle", { class: "sheen", cx: RING.cx, cy: RING.cy, r: RING.outer + 9 }));
 
 const hub = el("div", "hub");
 const hubImg = el("img");
@@ -82,7 +108,10 @@ const ringButtons = RING_ORDER.map((r, i) => {
   return b;
 });
 ringBar.append(...ringButtons);
-root.append(svg, hub, nameTag, ringBar);
+// The liquid glass: what is behind the wheel, blurred, cut to the disc and the pill.
+const glassDisc = el("div", "glass disc");
+const glassBar = el("div", "glass bar");
+root.append(glassDisc, glassBar, svg, hub, nameTag, ringBar);
 
 // ── Drawing ─────────────────────────────────────────────────────────────────
 
@@ -100,9 +129,9 @@ function drawWedges() {
     const [x, y] = labelPoint(RING, i, n);
     const icon = iconFor(id);
     if (icon && ring !== "convert") {
-      const ic = svgEl("path", { class: "icon", d: icon, transform: `translate(${x - 10} ${y - 20}) scale(0.84)` });
+      const ic = svgEl("path", { class: "icon", d: icon, transform: `translate(${x - 7.5} ${y - 15}) scale(0.62)` });
       g.append(ic);
-      const label = svgEl("text", { x, y: y + 11 });
+      const label = svgEl("text", { x, y: y + 8 });
       label.textContent = labelFor(ring, id);
       g.append(label);
     } else {
@@ -184,6 +213,7 @@ async function choose(i: number) {
       close();
     } catch (e) {
       busy = false;
+      if (String(e).includes("needs-ffmpeg")) return askFfmpeg(id, null);
       failed(String(e));
     }
     return;
@@ -194,10 +224,12 @@ async function choose(i: number) {
 async function run(id: string, option: string | null) {
   busy = true;
   cancelClose();
-  showPanel([el("div", "spinner"), el("div", "dim", t("Working…"))]);
+  progressLine = el("div", "dim", t("Working…"));
+  showPanel([el("div", "spinner"), progressLine]);
   try {
     const r = await invoke<RunResult>("wheel_run", { ring, id, option });
     busy = false;
+    progressLine = null;
     if (r.cancelled) {
       showPanel(null);
       return;
@@ -205,6 +237,40 @@ async function run(id: string, option: string | null) {
     succeeded(id, r);
   } catch (e) {
     busy = false;
+    progressLine = null;
+    if (String(e).includes("needs-ffmpeg")) return askFfmpeg(id, option);
+    failed(String(e));
+  }
+}
+
+/** Video and sound need FFmpeg: offered once, then the choice runs. */
+function askFfmpeg(id: string, option: string | null) {
+  pending = { id, option };
+  showPanel([
+    el("div", "dim", t("Video and sound need FFmpeg: about 110 MB, downloaded once.")),
+    button(t("Download"), () => void getFfmpeg(), true),
+    button(t("Back"), () => showPanel(null)),
+  ]);
+}
+
+async function getFfmpeg() {
+  busy = true;
+  cancelClose();
+  progressLine = el("div", "dim", t("Downloading FFmpeg…"));
+  showPanel([el("div", "spinner"), progressLine]);
+  try {
+    await invoke("wheel_ffmpeg_install");
+    busy = false;
+    progressLine = null;
+    const next = pending;
+    pending = null;
+    if (next) {
+      if (ring === "tools" && EDITOR_TOOLS.has(next.id)) await choose(choices().indexOf(next.id));
+      else await run(next.id, next.option);
+    } else showPanel(null);
+  } catch (e) {
+    busy = false;
+    progressLine = null;
     failed(String(e));
   }
 }
@@ -234,6 +300,10 @@ function succeeded(id: string, r: RunResult) {
 }
 
 function failed(message: string) {
+  if (message.includes("already-small")) {
+    showPanel([el("div", "big", t("Already as small as it gets")), button(t("Back"), () => showPanel(null))]);
+    return;
+  }
   showPanel([el("div", "big", t("Couldn't do it")), el("div", "dim", message.slice(0, 140)), button(t("Back"), () => showPanel(null))], "error");
 }
 
@@ -258,7 +328,13 @@ function close() {
   window.setTimeout(() => void invoke("wheel_close"), 140);
 }
 
-async function open(payload: { files: FileInfo[]; rings: Rings }) {
+type Opened = { files: FileInfo[]; rings: Rings; backdrop?: string | null; dark?: boolean };
+
+async function open(payload: Opened) {
+  const behind = payload.backdrop ? `url("${payload.backdrop}")` : "none";
+  glassDisc.style.backgroundImage = behind;
+  glassBar.style.backgroundImage = behind;
+  root.classList.toggle("dark", !!payload.dark);
   files = payload.files;
   rings = payload.rings;
   busy = false;
@@ -288,7 +364,7 @@ async function open(payload: { files: FileInfo[]; rings: Rings }) {
 
 function local(e: MouseEvent): [number, number] {
   const r = svg.getBoundingClientRect();
-  return [((e.clientX - r.left) / r.width) * 500, ((e.clientY - r.top) / r.height) * 500];
+  return [((e.clientX - r.left) / r.width) * VIEW_W, ((e.clientY - r.top) / r.height) * VIEW_H];
 }
 
 svg.addEventListener("mousemove", (e) => {
@@ -301,7 +377,7 @@ svg.addEventListener("click", (e) => {
   const [x, y] = local(e);
   const i = wedgeAt(RING, choices().length, x, y);
   if (i >= 0) void choose(i);
-  else if (Math.hypot(x - RING.cx, y - RING.cy) > RING.outer + 14) close();
+  else if (Math.hypot(x - RING.cx, y - RING.cy) > RING.outer + 9) close();
 });
 // Outside the circle (the window's transparent corners): close.
 document.addEventListener("click", (e) => {
@@ -331,9 +407,15 @@ document.addEventListener("keydown", (e) => {
 async function main() {
   const boot = await Bridge.boot();
   setLanguage(resolveLanguage(boot?.settings.language, systemLanguages()));
-  await listen<{ files: FileInfo[]; rings: Rings }>("wheel-open", (e) => void open(e.payload));
+  await listen<Opened>("wheel-open", (e) => void open(e.payload));
+  await listen<number>("wheel-progress", (e) => {
+    if (!progressLine) return;
+    const base = progressLine.dataset.base ?? progressLine.textContent ?? "";
+    progressLine.dataset.base = base;
+    progressLine.textContent = `${base} ${Math.round(e.payload * 100)}%`;
+  });
   // Made just now for this opening: the event may have gone before we listened.
-  const current = await invoke<{ files: FileInfo[]; rings: Rings } | null>("wheel_current").catch(() => null);
+  const current = await invoke<Opened | null>("wheel_current").catch(() => null);
   if (current && !root.classList.contains("on")) void open(current);
   // Clicked elsewhere: the wheel goes away (never in the middle of the work).
   await getCurrentWindow().onFocusChanged(({ payload: focused }) => {

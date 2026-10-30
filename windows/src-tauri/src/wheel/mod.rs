@@ -4,7 +4,9 @@
 
 pub mod actions;
 pub mod formats;
+mod glass;
 pub mod image_ops;
+pub mod media;
 pub mod pdf;
 
 use std::path::PathBuf;
@@ -14,8 +16,19 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
 
 pub const LABEL: &str = "wheel";
-/// The wheel's window, in logical pixels (square).
-const SIZE: f64 = 500.0;
+/// The wheel's window, in logical pixels: the disc, and the ring switcher under it
+/// (src/wheel/wheel.css keeps the same numbers).
+const WIDTH: f64 = 320.0;
+const HEIGHT: f64 = 352.0;
+/// The disc's centre and radius in the window.
+const CX: f64 = 160.0;
+const CY: f64 = 158.0;
+const DISC: f64 = 152.0;
+/// The ring switcher: left, top, right, bottom, corner radius.
+const BAR: (f64, f64, f64, f64, f64) = (10.0, 318.0, 310.0, 348.0, 30.0);
+/// Where the hidden wheel waits: off the screen. A hidden WebView2 still sets
+/// the cursor for its page where its rectangle is (claude_account.rs).
+const AWAY: (i32, i32) = (-32000, -32000);
 
 /// The files on the wheel now.
 static FILES: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
@@ -37,6 +50,11 @@ pub struct FileInfo {
 pub struct Opened {
     files: Vec<FileInfo>,
     rings: formats::Rings,
+    /// What is on the screen where the wheel opens, taken just before: the
+    /// page blurs it behind the disc, its liquid glass. In memory only.
+    backdrop: Option<String>,
+    /// The backdrop is dark: the labels go light.
+    dark: bool,
 }
 
 fn files() -> Vec<PathBuf> {
@@ -47,9 +65,9 @@ fn window(app: &AppHandle) -> Option<tauri::WebviewWindow> {
     if let Some(w) = app.get_webview_window(LABEL) {
         return Some(w);
     }
-    WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("wheel.html".into()))
+    let win = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("wheel.html".into()))
         .title("Coucou")
-        .inner_size(SIZE, SIZE)
+        .inner_size(WIDTH, HEIGHT)
         .decorations(false)
         .transparent(true)
         .shadow(false)
@@ -59,25 +77,53 @@ fn window(app: &AppHandle) -> Option<tauri::WebviewWindow> {
         .visible(false)
         .focused(true)
         .build()
-        .ok()
+        .ok()?;
+    let _ = win.set_position(PhysicalPosition::new(AWAY.0, AWAY.1));
+    Some(win)
 }
 
-/// The window's top-left so that it is centred on the pointer, inside its screen.
-fn place_at_pointer(win: &tauri::WebviewWindow) {
+/// The window takes the wheel's shape — its disc and the ring switcher — so the
+/// glass is only there and the corners let clicks through to what is under them.
+#[cfg(windows)]
+fn shape(win: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Gdi::{CombineRgn, CreateEllipticRgn, CreateRoundRectRgn, DeleteObject, SetWindowRgn, RGN_OR};
+    let Ok(raw) = win.hwnd() else { return };
+    let hwnd = HWND(raw.0 as *mut _);
+    let s = win.scale_factor().unwrap_or(1.0);
+    let px = |v: f64| (v * s).round() as i32;
+    unsafe {
+        let disc = CreateEllipticRgn(px(CX - DISC), px(CY - DISC), px(CX + DISC) + 1, px(CY + DISC) + 1);
+        let bar = CreateRoundRectRgn(px(BAR.0), px(BAR.1), px(BAR.2) + 1, px(BAR.3) + 1, px(BAR.4), px(BAR.4));
+        let _ = CombineRgn(Some(disc), Some(disc), Some(bar), RGN_OR);
+        let _ = DeleteObject(bar.into());
+        // The window owns the region from here.
+        SetWindowRgn(hwnd, Some(disc), true);
+    }
+}
+
+#[cfg(not(windows))]
+fn shape(_win: &tauri::WebviewWindow) {}
+
+/// The window placed so the disc is centred on the pointer, inside its screen;
+/// where it went, in physical pixels.
+fn place_at_pointer(win: &tauri::WebviewWindow) -> (i32, i32) {
     let Some((cx, cy)) = crate::platform::cursor_physical() else {
         let _ = win.center();
-        return;
+        return win.outer_position().map(|p| (p.x, p.y)).unwrap_or((0, 0));
     };
     let scale = win.scale_factor().unwrap_or(1.0);
-    let side = SIZE * scale;
-    let (mut x, mut y) = (cx - side / 2.0, cy - side / 2.0);
+    let (w, h) = (WIDTH * scale, HEIGHT * scale);
+    let (mut x, mut y) = (cx - CX * scale, cy - CY * scale);
     if let Ok(Some(m)) = win.monitor_from_point(cx, cy) {
         let (mx, my) = (m.position().x as f64, m.position().y as f64);
         let (mw, mh) = (m.size().width as f64, m.size().height as f64);
-        x = x.clamp(mx, (mx + mw - side).max(mx));
-        y = y.clamp(my, (my + mh - side).max(my));
+        x = x.clamp(mx, (mx + mw - w).max(mx));
+        y = y.clamp(my, (my + mh - h).max(my));
     }
-    let _ = win.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
+    let (x, y) = (x.round() as i32, y.round() as i32);
+    let _ = win.set_position(PhysicalPosition::new(x, y));
+    (x, y)
 }
 
 /// Files dropped on the Tools zone: the wheel opens around the pointer.
@@ -99,10 +145,16 @@ pub async fn wheel_open(app: AppHandle, paths: Vec<String>) -> Result<(), String
         })
         .collect();
     *FILES.lock().unwrap() = list;
-    let opened = Opened { files: infos, rings };
-    *OPENED.lock().unwrap() = Some(opened.clone());
     let win = window(&app).ok_or("no wheel window")?;
-    place_at_pointer(&win);
+    let (x, y) = place_at_pointer(&win);
+    // Again each time: the region is in pixels, and the screen's scale may differ.
+    shape(&win);
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let (w, h) = ((WIDTH * scale).round() as i32, (HEIGHT * scale).round() as i32);
+    let behind = tauri::async_runtime::spawn_blocking(move || glass::behind(x, y, w, h)).await.ok().flatten();
+    let dark = behind.as_ref().is_some_and(|b| b.dark);
+    let opened = Opened { files: infos, rings, backdrop: behind.map(|b| b.picture), dark };
+    *OPENED.lock().unwrap() = Some(opened.clone());
     let _ = win.emit_to(LABEL, "wheel-open", opened);
     let _ = win.show();
     let _ = win.set_focus();
@@ -120,6 +172,7 @@ pub fn wheel_current() -> Option<Opened> {
 pub fn wheel_close(app: AppHandle) {
     if let Some(w) = app.get_webview_window(LABEL) {
         let _ = w.hide();
+        let _ = w.set_position(PhysicalPosition::new(AWAY.0, AWAY.1));
     }
 }
 
@@ -161,14 +214,17 @@ fn done(inputs: &[PathBuf], outputs: Vec<PathBuf>) -> RunResult {
 /// One choice on the wheel: `ring` is "convert", "tools" or "actions", `id` the choice
 /// ("webp", "compress", "copyPath"…), `option` its setting (compress: "high", "balanced", "small").
 #[tauri::command]
-pub async fn wheel_run(ring: String, id: String, option: Option<String>) -> Result<RunResult, String> {
+pub async fn wheel_run(app: AppHandle, ring: String, id: String, option: Option<String>) -> Result<RunResult, String> {
     let paths = files();
     if paths.is_empty() {
         return Err("no file".into());
     }
-    let result = tauri::async_runtime::spawn_blocking(move || run(&paths, &ring, &id, option.as_deref()))
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let progress = progress_to(&app, LABEL);
+        run(&paths, &ring, &id, option.as_deref(), &progress)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
     match &result {
         Ok(r) => crate::log::line(format!("wheel: done, {} result(s)", r.outputs.len())),
         Err(e) => crate::log::line(format!("wheel: failed: {e}")),
@@ -176,7 +232,33 @@ pub async fn wheel_run(ring: String, id: String, option: Option<String>) -> Resu
     result
 }
 
-fn run(paths: &[PathBuf], ring: &str, id: &str, option: Option<&str>) -> Result<RunResult, String> {
+/// Sends how far along the work is (0..=1) to a window, at most once a percent.
+fn progress_to(app: &AppHandle, label: &'static str) -> impl Fn(f64) {
+    let app = app.clone();
+    let last = std::sync::atomic::AtomicI32::new(-1);
+    move |p: f64| {
+        let pct = (p * 100.0).round() as i32;
+        if last.swap(pct, std::sync::atomic::Ordering::Relaxed) != pct {
+            let _ = app.emit_to(label, "wheel-progress", p);
+        }
+    }
+}
+
+fn run(paths: &[PathBuf], ring: &str, id: &str, option: Option<&str>, progress: &dyn Fn(f64)) -> Result<RunResult, String> {
+    let kind = formats::kind_of(&paths[0]);
+    let media = matches!(kind, formats::Kind::Video | formats::Kind::Audio);
+    // Video and sound need FFmpeg: the wheel offers to get it.
+    if media && ring != "actions" && !media::ready() {
+        return Err("needs-ffmpeg".into());
+    }
+    if media {
+        match (ring, id) {
+            ("convert", target) => return Ok(done(paths, media::convert(paths, target, progress)?)),
+            ("tools", "compress") => return Ok(done(paths, media::compress(paths, option.unwrap_or("balanced"), progress)?)),
+            ("tools", "mute") => return Ok(done(paths, media::mute(paths, progress)?)),
+            _ => {}
+        }
+    }
     match (ring, id) {
         ("convert", target) if formats::IMAGE_TARGETS.contains(&target) => Ok(done(paths, image_ops::convert(paths, target)?)),
         ("tools", "compress") => Ok(done(paths, image_ops::compress(paths, option.unwrap_or("balanced"))?)),
@@ -225,17 +307,23 @@ pub struct Editing {
     path: String,
     name: String,
     tool: String,
-    /// The image, as large as the editor works with.
+    /// The image, as large as the editor works with (trimming: a video's first frame, or "").
     image: String,
+    /// Trimming: the file's length in seconds.
+    duration: Option<f64>,
 }
 
-/// The editor for the wheel's image: its window opens on `tool`.
+/// The editor for the wheel's file: its window opens on `tool`.
 #[tauri::command]
 pub async fn wheel_editor(app: AppHandle, tool: String) -> Result<(), String> {
-    let path = files().into_iter().next().ok_or("no image")?;
+    let path = files().into_iter().next().ok_or("no file")?;
+    if tool == "trim" && !media::ready() {
+        return Err("needs-ffmpeg".into());
+    }
     *EDITING.lock().unwrap() = Some((path, tool));
     if let Some(w) = app.get_webview_window(LABEL) {
         let _ = w.hide();
+        let _ = w.set_position(PhysicalPosition::new(AWAY.0, AWAY.1));
     }
     if let Some(w) = app.get_webview_window(EDITOR_LABEL) {
         let _ = w.close();
@@ -253,18 +341,59 @@ pub async fn wheel_editor(app: AppHandle, tool: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-/// What the editor works on (asked once its page is up).
+/// What the editor works on (asked once its page is up). For trimming, the
+/// length and the first frame (none for a sound) instead of a full image.
 #[tauri::command]
 pub async fn wheel_editing() -> Option<Editing> {
     let (path, tool) = EDITING.lock().unwrap().clone()?;
     let p = path.clone();
-    let image = tauri::async_runtime::spawn_blocking(move || image_ops::preview(&p, 6000)).await.ok().flatten()?;
+    let trimming = tool == "trim";
+    let (image, duration) = tauri::async_runtime::spawn_blocking(move || {
+        if trimming {
+            let length = media::duration(&p);
+            let picture = if media::has_video(&p) { media::frame(&p, 0.0, 1280) } else { None };
+            Some((picture.unwrap_or_default(), length))
+        } else {
+            image_ops::preview(&p, 6000).map(|i| (i, None))
+        }
+    })
+    .await
+    .ok()
+    .flatten()?;
     Some(Editing {
         path: path.display().to_string(),
         name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
         tool,
         image,
+        duration,
     })
+}
+
+/// A frame of the video being trimmed, at `at` seconds.
+#[tauri::command]
+pub async fn wheel_frame(at: f64) -> Option<String> {
+    let (path, _) = EDITING.lock().unwrap().clone()?;
+    tauri::async_runtime::spawn_blocking(move || media::frame(&path, at, 1280)).await.ok().flatten()
+}
+
+/// The trim editor's Save: from `start` to `end` seconds, next to the original.
+#[tauri::command]
+pub async fn wheel_trim(app: AppHandle, start: f64, end: f64) -> Result<String, String> {
+    let (path, _) = EDITING.lock().unwrap().clone().ok_or("nothing to trim")?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let progress = progress_to(&app, EDITOR_LABEL);
+        media::trim(&path, start, end, &progress)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map(|p| p.display().to_string())
+}
+
+/// FFmpeg, fetched once (about 110 MB): the wheel shows how far along it is.
+#[tauri::command]
+pub async fn wheel_ffmpeg_install(app: AppHandle) -> Result<(), String> {
+    let progress = progress_to(&app, LABEL);
+    media::install(progress).await
 }
 
 /// The editor is done: its image (a PNG data URL) saved next to the original, or
