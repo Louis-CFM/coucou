@@ -65,6 +65,7 @@ struct TerminalMochiView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 20, paused: paused)) { timeline in
             let t = timeline.date.timeIntervalSince(start)
             Canvas { context, size in
+                guard size.width > 0, size.height > 0 else { return }
                 // Small Mochi (the compact island): fewer, bigger characters.
                 let cols = size.width < 48 ? 13 : min(34, max(16, Int(size.width / 3.4)))
                 let rows = AsciiMochi.rows(forCols: cols)
@@ -134,6 +135,7 @@ struct TerminalKey: View {
 struct TerminalScanlines: View {
     var body: some View {
         Canvas { context, size in
+            guard size.width > 0, size.height > 0 else { return }
             var y: CGFloat = 0
             var path = Path()
             while y < size.height {

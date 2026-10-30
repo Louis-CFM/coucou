@@ -108,7 +108,10 @@ enum AsciiMath {
 
     static func clamp(_ v: Double, _ a: Double, _ b: Double) -> Double { max(a, min(b, v)) }
     static func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double { a + (b - a) * t }
-    static func seg(_ t: Double, _ a: Double, _ b: Double) -> Double { clamp((t - a) / (b - a), 0, 1) }
+    static func seg(_ t: Double, _ a: Double, _ b: Double) -> Double {
+        guard b != a else { return 0 }
+        return clamp((t - a) / (b - a), 0, 1)
+    }
     static func out(_ t: Double) -> Double { 1 - pow(1 - t, 3) }
 
     static func lerpColor(_ a: UInt32, _ b: UInt32, _ t: Double) -> UInt32 {
@@ -139,6 +142,7 @@ enum AsciiMochi {
     /// The glitch running at `t`, if any. No state: every time window of the mood's
     /// rhythm may hold one short glitch, picked from the window number.
     static func glitch(mood: AsciiMood, t: Double, rows: Int) -> (kind: Glitch, row: Int, k: Int)? {
+        guard rows > 0 else { return nil }
         let window: Double
         switch mood {
         case .finished, .sleeping: return nil
