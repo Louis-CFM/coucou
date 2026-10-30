@@ -1,4 +1,4 @@
-// Interface language — the Mac's languages except Thai and Traditional Chinese, Mac-only for now.
+// Interface language — the same sixteen languages as the Mac.
 //
 // Strings are looked up by their English text, like the Mac's catalog:
 // `t("Allow")`, `t("Uploading {name}", { name })`. Two tables, both keyed by
@@ -18,7 +18,7 @@
 import MAC from "./strings.json";
 import EXTRA from "./extra.json";
 
-export const LANGUAGE_CODES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja"] as const;
+export const LANGUAGE_CODES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja", "th", "zh-Hant"] as const;
 export type Language = (typeof LANGUAGE_CODES)[number];
 
 /** The picker's entries, each in its own language, in the Mac's order. */
@@ -37,6 +37,8 @@ export const LANGUAGES: readonly { code: Language; name: string }[] = [
   { code: "tr", name: "Türkçe" },
   { code: "ko", name: "한국어" },
   { code: "ja", name: "日本語" },
+  { code: "th", name: "ไทย" },
+  { code: "zh-Hant", name: "繁體中文" },
 ];
 
 export type Vars = Record<string, string | number>;
@@ -70,8 +72,7 @@ export function resolveLanguage(picked: string | undefined | null, system: reado
     if (!tag) continue;
     const base = tag.split("-")[0];
     if (base === "zh") {
-      // Traditional Chinese is not one of ours: English rather than the wrong script.
-      if (/^zh-(hant|tw|hk|mo)\b/.test(tag)) continue;
+      if (/^zh-(hant|tw|hk|mo)\b/.test(tag)) return "zh-Hant";
       return "zh-Hans";
     }
     if (base === "pt") return "pt-BR";
