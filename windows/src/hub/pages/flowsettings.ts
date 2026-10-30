@@ -111,10 +111,10 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
   // ── Notetaker ──
   page.append(label(t("Notetaker")));
   page.append(card(
-    row(t("Summaries"), null, select([["claude", t("Claude (your key)")], ["off", t("No summary")]], prefs.summaryEngine, (engine) => void ctx.setPrefs((p) => (p.summaryEngine = engine)))),
-    h("div", { class: "hub-note", text: t("With Claude, the transcript (never the audio) goes to Anthropic with your key from Notch → Chat.") }),
+    row(t("Summaries"), null, select([["claude", t("Claude (your key)")], ["ollama", "Ollama"], ["lmstudio", "LM Studio"], ["custom", t("OpenAI-compatible server")], ["off", t("No summary")]], prefs.summaryEngine, (engine) => void ctx.setPrefs((p) => (p.summaryEngine = engine)))),
+    h("div", { class: "hub-note", text: t("Summaries use the selected provider and its model from Chat. Only the transcript is sent; chat history is not included.") }),
     divider(),
-    h("div", { class: "hub-note", text: t("Everything stays on this computer. Tell the people in the call that you are recording.") }),
+    h("div", { class: "hub-note", text: t("Audio and transcripts are stored on this computer. Summaries send text to the provider selected in Flow Settings. Tell the people in the call that you are recording.") }),
   ));
 
   // ── App ──

@@ -32,7 +32,7 @@ export interface FlowPrefs {
   keepDays: number;
   cleanup: boolean;
   defaultStyle: Style;
-  summaryEngine: "claude" | "off";
+  summaryEngine: "claude" | "ollama" | "lmstudio" | "custom" | "off";
   openAtLaunch: boolean;
   /** « OK Coucou »: listen for it and answer with Claude. */
   voice: boolean;

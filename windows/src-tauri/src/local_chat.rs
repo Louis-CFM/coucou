@@ -296,6 +296,19 @@ pub async fn send_with(
 
 // ── Streaming ─────────────────────────────────────────────────────────────────
 
+/// A bounded text task, independent of the island's conversation and events.
+pub async fn complete(server: &Server, model: &str, system: &str, user: &str,
+    max_tokens: u32, timeout: Duration) -> Result<String, String> {
+    let base = base_url(server)?;
+    if model.trim().is_empty() { return Err(t("Pick a model above the chat box first.")); }
+    let mut body = request_body(model, system, &[], &json!({ "role": "user", "content": user }));
+    body["max_tokens"] = json!(max_tokens);
+    let reply = tokio::time::timeout(timeout, stream(&base, server.key.as_deref(), model, &body, |_| {}))
+        .await.map_err(|_| t("The model server timed out."))??;
+    if reply.trim().is_empty() { return Err(t("No response text.")); }
+    Ok(reply)
+}
+
 /// One server-sent event line: `Some(Ok(text))` for a content delta,
 /// `Some(Err(message))` for an error event, None for anything else (other
 /// lines, `[DONE]`, a delta without content, such as reasoning-only ones).
@@ -364,34 +377,45 @@ async fn stream(
 
     let mut accumulated = String::new();
     let mut pending = Vec::<u8>::new();
+    let mut complete = false;
     let mut last = Instant::now().checked_sub(DELTA_INTERVAL).unwrap_or_else(Instant::now);
     while let Some(chunk) = reply.chunk().await.map_err(|_| unreachable(base))? {
         pending.extend_from_slice(&chunk);
         // Whole lines only: a chunk may end in the middle of one, or of a character.
         while let Some(end) = pending.iter().position(|b| *b == b'\n') {
+            if end > MAX_LINE { return Err(t("The server's answer is too large.")); }
             let line: Vec<u8> = pending.drain(..=end).collect();
             let line = String::from_utf8_lossy(&line);
+            if line.trim_end().strip_prefix("data:").is_some_and(|v| v.trim() == "[DONE]") {
+                complete = true;
+                break;
+            }
             match parse_sse_line(line.trim_end()) {
                 Some(Ok(delta)) => accumulated.push_str(&delta),
                 Some(Err(message)) => return Err(message),
                 None => {}
             }
+            if accumulated.len() > MAX_ANSWER { return Err(t("The server's answer is too large.")); }
         }
         if pending.len() > MAX_LINE || accumulated.len() > MAX_ANSWER {
             return Err(t("The server's answer is too large."));
         }
+        if complete { break; }
         if last.elapsed() >= DELTA_INTERVAL {
             last = Instant::now();
             on_delta(progressive_filter(&accumulated));
         }
     }
     // A last line without its newline.
-    if let Some(Ok(delta)) = parse_sse_line(String::from_utf8_lossy(&pending).trim_end()) {
-        accumulated.push_str(&delta);
+    if !complete {
+        let line = String::from_utf8_lossy(&pending);
+        complete = line.trim_end().strip_prefix("data:").is_some_and(|v| v.trim() == "[DONE]");
+        if let Some(Err(message)) = parse_sse_line(line.trim_end()) { return Err(message); }
     }
+    if !complete { return Err(t("The model server stopped before finishing its reply. Try again.")); }
     // The last state always goes out, whatever the throttle skipped.
     on_delta(progressive_filter(&accumulated));
-    Ok(filter_thinking_blocks(&accumulated))
+    Ok(progressive_filter(&accumulated))
 }
 
 #[cfg(test)]
@@ -401,6 +425,34 @@ mod tests {
 
     fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
         tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    #[test]
+    fn text_tasks_require_a_complete_reply_and_do_not_expose_open_reasoning() {
+        let server = |url| Server { id: "custom", name: "Fixture", url, key: None };
+        let reply = |url| block_on(complete(&server(url), "fixture", "Summarize", "Synthetic transcript", 32, Duration::from_secs(3)));
+        let u = serve_once("200 OK", "", b"data: {\"choices\":[{\"delta\":{\"content\":\"partial\"}}]}\n\n".to_vec());
+        assert!(reply(u).unwrap_err().contains("before finishing"));
+        let u = serve_once("200 OK", "", b"data: {\"error\":{\"message\":\"crashed\"}}".to_vec());
+        assert_eq!(reply(u).unwrap_err(), "crashed");
+        let u = serve_once("200 OK", "", b"data: {\"choices\":[{\"delta\":{\"content\":\"Summary<think>private reasoning\"}}]}\n\ndata: [DONE]".to_vec());
+        assert_eq!(reply(u).unwrap(), "Summary");
+    }
+
+    #[test]
+    fn text_tasks_reject_redirects_and_bound_the_total_duration() {
+        let u = serve_once("307 Temporary Redirect", "Location: http://127.0.0.1:1/elsewhere\r\n", vec![]);
+        let s = Server { id: "custom", name: "Fixture", url: u, key: None };
+        assert_eq!(block_on(complete(&s, "m", "s", "u", 32, Duration::from_secs(3))).unwrap_err(), "HTTP 307");
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let worker = std::thread::spawn(move || {
+            let (_stream, _) = listener.accept().unwrap();
+            std::thread::sleep(Duration::from_millis(250));
+        });
+        let s = Server { id: "custom", name: "Fixture", url: format!("http://{addr}"), key: None };
+        assert_eq!(block_on(complete(&s, "m", "s", "u", 32, Duration::from_millis(50))).unwrap_err(), "The model server timed out.");
+        worker.join().unwrap();
     }
 
     fn url(s: &str) -> Url {
