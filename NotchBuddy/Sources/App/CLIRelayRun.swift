@@ -127,6 +127,12 @@ extension CLIRelay {
         guard let exe = CLILocator.shared.path(cli) else { throw CLIFailure.notInstalled(cli.displayName) }
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let workdir = support.appendingPathComponent("NotchBuddy/relay", isDirectory: true)
+        return try await ask(cli, request, exe: exe, workdir: workdir)
+    }
+
+    /// One run of the executable at `exe`, read as `cli`, in `workdir`. Apart from the above so
+    /// scripts/test-cli-relay-run.sh can run it on stand-in tools.
+    static func ask(_ cli: SubscriptionCLI, _ request: CLIRequest, exe: String, workdir: URL) async throws -> String {
         try FileManager.default.createDirectory(at: workdir, withIntermediateDirectories: true)
         var request = request
         if cli == .gemini && !request.web {
@@ -147,6 +153,7 @@ extension CLIRelay {
         env["PATH"] = ([dir, "/opt/homebrew/bin", "/usr/local/bin"] + [env["PATH"] ?? "/usr/bin:/bin"])
             .joined(separator: ":")
         env["NO_COLOR"] = "1"
+        env.merge(environment(cli, request)) { _, added in added }
         run.process.environment = env
         run.process.standardInput = run.input
         run.process.standardOutput = run.output
@@ -160,7 +167,7 @@ extension CLIRelay {
                     continuation.resume(throwing: CLIFailure.failed("Could not start \(cli.displayName): \(error.localizedDescription)"))
                     return
                 }
-                let timer = DispatchWorkItem { if run.process.isRunning { run.process.terminate() } }
+                let timer = DispatchWorkItem { run.stop() }
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
                 if !stdin.isEmpty { run.input.fileHandleForWriting.write(stdin) }
                 try? run.input.fileHandleForWriting.close()
@@ -172,7 +179,7 @@ extension CLIRelay {
                 group.wait()
                 run.process.waitUntilExit()
                 timer.cancel()
-                if run.process.terminationReason == .uncaughtSignal {
+                if run.timedOut || run.process.terminationReason == .uncaughtSignal {
                     continuation.resume(throwing: CLIFailure.timedOut(cli.displayName))
                     return
                 }
@@ -189,6 +196,23 @@ extension CLIRelay {
         let process = Process()
         let input = Pipe(), output = Pipe(), errors = Pipe()
         var stderrData = Data()
+        private let lock = NSLock()
+        private var stopped = false
+
+        var timedOut: Bool { lock.withLock { stopped } }
+
+        /// Past the time limit: asked to stop, then killed a second later if it is still there
+        /// (a tool may take its time to quit, or never get the request: a process started from
+        /// a dispatch thread can inherit that signal blocked).
+        func stop() {
+            guard process.isRunning else { return }
+            lock.withLock { stopped = true }
+            process.terminate()
+            let pid = process.processIdentifier
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1) { [self] in
+                if process.isRunning { kill(pid, SIGKILL) }
+            }
+        }
     }
 
     /// A dropped file copied alone into a fresh folder, so Claude Code can read that file
