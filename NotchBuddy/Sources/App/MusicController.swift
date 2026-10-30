@@ -1,6 +1,7 @@
 #if !APPSTORE
 import Foundation
 import AppKit
+import SwiftUI
 import Combine
 
 // MARK: - Music Controller
@@ -14,10 +15,14 @@ final class MusicController: ObservableObject {
     @Published var trackTitle: String?
     @Published var artist: String?
     @Published var album: String?
+    @Published var artwork: NSImage?
+    @Published var isPlaying: Bool = false
+    @Published var currentApp: String?
 
     private var notifTokens: [Any] = []
     private var cancellables = Set<AnyCancellable>()
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.music")
+    private var dismissTimer: Timer?
 
     private var isPillActive: Bool {
         AppState.shared.activeIntegrations.contains("integration_music")
@@ -87,6 +92,98 @@ final class MusicController: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // Observe NowPlayingMediaRemote (supports Apple Music, YouTube in browsers, etc.)
+        NowPlayingMediaRemote.shared.$title
+            .combineLatest(NowPlayingMediaRemote.shared.$isPlaying, NowPlayingMediaRemote.shared.$artwork)
+            .removeDuplicates { prev, cur in
+                prev.0 == cur.0 && prev.1 == cur.1 && prev.2 == cur.2
+            }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] title, playing, art in
+                guard let self else { return }
+                self.handleNowPlayingUpdate(
+                    title: title,
+                    playing: playing,
+                    art: art,
+                    artist: NowPlayingMediaRemote.shared.artist,
+                    album: NowPlayingMediaRemote.shared.album,
+                    app: NowPlayingMediaRemote.shared.appName
+                )
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handleNowPlayingUpdate(title: String?, playing: Bool, art: NSImage?, artist: String?, album: String?, app: String?) {
+        if let title = title, !title.isEmpty, playing {
+            dismissTimer?.invalidate()
+            dismissTimer = nil
+
+            self.trackTitle = Self.shortTitle(title)
+            self.artist = artist.map { Self.shortArtist($0) }
+            self.album = album
+            if art != nil {
+                self.artwork = art
+            }
+            self.isPlaying = true
+            self.currentApp = app
+
+            let wasPlaying = AppState.shared.musicPlaying
+            AppState.shared.musicPlaying = true
+            self.syncTaskName()
+
+            if !wasPlaying {
+                NotificationCenter.default.post(name: .musicReveal, object: nil)
+            }
+        } else {
+            self.isPlaying = false
+
+            // Only schedule dismiss if music is currently shown
+            guard AppState.shared.musicPlaying else { return }
+
+            // Do not restart timer if already scheduled
+            if dismissTimer != nil { return }
+
+            // 1.0 second delay after pause as requested
+            dismissTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.dismissTimer = nil
+                    if !NowPlayingMediaRemote.shared.isPlaying {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            AppState.shared.musicPlaying = false
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                            guard let self else { return }
+                            if !AppState.shared.musicPlaying {
+                                self.trackTitle = nil
+                                self.artist = nil
+                                self.album = nil
+                                self.artwork = nil
+                                self.currentApp = nil
+                                self.syncTaskName()
+                                if AppState.shared.focusId == "integration_music" {
+                                    AppState.shared.focusId = AppState.shared.mainPillId
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func expandToMusicCard() {
+        guard let title = trackTitle, !title.isEmpty else { return }
+        if !AppState.shared.activeIntegrations.contains("integration_music") {
+            AppState.shared.activeIntegrations.insert("integration_music")
+            AppState.shared.loadIntegrationTasks()
+        }
+        AppState.shared.focusId = "integration_music"
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.islandController?.fsm.openedExternally()
+            appDelegate.islandController?.expand(to: .overview)
+        }
     }
 
     // MARK: - Private helpers
@@ -134,21 +231,15 @@ final class MusicController: ObservableObject {
 
     private func handlePlayerInfo(playerState: String?, name: String?, artist inputArtist: String?, album inputAlbum: String?) {
         guard isPillActive else { return }
-
         let playing = playerState == "Playing"
-        let wasPlaying = AppState.shared.musicPlaying
-
-        trackTitle = name.map { Self.shortTitle($0) }.flatMap { $0.isEmpty ? nil : $0 }
-        artist     = inputArtist.map { Self.shortArtist($0) }.flatMap { $0.isEmpty ? nil : $0 }
-        album      = inputAlbum
-
-        AppState.shared.musicPlaying = playing
-        syncTaskName()
-
-        // Reveal only on transition from not-playing → playing
-        if playing && !wasPlaying {
-            NotificationCenter.default.post(name: .musicReveal, object: nil)
-        }
+        handleNowPlayingUpdate(
+            title: name,
+            playing: playing,
+            art: self.artwork,
+            artist: inputArtist,
+            album: inputAlbum,
+            app: "Apple Music"
+        )
     }
 
     private func fetchAndApply() {
@@ -189,9 +280,15 @@ final class MusicController: ObservableObject {
     }
 
     private func clearState() {
-        trackTitle = nil; artist = nil; album = nil
-        AppState.shared.musicPlaying = false
-        syncTaskName()
+        dismissTimer?.invalidate()
+        dismissTimer = nil
+        if !NowPlayingMediaRemote.shared.isPlaying {
+            trackTitle = nil; artist = nil; album = nil; artwork = nil
+            isPlaying = false
+            currentApp = nil
+            AppState.shared.musicPlaying = false
+            syncTaskName()
+        }
     }
 
     private func syncTaskName() {
@@ -212,18 +309,27 @@ final class MusicController: ObservableObject {
     }
 
     func playPause() {
-        guard isMusicRunning() else { return }
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to playpause"#) }
+        if isMusicRunning() {
+            Task { await runAppleScript(#"tell application id "com.apple.Music" to playpause"#) }
+        } else {
+            NowPlayingMediaRemote.shared.playPause()
+        }
     }
 
     func play() {
-        guard isMusicRunning() else { return }
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to play"#) }
+        if isMusicRunning() {
+            Task { await runAppleScript(#"tell application id "com.apple.Music" to play"#) }
+        } else {
+            NowPlayingMediaRemote.shared.playPause()
+        }
     }
 
     func pause() {
-        guard isMusicRunning() else { return }
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to pause"#) }
+        if isMusicRunning() {
+            Task { await runAppleScript(#"tell application id "com.apple.Music" to pause"#) }
+        } else {
+            NowPlayingMediaRemote.shared.playPause()
+        }
     }
 
     func setVolume(_ pct: Int) {
@@ -232,13 +338,19 @@ final class MusicController: ObservableObject {
     }
 
     func nextTrack() {
-        guard isMusicRunning() else { return }
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to next track"#) }
+        if isMusicRunning() {
+            Task { await runAppleScript(#"tell application id "com.apple.Music" to next track"#) }
+        } else {
+            NowPlayingMediaRemote.shared.nextTrack()
+        }
     }
 
     func previousTrack() {
-        guard isMusicRunning() else { return }
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to back track"#) }
+        if isMusicRunning() {
+            Task { await runAppleScript(#"tell application id "com.apple.Music" to back track"#) }
+        } else {
+            NowPlayingMediaRemote.shared.previousTrack()
+        }
     }
 
     func adjustVolume(by delta: Int) {
