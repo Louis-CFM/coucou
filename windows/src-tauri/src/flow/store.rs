@@ -531,6 +531,8 @@ mod tests {
         assert!(again.history.is_empty());
         assert_eq!(again.totals(None).0, 0);
         for name in ["history.json", "stats.json"] { std::fs::remove_file(path.join(name)).unwrap(); }
+        std::fs::remove_dir(path).unwrap();
+    }
 
     #[test]
     fn thread_override_preserves_preferences_and_changes_only_after_a_durable_save() {
