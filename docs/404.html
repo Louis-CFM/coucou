@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Page not found — Coucou</title>
+<meta name="description" content="This page doesn’t exist. Head back to the Coucou home page, the iPhone and Android guides, support or the privacy policy.">
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://louis-cfm.github.io/coucou/404.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Coucou">
+<meta property="og:title" content="Page not found — Coucou">
+<meta property="og:description" content="This page doesn’t exist. Head back to the Coucou home page, the iPhone and Android guides, support or the privacy policy.">
+<meta property="og:url" content="https://louis-cfm.github.io/coucou/404.html">
+<meta property="og:image" content="https://louis-cfm.github.io/coucou/media/coucou.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="media/icon.png">
+<link rel="apple-touch-icon" href="media/icon.png">
+<script>
+// Resolve the theme before the stylesheet loads: no flash of the wrong palette.
+(() => {
+  const r = document.documentElement;
+  r.classList.remove("no-js");
+  try {
+    const saved = localStorage.getItem("coucou-theme");
+    r.dataset.theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  } catch { r.dataset.theme = "dark"; }
+})();
+</script>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="rail">
+    <a class="brand" href="index.html">
+      <img src="media/icon.png" width="32" height="32" alt="">Coucou
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <nav class="site-nav" id="site-nav" aria-label="Main"><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="android.html">Android</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav>
+    <button class="theme-toggle" type="button" aria-pressed="false" aria-label="Switch to light appearance" title="Switch appearance"><svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="i-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg></button>
+  </div>
+</header>
+<main class="wrap" id="main">
+  <section style="text-align:center;padding:60px 0 20px">
+    <p class="eyebrow">Error 404</p>
+    <h1 style="font-size:clamp(28px,5vw,42px);margin-bottom:12px">Mochi looked everywhere</h1>
+    <p class="lede" style="max-width:52ch;margin:0 auto 26px">This page doesn’t exist — or it moved while you were away. Here’s the way back.</p>
+    <div class="actions">
+      <a class="btn" href="index.html">Back to the home page</a>
+      <a class="btn ghost" href="support.html">Get help</a>
+    </div>
+  </section>
+
+  <div class="grid">
+    <a class="card" href="iphone.html" style="text-decoration:none">
+      <b>Coucou on iPhone</b><br><span class="meta">Mochi follows you to the Lock Screen and the Dynamic Island.</span>
+    </a>
+    <a class="card" href="android.html" style="text-decoration:none">
+      <b>Coucou for Android</b><br><span class="meta">Linked to your Windows or Linux computer over your Wi-Fi.</span>
+    </a>
+    <a class="card" href="support.html" style="text-decoration:none">
+      <b>Support</b><br><span class="meta">The FAQ, bug reports and the fastest way to reach the developer.</span>
+    </a>
+    <a class="card" href="privacy.html" style="text-decoration:none">
+      <b>Privacy</b><br><span class="meta">No account, no analytics, no tracking — the details.</span>
+    </a>
+  </div>
+
+  <footer class="site-footer">
+    <span>© 2026 Louis Raillé · Coucou’s code is open source (MIT)</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/Louis-CFM/coucou">GitHub</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="legal.html">Legal notice</a>
+    </nav>
+  </footer>
+</main>
+</body>
+</html>

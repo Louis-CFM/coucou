@@ -1,20 +1,62 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Privacy Policy — Coucou</title><link rel="icon" href="media/icon.png"><link rel="stylesheet" href="site.css"></head><body><div class="wrap">
-<header><a href="index.html"><img src="media/icon.png" alt=""></a><span class="name">Coucou</span>
-<nav><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="android.html">Android</a><a href="support.html">Support</a><a href="privacy.html" class="on">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
-<div class="lang"><a href="#en">English</a><a href="#fr">Français</a></div>
-<section id="en">
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy Policy — Coucou</title>
+<meta name="description" content="Coucou collects no data: no account, no analytics, no tracking. What stays on your computer, what the iPhone and Android apps send, which services you connect yourself, and your rights.">
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://louis-cfm.github.io/coucou/privacy.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Coucou">
+<meta property="og:title" content="Privacy Policy — Coucou">
+<meta property="og:description" content="Coucou collects no data: no account, no analytics, no tracking. What stays on your computer, what the iPhone and Android apps send, which services you connect yourself, and your rights.">
+<meta property="og:url" content="https://louis-cfm.github.io/coucou/privacy.html">
+<meta property="og:image" content="https://louis-cfm.github.io/coucou/media/coucou.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="media/icon.png">
+<link rel="apple-touch-icon" href="media/icon.png">
+<script>
+// Resolve the theme before the stylesheet loads: no flash of the wrong palette.
+(() => {
+  const r = document.documentElement;
+  r.classList.remove("no-js");
+  try {
+    const saved = localStorage.getItem("coucou-theme");
+    r.dataset.theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  } catch { r.dataset.theme = "dark"; }
+})();
+</script>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="rail">
+    <a class="brand" href="index.html">
+      <img src="media/icon.png" width="32" height="32" alt="">Coucou
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <nav class="site-nav" id="site-nav" aria-label="Main"><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="android.html">Android</a><a href="support.html">Support</a><a href="privacy.html" class="on" aria-current="page">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav>
+    <button class="theme-toggle" type="button" aria-pressed="false" aria-label="Switch to light appearance" title="Switch appearance"><svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="i-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg></button>
+  </div>
+</header>
+<main class="wrap" id="main">
+<div class="lang" role="group" aria-label="Language"><a href="#en">English</a><a href="#fr">Français</a></div>
+<section id="en" class="prose"><nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#en-1-who-is-responsible">1. Who is responsible</a></li><li><a href="#en-2-data-we-collect">2. Data we collect</a></li><li><a href="#en-3-data-stored-on-your-computer">3. Data stored on your computer</a></li><li><a href="#en-4-services-you-connect-yourself">4. Services you connect yourself</a></li><li><a href="#en-5-claude-code-gemini-cli-antigravity-and-codex-hooks">5. Claude Code, Gemini CLI, Antigravity and Codex hooks</a></li><li><a href="#en-6-apple-music-and-spotify">6. Apple Music and Spotify</a></li><li><a href="#en-7-email">7. Email</a></li><li><a href="#en-8-system-permissions">8. System permissions</a></li><li><a href="#en-9-iphone-app">9. iPhone app</a></li><li><a href="#en-10-android-app">10. Android app</a></li><li><a href="#en-11-children">11. Children</a></li><li><a href="#en-12-your-rights">12. Your rights</a></li><li><a href="#en-13-changes">13. Changes</a></li></ol></nav>
 <h1>Privacy Policy</h1>
 <div class="meta">Last updated: October 15, 2026</div>
 <div class="card"><b>In short:</b> Coucou has no account, no analytics, no ads and no tracking. The developer receives none of your data. Everything stays on your computer (Mac or PC), except what you choose to send to the services you connect yourself.</div>
 
-<h2>1. Who is responsible</h2>
+<h2 id="en-1-who-is-responsible">1. Who is responsible</h2>
 <p>Coucou is published by Louis Raillé, an individual developer based in France (“we”). Contact: <a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a>.</p>
 
-<h2>2. Data we collect</h2>
+<h2 id="en-2-data-we-collect">2. Data we collect</h2>
 <p><b>None.</b> There is no telemetry, no crash reporting service, no advertising identifier and no third-party SDK. The only server we operate is the optional Live Activity relay described in section 9: it forwards a few words about your agent’s state to Apple and stores nothing.</p>
 
-<h2>3. Data stored on your computer</h2>
+<h2 id="en-3-data-stored-on-your-computer">3. Data stored on your computer</h2>
 <table>
 <tr><th>What</th><th>Where</th><th>Why</th></tr>
 <tr><td>API keys and tokens you enter (Anthropic, Google AI, OpenAI, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n)</td><td>macOS Keychain, Windows Credential Manager, or the Secret Service on Linux (GNOME Keyring, KWallet)</td><td>To call these services on your behalf</td></tr>
@@ -28,7 +70,7 @@
 </table>
 <p>You can delete all of this at any time by removing your keys in Settings, then deleting the app and its folder in <code>~/Library/Application Support/NotchBuddy</code> (or the app’s container for the App Store version). On Windows: uninstall Coucou from Settings → Apps, then delete <code>%APPDATA%\Coucou</code> and <code>%LOCALAPPDATA%\Coucou</code>. On Linux: remove the package (<code>sudo apt remove coucou</code> or <code>sudo dnf remove coucou</code>) or delete the AppImage, then delete <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> and <code>~/.cache/coucou</code>.</p>
 
-<h2>4. Services you connect yourself</h2>
+<h2 id="en-4-services-you-connect-yourself">4. Services you connect yourself</h2>
 <p>Coucou only talks to the services you configure, directly from your Mac, using your own keys. Those services process your data under their own privacy policies:</p>
 <ul>
 <li><b>Anthropic (Claude API)</b> — when you chat using Anthropic or ask about a file or a window, the text you type, the file content and/or the window context you chose are sent to Anthropic. When you open the chat or Settings, the list of available models is also fetched from the Anthropic API using your key. <a href="https://www.anthropic.com/legal/privacy">Anthropic privacy policy</a>.</li>
@@ -41,55 +83,55 @@
 </ul>
 <p>We have no access to these requests or their responses.</p>
 
-<h2>5. Claude Code, Gemini CLI, Antigravity and Codex hooks</h2>
+<h2 id="en-5-claude-code-gemini-cli-antigravity-and-codex-hooks">5. Claude Code, Gemini CLI, Antigravity and Codex hooks</h2>
 <p>If you install the Claude Code hooks, Claude Code sends session events to Coucou through a local connection on your computer. If you install the Gemini CLI, Antigravity or Codex hooks, those agents send their session events the same way. These events never leave your computer through Coucou. If you install the Plan usage status line, Claude Code also passes the percentage used and the reset times of your plan windows to Coucou through the same local connection; nothing leaves your computer. Before changing any settings file (<code>~/.claude/settings.json</code>, <code>~/.gemini/settings.json</code>, <code>~/.gemini/config/hooks.json</code>, <code>~/.codex/hooks.json</code>), Coucou makes a dated backup and shows you the changes. File edits (the old and new text received from Edit, MultiEdit and Write hooks) are kept in memory for the duration of the session and deleted when the session ends or after one hour of inactivity; they never leave your computer.</p>
 
-<h2>6. Apple Music and Spotify</h2>
+<h2 id="en-6-apple-music-and-spotify">6. Apple Music and Spotify</h2>
 <p>If you activate the Apple Music pill <i>(macOS, GitHub build)</i>, Coucou reads the current track (title, artist, album) from Music on your Mac to display it in the notch, and only sends play, pause or skip commands to Music when you click. Nothing leaves your computer.</p>
 <p>If you activate the Spotify pill <i>(macOS, GitHub build)</i>, Coucou reads the current track (title, artist, album, position, shuffle, repeat and volume) from the Spotify app on your Mac, and only sends play, pause, skip, seek, shuffle, repeat or volume commands when you click. To show the album cover, Coucou downloads it from Spotify's image server and, when the Spotify app doesn't give its address, asks Spotify's public <code>open.spotify.com/oembed</code> for it with the track's link. No account, key or other data is sent. <a href="https://www.spotify.com/legal/privacy-policy/">Spotify privacy policy</a>.</p>
 
-<h2>7. Email</h2>
+<h2 id="en-7-email">7. Email</h2>
 <p>When you send a file by email, the message is created and sent by your own Mail app. Coucou never sends email by itself.</p>
 
-<h2>8. System permissions</h2>
+<h2 id="en-8-system-permissions">8. System permissions</h2>
 <p>Depending on the version and the features you use, macOS may ask you to allow Automation (Mail, Terminal, Music, Spotify), Accessibility (to read the title of the window you attach) or Screen Recording (to capture a window you attach). If you dictate in the chat <i>(GitHub build)</i>, macOS asks for the Microphone and Speech Recognition; speech is turned into text on your Mac when it supports it, otherwise by Apple’s speech service, and nothing is sent to Coucou or its developer. These are only used for the feature you triggered and can be revoked at any time in System Settings → Privacy &amp; Security. The Windows and Linux versions ask for no special permission; your system may show that Coucou uses the microphone while you dictate, record a call or turn on « OK Coucou ». On Linux with Wayland, the desktop asks once before Coucou can use its dictation shortcut and before it may type the paste for you. On Linux, installing the .deb or .rpm package needs administrator rights; the AppImage doesn't.</p>
 
-<h2>9. iPhone app</h2>
+<h2 id="en-9-iphone-app">9. iPhone app</h2>
 <p>If you turn on <b>Settings → General → iPhone</b> on your Mac (off by default), Coucou writes your agent sessions to your own private iCloud database, which only your devices signed in to your Apple Account can read. For each agent session it also keeps its last turn only: the prompt you sent, the commands it ran and what they printed (trimmed), the file changes it made, and its answer. It also writes what your connected services show in the notch (GitHub pull requests and checks, Stripe payments and balance, Vercel deployments, Resend emails, Cal.com bookings, n8n runs, Notion pages), from data your Mac already fetched: no extra request, and no API key ever leaves your Mac. Project names, steps, folders, the last message, pending commands, questions, the last turn and all that service data are encrypted with your iCloud keys. When you allow or deny a command from the iPhone (allowing needs Face ID in the app, or the iPhone unlocked by you from the Lock Screen or a notification), the decision goes back to your Mac through the same database, and the iPhone keeps a history of your decisions on the iPhone only. Turning the setting off deletes the sessions from iCloud. We have no access to your iCloud data.</p>
 <p>If you turn on <b>Let my iPhone send instructions to Claude Code</b> <i>(macOS, GitHub build)</i>, an instruction you write or dictate on the iPhone (Face ID required) goes to your Mac through the same private iCloud database, encrypted, and is deleted as soon as your Mac reads it. Your Mac then continues your last Claude Code session with it, in that session’s folder. Dictation uses Apple’s speech recognition, on the iPhone when available.</p>
 <p>When Claude asks you a question, its choices go to your iPhone in the same encrypted session record, so you can answer there. Your answer (the choices you picked) goes back to your Mac the same way and is deleted as soon as your Mac reads it. Replies typed in a notification, and instructions sent with Siri or the Shortcuts app, travel like the instructions above and need the iPhone unlocked. The earlier turns and the “Today” tally the iPhone shows are kept on the iPhone only, and so is the Spotlight index of your turns (Settings → Look, on by default, can be turned off).</p>
 <p>When you open a service on the iPhone (GitHub, Vercel, Stripe, Resend, Cal.com, n8n, Notion), the iPhone asks your Mac, through your private iCloud, to read that service; your Mac calls its API with the key in its Keychain and writes what it read back to iCloud, encrypted. From there you can ask your Mac to redeploy or cancel a Vercel build, re-run failed GitHub jobs, approve or merge a pull request, or turn an n8n workflow on or off or retry a run, always after Face ID. Nothing that moves money or sends an email can be asked from the iPhone, and no API key ever leaves your Mac.</p>
 <p>If you also turn on <b>Move Mochi to my iPhone’s Dynamic Island when my Mac is locked</b>, then while your Mac is locked and an agent is working, your Mac sends the agent’s name and state (for example “VS Code · working 3/7”) and your iPhone’s Live Activity push token to the Coucou relay, a small server we run on Cloudflare, which forwards it to Apple’s push service to update the Live Activity. The relay never receives a project name, a command, a path or a message, stores nothing and keeps no logs.</p>
 
-<h2>10. Android app</h2>
+<h2 id="en-10-android-app">10. Android app</h2>
 <p>Coucou for Android (by Rhytam Biswas, part of Coucou) talks to Coucou on your Windows or Linux computer, <b>directly over your local network</b>. No Coucou server is involved and we receive nothing. The link is off by default: nothing listens on your computer until you turn on <b>Settings → Android phone → Phone link</b>, and while it is on your computer announces itself on your local network only (its name and a short piece of its certificate fingerprint, so the phone can find it again).</p>
 <p>The phone pairs by scanning a QR code with its camera: the camera is used only on that screen, and the picture is neither stored nor sent. The pairing code and the computer’s certificate fingerprint are stored on the phone, encrypted with a key from the Android Keystore; on the computer, the certificate key and the pairing code stay in Windows Credential Manager or the Linux Secret Service. The connection is encrypted (TLS) and checked against the certificate you paired with. <b>Pair again</b> replaces the code and disconnects every phone.</p>
 <p>Your computer sends the phone the state of your agent sessions and your permission requests. When you allow or deny a request on the phone (allowing needs your fingerprint or screen lock), the decision goes back to your computer, which applies it only to the exact request it is waiting on; the list of your past decisions is kept on the phone only. Notifications show at most the tool and the program’s name, never the full command (only “Unlock to see the request” if your phone hides sensitive content on the lock screen); the full command is on the approval screen. Extras are off by default and each has its own switch on the computer: session details, answers to Claude’s questions, file changes, plan usage, your services, and chat. With chat on, your messages go from the phone to your computer, which sends them to the AI provider you chose with the key stored on the computer (the key never reaches the phone), as its own chat does; that provider’s privacy policy applies.</p>
 <p>The app has no ads, no analytics and no crash reporting, and it turns Android backups off for its data. The pairing, chat and approval screens can’t be captured. Uninstalling the app deletes everything it stored; turning the phone link off on your computer stops everything on that side.</p>
 
-<h2>11. Children</h2>
+<h2 id="en-11-children">11. Children</h2>
 <p>Coucou is a developer tool and is not directed at children.</p>
 
-<h2>12. Your rights</h2>
+<h2 id="en-12-your-rights">12. Your rights</h2>
 <p>Since we hold no personal data about you (the relay keeps nothing), there is nothing for us to access, correct or delete. For data held by a service you connected, please contact that service. If you live in the EU, you can also contact your data protection authority (in France: the <a href="https://www.cnil.fr">CNIL</a>).</p>
 
-<h2>13. Changes</h2>
+<h2 id="en-13-changes">13. Changes</h2>
 <p>If this policy changes, the new version will be published on this page with a new date.</p>
 </section>
 
 <hr>
-<section id="fr" lang="fr">
+<section id="fr" lang="fr" class="prose"><nav class="toc" aria-label="Sommaire"><h2>Sommaire</h2><ol><li><a href="#fr-1-responsable">1. Responsable</a></li><li><a href="#fr-2-donn-es-collect-es">2. Données collectées</a></li><li><a href="#fr-3-donn-es-stock-es-sur-ton-ordinateur">3. Données stockées sur ton ordinateur</a></li><li><a href="#fr-4-services-que-tu-connectes-toi-m-me">4. Services que tu connectes toi-même</a></li><li><a href="#fr-5-claude-code-gemini-cli-antigravity-et-codex">5. Claude Code, Gemini CLI, Antigravity et Codex</a></li><li><a href="#fr-6-apple-music-et-spotify">6. Apple Music et Spotify</a></li><li><a href="#fr-7-e-mail">7. E-mail</a></li><li><a href="#fr-8-autorisations-syst-me">8. Autorisations système</a></li><li><a href="#fr-9-app-iphone">9. App iPhone</a></li><li><a href="#fr-10-app-android">10. App Android</a></li><li><a href="#fr-11-enfants">11. Enfants</a></li><li><a href="#fr-12-tes-droits">12. Tes droits</a></li><li><a href="#fr-13-modifications">13. Modifications</a></li></ol></nav>
 <h1>Politique de confidentialité</h1>
 <div class="meta">Dernière mise à jour : 15 octobre 2026</div>
 <div class="card"><b>En bref :</b> Coucou n’a ni compte, ni statistiques, ni publicité, ni pistage. Le développeur ne reçoit aucune de tes données. Tout reste sur ton ordinateur (Mac ou PC), sauf ce que tu choisis d’envoyer aux services que tu connectes toi-même.</div>
 
-<h2>1. Responsable</h2>
+<h2 id="fr-1-responsable">1. Responsable</h2>
 <p>Coucou est publié par Louis Raillé, développeur indépendant basé en France. Contact : <a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a>.</p>
 
-<h2>2. Données collectées</h2>
+<h2 id="fr-2-donn-es-collect-es">2. Données collectées</h2>
 <p><b>Aucune.</b> Pas de télémétrie, pas de service de rapport de plantage, pas d’identifiant publicitaire, pas de SDK tiers. Le seul serveur exploité par le développeur est le relais Live Activity facultatif décrit à la section 9 : il transmet à Apple quelques mots sur l’état de ton agent et ne stocke rien.</p>
 
-<h2>3. Données stockées sur ton ordinateur</h2>
+<h2 id="fr-3-donn-es-stock-es-sur-ton-ordinateur">3. Données stockées sur ton ordinateur</h2>
 <table>
 <tr><th>Quoi</th><th>Où</th><th>Pourquoi</th></tr>
 <tr><td>Clés d’API et jetons saisis (Anthropic, Google AI, OpenAI, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n)</td><td>Trousseau macOS, Gestionnaire d’identifiants Windows, ou Secret Service sous Linux (GNOME Keyring, KWallet)</td><td>Appeler ces services pour toi</td></tr>
@@ -103,7 +145,7 @@
 </table>
 <p>Tu peux tout supprimer à tout moment : retire tes clés dans les Réglages, puis supprime l’app et son dossier <code>~/Library/Application Support/NotchBuddy</code> (ou le conteneur de l’app pour la version App Store). Sous Windows : désinstalle Coucou depuis Paramètres → Applications, puis supprime <code>%APPDATA%\Coucou</code> et <code>%LOCALAPPDATA%\Coucou</code>. Sous Linux : désinstalle le paquet (<code>sudo apt remove coucou</code> ou <code>sudo dnf remove coucou</code>) ou supprime l’AppImage, puis supprime <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> et <code>~/.cache/coucou</code>.</p>
 
-<h2>4. Services que tu connectes toi-même</h2>
+<h2 id="fr-4-services-que-tu-connectes-toi-m-me">4. Services que tu connectes toi-même</h2>
 <p>Coucou ne communique qu’avec les services que tu configures, directement depuis ton Mac, avec tes propres clés. Ces services traitent tes données selon leur propre politique :</p>
 <ul>
 <li><b>Anthropic (API Claude)</b> : quand tu discutes via Anthropic ou poses une question sur un fichier ou une fenêtre, le texte saisi, le contenu du fichier et/ou le contexte de la fenêtre choisie sont envoyés à Anthropic. À l’ouverture du chat ou des Réglages, la liste des modèles disponibles est aussi récupérée depuis l’API d’Anthropic avec ta clé. <a href="https://www.anthropic.com/legal/privacy">Politique de confidentialité d’Anthropic</a>.</li>
@@ -116,39 +158,51 @@
 </ul>
 <p>Le développeur n’a accès ni à ces requêtes ni à leurs réponses.</p>
 
-<h2>5. Claude Code, Gemini CLI, Antigravity et Codex</h2>
+<h2 id="fr-5-claude-code-gemini-cli-antigravity-et-codex">5. Claude Code, Gemini CLI, Antigravity et Codex</h2>
 <p>Si tu installes les hooks Claude Code, Claude Code envoie les événements de session à Coucou par une connexion locale sur ton ordinateur. Si tu installes les hooks Gemini CLI, Antigravity ou Codex, ces agents envoient leurs événements de la même façon. Coucou ne les fait jamais sortir de ton ordinateur. Si tu installes le relais de jauge de forfait (Plan usage), Claude Code transmet aussi à Coucou, par la même connexion locale, les pourcentages utilisés et les heures de remise à zéro de tes fenêtres de forfait ; rien ne quitte ton ordinateur. Avant de modifier un fichier de configuration (<code>~/.claude/settings.json</code>, <code>~/.gemini/settings.json</code>, <code>~/.gemini/config/hooks.json</code>, <code>~/.codex/hooks.json</code>), Coucou en fait une sauvegarde datée et te montre les changements. Les modifications de fichiers (l'ancien et le nouveau texte reçus via les hooks Edit, MultiEdit et Write) sont conservées en mémoire pendant la durée de la session et supprimées à la fin de la session ou après une heure d'inactivité ; elles ne quittent jamais ton ordinateur.</p>
 
-<h2>6. Apple Music et Spotify</h2>
+<h2 id="fr-6-apple-music-et-spotify">6. Apple Music et Spotify</h2>
 <p>Si tu actives la pastille Apple Music <i>(macOS, version GitHub)</i>, Coucou lit le morceau en cours (titre, artiste, album) depuis l’app Musique de ton Mac pour l’afficher dans le notch, et n’envoie lecture, pause ou morceau suivant à Musique que quand tu cliques. Rien ne quitte ton ordinateur.</p>
 <p>Si tu actives la pastille Spotify <i>(macOS, version GitHub)</i>, Coucou lit le morceau en cours (titre, artiste, album, position, lecture aléatoire, répétition et volume) depuis l’app Spotify de ton Mac, et n’envoie lecture, pause, morceau suivant, avance, lecture aléatoire, répétition ou volume que quand tu cliques. Pour afficher la pochette, Coucou la télécharge depuis le serveur d’images de Spotify et, quand l’app Spotify n’en donne pas l’adresse, la demande à l’oEmbed public de Spotify (<code>open.spotify.com/oembed</code>) avec le lien du morceau. Aucun compte, aucune clé ni autre donnée n’est envoyé. <a href="https://www.spotify.com/legal/privacy-policy/">Politique de confidentialité de Spotify</a>.</p>
 
-<h2>7. E-mail</h2>
+<h2 id="fr-7-e-mail">7. E-mail</h2>
 <p>Quand tu envoies un fichier par e-mail, le message est créé et envoyé par ta propre app Mail. Coucou n’envoie jamais d’e-mail de lui-même.</p>
 
-<h2>8. Autorisations système</h2>
+<h2 id="fr-8-autorisations-syst-me">8. Autorisations système</h2>
 <p>Selon la version et les fonctions utilisées, macOS peut te demander d’autoriser l’Automatisation (Mail, Terminal, Musique, Spotify), l’Accessibilité (lire le titre de la fenêtre que tu attaches) ou l’Enregistrement de l’écran (capturer une fenêtre que tu attaches). Si tu dictes dans le chat <i>(version GitHub)</i>, macOS demande le Micro et la Reconnaissance vocale ; la voix est transcrite sur ton Mac quand il le permet, sinon par le service de reconnaissance d’Apple, et rien n’est envoyé à Coucou ni à son développeur. Elles ne servent qu’à la fonction que tu as déclenchée et se retirent à tout moment dans Réglages Système → Confidentialité et sécurité. Les versions Windows et Linux ne demandent aucune autorisation particulière ; ton système peut signaler que Coucou utilise le micro pendant une dictée, l’enregistrement d’un appel ou quand « OK Coucou » est activé. Sous Linux avec Wayland, le bureau demande une fois avant que Coucou utilise son raccourci de dictée et avant qu’il tape le collage pour toi. Sous Linux, l’installation du paquet .deb ou .rpm nécessite des droits administrateur ; l’AppImage non.</p>
 
-<h2>9. App iPhone</h2>
+<h2 id="fr-9-app-iphone">9. App iPhone</h2>
 <p>Si tu actives <b>Réglages → Général → iPhone</b> sur ton Mac (désactivé par défaut), Coucou écrit tes sessions d’agents dans ta propre base iCloud privée, que seuls tes appareils connectés à ton compte Apple peuvent lire. Pour chaque session d’agent, il garde aussi uniquement son dernier tour : le prompt que tu as envoyé, les commandes lancées et ce qu’elles ont affiché (raccourci), les modifications de fichiers et sa réponse. Il y écrit aussi ce que tes services connectés affichent dans l’encoche (pull requests et checks GitHub, paiements et solde Stripe, déploiements Vercel, e-mails Resend, rendez-vous Cal.com, exécutions n8n, pages Notion), à partir des données que ton Mac a déjà récupérées : aucune requête en plus, et aucune clé d’API ne quitte ton Mac. Les noms de projet, étapes, dossiers, dernier message, commandes en attente, questions, le dernier tour et toutes ces données de services sont chiffrés avec tes clés iCloud. Quand tu autorises ou refuses une commande depuis l’iPhone (autoriser demande Face ID dans l’app, ou l’iPhone déverrouillé par toi depuis l’écran verrouillé ou une notification), la décision revient à ton Mac par la même base, et l’iPhone garde l’historique de tes décisions sur l’iPhone uniquement. Désactiver le réglage supprime les sessions d’iCloud. Le développeur n’a aucun accès à tes données iCloud.</p>
 <p>Si tu actives <b>Let my iPhone send instructions to Claude Code</b> <i>(macOS, version GitHub)</i>, une instruction écrite ou dictée sur l’iPhone (Face ID demandé) passe par la même base iCloud privée, chiffrée, et est supprimée dès que ton Mac la lit. Ton Mac continue alors ta dernière session Claude Code avec elle, dans le dossier de cette session. La dictée utilise la reconnaissance vocale d’Apple, sur l’iPhone quand c’est possible.</p>
 <p>Quand Claude te pose une question, ses choix arrivent sur ton iPhone dans le même enregistrement de session chiffré, pour que tu puisses y répondre. Ta réponse (les choix cochés) repart vers ton Mac de la même façon et est supprimée dès que ton Mac la lit. Les réponses tapées dans une notification, et les instructions envoyées avec Siri ou l’app Raccourcis, voyagent comme les instructions ci-dessus et demandent l’iPhone déverrouillé. Les tours précédents et le bilan « Today » affichés sur l’iPhone restent sur l’iPhone, tout comme l’index Spotlight de tes tours (Réglages → Look, activé par défaut, désactivable).</p>
 <p>Quand tu ouvres un service sur l’iPhone (GitHub, Vercel, Stripe, Resend, Cal.com, n8n, Notion), l’iPhone demande à ton Mac, via ton iCloud privé, de le lire ; ton Mac appelle son API avec la clé de son trousseau et réécrit ce qu’il a lu dans iCloud, chiffré. De là, tu peux demander à ton Mac de redéployer ou d’annuler un build Vercel, de relancer des jobs GitHub en échec, d’approuver ou de merger une pull request, ou d’activer ou de couper un workflow n8n ou de relancer une exécution, toujours après Face ID. Rien qui déplace de l’argent ou envoie un e-mail ne peut être demandé depuis l’iPhone, et aucune clé d’API ne quitte ton Mac.</p>
 <p>Si tu actives aussi <b>Mochi passe sur l’île dynamique de l’iPhone quand le Mac est verrouillé</b>, alors pendant que ton Mac est verrouillé et qu’un agent travaille, ton Mac envoie le nom et l’état de l’agent (par exemple « VS Code · working 3/7 ») et le jeton push Live Activity de ton iPhone au relais Coucou, un petit serveur exploité par le développeur sur Cloudflare, qui le transmet au service de notifications d’Apple pour mettre à jour la Live Activity. Le relais ne reçoit jamais de nom de projet, de commande, de chemin ni de message, ne stocke rien et ne tient aucun journal.</p>
 
-<h2>10. App Android</h2>
+<h2 id="fr-10-app-android">10. App Android</h2>
 <p>Coucou for Android (par Rhytam Biswas, partie de Coucou) communique avec Coucou sur ton ordinateur Windows ou Linux, <b>directement sur ton réseau local</b>. Aucun serveur Coucou n’intervient et le développeur ne reçoit rien. Le lien est désactivé par défaut : rien n’écoute sur ton ordinateur tant que tu n’actives pas <b>Réglages → Android phone → Phone link</b>, et pendant qu’il est actif, ton ordinateur ne s’annonce que sur ton réseau local (son nom et un court morceau de l’empreinte de son certificat, pour que le téléphone le retrouve).</p>
 <p>Le téléphone s’associe en scannant un QR code avec sa caméra : la caméra n’est utilisée que sur cet écran, et l’image n’est ni stockée ni envoyée. Le code d’association et l’empreinte du certificat de l’ordinateur sont stockés sur le téléphone, chiffrés avec une clé du Keystore Android ; sur l’ordinateur, la clé du certificat et le code d’association restent dans le Gestionnaire d’identification Windows ou le Secret Service Linux. La connexion est chiffrée (TLS) et vérifiée avec le certificat associé. <b>Associer à nouveau</b> remplace le code et déconnecte tous les téléphones.</p>
 <p>Ton ordinateur envoie au téléphone l’état de tes sessions d’agents et tes demandes de permission. Quand tu autorises ou refuses une demande sur le téléphone (autoriser demande ton empreinte ou le verrouillage de l’écran), la décision repart vers ton ordinateur, qui ne l’applique qu’à la demande exacte qu’il attend ; la liste de tes décisions passées reste sur le téléphone uniquement. Les notifications affichent au plus l’outil et le nom du programme, jamais la commande complète (seulement « Unlock to see the request » si ton téléphone masque le contenu sensible sur l’écran verrouillé) ; la commande complète est sur l’écran d’approbation. Les extras sont désactivés par défaut et ont chacun leur interrupteur sur l’ordinateur : détails des sessions, réponses aux questions de Claude, fichiers modifiés, consommation du forfait, tes services et le chat. Avec le chat, tes messages vont du téléphone à ton ordinateur, qui les envoie au fournisseur d’IA que tu as choisi avec la clé enregistrée sur l’ordinateur (la clé n’arrive jamais sur le téléphone), comme son propre chat ; la politique de confidentialité de ce fournisseur s’applique.</p>
 <p>L’app n’a ni publicité, ni analytique, ni rapport de plantage, et elle désactive les sauvegardes Android pour ses données. Les écrans d’association, de chat et d’approbation ne peuvent pas être capturés. Désinstaller l’app supprime tout ce qu’elle a stocké ; couper le lien sur ton ordinateur arrête tout de ce côté.</p>
 
-<h2>11. Enfants</h2>
+<h2 id="fr-11-enfants">11. Enfants</h2>
 <p>Coucou est un outil pour développeurs, il ne s’adresse pas aux enfants.</p>
 
-<h2>12. Tes droits</h2>
+<h2 id="fr-12-tes-droits">12. Tes droits</h2>
 <p>Le développeur ne détenant aucune donnée personnelle te concernant (le relais ne garde rien), il n’y a rien à consulter, corriger ou supprimer de son côté. Pour les données détenues par un service que tu as connecté, contacte ce service. Tu peux aussi saisir la <a href="https://www.cnil.fr">CNIL</a>.</p>
 
-<h2>13. Modifications</h2>
+<h2 id="fr-13-modifications">13. Modifications</h2>
 <p>En cas de changement, la nouvelle version sera publiée sur cette page avec une nouvelle date.</p>
 </section>
-<footer>© 2026 Louis Raillé · Coucou’s code is open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>
+
+  <footer class="site-footer">
+    <span>© 2026 Louis Raillé · Coucou’s code is open source (MIT)</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/Louis-CFM/coucou">GitHub</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="legal.html">Legal notice</a>
+    </nav>
+  </footer>
+</main>
+</body>
+</html>

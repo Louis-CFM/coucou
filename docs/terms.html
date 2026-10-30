@@ -1,76 +1,130 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Terms of Use — Coucou</title><link rel="icon" href="media/icon.png"><link rel="stylesheet" href="site.css"></head><body><div class="wrap">
-<header><a href="index.html"><img src="media/icon.png" alt=""></a><span class="name">Coucou</span>
-<nav><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="android.html">Android</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="terms.html" class="on">Terms</a><a href="legal.html">Legal</a></nav></header>
-<div class="lang"><a href="#en">English</a><a href="#fr">Français</a></div>
-<section id="en">
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Terms of Use — Coucou</title>
+<meta name="description" content="The terms for using Coucou: the MIT licence, your own API keys and third-party services, Claude Code, the absence of warranty, trademarks and applicable law.">
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://louis-cfm.github.io/coucou/terms.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Coucou">
+<meta property="og:title" content="Terms of Use — Coucou">
+<meta property="og:description" content="The terms for using Coucou: the MIT licence, your own API keys and third-party services, Claude Code, the absence of warranty, trademarks and applicable law.">
+<meta property="og:url" content="https://louis-cfm.github.io/coucou/terms.html">
+<meta property="og:image" content="https://louis-cfm.github.io/coucou/media/coucou.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="media/icon.png">
+<link rel="apple-touch-icon" href="media/icon.png">
+<script>
+// Resolve the theme before the stylesheet loads: no flash of the wrong palette.
+(() => {
+  const r = document.documentElement;
+  r.classList.remove("no-js");
+  try {
+    const saved = localStorage.getItem("coucou-theme");
+    r.dataset.theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  } catch { r.dataset.theme = "dark"; }
+})();
+</script>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="rail">
+    <a class="brand" href="index.html">
+      <img src="media/icon.png" width="32" height="32" alt="">Coucou
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <nav class="site-nav" id="site-nav" aria-label="Main"><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="android.html">Android</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="terms.html" class="on" aria-current="page">Terms</a><a href="legal.html">Legal</a></nav>
+    <button class="theme-toggle" type="button" aria-pressed="false" aria-label="Switch to light appearance" title="Switch appearance"><svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="i-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg></button>
+  </div>
+</header>
+<main class="wrap" id="main">
+<div class="lang" role="group" aria-label="Language"><a href="#en">English</a><a href="#fr">Français</a></div>
+<section id="en" class="prose"><nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#en-1-the-app">1. The app</a></li><li><a href="#en-2-licence">2. Licence</a></li><li><a href="#en-3-your-keys-and-third-party-services">3. Your keys and third-party services</a></li><li><a href="#en-4-claude-code">4. Claude Code</a></li><li><a href="#en-5-no-warranty">5. No warranty</a></li><li><a href="#en-6-trademarks">6. Trademarks</a></li><li><a href="#en-7-changes-and-termination">7. Changes and termination</a></li><li><a href="#en-8-governing-law">8. Governing law</a></li><li><a href="#en-9-contact">9. Contact</a></li></ol></nav>
 <h1>Terms of Use</h1>
 <div class="meta">Last updated: October 2, 2026</div>
 
-<h2>1. The app</h2>
+<h2 id="en-1-the-app">1. The app</h2>
 <p>Coucou is a free app for macOS, Windows and Linux published by Louis Raillé. Its source code is available on <a href="https://github.com/Louis-CFM/coucou">GitHub</a> under the MIT License. By downloading or using Coucou, you accept these terms.</p>
 
-<h2>2. Licence</h2>
+<h2 id="en-2-licence">2. Licence</h2>
 <ul>
 <li><b>Source code:</b> governed by the <a href="https://github.com/Louis-CFM/coucou/blob/main/LICENSE">MIT License</a>.</li>
 <li><b>Mac App Store version:</b> your use is also governed by Apple’s <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/">Licensed Application End User License Agreement</a>. If these terms and Apple’s agreement conflict, Apple’s agreement prevails for the App Store version.</li>
 </ul>
 
-<h2>3. Your keys and third-party services</h2>
+<h2 id="en-3-your-keys-and-third-party-services">3. Your keys and third-party services</h2>
 <p>Coucou works with services you connect yourself (Anthropic, Google AI, OpenAI, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n). You are responsible for your accounts, your keys, complying with those services’ terms, and any costs they charge you — for example API usage billed by Anthropic, Google or OpenAI.</p>
 
-<h2>4. Claude Code</h2>
+<h2 id="en-4-claude-code">4. Claude Code</h2>
 <p>Coucou can show and answer Claude Code permission requests. Approving a request from the notch has the same effect as approving it in your terminal: you remain responsible for what you allow Claude Code to do.</p>
 
-<h2>5. No warranty</h2>
+<h2 id="en-5-no-warranty">5. No warranty</h2>
 <p>Coucou is provided “as is”, without warranty of any kind. To the extent permitted by law, the developer is not liable for any damage arising from its use, including data loss, unexpected actions approved through the app, or charges from third-party services. Nothing in these terms limits rights you have under mandatory consumer protection law.</p>
 
-<h2>6. Trademarks</h2>
+<h2 id="en-6-trademarks">6. Trademarks</h2>
 <p>Claude and Claude Code are trademarks of Anthropic, PBC. Mac, macOS and Mac App Store are trademarks of Apple Inc. Google, Gemini, OpenAI, Codex, Cursor, Visual Studio Code, Antigravity, Windows, Linux, Stripe, GitHub, Vercel, Resend, Notion, Cal.com and n8n are trademarks of their respective owners. Coucou is an independent project and is not affiliated with, endorsed or sponsored by any of them.</p>
 
-<h2>7. Changes and termination</h2>
+<h2 id="en-7-changes-and-termination">7. Changes and termination</h2>
 <p>These terms may be updated; the new version will be published here with a new date. You can stop using Coucou at any time by deleting it.</p>
 
-<h2>8. Governing law</h2>
+<h2 id="en-8-governing-law">8. Governing law</h2>
 <p>These terms are governed by French law, without prejudice to the mandatory rules of the country where you live.</p>
 
-<h2>9. Contact</h2>
+<h2 id="en-9-contact">9. Contact</h2>
 <p><a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a></p>
 </section>
 
 <hr>
-<section id="fr" lang="fr">
+<section id="fr" lang="fr" class="prose"><nav class="toc" aria-label="Sommaire"><h2>Sommaire</h2><ol><li><a href="#fr-1-lapp">1. L’app</a></li><li><a href="#fr-2-licence">2. Licence</a></li><li><a href="#fr-3-tes-cl-s-et-les-services-tiers">3. Tes clés et les services tiers</a></li><li><a href="#fr-4-claude-code">4. Claude Code</a></li><li><a href="#fr-5-absence-de-garantie">5. Absence de garantie</a></li><li><a href="#fr-6-marques">6. Marques</a></li><li><a href="#fr-7-modifications-et-fin">7. Modifications et fin</a></li><li><a href="#fr-8-droit-applicable">8. Droit applicable</a></li><li><a href="#fr-9-contact">9. Contact</a></li></ol></nav>
 <h1>Conditions d’utilisation</h1>
 <div class="meta">Dernière mise à jour : 2 octobre 2026</div>
 
-<h2>1. L’app</h2>
+<h2 id="fr-1-lapp">1. L’app</h2>
 <p>Coucou est une app gratuite pour macOS, Windows et Linux publiée par Louis Raillé. Son code source est disponible sur <a href="https://github.com/Louis-CFM/coucou">GitHub</a> sous licence MIT. En téléchargeant ou en utilisant Coucou, tu acceptes ces conditions.</p>
 
-<h2>2. Licence</h2>
+<h2 id="fr-2-licence">2. Licence</h2>
 <ul>
 <li><b>Code source :</b> régi par la <a href="https://github.com/Louis-CFM/coucou/blob/main/LICENSE">licence MIT</a>.</li>
 <li><b>Version Mac App Store :</b> ton utilisation est aussi régie par le <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/">contrat de licence utilisateur final standard d’Apple</a>. En cas de contradiction, le contrat d’Apple prévaut pour la version App Store.</li>
 </ul>
 
-<h2>3. Tes clés et les services tiers</h2>
+<h2 id="fr-3-tes-cl-s-et-les-services-tiers">3. Tes clés et les services tiers</h2>
 <p>Coucou fonctionne avec des services que tu connectes toi-même (Anthropic, Google AI, OpenAI, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n). Tu es responsable de tes comptes, de tes clés, du respect des conditions de ces services et des frais qu’ils te facturent, par exemple l’utilisation des API d’Anthropic, Google ou OpenAI, facturée par chaque fournisseur.</p>
 
-<h2>4. Claude Code</h2>
+<h2 id="fr-4-claude-code">4. Claude Code</h2>
 <p>Coucou peut afficher les demandes de permission de Claude Code et y répondre. Autoriser une demande depuis le notch a le même effet que l’autoriser dans ton terminal : tu restes responsable de ce que tu permets à Claude Code de faire.</p>
 
-<h2>5. Absence de garantie</h2>
+<h2 id="fr-5-absence-de-garantie">5. Absence de garantie</h2>
 <p>Coucou est fourni « en l’état », sans garantie d’aucune sorte. Dans les limites permises par la loi, le développeur n’est pas responsable des dommages liés à son utilisation, notamment une perte de données, une action autorisée par erreur via l’app ou des frais facturés par un service tiers. Rien dans ces conditions ne limite les droits que te garantit le droit de la consommation.</p>
 
-<h2>6. Marques</h2>
+<h2 id="fr-6-marques">6. Marques</h2>
 <p>Claude et Claude Code sont des marques d’Anthropic, PBC. Mac, macOS et Mac App Store sont des marques d’Apple Inc. Google, Gemini, OpenAI, Codex, Cursor, Visual Studio Code, Antigravity, Windows, Linux, Stripe, GitHub, Vercel, Resend, Notion, Cal.com et n8n sont des marques de leurs propriétaires respectifs. Coucou est un projet indépendant, sans lien avec eux et ni approuvé ni sponsorisé par eux.</p>
 
-<h2>7. Modifications et fin</h2>
+<h2 id="fr-7-modifications-et-fin">7. Modifications et fin</h2>
 <p>Ces conditions peuvent évoluer ; la nouvelle version sera publiée ici avec une nouvelle date. Tu peux arrêter d’utiliser Coucou à tout moment en le supprimant.</p>
 
-<h2>8. Droit applicable</h2>
+<h2 id="fr-8-droit-applicable">8. Droit applicable</h2>
 <p>Ces conditions sont régies par le droit français, sans préjudice des règles impératives du pays où tu résides.</p>
 
-<h2>9. Contact</h2>
+<h2 id="fr-9-contact">9. Contact</h2>
 <p><a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a></p>
 </section>
-<footer>© 2026 Louis Raillé · Coucou’s code is open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>
+
+  <footer class="site-footer">
+    <span>© 2026 Louis Raillé · Coucou’s code is open source (MIT)</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/Louis-CFM/coucou">GitHub</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="legal.html">Legal notice</a>
+    </nav>
+  </footer>
+</main>
+</body>
+</html>

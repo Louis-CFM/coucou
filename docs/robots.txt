@@ -1,0 +1,5 @@
+# Coucou — the site is public, the app is open source.
+User-agent: *
+Allow: /
+
+Sitemap: https://louis-cfm.github.io/coucou/sitemap.xml
