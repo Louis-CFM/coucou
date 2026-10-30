@@ -1017,6 +1017,8 @@ pub fn run() {
             let handle = app.handle().clone();
             app.manage(phone_link::PhoneLink::new(handle.clone()));
             tray::build(&handle)?;
+            // Pages may invoke Flow commands as soon as WebView2 loads them.
+            flow::init(&handle);
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
             // Same rule for Mochi's desktop window and the dictation pill.

@@ -120,6 +120,8 @@ export function select<T extends string>(options: [T, string][], value: T, onCha
 /** "Right Ctrl", "Ctrl + Win"… */
 export function keyLabel(key: FlowKey | "wayland" | "", platform: "windows" | "linux" = "windows"): string {
   switch (key) {
+    case "copilot":
+      return "Copilot";
     case "right_alt":
       return t("Right {0}", { 0: "Alt" });
     case "right_shift":
