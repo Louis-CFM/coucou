@@ -142,6 +142,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // linked and turned on in Settings → Integrations → WhatsApp, off until then.
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // A self-hosted YouTrack's REST API with a permanent token, one saved search.
+  { id: "integration_youtrack", name: "YouTrack", color: "#FF318C", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("youtrack-token") },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */
