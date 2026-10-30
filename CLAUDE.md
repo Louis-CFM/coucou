@@ -18,8 +18,6 @@ cd NotchBuddy && xcodegen && xcodebuild -scheme NotchBuddy -configuration Debug 
 To run it day to day on the Mac (signed, iPhone link, permissions kept across builds): `./scripts/dev-install.sh` — it installs the only Coucou in /Applications and removes the copies earlier builds left.
 Windows and Linux: `cd windows && npm install && npm run tauri dev`
 
-The Windows/Linux Hub fills the available window width. Notetaker uses flexible call-list and detail columns, stacking them when the page is narrow. The compact list scrolls independently with Record/Stop pinned at the top. Keep resizing in CSS so mounted controls, the selected call and editing drafts survive a resize.
-
 ## Rules
 - Swift 6, SwiftUI + AppKit. No third-party dependencies unless truly unavoidable. The character is drawn in code (`Canvas` + `TimelineView`), no Rive/Lottie/images.
 - Secrets live in the Keychain, never on disk or in git.
