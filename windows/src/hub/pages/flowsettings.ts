@@ -109,6 +109,39 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
     h("div", { class: "hub-note", text: t("Your voice never leaves this computer: Parakeet turns it into text here, and the recording is dropped as soon as it is pasted.") }),
   ));
 
+  const performance = status.performance;
+  const choices: [string, string][] = [["0", t("Automatic (measured on this computer)")]];
+  for (let n = 1; n <= performance.availableThreads; n++) choices.push([String(n), t("CPU · {0} threads", { 0: n })]);
+  const performanceText = h("div", { class: "hub-note" });
+  const updatePerformance = (p: typeof performance) => {
+    performanceText.textContent = p.error ?? (!p.automatic ? t("CPU · {0} threads", { 0: p.threads }) : p.tuning ? t("Measuring speech performance…")
+      : p.measured ? t("Measured choice: CPU · {0} threads", { 0: p.threads })
+      : t("Automatic tuning starts after a dictation of at least three seconds. Audio stays in memory and is never saved for tuning."));
+  };
+  updatePerformance(performance);
+  const threadChoice = select(choices, String(prefs.speechThreads), value => {
+    threadChoice.disabled = true;
+    const restore = () => {
+      threadChoice.value = String(ctx.status.prefs.speechThreads);
+      threadChoice.disabled = false;
+    };
+    // The Hub reports the write error; this control reflects the durable choice.
+    void ctx.setPrefs(p => (p.speechThreads = Number(value))).then(restore, restore);
+  });
+
+  page.append(card(
+    row(t("Speech performance"), t("This build uses the CPU. Automatic mode measures supported thread counts and remembers the fastest result."),
+      threadChoice),
+    performanceText,
+    button(t("Measure again"), () => void FlowBridge.retuneSpeech().then(() => ctx.refresh()).then(s => updatePerformance(s.performance)), "", true),
+  ));
+  const performanceTimer = window.setInterval(() => {
+    if (document.visibilityState !== "visible" || !page.isConnected) return;
+    void FlowBridge.status().then(s => { if (s && page.isConnected) updatePerformance(s.performance); });
+  }, 2000);
+  const previousLeave = ctx.onLeave;
+  ctx.onLeave = () => { window.clearInterval(performanceTimer); previousLeave?.(); };
+
   // ── Notetaker ──
   page.append(label(t("Notetaker")));
   page.append(card(
