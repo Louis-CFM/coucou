@@ -919,9 +919,12 @@ final class HookServer: @unchecked Sendable {
     /// ID format: "agent_<name>" — never collides with "integration_*" pills.
     /// Inserted right after integration_claude so it appears in the visible prefix(4).
     @MainActor
-    private func upsertExternalAgent(id: String, name: String) {
+    private func upsertExternalAgent(id: String, name: String, bundleId: String) {
         let state = AppState.shared
-        guard state.tasks.firstIndex(where: { $0.id == id }) == nil else { return }
+        if let existingIdx = state.tasks.firstIndex(where: { $0.id == id }) {
+            if !bundleId.isEmpty { state.tasks[existingIdx].sessionBundleId = bundleId }
+            return
+        }
         let color: String
         if let def = PillCatalog.definition(for: id) {
             color = def.color
@@ -929,6 +932,7 @@ final class HookServer: @unchecked Sendable {
             color = IslandConst.colorForProject(name)
         }
         let task = AgentTask(id: id, name: name, color: color, state: .idle, steps: [], source: .agent)
+        if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let claudeIdx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) {
             state.tasks.insert(task, at: claudeIdx + 1)
         } else {
@@ -1331,7 +1335,7 @@ final class HookServer: @unchecked Sendable {
                             working: Bool, externalAgent: String?) {
         sessions.note(pill: pill, display: display, working: working)
         if let externalAgent {
-            upsertExternalAgent(id: pill, name: externalAgent)
+            upsertExternalAgent(id: pill, name: externalAgent, bundleId: display.bundleId)
         } else {
             upsertWorkspaceTask(id: pill, projectName: display.projectName, cwd: display.cwd,
                                 hostApp: display.hostApp, bundleId: display.bundleId,
@@ -2949,7 +2953,7 @@ export default function (amp: any): void {
 # Session/tool events → Coucou notch (fire-and-forget, never blocks).
 # Approval transport: uses register_approval_transport when available (future Hermes),
 # falls back to pre_approval_request observer-only hook (hermes 0.15.x).
-import json, subprocess, threading
+import json, os, subprocess, threading
 from pathlib import Path
 
 HOOK = Path('\(path)')
@@ -2971,6 +2975,7 @@ def _fire(fields: dict) -> None:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,   # detach from process group
+                env={**os.environ, '__CFBundleIdentifier': 'com.nousresearch.hermes'},
             )
             p.stdin.write(json.dumps(fields).encode() + b'\\n')
             p.stdin.close()
