@@ -74,13 +74,7 @@ pub enum Edge {
     Right,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum SummaryEngine {
-    #[default]
-    Claude,
-    Off,
-}
+pub use crate::text_ai::Engine as SummaryEngine;
 
 /// The preferences of dictation and of the window.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

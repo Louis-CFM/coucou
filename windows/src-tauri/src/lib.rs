@@ -19,6 +19,7 @@ mod integrations;
 mod calcom;
 mod island;
 mod local_chat;
+mod text_ai;
 mod log;
 mod net;
 mod notes;
