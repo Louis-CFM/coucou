@@ -10,6 +10,7 @@ import type { HubContext } from "../shell";
 import { emptyState, glowCard } from "../hero";
 import { button, card, icon, iconButton, keyLabel, label, number, row, shortCount, toggle } from "../ui";
 import { modelsControl } from "./flowsettings";
+import { pageSave } from "../save";
 
 function dayKey(ms: number): string {
   const d = new Date(ms);
@@ -81,9 +82,11 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
       const tools = h("div", { class: "tools" },
         iconButton("copy", t("Copy"), () => void FlowBridge.copy(e.text)),
         iconButton("trash", t("Delete"), () => {
-          entries = entries.filter((x) => x.id !== e.id);
-          void FlowBridge.deleteEntry(e.id);
-          draw();
+          void saveHistory(async () => {
+            await FlowBridge.deleteEntry(e.id);
+            entries = entries.filter((x) => x.id !== e.id);
+            draw();
+          });
         }),
       );
       group!.append(h("div", { class: "hub-entry" }, when, h("div", { class: "words", text: e.text }), tools));
@@ -92,8 +95,9 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
 
   const left = h("div", { style: "display:flex;flex-direction:column;gap:10px;min-width:0" },
     h("div", { class: "hub-history-head" }, label(t("History")), search),
-    list,
   );
+  const saveHistory = pageSave(left);
+  left.append(list);
   const right = h("div", { style: "display:flex;flex-direction:column;gap:14px" }, numbers(stats), promo(ctx));
   page.append(h("div", { class: "hub-columns" }, left, right));
   draw();

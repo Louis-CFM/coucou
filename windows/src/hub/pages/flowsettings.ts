@@ -7,6 +7,7 @@ import { t } from "../../i18n/i18n";
 import { onEvent } from "../../core/bridge";
 import { FlowBridge, type Edge, type FlowKey, type ModelsStatus } from "../../core/flow";
 import type { HubContext } from "../shell";
+import { pageSave } from "../save";
 import { button, card, divider, keyKeycap, keycap, label, number, row, segmented, select, toggle } from "../ui";
 
 /** Download / progress / installed, for the voice model. Redraws itself. */
@@ -127,17 +128,26 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
   page.append(label(t("Privacy")));
   const keep: [string, string][] = [["0", t("Don't keep")], ["7", t("7 days")], ["30", t("30 days")], ["365", t("1 year")], ["-1", t("Forever")]];
   const confirmRow = h("div", { class: "hub-row" });
+  const privacy = card(
+    row(t("Keep the history"), null, select(keep, String(prefs.keepDays), (v) => void ctx.setPrefs((p) => (p.keepDays = Number(v))))),
+    divider(),
+    confirmRow,
+    h("div", { class: "hub-note", text: t("The history, the statistics and your notes stay on this computer, in Coucou's folder. Dictations are never saved as audio; a call's audio is deleted as soon as its transcript is written.") }),
+  );
+  const saveErase = pageSave(privacy);
   const erase = () => {
     clear(confirmRow);
     confirmRow.append(
-      button(t("Erase the history"), () => void FlowBridge.clear(false), "", true),
+      button(t("Erase the history"), () => void saveErase(() => FlowBridge.clear(false)), "", true),
       button(t("Erase everything"), () => {
         clear(confirmRow);
         confirmRow.append(
           h("span", { class: "hub-note", style: "flex:1", text: t("Erase the history and the statistics?") }),
           button(t("Erase everything"), () => {
-            void FlowBridge.clear(true);
-            erase();
+            void saveErase(async () => {
+              await FlowBridge.clear(true);
+              erase();
+            });
           }, "danger", true),
           button(t("Cancel"), erase, "", true),
         );
@@ -145,10 +155,5 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
     );
   };
   erase();
-  page.append(card(
-    row(t("Keep the history"), null, select(keep, String(prefs.keepDays), (v) => void ctx.setPrefs((p) => (p.keepDays = Number(v))))),
-    divider(),
-    confirmRow,
-    h("div", { class: "hub-note", text: t("The history, the statistics and your notes stay on this computer, in Coucou's folder. Dictations are never saved as audio; a call's audio is deleted as soon as its transcript is written.") }),
-  ));
+  page.append(privacy);
 }
