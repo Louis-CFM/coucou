@@ -629,6 +629,28 @@ private func drawGreeting(_ ctx: CGContext, size: CGSize, t: Double,
     drawMochi(ctx, p: p)
 }
 
+// MARK: - Terminal theme
+
+private let asciiParticles = AsciiGreetParticles(
+    warps: greetParticles.warps.map { .init(xNorm: $0.xNorm, speed: $0.speed, len: $0.len, alpha: $0.alpha, t0: $0.t0) },
+    ring: greetParticles.ring.map { .init(a: $0.a, j: $0.j, al: $0.al) })
+
+/// The same greeting, same pose and timings, drawn in characters (AsciiMochi.swift).
+private func drawGreetingAscii(_ context: GraphicsContext, size: CGSize, t: Double,
+                               tc: Double, compact: IslandRestingLayout) {
+    let p = pose(t, tc: tc, compact: compact)
+    let eye: AsciiGreetPose.Eye = p.eye == .happy ? .happy : p.eye == .content ? .content : .dot
+    let ascii = AsciiGreetPose(hb: p.hb, x: p.x, y: p.y, sx: p.sx, sy: p.sy, eye: eye, open: p.open,
+                               lookX: p.lookX, lookY: p.lookY, handL: p.handL, handR: p.handR, wave: p.wave,
+                               halo: p.halo, haloBlue: p.haloBlue, minis: p.minis, fx: p.fx, card: p.card, iw: p.iw)
+    let cols = 200
+    let grid = AsciiGreeting.render(
+        pose: ascii, t: t, now: t, cols: cols, particles: asciiParticles,
+        minis: (x: Double(320 - compact.width / 2 + compact.miniGridCenterX), y: Double(compact.botCenterY),
+                spacing: Double(6 * compact.miniGridScale)))
+    AsciiPainter.draw(grid, in: context, cellW: size.width / CGFloat(cols), color: TerminalStyle.text)
+}
+
 // MARK: - SwiftUI View
 
 struct GreetingCanvasView: View {
@@ -638,15 +660,19 @@ struct GreetingCanvasView: View {
     @State private var tc: Double = .infinity
     @State private var greetFired = false
     @State private var doneWork: DispatchWorkItem? = nil
+    @AppStorage(IslandTheme.storageKey) private var theme = IslandTheme.classic.rawValue
 
     var body: some View {
         TimelineView(.animation) { timeline in
             let t = timeline.date.timeIntervalSince(startDate)
             Canvas { context, size in
-                context.withCGContext { cgCtx in
-                    drawGreeting(cgCtx, size: size, t: t, tc: tc,
-                                 compact: IslandRestingLayout(width: state.notchWidth + 160,
-                                                              height: state.notchHeight))
+                let compact = IslandRestingLayout(width: state.notchWidth + 160, height: state.notchHeight)
+                if theme == IslandTheme.terminal.rawValue {
+                    drawGreetingAscii(context, size: size, t: t, tc: tc, compact: compact)
+                } else {
+                    context.withCGContext { cgCtx in
+                        drawGreeting(cgCtx, size: size, t: t, tc: tc, compact: compact)
+                    }
                 }
             }
             .onChange(of: !greetFired && t >= GT.end && tc >= GT.autoLeave) { _, trigger in

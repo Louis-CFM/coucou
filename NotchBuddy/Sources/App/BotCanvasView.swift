@@ -251,9 +251,17 @@ struct MiniBotCanvasView: View {
     }
 
     @Environment(\.islandViewActive) private var viewActive
-
+    @AppStorage(IslandTheme.storageKey) private var theme = IslandTheme.classic.rawValue
 
     var body: some View {
+        if theme == IslandTheme.terminal.rawValue {
+            TerminalMiniView(task: task)
+        } else {
+            classicBody
+        }
+    }
+
+    private var classicBody: some View {
         // Display refresh rate. Paused in island views that are not shown.
         TimelineView(.animation(paused: !viewActive)) { timeline in
             let frame = timeline.date   // see BotCanvasView: redraw on every tick
