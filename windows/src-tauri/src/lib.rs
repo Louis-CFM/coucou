@@ -8,6 +8,8 @@ mod clipboard;
 mod claude;
 mod claude_account;
 mod claude_plan;
+mod claude_code;
+mod cli_relay;
 mod codex_plan;
 mod config_file;
 mod desktop;
@@ -100,7 +102,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed, shortcuts_changed) = {
+    let (settings, screen_changed, autostart_changed, shortcuts_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
@@ -121,9 +123,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
         *current = settings;
-        (screen_changed, autostart_changed, shortcuts_changed)
+        (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
-    let settings = shared.settings.lock().unwrap().clone();
     if let Err(err) = settings::save(&settings) {
         log::line(format!("could not save settings: {err}"));
     }
@@ -592,6 +593,36 @@ fn secret_present(key: String) -> bool {
     secrets::present(&key)
 }
 
+/// Whether Claude can answer: an API key, or else the user's own Claude Code.
+#[tauri::command]
+fn claude_ready() -> bool {
+    claude::ready()
+}
+
+/// Settings → Chat → Your AI subscriptions: each provider's switch and
+/// whether its terminal tool is installed (looked up again on every call).
+#[tauri::command]
+fn subscription_status(shared: State<Shared>) -> Vec<cli_relay::Status> {
+    let settings = shared.settings.lock().unwrap().clone();
+    cli_relay::status(&settings)
+}
+
+/// A switch under "Your AI subscriptions" moved: saved, and both windows told.
+#[tauri::command]
+fn subscription_set(app: AppHandle, shared: State<Shared>, provider: String, on: bool) -> Vec<cli_relay::Status> {
+    let settings = {
+        let mut current = shared.settings.lock().unwrap();
+        cli_relay::set(&mut current, &provider, on);
+        current.clone()
+    };
+    if let Err(err) = settings::save(&settings) {
+        log::line(format!("could not save settings: {err}"));
+    }
+    let status = cli_relay::status(&settings);
+    let _ = app.emit("settings-changed", settings);
+    status
+}
+
 #[tauri::command]
 fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
     // Bound to its server's address: only local_set_key may store it.
@@ -765,7 +796,18 @@ pub fn show_settings_window(app: &AppHandle) {
 /// "settings", "general", "shortcuts"…).
 pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     let Some(win) = app.get_webview_window(HUB_LABEL) else {
-        log::line("Coucou window missing");
+        // Creating it at startup can fail on some machines (WebView2
+        // 0x80070578, #775): try again now, on the main thread, where
+        // window creation can't deadlock a command.
+        log::line("Coucou window missing, creating it again");
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            create_settings_window(&handle);
+            if let Some(win) = handle.get_webview_window(HUB_LABEL) {
+                let _ = win.show();
+                let _ = win.set_focus();
+            }
+        });
         return;
     };
     if let Some(page) = page {
@@ -889,6 +931,9 @@ pub fn run() {
             chat_reset,
             ingest_file,
             secret_present,
+            claude_ready,
+            subscription_status,
+            subscription_set,
             secret_set,
             secret_clear,
             refresh_integration,

@@ -1,6 +1,251 @@
 {
-  "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 14 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
+  "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 16 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
+    {
+      "version": "0.5.6",
+      "items": [
+        {
+          "icon": "chat",
+          "title": {
+            "en": "Chat on your AI subscription",
+            "fr": "Le chat sur ton abonnement IA",
+            "es": "Chat con tu suscripción de IA",
+            "pt-BR": "Chat com sua assinatura de IA",
+            "ru": "Чат по вашей подписке на ИИ",
+            "zh-Hans": "用你的 AI 订阅聊天",
+            "hi": "अपनी AI सदस्यता से चैट",
+            "ar": "دردشة باشتراكك في الذكاء الاصطناعي",
+            "bn": "আপনার AI সাবস্ক্রিপশনে চ্যাট",
+            "id": "Chat dengan langganan AI-mu",
+            "de": "Chat mit deinem KI-Abo",
+            "tr": "Yapay zekâ aboneliğinizle sohbet",
+            "th": "แชตด้วยการสมัครใช้ AI ของคุณ",
+            "zh-Hant": "用你的 AI 訂閱聊天",
+            "ko": "내 AI 구독으로 채팅",
+            "ja": "AI サブスクリプションでチャット"
+          },
+          "detail": {
+            "en": "Claude, Gemini, ChatGPT, Cursor or Copilot, no key: turn it on in Settings → Chat.",
+            "fr": "Claude, Gemini, ChatGPT, Cursor ou Copilot, sans clé : active-le dans Réglages → Chat.",
+            "es": "Claude, Gemini, ChatGPT, Cursor o Copilot, sin clave: actívalo en Ajustes → Chat.",
+            "pt-BR": "Claude, Gemini, ChatGPT, Cursor ou Copilot, sem chave: ative em Ajustes → Chat.",
+            "ru": "Claude, Gemini, ChatGPT, Cursor или Copilot без ключа: включите в Настройки → Чат.",
+            "zh-Hans": "Claude、Gemini、ChatGPT、Cursor 或 Copilot，无需密钥：在 设置 → 聊天 中开启。",
+            "hi": "Claude, Gemini, ChatGPT, Cursor या Copilot, बिना कुंजी: सेटिंग्स → चैट में चालू करें।",
+            "ar": "Claude وGemini وChatGPT وCursor وCopilot دون مفتاح: فعّله من الإعدادات ← الدردشة.",
+            "bn": "Claude, Gemini, ChatGPT, Cursor বা Copilot, কী ছাড়াই: সেটিংস → চ্যাট-এ চালু করুন।",
+            "id": "Claude, Gemini, ChatGPT, Cursor, atau Copilot, tanpa kunci: nyalakan di Pengaturan → Chat.",
+            "de": "Claude, Gemini, ChatGPT, Cursor oder Copilot ohne Schlüssel: in Einstellungen → Chat einschalten.",
+            "tr": "Claude, Gemini, ChatGPT, Cursor veya Copilot, anahtarsız: Ayarlar → Sohbet'ten açın.",
+            "th": "Claude, Gemini, ChatGPT, Cursor หรือ Copilot โดยไม่ต้องใช้คีย์: เปิดได้ใน การตั้งค่า → แชต",
+            "zh-Hant": "Claude、Gemini、ChatGPT、Cursor 或 Copilot，免金鑰：在 設定 → 聊天 中開啟。",
+            "ko": "Claude, Gemini, ChatGPT, Cursor, Copilot을 키 없이: 설정 → 채팅에서 켜세요.",
+            "ja": "Claude、Gemini、ChatGPT、Cursor、Copilot をキーなしで：設定 → チャットでオンに。"
+          }
+        },
+        {
+          "icon": "languages",
+          "title": {
+            "en": "Korean and Japanese",
+            "fr": "Coréen et japonais",
+            "es": "Coreano y japonés",
+            "pt-BR": "Coreano e japonês",
+            "ru": "Корейский и японский",
+            "zh-Hans": "韩语和日语",
+            "hi": "कोरियाई और जापानी",
+            "ar": "الكورية واليابانية",
+            "bn": "কোরিয়ান ও জাপানি",
+            "id": "Bahasa Korea dan Jepang",
+            "de": "Koreanisch und Japanisch",
+            "tr": "Korece ve Japonca",
+            "th": "ภาษาเกาหลีและญี่ปุ่น",
+            "zh-Hant": "韓文和日文",
+            "ko": "한국어와 일본어",
+            "ja": "韓国語と日本語"
+          },
+          "detail": {
+            "en": "Coucou now speaks 16 languages. Korean thanks to @lovyestar.",
+            "fr": "Coucou parle maintenant 16 langues. Le coréen grâce à @lovyestar.",
+            "es": "Coucou ya habla 16 idiomas. El coreano gracias a @lovyestar.",
+            "pt-BR": "O Coucou agora fala 16 idiomas. O coreano graças a @lovyestar.",
+            "ru": "Coucou теперь говорит на 16 языках. Корейский — благодаря @lovyestar.",
+            "zh-Hans": "Coucou 现在支持 16 种语言。韩语由 @lovyestar 贡献。",
+            "hi": "Coucou अब 16 भाषाएँ बोलता है। कोरियाई @lovyestar की बदौलत।",
+            "ar": "يتحدث Coucou الآن 16 لغة. الكورية بفضل @lovyestar.",
+            "bn": "Coucou এখন 16টি ভাষায় কথা বলে। কোরিয়ান @lovyestar-এর সৌজন্যে।",
+            "id": "Coucou kini berbicara 16 bahasa. Bahasa Korea berkat @lovyestar.",
+            "de": "Coucou spricht jetzt 16 Sprachen. Koreanisch dank @lovyestar.",
+            "tr": "Coucou artık 16 dil konuşuyor. Korece @lovyestar sayesinde.",
+            "th": "ตอนนี้ Coucou พูดได้ 16 ภาษา ภาษาเกาหลีโดย @lovyestar",
+            "zh-Hant": "Coucou 現在支援 16 種語言。韓文由 @lovyestar 貢獻。",
+            "ko": "Coucou가 이제 16개 언어를 지원합니다. 한국어는 @lovyestar 덕분이에요.",
+            "ja": "Coucou は 16 言語に対応しました。韓国語は @lovyestar のおかげです。"
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.5.5",
+      "items": [
+        {
+          "icon": "chat",
+          "title": {
+            "en": "Chat with no API key",
+            "fr": "Le chat sans clé API",
+            "es": "Chat sin clave de API",
+            "pt-BR": "Chat sem chave de API",
+            "ru": "Чат без API-ключа",
+            "zh-Hans": "无需 API 密钥即可聊天",
+            "hi": "API कुंजी के बिना चैट",
+            "ar": "دردشة دون مفتاح API",
+            "bn": "API কী ছাড়াই চ্যাট",
+            "id": "Chat tanpa kunci API",
+            "de": "Chat ohne API-Schlüssel",
+            "tr": "API anahtarı olmadan sohbet",
+            "th": "แชตโดยไม่ต้องใช้คีย์ API",
+            "zh-Hant": "免 API 金鑰即可聊天",
+            "ko": "API 키 없이 채팅",
+            "ja": "API キーなしでチャット"
+          },
+          "detail": {
+            "en": "No key? Your own Claude Code answers, on your Claude plan.",
+            "fr": "Pas de clé ? Ton Claude Code répond, sur ton abonnement Claude.",
+            "es": "¿Sin clave? Responde tu Claude Code, con tu plan de Claude.",
+            "pt-BR": "Sem chave? O seu Claude Code responde, no seu plano do Claude.",
+            "ru": "Нет ключа? Отвечает ваш Claude Code — по вашему тарифу Claude.",
+            "zh-Hans": "没有密钥？由你的 Claude Code 用你的 Claude 套餐回答。",
+            "hi": "कुंजी नहीं? आपका Claude Code आपके Claude प्लान पर जवाब देता है।",
+            "ar": "لا مفتاح؟ يجيب Claude Code الخاص بك ضمن اشتراكك في Claude.",
+            "bn": "কী নেই? আপনার Claude Code আপনার Claude প্ল্যানেই উত্তর দেয়।",
+            "id": "Tanpa kunci? Claude Code-mu yang menjawab, dengan paket Claude-mu.",
+            "de": "Kein Schlüssel? Dein Claude Code antwortet, über dein Claude-Abo.",
+            "tr": "Anahtar yok mu? Claude Code’un, Claude planınla yanıtlar.",
+            "th": "ไม่มีคีย์? Claude Code ของคุณตอบให้ ด้วยแพ็กเกจ Claude ของคุณ",
+            "zh-Hant": "沒有金鑰？由你的 Claude Code 用你的 Claude 方案回答。",
+            "ko": "키가 없나요? 내 Claude Code가 내 Claude 요금제로 답합니다.",
+            "ja": "キーがなくても、あなたの Claude Code が Claude プランで答えます。"
+          }
+        },
+        {
+          "icon": "terminal",
+          "title": {
+            "en": "Every session apart",
+            "fr": "Chaque session à part",
+            "es": "Cada sesión por separado",
+            "pt-BR": "Cada sessão separada",
+            "ru": "Каждая сессия отдельно",
+            "zh-Hans": "每个会话各自独立",
+            "hi": "हर सत्र अलग",
+            "ar": "كل جلسة على حدة",
+            "bn": "প্রতিটি সেশন আলাদা",
+            "id": "Setiap sesi terpisah",
+            "de": "Jede Sitzung für sich",
+            "tr": "Her oturum ayrı",
+            "th": "แยกแต่ละเซสชัน",
+            "zh-Hant": "每個工作階段各自獨立",
+            "ko": "세션마다 따로",
+            "ja": "セッションごとに分けて"
+          },
+          "detail": {
+            "en": "Two terminals, two names. The session waiting for you takes a place in the grid.",
+            "fr": "Deux terminaux, deux noms. La session qui t’attend prend une place dans la grille.",
+            "es": "Dos terminales, dos nombres. La sesión que te espera ocupa un lugar en la cuadrícula.",
+            "pt-BR": "Dois terminais, dois nomes. A sessão que espera por você ganha um lugar na grade.",
+            "ru": "Два терминала — два имени. Сессия, которая ждёт вас, занимает место в сетке.",
+            "zh-Hans": "两个终端，两个名称。等你处理的会话会占据网格中的一个位置。",
+            "hi": "दो टर्मिनल, दो नाम। आपका इंतज़ार करता सत्र ग्रिड में जगह लेता है।",
+            "ar": "طرفيتان، اسمان. الجلسة التي تنتظرك تأخذ مكانًا في الشبكة.",
+            "bn": "দুটি টার্মিনাল, দুটি নাম। যে সেশন আপনার অপেক্ষায়, সে গ্রিডে জায়গা নেয়।",
+            "id": "Dua terminal, dua nama. Sesi yang menunggumu mendapat tempat di grid.",
+            "de": "Zwei Terminals, zwei Namen. Die Sitzung, die auf dich wartet, bekommt einen Platz im Raster.",
+            "tr": "İki terminal, iki ad. Seni bekleyen oturum ızgarada bir yer alır.",
+            "th": "สองเทอร์มินัล สองชื่อ เซสชันที่รอคุณจะได้ที่ในตาราง",
+            "zh-Hant": "兩個終端機，兩個名稱。等你處理的工作階段會佔據格狀中的一個位置。",
+            "ko": "터미널 두 개, 이름 두 개. 나를 기다리는 세션이 그리드에 자리를 잡습니다.",
+            "ja": "ターミナル 2 つなら名前も 2 つ。あなたを待つセッションはグリッドに場所を取ります。"
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.5.4",
+      "items": [
+        {
+          "icon": "shield",
+          "title": {
+            "en": "Coucou keeps listening",
+            "fr": "Coucou reste à l’écoute",
+            "es": "Coucou sigue escuchando",
+            "pt-BR": "O Coucou continua ouvindo",
+            "ru": "Coucou всегда на связи",
+            "zh-Hans": "Coucou 始终在线",
+            "hi": "Coucou हमेशा सुनता रहे",
+            "ar": "Coucou يبقى منصتًا",
+            "bn": "Coucou সবসময় শোনে",
+            "id": "Coucou terus mendengarkan",
+            "de": "Coucou hört weiter zu",
+            "tr": "Coucou dinlemeye devam eder",
+            "th": "Coucou ฟังต่อเนื่อง",
+            "zh-Hant": "Coucou 始終在線",
+            "ja": "Coucou は聞き続けます"
+          },
+          "detail": {
+            "en": "One failed connection no longer cuts Claude Code off, and only Coucou’s own hooks are touched.",
+            "fr": "Une connexion ratée ne coupe plus Claude Code, et seuls les hooks de Coucou sont modifiés.",
+            "es": "Una conexión fallida ya no corta Claude Code, y solo se tocan los hooks de Coucou.",
+            "pt-BR": "Uma conexão com falha não corta mais o Claude Code, e só os hooks do Coucou são alterados.",
+            "ru": "Сбой одного соединения больше не отключает Claude Code, а Coucou меняет только свои хуки.",
+            "zh-Hans": "一次连接失败不再让 Claude Code 断开，且只改动 Coucou 自己的 hooks。",
+            "hi": "एक कनेक्शन फ़ेल होने से अब Claude Code नहीं कटता, और सिर्फ़ Coucou के अपने hooks बदलते हैं।",
+            "ar": "لم يعد فشل اتصال واحد يقطع Claude Code، ولا يُعدَّل إلا خطافات Coucou نفسها.",
+            "bn": "একটি সংযোগ ব্যর্থ হলে আর Claude Code বিচ্ছিন্ন হয় না, আর শুধু Coucou-র নিজের hooks বদলায়।",
+            "id": "Satu koneksi gagal tak lagi memutus Claude Code, dan hanya hook milik Coucou yang diubah.",
+            "de": "Eine fehlgeschlagene Verbindung trennt Claude Code nicht mehr, und nur Coucous eigene Hooks werden geändert.",
+            "tr": "Tek bir başarısız bağlantı artık Claude Code’u koparmıyor; yalnızca Coucou’nun kendi hook’ları değişir.",
+            "th": "การเชื่อมต่อที่ล้มเหลวไม่ตัด Claude Code อีกต่อไป และแก้เฉพาะ hooks ของ Coucou เอง",
+            "zh-Hant": "一次連線失敗不再讓 Claude Code 中斷，且只更動 Coucou 自己的 hooks。",
+            "ja": "1 回接続に失敗しても Claude Code が途切れず、触れるのは Coucou 自身のフックだけです。"
+          }
+        },
+        {
+          "icon": "bug",
+          "title": {
+            "en": "25 community fixes",
+            "fr": "25 correctifs de la communauté",
+            "es": "25 arreglos de la comunidad",
+            "pt-BR": "25 correções da comunidade",
+            "ru": "25 исправлений от сообщества",
+            "zh-Hans": "25 项社区修复",
+            "hi": "समुदाय के 25 सुधार",
+            "ar": "25 إصلاحًا من المجتمع",
+            "bn": "কমিউনিটির ২৫টি সমাধান",
+            "id": "25 perbaikan dari komunitas",
+            "de": "25 Fixes aus der Community",
+            "tr": "Topluluktan 25 düzeltme",
+            "th": "25 การแก้ไขจากชุมชน",
+            "zh-Hant": "25 項社群修正",
+            "ja": "コミュニティによる 25 の修正"
+          },
+          "detail": {
+            "en": "No crash without a mic, the hide delay works, and truer n8n, Stripe and GitHub pills.",
+            "fr": "Plus de crash sans micro, le délai de masquage fonctionne, et des pills n8n, Stripe et GitHub plus justes.",
+            "es": "Sin cierres sin micrófono, el retraso para ocultar funciona y pills de n8n, Stripe y GitHub más precisas.",
+            "pt-BR": "Sem travar sem microfone, o tempo para ocultar funciona e pills do n8n, Stripe e GitHub mais precisas.",
+            "ru": "Нет сбоев без микрофона, задержка скрытия работает, а пилюли n8n, Stripe и GitHub точнее.",
+            "zh-Hans": "没有麦克风也不会崩溃，隐藏延迟生效，n8n、Stripe 和 GitHub 胶囊更准确。",
+            "hi": "माइक के बिना क्रैश नहीं, छिपाने की देरी काम करती है, और n8n, Stripe व GitHub पिल्स ज़्यादा सटीक।",
+            "ar": "لا أعطال دون ميكروفون، ومهلة الإخفاء تعمل، وكبسولات n8n وStripe وGitHub أدق.",
+            "bn": "মাইক ছাড়া আর ক্র্যাশ নয়, লুকানোর বিলম্ব কাজ করে, আর n8n, Stripe ও GitHub পিল আরও সঠিক।",
+            "id": "Tak ada crash tanpa mikrofon, jeda sembunyi berfungsi, dan pill n8n, Stripe, GitHub lebih akurat.",
+            "de": "Kein Absturz ohne Mikrofon, die Ausblendverzögerung greift, und genauere n8n-, Stripe- und GitHub-Pills.",
+            "tr": "Mikrofon yokken çökme yok, gizleme gecikmesi çalışıyor; n8n, Stripe ve GitHub hapları daha doğru.",
+            "th": "ไม่แครชเมื่อไม่มีไมค์ ระยะเวลาซ่อนใช้งานได้ และพิลล์ n8n, Stripe, GitHub แม่นยำขึ้น",
+            "zh-Hant": "沒有麥克風也不會當機，隱藏延遲生效，n8n、Stripe 與 GitHub 膠囊更準確。",
+            "ja": "マイクがなくてもクラッシュせず、非表示の遅延が機能し、n8n・Stripe・GitHub のピルがより正確に。"
+          }
+        }
+      ]
+    },
     {
       "version": "0.5.3",
       "items": [
@@ -20,7 +265,9 @@
             "de": "Mochi wird blau bei Updates",
             "tr": "Güncellemede Mochi maviye döner",
             "th": "Mochi เป็นสีฟ้าเมื่อมีอัปเดต",
-            "zh-Hant": "有更新時 Mochi 變藍"
+            "zh-Hant": "有更新時 Mochi 變藍",
+            "ko": "업데이트가 있으면 모찌가 파랗게 돼요",
+            "ja": "アップデートで Mochi が青に"
           },
           "detail": {
             "en": "A new Coucou turns him blue, in the notch and the menu bar. One click installs it.",
@@ -36,7 +283,9 @@
             "de": "Ein neues Coucou macht ihn blau, in der Notch und der Menüleiste. Ein Klick installiert es.",
             "tr": "Yeni Coucou onu çentikte ve menü çubuğunda maviye çevirir. Tek tıkla kurulur.",
             "th": "เมื่อมี Coucou ใหม่ เขาจะเป็นสีฟ้าในรอยบากและแถบเมนู คลิกเดียวติดตั้ง",
-            "zh-Hant": "有新版 Coucou 時，瀏海和選單列中的它會變藍，一鍵安裝。"
+            "zh-Hant": "有新版 Coucou 時，瀏海和選單列中的它會變藍，一鍵安裝。",
+            "ko": "새 Coucou가 나오면 모찌가 노치와 메뉴 막대에서 파랗게 변해요. 클릭 한 번이면 설치돼요.",
+            "ja": "新しい Coucou が出るとノッチとメニューバーで青くなります。1 クリックでインストール。"
           }
         },
         {
@@ -55,7 +304,9 @@
             "de": "Neuigkeiten, direkt hier",
             "tr": "Yenilikler, tam burada",
             "th": "มีอะไรใหม่ ดูได้ที่นี่",
-            "zh-Hant": "更新內容，就在這裡"
+            "zh-Hant": "更新內容，就在這裡",
+            "ko": "새 소식을 여기서 바로",
+            "ja": "新機能をここで"
           },
           "detail": {
             "en": "After each update: what it brings, then your Coucou so far.",
@@ -71,7 +322,9 @@
             "de": "Nach jedem Update: was es bringt, dann dein Coucou bisher.",
             "tr": "Her güncellemeden sonra: getirdikleri, ardından şimdiye kadar Coucou’n.",
             "th": "หลังอัปเดตแต่ละครั้ง: ดูของใหม่ แล้วดู Coucou ของคุณจนถึงตอนนี้",
-            "zh-Hant": "每次更新後：先看新內容，再看你的 Coucou 至今。"
+            "zh-Hant": "每次更新後：先看新內容，再看你的 Coucou 至今。",
+            "ko": "업데이트할 때마다 새로 뭐가 생겼는지 보여 주고, 지금까지의 Coucou도 알려 줘요.",
+            "ja": "アップデートのたびに、新しい内容とこれまでのあなたの Coucou を表示します。"
           }
         },
         {
@@ -90,7 +343,9 @@
             "de": "Mochi einen Kaffee spendieren",
             "tr": "Mochi’ye kahve ısmarla",
             "th": "เลี้ยงกาแฟ Mochi",
-            "zh-Hant": "請 Mochi 喝咖啡"
+            "zh-Hant": "請 Mochi 喝咖啡",
+            "ko": "모찌에게 커피 사 주기",
+            "ja": "Mochi にコーヒーを"
           },
           "detail": {
             "en": "Coucou stays free and open source. If it saves you time, a coffee says thanks.",
@@ -106,7 +361,9 @@
             "de": "Coucou bleibt kostenlos und Open Source. Spart es dir Zeit, sagt ein Kaffee Danke.",
             "tr": "Coucou ücretsiz ve açık kaynak kalıyor. Zaman kazandırıyorsa bir kahve teşekkür olur.",
             "th": "Coucou ยังฟรีและเป็นโอเพนซอร์ส ถ้าช่วยประหยัดเวลา กาแฟสักแก้วคือคำขอบคุณ",
-            "zh-Hant": "Coucou 依然免費開源。如果它幫你省了時間，一杯咖啡就是感謝。"
+            "zh-Hant": "Coucou 依然免費開源。如果它幫你省了時間，一杯咖啡就是感謝。",
+            "ko": "Coucou는 계속 무료 오픈소스예요. 시간을 아껴 줬다면 커피 한 잔으로 마음을 전해 주세요.",
+            "ja": "Coucou は無料のオープンソースのまま。時間の節約になったら、コーヒーで感謝を。"
           }
         }
       ]
@@ -130,7 +387,8 @@
             "de": "Neue Version in der Notch",
             "tr": "Çentikte yeni sürüm",
             "th": "เวอร์ชันใหม่ในรอยบาก",
-            "zh-Hant": "瀏海中的新版本"
+            "zh-Hant": "瀏海中的新版本",
+            "ja": "ノッチに新バージョン"
           },
           "detail": {
             "en": "Mochi tells you when a new Coucou is out. One click installs it.",
@@ -146,7 +404,8 @@
             "de": "Mochi sagt dir, wenn ein neues Coucou da ist. Ein Klick installiert es.",
             "tr": "Yeni Coucou çıkınca Mochi haber verir. Tek tıkla kurulur.",
             "th": "Mochi บอกเมื่อมี Coucou ใหม่ คลิกเดียวก็ติดตั้งได้",
-            "zh-Hant": "有新版 Coucou 時 Mochi 會告訴你，一鍵即可安裝。"
+            "zh-Hant": "有新版 Coucou 時 Mochi 會告訴你，一鍵即可安裝。",
+            "ja": "新しい Coucou が出ると Mochi が知らせます。1 クリックでインストール。"
           }
         },
         {
@@ -165,7 +424,8 @@
             "de": "Vier neue Sprachen",
             "tr": "Dört yeni dil",
             "th": "เพิ่มสี่ภาษาใหม่",
-            "zh-Hant": "新增四種語言"
+            "zh-Hant": "新增四種語言",
+            "ja": "4 つの新しい言語"
           },
           "detail": {
             "en": "German, Turkish, Thai and Traditional Chinese: 14 in all.",
@@ -181,7 +441,8 @@
             "de": "Deutsch, Türkisch, Thai und traditionelles Chinesisch: 14 insgesamt.",
             "tr": "Almanca, Türkçe, Tayca ve Geleneksel Çince: toplam 14.",
             "th": "เยอรมัน ตุรกี ไทย และจีนตัวเต็ม รวม 14 ภาษา",
-            "zh-Hant": "德文、土耳其文、泰文和繁體中文：共 14 種。"
+            "zh-Hant": "德文、土耳其文、泰文和繁體中文：共 14 種。",
+            "ja": "ドイツ語、トルコ語、タイ語、繁体字中国語：全部で 14 言語。"
           }
         },
         {
@@ -200,7 +461,8 @@
             "de": "Pläne aus der Notch",
             "tr": "Planlar çentikten",
             "th": "จัดการแผนจากรอยบาก",
-            "zh-Hant": "在瀏海中處理計畫"
+            "zh-Hant": "在瀏海中處理計畫",
+            "ja": "ノッチからプランを"
           },
           "detail": {
             "en": "Approve Claude Code's plan in Auto or Manual mode, or change it.",
@@ -216,7 +478,8 @@
             "de": "Gib den Plan von Claude Code im Modus Auto oder Manuell frei – oder ändere ihn.",
             "tr": "Claude Code'un planını Otomatik veya Manuel modda onayla ya da değiştir.",
             "th": "อนุมัติแผนของ Claude Code แบบ Auto หรือ Manual หรือแก้ไข",
-            "zh-Hant": "以自動或手動模式核准 Claude Code 的計畫，或修改它。"
+            "zh-Hant": "以自動或手動模式核准 Claude Code 的計畫，或修改它。",
+            "ja": "Claude Code のプランを自動または手動モードで承認、または変更できます。"
           }
         },
         {
@@ -235,7 +498,8 @@
             "de": "Hinweise von jeder Pill",
             "tr": "Tüm araçların uyarıları",
             "th": "การแจ้งเตือนจากทุกแถบ",
-            "zh-Hant": "所有標籤的提醒"
+            "zh-Hant": "所有標籤的提醒",
+            "ja": "すべてのピルから通知"
           },
           "detail": {
             "en": "Another pill that finishes or fails can open the notch for a moment.",
@@ -251,7 +515,8 @@
             "de": "Eine andere Pill, die fertig wird oder scheitert, kann die Notch kurz öffnen.",
             "tr": "Biten ya da hata veren başka bir araç çentiği bir an açabilir.",
             "th": "แถบอื่นที่เสร็จหรือล้มเหลวเปิดรอยบากได้ชั่วครู่",
-            "zh-Hant": "其他標籤完成或失敗時，可短暫打開瀏海。"
+            "zh-Hant": "其他標籤完成或失敗時，可短暫打開瀏海。",
+            "ja": "別のピルが完了や失敗をすると、少しの間ノッチが開きます。"
           }
         }
       ]

@@ -64,7 +64,17 @@ pub struct HookPreview {
 }
 
 pub fn settings_path() -> PathBuf {
-    platform::home_dir().join(".claude").join("settings.json")
+    claude_dir(std::env::var_os("CLAUDE_CONFIG_DIR"), &platform::home_dir()).join("settings.json")
+}
+
+/// Claude Code's own folder: `CLAUDE_CONFIG_DIR` when the user moved it there,
+/// as Claude Code itself reads it, otherwise `~/.claude`. Hooks written
+/// anywhere else are never run.
+fn claude_dir(config_dir: Option<std::ffi::OsString>, home: &std::path::Path) -> PathBuf {
+    match config_dir {
+        Some(dir) if !dir.is_empty() => PathBuf::from(dir),
+        _ => home.join(".claude"),
+    }
 }
 
 /// The settings as they are, or an empty object when we cannot tell. Only for
@@ -526,6 +536,14 @@ mod tests {
         assert_eq!(without_ours(&kept).unwrap(), kept);
     }
 
+    #[test]
+    fn a_moved_claude_folder_is_where_the_settings_are() {
+        let home = std::path::Path::new("C:/Users/me");
+        assert_eq!(claude_dir(None, home), home.join(".claude"));
+        assert_eq!(claude_dir(Some("".into()), home), home.join(".claude"));
+        assert_eq!(claude_dir(Some("E:/Claude/data".into()), home), PathBuf::from("E:/Claude/data"));
+    }
+
     /// Everything filesystem-shaped lives in one test on purpose: it points
     /// the home directory at a temp directory, and that is process-wide.
     #[test]
@@ -534,6 +552,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
         std::env::set_var(platform::HOME_VAR, &tmp);
+        // A moved Claude folder would point outside the temp directory.
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
 
         let path = settings_path();
         assert!(path.starts_with(&tmp), "the test must not touch the real home");

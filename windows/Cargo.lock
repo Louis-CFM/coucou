@@ -731,7 +731,7 @@ dependencies = [
 
 [[package]]
 name = "coucou"
-version = "0.5.3"
+version = "0.5.6"
 dependencies = [
  "arboard",
  "clipboard-win",
@@ -771,7 +771,7 @@ dependencies = [
 
 [[package]]
 name = "coucou-hook"
-version = "0.5.3"
+version = "0.5.6"
 dependencies = [
  "libc",
  "serde_json",
@@ -2731,9 +2731,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "1.2.3"
+version = "1.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b18443e9c262bfe8fa82f51666e2642c53393f7e5c27b3e1aeab922cff5b9d8"
+checksum = "1788edb87fdc09c7e26304471e2f5be8cdefb1b6930d6e3985fc02ff53bf86ee"
 dependencies = [
  "libc",
  "log",
@@ -5096,6 +5096,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",
