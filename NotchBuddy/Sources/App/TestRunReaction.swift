@@ -166,8 +166,9 @@ enum TestRunReaction {
     /// The runner's verdict in one line: the line that says what failed, or the last line of a
     /// passing run ("5 passed in 0.12s"). Nil when there is nothing short enough to show.
     static func summary(_ output: String, outcome: Outcome) -> String? {
+        // Runners align their columns with spaces: one space is enough on the card.
         let lines = output.split(whereSeparator: \.isNewline)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.split(whereSeparator: { $0 == " " || $0 == "\t" }).joined(separator: " ") }
             .filter { !$0.isEmpty && $0 != "…" }
         let pick: String?
         if outcome == .failed {

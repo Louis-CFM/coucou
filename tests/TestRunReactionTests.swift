@@ -67,7 +67,7 @@ enum TestRunReactionTests {
         check("a failing run: the line that says so",
               TestRunReaction.card(command: "npm test", output: "FAIL src/a.test.ts\nTests:       1 failed, 2 passed, 3 total\nTime: 1 s",
                                    toolFailed: true)
-                == .init(outcome: .failed, line: "npm test · Tests:       1 failed, 2 passed, 3 total"))
+                == .init(outcome: .failed, line: "npm test · Tests: 1 failed, 2 passed, 3 total"))
         check("no output: the command alone",
               TestRunReaction.card(command: "cargo test", output: "", toolFailed: false) == .init(outcome: .passed, line: "cargo test"))
         check("a line too long is left out",
