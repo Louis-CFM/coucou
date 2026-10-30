@@ -16,6 +16,87 @@ struct BotCanvasView: View {
     @StateObject private var engine = BotEngine()
 
     var body: some View {
+        notificationCanvas
+        .onAppear {
+            engine.setState(state.effectiveState, force: true)
+            let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+            let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+            let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
+        }
+    }
+
+    // Separate opaque view types keep the GitHub build's modifier chain within
+    // Swift's type-checking budget, while preserving modifier order and identity.
+    private var notificationCanvas: some View {
+        stateCanvas
+        .onReceive(NotificationCenter.default.publisher(for: .triggerEmote)) { notif in
+            if let emote = notif.object as? BotEmote {
+                engine.triggerEmote(emote)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .triggerSlap)) { _ in
+            engine.slap()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .botBlink)) { _ in
+            engine.blink()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .botSetTgEs)) { notif in
+            if let v = notif.object as? CGFloat {
+                engine.tgEs = v
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .botGulp)) { _ in
+            engine.gulp()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .botMorphTo)) { notif in
+            if let target = notif.object as? CGFloat {
+                let dur: CGFloat = target > 0.5 ? 550 : 650
+                engine.anim("morph", keys: [TweenKey(target: target, duration: dur, ease: Ease.inOut)])
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
+            engine.greet()
+        }
+    }
+
+    private var stateCanvas: some View {
+        frameCanvas
+        .onChange(of: state.effectiveState) { _, newState in
+            engine.setState(newState)
+        }
+        #if !APPSTORE
+        .onChange(of: state.voiceActive) { _, on in
+            if on { engine.enterVoiceCompact() } else { engine.exitVoiceCompact() }
+        }
+        #endif
+        .onChange(of: state.view) { oldView, newView in
+            // Morph up when upload view is active
+            if state.mode == .expanded && newView == .upload {
+                engine.anim("morph", keys: [TweenKey(target: 1, duration: 550, ease: Ease.inOut)])
+            } else if newView != .upload && newView != .uploading && engine.morph > 0.01 {
+                // Any other view (not mid-gulp): morph back
+                engine.anim("morph", keys: [TweenKey(target: 0, duration: 550, ease: Ease.inOut)])
+            }
+            #if !APPSTORE
+            if newView == .listening {
+                engine.enterListening()
+            } else if oldView == .listening {
+                engine.exitListening(hadCommand: !VoiceEngine.shared.commandTranscript.isEmpty)
+            }
+            #endif
+        }
+        .onChange(of: state.mode) { _, newMode in
+            // Hard-reset morph when island collapses
+            if newMode != .expanded {
+                engine.tweens.removeValue(forKey: "morph")
+                engine.locks.remove("morph")
+                engine.morph = 0
+            }
+        }
+    }
+
+    private var frameCanvas: some View {
         // Display refresh rate — every frame on a 60 Hz screen, every frame on ProMotion.
         // MochiFrameClock.advance accumulates the step debt so Mochi's speed never changes.
         TimelineView(.animation(paused: state.mode == .hidden || paused)) { timeline in
@@ -130,73 +211,6 @@ struct BotCanvasView: View {
                 }
                 engine.drawHandsAndExtras(context: ctx, size: size)
             }
-        }
-        .onChange(of: state.effectiveState) { _, newState in
-            engine.setState(newState)
-        }
-        #if !APPSTORE
-        .onChange(of: state.voiceActive) { _, on in
-            if on { engine.enterVoiceCompact() } else { engine.exitVoiceCompact() }
-        }
-        #endif
-        .onChange(of: state.view) { oldView, newView in
-            // Morph up when upload view is active
-            if state.mode == .expanded && newView == .upload {
-                engine.anim("morph", keys: [TweenKey(target: 1, duration: 550, ease: Ease.inOut)])
-            } else if newView != .upload && newView != .uploading && engine.morph > 0.01 {
-                // Any other view (not mid-gulp): morph back
-                engine.anim("morph", keys: [TweenKey(target: 0, duration: 550, ease: Ease.inOut)])
-            }
-            #if !APPSTORE
-            if newView == .listening {
-                engine.enterListening()
-            } else if oldView == .listening {
-                engine.exitListening(hadCommand: !VoiceEngine.shared.commandTranscript.isEmpty)
-            }
-            #endif
-        }
-        .onChange(of: state.mode) { _, newMode in
-            // Hard-reset morph when island collapses
-            if newMode != .expanded {
-                engine.tweens.removeValue(forKey: "morph")
-                engine.locks.remove("morph")
-                engine.morph = 0
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .triggerEmote)) { notif in
-            if let emote = notif.object as? BotEmote {
-                engine.triggerEmote(emote)
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .triggerSlap)) { _ in
-            engine.slap()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .botBlink)) { _ in
-            engine.blink()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .botSetTgEs)) { notif in
-            if let v = notif.object as? CGFloat {
-                engine.tgEs = v
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .botGulp)) { _ in
-            engine.gulp()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .botMorphTo)) { notif in
-            if let target = notif.object as? CGFloat {
-                let dur: CGFloat = target > 0.5 ? 550 : 650
-                engine.anim("morph", keys: [TweenKey(target: target, duration: dur, ease: Ease.inOut)])
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
-            engine.greet()
-        }
-        .onAppear {
-            engine.setState(state.effectiveState, force: true)
-            let isWardrobe = state.mode == .expanded && state.view == .wardrobe
-            let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
-            let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
-            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
         }
     }
 
