@@ -43,17 +43,17 @@ export function edgeAt(p: Pieces, x: number, y: number): Edge | null {
       // 0 at the top, clockwise, as geometry.ts.
       const a = (Math.atan2(dy, dx) + Math.PI / 2 + 2 * Math.PI) % (2 * Math.PI);
       const i = Math.min(p.n - 1, Math.floor(a / span));
-      const half = (ring.gap * Math.PI) / 360;
-      const a0 = i * span + half;
-      const a1 = (i + 1) * span - half;
-      if (a >= a0 && a <= a1) {
+      // Away from each dividing line, less half the (even) gap.
+      const fromStart = r * Math.sin(a - i * span) - ring.gap / 2;
+      const fromEnd = r * Math.sin((i + 1) * span - a) - ring.gap / 2;
+      if (fromStart >= 0 && fromEnd >= 0) {
         const tx = -uy;
         const ty = ux;
         const sides: Edge[] = [
           { d: ring.outer - r, nx: ux, ny: uy, bevel: BEVEL.wedge },
           { d: r - ring.inner, nx: -ux, ny: -uy, bevel: BEVEL.wedge },
-          { d: r * Math.sin(a - a0), nx: -tx, ny: -ty, bevel: BEVEL.wedge },
-          { d: r * Math.sin(a1 - a), nx: tx, ny: ty, bevel: BEVEL.wedge },
+          { d: fromStart, nx: -tx, ny: -ty, bevel: BEVEL.wedge },
+          { d: fromEnd, nx: tx, ny: ty, bevel: BEVEL.wedge },
         ];
         return sides.reduce((m, s) => (s.d < m.d ? s : m));
       }

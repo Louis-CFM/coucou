@@ -1,4 +1,4 @@
-// The wheel's liquid glass (src/wheel/lens.ts): which piece is where, and how
+﻿// The wheel's liquid glass (src/wheel/lens.ts): which piece is where, and how
 // it bends what is behind it.
 
 import { test } from "node:test";
@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { bend, edgeAt } from "../src/wheel/lens.ts";
 
 const pieces = {
-  ring: { cx: 160, cy: 158, inner: 58, outer: 141, gap: 1.6 },
+  ring: { cx: 160, cy: 158, inner: 58, outer: 141, gap: 3.5, corner: 9 },
   n: 8,
   hub: 52,
   disc: 150,

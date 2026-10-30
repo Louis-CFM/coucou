@@ -1,12 +1,13 @@
-/* The wheel, as on the Mac: a compact disc of liquid glass. Windows' acrylic
-   (wheel/mod.rs) blurs what is behind the window, which is shaped to the disc
-   and the ring switcher; here, translucent wedges with a top light and a bright
-   rim, a hub that holds the file, and the wedge under the pointer in orange. */
+/* The wheel, as Tangerine's on the Mac: a compact disc of liquid glass.
+   Milky frosted wedges with round corners and an even gap, dark labels, a thin
+   frosted rim, the file's picture in the hub and its name on a blue tag; the
+   wedge under the pointer in orange. What is behind is frosted and bent at
+   each piece's edges (wheel/glass.rs, wheel/lens.ts). */
 
 :root {
   color-scheme: light;
   --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI", "Microsoft YaHei UI", sans-serif;
-  --ink: #26201d;
+  --ink: #3a3a3c;
   --hot: #ff5a1f;
   --hot-2: #ff7a3d;
 }
@@ -54,11 +55,11 @@ svg.ring {
   overflow: visible;
 }
 
-/* The disc's glass under the wedges: clear, its rim lit. */
+/* The disc under the wedges: a thin frosted rim around them, lit at its edge. */
 .backdrop {
-  fill: rgba(255, 255, 255, 0.02);
-  stroke: url(#rim);
-  stroke-width: 1.4;
+  fill: rgba(255, 255, 255, 0.3);
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.2;
 }
 
 /* A light across the top of the disc, over everything (but the clicks). */
@@ -70,50 +71,22 @@ svg.ring {
 .wedge path {
   fill: url(#glass);
   stroke: url(#rim);
-  stroke-width: 1.2;
+  stroke-width: 1;
   stroke-linejoin: round;
   transition: fill 0.1s ease-out;
 }
 
 .wedge:hover path {
-  fill: rgba(255, 255, 255, 0.22);
-}
-
-/* Over a dark screen the glass is dark: light labels, a softer hover. */
-#wheel.dark {
-  --ink: #fff;
-}
-
-#wheel.dark .wedge text {
-  stroke: rgba(0, 0, 0, 0.35);
-}
-
-#wheel.dark .wedge:hover path {
-  fill: rgba(255, 255, 255, 0.14);
-}
-
-#wheel.dark .hub .glyph {
-  stroke: rgba(255, 255, 255, 0.85);
-}
-
-#wheel.dark .rings button {
-  color: rgba(255, 255, 255, 0.78);
-}
-
-#wheel.dark .rings button.on {
-  color: #26201d;
+  fill: rgba(255, 255, 255, 0.86);
 }
 
 .wedge text {
-  font: 700 12.5px var(--font);
+  font: 700 12px var(--font);
   fill: var(--ink);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
-  paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.55);
-  stroke-width: 2px;
 }
 
 .wedge.small text {
@@ -139,7 +112,6 @@ svg.ring {
 
 .wedge.hot text {
   fill: #fff;
-  stroke: rgba(160, 40, 0, 0.35);
 }
 
 .wedge.hot .icon {
@@ -150,7 +122,7 @@ svg.ring {
   opacity: 0.5;
 }
 
-/* The hub: a lens holding the file. */
+/* The hub: frosted glass holding the file's picture in a white ring. */
 .hub {
   position: absolute;
   left: 160px;
@@ -159,10 +131,8 @@ svg.ring {
   height: 104px;
   margin: -52px 0 0 -52px;
   border-radius: 50%;
-  /* A clear lens: lit along its top left and bottom right edges. */
-  background: radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.03) 60%);
-  box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.9), inset -1px -1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 0 12px rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9), 0 2px 10px rgba(0, 0, 0, 0.12);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -170,18 +140,19 @@ svg.ring {
 
 .hub img {
   position: absolute;
-  inset: 7px;
-  width: calc(100% - 14px);
-  height: calc(100% - 14px);
+  inset: 5px;
+  width: calc(100% - 10px);
+  height: calc(100% - 10px);
   border-radius: 50%;
   object-fit: cover;
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .hub .glyph {
   width: 38px;
   height: 38px;
   fill: none;
-  stroke: #7d6558;
+  stroke: #8e8e93;
   stroke-width: 1.4;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -192,11 +163,10 @@ svg.ring {
   z-index: 1;
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.42);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-  font: 700 11px var(--font);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  color: var(--ink);
+  font: 700 10.5px var(--font);
   white-space: nowrap;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
@@ -231,7 +201,7 @@ svg.ring {
 .hub-panel .dim {
   font-weight: 500;
   font-size: 9.5px;
-  color: #6f5a4f;
+  color: #6e6e73;
   word-break: break-word;
   max-width: 86px;
 }
@@ -317,7 +287,7 @@ svg.ring {
   z-index: 3;
 }
 
-/* Convert · Tools · Actions: a glass pill exactly where the window's shape leaves room. */
+/* Convert · Tools · Actions: a frosted pill exactly where the window's shape leaves room. */
 .rings {
   position: absolute;
   left: 10px;
@@ -329,10 +299,8 @@ svg.ring {
   gap: 2px;
   padding: 3px;
   border-radius: 15px;
-  /* Clear glass (lens.ts bends what is behind it), lit along the top. */
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
 }
 
 .rings button {
@@ -340,18 +308,18 @@ svg.ring {
   border: 0;
   border-radius: 12px;
   font: 700 11px var(--font);
-  color: rgba(38, 32, 29, 0.75);
+  color: rgba(58, 58, 60, 0.75);
   background: transparent;
   cursor: default;
 }
 
 .rings button:hover {
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .rings button.on {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.95);
   color: var(--ink);
   box-shadow: inset 0 1px 0 #fff, 0 1px 4px rgba(0, 0, 0, 0.14);
 }

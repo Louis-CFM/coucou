@@ -53,8 +53,6 @@ pub struct Opened {
     /// What is on the screen where the wheel opens, taken just before: the
     /// page blurs it behind the disc, its liquid glass. In memory only.
     backdrop: Option<String>,
-    /// The backdrop is dark: the labels go light.
-    dark: bool,
 }
 
 fn files() -> Vec<PathBuf> {
@@ -151,9 +149,8 @@ pub async fn wheel_open(app: AppHandle, paths: Vec<String>) -> Result<(), String
     shape(&win);
     let scale = win.scale_factor().unwrap_or(1.0);
     let (w, h) = ((WIDTH * scale).round() as i32, (HEIGHT * scale).round() as i32);
-    let behind = tauri::async_runtime::spawn_blocking(move || glass::behind(x, y, w, h)).await.ok().flatten();
-    let dark = behind.as_ref().is_some_and(|b| b.dark);
-    let opened = Opened { files: infos, rings, backdrop: behind.map(|b| b.picture), dark };
+    let backdrop = tauri::async_runtime::spawn_blocking(move || glass::behind(x, y, w, h)).await.ok().flatten();
+    let opened = Opened { files: infos, rings, backdrop };
     *OPENED.lock().unwrap() = Some(opened.clone());
     let _ = win.emit_to(LABEL, "wheel-open", opened);
     let _ = win.show();

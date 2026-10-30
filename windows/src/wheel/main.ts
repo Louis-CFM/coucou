@@ -34,7 +34,7 @@ interface RunResult {
 
 const NS = "http://www.w3.org/2000/svg";
 // The disc: centre (160, 158) in a 320 × 352 window, as wheel/mod.rs shapes it.
-const RING: Ring = { cx: 160, cy: 158, inner: 58, outer: 141, gap: 1.6 };
+const RING: Ring = { cx: 160, cy: 158, inner: 58, outer: 141, gap: 3.5, corner: 9 };
 const VIEW_W = 320;
 const VIEW_H = 352;
 const RING_ORDER: RingName[] = ["convert", "tools", "actions"];
@@ -67,14 +67,15 @@ function svgEl(tag: string, attrs: Record<string, string | number> = {}): SVGEle
 // ── The pieces ──────────────────────────────────────────────────────────────
 
 const svg = svgEl("svg", { class: "ring", viewBox: `0 0 ${VIEW_W} ${VIEW_H}`, width: VIEW_W, height: VIEW_H }) as SVGSVGElement;
-// The glass: almost clear, lit at its rims where the light catches it (top
-// left and bottom right of each piece), a faint light across the disc's top.
+// The glass, as Tangerine's: milky frosted wedges, lit at their rims where
+// the light catches them (top left and bottom right), a faint light across
+// the disc's top.
 const defs = svgEl("defs");
 defs.innerHTML = `
   <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#fff" stop-opacity="0.12"/>
-    <stop offset="0.5" stop-color="#fff" stop-opacity="0.03"/>
-    <stop offset="1" stop-color="#fff" stop-opacity="0.07"/>
+    <stop offset="0" stop-color="#fff" stop-opacity="0.7"/>
+    <stop offset="0.5" stop-color="#fff" stop-opacity="0.56"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0.62"/>
   </linearGradient>
   <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="#fff" stop-opacity="0.95"/>
@@ -366,14 +367,13 @@ function close() {
   window.setTimeout(() => void invoke("wheel_close"), 140);
 }
 
-type Opened = { files: FileInfo[]; rings: Rings; backdrop?: string | null; dark?: boolean };
+type Opened = { files: FileInfo[]; rings: Rings; backdrop?: string | null };
 
 async function open(payload: Opened) {
   behind = await pixels(payload.backdrop);
   glassFor = -1;
   glass.width = behind?.width ?? 0;
   glass.height = behind?.height ?? 0;
-  root.classList.toggle("dark", !!payload.dark);
   files = payload.files;
   rings = payload.rings;
   busy = false;

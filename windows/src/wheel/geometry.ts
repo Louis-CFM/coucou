@@ -7,8 +7,10 @@ export interface Ring {
   /** The wedges' inner and outer radius. */
   inner: number;
   outer: number;
-  /** The gap between two wedges, in degrees. */
+  /** The gap between two wedges, in units: as wide by the hub as at the rim. */
   gap: number;
+  /** How round a wedge's corners are, in units. */
+  corner: number;
 }
 
 const rad = (deg: number) => ((deg - 90) * Math.PI) / 180;
@@ -17,22 +19,34 @@ function point(r: Ring, radius: number, deg: number): [number, number] {
   return [r.cx + radius * Math.cos(rad(deg)), r.cy + radius * Math.sin(rad(deg))];
 }
 
-/** Wedge i of n as an SVG path (a ring sector). */
+/** Where wedge i's side (0 its start, 1 its end) is at `radius`, in degrees:
+ *  half the gap in from the dividing line, so the gap stays even. */
+function side(ring: Ring, i: number, n: number, edge: 0 | 1, radius: number): number {
+  const inset = (Math.asin(Math.min(1, ring.gap / 2 / radius)) * 180) / Math.PI;
+  return edge === 0 ? i * (360 / n) + inset : (i + 1) * (360 / n) - inset;
+}
+
+/** Wedge i of n as an SVG path: a ring sector with round corners. */
 export function wedgePath(ring: Ring, i: number, n: number): string {
-  const span = 360 / n;
-  const a0 = i * span + ring.gap / 2;
-  const a1 = (i + 1) * span - ring.gap / 2;
-  const large = a1 - a0 > 180 ? 1 : 0;
-  const [ox0, oy0] = point(ring, ring.outer, a0);
-  const [ox1, oy1] = point(ring, ring.outer, a1);
-  const [ix1, iy1] = point(ring, ring.inner, a1);
-  const [ix0, iy0] = point(ring, ring.inner, a0);
+  const { outer, inner, corner: c } = ring;
   const f = (v: number) => v.toFixed(2);
+  const at = (radius: number, deg: number) => point(ring, radius, deg).map(f).join(" ");
+  // A corner's ends along the arcs, in degrees.
+  const along = (radius: number) => (c / radius) * (180 / Math.PI);
+  const oa = side(ring, i, n, 0, outer);
+  const ob = side(ring, i, n, 1, outer);
+  const ia = side(ring, i, n, 0, inner);
+  const ib = side(ring, i, n, 1, inner);
+  const large = ob - oa - 2 * along(outer) > 180 ? 1 : 0;
   return [
-    `M${f(ox0)} ${f(oy0)}`,
-    `A${ring.outer} ${ring.outer} 0 ${large} 1 ${f(ox1)} ${f(oy1)}`,
-    `L${f(ix1)} ${f(iy1)}`,
-    `A${ring.inner} ${ring.inner} 0 ${large} 0 ${f(ix0)} ${f(iy0)}`,
+    `M${at(outer - c, side(ring, i, n, 0, outer - c))}`,
+    `Q${at(outer, oa)} ${at(outer, oa + along(outer))}`,
+    `A${outer} ${outer} 0 ${large} 1 ${at(outer, ob - along(outer))}`,
+    `Q${at(outer, ob)} ${at(outer - c, side(ring, i, n, 1, outer - c))}`,
+    `L${at(inner + c, side(ring, i, n, 1, inner + c))}`,
+    `Q${at(inner, ib)} ${at(inner, ib - along(inner))}`,
+    `A${inner} ${inner} 0 ${large} 0 ${at(inner, ia + along(inner))}`,
+    `Q${at(inner, ia)} ${at(inner + c, side(ring, i, n, 0, inner + c))}`,
     "Z",
   ].join(" ");
 }

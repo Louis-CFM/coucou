@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fileSize, labelPoint, wedgeAt, wedgePath } from "../src/wheel/geometry.ts";
 
-const ring = { cx: 250, cy: 250, inner: 90, outer: 210, gap: 3 };
+const ring = { cx: 250, cy: 250, inner: 90, outer: 210, gap: 4, corner: 8 };
 
 test("the wedges start at the top and go clockwise", () => {
   const n = 8;
@@ -28,10 +28,14 @@ test("a label sits in the middle of its wedge", () => {
   assert.equal(wedgeAt(ring, 4, x, y), 0);
 });
 
-test("a wedge's path is closed and goes around its arc", () => {
+test("a wedge's path is closed, goes around its arc and rounds its corners", () => {
   const d = wedgePath(ring, 0, 6);
-  assert.match(d, /^M[\d.]+ [\d.]+ A210 210 0 0 1 .* L.* A90 90 0 0 0 .* Z$/);
+  assert.match(d, /^M[\d.]+ [\d.]+ Q.* A210 210 0 0 1 .* Q.* L.* Q.* A90 90 0 0 0 .* Q.* Z$/);
   assert.match(wedgePath(ring, 0, 1), /A210 210 0 1 1/, "one wedge is nearly the whole ring");
+  // The gap is as wide by the hub as at the rim: the wedge starts half the gap
+  // right of the top's dividing line.
+  const x = Number(d.slice(1).split(" ")[0]);
+  assert.ok(Math.abs(x - (ring.cx + ring.gap / 2)) < 0.01);
 });
 
 test("file sizes", () => {
