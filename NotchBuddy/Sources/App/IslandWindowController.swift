@@ -895,16 +895,6 @@ final class IslandWindowController: NSWindowController {
             self.silentNextReveal = false
         }
 
-        // Mochi reacts to something (a test run): reveal silently so he is seen
-        NotificationCenter.default.addObserver(forName: .quietReveal, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self else { return }
-                self.silentNextReveal = true
-                self.fsm.reveal()
-                self.silentNextReveal = false
-            }
-        }
-
         // Email prepared by voice: open the mail card, filled in, for me to check and send.
         NotificationCenter.default.addObserver(forName: .voiceShowMailCard, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
@@ -2049,7 +2039,6 @@ extension Notification.Name {
     static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
     static let musicReveal      = Notification.Name("notchBuddy.musicReveal")
-    static let quietReveal      = Notification.Name("notchBuddy.quietReveal")
     // Greeting ↔ IslandWindowController
     static let greetComplete    = Notification.Name("notchBuddy.greetComplete")
     static let checkMondayRecap = Notification.Name("notchBuddy.checkMondayRecap")

@@ -426,24 +426,32 @@ final class HookServer: @unchecked Sendable {
         removeQuestion(id: entry.id, answer: #"{"permissionDecision":"ask"}"#)
     }
 
-    /// An agent ran the tests: Mochi is proud when they pass, breaks into a cold sweat when they
-    /// fail. Only the command and its output are read; an interrupted run gets no reaction.
-    /// A hidden island shows up quietly first, so the reaction is seen without a click.
+    /// An agent ran the tests: the test run card shows up like the finished card (same rules:
+    /// not while its terminal is in front), with Mochi proud when they pass and in a cold sweat
+    /// when they fail. Only the command and its output are read; an interrupted run is ignored.
     @MainActor
-    private func reactToTestRun(_ payload: [String: Any], toolFailed: Bool) {
+    private func reactToTestRun(_ payload: [String: Any], toolFailed: Bool, pill: String, terminalInFront: Bool) {
         let input = payload["tool_input"] as? [String: Any] ?? [:]
         guard let command = TestRunReaction.command(from: input) else { return }
         if let response = payload["tool_response"] as? [String: Any], response["interrupted"] as? Bool == true { return }
         let output = TestRunReaction.output(from: payload)
-        guard let outcome = TestRunReaction.outcome(command: command, output: output, toolFailed: toolFailed) else { return }
-        nbLog("Test run \(outcome == .passed ? "passed" : "failed"): \(command.prefix(80))")
-        let emote = outcome == .passed ? BotEmote.proud : BotEmote.sweat
-        guard AppState.shared.mode == .hidden else {
+        guard let card = TestRunReaction.card(command: command, output: output, toolFailed: toolFailed) else { return }
+        let passed = card.outcome == .passed
+        nbLog("Test run \(passed ? "passed" : "failed"): \(card.line.prefix(80))")
+        let state = AppState.shared
+        let emote = passed ? BotEmote.proud : BotEmote.sweat
+        // Never over an approval, a question, or a card the user is busy in.
+        let cardShows = !terminalInFront && state.pendingApproval == nil && state.pendingQuestion == nil
+            && (state.mode != .expanded || [.overview, .empty, .finished, .error, .testRun].contains(state.view))
+            && showsAlert(for: pill, focused: state.focusId == pill)
+        guard cardShows else {
             NotificationCenter.default.post(name: .triggerEmote, object: emote)
             return
         }
-        NotificationCenter.default.post(name: .quietReveal, object: nil)
-        // Once the island has opened and Mochi is on screen.
+        state.testRunCard = card
+        SoundEngine.shared.play(passed ? "finish" : "error")
+        expandIfNeeded(to: .testRun)
+        // Once the card has opened and the big Mochi is on screen.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
             NotificationCenter.default.post(name: .triggerEmote, object: emote)
         }
@@ -778,7 +786,7 @@ final class HookServer: @unchecked Sendable {
                 step(String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx))
                 RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
             }
-            reactToTestRun(payload, toolFailed: false)
+            reactToTestRun(payload, toolFailed: false, pill: agentId, terminalInFront: terminalInFront)
 
         case "PostToolUseFailure":
             sessions.note(pill: agentId, display: display, working: true)
@@ -786,7 +794,7 @@ final class HookServer: @unchecked Sendable {
                 $0.state = .working
                 $0.appendStep("⚠ failed")
             }
-            reactToTestRun(payload, toolFailed: true)
+            reactToTestRun(payload, toolFailed: true, pill: agentId, terminalInFront: terminalInFront)
 
         case "Notification":
             sessions.note(pill: agentId, display: display, working: false)
@@ -978,7 +986,7 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         let isAlert: Bool
         switch view {
-        case .approval, .question, .finished, .error, .confused: isAlert = true
+        case .approval, .question, .finished, .error, .confused, .testRun: isAlert = true
         default: isAlert = false
         }
         if state.mode == .expanded {

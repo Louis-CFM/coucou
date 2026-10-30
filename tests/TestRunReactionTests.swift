@@ -59,6 +59,22 @@ enum TestRunReactionTests {
               TestRunReaction.outcome(command: "pytest", output: "Failed attempts are retried\n3 passed", toolFailed: false) == .passed)
         check("not a test: no reaction", TestRunReaction.outcome(command: "npm run build", output: "1 error", toolFailed: true) == nil)
 
+        print("\nThe card")
+        check("the test part of the line", TestRunReaction.testCommand(in: "cd web && CI=1 npm test 2>&1 | tail -20") == "CI=1 npm test")
+        check("a passing run: command and last line",
+              TestRunReaction.card(command: "pytest -q", output: "....\n5 passed in 0.12s\n", toolFailed: false)
+                == .init(outcome: .passed, line: "pytest -q · 5 passed in 0.12s"))
+        check("a failing run: the line that says so",
+              TestRunReaction.card(command: "npm test", output: "FAIL src/a.test.ts\nTests:       1 failed, 2 passed, 3 total\nTime: 1 s",
+                                   toolFailed: true)
+                == .init(outcome: .failed, line: "npm test · Tests:       1 failed, 2 passed, 3 total"))
+        check("no output: the command alone",
+              TestRunReaction.card(command: "cargo test", output: "", toolFailed: false) == .init(outcome: .passed, line: "cargo test"))
+        check("a line too long is left out",
+              TestRunReaction.card(command: "go test ./...", output: String(repeating: "x", count: 200), toolFailed: false)?.line
+                == "go test ./...")
+        check("not a test: no card", TestRunReaction.card(command: "npm run build", output: "", toolFailed: false) == nil)
+
         print("\nThe output from a hook")
         check("stdout and stderr", TestRunReaction.output(from: ["tool_response": ["stdout": "a", "stderr": "b"]]) == "a\nb")
         check("the error", TestRunReaction.output(from: ["error": "Exit code 1"]) == "Exit code 1")

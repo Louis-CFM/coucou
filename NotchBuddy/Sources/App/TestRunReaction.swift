@@ -7,6 +7,21 @@ enum TestRunReaction {
         case passed, failed
     }
 
+    /// What the test run card shows: the outcome, then the test command and the runner's verdict.
+    struct Card: Equatable {
+        var outcome: Outcome
+        /// "npm test · Tests: 1 failed, 2 passed"
+        var line: String
+    }
+
+    /// The card for a test run, or nil when the command doesn't run tests.
+    static func card(command: String, output: String, toolFailed: Bool) -> Card? {
+        guard let test = testCommand(in: command),
+              let outcome = outcome(command: command, output: output, toolFailed: toolFailed) else { return nil }
+        let verdict = summary(output, outcome: outcome)
+        return Card(outcome: outcome, line: verdict.map { "\(test) · \($0)" } ?? test)
+    }
+
     /// The outcome of a test run, or nil when the command doesn't run tests (or was interrupted).
     /// `toolFailed`: the agent reported the command as failed (PostToolUseFailure).
     static func outcome(command: String, output: String, toolFailed: Bool) -> Outcome? {
@@ -53,7 +68,15 @@ enum TestRunReaction {
     private static let buildTools: Set<String> = ["make", "gradle", "gradlew", "mvn", "mvnw", "xcodebuild"]
 
     static func isTestCommand(_ command: String) -> Bool {
-        segments(of: command).contains { isTestSegment($0) }
+        testCommand(in: command) != nil
+    }
+
+    /// The part of a shell line that runs the tests ("npm test" in "cd web && npm test | tail").
+    static func testCommand(in command: String) -> String? {
+        guard let words = segments(of: command).first(where: { isTestSegment($0) }) else { return nil }
+        // Up to a redirection (`2>&1`, `> log.txt`): the rest isn't the command.
+        let shown = words.prefix { word in !word.contains(">") && !word.contains("<") }
+        return shown.joined(separator: " ")
     }
 
     /// The simple commands of a shell line, quoted text taken out (`git commit -m "fix tests"` runs nothing).
@@ -139,6 +162,25 @@ enum TestRunReaction {
         #"\*\* TEST FAILED \*\*"#,                                       // xcodebuild
         #"✗"#,
     ].compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
+
+    /// The runner's verdict in one line: the line that says what failed, or the last line of a
+    /// passing run ("5 passed in 0.12s"). Nil when there is nothing short enough to show.
+    static func summary(_ output: String, outcome: Outcome) -> String? {
+        let lines = output.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && $0 != "…" }
+        let pick: String?
+        if outcome == .failed {
+            pick = lines.last { line in
+                let range = NSRange(line.startIndex..., in: line)
+                return failurePatterns.contains { $0.firstMatch(in: line, range: range) != nil }
+            } ?? lines.last
+        } else {
+            pick = lines.last
+        }
+        guard let pick, pick.count <= 120 else { return nil }
+        return pick
+    }
 
     static func reportsFailure(_ output: String) -> Bool {
         let range = NSRange(output.startIndex..., in: output)
