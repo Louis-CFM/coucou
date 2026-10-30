@@ -4,6 +4,8 @@
 // Cal.com is the one simplification: macOS shows a three-level calendar
 // (month → day → booking); here it is the list of upcoming bookings.
 
+import { portfolioCard } from "./portfolio";
+import { cryptoCard } from "./markets";
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
@@ -453,6 +455,8 @@ export function hasIntegrationData(id: string): boolean {
     case "integration_gitea":
       return get(id).totalRepos != null;
     case "integration_stripe":
+    case "integration_crypto":
+    case "integration_portfolio":
       return info.loaded;
     case "integration_notion":
       return arr(id, "pages").length > 0;
@@ -506,6 +510,10 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
     case "integration_gitlab": return gitlabCard();
     case "integration_gitea":
       return giteaCard();
+    case "integration_portfolio":
+      return portfolioCard(get(task.id), hooks.detailOpen, hooks.detailOpen ? hooks.closeDetail : hooks.openDetail, hooks.openSettings);
+    case "integration_crypto":
+      return cryptoCard(get(task.id), hooks.openSettings);
     case "integration_stripe":
       return stripeCard();
     case "integration_notion":
