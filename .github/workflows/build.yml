@@ -54,6 +54,9 @@ jobs:
       - name: Test Flow text (snippets, dictionary, numbers)
         run: bash scripts/test-flow-text.sh
 
+      - name: Test Mochi's reaction to test runs (test commands, failures)
+        run: bash scripts/test-test-run-reaction.sh
+
       - name: Test Notetaker transcript (speakers, echo, summary, Markdown)
         run: bash scripts/test-notetaker.sh
 
