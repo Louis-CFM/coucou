@@ -275,6 +275,8 @@ final class FlowDictation: ObservableObject {
         let app = NSWorkspace.shared.frontmostApplication
         let startedAt = Date()
         var stoppedAt: Date?
+        /// Claude Code started with the listen, for the words' clean-up or prompt (FlowCleanup.warmUp).
+        var warm: CLIRelay.Pending?
 
         init(useParakeet: Bool) {
             apple = useParakeet ? nil : MacDictation()
@@ -310,6 +312,10 @@ final class FlowDictation: ObservableObject {
         Task { @MainActor [weak self] in self?.recheckTrust() }
         let listen = Listen(useParakeet: FlowStore.shared.engine == .parakeet && Parakeet.shared.isReady)
         current = listen
+        let store = FlowStore.shared
+        listen.warm = FlowCleanup.warmUp(prompt: store.promptMode, language: FlowLanguages.language(store.translateTo),
+                                         cleanup: store.cleanupEnabled, style: store.style(for: listen.app?.bundleIdentifier),
+                                         app: listen.app?.localizedName, words: store.words)
         bands.reset()
         pill.listen()
         SoundEngine.shared.play("blip")
@@ -320,6 +326,7 @@ final class FlowDictation: ObservableObject {
             if listen.cancelled { listen.stop(); return }      // cancelled while the mic opened
             if !listen.isRecording, self.current === listen {
                 // No permission, no recognizer for these languages, or no microphone.
+                listen.warm?.cancel()
                 self.logic.reset()
                 self.current = nil
                 self.pill.flash(.failed)
@@ -339,6 +346,8 @@ final class FlowDictation: ObservableObject {
         listen.stoppedAt = Date()
         let opening = startTask
         Task { @MainActor [weak self] in
+            // Whatever happens to the words, a Claude Code started for them doesn't stay behind.
+            defer { listen.warm?.cancel() }
             await opening?.value
             // The key often comes up while the last word is still being said: keep listening a
             // moment so it makes it in.
@@ -356,13 +365,15 @@ final class FlowDictation: ObservableObject {
             if (store.promptMode || language != nil), !body.isEmpty {
                 let shaped = await FlowCleanup.transform(body, prompt: store.promptMode, language: language,
                                                          style: store.style(for: listen.app?.bundleIdentifier),
-                                                         app: listen.app?.localizedName, words: store.words)
+                                                         app: listen.app?.localizedName, words: store.words,
+                                                         warm: listen.warm)
                 guard !listen.cancelled else { return }
                 if FlowText.keepsMarks(shaped.text, prepared.snippets) { body = shaped.text }
                 shaping = shaped
             } else if store.cleanupEnabled, !body.isEmpty {
                 let cleaned = await FlowCleanup.clean(body, style: store.style(for: listen.app?.bundleIdentifier),
-                                                      app: listen.app?.localizedName, words: store.words)
+                                                      app: listen.app?.localizedName, words: store.words,
+                                                      warm: listen.warm)
                 guard !listen.cancelled else { return }
                 if FlowText.keepsMarks(cleaned.text, prepared.snippets) { body = cleaned.text }
                 shaping = cleaned
@@ -430,6 +441,7 @@ final class FlowDictation: ObservableObject {
         if let listen = current {
             listen.cancelled = true
             listen.stop()
+            listen.warm?.cancel()
         }
         current = nil
         pill.rest()

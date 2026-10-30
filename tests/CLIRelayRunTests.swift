@@ -26,9 +26,15 @@ enum CLIRelayRunTests {
     }
 
     static func main() async throws {
+        // As the app does (AppDelegate): a write to a tool that quit fails instead of killing us.
+        signal(SIGPIPE, SIG_IGN)
         try await answers()
         try await signedOut()
         try await tooSlow()
+        try await startedAhead()
+        try await cancelled()
+        try await quitWhileWaiting()
+        try await dropped()
         print("CLIRelay run tests: all passed")
     }
 
@@ -84,5 +90,60 @@ enum CLIRelayRunTests {
         }
         let waited = Date().timeIntervalSince(started)
         precondition(waited < 3, "stopped after \(waited) s")
+    }
+
+    /// Started when the key goes down: the tool waits with the first line in, longer than its
+    /// time limit, which starts only with the rest; the answer is the same.
+    static func startedAhead() async throws {
+        let out = root.path
+        let exe = try tool("claude-ahead", """
+        cat > "\(out)/ahead-stdin.txt"
+        echo '{"type":"result","subtype":"success","is_error":false,"result":"We should meet on Friday."}'
+        """)
+        let pending = try CLIRelay.start(.claude, flowRequest(timeout: 1), head: "<dictation>\n", exe: exe, workdir: workdir)
+        try await Task.sleep(for: .milliseconds(1500))
+        precondition(pending.isRunning, "waits for the rest")
+        let text = try await pending.finish("so um we should uh meet on Friday\n</dictation>")
+        precondition(text == "We should meet on Friday.", text)
+        precondition(read("ahead-stdin.txt") == "<dictation>\nso um we should uh meet on Friday\n</dictation>", read("ahead-stdin.txt"))
+    }
+
+    /// Not needed after all: gone a second later, even when it ignores SIGTERM.
+    static func cancelled() async throws {
+        let exe = try tool("claude-cancelled", "trap '' TERM\nexec sleep 30\n")
+        let pending = try CLIRelay.start(.claude, flowRequest(), head: "<dictation>\n", exe: exe, workdir: workdir)
+        pending.cancel()
+        try await Task.sleep(for: .milliseconds(1600))
+        precondition(!pending.isRunning, "stopped")
+    }
+
+    /// One that quit while it waited: no answer, and writing the rest to it is harmless.
+    static func quitWhileWaiting() async throws {
+        let exe = try tool("claude-quits", "exit 1\n")
+        let pending = try CLIRelay.start(.claude, flowRequest(), head: "<dictation>\n", exe: exe, workdir: workdir)
+        try await Task.sleep(for: .milliseconds(300))
+        precondition(!pending.isRunning)
+        do {
+            _ = try await pending.finish(String(repeating: "word ", count: 50_000) + "\n</dictation>")
+            preconditionFailure("a tool that quit gives no answer")
+        } catch let failure as CLIFailure {
+            precondition(failure == .noAnswer("Claude Code"), "\(failure)")
+        }
+    }
+
+    /// Dropped without being finished: stopped at once, not left waiting until its lifetime ends.
+    static func dropped() async throws {
+        let out = root.path
+        let exe = try tool("claude-dropped", "echo $$ > \"\(out)/dropped.pid\"\nexec cat > /dev/null\n")
+        do {
+            let pending = try CLIRelay.start(.claude, flowRequest(), head: "<dictation>\n", exe: exe, workdir: workdir)
+            try await Task.sleep(for: .milliseconds(300))
+            precondition(pending.isRunning)
+        }
+        guard let pid = Int32(read("dropped.pid").trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            preconditionFailure("the stand-in wrote no pid")
+        }
+        try await Task.sleep(for: .milliseconds(1500))
+        precondition(kill(pid, 0) != 0, "the dropped run is still there")
     }
 }
