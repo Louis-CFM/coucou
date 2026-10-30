@@ -42184,7 +42184,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "앗, 테스트 실패"
+            "value" : "앗, 테스트가 실패했어요"
           }
         },
         "pt-BR" : {
