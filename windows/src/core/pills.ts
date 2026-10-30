@@ -74,6 +74,8 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // ── Where you code ─────────────────────────────────────────────────────────
   { id: "integration_claude", name: "Claude Code", color: "#F5F6F8", category: "workspace",
     subtitle: N_("Integration"), source: "claudeCode", support: "yes", connect: hooks },
+  { id: "agent_vscode", name: "Visual Studio Code", color: "#007ACC", category: "workspace",
+    subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   // Claude Code in Cursor's terminal: the same hooks as Claude Code.
   { id: "agent_cursor", name: "Cursor", color: "#C0C4CC", category: "workspace",
     subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
@@ -185,6 +187,7 @@ export function mainPillChoices(os: HostOs = HOST_OS): PillDefinition[] {
 export function sessionSubtitle(id: string): string {
   switch (id) {
     case "integration_claude": return "Claude Code";
+    case "agent_vscode": return "Visual Studio Code";
     case "agent_cursor": return "Cursor";
     case "agent_codex": return "Codex";
     case "agent_hermes": return "Hermes";
