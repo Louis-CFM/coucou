@@ -13446,97 +13446,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "كلاهما يستخدم Claude بمفتاحك: الكلمات فقط تذهب إلى Anthropic، وصوتك لا يغادر جهاز Mac. إذا لم يرد Claude في الوقت المناسب، تُلصق الكلمات كما سُمعت."
+            "value" : "كلاهما يستخدم Claude، باشتراكك عبر Claude Code أو بمفتاحك: الكلمات فقط تذهب إلى Anthropic، وصوتك لا يغادر جهاز Mac. إذا لم يرد Claude في الوقت المناسب، تُلصق الكلمات كما سُمعت."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "দুটোই আপনার নিজের কী দিয়ে Claude ব্যবহার করে: শুধু কথাগুলো Anthropic-এ যায়, আপনার কণ্ঠ কখনো নয়, সেটি আপনার Mac-এ থাকে। Claude সময়মতো উত্তর না দিলে কথাগুলো যেমন শোনা গেছে তেমনই পেস্ট হয়।"
+            "value" : "দুটোই Claude ব্যবহার করে, Claude Code দিয়ে আপনার প্ল্যানে অথবা আপনার নিজের কী দিয়ে: শুধু কথাগুলো Anthropic-এ যায়, আপনার কণ্ঠ কখনো নয়, সেটি আপনার Mac-এ থাকে। Claude সময়মতো উত্তর না দিলে কথাগুলো যেমন শোনা গেছে তেমনই পেস্ট হয়।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beide nutzen Claude mit deinem eigenen Schlüssel: Nur der Text geht an Anthropic, niemals deine Stimme, die auf deinem Mac bleibt. Wenn Claude nicht rechtzeitig antwortet, werden deine Worte wie gehört eingefügt."
+            "value" : "Beide nutzen Claude, mit deinem Abo über Claude Code oder mit deinem eigenen Schlüssel: Nur der Text geht an Anthropic, niemals deine Stimme, die auf deinem Mac bleibt. Wenn Claude nicht rechtzeitig antwortet, werden deine Worte wie gehört eingefügt."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Both use Claude with your own key: only the words go to Anthropic, never your voice, which stays on your Mac. If Claude doesn't answer in time, the words are pasted as heard."
+            "value" : "Both use Claude, on your Claude plan through Claude Code or with your own key: only the words go to Anthropic, never your voice, which stays on your Mac. If Claude doesn't answer in time, the words are pasted as heard."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ambos usan Claude con tu propia clave: solo las palabras van a Anthropic, nunca tu voz, que se queda en tu Mac. Si Claude no responde a tiempo, las palabras se pegan tal cual."
+            "value" : "Ambos usan Claude, con tu plan a través de Claude Code o con tu propia clave: solo las palabras van a Anthropic, nunca tu voz, que se queda en tu Mac. Si Claude no responde a tiempo, las palabras se pegan tal cual."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les deux passent par Claude avec ta propre clé : seuls les mots partent chez Anthropic, jamais ta voix, qui reste sur ton Mac. Si Claude ne répond pas à temps, les mots sont collés tels qu'entendus."
+            "value" : "Les deux passent par Claude, avec ton abonnement via Claude Code ou avec ta propre clé : seuls les mots partent chez Anthropic, jamais ta voix, qui reste sur ton Mac. Si Claude ne répond pas à temps, les mots sont collés tels qu'entendus."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "दोनों आपकी अपनी कुंजी से Claude का उपयोग करते हैं: सिर्फ़ शब्द Anthropic को जाते हैं, आपकी आवाज़ कभी नहीं, वह आपके Mac पर रहती है। अगर Claude समय पर जवाब न दे, तो शब्द जैसे सुने गए वैसे पेस्ट होते हैं।"
+            "value" : "दोनों Claude का उपयोग करते हैं, Claude Code के ज़रिए आपके प्लान पर या आपकी अपनी कुंजी से: सिर्फ़ शब्द Anthropic को जाते हैं, आपकी आवाज़ कभी नहीं, वह आपके Mac पर रहती है। अगर Claude समय पर जवाब न दे, तो शब्द जैसे सुने गए वैसे पेस्ट होते हैं।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keduanya memakai Claude dengan kuncimu sendiri: hanya kata-kata yang dikirim ke Anthropic, suaramu tidak pernah, tetap di Mac-mu. Jika Claude tidak menjawab tepat waktu, kata-kata ditempel apa adanya."
+            "value" : "Keduanya memakai Claude, dengan paketmu lewat Claude Code atau dengan kuncimu sendiri: hanya kata-kata yang dikirim ke Anthropic, suaramu tidak pernah, tetap di Mac-mu. Jika Claude tidak menjawab tepat waktu, kata-kata ditempel apa adanya."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "どちらも自分のキーで Claude を使います。Anthropic に送られるのは言葉だけで、声は送られず Mac に残ります。Claude が時間内に応答しない場合は、聞き取ったとおりに貼り付けられます。"
+            "value" : "どちらも Claude を使います（Claude Code 経由のプラン、または自分のキー）。Anthropic に送られるのは言葉だけで、声は送られず Mac に残ります。Claude が時間内に応答しない場合は、聞き取ったとおりに貼り付けられます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "둘 다 내 키로 Claude를 사용해요. Anthropic으로는 단어만 가고, 음성은 보내지 않고 Mac에만 남아요. Claude가 제때 답하지 않으면 들린 그대로 붙여넣어요."
+            "value" : "둘 다 Claude를 사용해요. Claude Code로 내 요금제를 쓰거나 내 키를 써요. Anthropic으로는 단어만 가고, 음성은 보내지 않고 Mac에만 남아요. Claude가 제때 답하지 않으면 들린 그대로 붙여넣어요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Os dois usam o Claude com sua própria chave: só as palavras vão para a Anthropic, nunca sua voz, que fica no seu Mac. Se o Claude não responder a tempo, as palavras são coladas como foram ouvidas."
+            "value" : "Os dois usam o Claude, com seu plano pelo Claude Code ou com sua própria chave: só as palavras vão para a Anthropic, nunca sua voz, que fica no seu Mac. Se o Claude não responder a tempo, as palavras são coladas como foram ouvidas."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Оба режима используют Claude с вашим ключом: в Anthropic уходят только слова, а голос остаётся на вашем Mac. Если Claude не ответит вовремя, слова вставятся как услышаны."
+            "value" : "Оба режима используют Claude — по вашей подписке через Claude Code или с вашим ключом: в Anthropic уходят только слова, а голос остаётся на вашем Mac. Если Claude не ответит вовремя, слова вставятся как услышаны."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ทั้งสองโหมดใช้ Claude ด้วยคีย์ของคุณ โดยส่งเฉพาะข้อความไปยัง Anthropic ไม่ส่งเสียง ซึ่งยังคงอยู่บน Mac ของคุณ หาก Claude ไม่ตอบทันเวลา ระบบจะพิมพ์ข้อความตามที่ได้ยิน"
+            "value" : "ทั้งสองโหมดใช้ Claude ผ่านแพ็กเกจของคุณด้วย Claude Code หรือด้วยคีย์ของคุณ โดยส่งเฉพาะข้อความไปยัง Anthropic ไม่ส่งเสียง ซึ่งยังคงอยู่บน Mac ของคุณ หาก Claude ไม่ตอบทันเวลา ระบบจะพิมพ์ข้อความตามที่ได้ยิน"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İkisi de kendi anahtarınla Claude'u kullanır: Anthropic'e yalnızca metin gönderilir; sesin her zaman Mac'inde kalır. Claude zamanında yanıt vermezse sözlerin duyulduğu gibi yapıştırılır."
+            "value" : "İkisi de Claude'u kullanır; Claude Code üzerinden planınla ya da kendi anahtarınla: Anthropic'e yalnızca metin gönderilir; sesin her zaman Mac'inde kalır. Claude zamanında yanıt vermezse sözlerin duyulduğu gibi yapıştırılır."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "两者都通过你自己的密钥使用 Claude：只有文字会发送给 Anthropic，声音始终留在你的 Mac 上。如果 Claude 没有及时回复，就按听到的原文粘贴。"
+            "value" : "两者都使用 Claude：通过 Claude Code 使用你的套餐，或使用你自己的密钥。只有文字会发送给 Anthropic，声音始终留在你的 Mac 上。如果 Claude 没有及时回复，就按听到的原文粘贴。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "這兩項功能會使用你的金鑰呼叫 Claude；只會將文字傳送給 Anthropic，語音會留在 Mac 上。若 Claude 未及時回應，會貼上辨識到的原始文字。"
+            "value" : "這兩項功能都使用 Claude：透過 Claude Code 使用你的方案，或使用你的金鑰；只會將文字傳送給 Anthropic，語音會留在 Mac 上。若 Claude 未及時回應，會貼上辨識到的原始文字。"
           }
         }
       }
@@ -17765,6 +17765,309 @@
         }
       }
     },
+    "flow.ann.signed-out %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم تسجيل الخروج من %1$@: أُلصقت كلماتك كما سُمعت. لتسجيل الدخول مجددًا، شغّل في Terminal: %2$@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ থেকে সাইন আউট হয়ে গেছে: আপনার কথাগুলো যেমন শোনা গেছে তেমনই পেস্ট হয়েছে। আবার সাইন ইন করতে টার্মিনালে চালান: %2$@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ist abgemeldet: Deine Worte wurden wie gehört eingefügt. Um dich wieder anzumelden, führe im Terminal aus: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ is signed out: your words were pasted as heard. To sign in again, run this in Terminal: %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ cerró la sesión: tus palabras se pegaron tal cual. Para volver a iniciar sesión, ejecuta en la Terminal: %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ est déconnecté : tes mots ont été collés tels qu'entendus. Pour te reconnecter, lance dans le Terminal : %2$@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ से साइन आउट हो गया है: आपके शब्द जैसे सुने गए वैसे पेस्ट हुए। फिर से साइन इन करने के लिए टर्मिनल में चलाएँ: %2$@"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sudah keluar: kata-katamu ditempel apa adanya. Untuk masuk lagi, jalankan di Terminal: %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ からサインアウトしています。言葉は聞き取ったとおりに貼り付けました。もう一度サインインするには、ターミナルで実行してください: %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@에서 로그아웃되어 있어요. 들린 그대로 붙여넣었어요. 다시 로그인하려면 터미널에서 실행하세요: %2$@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O %1$@ saiu da conta: suas palavras foram coladas como foram ouvidas. Para entrar de novo, rode no Terminal: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ вышел из аккаунта: слова вставлены как услышаны. Чтобы войти снова, выполните в Терминале: %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ออกจากระบบแล้ว ระบบจึงวางข้อความตามที่ได้ยิน หากต้องการลงชื่อเข้าใช้อีกครั้ง ให้รันใน Terminal: %2$@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ oturumu kapalı: sözlerin duyulduğu gibi yapıştırıldı. Yeniden oturum açmak için Terminal'de çalıştır: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 已退出登录：已按听到的原文粘贴。要重新登录，请在终端里运行：%2$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 已登出：已貼上辨識到的原始文字。若要重新登入，請在終端機執行：%2$@"
+          }
+        }
+      }
+    },
+    "flow.ann.signed-out-key %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم تسجيل الخروج من %1$@: استُخدم مفتاح Claude الخاص بك بدلًا منه. لتسجيل الدخول مجددًا، شغّل في Terminal: %2$@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ থেকে সাইন আউট হয়ে গেছে: এর বদলে আপনার Claude কী ব্যবহার হয়েছে। আবার সাইন ইন করতে টার্মিনালে চালান: %2$@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ist abgemeldet: Stattdessen wurde dein Claude-Schlüssel verwendet. Um dich wieder anzumelden, führe im Terminal aus: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ is signed out: your Claude key was used instead. To sign in again, run this in Terminal: %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ cerró la sesión: se usó tu clave de Claude en su lugar. Para volver a iniciar sesión, ejecuta en la Terminal: %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ est déconnecté : ta clé Claude a pris le relais. Pour te reconnecter, lance dans le Terminal : %2$@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ से साइन आउट हो गया है: उसकी जगह आपकी Claude कुंजी इस्तेमाल हुई। फिर से साइन इन करने के लिए टर्मिनल में चलाएँ: %2$@"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sudah keluar: kunci Claude-mu dipakai sebagai gantinya. Untuk masuk lagi, jalankan di Terminal: %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ からサインアウトしているため、代わりに Claude のキーを使いました。もう一度サインインするには、ターミナルで実行してください: %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@에서 로그아웃되어 있어서 대신 Claude 키를 사용했어요. 다시 로그인하려면 터미널에서 실행하세요: %2$@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O %1$@ saiu da conta: sua chave do Claude foi usada no lugar. Para entrar de novo, rode no Terminal: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ вышел из аккаунта: вместо него сработал ваш ключ Claude. Чтобы войти снова, выполните в Терминале: %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ออกจากระบบแล้ว จึงใช้คีย์ Claude ของคุณแทน หากต้องการลงชื่อเข้าใช้อีกครั้ง ให้รันใน Terminal: %2$@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ oturumu kapalı: onun yerine Claude anahtarın kullanıldı. Yeniden oturum açmak için Terminal'de çalıştır: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 已退出登录：已改用你的 Claude 密钥。要重新登录，请在终端里运行：%2$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 已登出：已改用你的 Claude 金鑰。若要重新登入，請在終端機執行：%2$@"
+          }
+        }
+      }
+    },
+    "flow.ann.terminal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح Terminal"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "টার্মিনাল খুলুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Terminal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Terminal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir le Terminal"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "टर्मिनल खोलें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka Terminal"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ターミナルを開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "터미널 열기"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir o Terminal"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Терминал"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิด Terminal"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal'i aç"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开终端"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打開終端機"
+          }
+        }
+      }
+    },
     "flow.copied-noaccess" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -20195,97 +20498,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يستخدم التنقيح مفتاح Claude الخاص بك. أضفه في الإعدادات ← الدردشة."
+            "value" : "يستخدم التنقيح Claude: اشتراكك في Claude عبر Claude Code، أو مفتاح Claude الخاص بك. اضبط أحدهما في الإعدادات ← الدردشة."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "পরিষ্কার করতে আপনার Claude কী লাগে। সেটিংস → চ্যাট-এ যোগ করুন।"
+            "value" : "পরিষ্কার করতে Claude লাগে: Claude Code দিয়ে আপনার Claude প্ল্যান, অথবা আপনার Claude কী। সেটিংস → চ্যাট-এ যেকোনো একটি সেট করুন।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Überarbeitung nutzt deinen Claude-Schlüssel. Füge ihn unter Einstellungen → Chat hinzu."
+            "value" : "Die Überarbeitung nutzt Claude: dein Claude-Abo über Claude Code oder deinen Claude-Schlüssel. Richte eins davon unter Einstellungen → Chat ein."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The clean-up uses your Claude key. Add it in Settings → Chat."
+            "value" : "The clean-up uses Claude: your Claude plan through Claude Code, or your Claude key. Set one up in Settings → Chat."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La limpieza usa tu clave de Claude. Añádela en Ajustes → Chat."
+            "value" : "La limpieza usa Claude: tu plan de Claude con Claude Code, o tu clave de Claude. Configura uno de los dos en Ajustes → Chat."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le nettoyage utilise ta clé Claude. Ajoute-la dans Réglages → Chat."
+            "value" : "Le nettoyage passe par Claude : ton abonnement Claude via Claude Code, ou ta clé Claude. Règle l'un des deux dans Réglages → Chat."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सफ़ाई आपकी Claude कुंजी से होती है। इसे सेटिंग्स → चैट में जोड़ें।"
+            "value" : "सफ़ाई Claude से होती है: Claude Code के ज़रिए आपका Claude प्लान, या आपकी Claude कुंजी। सेटिंग्स → चैट में इनमें से एक सेट करें।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Perapian memakai kunci Claude-mu. Tambahkan di Pengaturan → Obrolan."
+            "value" : "Perapian memakai Claude: paket Claude-mu lewat Claude Code, atau kunci Claude-mu. Atur salah satunya di Pengaturan → Obrolan."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整える機能は Claude のキーを使います。設定 → チャットで追加してください。"
+            "value" : "整える機能は Claude を使います。Claude Code 経由の Claude プラン、または Claude のキーです。設定 → チャットでどちらかを設定してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다듬기에는 Claude 키가 필요해요. 설정 → 채팅에서 넣어 주세요."
+            "value" : "다듬기에는 Claude가 필요해요. Claude Code로 쓰는 Claude 요금제나 Claude 키 중 하나를 설정 → 채팅에서 설정해 주세요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A limpeza usa sua chave do Claude. Adicione-a em Ajustes → Chat."
+            "value" : "A limpeza usa o Claude: seu plano do Claude pelo Claude Code ou sua chave do Claude. Configure um dos dois em Ajustes → Chat."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Для чистки нужен ваш ключ Claude. Добавьте его в Настройки → Чат."
+            "value" : "Для чистки нужен Claude: ваша подписка Claude через Claude Code или ваш ключ Claude. Настройте одно из двух в Настройки → Чат."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "การปรับข้อความใช้คีย์ Claude ของคุณ เพิ่มคีย์ได้ที่ การตั้งค่า → แชต"
+            "value" : "การปรับข้อความใช้ Claude ผ่านแพ็กเกจ Claude ของคุณด้วย Claude Code หรือคีย์ Claude ของคุณ ตั้งค่าอย่างใดอย่างหนึ่งได้ที่ การตั้งค่า → แชต"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Düzenleme, Claude anahtarını kullanır. Ayarlar → Sohbet bölümünden ekle."
+            "value" : "Düzenleme Claude'u kullanır: Claude Code üzerinden Claude planın ya da Claude anahtarın. Birini Ayarlar → Sohbet bölümünden ayarla."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整理会使用你的 Claude 密钥。请在“设置”→“聊天”中添加。"
+            "value" : "整理会使用 Claude：通过 Claude Code 使用你的 Claude 套餐，或使用你的 Claude 密钥。请在“设置”→“聊天”中设置其中一个。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "文字整理使用你的 Claude 金鑰。請在「設定 → 聊天」中新增。"
+            "value" : "文字整理使用 Claude：透過 Claude Code 使用你的 Claude 方案，或使用你的 Claude 金鑰。請在「設定 → 聊天」中設定其中一項。"
           }
         }
       }
@@ -20296,97 +20599,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "عند تشغيل التنقيح يُرسل النص (وليس صوتك أبدًا) إلى Anthropic بمفتاح Claude الخاص بك. وعند إيقافه يبقى كل شيء على جهاز Mac."
+            "value" : "عند تشغيل التنقيح يُرسل النص (وليس صوتك أبدًا) إلى Anthropic، عبر Claude Code لديك أو بمفتاح Claude الخاص بك. وعند إيقافه يبقى كل شيء على جهاز Mac."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "পরিষ্কার চালু থাকলে লেখা (কখনো আপনার কণ্ঠ নয়) আপনার Claude কী দিয়ে Anthropic-এ যায়। বন্ধ থাকলে সব আপনার Mac-এই থাকে।"
+            "value" : "পরিষ্কার চালু থাকলে লেখা (কখনো আপনার কণ্ঠ নয়) আপনার Claude Code দিয়ে বা আপনার Claude কী দিয়ে Anthropic-এ যায়। বন্ধ থাকলে সব আপনার Mac-এই থাকে।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bei aktivierter Überarbeitung wird der Text mit deinem Claude-Schlüssel an Anthropic gesendet, niemals deine Stimme. Ist sie aus, bleibt alles auf deinem Mac."
+            "value" : "Bei aktivierter Überarbeitung wird der Text über dein Claude Code oder mit deinem Claude-Schlüssel an Anthropic gesendet, niemals deine Stimme. Ist sie aus, bleibt alles auf deinem Mac."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "With the clean-up on, the text (never your voice) goes to Anthropic with your Claude key. Off, everything stays on your Mac."
+            "value" : "With the clean-up on, the text (never your voice) goes to Anthropic, through your Claude Code or with your Claude key. Off, everything stays on your Mac."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con la limpieza activada, el texto (nunca tu voz) va a Anthropic con tu clave de Claude. Desactivada, todo se queda en tu Mac."
+            "value" : "Con la limpieza activada, el texto (nunca tu voz) va a Anthropic, a través de tu Claude Code o con tu clave de Claude. Desactivada, todo se queda en tu Mac."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avec le nettoyage, le texte (jamais ta voix) part chez Anthropic avec ta clé Claude. Sans, tout reste sur ton Mac."
+            "value" : "Avec le nettoyage, le texte (jamais ta voix) part chez Anthropic, via ton Claude Code ou avec ta clé Claude. Sans, tout reste sur ton Mac."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सफ़ाई चालू होने पर टेक्स्ट (आपकी आवाज़ कभी नहीं) आपकी Claude कुंजी के साथ Anthropic को जाता है। बंद होने पर सब कुछ आपके Mac पर रहता है।"
+            "value" : "सफ़ाई चालू होने पर टेक्स्ट (आपकी आवाज़ कभी नहीं) आपके Claude Code के ज़रिए या आपकी Claude कुंजी के साथ Anthropic को जाता है। बंद होने पर सब कुछ आपके Mac पर रहता है।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saat perapian aktif, teksnya (bukan suaramu) dikirim ke Anthropic dengan kunci Claude-mu. Saat mati, semuanya tetap di Mac-mu."
+            "value" : "Saat perapian aktif, teksnya (bukan suaramu) dikirim ke Anthropic lewat Claude Code-mu atau dengan kunci Claude-mu. Saat mati, semuanya tetap di Mac-mu."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整える機能がオンのとき、テキスト（声は送られません）があなたの Claude キーで Anthropic に送られます。オフならすべて Mac に残ります。"
+            "value" : "整える機能がオンのとき、テキスト（声は送られません）が Claude Code 経由、またはあなたの Claude キーで Anthropic に送られます。オフならすべて Mac に残ります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다듬기를 켜면 텍스트(음성은 전송되지 않아요)가 Claude 키와 함께 Anthropic으로 전송돼요. 끄면 모든 게 Mac에만 남아요."
+            "value" : "다듬기를 켜면 텍스트(음성은 전송되지 않아요)가 내 Claude Code를 거치거나 Claude 키와 함께 Anthropic으로 전송돼요. 끄면 모든 게 Mac에만 남아요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Com a limpeza ligada, o texto (nunca sua voz) vai para a Anthropic com sua chave do Claude. Desligada, tudo fica no seu Mac."
+            "value" : "Com a limpeza ligada, o texto (nunca sua voz) vai para a Anthropic, pelo seu Claude Code ou com sua chave do Claude. Desligada, tudo fica no seu Mac."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Когда чистка включена, текст (но не голос) уходит в Anthropic с вашим ключом Claude. Когда выключена, всё остаётся на Mac."
+            "value" : "Когда чистка включена, текст (но не голос) уходит в Anthropic — через ваш Claude Code или с вашим ключом Claude. Когда выключена, всё остаётся на Mac."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "เมื่อเปิดใช้ ระบบจะส่งข้อความ (ไม่ใช่เสียง) ไปยัง Anthropic ด้วยคีย์ Claude ของคุณ เมื่อปิด ทุกอย่างจะอยู่บน Mac"
+            "value" : "เมื่อเปิดใช้ ระบบจะส่งข้อความ (ไม่ใช่เสียง) ไปยัง Anthropic ผ่าน Claude Code ของคุณหรือด้วยคีย์ Claude ของคุณ เมื่อปิด ทุกอย่างจะอยู่บน Mac"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Düzenleme açıkken metin, Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Kapalıyken her şey Mac'inde kalır."
+            "value" : "Düzenleme açıkken metin, Claude Code'un üzerinden ya da Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Kapalıyken her şey Mac'inde kalır."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "开启整理时，文字（绝不是你的声音）会用你的 Claude 密钥发送给 Anthropic。关闭时，一切都留在你的 Mac 上。"
+            "value" : "开启整理时，文字（绝不是你的声音）会通过你的 Claude Code 或用你的 Claude 密钥发送给 Anthropic。关闭时，一切都留在你的 Mac 上。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟文字整理時，會使用你的 Claude 金鑰將文字傳送至 Anthropic，不會傳送語音。關閉時，所有資料都留在 Mac 上。"
+            "value" : "開啟文字整理時，會透過你的 Claude Code 或使用你的 Claude 金鑰將文字傳送至 Anthropic，不會傳送語音。關閉時，所有資料都留在 Mac 上。"
           }
         }
       }
