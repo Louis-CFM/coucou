@@ -99,6 +99,8 @@ pub struct Prefs {
     /// The style of the apps that have none of their own.
     pub default_style: Style,
     pub summary_engine: SummaryEngine,
+    /// 0 measures the best CPU configuration; positive values override it.
+    pub speech_threads: u16,
     /// Open the Coucou window when Coucou is opened (not when it starts with the computer).
     pub open_at_launch: bool,
     /// « OK Coucou »: listen for it and answer with Claude (needs the Claude key).
@@ -120,6 +122,7 @@ impl Default for Prefs {
             cleanup: false,
             default_style: Style::Natural,
             summary_engine: SummaryEngine::Claude,
+            speech_threads: 0,
             open_at_launch: true,
             voice: false,
             voice_output: "system".into(),
@@ -211,21 +214,24 @@ impl Store {
         store
     }
 
+    fn write<T: Serialize>(&self, value: &T, name: &str) -> std::io::Result<()> {
+        crate::platform::ensure_private_dir(&self.folder)?;
+        let text = serde_json::to_string_pretty(value).map_err(std::io::Error::other)?;
+        let tmp = self.folder.join(format!("{name}.tmp"));
+        std::fs::write(&tmp, text)?;
+        std::fs::rename(&tmp, self.folder.join(name))
+    }
+
     fn save<T: Serialize>(&self, value: &T, name: &str) {
-        let write = || -> std::io::Result<()> {
-            crate::platform::ensure_private_dir(&self.folder)?;
-            let text = serde_json::to_string_pretty(value).map_err(std::io::Error::other)?;
-            let tmp = self.folder.join(format!("{name}.tmp"));
-            std::fs::write(&tmp, text)?;
-            std::fs::rename(&tmp, self.folder.join(name))
-        };
-        if let Err(err) = write() {
+        if let Err(err) = self.write(value, name) {
             crate::log::line(format!("flow: could not save {name}: {err}"));
         }
     }
 
-    pub fn save_prefs(&self) {
-        self.save(&self.prefs, "prefs.json");
+    pub fn set_prefs(&mut self, prefs: Prefs) -> Result<(), String> {
+        self.write(&prefs, "prefs.json").map_err(|e| format!("Could not save Flow settings: {e}"))?;
+        self.prefs = prefs;
+        Ok(())
     }
     pub fn save_words(&self) {
         self.save(&self.words, "words.json");
@@ -342,6 +348,28 @@ mod tests {
     fn temp_store() -> (Store, PathBuf) {
         let dir = std::env::temp_dir().join(format!("coucou-flow-{}-{}", std::process::id(), new_id()));
         (Store::load_from(dir.clone()), dir)
+    }
+
+    #[test]
+    fn thread_override_preserves_preferences_and_changes_only_after_a_durable_save() {
+        let (mut store, path) = temp_store();
+        let mut prefs = store.prefs.clone();
+        prefs.mic = "Chosen microphone".into();
+        prefs.keep_days = 7;
+        prefs.speech_threads = 2;
+        store.set_prefs(prefs.clone()).unwrap();
+        assert_eq!(Store::load_from(path.clone()).prefs, prefs);
+        std::fs::create_dir(path.join("prefs.json.tmp")).unwrap();
+        let mut next = prefs.clone();
+        next.speech_threads = 1;
+        assert!(store.set_prefs(next.clone()).is_err());
+        assert_eq!(store.prefs, prefs);
+        assert_eq!(Store::load_from(path.clone()).prefs, prefs);
+        std::fs::remove_dir(path.join("prefs.json.tmp")).unwrap();
+        store.set_prefs(next.clone()).unwrap();
+        assert_eq!(Store::load_from(path.clone()).prefs, next);
+        std::fs::remove_file(path.join("prefs.json")).unwrap();
+        std::fs::remove_dir(path).unwrap();
     }
 
     #[test]

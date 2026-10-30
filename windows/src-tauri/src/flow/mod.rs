@@ -120,6 +120,7 @@ pub fn setup(app: &AppHandle) {
     app.manage(flow.clone());
     pill::setup(app);
     let prefs = flow.store.lock().unwrap().prefs.clone();
+    speech::performance::configure(prefs.speech_threads);
     pill::update(app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
         s.key = key_id(prefs.key);
@@ -444,6 +445,7 @@ fn paste_again(app: &AppHandle, flow: &Arc<Flow>) {
 pub struct FlowStatus {
     prefs: Prefs,
     models: speech::ModelsStatus,
+    performance: speech::performance::Status,
     /// "ok", or why the key can't be watched here ("wayland", "no-display").
     keys: String,
     has_claude_key: bool,
@@ -460,6 +462,7 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
     FlowStatus {
         prefs: flow.store.lock().unwrap().prefs.clone(),
         models: speech::status(),
+        performance: speech::performance::status(),
         keys: match os::keys_supported() {
             Ok(()) => "ok".into(),
             Err(why) => why.into(),
@@ -475,18 +478,19 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
 }
 
 #[tauri::command]
-pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
+pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, mut prefs: Prefs) -> Result<(), String> {
+    prefs.speech_threads = prefs.speech_threads.min(speech::performance::available_threads());
     let flow = flow.inner().clone();
     let before = {
         let mut store = flow.store.lock().unwrap();
         let before = store.prefs.clone();
-        store.prefs = prefs.clone();
-        store.save_prefs();
+        store.set_prefs(prefs.clone())?;
         if before.keep_days != prefs.keep_days {
             store.prune(store::now_ms());
         }
         before
     };
+    speech::performance::configure(prefs.speech_threads);
     pill::update(&app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
         s.key = key_id(prefs.key);
@@ -506,6 +510,7 @@ pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
         }
     }
     let _ = app.emit("flow-prefs", &prefs);
+    Ok(())
 }
 
 #[tauri::command]
@@ -708,3 +713,6 @@ pub fn pill_action(app: AppHandle, flow: State<Arc<Flow>>, action: String, id: O
         _ => {}
     }
 }
+
+#[tauri::command]
+pub fn flow_retune_speech() { speech::performance::retune(); }

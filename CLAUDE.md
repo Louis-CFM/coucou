@@ -18,6 +18,8 @@ cd NotchBuddy && xcodegen && xcodebuild -scheme NotchBuddy -configuration Debug 
 To run it day to day on the Mac (signed, iPhone link, permissions kept across builds): `./scripts/dev-install.sh` — it installs the only Coucou in /Applications and removes the copies earlier builds left.
 Windows and Linux: `cd windows && npm install && npm run tauri dev`
 
+Parakeet automatic mode measures CPU thread counts using a bounded in-memory segment after a successful dictation, preserving transcript equivalence. Settings can override the choice or request a new measurement. Wait for calibration shutdown before native runtime teardown or model removal; no tuning audio is written or sent.
+
 ## Rules
 - Swift 6, SwiftUI + AppKit. No third-party dependencies unless truly unavoidable. The character is drawn in code (`Canvas` + `TimelineView`), no Rive/Lottie/images.
 - Secrets live in the Keychain, never on disk or in git.

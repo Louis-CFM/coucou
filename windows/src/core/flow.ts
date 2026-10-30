@@ -33,6 +33,7 @@ export interface FlowPrefs {
   cleanup: boolean;
   defaultStyle: Style;
   summaryEngine: "claude" | "off";
+  speechThreads: number;
   openAtLaunch: boolean;
   /** « OK Coucou »: listen for it and answer with Claude. */
   voice: boolean;
@@ -51,9 +52,21 @@ export interface ModelsStatus {
   downloadMb: number;
 }
 
+export interface SpeechPerformance {
+  provider: "cpu";
+  automatic: boolean;
+  threads: number;
+  availableThreads: number;
+  tuning: boolean;
+  measured: boolean;
+  measurements: { threads: number; milliseconds: number }[];
+  error: string | null;
+}
+
 export interface FlowStatus {
   prefs: FlowPrefs;
   models: ModelsStatus;
+  performance: SpeechPerformance;
   /** "ok", or why the key can't be watched ("wayland", "no-display"). */
   keys: string;
   hasClaudeKey: boolean;
@@ -183,10 +196,11 @@ export interface VoiceView {
 export type VoiceOutput = "system" | "elevenlabs" | "off";
 
 export const FlowBridge = {
+  retuneSpeech: () => callOrThrow<void>("flow_retune_speech"),
   status: () => call<FlowStatus>("flow_status"),
   /** The Coucou window is on screen (shown, not minimised); `hub-visible` tells when it changes. */
   hubShown: () => call<boolean>("hub_shown"),
-  setPrefs: (prefs: FlowPrefs) => call<void>("flow_set_prefs", { prefs }),
+  setPrefs: (prefs: FlowPrefs) => callOrThrow<void>("flow_set_prefs", { prefs }),
   history: () => call<FlowEntry[]>("flow_history"),
   deleteEntry: (id: string) => call<void>("flow_delete", { id }),
   clear: (everything: boolean) => call<void>("flow_clear", { everything }),
