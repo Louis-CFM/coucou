@@ -6,6 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Bridge, IS_TAURI, onEvent } from "../core/bridge";
 import { MAX_DECLARED, availablePills, chooseMainPill, pillDefinition, sanitizeDeclared, toggleDeclared } from "../core/pills";
 import { Spotify } from "../core/spotify";
+import { Music } from "../core/apple-music";
 import { State } from "../core/state";
 import { serviceCards } from "./phone-services";
 
@@ -105,6 +106,8 @@ function info(): string {
     claudePlan: plan(State.planUsage),
     codexPlan: plan(State.codexPlanUsage),
     spotify: s.running && s.track ? { playing: s.playing, title: s.track.title, artist: s.track.artist } : null,
+    appleMusic: Music.state.running && Music.state.track
+      ? { playing: Music.state.playing, title: Music.state.track.title, artist: Music.state.track.artist } : null,
     services: serviceCards().map((c) => ({ service: c.title, headline: c.headline, about: c.reason, items: c.items })),
   });
 }

@@ -94,11 +94,11 @@ test("IDs are unique", () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test("this build leaves out what only macOS has, and Claude Desktop on Linux", () => {
+test("Windows offers Apple Music while Linux keeps its native supported players", () => {
   const windows = availablePills("windows").map((p) => p.id);
   const linux = availablePills("linux").map((p) => p.id);
   for (const id of ["integration_music"]) {
-    assert.ok(!windows.includes(id), id);
+    assert.ok(windows.includes(id), id);
     assert.ok(!linux.includes(id), id);
   }
   // Their plugins are written from Settings → Agents, and the chat talks to
@@ -112,7 +112,7 @@ test("this build leaves out what only macOS has, and Claude Desktop on Linux", (
   // Spotify: MPRIS on Linux, the system media controls on Windows.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(windows.includes("integration_spotify"));
-  assert.deepEqual(linux, windows.filter((id) => id !== "agent_claude-desktop"));
+  assert.deepEqual(linux, windows.filter((id) => !["agent_claude-desktop", "integration_music"].includes(id)));
 });
 
 test("Spotify: a service on both systems with nothing to set up", () => {
