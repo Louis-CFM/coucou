@@ -45,6 +45,9 @@ function sharedSounds(): Plugin {
 export default defineConfig({
   plugins: [sharedSounds()],
   clearScreen: false,
+  // Tauri serves bundled pages from the app protocol, so assets must resolve
+  // relative to the page rather than from the host root.
+  base: "./",
   server: {
     port: 1420,
     strictPort: true,
