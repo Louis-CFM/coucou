@@ -62,7 +62,8 @@ pub fn present(key: &str) -> bool {
 
 // ── Entries only Rust reads and writes ───────────────────────────────────────
 //
-// The phone link's certificate, key and pairing token, the relay's room, end-to-end key and access key,
+// The read-only portfolio connections, the phone link's certificate, key and pairing token,
+// the relay's room, end-to-end key and access key,
 // and WhatsApp's gateway address, credential and webhook secret.
 // They are not in KNOWN_KEYS
 // on purpose: the island has `secret_present` / `secret_set` / `secret_clear`
@@ -70,6 +71,11 @@ pub fn present(key: &str) -> bool {
 
 /// Every entry of that kind. Anything outside this list is refused.
 pub const INTERNAL_KEYS: &[&str] = &[
+    "portfolio-binance",
+    "portfolio-okx",
+    "portfolio-bybit",
+    "portfolio-kraken",
+    "portfolio-coinbase",
     "phone-link-cert",
     "phone-link-key",
     "phone-link-token",
@@ -97,6 +103,15 @@ fn internal_entry(key: &str) -> Result<Entry, String> {
 
 pub fn get_internal(key: &str) -> Option<String> {
     internal_entry(key).ok()?.get_password().ok().filter(|v| !v.is_empty())
+}
+
+/// Distinguish an absent connection from a locked or unavailable credential store.
+pub fn read_internal(key: &str) -> Result<Option<String>, String> {
+    match internal_entry(key)?.get_password() {
+        Ok(value) => Ok((!value.is_empty()).then_some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(_) => Err("Credential store is unavailable".into()),
+    }
 }
 
 pub fn set_internal(key: &str, value: &str) -> Result<(), String> {
