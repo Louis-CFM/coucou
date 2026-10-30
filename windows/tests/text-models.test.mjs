@@ -30,10 +30,11 @@ function context() {
   return { hero: root, status, refresh: async () => status, setPrefs: async change => change(status.prefs) };
 }
 
-test("the summary picker saves each local provider without changing dictation preferences", async () => {
+test("the summary picker saves each local provider without changing dictation preferences", async t => {
   const ctx = context();
   const page = root();
   await flowSettingsPage(page, ctx);
+  t.after(() => ctx.onLeave?.());
   const picker = page.find("select").find(el => el.find("option").some(option => option.getAttribute("value") === "ollama"));
   assert.ok(picker);
   assert.deepEqual(picker.find("option").map(option => option.getAttribute("value")), ["claude", "ollama", "lmstudio", "custom", "off"]);
@@ -47,6 +48,8 @@ test("the summary picker saves each local provider without changing dictation pr
 });
 
 test("a provider error stays visible beside a retained summary and allows retry", async t => {
+  t.mock.method(globalThis, "setInterval", () => 1);
+  t.mock.method(globalThis, "clearInterval", () => {});
   const note = { id: "fixture", title: "Synthetic call", titleEdited: false, start: 1000000, end: 1060000,
     status: "ready", speakers: [], lines: [{ id: "line", speaker: "me", start: 0, end: 2, text: "Synthetic transcript" }], summary: "The existing summary", keyPoints: [], todos: [],
     error: "The model server timed out.", startLocal: "2026-10-30" };
