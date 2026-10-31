@@ -123,9 +123,9 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     setPrefs: async (change) => {
       const next = { ...status.prefs };
       change(next);
-      status = { ...status, prefs: next };
-      drawStatus();
       await FlowBridge.setPrefs(next);
+      status = (await FlowBridge.status()) ?? { ...status, prefs: next };
+      drawStatus();
     },
     hero: (page, title, subtitle, actions = [], compact = false) => hero(page, title, subtitle, actions, compact),
   };

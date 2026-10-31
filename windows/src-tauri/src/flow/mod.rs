@@ -14,6 +14,8 @@ pub mod paste;
 pub mod pill;
 pub mod store;
 pub mod text;
+#[cfg(windows)]
+mod keyboard;
 
 #[cfg(windows)]
 #[path = "os_windows.rs"]
@@ -58,6 +60,7 @@ pub enum KeyEvent {
 pub struct Flow {
     pub store: Mutex<Store>,
     running: Mutex<Option<Running>>,
+    ready: tokio::sync::watch::Sender<bool>,
 }
 
 struct Running {
@@ -115,9 +118,13 @@ fn is_terminal(id: &str) -> bool {
 
 // ── Setup, on and off ─────────────────────────────────────────────────────────
 
+pub fn init(app: &AppHandle) {
+    let flow = Arc::new(Flow { store: Mutex::new(Store::load()), running: Mutex::new(None), ready: tokio::sync::watch::channel(false).0 });
+    app.manage(flow);
+}
+
 pub fn setup(app: &AppHandle) {
-    let flow = Arc::new(Flow { store: Mutex::new(Store::load()), running: Mutex::new(None) });
-    app.manage(flow.clone());
+    let flow = app.state::<Arc<Flow>>().inner().clone();
     pill::setup(app);
     let prefs = flow.store.lock().unwrap().prefs.clone();
     pill::update(app, |s| {
@@ -128,6 +135,7 @@ pub fn setup(app: &AppHandle) {
         enable(app, &flow);
     }
     crate::voice::sync(app);
+    flow.ready.send_replace(true);
 }
 
 /// The key as the pages write it ("right_ctrl"…), or "wayland" where the
@@ -456,14 +464,22 @@ pub struct FlowStatus {
 }
 
 #[tauri::command]
-pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
-    FlowStatus {
-        prefs: flow.store.lock().unwrap().prefs.clone(),
+pub async fn flow_status(flow: State<'_, Arc<Flow>>) -> Result<FlowStatus, String> {
+    // WebView2 can ask before setup has installed the listener. Await setup
+    // without blocking its UI thread instead of caching a false failure.
+    let mut ready = flow.ready.subscribe();
+    ready.wait_for(|ready| *ready).await.map_err(|_| "Dictation setup stopped".to_string())?;
+    let prefs = flow.store.lock().unwrap().prefs.clone();
+    let listener_started = flow.running.lock().unwrap().as_ref().is_some_and(|r| r._listener.is_some());
+    let keys = match os::keys_supported() {
+        Ok(()) if prefs.enabled && !listener_started => "unavailable",
+        Ok(()) => "ok",
+        Err(why) => why,
+    };
+    Ok(FlowStatus {
+        prefs,
         models: speech::status(),
-        keys: match os::keys_supported() {
-            Ok(()) => "ok".into(),
-            Err(why) => why.into(),
-        },
+        keys: keys.into(),
         has_claude_key: cleanup::has_key(),
         mics: audio::input_devices(),
         platform: if cfg!(windows) { "windows" } else { "linux" },
@@ -471,7 +487,7 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
         user_name: crate::platform::user_full_name()
             .and_then(|n| n.split_whitespace().next().map(String::from))
             .filter(|n| !n.is_empty()),
-    }
+    })
 }
 
 #[tauri::command]

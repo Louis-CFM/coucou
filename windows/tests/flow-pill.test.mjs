@@ -26,6 +26,7 @@ const idle = {
 const invoke = internals.invoke;
 let root;
 let loads = 0;
+const frames = new Set();
 
 beforeEach(() => {
   mock.timers.enable({ apis: ["setTimeout"] });
@@ -34,24 +35,45 @@ beforeEach(() => {
   root.querySelectorAll = (selector) => root.find(selector);
   document.getElementById = (id) => id === "pill" ? root : null;
   document.addEventListener = () => {};
+  window.addEventListener = () => {};
   document.documentElement = { dataset: {} };
   const createElement = document.createElement;
   document.createElement = (tag) => {
     const element = createElement(tag);
-    if (tag === "canvas") element.getContext = () => ({ measureText: (text) => ({ width: text.length * 7 }) });
+    if (tag === "canvas") element.getContext = () => new Proxy({
+      measureText: (text) => ({ width: text.length * 7 }),
+      createLinearGradient: () => ({ addColorStop() {} }),
+      createRadialGradient: () => ({ addColorStop() {} }),
+    }, { get: (target, key) => target[key] ?? (() => {}) });
     return element;
   };
-  // Painting is outside this test: keep animation frames queued, like a webview
-  // awaiting its next frame, rather than recursing through the animation loop.
-  requestAnimationFrame = () => 1;
+  // Frames run asynchronously through the controlled clock, as in a webview.
+  // Canvas drawing is outside the visibility and click-through contract.
+  requestAnimationFrame = (callback) => {
+    const id = setTimeout(() => { frames.delete(id); callback(performance.now()); }, 16);
+    frames.add(id);
+    return id;
+  };
+  globalThis.cancelAnimationFrame = (id) => { clearTimeout(id); frames.delete(id); };
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+  globalThis.Path2D = class {
+    constructor() { return new Proxy({}, { get: () => () => {} }); }
+  };
   window.innerWidth = 320;
   window.innerHeight = 120;
   calls.length = 0;
 });
 
 afterEach(() => {
-  mock.timers.runAll();
-  mock.timers.reset();
+  for (const frame of frames) clearTimeout(frame);
+  frames.clear();
+  requestAnimationFrame = () => 1;
+  try { mock.timers.runAll(); }
+  finally { mock.timers.reset(); }
 });
 
 async function boot(context, state = idle) {
