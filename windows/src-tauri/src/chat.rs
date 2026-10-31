@@ -21,6 +21,9 @@ pub const ANTHROPIC: &str = "anthropic";
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ChatContext {
     File { name: String, path: String },
+    // The enum's rename_all names the variants only: its fields need their own
+    // (the page sends `appName`).
+    #[serde(rename_all = "camelCase")]
     Window { app_name: String, title: String, url: Option<String> },
 }
 
@@ -362,6 +365,12 @@ mod tests {
         assert_eq!(plain_question(true, Some(&file), "why?"), "File: a.txt\n\nwhy?");
         assert_eq!(plain_question(false, Some(&file), "why?"), "why?");
         let win = ChatContext::Window { app_name: "Code".into(), title: "main.rs".into(), url: None };
+        // What the island sends for a window (a drop of Mochi, Ctrl+Alt+F).
+        let sent: ChatContext =
+            serde_json::from_value(json!({ "kind": "window", "appName": "Chrome", "title": "Claude", "url": null })).unwrap();
+        assert!(matches!(&sent, ChatContext::Window { app_name, title, .. } if app_name == "Chrome" && title == "Claude"));
+        let file: ChatContext = serde_json::from_value(json!({ "kind": "file", "name": "a.png", "path": "C:/a.png" })).unwrap();
+        assert!(matches!(file, ChatContext::File { .. }));
         assert_eq!(plain_question(true, Some(&win), "q"), "Context — App: Code, Window: main.rs\n\nq");
         assert_eq!(window_line("Edge", "Docs", Some("https://x.dev")), "Context — App: Edge, Window: Docs, URL: https://x.dev");
     }

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import {
   BODY_RADIUS_FRACTION, DesktopMochiController, PANEL_SIZE, RETRACT_DELAY_MS, RETURN_DELAY_MS,
   agentActive, alertActive, gaze, isOverBody, layerDragTopLeft, lookOrigin, pointerDistance,
-  shouldRetractOnLanding, shouldSleep, windowDragTopLeft,
+  askUntilAnswered, shouldRetractOnLanding, shouldSleep, windowDragTopLeft,
 } from "../src/mochi/desktop-logic.ts";
 
 // ── shouldSleep ───────────────────────────────────────────────────────────────
@@ -401,4 +401,30 @@ test("a finished task gets a happy jump, only on the desktop", () => {
   w.c.updateState("finished");
   w.c.updateState("finished");
   assert.deepEqual(w.log, ["emote:happy"]);
+});
+
+// ── askUntilAnswered (the island asking Rust before it is ready) ──────────────
+
+test("askUntilAnswered: a failed call is asked again until it answers", async () => {
+  const answers = [null, null, { mode: "poll" }];
+  let asked = 0;
+  const waits = [];
+  const info = await askUntilAnswered(async () => answers[asked++], 40, 250, async (ms) => { waits.push(ms); });
+  assert.deepEqual(info, { mode: "poll" });
+  assert.equal(asked, 3);
+  assert.deepEqual(waits, [250, 250]);
+});
+
+test("askUntilAnswered: a real answer, even \"off\", is not asked again", async () => {
+  let asked = 0;
+  const info = await askUntilAnswered(async () => { asked++; return { mode: "off" }; }, 40, 250, async () => {});
+  assert.deepEqual(info, { mode: "off" });
+  assert.equal(asked, 1);
+});
+
+test("askUntilAnswered: gives up after its tries", async () => {
+  let asked = 0;
+  const info = await askUntilAnswered(async () => { asked++; return null; }, 4, 250, async () => {});
+  assert.equal(info, null);
+  assert.equal(asked, 4);
 });

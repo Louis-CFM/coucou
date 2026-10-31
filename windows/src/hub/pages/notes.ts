@@ -7,7 +7,7 @@ import { onEvent } from "../../core/bridge";
 import { FlowBridge, clock, speakerColor, type Note, type NotesState } from "../../core/flow";
 import type { HubContext } from "../shell";
 import { emptyState, glowCard } from "../hero";
-import { button, iconButton, segmented } from "../ui";
+import { button, iconButton, segmented, select } from "../ui";
 import { modelsControl } from "./flowsettings";
 
 const lang = () => document.documentElement.lang || undefined;
@@ -201,6 +201,16 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
       drawDetail();
     });
     detail.append(h("div", {}, tabs));
+    const canCorrect = ctx.status.hasClaudeKey && ctx.status.prefs.summaryEngine === "claude";
+    const busy = state.working.includes(note.id);
+    if (tab === "transcript") {
+      detail.append(h("div", { class: "hub-note", text: t("A wrong word, or the wrong person? Fix it from the line's ⋯ menu. Words you correct are remembered for your next calls.") }));
+    }
+    if (canCorrect) {
+      const again = button(t("Correct the transcript again"), () => void FlowBridge.correctAgain(note.id), "", true);
+      again.disabled = busy;
+      detail.append(h("div", {}, again));
+    }
     detail.append(tab === "summary" ? summary(note) : transcript(note, ""));
   }
 
@@ -239,10 +249,43 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
       const s = note.speakers.find((x) => x.id === line.speaker);
       const name = s?.name ?? (line.speaker === "me" ? t("Me") : t("Others"));
       const color = s ? speakerColor(s.color) : line.speaker === "me" ? speakerColor(0) : speakerColor(1);
-      el.append(h("div", { class: "hub-line" },
-        h("span", { class: "ts", text: clock(line.start) }),
-        h("div", {}, h("div", { class: "who", style: `color:${color}`, text: name }), h("div", { class: "said", text: line.text })),
-      ));
+      const said = h("div", { class: "said", text: line.text });
+      if (line.raw) said.title = line.raw;
+      const body = h("div", {}, h("div", { class: "who", style: `color:${color}`, text: name }), said);
+      const row = h("div", { class: "hub-line editable" }, h("span", { class: "ts", text: clock(line.start) }), body);
+      // A wrong word, the wrong person, an echo left over: fixed from the line's ⋯ (FlowHubNotes.swift).
+      if (note.status === "ready") {
+        const more = h("button", { class: "hub-line-more", title: t("Fix the line"), text: "⋯" });
+        const actions = h("div", { class: "hub-line-actions" });
+        more.addEventListener("click", () => {
+          if (actions.childElementCount) {
+            clear(actions);
+            return;
+          }
+          const fix = button(t("Fix the line"), () => {
+            const input = h("textarea", { class: "hub-input", rows: "2", style: "width:100%;resize:vertical" }) as HTMLTextAreaElement;
+            input.value = line.text;
+            const save = button(t("Save"), () => void FlowBridge.editLine(note.id, line.id, input.value), "primary", true);
+            const cancel = button(t("Cancel"), () => clear(actions), "", true);
+            input.addEventListener("keydown", (e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void FlowBridge.editLine(note.id, line.id, input.value);
+              } else if (e.key === "Escape") clear(actions);
+            });
+            clear(actions);
+            actions.append(input, h("div", { class: "hub-note", text: t("The words you bring in are remembered for your next calls.") }), h("div", { class: "hub-row" }, save, cancel));
+            input.focus();
+          }, "", true);
+          const people: [string, string][] = note.speakers.map((p) => [p.id, p.name]);
+          const by = select(people, line.speaker, (who) => void FlowBridge.assignLine(note.id, line.id, who));
+          const remove = button(t("Delete the line"), () => void FlowBridge.deleteLine(note.id, line.id), "danger", true);
+          actions.append(h("div", { class: "hub-row" }, fix, h("span", { class: "hub-note", text: t("Said by") }), by, remove));
+        });
+        body.append(actions);
+        row.append(more);
+      }
+      el.append(row);
     }
     return el;
   }

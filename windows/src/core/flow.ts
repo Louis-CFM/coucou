@@ -38,6 +38,10 @@ export interface FlowPrefs {
   voice: boolean;
   voiceOutput: VoiceOutput;
   voiceGender: "female" | "male";
+  /** Paste what was said as a structured prompt for an agent (Claude key). */
+  promptMode: boolean;
+  /** Paste the words in this language (a code); "" = as spoken. */
+  translateTo: string;
 }
 
 export type ModelState =
@@ -57,6 +61,10 @@ export interface FlowStatus {
   /** "ok", or why the key can't be watched ("wayland", "no-display"). */
   keys: string;
   hasClaudeKey: boolean;
+  /** Who answers « OK Coucou »: Claude, Gemini (no Claude key), or none. */
+  voiceBrain?: "claude" | "gemini" | null;
+  /** The languages Flow can translate into, by code. */
+  languages: string[];
   mics: { name: string; default: boolean }[];
   platform: "windows" | "linux";
   autostarted: boolean;
@@ -120,6 +128,8 @@ export interface NoteLine {
   start: number;
   end: number;
   text: string;
+  /** The words as heard, kept when the line was corrected (by Claude or by you). */
+  raw?: string | null;
 }
 
 export interface Todo {
@@ -208,6 +218,10 @@ export const FlowBridge = {
   stopNote: () => call<void>("notes_stop"),
   renameNote: (id: string, title: string) => call<void>("notes_rename", { id, title }),
   renameSpeaker: (id: string, speaker: string, name: string) => call<void>("notes_rename_speaker", { id, speaker, name }),
+  editLine: (id: string, line: string, text: string) => call<void>("notes_edit_line", { id, line, text }),
+  assignLine: (id: string, line: string, speaker: string) => call<void>("notes_assign_line", { id, line, speaker }),
+  deleteLine: (id: string, line: string) => call<void>("notes_delete_line", { id, line }),
+  correctAgain: (id: string) => call<void>("notes_correct_again", { id }),
   toggleTodo: (id: string, todo: string) => call<void>("notes_toggle_todo", { id, todo }),
   deleteNote: (id: string) => call<void>("notes_delete", { id }),
   summarize: (id: string) => call<void>("notes_summarize", { id }),

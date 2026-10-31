@@ -25,6 +25,24 @@ fn wants_json(agent: &str) -> bool {
 /// (`None`: nobody clicked) and, for Claude Code's AskUserQuestion, the
 /// question as it was asked.
 pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
+    stdout_with_plan(agent, event, decision, question, None)
+}
+
+/// `stdout`, with Claude Code's ExitPlanMode input when that is what is asked:
+/// the island's plan card answers it (plan_json).
+pub fn stdout_with_plan(
+    agent: &str,
+    event: &str,
+    decision: Option<&str>,
+    question: Option<&Value>,
+    plan: Option<&Value>,
+) -> Option<String> {
+    // The fix loop (Coucou's Settings, island/loop.ts): Claude Code told its tests
+    // failed, sent back when it stops, a commit or push held back. Only those exact
+    // shapes, only for Claude Code; it never allows anything.
+    if agent.is_empty() && matches!(event, "Stop" | "PreToolUse" | "PostToolUse" | "PostToolUseFailure") {
+        return decision.and_then(|d| loop_json(event, d));
+    }
     if event != "PermissionRequest" {
         // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
         // (and the user's Always Allow): Coucou never allows a tool by itself.
@@ -51,8 +69,40 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
         }
         // Claude Code, Claude Desktop and Codex share the documented hookSpecificOutput.
         // Claude Code and Claude Desktop can ask questions.
-        "" | "claude-desktop" => decision.and_then(|d| decision_json(d, question)),
+        "" | "claude-desktop" => decision.and_then(|d| match plan {
+            Some(p) => plan_json(d, p),
+            None => decision_json(d, question),
+        }),
         _ => decision.and_then(|d| decision_json(d, None)),
+    }
+}
+
+/// The fix loop's word, rebuilt from its text alone: a block at Stop, a deny before
+/// a tool, a note after one. Anything else prints nothing.
+fn loop_json(event: &str, decision: &str) -> Option<String> {
+    let v = serde_json::from_str::<Value>(decision).ok()?;
+    let text = |v: Option<&Value>| v.and_then(Value::as_str).filter(|s| !s.trim().is_empty()).map(str::to_string);
+    let out = v.get("hookSpecificOutput");
+    match event {
+        "Stop" => {
+            if v.get("decision").and_then(Value::as_str) != Some("block") {
+                return None;
+            }
+            let reason = text(v.get("reason"))?;
+            Some(json!({ "decision": "block", "reason": reason }).to_string())
+        }
+        "PreToolUse" => {
+            let out = out?;
+            if out.get("permissionDecision").and_then(Value::as_str) != Some("deny") {
+                return None;
+            }
+            let reason = text(out.get("permissionDecisionReason"))?;
+            Some(json!({ "hookSpecificOutput": { "hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason } }).to_string())
+        }
+        _ => {
+            let context = text(out?.get("additionalContext"))?;
+            Some(json!({ "hookSpecificOutput": { "hookEventName": event, "additionalContext": context } }).to_string())
+        }
     }
 }
 
@@ -96,6 +146,36 @@ pub fn decision_json(decision: &str, question: Option<&Value>) -> Option<String>
     ))
 }
 
+/// Claude Code's plan (ExitPlanMode), answered from the plan card. An allow must
+/// carry the plan back as `updatedInput`, or Claude Code ignores it; Auto mode
+/// and Manual also set the session's permission mode, as the terminal's plan
+/// dialog does. Change plan rejects it and stops Claude, so the change can be
+/// typed in the terminal. Only these words; anything else prints nothing.
+pub fn plan_json(decision: &str, plan: &Value) -> Option<String> {
+    let allow = |mode: Option<&str>| {
+        let mut d = json!({ "behavior": "allow", "updatedInput": plan });
+        if let Some(mode) = mode {
+            d["updatedPermissions"] = json!([{ "type": "setMode", "mode": mode, "destination": "session" }]);
+        }
+        json!({ "hookSpecificOutput": { "hookEventName": "PermissionRequest", "decision": d } }).to_string()
+    };
+    match decision.trim() {
+        "plan_auto" => Some(allow(Some("auto"))),
+        "plan_default" => Some(allow(Some("default"))),
+        "allow" | "always" => Some(allow(None)),
+        "plan_change" => Some(
+            json!({ "hookSpecificOutput": { "hookEventName": "PermissionRequest", "decision": {
+                "behavior": "deny",
+                "interrupt": true,
+                "message": "The user wants to change the plan and will type the changes in the terminal.",
+            } } })
+            .to_string(),
+        ),
+        "deny" => decision_json("deny", None),
+        _ => None,
+    }
+}
+
 /// True when `answers` answers exactly the questions Claude Code asked: one entry
 /// per question, keyed by its text; a single-select answer is one of its option
 /// labels (a string), a multi-select answer a non-empty list of distinct labels
@@ -131,6 +211,54 @@ fn answers_fit(question: &Value, answers: &Map<String, Value>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_fix_loop_only_ever_denies_or_adds_a_note() {
+        let deny = r#"{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"tests fail"}}"#;
+        let out: Value = serde_json::from_str(&stdout("", "PreToolUse", Some(deny), None).unwrap()).unwrap();
+        assert_eq!(out["hookSpecificOutput"]["permissionDecision"], "deny");
+        let allow = deny.replace("\"deny\"", "\"allow\"");
+        assert!(stdout("", "PreToolUse", Some(&allow), None).is_none());
+        let note = r#"{"hookSpecificOutput":{"hookEventName":"x","additionalContext":"they failed","decision":{"behavior":"allow"}}}"#;
+        let out: Value = serde_json::from_str(&stdout("", "PostToolUse", Some(note), None).unwrap()).unwrap();
+        assert_eq!(out, json!({ "hookSpecificOutput": { "hookEventName": "PostToolUse", "additionalContext": "they failed" } }));
+        assert!(stdout("", "PostToolUseFailure", Some("{}"), None).is_none());
+        assert!(stdout("", "PreToolUse", None, None).is_none());
+    }
+
+    #[test]
+    fn a_stop_is_only_ever_blocked_with_a_reason() {
+        let block = r#"{"decision":"block","reason":"Coucou: the tests fail"}"#;
+        let out: Value = serde_json::from_str(&stdout("", "Stop", Some(block), None).unwrap()).unwrap();
+        assert_eq!(out["decision"], "block");
+        assert!(stdout("", "Stop", None, None).is_none());
+        assert!(stdout("", "Stop", Some("allow"), None).is_none());
+        assert!(stdout("", "Stop", Some(r#"{"decision":"approve"}"#), None).is_none());
+        // Another agent's Stop keeps its usual answer.
+        assert_eq!(stdout("gemini", "Stop", Some(block), None).as_deref(), Some("{}"));
+    }
+
+    #[test]
+    fn a_plan_is_sent_back_with_its_allow_and_the_mode_picked() {
+        let plan = json!({ "plan": "# Fix the bug\n1. read" });
+        let auto: Value = serde_json::from_str(&stdout_with_plan("", "PermissionRequest", Some("plan_auto"), None, Some(&plan)).unwrap()).unwrap();
+        let d = &auto["hookSpecificOutput"]["decision"];
+        assert_eq!(d["behavior"], "allow");
+        assert_eq!(d["updatedInput"], plan);
+        assert_eq!(d["updatedPermissions"][0]["mode"], "auto");
+        let manual: Value = serde_json::from_str(&plan_json("plan_default", &plan).unwrap()).unwrap();
+        assert_eq!(manual["hookSpecificOutput"]["decision"]["updatedPermissions"][0]["mode"], "default");
+        let plain: Value = serde_json::from_str(&plan_json("allow", &plan).unwrap()).unwrap();
+        assert_eq!(plain["hookSpecificOutput"]["decision"]["updatedInput"], plan);
+        assert!(plain["hookSpecificOutput"]["decision"].get("updatedPermissions").is_none());
+        let change: Value = serde_json::from_str(&plan_json("plan_change", &plan).unwrap()).unwrap();
+        assert_eq!(change["hookSpecificOutput"]["decision"]["behavior"], "deny");
+        assert_eq!(change["hookSpecificOutput"]["decision"]["interrupt"], true);
+        assert!(plan_json("maybe", &plan).is_none());
+        // Never for another agent, and a plan word means nothing without a plan.
+        assert!(stdout_with_plan("gemini", "PermissionRequest", Some("plan_auto"), None, Some(&plan)).is_none());
+        assert!(decision_json("plan_auto", None).is_none());
+    }
 
     const AGENTS: &[&str] = &[
         "", "gemini", "antigravity", "cursor", "codex", "copilot", "muse", "opencode", "amp",

@@ -216,6 +216,11 @@ fn class_of(conn: &RustConnection, window: u32) -> Option<(String, String)> {
     Some((class.to_lowercase(), super::display_name(&class)))
 }
 
+/// The app window under a point, for dropping Mochi on it: Windows only for now.
+pub fn window_at(_x: i32, _y: i32) -> Option<(String, String, String)> {
+    None
+}
+
 /// The app in front: (id, name). None on Wayland, where only the desktop knows.
 pub fn foreground_app() -> Option<(String, String)> {
     if is_wayland() {

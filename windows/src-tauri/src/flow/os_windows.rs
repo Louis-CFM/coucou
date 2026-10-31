@@ -256,6 +256,58 @@ pub fn foreground_app() -> Option<(String, String)> {
     program_of(hwnd)
 }
 
+/// The app window under a screen point (physical pixels), front to back: its
+/// program (id, name) and title. Not Coucou's own (Mochi is under the cursor),
+/// not the desktop or the taskbar, nothing hidden or cloaked: where Mochi is
+/// dropped, the window he attaches (DesktopMochi.handleDragRelease).
+pub fn window_at(x: i32, y: i32) -> Option<(String, String, String)> {
+    use windows::Win32::Foundation::RECT;
+    use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+    use windows::Win32::UI::WindowsAndMessaging::{GetClassNameW, GetWindowRect, GetWindowTextW};
+    struct Find {
+        x: i32,
+        y: i32,
+        found: Option<(String, String, String)>,
+    }
+    unsafe extern "system" fn each(hwnd: HWND, lparam: LPARAM) -> windows::core::BOOL {
+        let f = &mut *(lparam.0 as *mut Find);
+        let mut r = RECT::default();
+        if !IsWindowVisible(hwnd).as_bool()
+            || GetWindowRect(hwnd, &mut r).is_err()
+            || !(f.x >= r.left && f.x < r.right && f.y >= r.top && f.y < r.bottom)
+        {
+            return windows::core::BOOL(1);
+        }
+        let mut cloaked = 0u32;
+        let attr = DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &mut cloaked as *mut u32 as *mut _, 4);
+        if attr.is_ok() && cloaked != 0 {
+            return windows::core::BOOL(1);
+        }
+        let mut class = [0u16; 64];
+        let n = GetClassNameW(hwnd, &mut class).max(0) as usize;
+        let class = String::from_utf16_lossy(&class[..n]);
+        if matches!(class.as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd" | "Shell_SecondaryTrayWnd") {
+            return windows::core::BOOL(1);
+        }
+        let mut buf = [0u16; 512];
+        let n = GetWindowTextW(hwnd, &mut buf).max(0) as usize;
+        let title = String::from_utf16_lossy(&buf[..n.min(buf.len())]).trim().to_string();
+        // An untitled overlay (a tooltip, a shadow) is looked through.
+        if title.is_empty() {
+            return windows::core::BOOL(1);
+        }
+        // Coucou's own windows: program_of leaves them out.
+        let Some((id, name)) = program_of(hwnd) else { return windows::core::BOOL(1) };
+        f.found = Some((id, name, title));
+        windows::core::BOOL(0)
+    }
+    let mut f = Find { x, y, found: None };
+    unsafe {
+        let _ = EnumWindows(Some(each), LPARAM(&mut f as *mut Find as isize));
+    }
+    f.found
+}
+
 /// Apps with a visible window, for "Add an app" in Styles.
 pub fn running_apps() -> Vec<(String, String)> {
     unsafe extern "system" fn each(hwnd: HWND, lparam: LPARAM) -> windows::core::BOOL {

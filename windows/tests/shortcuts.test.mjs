@@ -16,7 +16,7 @@ import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
 const MAC_IDS = [
   "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
-  "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
+  "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle", "talkToCoucou", "captureScreen",
 ];
 
 // ── Defaults (testDefaultsExhaustive, testAllDefaultsHaveModifier, testNoDefaultDuplicates) ──
@@ -27,7 +27,8 @@ test("every Mac action has a default, in the Mac's order, with its Mac id", () =
 });
 
 test("every default parses, is canonical and holds Ctrl+Alt", () => {
-  for (const d of SHORTCUTS) {
+  // talkToCoucou has no key by default, as on the Mac.
+  for (const d of SHORTCUTS.filter((s) => s.defaultKeys !== "")) {
     const c = parseKeys(d.defaultKeys);
     assert.ok(c, `${d.id} default does not parse`);
     assert.ok(c.ctrl && c.alt && !c.meta, `${d.id} default is not Ctrl+Alt`);
@@ -56,7 +57,7 @@ test("no default types a character with AltGr on the checked European layouts", 
 
 test("the defaults are the same on both sides of the bridge", () => {
   const rust = readFileSync(new URL("../src-tauri/src/shortcuts.rs", import.meta.url), "utf8");
-  const rows = [...rust.matchAll(/^\s*action\("(\w+)", "([^"]+)", (true|false), (true|false)\),/gm)]
+  const rows = [...rust.matchAll(/^\s*action\("(\w+)", "([^"]*)", (true|false), (true|false)\),/gm)]
     .map(([, id, keys, on, ported]) => ({ id, keys, on: on === "true", ported: ported === "true" }));
   assert.deepEqual(
     rows,
@@ -73,14 +74,14 @@ test("the descriptions the Wayland portal shows are the labels Settings shows", 
 });
 
 // testEnabledByDefault
-test("only the island toggle is off by default; the one not ported yet is reserved", () => {
+test("only the island toggle is off by default, and every action is ported", () => {
   for (const d of SHORTCUTS) {
     assert.equal(d.enabledByDefault, d.id !== "toggleIsland", d.id);
-    assert.equal(d.ported, d.id !== "attachFrontWindow", d.id);
+    assert.equal(d.ported, true, d.id);
   }
   assert.deepEqual(activeKeys({}).map(([id]) => id), [
     "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
-    "wardrobeToggle",
+    "wardrobeToggle", "captureScreen",
   ]);
   // The Mac's ⌃⌥D, on the same letter.
   assert.equal(SHORTCUTS.find((d) => d.id === "desktopToggle").defaultKeys, "Ctrl+Alt+D");

@@ -9,12 +9,16 @@ import { registerHookHandlers, restoreAlertFocus } from "../src/island/hooks.ts"
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 import { Sound } from "../src/core/sound.ts";
 import { setLanguage } from "../src/i18n/i18n.ts";
+import { NEON } from "../src/core/layout.ts";
 
 const CLAUDE = "integration_claude";
 
 /** What the handler asked the island to do, in order. */
 let asked;
+/** The neon's colours, in order (Island.neon). */
+let neons = [];
 const island = {
+  neon: (color) => neons.push(color),
   alert: (view) => asked.push(`alert:${view}`),
   setView: (view) => asked.push(`setView:${view}`),
   reveal: () => asked.push("reveal"),
@@ -30,6 +34,7 @@ beforeEach(() => {
   setLanguage("en");
   mock.timers.enable({ apis: ["setTimeout"] });
   asked = [];
+  neons = [];
   calls.length = 0;
   State.tasks = [];
   State.focusId = null;
@@ -92,6 +97,22 @@ test("a work event leaves an island that is already showing where it is", () => 
   State.mode = "compact";
   hook({ hook_event_name: "SessionStart", cwd: "/p" });
   assert.deepEqual(asked, []);
+});
+
+test("an agent at work doesn't bring a hidden island back on every tool call, only for its finish", () => {
+  hook({ hook_event_name: "UserPromptSubmit", cwd: "/p", prompt: "fix it" });
+  assert.deepEqual(asked, ["reveal"]);
+  // The island hid itself while Claude works: tool after tool, it stays hidden.
+  asked = [];
+  for (const command of ["ls", "npm test", "git diff"]) {
+    hook({ hook_event_name: "PreToolUse", cwd: "/p", tool_name: "Bash", tool_input: { command } });
+    hook({ hook_event_name: "PostToolUse", cwd: "/p", tool_name: "Bash", tool_input: { command } });
+  }
+  assert.deepEqual(asked, []);
+  assert.equal(task().state, "working");
+  // The finish is worth showing.
+  hook({ hook_event_name: "Stop", cwd: "/p" });
+  assert.deepEqual(asked, ["alert:finished"]);
 });
 
 test("a submitted prompt shows as thinking, with the prompt as the step", () => {
@@ -164,6 +185,13 @@ test("a finished session opens the finished view, then goes idle after 5.2 s", (
   assert.equal(task().state, "finished");
   seconds(0.1);
   assert.equal(task().state, "idle");
+});
+
+test("a notification runs the neon in its colour: finished green, error red, a card orange", () => {
+  hook({ hook_event_name: "Stop", message: "done" });
+  hook({ hook_event_name: "StopFailure" });
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", tool_name: "Bash" });
+  assert.deepEqual(neons, [NEON.finished, NEON.error, NEON.approval]);
 });
 
 test("an alert on an island that is already open only switches its view", () => {

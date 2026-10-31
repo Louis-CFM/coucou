@@ -1,683 +1,794 @@
-// WhatsApp in the island (experimental), the Windows and Linux port of the Mac's WhatsAppController.swift.
-//
-// Talks to the local gateway the user runs (GOWA, which Coucou can install and start itself, or
-// OpenWA), receives new messages on a webhook bound to 127.0.0.1, falls back to polling every 20 s
-// when no webhook comes, and keeps the conversations in memory only: nothing of a message is ever
-// written to disk or to a log, and everything is forgotten when Coucou quits or the integration is
-// turned off. Runs only while the integration is on and its pill is active: otherwise there is no
-// timer, no listener and no request at all.
-//
-// The rules (inbox, filters, signatures, limits) are in model.rs and gateway.rs, the HTTP calls in
-// provider.rs, the listener in webhook.rs, GOWA's install and process in install.rs and process.rs.
-// The island draws what `IslandView` says (src/views/whatsapp.ts), Settings what `SettingsView`
-// says (src/settings/whatsapp.ts); both only ever see status codes, which they translate.
+// WhatsApp in the island — port of WhatsAppController.swift (Mac 0.5.0/0.5.1,
+// experimental). Talks to a local gateway (GOWA, which Coucou can install and
+// start, or OpenWA), receives new messages on a webhook bound to 127.0.0.1,
+// falls back to polling when no webhook comes, and keeps the conversations in
+// memory only: nothing of a message is ever written to disk or to a log, and
+// everything is forgotten when Coucou quits or the integration is turned off.
+// Runs only while the integration is on and its pill is declared.
 
-pub mod archive;
 pub mod gateway;
-pub mod install;
-pub mod model;
-pub mod prefs;
-pub mod process;
+pub mod gowa;
+pub mod models;
 pub mod provider;
-pub mod webhook;
 
 use std::collections::HashSet;
-use std::sync::atomic::Ordering;
-use std::sync::{Arc, LazyLock, Mutex, MutexGuard, OnceLock, PoisonError};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use serde::Serialize;
-use tauri::{AppHandle, Emitter, WebviewWindow};
+use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Emitter, Manager};
 
-use gateway::{Kind, Link, WebhookEvent};
-use install::Step;
-use model::{Conversation, Filters, Inbox, Message, Outcome, RateLimit, Refusal};
-use prefs::Prefs;
-use provider::{Provider, WaError};
-use webhook::Listener;
+use gateway::{Kind, Link as GatewayLink};
+use models::{check_reply, normalized, Conversation, Filters, Inbox, Message, Outcome, RateLimit, Refusal};
+use provider::{Error, Provider};
 
 pub const PILL_ID: &str = "integration_whatsapp";
 const WEBHOOK_PATH: &str = "/whatsapp";
-/// Credential store entries, Rust-only (secrets.rs INTERNAL_KEYS): the webview never reads them.
-pub const URL_KEY: &str = "whatsapp-url";
-pub const CREDENTIAL_KEY: &str = "whatsapp-api-key";
-pub const SECRET_KEY: &str = "whatsapp-webhook-secret";
+pub const DEFAULT_PORT: u16 = 47823;
+const URL_KEY: &str = "whatsapp-url";
+const CREDENTIAL_KEY: &str = "whatsapp-api-key";
+const SECRET_KEY: &str = "whatsapp-webhook-secret";
+const EVENT: &str = "whatsapp";
 
-const ISLAND_EVENT: &str = "whatsapp";
-const PILL_EVENT: &str = "whatsapp-pill";
-const SETTINGS_EVENT: &str = "whatsapp-settings";
+// ── Preferences ───────────────────────────────────────────────────────────────
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "state", rename_all = "camelCase")]
-pub enum LinkState {
-    Off,
-    /// The gateway's address can't be used.
-    BadUrl,
-    Connecting,
-    /// The gateway runs, WhatsApp isn't linked: the QR is shown in Settings.
-    NeedsQr,
-    Connected,
-    Unreachable,
-    Unauthorized,
-    /// The gateway's own error message.
-    Failed { detail: String },
+/// WhatsApp's choices (Settings → Integrations → WhatsApp). The gateway's address
+/// and credential live in the credential store; only harmless choices are here.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Prefs {
+    pub enabled: bool,
+    pub gateway: Kind,
+    pub port: u16,
+    /// Read receipts when a conversation is opened (on), or only when replying.
+    pub mark_read_on_open: bool,
+    /// Quiet while Windows' Do not disturb / Focus is on.
+    pub respect_focus: bool,
+    pub mute_groups: bool,
+    pub ignored: Vec<String>,
+    /// Coucou starts the GOWA it installed (Install WhatsApp turns this on).
+    pub autostart: bool,
+    /// GOWA's version, once installed by Coucou.
+    pub installed_version: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "state", rename_all = "camelCase")]
-pub enum WebhookState {
-    Off,
-    /// Listening on the port, not yet accepted by the gateway.
-    Listening,
-    /// The gateway accepted the address: messages come on their own.
-    Registered,
-    /// The gateway refused it (its message): polling instead.
-    Refused { detail: String },
-    /// The port is taken.
-    PortBusy { port: u16 },
-}
-
-/// Why the last reply didn't go (shown under the field until the next try).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "code", rename_all = "camelCase")]
-pub enum SendError {
-    TooLong,
-    TooFast,
-    Unreachable,
-    Unauthorized,
-    NeedsQr,
-    Refused { detail: String },
-}
-
-/// What happens to the pill (src/island/whatsapp.ts).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-enum PillEvent {
-    /// A new message reaches you: only the conversation's name, never the text.
-    Message { name: String },
-    /// Nothing unread is left: the badge goes.
-    Read,
-    /// Turned off: the pill goes back to idle.
-    Reset,
-}
-
-/// What the island shows.
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IslandView {
-    pub on: bool,
-    pub link: LinkState,
-    /// Newest first, filters applied.
-    pub conversations: Vec<Conversation>,
-    pub unread: u32,
-    pub sending: bool,
-    pub send_error: Option<SendError>,
-    /// The gateway failed twice in a row: a small red dot on the pill.
-    pub down: bool,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IgnoredChat {
-    pub id: String,
-    pub name: String,
-}
-
-/// What Settings shows.
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SettingsView {
-    pub prefs: Prefs,
-    /// The address typed in Settings, "" for the gateway's default.
-    pub url: String,
-    pub default_url: String,
-    pub has_credential: bool,
-    pub link: LinkState,
-    pub webhook: WebhookState,
-    /// A `data:image/png;base64,…` URL while WhatsApp waits for the scan.
-    pub qr: Option<String>,
-    /// This account's number once linked.
-    pub me: Option<String>,
-    pub install: Step,
-    /// A GOWA binary Coucou can start (the one it installed, or one the user gave).
-    pub installed: bool,
-    /// Where GOWA keeps its WhatsApp session (and Coucou the binary it installed).
-    pub gowa_dir: String,
-    pub pill_active: bool,
-    pub ignored: Vec<IgnoredChat>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "result", rename_all = "camelCase")]
-pub enum TestResult {
-    Connected { who: String },
-    NeedsQr,
-    Connecting,
-    BadUrl,
-    Unreachable,
-    Unauthorized,
-    Refused { detail: String },
-}
-
-struct Ctl {
-    prefs: Prefs,
-    url: String,
-    has_credential: bool,
-    pill_active: bool,
-    provider: Option<Arc<Provider>>,
-    /// Bumped at each start and stop: an answer from before a restart is dropped.
-    generation: u64,
-    link: LinkState,
-    webhook: WebhookState,
-    secret: String,
-    qr: Option<String>,
-    qr_expiry: Option<Instant>,
-    me: Option<String>,
-    inbox: Inbox,
-    listener: Option<Listener>,
-    tick: u64,
-    refreshing: bool,
-    polling: bool,
-    backfilled: bool,
-    last_webhook: Option<Instant>,
-    last_poll_ms: i64,
-    naming: HashSet<String>,
-    /// The conversation open in the card: what arrives there is seen, so it isn't unread.
-    open_chat: Option<String>,
-    rate: RateLimit,
-    /// Failed checks in a row (the gateway down, refusing, unreachable).
-    failures: u32,
-    down: bool,
-    sending: bool,
-    send_error: Option<SendError>,
-    install: Step,
-}
-
-static CTL: LazyLock<Mutex<Ctl>> = LazyLock::new(|| {
-    Mutex::new(Ctl {
-        prefs: Prefs::default(),
-        url: String::new(),
-        has_credential: false,
-        pill_active: false,
-        provider: None,
-        generation: 0,
-        link: LinkState::Off,
-        webhook: WebhookState::Off,
-        secret: String::new(),
-        qr: None,
-        qr_expiry: None,
-        me: None,
-        inbox: Inbox::default(),
-        listener: None,
-        tick: 0,
-        refreshing: false,
-        polling: false,
-        backfilled: false,
-        last_webhook: None,
-        last_poll_ms: 0,
-        naming: HashSet::new(),
-        open_chat: None,
-        rate: RateLimit::default(),
-        failures: 0,
-        down: false,
-        sending: false,
-        send_error: None,
-        install: Step::Idle,
-    })
-});
-
-static APP: OnceLock<AppHandle> = OnceLock::new();
-
-fn ctl() -> MutexGuard<'static, Ctl> {
-    CTL.lock().unwrap_or_else(PoisonError::into_inner)
-}
-
-impl Ctl {
-    fn kind(&self) -> Kind {
-        Kind::from_name(&self.prefs.gateway)
-    }
-
-    fn should_run(&self) -> bool {
-        self.prefs.enabled && self.pill_active
-    }
-
-    fn filters(&self) -> Filters {
-        Filters { mute_groups: self.prefs.mute_groups, ignored: self.prefs.ignored.iter().cloned().collect() }
-    }
-
-    fn effective_url(&self) -> String {
-        if self.url.is_empty() { self.kind().default_url().to_string() } else { self.url.clone() }
-    }
-
-    fn webhook_alive(&self) -> bool {
-        self.last_webhook.is_some_and(|t| t.elapsed() < Duration::from_secs(300))
-    }
-
-    fn island_view(&self) -> IslandView {
-        let filters = self.filters();
-        IslandView {
-            on: self.provider.is_some(),
-            link: self.link.clone(),
-            conversations: self.inbox.visible(&filters).into_iter().cloned().collect(),
-            unread: self.inbox.visible_unread(&filters),
-            sending: self.sending,
-            send_error: self.send_error.clone(),
-            down: self.down,
-        }
-    }
-
-    fn settings_view(&self) -> SettingsView {
-        let path = self.prefs.gowa_path.trim();
-        SettingsView {
-            prefs: self.prefs.clone(),
-            url: self.url.clone(),
-            default_url: self.kind().default_url().to_string(),
-            has_credential: self.has_credential,
-            link: self.link.clone(),
-            webhook: self.webhook.clone(),
-            qr: self.qr.clone(),
-            me: self.me.as_deref().map(model::display_number),
-            install: self.install.clone(),
-            installed: !path.is_empty() && process::is_runnable(std::path::Path::new(path)),
-            gowa_dir: process::working_dir().to_string_lossy().into_owned(),
-            pill_active: self.pill_active,
-            ignored: self
-                .prefs
-                .ignored
-                .iter()
-                .map(|id| IgnoredChat {
-                    id: id.clone(),
-                    name: self.inbox.conversations.get(id).map(|c| c.name.clone()).unwrap_or_else(|| model::display_number(id)),
-                })
-                .collect(),
+impl Default for Prefs {
+    fn default() -> Self {
+        Prefs {
+            enabled: false,
+            gateway: Kind::Gowa,
+            port: DEFAULT_PORT,
+            mark_read_on_open: true,
+            respect_focus: true,
+            mute_groups: true,
+            ignored: Vec::new(),
+            autostart: false,
+            installed_version: None,
         }
     }
 }
 
-// ── Telling the pages ─────────────────────────────────────────────────────────
-
-/// Both pages redraw from what changed. Never called with the lock held.
-fn changed() {
-    let Some(app) = APP.get() else { return };
-    let (island, settings) = {
-        let c = ctl();
-        (c.island_view(), c.settings_view())
-    };
-    let _ = app.emit_to(crate::island::WINDOW_LABEL, ISLAND_EVENT, island);
-    let _ = app.emit_to(crate::HUB_LABEL, SETTINGS_EVENT, settings);
+fn prefs_path() -> PathBuf {
+    crate::platform::config_dir().join("whatsapp.json")
 }
 
-fn pill(event: PillEvent) {
-    if let Some(app) = APP.get() {
-        let _ = app.emit_to(crate::island::WINDOW_LABEL, PILL_EVENT, event);
+pub fn load_prefs() -> Prefs {
+    std::fs::read(prefs_path()).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+}
+
+fn save_prefs(p: &Prefs) {
+    if let Ok(json) = serde_json::to_vec_pretty(p) {
+        let _ = std::fs::write(prefs_path(), json);
     }
 }
 
-fn spawn<F: std::future::Future<Output = ()> + Send + 'static>(f: F) {
-    tauri::async_runtime::spawn(f);
+fn url_of(p: &Prefs) -> String {
+    crate::secrets::get(URL_KEY).unwrap_or_else(|| p.gateway.default_url().to_string())
 }
 
-/// GOWA started or stopped to match Settings, off the async threads (stopping it waits a second).
-fn sync_gowa(c: &Ctl) {
-    let wanted = c.prefs.auto_start && c.kind() == Kind::Gowa;
-    let (binary, url) = (c.prefs.gowa_path.clone(), c.effective_url());
-    let credential = if wanted { crate::secrets::get_internal(CREDENTIAL_KEY).unwrap_or_default() } else { String::new() };
-    tauri::async_runtime::spawn_blocking(move || {
-        process::sync(wanted, &binary, &url, &credential);
-    });
-}
-
-/// The webhook's signing secret, made once (random, 64 hex characters), kept in the credential store.
+/// The webhook's signing secret, made once (random, 64 hex characters).
 fn webhook_secret() -> String {
     if let Some(s) = crate::secrets::get_internal(SECRET_KEY).filter(|s| s.len() >= 16) {
         return s;
     }
-    use ring::rand::{SecureRandom, SystemRandom};
     let mut bytes = [0u8; 32];
-    if SystemRandom::new().fill(&mut bytes).is_err() {
-        return String::new(); // no secret, no webhook: polling only
-    }
-    let s = gateway::hex(&bytes);
+    let _ = ring::rand::SecureRandom::fill(&ring::rand::SystemRandom::new(), &mut bytes);
+    let s = models::hex(&bytes);
     let _ = crate::secrets::set_internal(SECRET_KEY, &s);
     s
 }
 
+fn filters(p: &Prefs) -> Filters {
+    Filters { mute_groups: p.mute_groups, ignored: p.ignored.iter().cloned().collect::<HashSet<_>>() }
+}
+
+fn now() -> f64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0)
+}
+
+// ── The state the windows see ─────────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", tag = "state", content = "detail")]
+pub enum Link {
+    Off,
+    Connecting,
+    NeedsQr,
+    Connected,
+    Unreachable,
+    Unauthorized,
+    Failed(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", tag = "state", content = "detail")]
+pub enum Webhook {
+    Off,
+    Listening,
+    Registered,
+    Refused(String),
+    PortBusy,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Snapshot {
+    pub prefs: Prefs,
+    pub url: String,
+    pub has_credential: bool,
+    pub link: Link,
+    pub webhook: Webhook,
+    /// The QR to scan, as a data URL.
+    pub qr: Option<String>,
+    pub me: Option<String>,
+    pub conversations: Vec<Conversation>,
+    pub unread: u32,
+    pub sending: bool,
+    pub send_error: Option<String>,
+    /// The gateway down twice in a row: the pill's small red dot.
+    pub down: bool,
+    pub install: gowa::Step,
+    pub installed: bool,
+    /// Windows' Do not disturb can be read.
+    pub focus_readable: bool,
+}
+
+struct Inner {
+    prefs: Prefs,
+    provider: Option<Arc<Provider>>,
+    listener: Option<gowa::Listener>,
+    inbox: Inbox,
+    link: Link,
+    webhook: Webhook,
+    qr: Option<Vec<u8>>,
+    qr_expiry: Instant,
+    me: Option<String>,
+    sending: bool,
+    send_error: Option<String>,
+    open_chat: Option<String>,
+    rate: RateLimit,
+    failures: u32,
+    backfilled: bool,
+    last_webhook: Option<Instant>,
+    last_poll: f64,
+    last_announce: Option<Instant>,
+    naming: HashSet<String>,
+    install: gowa::Step,
+    tick: u64,
+}
+
+pub struct WhatsApp {
+    inner: Mutex<Inner>,
+    /// Bumped at each start and stop: an answer from before a restart is dropped.
+    generation: AtomicU64,
+    busy: AtomicBool,
+}
+
+static STATE: std::sync::OnceLock<Arc<WhatsApp>> = std::sync::OnceLock::new();
+
+fn get() -> &'static Arc<WhatsApp> {
+    STATE.get_or_init(|| {
+        Arc::new(WhatsApp {
+            inner: Mutex::new(Inner {
+                prefs: load_prefs(),
+                provider: None,
+                listener: None,
+                inbox: Inbox::default(),
+                link: Link::Off,
+                webhook: Webhook::Off,
+                qr: None,
+                qr_expiry: Instant::now(),
+                me: None,
+                sending: false,
+                send_error: None,
+                open_chat: None,
+                rate: RateLimit::new(6, 60.0),
+                failures: 0,
+                backfilled: false,
+                last_webhook: None,
+                last_poll: now(),
+                last_announce: None,
+                naming: HashSet::new(),
+                install: gowa::Step::Idle,
+                tick: 0,
+            }),
+            generation: AtomicU64::new(0),
+            busy: AtomicBool::new(false),
+        })
+    })
+}
+
+fn snapshot() -> Snapshot {
+    let wa = get();
+    let i = wa.inner.lock().unwrap();
+    let f = filters(&i.prefs);
+    let conversations: Vec<Conversation> = i
+        .inbox
+        .visible(&f)
+        .into_iter()
+        .cloned()
+        .map(|mut c| {
+            let keep = c.messages.len().saturating_sub(10);
+            c.messages.drain(..keep);
+            c
+        })
+        .collect();
+    Snapshot {
+        url: url_of(&i.prefs),
+        has_credential: crate::secrets::present(CREDENTIAL_KEY),
+        prefs: i.prefs.clone(),
+        link: i.link.clone(),
+        webhook: i.webhook.clone(),
+        qr: i.qr.as_ref().map(|png| format!("data:image/png;base64,{}", crate::claude::base64_for(png))),
+        me: i.me.clone(),
+        unread: i.inbox.visible_unread(&f),
+        conversations,
+        sending: i.sending,
+        send_error: i.send_error.clone(),
+        down: i.failures >= 2,
+        install: i.install.clone(),
+        installed: gowa::binary().is_file(),
+        focus_readable: cfg!(windows),
+    }
+}
+
+fn publish(app: &AppHandle) {
+    let _ = app.emit(EVENT, snapshot());
+}
+
+/// Whether the pill is declared (Settings → Active pills).
+fn pill_active(app: &AppHandle) -> bool {
+    app.try_state::<crate::Shared>()
+        .is_some_and(|s| s.settings.lock().unwrap().active_integrations.iter().any(|id| id == PILL_ID))
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
-/// Called once at launch.
-pub fn start(app: &AppHandle, active_integrations: &[String]) {
-    let _ = APP.set(app.clone());
-    {
-        let mut c = ctl();
-        c.prefs = prefs::load();
-        c.url = crate::secrets::get_internal(URL_KEY).unwrap_or_default();
-        c.has_credential = crate::secrets::get_internal(CREDENTIAL_KEY).is_some();
-        c.pill_active = active_integrations.iter().any(|x| x == PILL_ID);
-    }
-    update();
+/// Called once at launch: a tick every 5 s follows the settings and the gateway.
+pub fn start(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::Builder::new()
+        .name("coucou-whatsapp".into())
+        .spawn(move || loop {
+            update(&app);
+            on_tick(&app);
+            std::thread::sleep(Duration::from_secs(5));
+        })
+        .ok();
 }
 
-/// Settings were saved: the pill turned on or off from anywhere is followed.
-pub fn sync(active_integrations: &[String]) {
-    let active = active_integrations.iter().any(|x| x == PILL_ID);
-    let moved = {
-        let mut c = ctl();
-        let moved = c.pill_active != active;
-        c.pill_active = active;
-        moved
-    };
-    if moved {
-        update();
-    }
-}
-
-/// Coucou quits: GOWA goes with it, and so does everything in memory.
+/// Coucou quits: GOWA goes with it, the conversations are forgotten.
 pub fn shutdown() {
-    {
-        let mut c = ctl();
-        c.generation += 1;
-        if let Some(l) = c.listener.take() {
-            l.stop();
-        }
-        c.provider = None;
-        c.inbox.clear();
-    }
-    process::stop_now();
+    gowa::stop();
 }
 
-fn update() {
-    let (run, running) = {
-        let c = ctl();
-        (c.should_run(), c.provider.is_some())
-    };
+fn should_run(app: &AppHandle) -> bool {
+    get().inner.lock().unwrap().prefs.enabled && pill_active(app)
+}
+
+/// Starts or stops talking to the gateway to follow the settings.
+fn update(app: &AppHandle) {
+    let run = should_run(app);
+    let running = get().inner.lock().unwrap().provider.is_some();
     if run && !running {
-        begin();
+        begin(app);
     } else if !run && running {
-        stop(true);
-        changed();
-    } else {
-        changed();
+        stop(app, true);
     }
 }
 
-/// Settings changed (on/off, gateway, URL, credentials, port): start over.
-fn settings_changed() {
-    let forget = !ctl().should_run();
-    stop(forget);
-    update();
-}
-
-fn begin() {
-    let secret = webhook_secret();
-    let (gen, port, kind) = {
-        let mut c = ctl();
-        let kind = c.kind();
-        let Some(base) = provider::parse_base(&c.effective_url()) else {
-            c.link = LinkState::BadUrl;
-            drop(c);
-            changed();
-            return;
-        };
-        let credential = crate::secrets::get_internal(CREDENTIAL_KEY);
-        let Ok(provider) = Provider::new(kind, base, credential) else {
-            c.link = LinkState::Unreachable;
-            drop(c);
-            changed();
-            return;
-        };
-        c.provider = Some(Arc::new(provider));
-        c.generation += 1;
-        c.link = LinkState::Connecting;
-        c.secret = secret.clone();
-        c.tick = 0;
-        // GOWA started by Coucou when asked to, before the first check.
-        sync_gowa(&c);
-        (c.generation, c.prefs.port, kind)
+fn begin(app: &AppHandle) {
+    let wa = get();
+    let (prefs, url) = {
+        let i = wa.inner.lock().unwrap();
+        (i.prefs.clone(), url_of(&i.prefs))
     };
-    start_listener(gen, port, kind, secret);
-    spawn_ticker(gen);
-    changed();
-    refresh();
-}
-
-/// Stops talking to the gateway. `forget`: the conversations go too.
-fn stop(forget: bool) {
-    let mut c = ctl();
-    c.generation += 1;
-    c.refreshing = false;
-    c.polling = false;
-    if let Some(l) = c.listener.take() {
-        l.stop();
-    }
-    c.provider = None;
-    c.link = LinkState::Off;
-    c.webhook = WebhookState::Off;
-    c.qr = None;
-    c.qr_expiry = None;
-    c.me = None;
-    c.backfilled = false;
-    c.last_webhook = None;
-    c.naming.clear();
-    c.failures = 0;
-    c.down = false;
-    c.sending = false;
-    c.send_error = None;
-    // Turned off: GOWA goes too. Otherwise begin() keeps it, or restarts it if its settings changed.
-    if !c.should_run() {
-        tauri::async_runtime::spawn_blocking(process::stop_now);
-    }
-    if forget {
-        c.open_chat = None;
-        c.inbox.clear();
-        drop(c);
-        pill(PillEvent::Reset);
-    }
-}
-
-fn start_listener(gen: u64, port: u16, kind: Kind, secret: String) {
-    let handler: webhook::Handler = Arc::new(move |request| {
-        if request.method != "POST" || !request.path.starts_with(WEBHOOK_PATH) {
+    let credential = crate::secrets::get(CREDENTIAL_KEY);
+    let Some(provider) = Provider::new(prefs.gateway, &url, credential.as_deref()) else {
+        wa.inner.lock().unwrap().link = Link::Failed(crate::i18n::t("The gateway URL isn’t valid (http://…)"));
+        publish(app);
+        return;
+    };
+    wa.generation.fetch_add(1, Ordering::SeqCst);
+    // GOWA started by Coucou when asked to, before the first check.
+    sync_gowa(&prefs, &url, credential.as_deref().unwrap_or(""));
+    let secret = webhook_secret();
+    let kind = prefs.gateway;
+    let handler_app = app.clone();
+    let listener = gowa::Listener::start(prefs.port, move |r| {
+        if r.method != "POST" || !r.path.starts_with(WEBHOOK_PATH) {
             return 404;
         }
         // Signed by the gateway with Coucou's secret, over the exact bytes received.
-        if !gateway::verify(kind, &request.headers, &request.body, &secret) {
+        if !gateway::verify(kind, &r.headers, &r.body, &secret) {
             return 401;
         }
-        let body = request.body;
-        spawn(async move { received(gen, kind, &body) });
+        received(&handler_app, kind, &r.body);
         200
     });
-    let listener = Listener::start(port, handler);
-    let mut c = ctl();
-    if c.generation != gen {
-        if let Ok(l) = listener {
-            l.stop();
+    {
+        let mut i = wa.inner.lock().unwrap();
+        i.provider = Some(Arc::new(provider));
+        i.link = Link::Connecting;
+        match listener {
+            Ok(l) => {
+                i.listener = Some(l);
+                i.webhook = Webhook::Listening;
+            }
+            Err(_) => i.webhook = Webhook::PortBusy,
         }
-        return;
     }
-    match listener {
-        Ok(l) => {
-            c.listener = Some(l);
-            c.webhook = WebhookState::Listening;
-        }
-        Err(()) => c.webhook = WebhookState::PortBusy { port },
-    }
+    publish(app);
+    refresh(app);
 }
 
-fn spawn_ticker(gen: u64) {
-    spawn(async move {
-        let mut last = Instant::now();
-        loop {
-            tokio::time::sleep(Duration::from_secs(5)).await;
-            if ctl().generation != gen {
-                break;
-            }
-            // Back from sleep (the 5 s took far longer): nothing is trusted, the gateway may have
-            // restarted without Coucou's webhook.
-            if last.elapsed() > Duration::from_secs(30) {
-                let mut c = ctl();
-                if c.webhook == WebhookState::Registered {
-                    c.webhook = WebhookState::Listening;
-                }
-                c.last_webhook = None;
-            }
-            last = Instant::now();
-            on_tick();
-        }
-    });
-}
-
-fn on_tick() {
-    // Paused from the tray: nothing reaches the network.
-    if crate::integrations::PAUSED.load(Ordering::Relaxed) {
+/// GOWA installed by Coucou: started (or restarted when its settings changed).
+fn sync_gowa(prefs: &Prefs, url: &str, credential: &str) {
+    if !prefs.autostart || prefs.gateway != Kind::Gowa {
+        gowa::stop();
         return;
     }
-    let (refresh_now, poll_now) = {
-        let mut c = ctl();
-        c.tick += 1;
-        if c.link != LinkState::Connected {
-            // Every 5 s while linking (QR, gateway coming up); every 30 s once the gateway has
-            // been down for a minute.
-            (!(c.failures > 12 && c.tick % 6 != 0), false)
-        } else {
-            // Every minute: still linked? Every 20 s: new messages, unless the webhook delivers.
-            (c.tick % 12 == 0, c.tick % 4 == 0)
+    let Ok(parsed) = reqwest::Url::parse(url) else { return };
+    // Only ever on this computer: an address elsewhere is someone else's gateway.
+    if !matches!(parsed.host_str(), Some("127.0.0.1" | "localhost" | "[::1]")) {
+        gowa::stop();
+        return;
+    }
+    gowa::sync(parsed.port().unwrap_or(3000), credential);
+}
+
+/// Stops talking to the gateway. `forget`: the conversations go too.
+fn stop(app: &AppHandle, forget: bool) {
+    let wa = get();
+    wa.generation.fetch_add(1, Ordering::SeqCst);
+    let enabled = {
+        let mut i = wa.inner.lock().unwrap();
+        i.provider = None;
+        i.listener = None;
+        i.link = Link::Off;
+        i.webhook = Webhook::Off;
+        i.qr = None;
+        i.me = None;
+        i.backfilled = false;
+        i.last_webhook = None;
+        i.naming.clear();
+        i.failures = 0;
+        if forget {
+            i.open_chat = None;
+            i.inbox.clear();
         }
+        i.prefs.enabled
     };
-    if refresh_now {
-        refresh();
+    if !enabled || !pill_active(app) {
+        gowa::stop();
     }
-    if poll_now {
-        poll();
+    publish(app);
+}
+
+fn on_tick(app: &AppHandle) {
+    let (link, failures, tick, running) = {
+        let mut i = get().inner.lock().unwrap();
+        i.tick += 1;
+        (i.link.clone(), i.failures, i.tick, i.provider.is_some())
+    };
+    if !running {
+        return;
+    }
+    if link != Link::Connected {
+        // Every 5 s while linking; every 30 s once the gateway has been down a minute.
+        if failures > 12 && tick % 6 != 0 {
+            return;
+        }
+        refresh(app);
+    } else {
+        if tick % 12 == 0 {
+            refresh(app); // every minute: still linked?
+        }
+        if tick % 4 == 0 {
+            poll(app); // every 20 s, unless the webhook delivers
+        }
     }
 }
 
 // ── Status and QR ─────────────────────────────────────────────────────────────
 
-fn refresh() {
-    let (provider, gen) = {
-        let mut c = ctl();
-        let Some(p) = c.provider.clone() else { return };
-        if c.refreshing {
-            return;
-        }
-        c.refreshing = true;
-        (p, c.generation)
-    };
-    spawn(async move {
-        let result = provider.status().await;
-        let (mut register, mut backfill_now, mut ask_qr) = (false, false, false);
-        {
-            let mut c = ctl();
-            if c.generation != gen {
+fn current_provider() -> Option<(Arc<Provider>, u64)> {
+    let wa = get();
+    let p = wa.inner.lock().unwrap().provider.clone()?;
+    Some((p, wa.generation.load(Ordering::SeqCst)))
+}
+
+fn still(gen: u64) -> bool {
+    get().generation.load(Ordering::SeqCst) == gen
+}
+
+pub fn refresh(app: &AppHandle) {
+    let wa = get();
+    let Some((provider, gen)) = current_provider() else { return };
+    if wa.busy.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let result = tauri::async_runtime::block_on(provider.status());
+    match result {
+        Ok(status) => {
+            if !still(gen) {
+                wa.busy.store(false, Ordering::SeqCst);
                 return;
             }
-            match result {
-                Ok(status) => {
-                    if c.failures > 0 {
-                        c.failures = 0;
-                        c.down = false;
+            let (register, backfill, ask_qr) = {
+                let mut i = wa.inner.lock().unwrap();
+                i.failures = 0;
+                i.me = status.me.clone();
+                match status.link {
+                    GatewayLink::Connected => {
+                        if i.link != Link::Connected {
+                            i.qr = None;
+                        }
+                        i.link = Link::Connected;
+                        (i.webhook == Webhook::Listening, !i.backfilled, false)
                     }
-                    c.me = status.me;
-                    match status.link {
-                        Link::Connected => {
-                            if c.link != LinkState::Connected {
-                                c.qr = None;
-                            }
-                            c.link = LinkState::Connected;
-                            register = c.webhook == WebhookState::Listening;
-                            if !c.backfilled {
-                                c.backfilled = true;
-                                backfill_now = true;
-                            }
+                    GatewayLink::NeedsQr => {
+                        i.link = Link::NeedsQr;
+                        let ask = i.qr.is_none() || Instant::now() > i.qr_expiry;
+                        if ask {
+                            // Not asked again for 15 s even when nothing came: each GOWA
+                            // login call restarts the pairing.
+                            i.qr_expiry = Instant::now() + Duration::from_secs(15);
                         }
-                        Link::NeedsQr => {
-                            c.link = LinkState::NeedsQr;
-                            if c.qr.is_none() || c.qr_expiry.is_none_or(|t| Instant::now() > t) {
-                                // Not asked again for 15 s even when nothing came: each GOWA login
-                                // call restarts the pairing.
-                                c.qr_expiry = Some(Instant::now() + Duration::from_secs(15));
-                                ask_qr = true;
-                            }
-                        }
-                        Link::Connecting => c.link = LinkState::Connecting,
+                        (false, false, ask)
+                    }
+                    GatewayLink::Connecting => {
+                        i.link = Link::Connecting;
+                        (false, false, false)
                     }
                 }
-                Err(err) => apply(&mut c, err),
-            }
-        }
-        changed();
-        if register {
-            register_webhook(&provider, gen).await;
-        }
-        if backfill_now {
-            backfill(&provider, gen).await;
-        }
-        if ask_qr {
-            let qr = provider.qr().await;
-            let mut c = ctl();
-            if c.generation == gen {
-                match qr {
-                    Ok(Some(qr)) => {
-                        c.qr = Some(qr.data_url);
-                        c.qr_expiry = Some(Instant::now() + Duration::from_secs(qr.seconds));
+            };
+            if ask_qr {
+                if let Ok(Some((png, seconds))) = tauri::async_runtime::block_on(provider.qr_code()) {
+                    if still(gen) {
+                        let mut i = wa.inner.lock().unwrap();
+                        i.qr = Some(png);
+                        i.qr_expiry = Instant::now() + Duration::from_secs(seconds);
                     }
-                    Ok(None) => {}
-                    Err(err) => apply(&mut c, err),
                 }
             }
-            drop(c);
-            changed();
+            if register {
+                register_webhook(&provider, gen);
+            }
+            if backfill && still(gen) {
+                backfill_history(app, &provider, gen);
+            }
         }
-        let mut c = ctl();
-        if c.generation == gen {
-            c.refreshing = false;
+        Err(err) => {
+            if still(gen) {
+                apply(&err);
+            }
         }
+    }
+    wa.busy.store(false, Ordering::SeqCst);
+    publish(app);
+}
+
+fn apply(err: &Error) {
+    let wa = get();
+    let (unreachable, autostart) = {
+        let mut i = wa.inner.lock().unwrap();
+        i.link = match err {
+            Error::Unreachable => Link::Unreachable,
+            Error::Unauthorized => Link::Unauthorized,
+            Error::NotLoggedIn => Link::NeedsQr,
+            Error::Refused(why) => Link::Failed(why.clone()),
+        };
+        if *err != Error::NotLoggedIn {
+            i.failures += 1;
+        }
+        (*err == Error::Unreachable, i.prefs.autostart)
+    };
+    // GOWA started by Coucou and gone (crash, killed): started again, once a minute at most.
+    if unreachable && autostart {
+        let prefs = wa.inner.lock().unwrap().prefs.clone();
+        sync_gowa(&prefs, &url_of(&prefs), &crate::secrets::get(CREDENTIAL_KEY).unwrap_or_default());
+    }
+}
+
+// ── Webhook ───────────────────────────────────────────────────────────────────
+
+fn webhook_url(port: u16) -> String {
+    format!("http://127.0.0.1:{port}{WEBHOOK_PATH}")
+}
+
+fn register_webhook(provider: &Provider, gen: u64) {
+    let port = get().inner.lock().unwrap().prefs.port;
+    match tauri::async_runtime::block_on(provider.register_webhook(&webhook_url(port), &webhook_secret())) {
+        Ok(()) => {
+            if still(gen) {
+                get().inner.lock().unwrap().webhook = Webhook::Registered;
+            }
+        }
+        Err(Error::Refused(why)) => {
+            if still(gen) {
+                crate::log::line(format!("whatsapp: the gateway refused the webhook: {why}"));
+                get().inner.lock().unwrap().webhook = Webhook::Refused(why);
+            }
+        }
+        // Tried again on the next minute's check.
+        Err(_) => {}
+    }
+}
+
+fn received(app: &AppHandle, kind: Kind, body: &[u8]) {
+    let me = {
+        let mut i = get().inner.lock().unwrap();
+        if i.provider.is_none() {
+            return;
+        }
+        i.last_webhook = Some(Instant::now());
+        if i.webhook != Webhook::Registered {
+            i.webhook = Webhook::Registered;
+        }
+        i.me.clone()
+    };
+    if let Some(gateway::Event::Message(m)) = gateway::parse_webhook(kind, body, me.as_deref()) {
+        ingest(app, vec![*m], true);
+    }
+    publish(app);
+}
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+
+/// The last hours of history, once linked: kept, but nothing counts as new.
+fn backfill_history(app: &AppHandle, provider: &Provider, gen: u64) {
+    let me = {
+        let mut i = get().inner.lock().unwrap();
+        i.backfilled = true;
+        i.me.clone()
+    };
+    let since = now() - 12.0 * 3600.0;
+    let Ok(messages) = tauri::async_runtime::block_on(provider.recent_messages(since, me.as_deref())) else { return };
+    if !still(gen) {
+        return;
+    }
+    let chats: Vec<String> = {
+        let mut i = get().inner.lock().unwrap();
+        let f = filters(&i.prefs);
+        let chats = messages.iter().map(|m| normalized(&m.chat)).collect();
+        for m in messages {
+            i.inbox.add(m, &f, None, true);
+        }
+        i.last_poll = now();
+        chats
+    };
+    for chat in chats {
+        name_group(app, provider, &chat, gen);
+    }
+}
+
+fn poll(app: &AppHandle) {
+    let Some((provider, gen)) = current_provider() else { return };
+    let (since, me) = {
+        let i = get().inner.lock().unwrap();
+        let alive = i.last_webhook.is_some_and(|t| t.elapsed() < Duration::from_secs(300));
+        if alive || !i.backfilled {
+            return;
+        }
+        (i.last_poll - 30.0, i.me.clone())
+    };
+    let started = now();
+    let Ok(messages) = tauri::async_runtime::block_on(provider.recent_messages(since, me.as_deref())) else { return };
+    if !still(gen) {
+        return;
+    }
+    get().inner.lock().unwrap().last_poll = started;
+    ingest(app, messages, true);
+    publish(app);
+}
+
+fn ingest(app: &AppHandle, messages: Vec<Message>, announce: bool) {
+    let mut fresh: Option<String> = None;
+    let mut chats = Vec::new();
+    {
+        let mut i = get().inner.lock().unwrap();
+        let f = filters(&i.prefs);
+        for m in messages {
+            let key = normalized(&m.chat);
+            let from_me = m.from_me;
+            let outcome = i.inbox.add(m, &f, None, false);
+            chats.push(key.clone());
+            if i.open_chat.as_deref() == Some(key.as_str()) {
+                // Read on screen: no unread, no Mochi.
+                i.inbox.mark_read(&key);
+                continue;
+            }
+            if outcome == Outcome::Notify && !from_me {
+                fresh = Some(key);
+            }
+        }
+    }
+    if let Some((provider, gen)) = current_provider() {
+        for chat in chats {
+            name_group(app, &provider, &chat, gen);
+        }
+    }
+    if announce {
+        if let Some(chat) = fresh {
+            announce_message(app, &chat);
+        }
+    }
+}
+
+/// Groups arrive under their id (GOWA's webhook carries no group name): asked once.
+fn name_group(app: &AppHandle, provider: &Provider, chat: &str, gen: u64) {
+    {
+        let mut i = get().inner.lock().unwrap();
+        let Some(c) = i.inbox.conversations.get(chat) else { return };
+        if !models::is_group(chat) || c.name != models::display_number(chat) || i.naming.contains(chat) {
+            return;
+        }
+        i.naming.insert(chat.to_string());
+    }
+    if let Some(name) = tauri::async_runtime::block_on(provider.group_name(chat)) {
+        if still(gen) {
+            get().inner.lock().unwrap().inbox.rename(chat, &name);
+            publish(app);
+        }
+    }
+}
+
+/// A new message reaches you: the island's pill lights up and Mochi reacts (the
+/// page plays it). Only the conversation's name, never the text. Silent while
+/// Windows' Do not disturb is on, when Settings says so.
+fn announce_message(app: &AppHandle, chat: &str) {
+    let (name, burst) = {
+        let mut i = get().inner.lock().unwrap();
+        if i.prefs.respect_focus && focus_is_on() {
+            return;
+        }
+        let name = i.inbox.conversations.get(chat).map(|c| c.name.clone()).unwrap_or_else(|| models::display_number(chat));
+        // A burst of messages is one reaction, not ten.
+        let burst = i.last_announce.is_some_and(|t| t.elapsed() < Duration::from_secs(4));
+        if !burst {
+            i.last_announce = Some(Instant::now());
+        }
+        (name, burst)
+    };
+    #[derive(Serialize, Clone)]
+    struct Announce {
+        name: String,
+        /// The conversation, for the island to open it.
+        chat: String,
+        react: bool,
+    }
+    let _ = app.emit_to(
+        crate::island::WINDOW_LABEL,
+        "whatsapp-announce",
+        Announce { name, chat: chat.to_string(), react: !burst },
+    );
+}
+
+/// Windows' Do not disturb, presentation mode or a full-screen app.
+#[cfg(windows)]
+fn focus_is_on() -> bool {
+    use windows::Win32::UI::Shell::{SHQueryUserNotificationState, QUNS_ACCEPTS_NOTIFICATIONS};
+    match unsafe { SHQueryUserNotificationState() } {
+        Ok(state) => state != QUNS_ACCEPTS_NOTIFICATIONS,
+        Err(_) => false,
+    }
+}
+
+#[cfg(not(windows))]
+fn focus_is_on() -> bool {
+    false
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────────
+
+/// The card's ↗: WhatsApp's own app when it is installed (it registers the
+/// whatsapp: link), WhatsApp Web otherwise. The Mac opens its WhatsApp app.
+#[tauri::command]
+pub fn whatsapp_open_app() {
+    if app_installed() {
+        crate::platform::open_url("whatsapp:");
+    } else {
+        crate::platform::open_url("https://web.whatsapp.com");
+    }
+}
+
+#[cfg(windows)]
+fn app_installed() -> bool {
+    use windows::core::w;
+    use windows::Win32::System::Registry::{RegCloseKey, RegOpenKeyExW, HKEY, HKEY_CLASSES_ROOT, KEY_READ};
+    let mut key = HKEY::default();
+    let found = unsafe { RegOpenKeyExW(HKEY_CLASSES_ROOT, w!("whatsapp"), Some(0), KEY_READ, &mut key) }.is_ok();
+    if found {
+        let _ = unsafe { RegCloseKey(key) };
+    }
+    found
+}
+
+#[cfg(not(windows))]
+fn app_installed() -> bool {
+    false
+}
+
+#[tauri::command]
+pub fn whatsapp_state() -> Snapshot {
+    snapshot()
+}
+
+/// Settings saved: the choices here, the address and credential in the credential
+/// store (`None` leaves them as they are, "" clears them). Starts over.
+#[tauri::command]
+pub fn whatsapp_set_prefs(app: AppHandle, prefs: Prefs, url: Option<String>, credential: Option<String>) {
+    let port_ok = (1024..=65535).contains(&prefs.port);
+    let mut prefs = prefs;
+    if !port_ok {
+        prefs.port = DEFAULT_PORT;
+    }
+    if let Some(url) = url {
+        let url = url.trim();
+        let default = prefs.gateway.default_url();
+        let _ = crate::secrets::set(URL_KEY, if url == default { "" } else { url });
+    }
+    if let Some(credential) = credential {
+        let _ = crate::secrets::set(CREDENTIAL_KEY, credential.trim());
+    }
+    {
+        let mut i = get().inner.lock().unwrap();
+        if !prefs.enabled {
+            i.inbox.clear();
+        }
+        i.prefs = prefs.clone();
+    }
+    save_prefs(&prefs);
+    std::thread::spawn(move || {
+        stop(&app, !should_run(&app));
+        update(&app);
+        publish(&app);
     });
 }
 
-fn apply(c: &mut Ctl, error: WaError) {
-    c.link = match &error {
-        WaError::Unreachable => LinkState::Unreachable,
-        WaError::Unauthorized => LinkState::Unauthorized,
-        WaError::NotLoggedIn => LinkState::NeedsQr,
-        WaError::Refused(why) => LinkState::Failed { detail: why.clone() },
+/// "Test connection": what the gateway says, in a sentence.
+#[tauri::command]
+pub async fn whatsapp_test() -> String {
+    use crate::i18n::{t, tf};
+    let (prefs, running) = {
+        let i = get().inner.lock().unwrap();
+        (i.prefs.clone(), i.provider.clone())
     };
-    if error == WaError::NotLoggedIn {
-        return;
-    }
-    c.failures += 1;
-    // Twice in a row (not a gateway still starting): a small red dot on the pill, nothing more.
-    if c.failures == 2 {
-        c.down = true;
-    }
-    // GOWA started by Coucou and gone (crash, killed): started again, once a minute at most.
-    if error == WaError::Unreachable {
-        sync_gowa(c);
-    }
-}
-
-/// One check from Settings' "Test connection": what the gateway says.
-async fn test_connection() -> TestResult {
-    // The running connection when there is one (a second one could race it for OpenWA's session).
-    let provider = {
-        let c = ctl();
-        match c.provider.clone() {
-            Some(p) => p,
-            None => {
-                let Some(base) = provider::parse_base(&c.effective_url()) else { return TestResult::BadUrl };
-                match Provider::new(c.kind(), base, crate::secrets::get_internal(CREDENTIAL_KEY)) {
-                    Ok(p) => Arc::new(p),
-                    Err(_) => return TestResult::Unreachable,
-                }
-            }
-        }
+    let provider = match running {
+        Some(p) => p,
+        None => match Provider::new(prefs.gateway, &url_of(&prefs), crate::secrets::get(CREDENTIAL_KEY).as_deref()) {
+            Some(p) => Arc::new(p),
+            None => return t("The gateway URL isn’t valid (http://…)"),
+        },
     };
     let mut attempt = 0;
     let status = loop {
         match provider.status().await {
-            // GOWA just started by Coucou: a few seconds to come up.
-            Err(WaError::Unreachable) if process::is_running() && attempt < 8 => {
+            Err(Error::Unreachable) if gowa::is_running() && attempt < 8 => {
+                // GOWA just started by Coucou: a few seconds to come up.
                 attempt += 1;
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
@@ -686,644 +797,242 @@ async fn test_connection() -> TestResult {
     };
     match status {
         Ok(s) => match s.link {
-            Link::Connected => TestResult::Connected { who: s.me.as_deref().map(model::display_number).unwrap_or_default() },
-            Link::NeedsQr => TestResult::NeedsQr,
-            Link::Connecting => TestResult::Connecting,
+            GatewayLink::Connected => tf("Connected as {0}.", &[("0", &s.me.map(|m| models::display_number(&m)).unwrap_or_default())]),
+            GatewayLink::NeedsQr => t("The gateway answers. Scan the QR code below with your phone."),
+            GatewayLink::Connecting => t("The gateway answers and is connecting to WhatsApp…"),
         },
-        Err(WaError::Unreachable) => TestResult::Unreachable,
-        Err(WaError::Unauthorized) => TestResult::Unauthorized,
-        Err(WaError::NotLoggedIn) => TestResult::NeedsQr,
-        Err(WaError::Refused(detail)) => TestResult::Refused { detail },
+        Err(Error::Unreachable) => t("The gateway doesn’t answer: is it running?"),
+        Err(Error::Unauthorized) => t("The gateway refuses the credentials"),
+        Err(Error::NotLoggedIn) => t("The gateway answers. Scan the QR code below with your phone."),
+        Err(Error::Refused(why)) => why,
     }
 }
 
-// ── Webhook ───────────────────────────────────────────────────────────────────
-
-async fn register_webhook(provider: &Provider, gen: u64) {
-    let (url, secret) = {
-        let c = ctl();
-        (format!("http://127.0.0.1:{}{WEBHOOK_PATH}", c.prefs.port), c.secret.clone())
-    };
-    if secret.is_empty() {
+/// "Install WhatsApp": GOWA downloaded, checked, put in place and started.
+#[tauri::command]
+pub fn whatsapp_install(app: AppHandle) {
+    let wa = get();
+    if matches!(
+        wa.inner.lock().unwrap().install,
+        gowa::Step::Checking | gowa::Step::Downloading { .. } | gowa::Step::Verifying | gowa::Step::Installing
+    ) {
         return;
     }
-    let result = provider.register_webhook(&url, &secret).await;
-    {
-        let mut c = ctl();
-        if c.generation != gen {
-            return;
-        }
+    tauri::async_runtime::spawn(async move {
+        let progress_app = app.clone();
+        let result = gowa::install(move |step| {
+            get().inner.lock().unwrap().install = step;
+            publish(&progress_app);
+        })
+        .await;
         match result {
-            Ok(()) => c.webhook = WebhookState::Registered,
-            Err(WaError::Refused(why)) => {
-                crate::log::line(format!("whatsapp: the gateway refused the webhook: {why}"));
-                c.webhook = WebhookState::Refused { detail: why };
+            Ok(version) => {
+                let prefs = {
+                    let mut i = get().inner.lock().unwrap();
+                    i.prefs.gateway = Kind::Gowa;
+                    i.prefs.autostart = true;
+                    i.prefs.installed_version = Some(version.clone());
+                    i.install = gowa::Step::Done { version };
+                    i.prefs.clone()
+                };
+                // Back to http://127.0.0.1:3000.
+                let _ = crate::secrets::set(URL_KEY, "");
+                save_prefs(&prefs);
+                let app2 = app.clone();
+                std::thread::spawn(move || {
+                    stop(&app2, false);
+                    update(&app2);
+                });
             }
-            // Tried again on the next minute's check.
-            Err(_) => {}
-        }
-    }
-    changed();
-}
-
-fn received(gen: u64, kind: Kind, body: &[u8]) {
-    let (fresh, groups) = {
-        let mut c = ctl();
-        if c.generation != gen || c.provider.is_none() {
-            return;
-        }
-        c.last_webhook = Some(Instant::now());
-        if c.webhook != WebhookState::Registered {
-            c.webhook = WebhookState::Registered;
-        }
-        let me = c.me.clone();
-        let Some(WebhookEvent::Message(message)) = gateway::parse_webhook(kind, body, me.as_deref()) else { return };
-        ingest(&mut c, vec![message])
-    };
-    after_ingest(gen, fresh, groups);
-}
-
-// ── Messages ──────────────────────────────────────────────────────────────────
-
-/// The last hours of history, once linked: kept, but nothing counts as new.
-async fn backfill(provider: &Arc<Provider>, gen: u64) {
-    let me = ctl().me.clone();
-    let since = gateway::now_ms() - 12 * 3600 * 1000;
-    let Ok(messages) = provider.recent_messages(since, me.as_deref()).await else { return };
-    let groups = {
-        let mut c = ctl();
-        if c.generation != gen {
-            return;
-        }
-        let filters = c.filters();
-        // History: kept, never counted as unread, never announced.
-        let chats: Vec<String> = messages.iter().map(|m| model::normalized(&m.chat)).collect();
-        for message in messages {
-            c.inbox.add(message, &filters, None, true);
-        }
-        let groups = chats.iter().filter_map(|chat| needs_name(&mut c, chat)).collect::<Vec<_>>();
-        c.last_poll_ms = gateway::now_ms();
-        groups
-    };
-    name_groups(provider.clone(), gen, groups);
-    changed();
-}
-
-fn poll() {
-    let (provider, gen, since, me) = {
-        let mut c = ctl();
-        let Some(p) = c.provider.clone() else { return };
-        if c.polling || c.webhook_alive() || !c.backfilled {
-            return;
-        }
-        c.polling = true;
-        // A little overlap; duplicates are dropped.
-        (p, c.generation, c.last_poll_ms - 30_000, c.me.clone())
-    };
-    spawn(async move {
-        let started = gateway::now_ms();
-        let result = provider.recent_messages(since, me.as_deref()).await;
-        let (fresh, groups) = {
-            let mut c = ctl();
-            if c.generation != gen {
-                return;
+            Err(message) => {
+                crate::log::line(format!("whatsapp: GOWA install failed: {message}"));
+                get().inner.lock().unwrap().install = gowa::Step::Failed { message };
             }
-            c.polling = false;
-            let Ok(messages) = result else { return };
-            c.last_poll_ms = started;
-            ingest(&mut c, messages)
-        };
-        after_ingest(gen, fresh, groups);
+        }
+        publish(&app);
     });
 }
 
-/// Adds what arrived. Returns the conversation to announce (its name), and the groups to name.
-fn ingest(c: &mut Ctl, messages: Vec<Message>) -> (Option<String>, Vec<String>) {
-    let filters = c.filters();
-    let mut fresh: Option<String> = None;
-    let mut groups = Vec::new();
-    for message in messages {
-        let key = model::normalized(&message.chat);
-        let from_me = message.from_me;
-        let outcome = c.inbox.add(message, &filters, None, false);
-        if let Some(g) = needs_name(c, &key) {
-            groups.push(g);
+/// A conversation opened in the card: its latest messages, and the read
+/// receipt when Settings says so.
+#[tauri::command]
+pub fn whatsapp_open(app: AppHandle, chat: String) {
+    let key = normalized(&chat);
+    let mark = {
+        let mut i = get().inner.lock().unwrap();
+        i.send_error = None;
+        i.open_chat = Some(key.clone());
+        i.prefs.mark_read_on_open
+    };
+    std::thread::spawn(move || {
+        if mark {
+            mark_read(&key);
         }
-        if c.open_chat.as_deref() == Some(key.as_str()) {
-            // Read on screen: no unread, no Mochi. The receipt waits for a reply (or the next
-            // opening), as Settings says.
-            c.inbox.mark_read(&key);
-            continue;
+        if let Some((provider, gen)) = current_provider() {
+            let me = get().inner.lock().unwrap().me.clone();
+            if let Ok(history) = tauri::async_runtime::block_on(provider.messages(&key, 10, me.as_deref())) {
+                if still(gen) {
+                    let mut i = get().inner.lock().unwrap();
+                    let f = filters(&i.prefs);
+                    for m in history {
+                        i.inbox.add(m, &f, None, true);
+                    }
+                }
+            }
         }
-        if outcome == Outcome::Notify && !from_me {
-            fresh = Some(key);
-        }
-    }
-    let name = fresh.map(|key| c.inbox.conversations.get(&key).map(|conv| conv.name.clone()).unwrap_or_else(|| model::display_number(&key)));
-    (name, groups)
+        publish(&app);
+    });
 }
 
-fn after_ingest(gen: u64, fresh: Option<String>, groups: Vec<String>) {
-    if let Some(name) = fresh {
-        pill(PillEvent::Message { name });
+/// The conversation closed (back to the list, Escape, the island folded).
+#[tauri::command]
+pub fn whatsapp_close(chat: String) {
+    let mut i = get().inner.lock().unwrap();
+    if i.open_chat.as_deref() == Some(normalized(&chat).as_str()) {
+        i.open_chat = None;
     }
-    if let Some(provider) = ctl().provider.clone() {
-        name_groups(provider, gen, groups);
-    }
-    changed();
 }
 
-/// Groups arrive under their id (GOWA's webhook carries no group name): asked once.
-fn needs_name(c: &mut Ctl, chat: &str) -> Option<String> {
-    if !model::is_group(chat) || c.naming.contains(chat) {
-        return None;
-    }
-    let conv = c.inbox.conversations.get(chat)?;
-    if conv.name != model::display_number(chat) {
-        return None;
-    }
-    c.naming.insert(chat.to_string());
-    Some(chat.to_string())
-}
-
-fn name_groups(provider: Arc<Provider>, gen: u64, groups: Vec<String>) {
-    if groups.is_empty() {
+/// Marks the chat read here and on WhatsApp (up to its newest received message).
+fn mark_read(chat: &str) {
+    let key = normalized(chat);
+    let (had_unread, last) = {
+        let mut i = get().inner.lock().unwrap();
+        let Some(c) = i.inbox.conversations.get(&key) else { return };
+        let had = c.unread > 0;
+        let last = c.messages.iter().rev().find(|m| !m.from_me).map(|m| m.id.clone());
+        i.inbox.mark_read(&key);
+        (had, last)
+    };
+    // Nothing new: no receipt to send.
+    if !had_unread {
         return;
     }
-    spawn(async move {
-        for chat in groups {
-            let Some(name) = provider.group_name(&chat).await else { continue };
-            let mut c = ctl();
-            if c.generation != gen {
-                return;
-            }
-            c.inbox.rename(&chat, &name);
-            drop(c);
-            changed();
-        }
-    });
-}
-
-// ── The conversation ──────────────────────────────────────────────────────────
-
-/// Marks the chat read here and, when it had something unread, on WhatsApp too (up to its newest
-/// received message). Returns the receipt to send.
-fn mark_read(c: &mut Ctl, chat: &str) -> Option<(String, Option<String>)> {
-    let key = model::normalized(chat);
-    let conv = c.inbox.conversations.get(&key)?;
-    let had_unread = conv.unread > 0;
-    let last = conv.messages.iter().rev().find(|m| !m.from_me).map(|m| m.id.clone());
-    c.inbox.mark_read(&key);
-    if c.inbox.visible_unread(&c.filters()) == 0 {
-        pill(PillEvent::Read);
-    }
-    // Nothing new: no receipt to send.
-    had_unread.then_some((key, last))
-}
-
-/// A conversation opened in the card: its latest messages from the gateway, and the read receipt
-/// when Settings says so.
-fn open(chat: &str) {
-    let (provider, gen, receipt, me) = {
-        let mut c = ctl();
-        c.send_error = None;
-        c.open_chat = Some(model::normalized(chat));
-        let Some(p) = c.provider.clone() else { return };
-        let receipt = if c.prefs.mark_read_on_open { mark_read(&mut c, chat) } else { None };
-        (p, c.generation, receipt, c.me.clone())
-    };
-    changed();
-    let chat = chat.to_string();
-    spawn(async move {
-        if let Some((key, last)) = receipt {
-            let _ = provider.mark_read(&key, last.as_deref()).await;
-        }
-        let Ok(history) = provider.messages(&chat, 10, me.as_deref()).await else { return };
-        {
-            let mut c = ctl();
-            if c.generation != gen {
-                return;
-            }
-            let filters = c.filters();
-            for message in history {
-                c.inbox.add(message, &filters, None, true);
-            }
-        }
-        changed();
-    });
-}
-
-fn close(chat: &str) {
-    let mut c = ctl();
-    if c.open_chat.as_deref() == Some(model::normalized(chat).as_str()) {
-        c.open_chat = None;
+    if let Some((provider, _)) = current_provider() {
+        let _ = tauri::async_runtime::block_on(provider.mark_read(&key, last.as_deref()));
     }
 }
 
-/// Sends a reply: only to a conversation already in the inbox, one at a time, a few a minute, and
-/// only from the user's own Enter or click in the card. True once the gateway took it.
-async fn send(chat: &str, text: &str) -> bool {
-    let key = model::normalized(chat);
-    let (provider, gen, body, me) = {
-        let mut c = ctl();
-        let Some(p) = c.provider.clone() else { return false };
-        if c.sending {
+/// Sends a reply. Only to a conversation already in the inbox, one at a time,
+/// a few a minute. True once the gateway took it.
+#[tauri::command]
+pub async fn whatsapp_send(app: AppHandle, chat: String, text: String) -> bool {
+    use crate::i18n::t;
+    let key = normalized(&chat);
+    let Some((provider, gen)) = current_provider() else { return false };
+    {
+        let mut i = get().inner.lock().unwrap();
+        if i.sending {
             return false;
         }
-        match model::check_reply(text, &key, &c.inbox) {
-            Some(Refusal::TooLong) => {
-                c.send_error = Some(SendError::TooLong);
-                drop(c);
-                changed();
-                return false;
+        if let Some(refusal) = check_reply(&text, &key, &i.inbox) {
+            if refusal == Refusal::TooLong {
+                i.send_error = Some(t("Too long for one message (4,096 characters at most)."));
             }
-            Some(_) => return false,
-            None => {}
-        }
-        if !c.rate.allow(Instant::now()) {
-            c.send_error = Some(SendError::TooFast);
-            drop(c);
-            changed();
+            drop(i);
+            publish(&app);
             return false;
         }
-        c.sending = true;
-        c.send_error = None;
-        (p, c.generation, text.trim().to_string(), c.me.clone())
-    };
-    changed();
+        if !i.rate.allow(now()) {
+            i.send_error = Some(t("A few replies a minute at most: wait a moment."));
+            drop(i);
+            publish(&app);
+            return false;
+        }
+        i.sending = true;
+        i.send_error = None;
+    }
+    publish(&app);
+    let body = text.trim().to_string();
     let result = provider.send(&body, &key).await;
-    let receipt = {
-        let mut c = ctl();
-        // Turned off or restarted meanwhile: the inbox it belonged to is gone.
-        if c.generation != gen {
-            return result.is_ok();
-        }
-        c.sending = false;
+    let ok = {
+        let mut i = get().inner.lock().unwrap();
+        i.sending = false;
         match result {
             Ok(id) => {
-                let id = id.unwrap_or_else(|| format!("coucou-{}-{}", gateway::now_ms(), c.inbox.conversations.len()));
-                let mut mine = Message::new(&id, &key, me.as_deref().unwrap_or(""), &body, gateway::now_ms());
-                mine.from_me = true;
-                mine.chat_name = c.inbox.conversations.get(&key).map(|conv| conv.name.clone());
-                let filters = c.filters();
-                c.inbox.add(mine, &filters, None, false);
-                // Replying reads the conversation, whatever the setting.
-                let last = c.inbox.conversations.get(&key).and_then(|conv| conv.messages.iter().rev().find(|m| !m.from_me)).map(|m| m.id.clone());
-                if c.inbox.visible_unread(&filters) == 0 {
-                    pill(PillEvent::Read);
+                if still(gen) {
+                    let mut mine = Message::new(
+                        &id.unwrap_or_else(|| format!("coucou-{}", crate::flow::text::new_id())),
+                        &key,
+                        i.me.as_deref().unwrap_or(""),
+                        "",
+                        &body,
+                        now(),
+                    );
+                    mine.from_me = true;
+                    mine.chat_name = i.inbox.conversations.get(&key).map(|c| c.name.clone());
+                    let f = filters(&i.prefs);
+                    i.inbox.add(mine, &f, None, false);
                 }
-                Some(last)
+                true
             }
             Err(err) => {
-                c.send_error = Some(match err {
-                    WaError::Unreachable => SendError::Unreachable,
-                    WaError::Unauthorized => SendError::Unauthorized,
-                    WaError::NotLoggedIn => SendError::NeedsQr,
-                    WaError::Refused(detail) => SendError::Refused { detail },
+                i.send_error = Some(match err {
+                    Error::Unreachable => t("The gateway doesn’t answer: is it running?"),
+                    Error::Unauthorized => t("The gateway refuses the credentials"),
+                    Error::NotLoggedIn => t("Scan the QR code in Settings"),
+                    Error::Refused(why) => why,
                 });
-                None
+                false
             }
         }
     };
-    changed();
-    match receipt {
-        Some(last) => {
-            let _ = provider.mark_read(&key, last.as_deref()).await;
-            true
+    if ok {
+        // Replying reads the conversation, whatever the setting.
+        let last = get()
+            .inner
+            .lock()
+            .unwrap()
+            .inbox
+            .conversations
+            .get(&key)
+            .and_then(|c| c.messages.iter().rev().find(|m| !m.from_me).map(|m| m.id.clone()));
+        let _ = provider.mark_read(&key, last.as_deref()).await;
+    }
+    publish(&app);
+    ok
+}
+
+#[tauri::command]
+pub fn whatsapp_ignore(app: AppHandle, chat: String) {
+    let key = normalized(&chat);
+    let prefs = {
+        let mut i = get().inner.lock().unwrap();
+        if !i.prefs.ignored.contains(&key) {
+            i.prefs.ignored.push(key.clone());
         }
-        None => false,
-    }
-}
-
-fn ignore(chat: &str) {
-    let key = model::normalized(chat);
-    {
-        let mut c = ctl();
-        c.prefs.ignored.push(key.clone());
-        c.prefs = c.prefs.clone().cleaned();
-        prefs::save(&c.prefs);
-        c.inbox.remove(&key);
-        if c.open_chat.as_deref() == Some(key.as_str()) {
-            c.open_chat = None;
+        i.inbox.remove(&key);
+        if i.open_chat.as_deref() == Some(key.as_str()) {
+            i.open_chat = None;
         }
-    }
-    changed();
-}
-
-/// What Settings' "Add" turns into a chat id: a phone number ("+33 6 12…") or a full id ("…@g.us").
-pub fn chat_from_entry(raw: &str) -> Option<String> {
-    let raw = raw.trim();
-    if raw.contains('@') {
-        return (raw.len() > 3 && !raw.chars().any(char::is_whitespace)).then(|| raw.to_string());
-    }
-    let digits: String = raw.chars().filter(char::is_ascii_digit).collect();
-    (!digits.is_empty()).then(|| format!("{digits}@s.whatsapp.net"))
-}
-
-// ── GOWA install ──────────────────────────────────────────────────────────────
-
-fn set_install(step: Step) {
-    ctl().install = step;
-    changed();
-}
-
-fn install() {
-    {
-        let mut c = ctl();
-        if c.install.busy() {
-            return;
-        }
-        c.install = Step::Checking;
-    }
-    changed();
-    spawn(async move {
-        match install::run(set_install).await {
-            Ok(version) => {
-                {
-                    let mut c = ctl();
-                    c.prefs.gowa_version = Some(version.clone());
-                    c.prefs.gateway = "gowa".into();
-                    c.prefs.gowa_path = process::installed_binary().to_string_lossy().into_owned();
-                    c.prefs.auto_start = true;
-                    prefs::save(&c.prefs);
-                    // Back to http://127.0.0.1:3000.
-                    let _ = crate::secrets::set_internal(URL_KEY, "");
-                    c.url.clear();
-                    c.install = Step::Done { version: version.clone() };
-                }
-                crate::log::line(format!("whatsapp: GOWA {version} installed ({} {})", gateway::release::this_os(), gateway::release::this_arch()));
-                // Starts it; the QR follows.
-                settings_changed();
-            }
-            Err(reason) => {
-                crate::log::line(format!("whatsapp: GOWA install failed: {reason}"));
-                set_install(Step::Failed { reason });
-            }
-        }
-    });
-}
-
-// ── Commands ──────────────────────────────────────────────────────────────────
-
-fn only(window: &WebviewWindow, label: &str) -> Result<(), String> {
-    if window.label() == label { Ok(()) } else { Err("not from this window".into()) }
-}
-
-#[tauri::command]
-pub fn whatsapp_island(window: WebviewWindow) -> Result<IslandView, String> {
-    only(&window, crate::island::WINDOW_LABEL)?;
-    Ok(ctl().island_view())
-}
-
-#[tauri::command]
-pub fn whatsapp_open(window: WebviewWindow, chat: String) -> Result<(), String> {
-    only(&window, crate::island::WINDOW_LABEL)?;
-    open(&chat);
-    Ok(())
-}
-
-#[tauri::command]
-pub fn whatsapp_close(window: WebviewWindow, chat: String) -> Result<(), String> {
-    only(&window, crate::island::WINDOW_LABEL)?;
-    close(&chat);
-    Ok(())
-}
-
-/// Enter or the send button in the island's card: the only way a message leaves Coucou.
-#[tauri::command]
-pub async fn whatsapp_send(window: WebviewWindow, chat: String, text: String) -> Result<bool, String> {
-    only(&window, crate::island::WINDOW_LABEL)?;
-    Ok(send(&chat, &text).await)
-}
-
-#[tauri::command]
-pub fn whatsapp_ignore(window: WebviewWindow, chat: String) -> Result<(), String> {
-    if window.label() != crate::island::WINDOW_LABEL {
-        only(&window, crate::HUB_LABEL)?;
-    }
-    let chat = chat_from_entry(&chat).ok_or("not a chat")?;
-    ignore(&chat);
-    Ok(())
-}
-
-#[tauri::command]
-pub fn whatsapp_unignore(window: WebviewWindow, chat: String) -> Result<(), String> {
-    only(&window, crate::HUB_LABEL)?;
-    {
-        let mut c = ctl();
-        c.prefs.ignored.retain(|x| x != &chat);
-        prefs::save(&c.prefs);
-    }
-    changed();
-    Ok(())
-}
-
-#[tauri::command]
-pub fn whatsapp_settings(window: WebviewWindow) -> Result<SettingsView, String> {
-    only(&window, crate::HUB_LABEL)?;
-    Ok(ctl().settings_view())
-}
-
-/// The switches: on/off, mute groups, read receipts on opening.
-#[tauri::command]
-pub fn whatsapp_set_options(window: WebviewWindow, enabled: bool, mute_groups: bool, mark_read_on_open: bool) -> Result<(), String> {
-    only(&window, crate::HUB_LABEL)?;
-    let restart = {
-        let mut c = ctl();
-        let restart = c.prefs.enabled != enabled;
-        c.prefs.enabled = enabled;
-        c.prefs.mute_groups = mute_groups;
-        c.prefs.mark_read_on_open = mark_read_on_open;
-        prefs::save(&c.prefs);
-        restart
+        i.prefs.clone()
     };
-    if restart { settings_changed() } else { changed() }
-    Ok(())
-}
-
-/// Advanced → Save: the gateway, its address and credential (None keeps the stored one, "" removes
-/// it), the webhook's port, and GOWA started by Coucou.
-#[tauri::command]
-pub fn whatsapp_save_gateway(
-    window: WebviewWindow,
-    gateway: String,
-    url: String,
-    credential: Option<String>,
-    port: u16,
-    auto_start: bool,
-    gowa_path: String,
-) -> Result<(), String> {
-    only(&window, crate::HUB_LABEL)?;
-    let url = url.trim().to_string();
-    if url.len() > 512 || credential.as_ref().is_some_and(|c| c.len() > 1024) {
-        return Err("too long".into());
-    }
-    crate::secrets::set_internal(URL_KEY, &url)?;
-    if let Some(credential) = &credential {
-        crate::secrets::set_internal(CREDENTIAL_KEY, credential.trim())?;
-    }
-    {
-        let mut c = ctl();
-        c.url = url;
-        if let Some(credential) = credential {
-            c.has_credential = !credential.trim().is_empty();
-        }
-        let mut next = c.prefs.clone();
-        next.gateway = gateway;
-        if (1024..=65535).contains(&port) {
-            next.port = port;
-        }
-        next.auto_start = auto_start;
-        next.gowa_path = gowa_path;
-        c.prefs = next.cleaned();
-        prefs::save(&c.prefs);
-    }
-    settings_changed();
-    Ok(())
+    save_prefs(&prefs);
+    publish(&app);
 }
 
 #[tauri::command]
-pub async fn whatsapp_test(window: WebviewWindow) -> Result<TestResult, String> {
-    only(&window, crate::HUB_LABEL)?;
-    Ok(test_connection().await)
-}
-
-/// "Install WhatsApp" / "Update": the one network call to GitHub, on this click only.
-#[tauri::command]
-pub fn whatsapp_install(window: WebviewWindow) -> Result<(), String> {
-    only(&window, crate::HUB_LABEL)?;
-    install();
-    Ok(())
+pub fn whatsapp_unignore(app: AppHandle, chat: String) {
+    let prefs = {
+        let mut i = get().inner.lock().unwrap();
+        i.prefs.ignored.retain(|c| *c != chat);
+        i.prefs.clone()
+    };
+    save_prefs(&prefs);
+    publish(&app);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn msg(id: &str, chat: &str, text: &str) -> Message {
-        Message::new(id, chat, chat, text, gateway::now_ms())
-    }
-
-    fn fresh_ctl() -> Ctl {
-        Ctl {
-            prefs: Prefs::default(),
-            url: String::new(),
-            has_credential: false,
-            pill_active: true,
-            provider: None,
-            generation: 0,
-            link: LinkState::Off,
-            webhook: WebhookState::Off,
-            secret: String::new(),
-            qr: None,
-            qr_expiry: None,
-            me: None,
-            inbox: Inbox::default(),
-            listener: None,
-            tick: 0,
-            refreshing: false,
-            polling: false,
-            backfilled: false,
-            last_webhook: None,
-            last_poll_ms: 0,
-            naming: HashSet::new(),
-            open_chat: None,
-            rate: RateLimit::default(),
-            failures: 0,
-            down: false,
-            sending: false,
-            send_error: None,
-            install: Step::Idle,
-        }
-    }
-
     #[test]
-    fn what_arrives_is_announced_by_name_only_and_never_in_the_open_chat() {
-        let mut c = fresh_ctl();
-        let mut m = msg("1", "33612345678@s.whatsapp.net", "secret text");
-        m.sender_name = "Marie".into();
-        let (fresh, groups) = ingest(&mut c, vec![m]);
-        assert_eq!(fresh.as_deref(), Some("Marie"));
-        assert!(groups.is_empty());
-        // Open on screen: seen, not unread, not announced.
-        c.open_chat = Some("33612345678@s.whatsapp.net".into());
-        let (fresh, _) = ingest(&mut c, vec![msg("2", "33612345678@c.us", "again")]);
-        assert_eq!(fresh, None);
-        assert_eq!(c.inbox.conversations["33612345678@s.whatsapp.net"].unread, 0, "read on screen");
-        assert_eq!(c.inbox.conversations["33612345678@s.whatsapp.net"].messages.len(), 2);
-        c.open_chat = None;
-        let (fresh, _) = ingest(&mut c, vec![msg("2b", "33612345678@s.whatsapp.net", "and again")]);
-        assert_eq!(fresh.as_deref(), Some("Marie"), "the person still names the chat");
-        // A muted group without a mention stays quiet, but is asked its name once.
-        let (fresh, groups) = ingest(&mut c, vec![msg("3", "120363@g.us", "hi all")]);
-        assert_eq!(fresh, None);
-        assert_eq!(groups, ["120363@g.us"]);
-        let (_, groups) = ingest(&mut c, vec![msg("4", "120363@g.us", "hi again")]);
-        assert!(groups.is_empty(), "asked once");
-        // The island only sees the visible conversations.
-        let view = c.island_view();
-        assert_eq!(view.conversations.len(), 1);
-        assert_eq!(view.unread, 1);
-        // Ignored: never shown again.
-        c.prefs.ignored = vec!["33612345678@s.whatsapp.net".into()];
-        let (fresh, _) = ingest(&mut c, vec![msg("5", "33612345678@s.whatsapp.net", "x")]);
-        assert_eq!(fresh, None);
-        assert!(c.island_view().conversations.is_empty());
-    }
-
-    #[test]
-    fn errors_light_the_pill_on_the_second_failure_only() {
-        let mut c = fresh_ctl();
-        apply(&mut c, WaError::NotLoggedIn);
-        assert_eq!((c.link.clone(), c.failures, c.down), (LinkState::NeedsQr, 0, false));
-        apply(&mut c, WaError::Unauthorized);
-        assert_eq!((c.failures, c.down), (1, false));
-        apply(&mut c, WaError::Refused("NOPE".into()));
-        assert_eq!((c.link.clone(), c.failures, c.down), (LinkState::Failed { detail: "NOPE".into() }, 2, true));
-    }
-
-    #[test]
-    fn mark_read_sends_a_receipt_only_for_something_unread() {
-        let mut c = fresh_ctl();
-        ingest(&mut c, vec![msg("a", "336@s.whatsapp.net", "1"), msg("b", "336@s.whatsapp.net", "2")]);
-        assert_eq!(mark_read(&mut c, "336@s.whatsapp.net"), Some(("336@s.whatsapp.net".into(), Some("b".into()))));
-        assert_eq!(c.inbox.conversations["336@s.whatsapp.net"].unread, 0);
-        assert_eq!(mark_read(&mut c, "336@s.whatsapp.net"), None, "nothing new: no receipt");
-        assert_eq!(mark_read(&mut c, "999@s.whatsapp.net"), None);
-    }
-
-    #[test]
-    fn the_gateways_secrets_never_reach_a_webview() {
-        for key in [URL_KEY, CREDENTIAL_KEY, SECRET_KEY] {
-            assert!(crate::secrets::is_internal(key), "{key}");
-            assert!(!crate::secrets::KNOWN_KEYS.contains(&key), "{key}");
-            assert!(crate::secrets::set(key, "x").is_err(), "{key}: secret_set must refuse it");
-            assert!(!crate::secrets::present(key), "{key}");
-        }
-        assert_eq!(crate::secrets::INTERNAL_KEYS.iter().filter(|k| k.starts_with("whatsapp-")).count(), 3);
-    }
-
-    #[test]
-    fn ignore_entries() {
-        assert_eq!(chat_from_entry("+33 6 12 34 56 78").as_deref(), Some("33612345678@s.whatsapp.net"));
-        assert_eq!(chat_from_entry(" 120363@g.us ").as_deref(), Some("120363@g.us"));
-        assert_eq!(chat_from_entry("abc"), None);
-        assert_eq!(chat_from_entry("a b@g.us"), None);
-        assert_eq!(chat_from_entry(""), None);
-    }
-
-    #[test]
-    fn views_say_codes_never_sentences() {
-        let c = fresh_ctl();
-        let json = serde_json::to_value(c.island_view()).unwrap();
-        assert_eq!(json["link"]["state"], "off");
-        let json = serde_json::to_value(c.settings_view()).unwrap();
-        assert_eq!(json["webhook"]["state"], "off");
-        assert_eq!(json["install"]["step"], "idle");
-        assert_eq!(json["defaultUrl"], "http://127.0.0.1:3000");
-        assert_eq!(serde_json::to_value(SendError::Refused { detail: "x".into() }).unwrap()["code"], "refused");
-        assert_eq!(serde_json::to_value(WebhookState::PortBusy { port: 1 }).unwrap()["state"], "portBusy");
-        assert_eq!(serde_json::to_value(LinkState::NeedsQr).unwrap()["state"], "needsQr");
-        assert_eq!(serde_json::to_value(TestResult::Connected { who: "+1".into() }).unwrap()["result"], "connected");
+    fn the_preferences_start_off_and_read_old_files() {
+        let p = Prefs::default();
+        assert!(!p.enabled && p.mute_groups && p.mark_read_on_open && p.respect_focus && !p.autostart);
+        assert_eq!(p.port, 47823);
+        let old: Prefs = serde_json::from_str(r#"{"enabled":true,"gateway":"openwa"}"#).unwrap();
+        assert!(old.enabled && old.gateway == Kind::Openwa && old.port == DEFAULT_PORT);
+        assert_eq!(webhook_url(47823), "http://127.0.0.1:47823/whatsapp");
     }
 }

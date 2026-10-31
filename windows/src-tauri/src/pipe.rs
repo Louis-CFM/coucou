@@ -220,6 +220,27 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
+    // "Make Claude fix failing tests": after a test run, before a commit or push and
+    // when Claude Code stops, the relay waits for the island's word (island/loop.ts).
+    // Nothing back in time is no word: Claude Code carries on.
+    if payload.get("coucou_loop").and_then(Value::as_bool) == Some(true) {
+        let id = format!("loop-{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+        let (tx, mut rx) = mpsc::channel::<Reply>(2);
+        app.state::<Pending>().0.lock().unwrap().insert(id.clone(), tx);
+        payload["coucou_loop_id"] = json!(id);
+        log::line(format!("hook {event} (fix loop)"));
+        let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
+        let answer = match tokio::time::timeout(loop_wait(&event), rx.recv()).await {
+            Ok(Some(Reply::Decision(d))) => d,
+            _ => String::new(),
+        };
+        app.state::<Pending>().0.lock().unwrap().remove(&id);
+        let _ = pipe.write_all(format!("{answer}\n").as_bytes()).await;
+        let _ = pipe.flush().await;
+        pipe.finish();
+        return;
+    }
+
     if event != "PermissionRequest" {
         // The status line relay calls in with every Claude Code update: not log-worthy.
         if event != "StatusLine" {
@@ -258,6 +279,16 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         }
     }
     pipe.finish();
+}
+
+/// Just under the relay's own wait (loop_budget in coucou-hook), so the answer
+/// always reaches it.
+fn loop_wait(event: &str) -> Duration {
+    match event {
+        "Stop" => Duration::from_millis(4_500),
+        "PreToolUse" => Duration::from_millis(2_500),
+        _ => Duration::from_millis(6_500),
+    }
 }
 
 /// Finds, once per session, the window it runs in — see session_window.rs.
@@ -335,6 +366,8 @@ fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
         Some(tx) => {
             let _ = tx.try_send(reply);
         }
+        // The fix loop's word after its relay stopped waiting: nothing to log.
+        None if request_id.starts_with("loop-") => {}
         None => log::line(format!("reply for id={request_id} — no pending request")),
     }
 }
@@ -355,10 +388,23 @@ pub fn decline(app: &AppHandle, request_id: &str) {
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
     let word = match decision {
         "allow" | "always" => "allow",
+        // The plan card (ExitPlanMode): the relay sends the plan back with them.
+        "plan_auto" | "plan_default" | "plan_change" => decision,
         _ => "deny",
     };
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+/// The fix loop's word (island/loop.ts), or none: Claude Code carries on. The
+/// relay checks its shape again before Claude Code sees it (reply.rs).
+pub fn loop_answer(app: &AppHandle, id: &str, answer: Option<String>) {
+    let reply = match answer.filter(|a| !a.trim().is_empty()) {
+        // One line: the relay reads up to the first newline.
+        Some(a) => Reply::Decision(a.replace(['\r', '\n'], " ")),
+        None => Reply::Decline,
+    };
+    send(app, id, reply, false);
 }
 
 /// Called when an option is picked for a question Claude Code asked. `answers`

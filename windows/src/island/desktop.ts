@@ -3,13 +3,13 @@
 // to show, and handles the drag out of the island. The window itself lives in
 // src-tauri/src/desktop.rs and draws him in src/desktop/main.ts.
 
-import { Bridge, emitToWindow, onEvent, type DesktopMode } from "../core/bridge";
+import { Bridge, emitToWindow, onEvent, type DesktopInfo, type DesktopMode } from "../core/bridge";
 import type { BotEmoteName } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { desktopDances } from "../core/spotify";
 import {
-  DESKTOP_EVENTS, DesktopMochiController, alertActive, type DesktopSnapshot,
+  DESKTOP_EVENTS, DesktopMochiController, alertActive, askUntilAnswered, type DesktopSnapshot,
 } from "../mochi/desktop-logic";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 
@@ -32,6 +32,8 @@ export class DesktopLink {
 
   /** The pointer is dragging Mochi out of the island. */
   carrying = false;
+  /** The launch greeting is over (launch()). */
+  private launched = false;
 
   private seasons = new SeasonCache();
   private pushed = "";
@@ -66,7 +68,18 @@ export class DesktopLink {
 
   async init() {
     const info = await Bridge.desktopInfo();
-    if (!info || info.mode === "off") return;
+    if (info) return this.start(info);
+    // The island's page can load before Rust has set up Mochi's desktop window,
+    // and the call fails instead of answering: without an answer he stayed
+    // "off", and could not be dragged out until a restart. Asked again in the
+    // background, so the island does not wait for it.
+    void askUntilAnswered(() => Bridge.desktopInfo(), 40, 250).then((late) => {
+      if (late) void this.start(late);
+    });
+  }
+
+  private async start(info: DesktopInfo) {
+    if (info.mode === "off") return;
     this.mode = info.mode;
     this.controller.enabled = info.onDesktop;
 
@@ -84,10 +97,12 @@ export class DesktopLink {
 
     State.subscribe(() => this.sync());
     this.sync();
+    if (this.launched) void this.controller.launchFlyIfNeeded();
   }
 
   /** The launch greeting is over: back to his spot if that is where he lives. */
   launch() {
+    this.launched = true;
     if (this.supported) void this.controller.launchFlyIfNeeded();
   }
 

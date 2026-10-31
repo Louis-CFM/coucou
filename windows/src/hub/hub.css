@@ -925,6 +925,39 @@ button.hub-icon svg {
   opacity: 0.5;
 }
 
+/* Styles → Style per app: rows with room around their dividers, the menus in
+   one column, and a quiet delete that shows itself on hover. */
+.hub-applist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hub-applist .hub-row {
+  min-height: 36px;
+  gap: 10px;
+}
+
+.hub-applist .hub-row .title {
+  font-weight: 500;
+}
+
+.hub-applist .hub-select {
+  width: 132px;
+}
+
+.hub-applist button.hub-icon {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: var(--hub-secondary);
+}
+
+.hub-applist button.hub-icon:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--hub-text);
+}
+
 /* ── Notetaker ────────────────────────────────────────────────────────────── */
 
 .hub-notes {
@@ -1028,6 +1061,40 @@ button.hub-icon svg {
 
 .hub-line .who {
   font: 600 12.5px var(--font);
+}
+
+/* A line of a noted call: its ⋯ shows on hover (FlowHubNotes.swift). */
+.hub-line.editable {
+  grid-template-columns: 56px minmax(0, 1fr) 24px;
+}
+
+.hub-line-more {
+  border: 0;
+  background: transparent;
+  color: var(--hub-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  opacity: 0;
+  cursor: pointer;
+  align-self: start;
+}
+
+.hub-line:hover .hub-line-more,
+.hub-line-more:focus-visible {
+  opacity: 1;
+}
+
+.hub-line-more:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hub-line-actions:not(:empty) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .hub-line .said {

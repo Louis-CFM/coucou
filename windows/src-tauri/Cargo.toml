@@ -14,6 +14,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# Screen capture for Claude (capture.rs): the clipboard's bitmaps as PNG.
+png = "0.17"
+# The wheel's image conversions and tools (wheel/image_ops.rs). MIT/Apache-2.0.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "tiff", "bmp", "ico", "gif"] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
@@ -27,6 +31,8 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 ring = "0.17"
+# Unpacks the GOWA release for the WhatsApp pill.
+zip = { version = "2", default-features = false, features = ["deflate"] }
 rcgen = { version = "0.13", default-features = false, features = ["ring"] }
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 # The phone finds this computer by itself when its address changes: it is announced on the local network
@@ -49,16 +55,16 @@ sherpa-onnx = { version = "1.13.8", default-features = false, features = ["stati
 # The microphone, and the computer's own sound for the Notetaker (WASAPI
 # loopback on Windows, a PulseAudio/PipeWire monitor on Linux). Apache-2.0.
 cpal = "0.18"
-# WhatsApp's "Install WhatsApp" takes GOWA's binary out of the zip GOWA publishes (whatsapp/archive.rs):
-# the raw DEFLATE decoder only, already in the tree through png (the same 0.8.9), so nothing new is
-# downloaded or compiled. MIT/Zlib/Apache-2.0.
-miniz_oxide = "0.8"
 # The chat's mail merge cuts a PDF into one page per recipient and reads each page's text
 # (mail/pdf.rs), as the Mac does with PDFKit; Windows has no PDF library of its own. MIT, pure
 # Rust, default features (clock, rayon) off.
 lopdf = { version = "0.46", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
+# The wheel's "Move": Windows' own folder picker. MIT.
+rfd = { version = "0.15", default-features = false }
+# Screen capture for Claude (capture.rs): images on the clipboard, as PNG and bitmap.
+clipboard-win = "5.4"
 keyring = { version = "3", features = ["windows-native"] }
 # The island's file drop reads paths straight from WebView2 (webview_drop.rs).
 # Same versions as wry, so nothing new is compiled.
@@ -89,8 +95,15 @@ windows = { version = "0.61", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
+  # Cloaked windows (suspended apps) are skipped when Mochi is dropped on one.
+  "Win32_Graphics_Dwm",
+  # The wheel's window takes its round shape (wheel/mod.rs).
+  "Win32_Graphics_Gdi",
   # Flow dictation's keyboard hook.
   "Win32_System_LibraryLoader",
+  # Mochi feels the computer (vitals.rs): the battery and the thermal zones.
+  "Win32_System_Power",
+  "Win32_System_Performance",
 ] }
 # The clipboard for Flow dictation, kept out of the clipboard history. MIT/Apache-2.0.
 arboard = { version = "3.6", default-features = false }

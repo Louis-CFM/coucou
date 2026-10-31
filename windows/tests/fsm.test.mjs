@@ -58,19 +58,19 @@ test("the mouse wakes a hidden island, which stays while it is hovered", () => {
   assert.equal(fsm.state, "petit");
 });
 
-test("the compact island hides 60 s after the mouse leaves", () => {
+test("the compact island hides 10 s after the mouse leaves", () => {
   fsm.mouseEntered();
   fsm.mouseLeft();
-  seconds(59);
+  seconds(9);
   assert.equal(fsm.state, "petit");
   seconds(1);
   assert.equal(fsm.state, "hidden");
 });
 
-test("coming back before the 60 s are up cancels the hide", () => {
+test("coming back before the 10 s are up cancels the hide", () => {
   fsm.mouseEntered();
   fsm.mouseLeft();
-  seconds(59);
+  seconds(9);
   fsm.mouseEntered();
   seconds(600);
   assert.equal(fsm.state, "petit");
@@ -121,11 +121,44 @@ test("the collapse delay is the configured one", () => {
   assert.equal(fsm.state, "petit");
 });
 
-test("reveal shows the compact island from hidden and hides it again after 60 s", () => {
+test("reveal shows the compact island from hidden and hides it again after 10 s", () => {
   fsm.reveal();
   assert.equal(fsm.state, "petit");
-  seconds(60);
+  seconds(9);
+  assert.equal(fsm.state, "petit");
+  seconds(1);
   assert.equal(fsm.state, "hidden");
+});
+
+test("minimize hides the open island, and work events do not bring it back", () => {
+  fsm.forceHome();
+  fsm.minimize();
+  assert.equal(fsm.state, "hidden");
+  assert.equal(fsm.minimized, true);
+  fsm.reveal();
+  seconds(600);
+  assert.equal(fsm.state, "hidden");
+});
+
+test("the pointer at the top of the screen brings a minimized island back", () => {
+  fsm.forceHome();
+  fsm.minimize();
+  fsm.mouseEntered();
+  assert.equal(fsm.state, "petit");
+  assert.equal(fsm.minimized, false);
+  // Back to normal: once it hides again, work events reveal it as before.
+  fsm.mouseLeft();
+  seconds(10);
+  assert.equal(fsm.state, "hidden");
+  fsm.reveal();
+  assert.equal(fsm.state, "petit");
+});
+
+test("an alert still opens a minimized island", () => {
+  fsm.minimize();
+  fsm.forceHome();
+  assert.equal(fsm.state, "home");
+  assert.equal(fsm.minimized, false);
 });
 
 test("reveal leaves an island that is already showing alone", () => {

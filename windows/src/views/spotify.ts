@@ -85,6 +85,12 @@ export interface SpotifyPillHost {
   sync(): void;
 }
 
+/** A tooltip, written only when it changes (a rewrite on every sync makes the
+ * cursor flicker under a resting pointer). */
+function retitle(el: HTMLElement, text: string) {
+  if (el.title !== text) el.title = text;
+}
+
 /** MusicControlButton: a 20 px round button in the pill's colour. */
 function pillButton(color: string, icon: string, onClick: () => void): HTMLElement {
   const b = h("button", { class: "np-pill-btn" }, svg(icon, 8));
@@ -136,8 +142,8 @@ export function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPil
       clear(playBtn);
       playBtn.append(svg(s.playing ? ICONS.pause : ICONS.play, 8));
     }
-    playBtn.title = s.playing ? t("Pause") : t("Play");
-    nextBtn.title = t("Next");
+    retitle(playBtn, s.playing ? t("Pause") : t("Play"));
+    retitle(nextBtn, t("Next"));
   };
 
   pill.addEventListener("mouseenter", () => {
@@ -380,11 +386,11 @@ export function buildSpotifyCard(): SpotifyCardHost {
     paintProgress();
 
     shuffle.style.color = s.shuffle ? green : "#6B7079";
-    shuffle.title = s.shuffle ? t("Shuffle on") : t("Shuffle off");
+    retitle(shuffle, s.shuffle ? t("Shuffle on") : t("Shuffle off"));
     repeat.style.color = s.repeat ? green : "#6B7079";
-    repeat.title = s.repeat ? t("Repeat on") : t("Repeat off");
-    prev.title = t("Previous");
-    next.title = t("Next");
+    retitle(repeat, s.repeat ? t("Repeat on") : t("Repeat off"));
+    retitle(prev, t("Previous"));
+    retitle(next, t("Next"));
     if (playIcon !== s.playing) {
       playIcon = s.playing;
       clear(play);
@@ -392,7 +398,7 @@ export function buildSpotifyCard(): SpotifyCardHost {
       if (!s.playing) icon.style.transform = "translateX(1px)";
       play.append(icon);
     }
-    play.title = s.playing ? t("Pause") : t("Play");
+    retitle(play, s.playing ? t("Pause") : t("Play"));
 
     const level = volumeLevel(s.volume);
     if (level !== volIconLevel) {
