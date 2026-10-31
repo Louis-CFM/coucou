@@ -2952,6 +2952,15 @@ input[type="range"]::-webkit-slider-thumb {
   background: rgba(37, 211, 102, 0.16);
 }
 
+/* The hour under the text, small and dim, on the bubble's right like WhatsApp's. */
+.wa-time {
+  margin-top: 1px;
+  text-align: right;
+  font: 400 8.5px var(--font);
+  color: var(--dim-3);
+  font-variant-numeric: tabular-nums;
+}
+
 .wa-sender {
   font: 600 9px var(--font);
   color: rgba(37, 211, 102, 0.8);

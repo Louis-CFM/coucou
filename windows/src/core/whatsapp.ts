@@ -3,7 +3,7 @@
 // WhatsAppViews.swift (status labels, the time since). Rust only ever sends codes; the words are
 // chosen here, in the user's language. Nothing of a message is stored by the page either.
 
-import { N_, t } from "../i18n/i18n";
+import { N_, dayMonth, language, t } from "../i18n/i18n";
 
 export const WHATSAPP_ID = "integration_whatsapp";
 /** WhatsApp's own green: the pill keeps it whatever, like the brand. */
@@ -176,6 +176,14 @@ export function timeAgo(ms: number, now = Date.now()): string {
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
   return `${Math.floor(diff / 86400)}d`;
+}
+
+/** Under a message in the conversation, as WhatsApp writes it: the hour today, the day and the hour before. */
+export function messageTime(ms: number, now = Date.now()): string {
+  const when = new Date(ms);
+  const time = when.toLocaleTimeString(language(), { hour: "2-digit", minute: "2-digit" });
+  if (when.toDateString() === new Date(now).toDateString()) return time;
+  return `${dayMonth(when.getMonth(), when.getDate())} ${time}`;
 }
 
 /** WhatsAppStatus.label. */
