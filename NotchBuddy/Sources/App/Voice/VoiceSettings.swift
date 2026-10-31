@@ -77,6 +77,15 @@ enum VoiceSettings {
         return v == 0 ? fallback : min(1.6, max(0.8, v))
     }
 
+    /// Mac voice speed (Settings → Voice), as a multiple of the system's default rate.
+    /// The default keeps Coucou's usual pace, a little brisker than the Mac's. Range 0.7–1.5.
+    static let rateKey     = "voiceRate"
+    static let defaultRate = 1.1
+    static var rate: Double {
+        let v = UserDefaults.standard.double(forKey: rateKey)
+        return v == 0 ? defaultRate : min(1.5, max(0.7, v))
+    }
+
     /// Claude is Coucou's brain (the user's Anthropic API key): what I say after
     /// "OK Coucou" goes to Claude, which acts with Coucou's tools and searches the web.
     /// Off by default: my words leave the Mac only once this is turned on.
