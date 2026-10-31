@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Yandex Music pill** *(macOS, GitHub build)* — title and artist, a progress bar you drag to seek, play/pause and previous/next, read from the system's Now Playing (no permission, no account; no cover or volume), and Mochi dances while it plays
+- **Yandex Music pill** *(Windows)* — the same pill and card, cover included, read from the system media controls; the volume comes from the Windows mixer; **Open Yandex Music** goes through its `yandexmusic:` link, else **Get Yandex Music** opens its download page
+
 ## 0.5.8 — October 31, 2026
 
 Fixes by @Ohualtex.
