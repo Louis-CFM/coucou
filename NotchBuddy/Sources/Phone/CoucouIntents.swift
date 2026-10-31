@@ -2,12 +2,13 @@ import AppIntents
 import Foundation
 
 // Siri and the Shortcuts app: ask where your agents are, or send Claude the
-// next instruction. Sending needs the iPhone unlocked by its owner, like the
+// next instruction. App Store Connect refuses Apple product names such as "Mac" in
+// an intent's description (error 90626): keep them out of IntentDescription. Sending needs the iPhone unlocked by its owner, like the
 // instruction field in the app needs Face ID.
 
 struct AgentsStatusIntent: AppIntent {
     static let title: LocalizedStringResource = "Agent status"
-    static var description: IntentDescription { IntentDescription("What your agents are doing on your Mac.") }
+    static var description: IntentDescription { IntentDescription("What your coding agents are doing right now.") }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
@@ -25,7 +26,7 @@ struct AgentsStatusIntent: AppIntent {
 struct AskClaudeIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask Claude"
     static var description: IntentDescription {
-        IntentDescription("Sends the next instruction to your Claude Code session on your Mac.")
+        IntentDescription("Sends the next instruction to your Claude Code session.")
     }
     static var authenticationPolicy: IntentAuthenticationPolicy { .requiresAuthentication }
 
