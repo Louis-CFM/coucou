@@ -16,7 +16,7 @@ import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
-import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
+import { SeasonCache, outfitChange, parseOutfit, withMusic } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { dominantPct, planColor } from "../core/plan";
@@ -1191,16 +1191,20 @@ export class Island {
     const mainFocused = State.focusId == null || State.focusId === State.mainPillId;
     const showOutfit = mainFocused || State.mode !== "expanded" || inWardrobe;
     const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
-    this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
-    this.engine.setDancing(islandDances({
+    const dancing = islandDances({
       music: State.spotifyPlaying,
       state: State.effectiveState,
       mode: State.mode,
       view: State.view,
       focusId: State.focusTask?.id,
-    }));
+    });
+    // Dancing to music, he puts headphones on if asked — on the music card too.
+    const music = !inWardrobe && withMusic(outfit, dancing, State.settings.headphonesWithMusic) === "headphones";
+    const change = outfitChange(this.engine.outfit, music ? "headphones" : showOutfit ? outfit : "none", this.engine.dancingLevel);
+    this.engine.setOutfit(change.outfit, !inWardrobe && change.animated);
+    this.engine.setDancing(dancing);
 
     this.engine.update(dt);
     // Cleared in device pixels, the whole canvas. At a fractional scale (150 %)

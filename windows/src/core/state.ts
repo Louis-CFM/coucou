@@ -107,6 +107,8 @@ export interface Settings {
   alertsFromAllPills: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
+  /** Mochi puts on headphones while he dances to music (Spotify or Now Playing). */
+  headphonesWithMusic: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -179,6 +181,7 @@ export const DEFAULT_SETTINGS: Settings = {
   openOnHover: false,
   alertsFromAllPills: false,
   showClock: false,
+  headphonesWithMusic: false,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",

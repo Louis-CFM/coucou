@@ -938,6 +938,90 @@ function bunnyEars(ctx: Ctx, H: Head) {
   }
 }
 
+// ── Headphones (band over the top, a cup on each side) ────────────────────────
+
+/** Height of the cups' centre on the head (−1…1, y up). */
+const CUP_Y = 0.02;
+
+/** A cup's centre, its depth, and how much of its face turns to the viewer (0 = edge-on). */
+function headphoneCup(H: Head, sd: number): { x: number; y: number; z: number; face: number } {
+  const c = proj(H, [sd * ringR(CUP_Y) * 1.04, CUP_Y, 0]);
+  // The cup faces out along ±x: its face shows as much as that axis turns toward the viewer.
+  const n = proj(H, [sd * 2, CUP_Y, 0]);
+  const face = Math.min(1, Math.abs(n.z - c.z) * 1.6);
+  return { x: c.x, y: c.y, z: c.z, face };
+}
+
+function drawCup(ctx: Ctx, H: Head, cup: { x: number; y: number; face: number }, sd: number, simple: boolean) {
+  const R = H.R;
+  const h = R * 0.5;
+  const w = R * 0.17 + R * 0.24 * cup.face;
+  ctx.save();
+  ctx.translate(cup.x + sd * w * 0.2, cup.y);
+  roundRect(ctx, -w / 2, -h / 2, w, h, Math.min(w, h) * 0.45);
+  ctx.fillStyle = lin(ctx, 0, -h / 2, 0, h / 2, [[0, "#3A3D45"], [1, "#16171B"]]);
+  ctx.fill();
+  if (!simple && cup.face > 0.2) {
+    // The cushion's ring, in the accent colour, on the outer face.
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w * 0.3, h * 0.32, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(34,211,238,0.9)";
+    ctx.lineWidth = Math.max(0.8, R * 0.045);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.28, -h * 0.34);
+  ctx.quadraticCurveTo(0, -h * 0.44, w * 0.28, -h * 0.34);
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = Math.max(0.6, R * 0.03);
+  ctx.lineCap = "round";
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** The band: an arc over the top of the head, from cup to cup, a little off the surface. */
+function headphoneBand(ctx: Ctx, H: Head) {
+  const pts: Pt[] = [];
+  const n = 40;
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * Math.PI; // 0 = right cup, π = left cup
+    const ca = Math.cos(a);
+    const sa = Math.sin(a);
+    const e = 2 / EXP;
+    const x = Math.sign(ca) * Math.pow(Math.abs(ca), e) * 1.06;
+    const y = CUP_Y + (1.1 - CUP_Y) * Math.pow(sa, e);
+    const p = proj(H, [x, y, -0.05]);
+    pts.push({ x: p.x, y: p.y });
+  }
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#1E2026";
+  ctx.lineWidth = Math.max(1.4, H.R * 0.15);
+  polyline(ctx, pts);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = Math.max(0.6, H.R * 0.04);
+  polyline(ctx, pts.slice(8, n - 7));
+  ctx.stroke();
+}
+
+/** The cup that has turned away from the viewer, behind the head. */
+function headphonesBack(ctx: Ctx, H: Head, simple: boolean) {
+  for (const sd of [-1, 1]) {
+    const cup = headphoneCup(H, sd);
+    if (cup.z < -0.12) drawCup(ctx, H, cup, sd, simple);
+  }
+}
+
+/** The band and the cups the viewer sees. */
+function headphonesFront(ctx: Ctx, H: Head, simple: boolean) {
+  headphoneBand(ctx, H);
+  for (const sd of [-1, 1]) {
+    const cup = headphoneCup(H, sd);
+    if (cup.z >= -0.12) drawCup(ctx, H, cup, sd, simple);
+  }
+}
+
 // ── Layers and transitions ────────────────────────────────────────────────────
 
 let scratch: HTMLCanvasElement | null = null;
@@ -977,7 +1061,7 @@ function withLayer(ctx: Ctx, alpha: number, fn: (c: Ctx) => void) {
 
 /** Glasses, bow, scarf and pumpkin are on the face: behind the head once it has turned away. */
 const ON_FACE: ReadonlySet<Outfit> = new Set(["sunglasses", "roundGlasses", "bow", "scarf", "pumpkin"]);
-const HATS: ReadonlySet<Outfit> = new Set(["beanie", "santaHat", "partyHat", "crown", "witchHat"]);
+const HATS: ReadonlySet<Outfit> = new Set(["beanie", "santaHat", "partyHat", "crown", "witchHat", "headphones"]);
 
 export interface OutfitState {
   /** 0 = gone, 1 = fully on. Animated by the engine. */
@@ -1030,6 +1114,7 @@ export function drawOutfitBehind(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSt
     if (outfit === "bunnyEars") bunnyEars(l, H);
     else if (outfit === "crown") crownPart(l, H, -1, simple);
     else if (outfit === "witchHat") witchHatBack(l, H);
+    else if (outfit === "headphones") headphonesBack(l, H, simple);
   });
   ctx.restore();
 }
@@ -1065,6 +1150,7 @@ export function drawOutfitFront(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSta
       case "partyHat": partyHat(l, H, simple); break;
       case "crown": crownFront(l, H, body, simple); break;
       case "witchHat": witchHatFront(l, H, body); break;
+      case "headphones": headphonesFront(l, H, simple); break;
       default: drawFace(l, outfit, H, body, simple);
     }
   });

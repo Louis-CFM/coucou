@@ -7353,6 +7353,36 @@
       "tr": "Kompakt adada göster",
       "ko": "컴팩트 아일랜드에 표시",
       "ja": "コンパクトアイランドに表示"
+    },
+    "Headphones while music plays": {
+      "zh-Hans": "播放音乐时戴耳机",
+      "hi": "संगीत चलने पर हेडफ़ोन",
+      "es": "Auriculares mientras suena música",
+      "ar": "سماعات الرأس أثناء تشغيل الموسيقى",
+      "fr": "Casque quand la musique joue",
+      "bn": "গান চলার সময় হেডফোন",
+      "pt-BR": "Fones enquanto a música toca",
+      "ru": "Наушники во время музыки",
+      "id": "Headphone saat musik diputar",
+      "de": "Kopfhörer, wenn Musik läuft",
+      "tr": "Müzik çalarken kulaklık",
+      "ko": "음악이 나올 때 헤드폰",
+      "ja": "音楽の再生中はヘッドホン"
+    },
+    "Mochi puts on headphones while he dances to Spotify or Now Playing, then goes back to his outfit.": {
+      "zh-Hans": "Mochi 随 Spotify 或 Now Playing 跳舞时会戴上耳机，之后换回原来的装扮。",
+      "hi": "Spotify या Now Playing पर नाचते समय Mochi हेडफ़ोन पहनता है, फिर अपनी पोशाक में लौट आता है।",
+      "es": "Mochi se pone auriculares mientras baila con Spotify o Now Playing y luego vuelve a su atuendo.",
+      "ar": "يضع Mochi سماعات الرأس أثناء رقصه على Spotify أو Now Playing، ثم يعود إلى زيّه.",
+      "fr": "Mochi met un casque quand il danse sur Spotify ou Now Playing, puis reprend sa tenue.",
+      "bn": "Spotify বা Now Playing-এর সাথে নাচার সময় Mochi হেডফোন পরে, তারপর আবার নিজের পোশাকে ফেরে।",
+      "pt-BR": "O Mochi coloca fones enquanto dança com o Spotify ou o Now Playing e depois volta à roupa dele.",
+      "ru": "Mochi надевает наушники, когда танцует под Spotify или Now Playing, а потом возвращается к своему наряду.",
+      "id": "Mochi memakai headphone saat menari mengikuti Spotify atau Now Playing, lalu kembali ke pakaiannya.",
+      "de": "Mochi setzt Kopfhörer auf, während er zu Spotify oder Now Playing tanzt, und trägt danach wieder sein Outfit.",
+      "tr": "Mochi, Spotify veya Now Playing ile dans ederken kulaklık takar, sonra kıyafetine geri döner.",
+      "ko": "Mochi는 Spotify나 Now Playing에 맞춰 춤출 때 헤드폰을 쓰고, 끝나면 원래 옷차림으로 돌아갑니다.",
+      "ja": "Mochi は Spotify や Now Playing に合わせて踊るあいだヘッドホンをつけ、終わると元の衣装に戻ります。"
     }
   }
 }
