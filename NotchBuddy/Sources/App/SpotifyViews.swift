@@ -6,10 +6,10 @@ import AppKit
 
 struct SpotifyPill: View {
     let task: AgentTask
-    @Binding var swapping: Bool
+    let isHovered: Bool
+    let onHover: (Bool) -> Void
     let onTap: () -> Void
     @ObservedObject private var controller = SpotifyController.shared
-    @State private var isHovered = false
 
     private var showControls: Bool { isHovered && controller.track != nil }
 
@@ -73,10 +73,7 @@ struct SpotifyPill: View {
         .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
         .scaleEffect(isHovered ? 1.04 : 1.0)
         .brightness(isHovered ? 0.06 : 0)
-        .onHover { newHover in
-            guard !swapping else { return }
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
-        }
+        .onHover { onHover($0) }
     }
 }
 

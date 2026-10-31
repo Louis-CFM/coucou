@@ -97466,6 +97466,1106 @@
           }
         }
       }
+    },
+    "Default branch CI" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI للفرع الافتراضي"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডিফল্ট ব্রাঞ্চের CI"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI des Standard-Branches"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default branch CI"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI de la rama principal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI de la branche par défaut"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डिफ़ॉल्ट ब्रांच का CI"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI branch default"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デフォルトブランチの CI"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기본 브랜치 CI"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI da branch padrão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI основной ветки"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI ของ branch หลัก"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varsayılan dal CI"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认分支 CI"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設分支 CI"
+          }
+        }
+      }
+    },
+    "integrations.gcal.hint" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يملك Coucou خادمًا، لذا يسجّل الدخول باستخدام عميل OAuth الخاص بك: في Google Cloud، فعّل Google Calendar API، وأنشئ عميل OAuth من نوع تطبيق سطح المكتب، والصق معرّفه وسرّه هنا. ثم انشر شاشة الموافقة (قيد الإنتاج): سيحذّرك Google من أن التطبيق غير موثّق — إنه تطبيقك، تابع. إذا تركته في وضع الاختبار، فلن يتمكن من تسجيل الدخول إلا مستخدمو الاختبار المدرجون هناك، ويسجّل Google خروجهم كل 7 أيام. للقراءة فقط. يذكّرك Mochi في الأوقات التي تحددها تذكيرات Google لأحداثك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou-এর কোনো সার্ভার নেই, তাই এটি আপনার নিজের OAuth ক্লায়েন্ট দিয়ে সাইন ইন করে: Google Cloud-এ Google Calendar API চালু করুন, Desktop app ধরনের একটি OAuth ক্লায়েন্ট তৈরি করুন, এবং এর ID ও secret এখানে পেস্ট করুন। তারপর consent screen প্রকাশ করুন (In production): Google সতর্ক করবে যে অ্যাপটি যাচাই করা হয়নি — এটি আপনারই, চালিয়ে যান। Testing অবস্থায় রাখলে শুধু সেখানে তালিকাভুক্ত টেস্ট ব্যবহারকারীরা সাইন ইন করতে পারবেন, আর Google প্রতি 7 দিনে তাদের সাইন আউট করে দেয়। শুধু পড়ার জন্য। আপনার ইভেন্টগুলোর নিজস্ব Google রিমাইন্ডারের সময়েই Mochi আপনাকে মনে করিয়ে দেয়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou hat keinen Server und meldet sich deshalb mit deinem eigenen OAuth-Client an: Aktiviere in Google Cloud die Google Calendar API, erstelle einen OAuth-Client vom Typ Desktop-App und füge hier seine ID und sein Secret ein. Veröffentliche dann den Zustimmungsbildschirm (In Produktion): Google warnt, dass die App nicht überprüft ist – sie gehört dir, fahre fort. Bleibt er im Test, können sich nur die dort eingetragenen Testnutzer anmelden, und Google meldet sie alle 7 Tage ab. Nur Lesezugriff. Mochi erinnert dich zu den Zeiten, die die Google-Erinnerungen deiner Termine vorgeben."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou has no server, so it signs in with your own OAuth client: in Google Cloud, enable the Google Calendar API, create an OAuth client of type Desktop app, and paste its ID and secret here. Then publish the consent screen (In production): Google will warn that the app isn't verified — it's your own, continue. Left in Testing, only the test users listed there can sign in, and Google signs them out every 7 days. Read-only. Mochi reminds you at the times your events' own Google reminders say."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou no tiene servidor, así que inicia sesión con tu propio cliente OAuth: en Google Cloud, activa la API de Google Calendar, crea un cliente OAuth de tipo App de escritorio y pega aquí su ID y su secreto. Después publica la pantalla de consentimiento (En producción): Google avisará de que la app no está verificada; es la tuya, continúa. Si la dejas en Prueba, solo pueden iniciar sesión los usuarios de prueba que aparezcan allí, y Google cierra su sesión cada 7 días. Solo lectura. Mochi te avisa a las horas que marcan los propios recordatorios de Google de tus eventos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou n'a pas de serveur, il se connecte donc avec ton propre client OAuth : dans Google Cloud, active l'API Google Calendar, crée un client OAuth de type Application de bureau et colle ici son ID et son secret. Publie ensuite l'écran de consentement (En production) : Google préviendra que l'application n'est pas validée — c'est la tienne, continue. Laissé en Test, seuls les utilisateurs test listés peuvent se connecter, et Google les déconnecte tous les 7 jours. Lecture seule. Mochi te prévient aux heures fixées par les rappels Google de tes événements."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou का कोई सर्वर नहीं है, इसलिए यह आपके अपने OAuth क्लाइंट से साइन इन करता है: Google Cloud में Google Calendar API चालू करें, Desktop app प्रकार का OAuth क्लाइंट बनाएँ, और उसकी ID और secret यहाँ पेस्ट करें। फिर consent screen प्रकाशित करें (In production): Google चेतावनी देगा कि ऐप सत्यापित नहीं है — यह आपका अपना है, जारी रखें। Testing में छोड़ने पर केवल वहाँ सूचीबद्ध टेस्ट उपयोगकर्ता साइन इन कर सकते हैं, और Google उन्हें हर 7 दिन में साइन आउट कर देता है। केवल पढ़ने के लिए। Mochi आपको उन्हीं समयों पर याद दिलाता है जो आपके इवेंट्स के Google रिमाइंडर में तय हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou tidak punya server, jadi masuk dengan klien OAuth milik Anda sendiri: di Google Cloud, aktifkan Google Calendar API, buat klien OAuth berjenis Aplikasi desktop, lalu tempel ID dan rahasianya di sini. Kemudian publikasikan layar persetujuan (Dalam produksi): Google akan memperingatkan bahwa aplikasi belum diverifikasi — itu milik Anda, lanjutkan. Jika dibiarkan dalam Pengujian, hanya pengguna uji yang terdaftar di sana yang bisa masuk, dan Google mengeluarkan mereka setiap 7 hari. Hanya baca. Mochi mengingatkan Anda pada waktu yang ditentukan pengingat Google untuk acara Anda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou にはサーバーがないため、あなた自身の OAuth クライアントでサインインします。Google Cloud で Google Calendar API を有効にし、種類が「デスクトップアプリ」の OAuth クライアントを作成して、その ID とシークレットをここに貼り付けてください。次に同意画面を公開します（本番環境）。Google はアプリが未確認だと警告しますが、あなた自身のアプリなので続行してください。テストのままにすると、そこに登録したテストユーザーしかサインインできず、Google は 7 日ごとにサインアウトさせます。読み取り専用です。Mochi は予定ごとの Google のリマインダーと同じタイミングでお知らせします。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou에는 서버가 없어서 내 OAuth 클라이언트로 로그인해요. Google Cloud에서 Google Calendar API를 켜고, 데스크톱 앱 유형의 OAuth 클라이언트를 만든 뒤 ID와 보안 비밀을 여기에 붙여 넣으세요. 그다음 동의 화면을 게시하세요(프로덕션). Google이 확인되지 않은 앱이라고 경고하지만 내 앱이니 계속하면 돼요. 테스트 상태로 두면 거기 등록된 테스트 사용자만 로그인할 수 있고, Google이 7일마다 로그아웃시켜요. 읽기 전용이에요. 모찌는 일정에 설정된 Google 알림 시간에 맞춰 알려 줘요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Coucou não tem servidor, então ele entra com o seu próprio cliente OAuth: no Google Cloud, ative a API do Google Calendar, crie um cliente OAuth do tipo App para computador e cole aqui o ID e o segredo. Depois publique a tela de consentimento (Em produção): o Google vai avisar que o app não foi verificado — é o seu, continue. Se ficar em Teste, só os usuários de teste listados lá podem entrar, e o Google os desconecta a cada 7 dias. Somente leitura. O Mochi avisa você nos horários definidos pelos próprios lembretes do Google dos seus eventos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У Coucou нет сервера, поэтому вход выполняется через ваш собственный OAuth-клиент: в Google Cloud включите Google Calendar API, создайте OAuth-клиент типа «Приложение для компьютера» и вставьте сюда его ID и секрет. Затем опубликуйте экран согласия («В рабочем режиме»): Google предупредит, что приложение не проверено, — оно ваше, продолжайте. В режиме тестирования войти смогут только указанные там тестовые пользователи, и Google будет выводить их из аккаунта каждые 7 дней. Только чтение. Mochi напоминает о событиях в то время, которое задано в их собственных напоминаниях Google."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ไม่มีเซิร์ฟเวอร์ จึงลงชื่อเข้าใช้ด้วยไคลเอนต์ OAuth ของคุณเอง: ใน Google Cloud ให้เปิดใช้ Google Calendar API สร้างไคลเอนต์ OAuth ประเภทแอปเดสก์ท็อป แล้ววางรหัสและข้อมูลลับของไคลเอนต์ที่นี่ จากนั้นเผยแพร่หน้าจอขอความยินยอม (In production): Google จะเตือนว่าแอปยังไม่ได้รับการยืนยัน ซึ่งเป็นแอปของคุณเอง ให้ดำเนินการต่อ หากปล่อยไว้ในโหมด Testing จะมีเพียงผู้ใช้ทดสอบที่อยู่ในรายการเท่านั้นที่ลงชื่อเข้าใช้ได้ และ Google จะออกจากระบบทุก 7 วัน อ่านอย่างเดียว Mochi จะเตือนคุณตามเวลาที่ตั้งไว้ในการแจ้งเตือนของ Google สำหรับกิจกรรมของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou'nun sunucusu yok, bu yüzden kendi OAuth istemcinle oturum açar: Google Cloud'da Google Calendar API'yi etkinleştir, Masaüstü uygulaması türünde bir OAuth istemcisi oluştur ve kimliğini ve gizli anahtarını buraya yapıştır. Ardından izin ekranını yayınla (In production): Google uygulamanın doğrulanmadığı konusunda uyarır; uygulama senin, devam et. Test modunda bırakılırsa yalnızca orada listelenen test kullanıcıları oturum açabilir ve Google onların oturumunu 7 günde bir kapatır. Salt okunur. Mochi, etkinliklerinin kendi Google hatırlatıcılarının belirttiği zamanlarda sana hatırlatır."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 没有服务器，所以使用你自己的 OAuth 客户端登录：在 Google Cloud 中启用 Google Calendar API，创建一个“桌面应用”类型的 OAuth 客户端，并将其 ID 和密钥粘贴到这里。然后发布同意屏幕（正式版）：Google 会提示应用未经验证——这是你自己的应用，继续即可。如果保留在“测试”状态，只有其中列出的测试用户可以登录，而且 Google 每 7 天会让他们退出登录。只读。Mochi 会在你的活动自带的 Google 提醒时间提醒你。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 沒有伺服器，所以會使用你自己的 OAuth 用戶端登入：在 Google Cloud 中啟用 Google Calendar API，建立一個「桌面應用程式」類型的 OAuth 用戶端，並將其 ID 和密鑰貼到這裡。接著發布同意畫面（正式版）：Google 會提示應用程式未經驗證——這是你自己的應用程式，繼續即可。如果保留在「測試」狀態，只有列在其中的測試使用者可以登入，而且 Google 每 7 天會將他們登出。唯讀。Mochi 會在你活動自帶的 Google 提醒時間提醒你。"
+          }
+        }
+      }
+    },
+    "Client secret  (GOCSPX-…)" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "سرّ العميل  (GOCSPX-…)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ক্লায়েন্ট সিক্রেট  (GOCSPX-…)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client-Secret  (GOCSPX-…)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client secret  (GOCSPX-…)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secreto de cliente  (GOCSPX-…)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret client  (GOCSPX-…)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "क्लाइंट सीक्रेट  (GOCSPX-…)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rahasia klien  (GOCSPX-…)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クライアントシークレット  (GOCSPX-…)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "클라이언트 보안 비밀  (GOCSPX-…)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Segredo do cliente  (GOCSPX-…)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Секрет клиента  (GOCSPX-…)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อมูลลับไคลเอนต์  (GOCSPX-…)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İstemci gizli anahtarı  (GOCSPX-…)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "客户端密钥  (GOCSPX-…)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用戶端密鑰  (GOCSPX-…)"
+          }
+        }
+      }
+    },
+    "Nothing on the calendar this week" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا شيء في التقويم هذا الأسبوع"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এই সপ্তাহে ক্যালেন্ডারে কিছু নেই"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Woche steht nichts im Kalender"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing on the calendar this week"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada en el calendario esta semana"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien dans l'agenda cette semaine"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इस हफ़्ते कैलेंडर में कुछ नहीं"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tidak ada apa pun di kalender minggu ini"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今週の予定はありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이번 주에는 일정이 없어요"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada na agenda esta semana"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этой неделе в календаре ничего нет"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่มีอะไรในปฏิทินสัปดาห์นี้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu hafta takvimde bir şey yok"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本周日历上没有安排"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本週行事曆上沒有安排"
+          }
+        }
+      }
+    },
+    "Google account not connected" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حساب Google غير متصل"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google অ্যাকাউন্ট সংযুক্ত নয়"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google-Konto nicht verbunden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google account not connected"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuenta de Google no conectada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compte Google non connecté"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google खाता कनेक्ट नहीं है"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akun Google belum terhubung"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google アカウント未接続"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google 계정이 연결되지 않음"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conta do Google não conectada"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аккаунт Google не подключён"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยังไม่ได้เชื่อมต่อบัญชี Google"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google hesabı bağlı değil"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未连接 Google 账号"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未連接 Google 帳號"
+          }
+        }
+      }
+    },
+    "Google Cloud console" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "وحدة تحكم Google Cloud"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud কনসোল"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud Console"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud console"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Consola de Google Cloud"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Console Google Cloud"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud कंसोल"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konsol Google Cloud"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud コンソール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud 콘솔"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Console do Google Cloud"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Консоль Google Cloud"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คอนโซล Google Cloud"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud konsolu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud 控制台"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud 控制台"
+          }
+        }
+      }
+    },
+    "Disconnect" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "قطع الاتصال"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সংযোগ বিচ্ছিন্ন করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnect"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnecter"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डिस्कनेक्ट करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Putuskan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接続を解除"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결 해제"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отключить"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยกเลิกการเชื่อมต่อ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bağlantıyı kes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "断开连接"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中斷連線"
+          }
+        }
+      }
+    },
+    "integrations.github.ci-hint.appstore" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(تحتاج CI لفرع جلسة Claude Code إلى إصدار التنزيل المباشر: لا يمكن لبيئة App Store المعزولة قراءة مجلد .git في مشروعك.)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(আপনার Claude Code সেশনের ব্রাঞ্চের CI-এর জন্য সরাসরি ডাউনলোড সংস্করণ লাগবে: App Store-এর স্যান্ডবক্স আপনার প্রজেক্টের .git ফোল্ডার পড়তে পারে না।)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Die CI des Branches deiner Claude-Code-Sitzung braucht die Version zum direkten Download: Die App-Store-Sandbox kann den .git-Ordner deines Projekts nicht lesen.)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(The CI of your Claude Code session's branch needs the direct-download version: the App Store sandbox can't read your project's .git folder.)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(La CI de la rama de tu sesión de Claude Code necesita la versión de descarga directa: el sandbox de la App Store no puede leer la carpeta .git de tu proyecto.)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(La CI de la branche de ta session Claude Code demande la version en téléchargement direct : le bac à sable de l'App Store ne peut pas lire le dossier .git de ton projet.)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(आपके Claude Code सत्र की ब्रांच के CI के लिए सीधे डाउनलोड वाला संस्करण चाहिए: App Store का सैंडबॉक्स आपके प्रोजेक्ट का .git फ़ोल्डर नहीं पढ़ सकता।)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(CI untuk branch sesi Claude Code Anda memerlukan versi unduhan langsung: sandbox App Store tidak dapat membaca folder .git proyek Anda.)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Claude Code セッションのブランチの CI には直接ダウンロード版が必要です。App Store のサンドボックスはプロジェクトの .git フォルダを読み取れません。)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Claude Code 세션 브랜치의 CI는 직접 다운로드 버전에서만 볼 수 있어요. App Store 샌드박스는 프로젝트의 .git 폴더를 읽을 수 없어요.)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(A CI da branch da sua sessão do Claude Code precisa da versão de download direto: o sandbox da App Store não consegue ler a pasta .git do seu projeto.)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Для CI ветки вашей сессии Claude Code нужна версия для прямой загрузки: песочница App Store не может читать папку .git вашего проекта.)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(CI ของ branch ในเซสชัน Claude Code ต้องใช้เวอร์ชันดาวน์โหลดโดยตรง: แซนด์บ็อกซ์ของ App Store อ่านโฟลเดอร์ .git ของโปรเจกต์ไม่ได้)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Claude Code oturumunun dalının CI'ı için doğrudan indirilen sürüm gerekir: App Store korumalı alanı projenin .git klasörünü okuyamaz.)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（Claude Code 会话所在分支的 CI 需要直接下载版：App Store 沙盒无法读取项目的 .git 文件夹。）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（Claude Code 工作階段所在分支的 CI 需要直接下載版：App Store 沙盒無法讀取專案的 .git 資料夾。）"
+          }
+        }
+      }
+    },
+    "Client ID  (….apps.googleusercontent.com)" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "معرّف العميل  (….apps.googleusercontent.com)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ক্লায়েন্ট আইডি  (….apps.googleusercontent.com)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client-ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID de cliente  (….apps.googleusercontent.com)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID client  (….apps.googleusercontent.com)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "क्लाइंट ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID klien  (….apps.googleusercontent.com)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クライアント ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "클라이언트 ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID do cliente  (….apps.googleusercontent.com)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID клиента  (….apps.googleusercontent.com)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รหัสไคลเอนต์  (….apps.googleusercontent.com)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İstemci kimliği  (….apps.googleusercontent.com)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "客户端 ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用戶端 ID  (….apps.googleusercontent.com)"
+          }
+        }
+      }
+    },
+    "integrations.github.ci-hint" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يتبع سطر CI فرع آخر جلسة Claude Code لديك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI সারিটি আপনার শেষ Claude Code সেশনের ব্রাঞ্চ অনুসরণ করে।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die CI-Zeile folgt dem Branch deiner letzten Claude-Code-Sitzung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The CI row follows the branch of your last Claude Code session."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La fila de CI sigue la rama de tu última sesión de Claude Code."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La ligne CI suit la branche de ta dernière session Claude Code."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI पंक्ति आपके पिछले Claude Code सत्र की ब्रांच का अनुसरण करती है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baris CI mengikuti branch sesi Claude Code terakhir Anda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI の行は、最後の Claude Code セッションのブランチに従います。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI 행은 마지막 Claude Code 세션의 브랜치를 따라가요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A linha de CI segue a branch da sua última sessão do Claude Code."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка CI следует за веткой вашей последней сессии Claude Code."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แถว CI จะติดตาม branch ของเซสชัน Claude Code ล่าสุดของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI satırı, son Claude Code oturumunun dalını izler."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI 行跟随你最近一次 Claude Code 会话所在的分支。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI 列會跟隨你最近一次 Claude Code 工作階段所在的分支。"
+          }
+        }
+      }
+    },
+    "Join" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "انضمام"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "যোগ দিন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beitreten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unirse"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rejoindre"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जुड़ें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gabung"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "参加"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "참가"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключиться"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เข้าร่วม"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katıl"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
