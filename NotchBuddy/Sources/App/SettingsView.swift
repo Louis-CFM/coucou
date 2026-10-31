@@ -390,8 +390,7 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                #if !APPSTORE
-                // The notch or a corner of the screen (IslandPlacement).
+                // The notch or a corner of the screen (IslandPlacement), both builds.
                 Picker(String(localized: "island.position"), selection: $state.islandPlacement) {
                     Text("island.position.notch").tag(IslandPlacement.notch)
                     Divider()
@@ -405,7 +404,6 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                #endif
             }
             .padding(6)
             .onAppear { refreshConnectedScreens() }
@@ -519,6 +517,15 @@ struct SettingsView: View {
                 }
                 HStack(spacing: 8) {
                     Button(String(localized: "Restart Coucou")) {
+                        #if APPSTORE
+                        // Sandboxed: no helper process that outlives the app (guideline 2.4.5).
+                        // Launch a fresh copy through Launch Services, then quit once it is on its way.
+                        let config = NSWorkspace.OpenConfiguration()
+                        config.createsNewApplicationInstance = true
+                        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: config) { _, _ in
+                            DispatchQueue.main.async { NSApp.terminate(nil) }
+                        }
+                        #else
                         let appPath = Bundle.main.bundleURL.path
                         let pid = ProcessInfo.processInfo.processIdentifier
                         let task = Process()
@@ -526,6 +533,7 @@ struct SettingsView: View {
                         task.arguments = ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; open \"$1\"", "--", appPath]
                         try? task.run()
                         NSApp.terminate(nil)
+                        #endif
                     }
                     .buttonStyle(.bordered)
                     Text(String(localized: "Applies on next launch"))
@@ -1484,9 +1492,11 @@ struct SettingsView: View {
                 .onChange(of: cryptoExchange) { _, _ in CryptoController.shared.settingsChanged() }
                 .onChange(of: cryptoCurrency) { _, _ in CryptoController.shared.settingsChanged() }
 
-                // Portfolio: exchange accounts + wallets.
+                #if !APPSTORE
+                // Portfolio: exchange accounts + wallets (GitHub build, like its pill).
                 PortfolioSettingsSection()
                     .padding(.top, 4)
+                #endif
 
                 #if !APPSTORE
                 // WhatsApp through a local gateway: its own fields, saved by its own button.
@@ -1811,9 +1821,18 @@ struct SettingsView: View {
 
     private func installHooksAppStore() {
         guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
+        // Show the settings.json Coucou is about to write, as the GitHub build does.
+        let preview: String
+        do {
+            preview = try HookServer.shared.previewClaudeHooksAppStore(claudeURL: claudeURL)
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+            return
+        }
         let alert = NSAlert()
         alert.messageText = String(localized: "alert.hooks.title")
         alert.informativeText = String(localized: "alert.hooks.body")
+        alert.accessoryView = Self.hooksPreviewView(preview)
         alert.addButton(withTitle: String(localized: "alert.hooks.button-install"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         alert.alertStyle = .informational
@@ -1825,6 +1844,21 @@ struct SettingsView: View {
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
+    }
+
+    /// A read-only, scrollable copy of the settings.json to be written, for the alert.
+    private static func hooksPreviewView(_ json: String) -> NSView {
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        let text = NSTextView(frame: scroll.bounds)
+        text.isEditable = false
+        text.isSelectable = true
+        text.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
+        text.string = json
+        text.autoresizingMask = [.width]
+        scroll.documentView = text
+        return scroll
     }
 
     private func uninstallHooksAppStore() {

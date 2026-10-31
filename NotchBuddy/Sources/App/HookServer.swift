@@ -1591,6 +1591,14 @@ final class HookServer: @unchecked Sendable {
     /// either a PermissionRequest hook with timeout < 120s, or the AskUserQuestion
     /// PreToolUse matcher is missing (requires Claude Code 2.1.85+).
     static func hooksNeedUpdate() -> Bool {
+        #if APPSTORE
+        // Sandboxed: ~/.claude can't be read here (homeDirectoryForCurrentUser is the
+        // container). The relay script written at install carries the version it was
+        // written with: an older one (1.1 wrote none) misses plan approval, session titles
+        // and Claude Desktop routing, so Settings offers "Update hooks".
+        guard UserDefaults.standard.bool(forKey: "coucouHooksInstalled") else { return false }
+        return UserDefaults.standard.integer(forKey: appStoreHookVersionKey) < appStoreHookVersion
+        #else
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
         guard let data = try? Data(contentsOf: settingsURL),
@@ -1628,7 +1636,15 @@ final class HookServer: @unchecked Sendable {
             if !hasAskEntry { return true }
         }
         return false
+        #endif
     }
+
+    #if APPSTORE
+    /// Bump when nbHookPythonAppStore or the hooks written by buildHooksData change in a way
+    /// the installed copy must catch up with. 1.1 wrote no version (0); 2.0 is 2.
+    static let appStoreHookVersion = 2
+    static let appStoreHookVersionKey = "coucouAppStoreHookVersion"
+    #endif
 
     // MARK: - Claude Code settings.json hook installer
 
@@ -1872,6 +1888,14 @@ final class HookServer: @unchecked Sendable {
         let settingsURL = claudeURL.appendingPathComponent("settings.json")
         try ClaudeSettingsFile.write(data, to: settingsURL, expecting: original)
         UserDefaults.standard.set(true, forKey: "coucouHooksInstalled")
+        UserDefaults.standard.set(Self.appStoreHookVersion, forKey: Self.appStoreHookVersionKey)
+    }
+
+    /// The settings.json Coucou would write, to show before writing (CLAUDE.md: never
+    /// write ~/.claude/settings.json without showing the change first).
+    func previewClaudeHooksAppStore(claudeURL: URL) throws -> String {
+        let (data, _) = try buildHooksData(claudeURL: claudeURL)
+        return String(data: data, encoding: .utf8) ?? ""
     }
 
     func uninstallClaudeHooksAppStore(claudeURL: URL) throws {

@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Accelerate
 import AVFoundation
 import os
@@ -71,4 +70,3 @@ final class FlowAudioBands: @unchecked Sendable {
         lock.withLock { $0 = latest }
     }
 }
-#endif
