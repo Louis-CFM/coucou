@@ -718,9 +718,8 @@ final class IslandWindowController: NSWindowController {
             }
 
         case .jumpToTerminal:
-            #if !APPSTORE
+            // Bringing an app to the front works sandboxed too (App Store build).
             performJumpToTerminal()
-            #endif
 
         case .attachFrontWindow:
             #if !APPSTORE
@@ -862,7 +861,6 @@ final class IslandWindowController: NSWindowController {
 
     // MARK: - Terminal jump
 
-    #if !APPSTORE
     private func performJumpToTerminal() {
         guard state.focusTask != nil else {
             SoundEngine.shared.play("error")
@@ -878,6 +876,7 @@ final class IslandWindowController: NSWindowController {
         collapse(allowPendingApproval: true)
     }
 
+    #if !APPSTORE
     private func performAttachFrontWindow() {
         guard let app = state.lastExternalApp else {
             SoundEngine.shared.play("error"); return
@@ -1015,9 +1014,8 @@ final class IslandWindowController: NSWindowController {
                 self.attachDragStart = nil
                 self.state.stateOverride = nil
 
-                #if !APPSTORE
                 // Dropped near a corner of its screen (or back at the top centre): the island
-                // moves there.
+                // moves there (both builds).
                 if let here = NSScreen.screens.first(where: { $0.frame.contains(mouse) }),
                    here == Self.islandScreen(),
                    let target = IslandPlacement.snap(mouse, screen: here.frame),
@@ -1029,6 +1027,7 @@ final class IslandWindowController: NSWindowController {
                     return
                 }
 
+                #if !APPSTORE
                 let windowCtx = self.windowContextAtPoint(mouse)
                 let inNotchZone = self.window?.frame.contains(mouse) == true
 
@@ -1184,7 +1183,6 @@ final class IslandWindowController: NSWindowController {
         let dt = min(0.05, max(0.001, now - lastGhostTick))
         lastGhostTick = now
         var target = NSPoint(x: mouse.x - s/2, y: mouse.y - s/2)
-        #if !APPSTORE
         // Near a corner (or the top centre): the place shows, and the nearer the pointer gets,
         // the harder Mochi is pulled into it (a gradual magnet, no jump at the zone's edge).
         if let snap = snapTarget(at: mouse) {
@@ -1198,7 +1196,6 @@ final class IslandWindowController: NSWindowController {
         } else {
             showSnapTarget(nil)
         }
-        #endif
         // Eased towards the target, the same however fast the screen refreshes: he catches up
         // with the pointer in a few frames (no jump), then follows it closely.
         let k = CGFloat(1 - exp(-dt / 0.045))

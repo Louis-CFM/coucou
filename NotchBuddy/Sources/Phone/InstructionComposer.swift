@@ -24,7 +24,7 @@ struct InstructionComposer: View {
                 composer
                 status
             } else {
-                Label("To send instructions, enable iPhone instructions on your Mac. Codex also needs an idle conversation managed by Coucou.",
+                Label("This session doesn’t take instructions from your iPhone. If your Mac offers iPhone instructions, enable them in Settings. Codex also needs an idle conversation managed by Coucou (GitHub version on the Mac).",
                       systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)

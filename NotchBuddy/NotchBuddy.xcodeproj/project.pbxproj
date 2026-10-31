@@ -107,6 +107,7 @@
 		387C264EC24937E8DE1D1DA7 /* MailAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3354331F3796665541F42FF /* MailAgent.swift */; };
 		38EEB2D3A6EC538958D92575 /* GitHubPulse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3AD61802A32C4833F3EDA /* GitHubPulse.swift */; };
 		390486F7CDC01C1BCDBB27F9 /* VoiceActionRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2737EC4885ADB8FDDA1C610 /* VoiceActionRunner.swift */; };
+		3B3A4633E2967680B845E6B2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E2C10416B58B437F402ABCEB /* PrivacyInfo.xcprivacy */; };
 		3BAFCB273D4E578F6A3373BA /* IslandPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41B5FC38A89178D5CEF108B0 /* IslandPlacement.swift */; };
 		3C8CBC6F9B6B3AEC1AD6647C /* CryptoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B59DD402B4D54D4A7DD36AB2 /* CryptoViews.swift */; };
 		3CF69605BB03E567C2DB0935 /* MacDictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6544ED02D945CF9F00647AD1 /* MacDictation.swift */; };
@@ -173,6 +174,7 @@
 		63B87D9E49F228ADCEC4C293 /* WakeSpotter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1DE3225F5239394398E6B6 /* WakeSpotter.swift */; };
 		63F9F3AAC881D3EDDDD8AED9 /* UserIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A13AEE6E06F46CEC9D908C /* UserIdentity.swift */; };
 		640D3B3296748445A8F96F6D /* question.wav in Resources */ = {isa = PBXBuildFile; fileRef = A5DC0954D23B69B247578437 /* question.wav */; };
+		649E9AC6BFD5B33403C9FD20 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E2C10416B58B437F402ABCEB /* PrivacyInfo.xcprivacy */; };
 		64FE8055CCAD30B44FE398E7 /* VoiceAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87F39805C78722F614295B4 /* VoiceAudio.swift */; };
 		651FA3F09608DE5D02D61CCE /* BotCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */; };
 		654A8E7D8BA79AF90FA8B0DA /* QuestionPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C6993B34A0FFF8E3D454ADC /* QuestionPayload.swift */; };
@@ -213,6 +215,7 @@
 		74B4C23EEEADCD73D66CBA2E /* FlowLanguages.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB761EA15EABCD584DD012B /* FlowLanguages.swift */; };
 		74E97082F2241C36E5DD22EE /* MochiActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE18399D1CD69468CCF57966 /* MochiActivityState.swift */; };
 		75BE63D342A2AE68006F351C /* MacUpdate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4A343F2C25DBD9A401ECAD /* MacUpdate.swift */; };
+		75F76BB53E7AD9AFB7214D83 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 035AB385F9F874A767F36D9E /* PrivacyInfo.xcprivacy */; };
 		760E362FDF46869A0525D8C3 /* MochiMood.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE096F3D7C3CD989EEBA55C4 /* MochiMood.swift */; };
 		770F21C6A4D840AD3B0A9CB9 /* MochiLive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265262A422C270C1798F4A80 /* MochiLive.swift */; };
 		77E958DD799B59270163500E /* MailHubPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5E43B1ACC9C77D4A75A3A2 /* MailHubPages.swift */; };
@@ -323,6 +326,7 @@
 		ADB4EF797FBD6CC90F8D25D3 /* MochiActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323F242B14A61A7C071EC115 /* MochiActivityAttributes.swift */; };
 		ADBB9C15DDA4044625B325BE /* MochiOutfitDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84E5D91129352E8A1D32AA4 /* MochiOutfitDrawing.swift */; };
 		AFCA04C905C4E92BC480E4A2 /* VoiceQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AF6918593586EFF1989C6 /* VoiceQuery.swift */; };
+		B036EAEA0736AF38A8237D37 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E2C10416B58B437F402ABCEB /* PrivacyInfo.xcprivacy */; };
 		B09E884B33A35FA34543C64B /* IntentParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39753CFF90B494D449CCD95 /* IntentParser.swift */; };
 		B0CE5AC8B579866A14BD61D0 /* DemoEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF5BD66B00BB64BB80AF38C /* DemoEngine.swift */; };
 		B1FB8C566645AC0A2AB34B24 /* WhatsAppModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EADD0D8C37F00BF1877153D8 /* WhatsAppModels.swift */; };
@@ -517,6 +521,7 @@
 
 /* Begin PBXFileReference section */
 		011D05714C97CF5CAB32DCE7 /* AgentNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentNotifier.swift; sourceTree = "<group>"; };
+		035AB385F9F874A767F36D9E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0364C7995680F9FA9F85F905 /* PortfolioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioController.swift; sourceTree = "<group>"; };
 		0365DDE3C554F5E8570055F4 /* IslandTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandTypes.swift; sourceTree = "<group>"; };
 		045E7300878138F0AC385920 /* MochiStill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiStill.swift; sourceTree = "<group>"; };
@@ -721,6 +726,7 @@
 		DE18399D1CD69468CCF57966 /* MochiActivityState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiActivityState.swift; sourceTree = "<group>"; };
 		DE925A6844FE3E3C09131CE0 /* VoiceTranscriptHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceTranscriptHistory.swift; sourceTree = "<group>"; };
 		E18E74B3586BC0861C69E70A /* InstructionComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstructionComposer.swift; sourceTree = "<group>"; };
+		E2C10416B58B437F402ABCEB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		E4162B4B5D5776EC9FD0866F /* QuestionQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionQueue.swift; sourceTree = "<group>"; };
 		E6AAC67875F84A862BC2A9AF /* ServiceDetailRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceDetailRunner.swift; sourceTree = "<group>"; };
 		E84E5D91129352E8A1D32AA4 /* MochiOutfitDrawing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiOutfitDrawing.swift; sourceTree = "<group>"; };
@@ -775,6 +781,15 @@
 				A5DC0954D23B69B247578437 /* question.wav */,
 			);
 			path = sounds;
+			sourceTree = "<group>";
+		};
+		2A56D7DB3C9AFDC5CF5D4D28 /* Privacy */ = {
+			isa = PBXGroup;
+			children = (
+				826BA54DE5C0F4D30EB8E5F0 /* Mac */,
+				64E721D26AEA4412C614B357 /* Phone */,
+			);
+			path = Privacy;
 			sourceTree = "<group>";
 		};
 		2D4550630644796DA0649B81 /* App */ = {
@@ -929,6 +944,14 @@
 			path = Widgets;
 			sourceTree = "<group>";
 		};
+		64E721D26AEA4412C614B357 /* Phone */ = {
+			isa = PBXGroup;
+			children = (
+				E2C10416B58B437F402ABCEB /* PrivacyInfo.xcprivacy */,
+			);
+			path = Phone;
+			sourceTree = "<group>";
+		};
 		6CF11AAA7898712CF6DB364A /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -939,6 +962,14 @@
 				A14A61070D293AB4BBA303F7 /* NotchBuddy.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		826BA54DE5C0F4D30EB8E5F0 /* Mac */ = {
+			isa = PBXGroup;
+			children = (
+				035AB385F9F874A767F36D9E /* PrivacyInfo.xcprivacy */,
+			);
+			path = Mac;
 			sourceTree = "<group>";
 		};
 		9207F9B32D9C7844F5332A31 /* PhoneLink */ = {
@@ -995,6 +1026,7 @@
 				B2AA83D80260660475FAB052 /* Localizable.xcstrings */,
 				C066E2B991AA4F56B2724263 /* sounds */,
 				F98B78522A69505AF1519A91 /* whats-new.json */,
+				2A56D7DB3C9AFDC5CF5D4D28 /* Privacy */,
 				061D81F5DBAB8DB3ADFD0CB8 /* sounds */,
 			);
 			path = Resources;
@@ -1104,6 +1136,7 @@
 			buildConfigurationList = E24C031E9F3A787E693F616B /* Build configuration list for PBXNativeTarget "CoucouWidgets" */;
 			buildPhases = (
 				C69BB9E40CB3FDC60B8EF4C8 /* Sources */,
+				84710C750C2F9CE0166EE8B3 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1160,6 +1193,7 @@
 			buildConfigurationList = C8FE04C40E517AF7D8F28493 /* Build configuration list for PBXNativeTarget "CoucouNotificationContent" */;
 			buildPhases = (
 				1A0F9A73C6B7D5D95C868C56 /* Sources */,
+				1F81A9BCE2E6B2B9ACA30BB9 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1247,13 +1281,30 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		1F81A9BCE2E6B2B9ACA30BB9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B036EAEA0736AF38A8237D37 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4AFCA0709B0C077E65F471EB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				FBBC4CDE82B5886A83A27D7A /* Assets.xcassets in Resources */,
 				818E87607FD9F0CA5406BF35 /* Localizable.xcstrings in Resources */,
+				75F76BB53E7AD9AFB7214D83 /* PrivacyInfo.xcprivacy in Resources */,
 				B3EC9CF3C8BD629C3530E8F1 /* sounds in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		84710C750C2F9CE0166EE8B3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				649E9AC6BFD5B33403C9FD20 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1274,6 +1325,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F6CA56F362902839EF9A3E2E /* PhoneAssets.xcassets in Resources */,
+				3B3A4633E2967680B845E6B2 /* PrivacyInfo.xcprivacy in Resources */,
 				6DDBB5EDE6BEFD4225238C28 /* approval.wav in Resources */,
 				A7EEF05A08F6B95370712089 /* error.wav in Resources */,
 				134D136F3CF0B91AEBCA84EB /* finish.wav in Resources */,

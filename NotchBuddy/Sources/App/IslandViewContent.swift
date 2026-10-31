@@ -849,6 +849,11 @@ struct ErrorView: View {
                                 NotificationCenter.default.post(name: .islandCollapse, object: nil)
                             }
                         }
+                        #else
+                        PrimaryButton("Open terminal") {
+                            openSessionApp(task)
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
                         #endif
                     }
                     SecondaryButton("OK") {
@@ -863,6 +868,18 @@ struct ErrorView: View {
         }
     }
 }
+
+#if APPSTORE
+/// The app a session runs in (its terminal, or VS Code), else any known terminal.
+/// Only brings apps to the front, so the App Store build has it too.
+private func openSessionApp(_ task: AgentTask?) {
+    if !(task?.pill == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+       !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+    }
+}
+
+#endif
 
 /// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
 private let claudeDesktopBundleId = "com.anthropic.claudefordesktop"
@@ -906,6 +923,11 @@ struct FinishedView: View {
                             if state.view == .finished {
                                 NotificationCenter.default.post(name: .islandCollapse, object: nil)
                             }
+                        }
+                        #else
+                        PrimaryButton("Open terminal") {
+                            openSessionApp(state.focusTask)
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif
                     }
@@ -1548,7 +1570,6 @@ struct MailView: View {
 
 // MARK: - Prompt (chat)
 
-#if !APPSTORE
 /// The mic's right-click menu: Automatic (the user's languages) or one fixed language.
 private struct DictationLanguageMenu: View {
     @Bindable var dictation: MacDictation
@@ -1580,7 +1601,6 @@ private struct DictationLanguageMenu: View {
         return chosen == MacDictation.automatic || automatic.contains(chosen) ? automatic : automatic + [chosen]
     }
 }
-#endif
 
 struct PromptView: View {
     @ObservedObject var state: AppState
@@ -1588,9 +1608,7 @@ struct PromptView: View {
     @FocusState private var focused: Bool
     @State private var showModelPicker = false
 
-    #if !APPSTORE
     @State private var dictation = MacDictation()
-    #endif
     private var isChatStreaming: Bool {
         #if !APPSTORE
         if state.chatProvider == .codex { return state.codexChatBusy && CodexChatService.shared.isChatStreaming }
@@ -1695,7 +1713,6 @@ struct PromptView: View {
                         .writingToolsBehavior(.disabled)
                         .onSubmit { sendMessage() }
 
-                    #if !APPSTORE
                     // Dictate instead of typing (on-device speech recognition when available)
                     Button {
                         Task {
@@ -1715,7 +1732,6 @@ struct PromptView: View {
                     .onChange(of: dictation.transcript) { _, _ in
                         if dictation.isRecording { text = dictation.text }
                     }
-                    #endif
 
                     Button(action: sendMessage) {
                         Image(systemName: "arrow.up")
@@ -1800,7 +1816,6 @@ struct PromptView: View {
     #endif
 
     private func sendMessage() {
-        #if !APPSTORE
         // Still dictating: take the final words (and the right language) before sending.
         if dictation.isRecording {
             Task {
@@ -1809,7 +1824,6 @@ struct PromptView: View {
             }
             return
         }
-        #endif
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty, !state.codexChatBusy else { return }
         text = ""
@@ -5476,7 +5490,7 @@ struct SettingsIslandView: View {
         let ok: Bool?
         #if APPSTORE
         ok = task.id == "integration_claude"
-            ? UserDefaults.standard.bool(forKey: "coucouHooksInstalled") : nil
+            ? HookServer.claudeHooksInstalled() : nil
         #else
         switch task.id {
         case "integration_claude": ok = HookServer.claudeHooksInstalled()

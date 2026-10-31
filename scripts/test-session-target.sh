@@ -61,6 +61,7 @@ enum FixtureNotificationName { case islandCollapse }
                 "com.apple.Terminal": URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"),
                 "com.mitchellh.ghostty": URL(fileURLWithPath: "/Applications/Ghostty.app"),
                 "com.todesktop.230313mzl4w4u92": URL(fileURLWithPath: "/Applications/Cursor.app")]
+    @discardableResult func open(_ url: URL) -> Bool { opened = url; return true }
     var opened: URL?
     var project: URL?
     func urlForApplication(withBundleIdentifier id: String) -> URL? { apps[id] }
@@ -70,6 +71,17 @@ enum FixtureNotificationName { case islandCollapse }
     func open(_ urls: [URL], withApplicationAt url: URL, configuration: OpenConfiguration, completionHandler: (Any?, Error?) -> Void) {
         opened = url; project = urls.first; completionHandler(nil, nil)
     }
+}
+@MainActor enum TerminalTarget {
+    static var result = false
+    static var calls = 0
+    static var lastBundle: String?
+    static func activate(sessionBundleId: String?) -> Bool { calls += 1; lastBundle = sessionBundleId; return result }
+}
+extension ClaudeHost {
+    @MainActor static var result = false
+    @MainActor static var lastBundle: String?
+    @MainActor static func activate(_ bundleId: String?) -> Bool { lastBundle = bundleId; return result }
 }
 @main struct Check {
     @MainActor static func main() {
@@ -196,6 +208,23 @@ enum FixtureNotificationName { case islandCollapse }
         assert(HookServer.shared.requestId == pluginId && state.tasks[0].codexManaged
             && workspace.opened == workspace.apps["com.openai.chat"])
         HookServer.shared.onAsk = nil
+        let beforeStore = NotificationCenter.default.collapseCount
+        ClaudeHost.result = true
+        TerminalTarget.calls = 0
+        state.focusTask = AgentTask(id: "integration_claude", hostApp: "com.microsoft.VSCode")
+        finishStoreAction(state: state)
+        assert(ClaudeHost.lastBundle == "com.microsoft.VSCode" && TerminalTarget.calls == 0)
+        ClaudeHost.result = false
+        TerminalTarget.result = true
+        state.focusTask = AgentTask(id: "agent_cursor", sessionBundleId: "com.mitchellh.ghostty")
+        errors.openStoreAction()
+        assert(TerminalTarget.lastBundle == "com.mitchellh.ghostty")
+        TerminalTarget.result = false
+        state.focusTask = nil
+        finishStoreAction(state: state)
+        assert(workspace.opened == URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+        assert(NotificationCenter.default.collapseCount == beforeStore + 3)
+        print("PASS actual App Store completion/error actions: Claude host priority, observed terminal, fallback and collapse")
         print("PASS actual session target: source labels, old/renamed Codex, ChatGPT host fallback, IDE project, upstream Claude Desktop, managed Chat and unknown host")
         print("PASS actual completion/error actions: continue chat and unknown-source note stay open, external source collapses; errors identify Codex")
         print("PASS actual question source/reply action: plugin returns to captured Desktop with native/IDE pill owners, original tasks unchanged")
@@ -214,12 +243,20 @@ models = Path("NotchBuddy/Sources/CoucouKit/IslandTypes.swift").read_text()
 label = models.split("    var sessionOriginLabel: String {", 1)[1].split("    var finalLine:", 1)[0]
 Path(sys.argv[1]).with_name("OriginLabel.swift").write_text("extension AgentTask {\n    var sessionOriginLabel: String {" + label + "}\n")
 view = Path("NotchBuddy/Sources/App/IslandViewContent.swift").read_text().split("struct FinishedView: View {", 1)[1]
-action = view.split("PrimaryButton(SessionTarget.actionLabel(for: state.focusTask)) {", 1)[1].split("\n                        }\n                        #endif", 1)[0]
+action = view.split("PrimaryButton(SessionTarget.actionLabel(for: state.focusTask)) {", 1)[1].split("\n                        }", 1)[0]
 Path(sys.argv[1]).with_name("FinishAction.swift").write_text("@MainActor func finishAction(state: AppState) {" + action + "\n}\n")
 errors = Path("NotchBuddy/Sources/App/IslandViewContent.swift").read_text().split("struct ErrorView: View {", 1)[1].split("/// Brings the Claude desktop app forward", 1)[0]
 kind = errors.split("    private var kind: String {", 1)[1].split("\n    /// What went wrong", 1)[0]
-action = errors.split("PrimaryButton(SessionTarget.actionLabel(for: task)) {", 1)[1].split("\n                        }\n                        #endif", 1)[0]
+action = errors.split("PrimaryButton(SessionTarget.actionLabel(for: task)) {", 1)[1].split("\n                        }", 1)[0]
 Path(sys.argv[1]).with_name("ErrorSource.swift").write_text("@MainActor struct ErrorSourceFixture {\nlet state: AppState\nvar task: AgentTask? { state.focusTask }\nvar kind: String {" + kind + "\nfunc openAction() {" + action + "\n}\n}\n")
+store_marker = '                        #else\n                        PrimaryButton("Open terminal") {'
+store_finish = view.split(store_marker, 1)[1].split("\n                        }", 1)[0]
+store_error = errors.split(store_marker, 1)[1].split("\n                        }", 1)[0]
+helper_source = Path("NotchBuddy/Sources/App/IslandViewContent.swift").read_text()
+start = helper_source.index("private func openSessionApp(")
+end = helper_source.index("\n}\n", start) + 3
+helper = helper_source[start:end].replace("private func", "@MainActor func", 1)
+Path(sys.argv[1]).with_name("StoreAction.swift").write_text("import Foundation\n" + helper + "\n@MainActor func finishStoreAction(state: AppState) {" + store_finish + "\n}\nextension ErrorSourceFixture { func openStoreAction() {" + store_error + "\n}\n}\n")
 question = Path("NotchBuddy/Sources/App/IslandViewContent.swift").read_text().split("struct QuestionView: View {", 1)[1].split("// MARK: - Confused", 1)[0]
 helper = question.split("    private func questionSource(", 1)[1].split("    private func resetQuestionState()", 1)[0]
 reply = re.split(r"\n\s*}\n\s*\.buttonStyle", question.split('String(localized: "Reply in terminal")) {', 1)[1], maxsplit=1)[0]
@@ -233,7 +270,7 @@ scroll = question.split("                ScrollView {\n", 1)[1].split("\n       
 assert scroll.splitlines()[-1] == "                    .frame(maxWidth: .infinity, alignment: .leading)"
 print("PASS actual question layouts: description choices honor isOther before offering typed input")
 HOSTPY
-swiftc -parse-as-library NotchBuddy/Sources/App/SessionTarget.swift "$task_tmp/ClaudeHost.swift" "$task_tmp/OriginLabel.swift" "$task_tmp/FinishAction.swift" "$task_tmp/ErrorSource.swift" "$task_tmp/QuestionSource.swift" "$task_tmp/Check.swift" -o "$task_tmp/check"
+swiftc -parse-as-library NotchBuddy/Sources/App/SessionTarget.swift "$task_tmp/ClaudeHost.swift" "$task_tmp/OriginLabel.swift" "$task_tmp/FinishAction.swift" "$task_tmp/ErrorSource.swift" "$task_tmp/QuestionSource.swift" "$task_tmp/StoreAction.swift" "$task_tmp/Check.swift" -o "$task_tmp/check"
 "$task_tmp/check"
 
 # Compile the real Swift string literals, then exercise both relays without a socket or user configuration.

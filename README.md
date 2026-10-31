@@ -215,7 +215,7 @@ Nothing is written to disk during the demo — no Keychain entries, no hook file
 
 Coucou is coming to the **Mac App Store** and the **iPhone App Store**: one click to install, automatic updates, and the iPhone app pairs with your Mac through your iCloud account, with nothing to configure. The links will be here as soon as Apple publishes them.
 
-The App Store build of the Mac app runs in Apple's sandbox, so a few features stay in the GitHub build: Claude plan usage, the Apple Music pill and attaching the front window to the chat.
+The App Store build of the Mac app runs in Apple's sandbox, so some features stay in the GitHub build: agents other than Claude Code, Cursor and Claude Desktop (Codex, Gemini CLI, Antigravity, Copilot CLI…), Claude and Codex plan usage, the chat through your AI subscription, the Coucou window (Flow dictation, the Notetaker, settings search), « OK Coucou », Mail, WhatsApp, Apple Music, Spotify, the Portfolio pill, screen capture, attaching the front window to the chat, and updates from inside the app (the App Store updates it).
 
 ### iPhone
 
