@@ -40,7 +40,8 @@ struct AskClaudeIntent: AppIntent {
         guard !text.isEmpty else { return .result(dialog: "Nothing to send.") }
         // The Claude Code session that last moved and takes instructions.
         guard let session = link.sessions
-            .filter({ $0.acceptsInstructions && ($0.id == "integration_claude" || $0.id == "agent_cursor") })
+            .filter({ $0.acceptsInstructions && !$0.instructionTargetIdentity.isEmpty && !$0.id.contains("#q")
+                && ["integration_claude", "agent_cursor"].contains(PillCatalog.basePillId($0.id)) })
             .max(by: { $0.updatedAt < $1.updatedAt }) else {
             return .result(dialog: "No Claude Code session takes instructions. Turn it on in Coucou's Settings on your Mac.")
         }
@@ -67,7 +68,10 @@ struct AskCodexIntent: AppIntent {
         await link.refresh()
         let text = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return .result(dialog: "Nothing to send.") }
-        guard let session = link.sessions.first(where: { $0.id == "agent_codex" && $0.acceptsInstructions }) else {
+        guard let session = link.sessions
+            .filter({ PillCatalog.basePillId($0.id) == "agent_codex" && $0.acceptsInstructions
+                && !$0.instructionTargetIdentity.isEmpty && !$0.id.contains("#q") })
+            .max(by: { $0.updatedAt < $1.updatedAt }) else {
             return .result(dialog: "No idle Codex conversation takes instructions. Open Codex Chat in Coucou and enable iPhone instructions on your Mac.")
         }
         guard await link.sendInstruction(text, pillId: session.id, targetIdentity: session.instructionTargetIdentity) else {

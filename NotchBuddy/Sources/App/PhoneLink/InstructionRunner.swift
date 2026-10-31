@@ -113,12 +113,13 @@ final class InstructionRunner {
     static func targetIdentity(for task: AgentTask) -> String? {
         guard [.idle, .finished, .sleeping, .error, .ratelimit].contains(task.state),
               let sessionId = task.sessionId, let cwd = task.sessionCwd else { return nil }
-        if task.id == "agent_codex" {
+        let client = PillCatalog.basePillId(task.id)
+        if client == "agent_codex" {
             guard task.codexManaged, let thread = task.codexThreadId,
                   !CodexChatService.shared.isBusy, CodexChatService.shared.owns(threadId: thread) else { return nil }
             return SessionInstructionIdentity.make(pillId: task.id, sessionId: sessionId, threadId: thread, cwd: cwd, turnId: task.codexTurnId)
         }
-        guard task.id == "integration_claude" || task.id == "agent_cursor" else { return nil }
+        guard client == "integration_claude" || client == "agent_cursor" else { return nil }
         return SessionInstructionIdentity.make(pillId: task.id, sessionId: sessionId, threadId: nil, cwd: cwd)
     }
 
@@ -141,10 +142,16 @@ final class InstructionRunner {
             log("ignored: the session's folder is gone")
             return
         }
-        if pillId == "agent_codex", let threadId = task.codexThreadId {
+        if PillCatalog.basePillId(pillId) == "agent_codex", let threadId = task.codexThreadId {
             pendingCodex.insert(threadId)
             Task {
                 defer { pendingCodex.remove(threadId) }
+                guard Self.isEnabled, let current = AppState.shared.tasks.first(where: { $0.id == pillId }),
+                      SessionInstructionIdentity.accepts(identity, current: Self.targetIdentity(for: current),
+                                                         createdAt: createdAt, text: text, busy: false) else {
+                    log("ignored: instruction target changed before dispatch")
+                    return
+                }
                 do {
                     try await CodexChatService.shared.sendManagedInstruction(threadId: threadId, text: text, expectedCwd: cwd)
                     log("sent to the owned Codex thread")
@@ -173,7 +180,7 @@ final class InstructionRunner {
         env["PATH"] = [URL(fileURLWithPath: claude).deletingLastPathComponent().path, "/opt/homebrew/bin", "/usr/local/bin",
                        "/usr/bin", "/bin", "/usr/sbin", "/sbin", "\(home)/.local/bin", env["PATH"] ?? ""].joined(separator: ":")
         // The hooks route events by editor: keep them on the same pill.
-        if pillId == "agent_cursor" {
+        if PillCatalog.basePillId(pillId) == "agent_cursor" {
             env["__CFBundleIdentifier"] = "com.todesktop.230313mzl4w4u92"
         } else {
             env["TERM_PROGRAM"] = "vscode"

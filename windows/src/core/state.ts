@@ -126,6 +126,8 @@ export interface Settings {
   chatProvider: ProviderId;
   /** The model picked for each provider other than Anthropic, by provider id. */
   chatModels: Record<string, string>;
+  /** Settings → Chat → Your AI subscriptions: each provider's switch (cli_relay.rs). */
+  chatSubscriptions: Record<string, boolean>;
   /** Model server addresses once connected; empty means not connected. */
   ollamaUrl: string;
   lmstudioUrl: string;
@@ -186,6 +188,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showCodexPlanInNotch: false,
   chatProvider: "anthropic",
   chatModels: {},
+  chatSubscriptions: {},
   ollamaUrl: "",
   lmstudioUrl: "",
   customUrl: "",

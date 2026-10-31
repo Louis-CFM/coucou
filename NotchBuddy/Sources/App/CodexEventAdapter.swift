@@ -46,7 +46,7 @@ final class CodexEventAdapter {
             server.resolveCodexRequests()
             for threadId in Array(threads.keys) { unregisterThread(threadId) }
             completedItems.removeAll()
-            if let index = AppState.shared.tasks.firstIndex(where: { $0.id == "agent_codex" && $0.codexManaged }) {
+            if let index = AppState.shared.tasks.firstIndex(where: { $0.pill == "agent_codex" && $0.codexManaged }) {
                 AppState.shared.tasks[index].codexManaged = false
                 AppState.shared.tasks[index].state = .idle
             }
@@ -111,7 +111,7 @@ final class CodexEventAdapter {
             case "webSearch":
                 emit(done ? "PostToolUse" : "PreToolUse", threadId: threadId, params: params, turnId: turnId,
                      extra: ["tool_name": "WebSearch", "tool_input": ["query": (item["action"] as? [String: Any])?["query"] as? String ?? item["query"] as? String ?? ""]])
-                if !done { AppState.shared.updateTask(id: "agent_codex", state: .searching) }
+                if !done { server.updateCodexActivity(.searching, threadId: threadId, turnId: turnId) }
             case "collabAgentToolCall":
                 emit(done ? "SubagentStop" : "SubagentStart", threadId: threadId, params: params, turnId: turnId)
             case "agentMessage":
@@ -123,7 +123,7 @@ final class CodexEventAdapter {
                     turnPlan?.text = String(text.prefix(8000))
                     publishPlan(threadId: threadId, turnId: turnId)
                 }
-            case "reasoning": if !done { AppState.shared.updateTask(id: "agent_codex", state: .thinking) }
+            case "reasoning": if !done { server.updateCodexActivity(.thinking, threadId: threadId, turnId: turnId) }
             default: break
             }
         case "turn/plan/updated":
@@ -162,9 +162,16 @@ final class CodexEventAdapter {
         #endif
     }
 
+    /// A native session can become visible after its last plan event while another row was shown.
+    func refreshDisplay(threadId: String, turnId: String) {
+        guard turnPlan?.threadId == threadId, turnPlan?.turnId == turnId,
+              CodexChatService.shared.owns(threadId: threadId) else { return }
+        publishPlan(threadId: threadId, turnId: turnId)
+    }
+
     private func publishPlan(threadId: String, turnId: String) {
         guard AppState.shared.tasks.contains(where: {
-            $0.id == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId
+            $0.pill == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId
         }) else { return }
         AppState.shared.codexTurnPlan = turnPlan?.isEmpty == false ? turnPlan : nil
     }
@@ -174,9 +181,9 @@ final class CodexEventAdapter {
         let limited = String(data: data, encoding: .utf8)?.lowercased().contains("usagelimitexceeded") == true
         let state = AppState.shared
         guard let index = state.tasks.firstIndex(where: {
-            $0.id == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId
+            $0.pill == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId
         }) else { return }
-        state.updateTask(id: "agent_codex", state: limited ? .ratelimit : .error)
+        state.updateTask(id: state.tasks[index].id, state: limited ? .ratelimit : .error)
         let message = (error["message"] as? String).flatMap {
             $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0
         } ?? String(localized: "codex.turn-failed", defaultValue: "Codex could not complete this turn.")

@@ -224,6 +224,20 @@ final class AppState: ObservableObject {
             }
             return
         }
+        // Through the subscription: Claude Code takes the model aliases; the other tools
+        // use the model chosen in them.
+        if usesSubscription(provider) {
+            providerModelFetchError.removeValue(forKey: provider)
+            if provider == .anthropic {
+                var models = Self.claudeCodeModels
+                if !models.contains(where: { $0.id == claudeModel }) { models.insert((claudeModel, claudeModel), at: 0) }
+                fetchedProviderModels[provider] = models
+            } else {
+                let tool = (provider.installedCLI ?? provider.subscriptionCLIs.first)?.displayName ?? provider.displayName
+                fetchedProviderModels[provider] = [("", String(format: String(localized: "chat.subscriptions.default-model"), tool))]
+            }
+            return
+        }
         #endif
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
@@ -275,7 +289,7 @@ final class AppState: ObservableObject {
             case .deepseek:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.deepseek.com/v1", apiKey: apiKey)
             case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
             case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
-            case .codex, .ollama, .lmstudio: models = []  // handled above
+            case .codex, .ollama, .lmstudio, .cursor, .copilot: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -307,11 +321,16 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == moonshotChatModel }) {
                         moonshotChatModel = models.first!.id
                     }
-                case .codex, .ollama, .lmstudio: break
+                case .codex, .ollama, .lmstudio, .cursor, .copilot: break
                 }
             }
         }
     }
+
+    /// The models offered when Claude Code answers: its aliases always point at the latest.
+    static let claudeCodeModels: [(id: String, label: String)] = [
+        ("sonnet", "Claude Sonnet"), ("opus", "Claude Opus"), ("haiku", "Claude Haiku"),
+    ]
 
     /// The model currently active for chat (provider-aware).
     var activeChatModel: String {
@@ -325,6 +344,7 @@ final class AppState: ObservableObject {
         case .deepseek:  return deepseekChatModel
         case .qwen:      return qwenChatModel
         case .moonshot:  return moonshotChatModel
+        case .cursor, .copilot: return ""
         }
     }
 
@@ -473,6 +493,10 @@ final class AppState: ObservableObject {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
     }
 
+    /// Every AskUserQuestion waiting for an answer, oldest first: the first one is on the
+    /// card (`pendingQuestion`). Written by HookServer only; empty for a demo question.
+    @Published var waitingQuestions: [QueuedQuestion] = []
+
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
     var sessionDiffs: [String: [FileDiff]] = [:]
@@ -499,17 +523,20 @@ final class AppState: ObservableObject {
     @Published var codexTurnPlan: CodexTurnPlan? = nil
     private var codexDiffTurn = ""
     private var codexDiffIDs: Set<Int> = []
+    private var codexDiffPill = ""
 
     /// Replace only this native turn's entries; hooks and other turns retain their own IDs.
     @discardableResult
     func replaceCodexSessionDiffs(_ diffs: [FileDiff], threadId: String, turnId: String,
                                  moves: [String: String]) -> Bool {
         guard let index = tasks.firstIndex(where: {
-            $0.id == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId
+            $0.pill == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId
         }) else { return false }
         let identity = "\(threadId)/\(turnId)"
-        if codexDiffTurn != identity { codexDiffTurn = identity; codexDiffIDs = [] }
-        let old = sessionDiffs["agent_codex"] ?? []
+        if codexDiffTurn != identity { codexDiffTurn = identity; codexDiffIDs = []; codexDiffPill = "" }
+        let pill = tasks[index].id
+        moveCodexSessionDiffs(to: pill, threadId: threadId, turnId: turnId)
+        let old = sessionDiffs[pill] ?? []
         let owned = old.filter { codexDiffIDs.contains($0.id) }
         let replacedIDs = codexDiffIDs
         var next: [FileDiff] = []
@@ -522,7 +549,7 @@ final class AppState: ObservableObject {
             next.append(diff)
         }
         codexDiffIDs = Set(next.map(\.id))
-        sessionDiffs["agent_codex"] = Array((old.filter { !replacedIDs.contains($0.id) } + next).suffix(50))
+        sessionDiffs[pill] = Array((old.filter { !replacedIDs.contains($0.id) } + next).suffix(50))
         let retained = tasks[index].steps.filter { step in
             step.parseDiffStep().map { !replacedIDs.contains($0.diffId) } ?? true
         }
@@ -530,8 +557,27 @@ final class AppState: ObservableObject {
             String.makeDiffStep(filename: $0.name, added: $0.added, removed: $0.removed, diffId: $0.id)
         }).suffix(20))
         tasks[index].stepIndex = max(0, tasks[index].steps.count - 1)
-        resetSessionDiffTimer(for: "agent_codex")
+        resetSessionDiffTimer(for: pill)
         return true
+    }
+
+    /// A waiting native session can move between the client pill and its own row.
+    func moveCodexSessionDiffs(to pill: String, threadId: String, turnId: String) {
+        guard codexDiffTurn == "\(threadId)/\(turnId)", codexDiffPill != pill,
+              tasks.contains(where: { $0.id == pill && $0.pill == "agent_codex" && $0.codexManaged
+                  && $0.codexThreadId == threadId && $0.codexTurnId == turnId }) else { return }
+        let previousPill = codexDiffPill
+        codexDiffPill = pill
+        guard !previousPill.isEmpty else { return }
+        let owned = (sessionDiffs[previousPill] ?? []).filter { codexDiffIDs.contains($0.id) }
+        sessionDiffs[previousPill]?.removeAll { codexDiffIDs.contains($0.id) }
+        let existing = sessionDiffs[pill] ?? []
+        sessionDiffs[pill] = Array((existing.filter { !codexDiffIDs.contains($0.id) } + owned).suffix(50))
+        if let index = tasks.firstIndex(where: { $0.id == previousPill }) {
+            tasks[index].steps.removeAll { $0.parseDiffStep().map { codexDiffIDs.contains($0.diffId) } ?? false }
+            tasks[index].stepIndex = max(0, tasks[index].steps.count - 1)
+        }
+        resetSessionDiffTimer(for: pill)
     }
     #endif
 
@@ -540,7 +586,7 @@ final class AppState: ObservableObject {
         sessionDiffTimers.removeValue(forKey: pillId)
         sessionDiffs.removeValue(forKey: pillId)
         #if !APPSTORE
-        if pillId == "agent_codex" { codexDiffIDs = []; codexDiffTurn = "" }
+        if pillId == codexDiffPill { codexDiffIDs = []; codexDiffTurn = ""; codexDiffPill = "" }
         #endif
         // nextDiffId intentionally NOT reset — ids remain unique across sessions
     }
@@ -599,13 +645,17 @@ final class AppState: ObservableObject {
     }
     var codexPlanUsage: CodexPlanUsage? { CodexAgentsInfo.shared.currentPlanUsage }
     private static var lastCodexAttempt: Date = .distantPast
+    var codexDisplayTask: AgentTask? {
+        if let task = focusTask, task.pill == "agent_codex" { return task }
+        return tasks.first { $0.id == "agent_codex" }
+    }
 
     func refreshCodexPlanUsage() {
         if let usage = codexPlanUsage, Date().timeIntervalSince(usage.updatedAt) < 60 { return }
         guard Date().timeIntervalSince(Self.lastCodexAttempt) > 60 else { return }
         Self.lastCodexAttempt = Date()
         Task {
-            let task = tasks.first { $0.id == "agent_codex" }
+            let task = codexDisplayTask
             await CodexAgentsInfo.shared.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath, cwd: task?.sessionCwd)
         }
     }
@@ -680,6 +730,15 @@ final class AppState: ObservableObject {
 
     var focusTask: AgentTask? {
         tasks.first { $0.id == focusId } ?? tasks.first
+    }
+
+    /// The places beside the focused pill (4, SessionBoard.slots): the pills as they come, a
+    /// waiting one (a session popped out of its client's pill, or a pill waiting itself) in the
+    /// place of an idle or finished pill, and "+N" for the waiting ones left over.
+    var gridSlots: [SessionBoard.Slot] {
+        SessionBoard.slots(tasks.filter { $0.id != focusId }.map {
+            SessionBoard.Cell(id: $0.id, state: $0.state, poppedOut: $0.id != $0.pill)
+        })
     }
 
     var effectiveState: BotState {

@@ -527,7 +527,10 @@ bridge = source[start:end].replace("private static var", "static var")
 fixture = r"""
 import Foundation
 struct CodexPlanUsage { var updatedAt: Date; var percent: Int }
-struct AgentTask { var id: String; var codexThreadId: String?; var codexRolloutPath: String?; var sessionCwd: String? }
+struct AgentTask {
+    var id: String; var codexThreadId: String?; var codexRolloutPath: String?; var sessionCwd: String?
+    var pill: String { String(id.split(separator: "#", maxSplits: 1).first ?? "") }
+}
 @MainActor final class CodexAgentsInfo {
     static let shared = CodexAgentsInfo()
     var planUsage: CodexPlanUsage?
@@ -541,11 +544,18 @@ struct AgentTask { var id: String; var codexThreadId: String?; var codexRolloutP
 }
 @MainActor final class AppState {
     var tasks = [AgentTask(id: "agent_codex", codexThreadId: "selected", codexRolloutPath: "/fixture", sessionCwd: "/fixture-project")]
+    var focusTask: AgentTask?
 BRIDGE
 }
 @main enum PlanBridgeCheck {
     @MainActor static func main() async {
         let state = AppState(), info = CodexAgentsInfo.shared
+        let sibling = AgentTask(id: "agent_codex#2", codexThreadId: "sibling", codexRolloutPath: "/sibling", sessionCwd: "/sibling-project")
+        state.tasks.append(sibling)
+        assert(state.codexDisplayTask?.codexThreadId == "selected")
+        state.focusTask = sibling
+        assert(state.codexDisplayTask?.codexThreadId == "sibling")
+        state.focusTask = nil
         for _ in 0..<5 { state.refreshCodexPlanUsage() }
         for _ in 0..<100 where info.attempts == 0 { await Task.yield() }
         assert(info.attempts == 1, "Missing/failed Codex repeatedly fetched from card appearances")
@@ -580,12 +590,18 @@ end = source.index("        guard state.chatProvider == .anthropic else", start)
 route = source[start:end] + "    }\n"
 fixture = r"""
 import Foundation
-enum ChatProvider { case codex, anthropic }
+enum ChatProvider { case codex, anthropic, openai }
 enum BotState { case thinking }
 struct PromptContext {}
 @MainActor final class AppState {
     var chatProvider: ChatProvider = .codex
     var stateOverride: BotState?
+    var subscriptionEnabled = true
+    var subscriptionChecks = 0
+    func usesSubscription(_ provider: ChatProvider) -> Bool {
+        subscriptionChecks += 1
+        return subscriptionEnabled
+    }
 }
 @MainActor final class DemoEngine {
     static let shared = DemoEngine()
@@ -599,6 +615,12 @@ struct PromptContext {}
     func chat(query: String, context: PromptContext?, state: AppState) async { calls += 1 }
 }
 @MainActor final class ClaudeService {
+    var relayCalls = 0
+    var relayProvider: ChatProvider?
+    func chatThroughSubscription(_ provider: ChatProvider, query: String, context: PromptContext?, state: AppState) async {
+        relayCalls += 1
+        relayProvider = provider
+    }
 ROUTE
 }
 @main enum CodexRouteCheck {
@@ -609,12 +631,18 @@ ROUTE
         assert(DemoEngine.shared.replies == 1 && CodexChatService.shared.calls == 0 && state.stateOverride == nil)
         DemoEngine.shared.isActive = false
         await service.chat(query: "native", context: nil, state: state)
-        assert(CodexChatService.shared.calls == 1)
+        assert(CodexChatService.shared.calls == 1 && service.relayCalls == 0 && state.subscriptionChecks == 0)
+        state.chatProvider = .openai
+        await service.chat(query: "upstream ChatGPT subscription", context: nil, state: state)
+        assert(service.relayCalls == 1 && service.relayProvider == .openai && CodexChatService.shared.calls == 1)
+        state.subscriptionEnabled = false
+        await service.chat(query: "OpenAI API prefix", context: nil, state: state)
+        assert(service.relayCalls == 1 && CodexChatService.shared.calls == 1)
         DemoEngine.shared.isActive = true
         state.chatProvider = .anthropic
         await service.chat(query: "existing demo", context: nil, state: state)
         assert(DemoEngine.shared.replies == 2 && CodexChatService.shared.calls == 1)
-        print("PASS actual Demo-before-native routing; Codex demo never starts a native request")
+        print("PASS actual Demo-before-native routing, native Codex before relay, upstream OpenAI subscription retained")
     }
 }
 """
@@ -622,3 +650,100 @@ Path(sys.argv[1]).write_text(fixture.replace("ROUTE", route))
 PYROUTE
 swiftc -swift-version 6 -parse-as-library "$TEST_DIR/CodexRouteCheck.swift" -o "$TEST_DIR/codex-route-check"
 "$TEST_DIR/codex-route-check"
+
+# Execute actual relay success/error handling after provider and conversation changes.
+python3 - "$TEST_DIR/SubscriptionLifetimeCheck.swift" <<'PYRELAY'
+from pathlib import Path
+import sys
+source = Path("NotchBuddy/Sources/App/ClaudeService.swift").read_text()
+clear = source[source.index("    func clearConversation() {"):source.index("    /// Whether the chat can answer with Claude:")]
+start = source.index("    private func chatThroughSubscription(")
+end = source.index("    #endif", start)
+relay = source[start:end].replace("private func chatThroughSubscription", "func chatThroughSubscription")
+props = source[source.index("    private var relayHistory:"):start]
+fixture = r"""
+import Foundation
+enum ChatProvider { case anthropic, openai, codex
+    var installedCLI: SubscriptionCLI? { self == .anthropic ? .claude : .codex }
+    var subscriptionCLIs: [SubscriptionCLI] { [installedCLI!] }
+    var displayName: String { "Fixture provider" }
+}
+enum PromptContext { case window(String, String, String?), file(String, URL?) }
+enum BotState { case thinking }
+enum IslandView { case prompt }
+enum BotEmote { case happy }
+struct ChatMessage { enum Role { case assistant }; let role: Role; let content: String }
+extension Notification.Name { static let triggerEmote = Notification.Name("fixture.triggerEmote") }
+@MainActor final class AppState {
+    var chatProvider = ChatProvider.openai
+    var chatHistory: [ChatMessage] = []
+    var stateOverride: BotState?
+    var view = IslandView.prompt
+}
+@MainActor final class CodexChatService {
+    static let shared = CodexChatService()
+    func reset() {}
+}
+extension CLIRelay {
+    static func isolate(_ url: URL) throws -> URL { fatalError("Unexpected file read") }
+    static func inlineText(_ url: URL) -> String? { fatalError("Unexpected file read") }
+    @MainActor static var pending: CheckedContinuation<String, Error>?
+    @MainActor static func ask(_ cli: SubscriptionCLI, _ request: CLIRequest) async throws -> String {
+        try await withCheckedThrowingContinuation { pending = $0 }
+    }
+}
+@MainActor final class ClaudeService {
+    var conversationMessages: [[String: Any]] = []
+    var model = "fixture", systemPrompt = "fixture"
+    var errors: [String] = []
+    func showError(_ message: String, state: AppState) async { errors.append(message) }
+PROPS
+CLEAR
+RELAY
+}
+@main enum SubscriptionLifetimeCheck {
+    @MainActor static func started() async -> CheckedContinuation<String, Error> {
+        for _ in 0..<1000 {
+            if let value = CLIRelay.pending { CLIRelay.pending = nil; return value }
+            await Task.yield()
+        }
+        fatalError("Fixture relay did not start")
+    }
+    @MainActor static func main() async {
+        let service = ClaudeService(), state = AppState()
+        let normal = Task { await service.chatThroughSubscription(.openai, query: "first", context: nil, state: state) }
+        await started().resume(returning: "first reply")
+        await normal.value
+        assert(state.chatHistory.map(\.content) == ["first reply"] && service.errors.isEmpty)
+        service.clearConversation(); state.chatHistory = []
+        let switched = Task { await service.chatThroughSubscription(.openai, query: "old", context: nil, state: state) }
+        let switchedReply = await started()
+        state.chatProvider = .codex; service.clearConversation()
+        switchedReply.resume(returning: "stale relay success")
+        await switched.value
+        assert(state.chatHistory.isEmpty && service.errors.isEmpty)
+        state.chatProvider = .openai
+        let failed = Task { await service.chatThroughSubscription(.openai, query: "old error", context: nil, state: state) }
+        let failedReply = await started()
+        state.chatProvider = .codex; service.clearConversation()
+        failedReply.resume(throwing: CLIFailure.failed("stale relay error"))
+        await failed.value
+        assert(state.chatHistory.isEmpty && service.errors.isEmpty)
+        state.chatProvider = .openai
+        let reset = Task { await service.chatThroughSubscription(.openai, query: "old conversation", context: nil, state: state) }
+        let resetReply = await started(); service.clearConversation()
+        resetReply.resume(returning: "stale same-provider reply")
+        await reset.value
+        assert(state.chatHistory.isEmpty && service.errors.isEmpty)
+        let currentError = Task { await service.chatThroughSubscription(.openai, query: "current", context: nil, state: state) }
+        await started().resume(throwing: CLIFailure.failed("current relay error"))
+        await currentError.value
+        assert(service.errors == ["current relay error"] && state.chatHistory.isEmpty)
+        print("PASS actual subscription relay: current success/error, provider switch to native Codex, same-provider reset")
+    }
+}
+"""
+Path(sys.argv[1]).write_text(fixture.replace("PROPS", props).replace("CLEAR", clear).replace("RELAY", relay))
+PYRELAY
+swiftc -swift-version 6 -parse-as-library NotchBuddy/Sources/App/CLIRelay.swift "$TEST_DIR/SubscriptionLifetimeCheck.swift" -o "$TEST_DIR/subscription-lifetime-check"
+"$TEST_DIR/subscription-lifetime-check"

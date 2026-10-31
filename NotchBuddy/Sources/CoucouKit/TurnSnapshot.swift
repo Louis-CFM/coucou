@@ -8,7 +8,9 @@ enum SessionInstructionIdentity {
 
     static func make(pillId: String, sessionId: String, threadId: String?, cwd: String, turnId: String? = nil) -> String? {
         guard !pillId.isEmpty, !sessionId.isEmpty, sessionId != "unknown", cwd.hasPrefix("/") else { return nil }
-        guard pillId != "agent_codex" || !(threadId ?? "").isEmpty else { return nil }
+        let row = pillId.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)
+        guard row.count == 1 || (Int(row[1]) ?? 0) >= 2 else { return nil }
+        guard row[0] != "agent_codex" || !(threadId ?? "").isEmpty else { return nil }
         guard let data = try? JSONEncoder().encode([String(version), pillId, sessionId, threadId ?? "", cwd, turnId ?? ""]) else { return nil }
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }

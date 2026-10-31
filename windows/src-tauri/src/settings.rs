@@ -45,6 +45,10 @@ pub struct Settings {
     /// The model picked for each provider other than Anthropic (whose model is
     /// `model`), by provider id.
     pub chat_models: BTreeMap<String, String>,
+    /// Settings → Chat → Your AI subscriptions: the switch of each provider
+    /// that can answer through its own terminal tool (cli_relay.rs). A
+    /// provider not in it was never switched: see cli_relay::uses_subscription.
+    pub chat_subscriptions: BTreeMap<String, bool>,
     /// Addresses of the model servers once connected; empty means not connected.
     pub ollama_url: String,
     pub lmstudio_url: String,
@@ -148,6 +152,7 @@ impl Default for Settings {
             show_codex_plan_in_notch: false,
             chat_provider: crate::chat::ANTHROPIC.into(),
             chat_models: BTreeMap::new(),
+            chat_subscriptions: BTreeMap::new(),
             ollama_url: String::new(),
             lmstudio_url: String::new(),
             custom_url: String::new(),
@@ -446,6 +451,7 @@ mod tests {
   "showCodexPlanInNotch": true,
   "chatProvider": "ollama",
   "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
+  "chatSubscriptions": { "google": true, "anthropic": false },
   "ollamaUrl": "http://127.0.0.1:11434",
   "lmstudioUrl": "http://127.0.0.1:1234",
   "customUrl": "https://llm.example.com",
@@ -964,6 +970,7 @@ mod tests {
                 "showCodexPlanInNotch",
                 "chatProvider",
                 "chatModels",
+                "chatSubscriptions",
                 "ollamaUrl",
                 "lmstudioUrl",
                 "customUrl",

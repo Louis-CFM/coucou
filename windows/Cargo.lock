@@ -719,7 +719,7 @@ dependencies = [
 
 [[package]]
 name = "coucou"
-version = "0.5.3"
+version = "0.5.6"
 dependencies = [
  "arboard",
  "cpal",
@@ -755,7 +755,7 @@ dependencies = [
 
 [[package]]
 name = "coucou-hook"
-version = "0.5.3"
+version = "0.5.6"
 dependencies = [
  "libc",
  "serde_json",
@@ -4961,6 +4961,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

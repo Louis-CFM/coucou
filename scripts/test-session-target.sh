@@ -15,6 +15,7 @@ struct AgentTask {
     var sessionCwd: String?
     var hostApp: String?
     var source = AgentSource.agent
+    var pill: String { String(id.split(separator: "#", maxSplits: 1).first ?? "") }
 }
 enum ChatProvider { case codex }
 enum IslandView { case prompt, note, finished, error }
@@ -24,6 +25,11 @@ struct AskQuestion {
     var projectName: String?
     var requestId: String?
 }
+struct QueuedQuestion {
+    var id: UUID
+    var displayPill: String
+    var projectName: String
+}
 @MainActor final class AppState {
     static let shared = AppState()
     var chatProvider = ChatProvider.codex
@@ -31,12 +37,13 @@ struct AskQuestion {
     var noteMessage = ""
     var focusTask: AgentTask?
     var tasks: [AgentTask] = []
+    var waitingQuestions: [QueuedQuestion] = []
 }
 @MainActor final class HookServer {
     static let shared = HookServer()
     var onAsk: (() -> Void)?
-    var requestId: String?
-    func sendQuestionAsk(for id: String?) { requestId = id; onAsk?() }
+    var requestId: UUID?
+    func sendQuestionAsk(for id: UUID?) { requestId = id; onAsk?() }
 }
 enum FixtureNotificationName { case islandCollapse }
 @MainActor final class NotificationCenter {
@@ -81,11 +88,19 @@ enum FixtureNotificationName { case islandCollapse }
         assert(desktopTask.sessionOriginLabel == "Codex Desktop")
         SessionTarget.open(desktopTask)
         assert(workspace.opened == workspace.apps["com.openai.codex"] && workspace.project == nil)
+        let poppedDesktop = AgentTask(id: "agent_codex#2", sessionBundleId: "com.openai.codex")
+        assert(SessionTarget.actionLabel(for: poppedDesktop) == "Open Codex" && poppedDesktop.sessionOriginLabel == "Codex Desktop")
+        SessionTarget.open(poppedDesktop)
+        assert(workspace.opened == workspace.apps["com.openai.codex"])
         workspace.apps.removeValue(forKey: "com.openai.codex")
         SessionTarget.open(desktopTask)
         assert(workspace.opened == workspace.apps["com.openai.chat"] && workspace.project == nil)
         let chatGPTHost = AgentTask(id: "agent_codex", sessionBundleId: "com.openai.chat")
         assert(SessionTarget.actionLabel(for: chatGPTHost) == "Open Codex" && chatGPTHost.sessionOriginLabel == "Codex Desktop")
+        let poppedChatHost = AgentTask(id: "agent_codex#2", sessionBundleId: "com.openai.chat")
+        assert(SessionTarget.actionLabel(for: poppedChatHost) == "Open Codex" && poppedChatHost.sessionOriginLabel == "Codex Desktop")
+        SessionTarget.open(poppedDesktop)
+        assert(workspace.opened == workspace.apps["com.openai.chat"], "Popped Codex row lost its Desktop fallback")
         assert(AgentTask(id: "ai_openai", sessionBundleId: "com.openai.chat").sessionOriginLabel == "ChatGPT")
         assert(SessionTarget.actionLabel(for: AgentTask(id: "ai_openai", sessionBundleId: "com.openai.chat")) == "Open session source")
         workspace.opened = nil
@@ -134,6 +149,8 @@ enum FixtureNotificationName { case islandCollapse }
         let errors = ErrorSourceFixture(state: state)
         state.focusTask = AgentTask(id: "agent_codex", sessionBundleId: "com.openai.chat")
         assert(errors.kind == "Codex")
+        state.focusTask = AgentTask(id: "agent_codex#2", sessionBundleId: "com.openai.chat")
+        assert(errors.kind == "Codex", "Popped row lost its Codex error label")
         state.view = .error
         errors.openAction()
         assert(workspace.opened == workspace.apps["com.openai.chat"] && NotificationCenter.default.collapseCount == 2)
@@ -147,7 +164,8 @@ enum FixtureNotificationName { case islandCollapse }
             state.focusTask = AgentTask(source: source)
             assert(errors.kind == expected)
         }
-        let pluginQuestion = AskQuestion(pillId: "agent_codex", isCodexPlugin: true, projectName: "Plugin project", requestId: "plugin-request")
+        let pluginId = UUID()
+        let pluginQuestion = AskQuestion(pillId: "agent_codex", isCodexPlugin: true, projectName: "Plugin project", requestId: pluginId.uuidString)
         let nativeOwner = AgentTask(id: "agent_codex", name: "Native project", codexManaged: true)
         let ideOwner = AgentTask(id: "agent_codex", name: "IDE project", sessionBundleId: "com.microsoft.VSCode")
         let questionView = QuestionSourceFixture(state: state)
@@ -162,12 +180,20 @@ enum FixtureNotificationName { case islandCollapse }
         state.tasks = [nativeOwner]
         let nativeQuestion = AskQuestion(pillId: "agent_codex")
         assert(questionView.questionSource(for: nativeQuestion)!.codexManaged)
+        var poppedOwner = nativeOwner
+        poppedOwner.id = "agent_codex#2"
+        state.tasks = [ideOwner, poppedOwner]
+        state.waitingQuestions = [QueuedQuestion(id: pluginId, displayPill: poppedOwner.id, projectName: "Queued project")]
+        let poppedSource = questionView.questionSource(for: pluginQuestion)!
+        assert(poppedSource.id == poppedOwner.id && !poppedSource.codexManaged && poppedSource.sessionOriginLabel == "Codex Desktop")
+        assert(state.tasks[1].codexManaged, "Question source formatting changed the managed owner")
+        state.waitingQuestions = []
         workspace.apps["com.openai.chat"] = URL(fileURLWithPath: "/Applications/Renamed ChatGPT.app")
         workspace.opened = nil
         HookServer.shared.onAsk = { state.tasks = [nativeOwner] }
         state.tasks = [ideOwner]
         questionView.replyAction(q: pluginQuestion)
-        assert(HookServer.shared.requestId == "plugin-request" && state.tasks[0].codexManaged
+        assert(HookServer.shared.requestId == pluginId && state.tasks[0].codexManaged
             && workspace.opened == workspace.apps["com.openai.chat"])
         HookServer.shared.onAsk = nil
         print("PASS actual session target: source labels, old/renamed Codex, ChatGPT host fallback, IDE project, upstream Claude Desktop, managed Chat and unknown host")
@@ -197,7 +223,7 @@ Path(sys.argv[1]).with_name("ErrorSource.swift").write_text("@MainActor struct E
 question = Path("NotchBuddy/Sources/App/IslandViewContent.swift").read_text().split("struct QuestionView: View {", 1)[1].split("// MARK: - Confused", 1)[0]
 helper = question.split("    private func questionSource(", 1)[1].split("    private func resetQuestionState()", 1)[0]
 reply = re.split(r"\n\s*}\n\s*\.buttonStyle", question.split('String(localized: "Reply in terminal")) {', 1)[1], maxsplit=1)[0]
-Path(sys.argv[1]).with_name("QuestionSource.swift").write_text("@MainActor struct QuestionSourceFixture {\nlet state: AppState\nfunc questionSource(" + helper + "\nfunc replyAction(q: AskQuestion) {" + reply + "\n}\n}\n")
+Path(sys.argv[1]).with_name("QuestionSource.swift").write_text("import Foundation\n@MainActor struct QuestionSourceFixture {\nlet state: AppState\nfunc questionSource(" + helper + "\nfunc replyAction(q: AskQuestion) {" + reply + "\n}\n}\n")
 assert "AgentWho(task: questionSource(for: q)," in question
 descriptions = re.split(r"} else \{\s*ChipFlowLayout", question.split("} else if item.hasDescriptions {", 1)[1], maxsplit=1)[0]
 assert re.search(r'if item\.isOther \{\s*SecondaryButton\("Other…"\)', descriptions)

@@ -41,7 +41,7 @@ struct CodexQuotaRow: View {
 struct CodexAgentsUsageView: View {
     @ObservedObject private var info = CodexAgentsInfo.shared
     @ObservedObject private var state = AppState.shared
-    private var task: AgentTask? { state.tasks.first { $0.id == "agent_codex" } }
+    private var task: AgentTask? { state.codexDisplayTask }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {

@@ -143,6 +143,7 @@ import Foundation
 enum BotState { case idle, searching, thinking, working, finished, error, ratelimit }
 struct AgentTask {
     var id = "agent_codex"
+    var pill: String { String(id.split(separator: "#", maxSplits: 1)[0]) }
     var codexManaged = false
     var codexThreadId: String?
     var codexTurnId: String?
@@ -195,6 +196,10 @@ struct AgentTask {
     }
     func receiveCodexRequest(method: String, params: [String: Any], id: Any) { requests.append(method) }
     func resolveCodexRequests(threadId: String? = nil, requestId: Any? = nil) { resolutions += 1 }
+    func updateCodexActivity(_ activity: BotState, threadId: String, turnId: String) {
+        guard let index = AppState.shared.tasks.firstIndex(where: { $0.pill == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId }) else { return }
+        AppState.shared.tasks[index].state = activity
+    }
     func reconcileCodexDiffs(_ diffs: [FileDiff], threadId: String, turnId: String, moves: [String: String]) {
         guard AppState.shared.tasks.contains(where: { $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId }) else { return }
         files = diffs; snapshots += 1
@@ -217,6 +222,7 @@ struct AgentTask {
         let adapter = CodexEventAdapter.shared
         let connection = CodexConnection.shared
         let server = HookServer.shared
+        AppState.shared.tasks[0].id = "agent_codex#2"
         adapter.start(); adapter.start()
         assert(connection.observers.count == 1)
         adapter.registerThread(["id": "external", "sessionId": "root", "cwd": "/wrong"])
@@ -244,6 +250,10 @@ struct AgentTask {
         assert(AppState.shared.codexTurnPlan?.steps.count == 3)
         connection.emit("turn/plan/updated", ["threadId": "child", "turnId": "t1", "plan": [["step": "Unknown", "status": "future"]]])
         assert(AppState.shared.codexTurnPlan?.steps.count == 3, "Unknown plan status replaced known state")
+        connection.emit("item/started", ["threadId": "child", "turnId": "t1", "item": ["id": "search", "type": "webSearch"]])
+        assert(AppState.shared.tasks[0].state == .searching, "Search did not follow the popped native row")
+        connection.emit("item/started", ["threadId": "child", "turnId": "t1", "item": ["id": "think", "type": "reasoning"]])
+        assert(AppState.shared.tasks[0].state == .thinking, "Reasoning did not follow the popped native row")
         let aggregate = "diff --git a/aggregate.swift b/aggregate.swift\n--- a/aggregate.swift\n+++ b/aggregate.swift\n@@ -1 +1 @@\n-old\n+new\n"
         connection.emit("turn/diff/updated", ["threadId": "child", "turnId": "t1", "diff": aggregate])
         assert(server.files.count == 1 && server.files[0].path == "/chosen/aggregate.swift" && server.files[0].added == 1)

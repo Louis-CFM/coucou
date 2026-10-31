@@ -837,7 +837,7 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        if state.focusTask?.id == "agent_codex" || state.focusTask?.codexManaged == true {
+        if state.focusTask?.pill == "agent_codex" || state.focusTask?.codexManaged == true {
             SessionTarget.open(state.focusTask)
         } else if !TerminalTarget.activate(sessionBundleId: state.focusTask?.sessionBundleId) {
             NSWorkspace.shared.open(

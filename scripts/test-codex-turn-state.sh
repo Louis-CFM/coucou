@@ -16,12 +16,14 @@ start = recap.index('    func userPromptSubmit(')
 end = recap.index('    /// Called when the user sends answers', start)
 recording = recap[start:end]
 hooks = Path('NotchBuddy/Sources/App/HookServer.swift').read_text()
-start = hooks.index('    @MainActor\n    func reconcileCodexDiffs(')
+start = hooks.index('    @MainActor\n    func updateCodexActivity(')
 end = hooks.index('    #endif', start)
 reconcile = hooks[start:end]
 Path(sys.argv[1]).write_text('''import Foundation
+enum BotState: String, Sendable { case idle, working, thinking, searching, approval, question, error, finished, ratelimit, sleeping, dizzy }
 struct AgentTask {
     var id = "agent_codex"
+    var pill: String { String(id.split(separator: "#", maxSplits: 1)[0]) }
     var codexManaged = true
     var codexThreadId: String? = "thread"
     var codexTurnId: String? = "turn"
@@ -45,9 +47,19 @@ struct AgentTask {
     func pruneStale() {}
 ''' + recording + '''
 }
+@MainActor final class CodexChatService {
+    static let shared = CodexChatService()
+    var turnId: String? = "turn"
+    func owns(threadId: String) -> Bool { threadId == "thread" }
+}
 @MainActor final class HookServer {
     static let shared = HookServer()
-''' + reconcile + '''
+    var board = SessionBoard()
+    var sessions = PillSessionRegistry()
+    var synced: [String] = []
+    func syncPill(_ pill: String) { synced.append(pill) }
+    var codexDiffSnapshot: (thread: String, turn: String, files: [FileDiff], moves: [String: String])?
+''' + reconcile.replace('private func', 'func') + '''
 }
 ''')
 PY
@@ -117,6 +129,53 @@ cat >> "$task_tmp/TurnStateCheck.swift" <<'SWIFT'
         var destination = original; destination.path = "/project/new.swift"
         assert(renamedApp.replaceCodexSessionDiffs([destination], threadId: "thread", turnId: "turn", moves: [original.path: destination.path]))
         assert(renamedApp.sessionDiffs["agent_codex"]!.count == 1 && renamedApp.sessionDiffs["agent_codex"]![0].id == originalID, "Rename invalidated a file's selected diff ID")
+        let panes = AppState()
+        let outside = panes.appendSessionDiff(sibling, for: "agent_codex")
+        assert(panes.replaceCodexSessionDiffs([original], threadId: "thread", turnId: "turn", moves: [:]))
+        let stableNative = panes.sessionDiffs["agent_codex"]!.last!.id
+        var popped = panes.tasks[0]; popped.id = "agent_codex#2"
+        panes.tasks[0].codexManaged = false
+        panes.tasks[0].steps = ["External sibling"]
+        panes.tasks.append(popped)
+        panes.moveCodexSessionDiffs(to: popped.id, threadId: "thread", turnId: "wrong")
+        assert(panes.sessionDiffs[popped.id] == nil, "Wrong turn moved native files")
+        panes.moveCodexSessionDiffs(to: popped.id, threadId: "thread", turnId: "turn")
+        assert(panes.sessionDiffs["agent_codex"]!.map(\.id) == [outside])
+        assert(panes.sessionDiffs[popped.id]!.map(\.id) == [stableNative])
+        assert(panes.tasks[0].steps == ["External sibling"], "Native pop-out overwrote external steps")
+        assert(panes.replaceCodexSessionDiffs([destination], threadId: "thread", turnId: "turn", moves: [original.path: destination.path]))
+        assert(panes.sessionDiffs[popped.id]![0].id == stableNative)
+        panes.tasks[0].codexManaged = true
+        panes.tasks.removeLast()
+        panes.moveCodexSessionDiffs(to: "agent_codex", threadId: "thread", turnId: "turn")
+        assert(panes.sessionDiffs[popped.id]!.isEmpty)
+        assert(panes.sessionDiffs["agent_codex"]!.map(\.id) == [outside, stableNative], "Fold duplicated or dropped owned files")
+        app.tasks[0].codexManaged = false
+        let externalBefore = app.sessionDiffs["agent_codex"]
+        server.reconcileCodexDiffs([original], threadId: "hidden-native", turnId: "hidden-turn", moves: [:])
+        assert(app.sessionDiffs["agent_codex"] == externalBefore)
+        var revealed = AgentTask(); revealed.id = "agent_codex#3"
+        revealed.codexThreadId = "hidden-native"; revealed.codexTurnId = "hidden-turn"
+        app.tasks.append(revealed)
+        server.projectCodexDiffs(threadId: "hidden-native", turnId: "wrong")
+        assert(app.sessionDiffs[revealed.id] == nil)
+        server.projectCodexDiffs(threadId: "hidden-native", turnId: "hidden-turn")
+        assert(app.sessionDiffs[revealed.id]?.first?.path == original.path, "Hidden native snapshot did not reach its own revealed row")
+        assert(app.sessionDiffs["agent_codex"] == externalBefore, "Deferred native snapshot leaked into external row")
+        let now = Date()
+        server.sessions.note(pill: "agent_codex", display: .init(session: "thread", projectName: "Native", cwd: "/project", codexThreadId: "thread", codexTurnId: "turn", codexManaged: true), working: true)
+        server.board.update(pill: "agent_codex", session: "thread", rawSession: "thread", title: "Native", now: now)
+        server.board.update(pill: "agent_codex", session: "outside", rawSession: "outside", title: "External", now: now) { $0.state = .working }
+        server.updateCodexActivity(.searching, threadId: "thread", turnId: "turn")
+        assert(server.board.session(pill: "agent_codex", session: "thread")?.state == .searching)
+        assert(server.board.session(pill: "agent_codex", session: "outside")?.state == .working, "Native activity changed an external sibling")
+        let synchronized = server.synced.count
+        server.updateCodexActivity(.thinking, threadId: "thread", turnId: "old-turn")
+        server.updateCodexActivity(.thinking, threadId: "outside", turnId: "turn")
+        assert(server.synced.count == synchronized, "Stale activity reached the board")
+        server.sessions.note(pill: "agent_codex", display: .init(session: "thread", projectName: "External", cwd: "/other"), working: true)
+        server.updateCodexActivity(.thinking, threadId: "thread", turnId: "turn")
+        assert(server.synced.count == synchronized, "Native activity changed an external display owner")
         var moved = CodexTurnDiffState()
         _ = moved.recordItem([change("old.swift", 1)], cwd: "/project")
         _ = moved.recordItem([["path": "old.swift", "kind": ["type": "update", "move_path": "new.swift"], "diff": ""]], cwd: "/project")
@@ -195,5 +254,5 @@ cat >> "$task_tmp/TurnStateCheck.swift" <<'SWIFT'
 }
 SWIFT
 swiftc -swift-version 6 -parse-as-library NotchBuddy/Sources/CoucouKit/DiffEngine.swift \
-    NotchBuddy/Sources/App/CodexTurnState.swift "$task_tmp/TurnStateCheck.swift" -o "$task_tmp/check"
+    NotchBuddy/Sources/App/CodexTurnState.swift NotchBuddy/Sources/App/SessionBoard.swift NotchBuddy/Sources/App/PillSessionRegistry.swift "$task_tmp/TurnStateCheck.swift" -o "$task_tmp/check"
 "$task_tmp/check"

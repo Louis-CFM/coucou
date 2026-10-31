@@ -43,6 +43,9 @@ struct SettingsView: View {
     @AppStorage("codexTextToolsEnabled") private var codexTextEnabled = false
     @State private var codexTextPreparing = false
     @State private var codexTextError: String?
+    /// Bumped when a subscription tool is found or a switch moves: redraws Settings → Chat.
+    @State private var cliScan = 0
+
     @State private var showStatusLineDiff: Bool = false
     @State private var pendingStatusLineJSON: String = ""
     @State private var statusLinePendingInstall: Bool = true
@@ -489,6 +492,8 @@ struct SettingsView: View {
                     Text("Deutsch").tag("de")
                     Text("Türkçe").tag("tr")
                     Text("ไทย").tag("th")
+                    Text("한국어").tag("ko")
+                    Text("日本語").tag("ja")
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
@@ -791,7 +796,7 @@ struct SettingsView: View {
                 Text(String(localized: "codex.vscode.version-note"))
                     .font(.system(size: 11)).foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                if let task = state.tasks.first(where: { $0.id == "agent_codex" }) {
+                if let task = state.codexDisplayTask {
                     Text(String(format: String(localized: "codex.session.source %@"), task.sessionOriginLabel))
                         .font(.system(size: 11)).foregroundColor(.secondary)
                     if let cwd = task.sessionCwd {
@@ -1116,6 +1121,54 @@ struct SettingsView: View {
 
     // MARK: - Chat section
 
+    #if !APPSTORE
+    /// One provider under "Your AI subscriptions": its switch, and whether its tool is there.
+    @ViewBuilder private func subscriptionRow(_ provider: ChatProvider) -> some View {
+        let installed = provider.installedCLI
+        let tool = installed ?? provider.subscriptionCLIs[0]
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Circle().fill(Color(hex: provider.accentHex)).frame(width: 8, height: 8)
+                Text(provider.subscriptionName).font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Toggle(String(localized: "chat.subscriptions.use"), isOn: Binding(
+                    get: { state.usesSubscription(provider) },
+                    set: { on in
+                        state.setUsesSubscription(on, for: provider)
+                        cliScan += 1
+                    }))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
+            if let installed {
+                Text(String(format: String(localized: "chat.subscriptions.found"), installed.displayName))
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#22C55E"))
+                Text(String(format: String(localized: "chat.subscriptions.sign-in"), installed.signIn))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .textSelection(.enabled)
+            } else {
+                HStack(spacing: 6) {
+                    Text(String(format: String(localized: "chat.subscriptions.missing"), tool.displayName))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Button(String(localized: "chat.subscriptions.install")) {
+                        if let url = URL(string: tool.installURL) { NSWorkspace.shared.open(url) }
+                    }
+                    .buttonStyle(.link)
+                    .font(.system(size: 11))
+                }
+            }
+            if !provider.subscriptionOnly && !state.usesSubscription(provider) {
+                Text(String(localized: "chat.subscriptions.off"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    #endif
+
     @ViewBuilder private var chatSection: some View {
         #if !APPSTORE
         GroupBox(String(localized: "codex.chat.title")) {
@@ -1202,7 +1255,25 @@ struct SettingsView: View {
             .padding(6)
         }
         .task { await codexChat.refreshAuthentication() }
+        GroupBox(String(localized: "chat.subscriptions.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(String(localized: "chat.subscriptions.description"))
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(ChatProvider.subscriptionProviders, id: \.self) { provider in
+                    subscriptionRow(provider)
+                    if provider != ChatProvider.subscriptionProviders.last { Divider() }
+                }
+            }
+            .padding(6)
+            .id(cliScan)
+        }
+        .onAppear { CLILocator.shared.refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: CLILocator.changed)) { _ in cliScan += 1 }
         #endif
+
+
         GroupBox(String(localized: "chat.anthropic-api.title")) {
             VStack(alignment: .leading, spacing: 8) {
                 SecureField(String(localized: "chat.api-key.claude"), text: $apiKey)
@@ -1212,6 +1283,7 @@ struct SettingsView: View {
                     statusMessage = String(localized: "status.key-saved")
                 }
                 .buttonStyle(.borderedProminent)
+
 
                 Divider().padding(.vertical, 2)
 
@@ -1843,7 +1915,7 @@ struct SettingsView: View {
         if selectedSection == "agents" {
             Task {
                 codexIDEVersions = await Task.detached(priority: .utility) { CodexConnection.installedIDEVersions() }.value
-                let task = state.tasks.first { $0.id == "agent_codex" }
+                let task = state.codexDisplayTask
                 await codexInfo.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath, cwd: task?.sessionCwd)
             }
         }

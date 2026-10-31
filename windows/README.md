@@ -249,6 +249,21 @@ side (tray, errors) embeds the same two files.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
+**No key? Use your subscription.** **Settings… → Chat → Your AI
+subscriptions** has one switch per provider: on, the chat goes through the
+provider's official terminal tool, signed in with your own account — Claude
+Code (Claude plan), Antigravity CLI or Gemini CLI (Google AI plan), Codex CLI
+(ChatGPT plan), Cursor CLI and GitHub Copilot CLI (`cli_relay.rs`). Each row
+says whether the tool is installed (on PATH or in the usual install folders),
+links to its install page and gives the command to sign in once. Coucou reads
+no credential: the tool answers exactly as it does in a terminal. Each run is
+read-only (plan or ask modes, no shell, no edits), loads none of your hooks,
+MCP servers or extensions where the tool can turn them off, saves no session,
+and searches the web for the chat only; a dropped file is read with no web at
+all. Through npm's `.cmd` shims the prompt goes in on stdin. Flow's clean-up
+and the notes of a call use Claude Code when no Anthropic key is saved;
+« OK Coucou » still needs the key: its tools are Coucou's own.
+
 The chat also talks to **Google AI (Gemini)**, **OpenAI** and **OpenRouter**:
 add their keys in **Settings… → Chat providers**, then click the model name
 above the chat box to switch provider and model, as on the Mac. The model list

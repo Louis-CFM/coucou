@@ -218,7 +218,90 @@ final class ClaudeService {
         CodexChatService.shared.reset()
         #endif
         conversationMessages = []
+        #if !APPSTORE
+        relayHistory = []
+        relayGeneration = UUID()
+        #endif
     }
+
+    /// Whether the chat can answer with Claude: an API key, or else Claude Code (GitHub build).
+    var canAnswer: Bool {
+        #if APPSTORE
+        return !(apiKey ?? "").isEmpty
+        #else
+        return !(apiKey ?? "").isEmpty || CLILocator.shared.isInstalled(.claude)
+        #endif
+    }
+
+    #if !APPSTORE
+    // MARK: - Chat through the user's subscription (CLIRelay.swift)
+
+    /// The relay's turns, as plain text: they never mix with the API's content blocks.
+    private var relayHistory: [(user: String, assistant: String)] = []
+    private var relayGeneration = UUID()
+
+    private func chatThroughSubscription(_ provider: ChatProvider, query: String, context: PromptContext?, state: AppState) async {
+        let generation = relayGeneration
+        let isCurrent = { self.relayGeneration == generation && state.chatProvider == provider && !Task.isCancelled }
+        guard let cli = provider.installedCLI else {
+            let tool = provider.subscriptionCLIs.first?.displayName ?? provider.displayName
+            await showError(String(format: String(localized: "chat.subscriptions.error.missing"), tool), state: state)
+            return
+        }
+        var contextLine: String?
+        // What later turns see of this one: never a file's contents, which go out with
+        // the web search of the turns after it otherwise.
+        var historyContext: String?
+        var readDir: URL?
+        if relayHistory.isEmpty, let context {
+            switch context {
+            case .window(let app, let title, let url):
+                var text = "Context — App: \(app), Window: \(title)"
+                if let url { text += ", URL: \(url)" }
+                contextLine = text
+                historyContext = text
+            case .file(let name, let fileURL):
+                historyContext = "File: \(name)"
+                if cli == .claude, let fileURL, let dir = try? CLIRelay.isolate(fileURL) {
+                    readDir = dir
+                    contextLine = "File: \(name) (read it at \(dir.appendingPathComponent(fileURL.lastPathComponent).path))"
+                } else if let fileURL, let text = CLIRelay.inlineText(fileURL) {
+                    contextLine = "File: \(name)\nFile contents:\n\(text)"
+                } else {
+                    contextLine = "File: \(name) (its contents can't be read here)"
+                }
+            }
+        }
+        defer { if let readDir { try? FileManager.default.removeItem(at: readDir) } }
+        // A dropped file is read with no web at all: a file written to steer the model
+        // could otherwise send what it reads to a website.
+        let readsFile: Bool = {
+            if case .file = context, relayHistory.isEmpty { return true }
+            return false
+        }()
+        let request = CLIRequest(
+            model: provider == .anthropic ? model : nil,
+            system: systemPrompt,
+            prompt: CLIRelay.chatPrompt(history: relayHistory, context: contextLine, query: query),
+            web: !readsFile,
+            readDir: readDir,
+            noWebPolicy: nil,
+            timeout: 180
+        )
+        do {
+            let text = try await CLIRelay.ask(cli, request)
+            guard isCurrent() else { return }
+            relayHistory.append((user: historyContext.map { "\($0)\n\n\(query)" } ?? query, assistant: text))
+            state.chatHistory.append(ChatMessage(role: .assistant, content: text))
+            state.stateOverride = nil
+            state.view = .prompt
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
+            guard isCurrent() else { return }
+            await showError(error.localizedDescription, state: state)
+        }
+    }
+    #endif
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
@@ -256,6 +339,11 @@ final class ClaudeService {
         #if !APPSTORE
         if state.chatProvider == .codex {
             await CodexChatService.shared.chat(query: query, context: context, state: state)
+            return
+        }
+        // Other providers can use the upstream subscription relay; native Codex keeps its owning connection.
+        if state.usesSubscription(state.chatProvider) {
+            await chatThroughSubscription(state.chatProvider, query: query, context: context, state: state)
             return
         }
         #endif
@@ -325,7 +413,7 @@ final class ClaudeService {
             case .deepseek:  baseURL = "https://api.deepseek.com/v1"
             case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
             case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
-            case .anthropic, .ollama, .lmstudio: baseURL = ""
+            case .anthropic, .ollama, .lmstudio, .cursor, .copilot: baseURL = ""
             }
         }
 

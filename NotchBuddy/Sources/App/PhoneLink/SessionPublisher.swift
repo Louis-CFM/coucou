@@ -29,12 +29,6 @@ final class SessionPublisher {
     private var publishing = false
     private var pending: [String: SessionSnapshot]?
 
-    func refresh() {
-        guard cancellable != nil else { return }
-        let state = AppState.shared
-        publish(SessionSnapshot.all(tasks: state.tasks, approval: state.pendingApproval, question: state.pendingQuestion))
-    }
-
     /// Stops publishing and deletes this Mac's sessions from iCloud.
     func stop() {
         cancellable = nil
@@ -57,14 +51,20 @@ final class SessionPublisher {
         }
     }
 
+    func refresh() {
+        guard cancellable != nil else { return }
+        let state = AppState.shared
+        publish(SessionSnapshot.all(tasks: state.tasks, approval: state.pendingApproval, questions: state.waitingQuestions))
+    }
+
     func start() {
         guard cancellable == nil else { return }
         let state = AppState.shared
         cancellable = state.$tasks
-            .combineLatest(state.$pendingApproval, state.$pendingQuestion)
+            .combineLatest(state.$pendingApproval, state.$waitingQuestions)
             .combineLatest(state.$codexChatBusy)
             .map { values, _ in
-                SessionSnapshot.all(tasks: values.0, approval: values.1, question: values.2)
+                SessionSnapshot.all(tasks: values.0, approval: values.1, questions: values.2)
             }
             .removeDuplicates()
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
@@ -181,23 +181,27 @@ struct SessionSnapshot: Equatable {
     /// The question's choices (QuestionPayload JSON) and its fingerprint, for answering from the iPhone.
     var questionPayload: String = ""
     var questionFingerprint: String = ""
+    /// False for a question's own record ("<pill>#q2"): it is not a session to send work to.
+    var takesInstructions = true
     var instructionTargetIdentity: String = ""
     var acceptsInstructions: Bool = false
 
     @MainActor
     static func all(tasks: [AgentTask], approval: ApprovalInfo?,
-                    question: AskQuestion?) -> [String: SessionSnapshot] {
+                    questions: [QueuedQuestion]) -> [String: SessionSnapshot] {
         var result: [String: SessionSnapshot] = [:]
+        let questions = questions.filter { !$0.question.questions.contains(where: \.isSecret) }
         // Services (Stripe, GitHub…) go through ServicePublisher, with their data.
         for task in tasks where task.source != .n8n && PillCatalog.isSession(task.id) {
             let hasApproval = approval?.pillId == task.id
-            let ownedQuestion = question?.pillId == task.id && !(question?.questions.contains(where: \.isSecret) ?? false) ? question : nil
-            let questionText = task.state == .question
-                ? (ownedQuestion?.questions.map(\.question).joined(separator: "\n") ?? "")
-                : ""
-            let payload = task.state == .question ? ownedQuestion.map(QuestionPayload.init(ask:)) : nil
-            // The captured identity survives busy/idle transitions. Capability
-            // is verified independently before exposing Reply or accepting it.
+            // The pill's record carries the first question behind it, as it always has; a
+            // session popped out of its pill (SessionBoard) has its own pill, and record.
+            let question = task.state == .question
+                ? questions.first(where: { $0.phoneRecordId == task.id })?.question
+                : nil
+            let questionText = question?.questions.map(\.question).joined(separator: "\n") ?? ""
+            let payload = question.map(QuestionPayload.init(ask:))
+            // The target stays stable while busy; instruction capability is checked separately.
             let target = SessionInstructionIdentity.make(pillId: task.id, sessionId: task.sessionId ?? "",
                 threadId: task.codexThreadId, cwd: task.sessionCwd ?? "", turnId: task.codexTurnId)
             #if APPSTORE
@@ -222,6 +226,27 @@ struct SessionSnapshot: Equatable {
                 questionFingerprint: payload?.fingerprint ?? "",
                 instructionTargetIdentity: target ?? "",
                 acceptsInstructions: instructions)
+            // Questions from other sessions behind the same pill get a record of their own
+            // ("<pill>#q2"…), so each one shows up and is answered on its own.
+            for entry in questions where entry.pillId == task.id && entry.shownPill == nil && entry.slot > 1 {
+                let payload = QuestionPayload(ask: entry.question)
+                result[entry.phoneRecordId] = SessionSnapshot(
+                    pillId: entry.phoneRecordId,
+                    name: entry.projectName,
+                    color: task.color,
+                    state: BotState.question.rawValue,
+                    stepIndex: 0,
+                    steps: [],
+                    cwd: entry.cwd,
+                    finalLine: "",
+                    approvalTool: "",
+                    approvalCommand: "",
+                    approvalFingerprint: "",
+                    question: entry.question.questions.map(\.question).joined(separator: "\n"),
+                    questionPayload: payload.json,
+                    questionFingerprint: payload.fingerprint,
+                    takesInstructions: false)
+            }
         }
         return result
     }
@@ -262,8 +287,7 @@ struct SessionSnapshot: Equatable {
         record["macName"] = Host.current().localizedName ?? ""
         record["instructionTargetIdentity"] = instructionTargetIdentity
         record["instructionIdentityVersion"] = SessionInstructionIdentity.version
-        // Whether this Mac runs instructions sent from the iPhone (GitHub build, switch on).
-        record["acceptsInstructions"] = acceptsInstructions
+        record["acceptsInstructions"] = acceptsInstructions && takesInstructions
         record.encryptedValues["name"] = name
         record.encryptedValues["steps"] = steps
         record.encryptedValues["cwd"] = cwd

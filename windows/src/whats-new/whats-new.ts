@@ -3,7 +3,7 @@
 // controller.ts, the card in views/whatsnew.ts.
 //
 // The entries come from whats-new.json, one per Windows and Linux release, in
-// the 12 languages (scripts/test-whats-new.py refuses a release without its
+// the 14 languages (scripts/test-whats-new.py refuses a release without its
 // entry). Nothing here goes out: the numbers are the ones this computer kept.
 
 import { isBusy, type UpdateStatus } from "../core/update";

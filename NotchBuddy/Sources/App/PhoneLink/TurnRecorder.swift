@@ -21,6 +21,7 @@ final class TurnRecorder {
     private var dirty: Set<String> = []
     private var flushTask: Task<Void, Never>?
     private var nativeActions: [String: Int] = [:]
+    private var nativePill: String?
     private var completedNativeItems = Set<String>()
 
     // Size limits: a turn stays well under CloudKit's 1 MB per record.
@@ -51,6 +52,7 @@ final class TurnRecorder {
         }
         turns = [:]
         nativeActions = [:]
+        nativePill = nil
         completedNativeItems = []
         dirty = []
         if !ids.isEmpty {
@@ -64,9 +66,11 @@ final class TurnRecorder {
         let sessionId = payload["session_id"] as? String ?? payload["conversation_id"] as? String ?? ""
         let cwd = payload["cwd"] as? String ?? ""
         let now = Date()
-        if pillId == "agent_codex", let task = AppState.shared.tasks.first(where: { $0.id == pillId }), task.codexManaged,
-           sessionId == task.sessionId || sessionId == task.codexThreadId {
-            return // The managed connection is authoritative for this same thread.
+        if PillCatalog.basePillId(pillId) == "agent_codex", AppState.shared.tasks.contains(where: {
+            PillCatalog.basePillId($0.id) == "agent_codex" && $0.codexManaged
+                && (sessionId == $0.sessionId || sessionId == $0.codexThreadId) && cwd == $0.sessionCwd
+        }) {
+            return // The managed connection is authoritative across root and popped-out rows.
         }
         if !sessionId.isEmpty, !cwd.isEmpty { sessions[pillId] = (sessionId, cwd) }
 
@@ -130,13 +134,21 @@ final class TurnRecorder {
     /// Native events are accepted only for the thread Coucou owns. The raw
     /// request/answer payload is never stored here (in particular secrets).
     func recordCodex(method: String, params: [String: Any], diffs: [FileDiff] = []) {
-        guard running, let threadId = params["threadId"] as? String,
-              let task = AppState.shared.tasks.first(where: { $0.id == "agent_codex" }),
-              task.codexManaged, task.codexThreadId == threadId, let cwd = task.sessionCwd else { return }
+        guard running, let threadId = params["threadId"] as? String else { return }
         let nativeTurn = params["turn"] as? [String: Any] ?? [:]
         let turnId = params["turnId"] as? String ?? nativeTurn["id"] as? String ?? ""
-        guard !turnId.isEmpty else { return }
+        guard !turnId.isEmpty, let task = AppState.shared.tasks.first(where: {
+            PillCatalog.basePillId($0.id) == "agent_codex" && $0.codexManaged
+                && $0.codexThreadId == threadId && $0.codexTurnId == turnId
+        }), let cwd = task.sessionCwd else { return }
         let pillId = task.id
+        if let previous = nativePill, previous != pillId, var moving = turns[previous],
+           moving.threadId == threadId, moving.turnId == turnId {
+            moving.pillId = pillId
+            turns.removeValue(forKey: previous)
+            turns[pillId] = moving
+        }
+        nativePill = pillId
         if method == "turn/started", turns[pillId]?.turnId != turnId {
             turns[pillId] = TurnSnapshot(pillId: pillId, sessionId: task.sessionId ?? threadId,
                 project: URL(fileURLWithPath: cwd).lastPathComponent, prompt: "", actions: [], files: [],
