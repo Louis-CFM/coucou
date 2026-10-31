@@ -322,7 +322,7 @@ test("open on hover: hovering opens, leaving folds after the short grace period"
   assert.equal(fsm.state, "home");
   assert.equal(fsm.openedByHover, true);
   fsm.mouseLeft();
-  seconds(0.5);
+  seconds(0.2);
   assert.equal(fsm.state, "home");
   seconds(0.1);
   assert.equal(fsm.state, "petit");
@@ -336,7 +336,7 @@ test("open on hover: coming back before the grace period keeps it open", () => {
   fsm.openOnHover = true;
   fsm.mouseEntered();
   fsm.mouseLeft();
-  seconds(0.3);
+  seconds(0.15);
   fsm.mouseEntered();
   seconds(5);
   assert.equal(fsm.state, "home");
