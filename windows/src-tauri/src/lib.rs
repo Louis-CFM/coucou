@@ -785,10 +785,17 @@ fn set_hub_shown(win: &tauri::WebviewWindow, shown: bool) {
     }
 }
 
-/// The page asks once at load, in case it missed the event.
+/// Take the initial snapshot on the UI queue, after startup has shown or kept
+/// the window hidden. WebView2 can answer an IPC call while native setup is
+/// still running, before the queued JavaScript listener has been installed;
+/// a startup visibility event can therefore precede that listener.
 #[tauri::command]
-fn hub_shown() -> bool {
-    HUB_SHOWN.load(Ordering::Relaxed)
+async fn hub_shown(app: AppHandle) -> Result<bool, String> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(HUB_SHOWN.load(Ordering::Relaxed));
+    }).map_err(|error| error.to_string())?;
+    rx.await.map_err(|error| error.to_string())
 }
 
 pub fn show_settings_window(app: &AppHandle) {
