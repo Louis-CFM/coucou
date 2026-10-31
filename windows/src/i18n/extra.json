@@ -7563,6 +7563,51 @@
       "tr": "Yalnızca dikte ederken, bir görüşmeyi kaydederken veya mesaj gelince görünür. Dikte tuşu yine çalışır.",
       "ko": "받아쓰기하거나 통화를 녹음하거나 메시지가 올 때만 표시됩니다. 받아쓰기 키는 그대로 작동합니다.",
       "ja": "音声入力中、通話の録音中、メッセージが届いたときだけ表示されます。音声入力キーはそのまま使えます。"
+    },
+    "Island position": {
+      "zh-Hans": "岛的位置",
+      "hi": "आइलैंड की स्थिति",
+      "es": "Posición de la isla",
+      "ar": "موضع الشريط",
+      "fr": "Position de l'île",
+      "bn": "আইল্যান্ডের অবস্থান",
+      "pt-BR": "Posição da ilha",
+      "ru": "Положение острова",
+      "id": "Posisi pulau",
+      "de": "Inselposition",
+      "tr": "Ada konumu",
+      "ko": "아일랜드 위치",
+      "ja": "アイランドの位置"
+    },
+    "Top edge": {
+      "zh-Hans": "顶部边缘",
+      "hi": "शीर्ष किनारा",
+      "es": "Borde superior",
+      "ar": "الحافة العلوية",
+      "fr": "Bord supérieur",
+      "bn": "উপরের প্রান্ত",
+      "pt-BR": "Borda superior",
+      "ru": "Верхний край",
+      "id": "Tepi atas",
+      "de": "Oberer Rand",
+      "tr": "Üst kenar",
+      "ko": "위쪽 가장자리",
+      "ja": "上端"
+    },
+    "Bottom edge": {
+      "zh-Hans": "底部边缘",
+      "hi": "निचला किनारा",
+      "es": "Borde inferior",
+      "ar": "الحافة السفلية",
+      "fr": "Bord inférieur",
+      "bn": "নিচের প্রান্ত",
+      "pt-BR": "Borda inferior",
+      "ru": "Нижний край",
+      "id": "Tepi bawah",
+      "de": "Unterer Rand",
+      "tr": "Alt kenar",
+      "ko": "아래쪽 가장자리",
+      "ja": "下端"
     }
   }
 }

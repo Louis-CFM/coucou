@@ -1104,6 +1104,17 @@ function generalSection(): HTMLElement {
   volume.addEventListener("blur", () => generalSync?.());
   autoClose.addEventListener("blur", () => generalSync?.());
 
+  const islandPosition = h("select", {}) as HTMLSelectElement;
+  islandPosition.append(
+    h("option", { value: "top", text: t("Top edge") }),
+    h("option", { value: "bottom", text: t("Bottom edge") }),
+  );
+  islandPosition.value = settings.islandPosition === "bottom" ? "bottom" : "top";
+  islandPosition.addEventListener("change", () => {
+    settings.islandPosition = islandPosition.value === "bottom" ? "bottom" : "top";
+    void save();
+  });
+
   return h(
     "section",
     {},
@@ -1143,6 +1154,10 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Island position") }),
+      islandPosition,
     ),
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
