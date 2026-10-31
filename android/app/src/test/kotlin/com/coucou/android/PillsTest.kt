@@ -23,7 +23,8 @@ class PillsTest {
     }
 
     @Test fun catalogMatchesDesktopExceptAppleMusic() {
-        val expected = reference().filter { it.id != "integration_music" }
+        // Apple Music has nothing behind it on Android; Now Playing reads the Windows media controls.
+        val expected = reference().filter { it.id != "integration_music" && it.id != "integration_nowplaying" }
         assertTrue("parsed too few pills from pills.ts", expected.size >= 20)
         assertEquals(expected.map { it.id }, Pills.catalog.map { it.id })
         for ((ref, mine) in expected.zip(Pills.catalog)) {
