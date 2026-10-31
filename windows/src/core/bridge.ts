@@ -463,9 +463,9 @@ export const Bridge = {
   nowPlayingOpen: () => call<boolean>("nowplaying_open"),
 
   // ── Lyrics (src-tauri/src/lyrics.rs) ──────────────────────────────────────
-  /** A track's LRC text from LRCLIB, or null (none, lyrics off, paused, offline). */
+  /** A track's LRC text from LRCLIB (null when none); `retry` when LRCLIB could not be reached. */
   lyricsGet: (key: string, title: string, artist: string, album: string, duration: number) =>
-    call<string | null>("lyrics_get", { key, title, artist, album, duration }),
+    call<{ lrc: string | null; retry: boolean }>("lyrics_get", { key, title, artist, album, duration }),
 
   // ── WhatsApp (src-tauri/src/whatsapp) ─────────────────────────────────────
   /** The island's copy, asked once at start (then the "whatsapp" event). Island only. */

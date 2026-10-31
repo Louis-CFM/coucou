@@ -3,13 +3,13 @@
 // card in src/views/spotify.ts. The LRCLIB side is tested in
 // src-tauri/src/lyrics.rs.
 
-import { beforeEach, test } from "node:test";
+import { beforeEach, mock, test } from "node:test";
 import assert from "node:assert/strict";
 import { internals, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
 import { Lyrics, lineAt, lyricsQuery, parseLrc, rememberLyrics } from "../src/core/lyrics.ts";
 import { IDLE_NOW_PLAYING, IDLE_SPOTIFY, NOWPLAYING_ID, NowPlaying, SPOTIFY_ID, Spotify } from "../src/core/spotify.ts";
-import { fetchLyrics } from "../src/island/lyrics.ts";
+import { MAX_TRIES, RETRY_MS, fetchLyrics } from "../src/island/lyrics.ts";
 import { buildSpotifyCard } from "../src/views/spotify.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
@@ -23,12 +23,13 @@ const LRC = `[ar:Coldplay]
 [00:40.00][01:30.00] Chorus
 not a timed line`;
 
-// The lyrics Rust would answer, by track title.
+// The lyrics Rust would answer, by track title; "down" plays LRCLIB unreachable.
 const answers = new Map();
+let down = false;
 const plain = internals.invoke;
 internals.invoke = async (cmd, args) => {
   const result = await plain(cmd, args);
-  if (cmd === "lyrics_get") return answers.get(args.title) ?? null;
+  if (cmd === "lyrics_get") return down ? { lrc: null, retry: true } : { lrc: answers.get(args.title) ?? null, retry: false };
   return result;
 };
 
@@ -46,9 +47,12 @@ beforeEach(() => {
   Lyrics.byTrack.clear();
   Lyrics.asked.clear();
   answers.clear();
+  down = false;
 });
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
+// With setTimeout mocked, a few microtask turns let the bridge's promise settle.
+const settle = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
 
 // ── Reading and timing ────────────────────────────────────────────────────────
 
@@ -114,6 +118,39 @@ test("each playing track is asked about once, only with lyrics on and its pill d
   State.settings = { ...State.settings, lyricsEnabled: true, activeIntegrations: [NOWPLAYING_ID] };
   fetchLyrics();
   assert.equal(sent("lyrics_get").length, before + 1);
+});
+
+test("LRCLIB down: asked again a minute later, a few times, then left alone", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  try {
+    down = true;
+    Spotify.state = { ...IDLE_SPOTIFY, running: true, track: track({ id: "spotify:track:down", title: "Cheap Thrills", artist: "Sia" }) };
+    const before = sent("lyrics_get").length;
+    fetchLyrics();
+    await settle();
+    assert.ok(!Lyrics.byTrack.has("spotify:track:down"), "not remembered as none");
+    fetchLyrics();
+    assert.equal(sent("lyrics_get").length, before + 1, "not again at once");
+    for (let i = 1; i < MAX_TRIES; i++) {
+      mock.timers.tick(RETRY_MS);
+      fetchLyrics();
+      await settle();
+    }
+    assert.equal(sent("lyrics_get").length, before + MAX_TRIES);
+    mock.timers.tick(RETRY_MS);
+    fetchLyrics();
+    assert.equal(sent("lyrics_get").length, before + MAX_TRIES, "then it stops asking");
+
+    // Back up: the next track is found as usual.
+    down = false;
+    answers.set("Chandelier", LRC);
+    Spotify.state = { ...Spotify.state, track: track({ id: "spotify:track:up", title: "Chandelier", artist: "Sia" }) };
+    fetchLyrics();
+    await settle();
+    assert.equal(lineAt(Lyrics.byTrack.get("spotify:track:up"), 13), "First line");
+  } finally {
+    mock.timers.reset();
+  }
 });
 
 test("Now Playing's video is looked up by the song in its title", async () => {

@@ -8,6 +8,11 @@ import { Lyrics, lyricsQuery, parseLrc, rememberLyrics } from "../core/lyrics";
 import { PLAYERS } from "../core/spotify";
 import { State } from "../core/state";
 
+/** LRCLIB unreachable: ask again a minute later, three times at most, while the track plays. */
+export const RETRY_MS = 60_000;
+export const MAX_TRIES = 3;
+const tries = new Map<string, number>();
+
 export function registerLyricsHandlers() {
   State.subscribe(fetchLyrics);
 }
@@ -19,15 +24,29 @@ export function fetchLyrics() {
     const track = player.state.track;
     if (!track || !State.settings.activeIntegrations.includes(player.pillId)) continue;
     if (Lyrics.asked.has(track.id)) continue;
-    // Asked once per track: none found, or offline, it waits for the next one.
+    // Asked once per track; again later only when LRCLIB could not be reached.
     Lyrics.asked.add(track.id);
     const query = lyricsQuery(track, player.kind === "spotify");
     if (!query) {
       rememberLyrics(track.id, null);
       continue;
     }
-    void Bridge.lyricsGet(track.id, query.title, query.artist, query.album, query.duration).then((lrc) => {
-      rememberLyrics(track.id, lrc ? parseLrc(lrc) : null);
+    const id = track.id;
+    void Bridge.lyricsGet(id, query.title, query.artist, query.album, query.duration).then((answer) => {
+      if (answer?.retry) {
+        const n = (tries.get(id) ?? 0) + 1;
+        tries.set(id, n);
+        if (n < MAX_TRIES) {
+          setTimeout(() => {
+            Lyrics.asked.delete(id);
+            State.notify();
+          }, RETRY_MS);
+        }
+        return;
+      }
+      tries.delete(id);
+      const lrc = answer?.lrc ?? null;
+      rememberLyrics(id, lrc ? parseLrc(lrc) : null);
       if (lrc) State.notify();
     });
   }

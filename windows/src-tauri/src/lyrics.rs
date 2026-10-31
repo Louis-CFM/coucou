@@ -105,30 +105,44 @@ fn remember(key: String, lrc: Option<String>) {
     }
 }
 
-/// The LRC text of a track, or None (none found, lyrics off, paused, offline).
-/// `key` is the page's track id, for the cache.
+/// What the page gets: the LRC text (None when there is none to show), and
+/// whether to ask again later — LRCLIB could not be reached, or answered with
+/// an error, so "none" is not known yet.
+#[derive(serde::Serialize, Debug, PartialEq)]
+pub struct Answer {
+    pub lrc: Option<String>,
+    pub retry: bool,
+}
+
+impl Answer {
+    fn none() -> Answer {
+        Answer { lrc: None, retry: false }
+    }
+}
+
+/// The LRC text of a track. `key` is the page's track id, for the cache.
 #[tauri::command]
-pub async fn lyrics_get(key: String, title: String, artist: String, album: String, duration: f64) -> Option<String> {
+pub async fn lyrics_get(key: String, title: String, artist: String, album: String, duration: f64) -> Answer {
     if !crate::settings::load().lyrics_enabled || crate::integrations::PAUSED.load(Ordering::Relaxed) {
-        return None;
+        return Answer::none();
     }
     let (title, artist) = (title.trim(), artist.trim());
     if title.is_empty() || artist.is_empty() {
-        return None;
+        return Answer::none();
     }
     if let Some(known) = cached(&key) {
-        return known;
+        return Answer { lrc: known, retry: false };
     }
     match lookup(title, artist, album.trim(), duration).await {
         Lookup::Found(lrc) => {
             remember(key, Some(lrc.clone()));
-            Some(lrc)
+            Answer { lrc: Some(lrc), retry: false }
         }
         Lookup::NotFound => {
             remember(key, None);
-            None
+            Answer::none()
         }
-        Lookup::Failed => None,
+        Lookup::Failed => Answer { lrc: None, retry: true },
     }
 }
 
