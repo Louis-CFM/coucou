@@ -123,6 +123,7 @@ pub fn setup(app: &AppHandle) {
     pill::update(app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
         s.key = key_id(prefs.key);
+        s.hide_resting = !prefs.show_pill;
     });
     if prefs.enabled {
         enable(app, &flow);
@@ -490,6 +491,7 @@ pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
     pill::update(&app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
         s.key = key_id(prefs.key);
+        s.hide_resting = !prefs.show_pill;
     });
     let restart = before.key != prefs.key;
     if before.enabled && (!prefs.enabled || restart) {

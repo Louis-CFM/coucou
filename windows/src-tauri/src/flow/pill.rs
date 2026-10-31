@@ -39,6 +39,8 @@ pub struct PillState {
     pub announcement: Option<Announcement>,
     /// Dictation is on (the resting pill shows).
     pub enabled: bool,
+    /// The user keeps the resting pill off screen: it shows only while it has something to show.
+    pub hide_resting: bool,
     /// « OK Coucou » is talking with you.
     pub voice: Option<crate::voice::VoiceView>,
 }
@@ -230,6 +232,17 @@ pub fn edge_name(edge: Edge) -> &'static str {
     }
 }
 
+/// Whether the pill window is on screen: the resting pill while dictation is on (unless the
+/// user keeps it off), or anything it has to show: a dictation, a call being recorded, a
+/// message, « OK Coucou » talking.
+fn is_visible(state: &PillState) -> bool {
+    (state.enabled && !state.hide_resting)
+        || state.note_started_at.is_some()
+        || state.announcement.is_some()
+        || state.voice.is_some()
+        || state.phase != "idle"
+}
+
 /// Changes what the pill shows, and shows or hides it.
 pub fn update(app: &AppHandle, change: impl FnOnce(&mut PillState)) {
     let Some(pill) = get(app) else { return };
@@ -240,7 +253,7 @@ pub fn update(app: &AppHandle, change: impl FnOnce(&mut PillState)) {
         (s.clone(), s.edge != edge_before)
     };
     let _ = app.emit_to(LABEL, "pill-state", &state);
-    let visible = state.enabled || state.note_started_at.is_some() || state.announcement.is_some() || state.voice.is_some() || state.phase != "idle";
+    let visible = is_visible(&state);
     let was = pill.shown.swap(visible, Ordering::Relaxed);
     if visible && (!was || edge_changed) {
         place(app, &pill, &state.edge, state.phase == "listening");
@@ -438,5 +451,32 @@ mod tests {
         assert_eq!(size_for("bottom-right"), BOTTOM);
         assert_eq!(size_for("left"), SIDE);
         assert_eq!(size_for("right"), SIDE);
+    }
+}
+
+#[cfg(test)]
+mod visibility_tests {
+    use super::*;
+
+    fn idle() -> PillState {
+        PillState { phase: "idle".into(), enabled: true, ..Default::default() }
+    }
+
+    #[test]
+    fn the_resting_pill_shows_while_dictation_is_on() {
+        assert!(is_visible(&idle()));
+        assert!(!is_visible(&PillState { enabled: false, ..idle() }));
+    }
+
+    #[test]
+    fn a_pill_kept_off_screen_shows_only_while_it_has_something_to_show() {
+        let hidden = PillState { hide_resting: true, ..idle() };
+        assert!(!is_visible(&hidden));
+        assert!(is_visible(&PillState { phase: "listening".into(), ..hidden.clone() }));
+        assert!(is_visible(&PillState { note_started_at: Some(1), ..hidden.clone() }));
+        assert!(is_visible(&PillState {
+            announcement: Some(Announcement { id: 1, icon: "mic".into(), tint: "".into(), text: "x".into(), action: None, action_id: None }),
+            ..hidden
+        }));
     }
 }

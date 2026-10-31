@@ -7353,6 +7353,36 @@
       "tr": "Kompakt adada göster",
       "ko": "컴팩트 아일랜드에 표시",
       "ja": "コンパクトアイランドに表示"
+    },
+    "Keep the pill on screen": {
+      "zh-Hans": "在屏幕上保留胶囊",
+      "hi": "पिल को स्क्रीन पर रखें",
+      "es": "Mantener la píldora en pantalla",
+      "ar": "إبقاء الحبة على الشاشة",
+      "fr": "Garder la pilule à l'écran",
+      "bn": "পিল স্ক্রিনে রাখুন",
+      "pt-BR": "Manter a pílula na tela",
+      "ru": "Держать пилюлю на экране",
+      "id": "Tampilkan pil di layar",
+      "de": "Diktierleiste auf dem Bildschirm lassen",
+      "tr": "Dikte aracını ekranda tut",
+      "ko": "화면에 알약 유지",
+      "ja": "ピルを画面に表示し続ける"
+    },
+    "Off: it appears only while you dictate, record a call or Mochi answers.": {
+      "zh-Hans": "关闭后，仅在你听写、录制通话或 Mochi 回答时才会出现。",
+      "hi": "बंद होने पर यह केवल तब दिखता है जब आप डिक्टेट करते हैं, कॉल रिकॉर्ड करते हैं या Mochi जवाब देता है।",
+      "es": "Desactivado: solo aparece mientras dictas, grabas una llamada o Mochi responde.",
+      "ar": "عند الإيقاف: تظهر فقط أثناء الإملاء أو تسجيل مكالمة أو عندما يجيب Mochi.",
+      "fr": "Désactivé : elle n'apparaît que pendant une dictée, l'enregistrement d'un appel ou une réponse de Mochi.",
+      "bn": "বন্ধ থাকলে: শুধু ডিক্টেট করার সময়, কল রেকর্ড করার সময় বা Mochi উত্তর দিলে দেখা যাবে।",
+      "pt-BR": "Desativado: só aparece enquanto você dita, grava uma chamada ou o Mochi responde.",
+      "ru": "Выключено: появляется только во время диктовки, записи звонка или ответа Mochi.",
+      "id": "Nonaktif: hanya muncul saat Anda mendikte, merekam panggilan, atau Mochi menjawab.",
+      "de": "Aus: erscheint nur beim Diktieren, bei einer Anrufaufnahme oder wenn Mochi antwortet.",
+      "tr": "Kapalıyken: yalnızca dikte ettiğinde, bir çağrıyı kaydettiğinde veya Mochi yanıt verdiğinde görünür.",
+      "ko": "끄면 받아쓰기, 통화 녹음, 또는 Mochi가 답할 때만 나타납니다.",
+      "ja": "オフにすると、音声入力中、通話の録音中、またはMochiが答えるときだけ表示されます。"
     }
   }
 }
