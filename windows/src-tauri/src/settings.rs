@@ -26,6 +26,8 @@ pub struct Settings {
     pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
+    /// Island position: "top" (default) or "bottom" (#1021).
+    pub island_position: String,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -148,6 +150,7 @@ impl Default for Settings {
             ],
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
+            island_position: "top".into(),
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -449,6 +452,7 @@ mod tests {
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
+  "islandPosition": "bottom",
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -574,6 +578,13 @@ mod tests {
         assert_eq!(loaded.mochi_outfit, "auto");
         assert_eq!(loaded.model, "some-model");
         assert!(!loaded.sound_enabled);
+    }
+
+    #[test]
+    fn a_file_from_before_island_position_keeps_it_at_the_top() {
+        assert_eq!(Settings::default().island_position, "top");
+        let loaded = parse(&custom_with("islandPosition", None)).unwrap();
+        assert_eq!(loaded.island_position, "top");
     }
 
     #[test]
@@ -970,6 +981,7 @@ mod tests {
                 "activeIntegrations",
                 "mainPill",
                 "screen",
+                "islandPosition",
                 "autostart",
                 "hooksInstalled",
                 "model",

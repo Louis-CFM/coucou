@@ -114,6 +114,8 @@ export interface Settings {
   mainPill: string;
   /** "primary", "cursor", or `at:<x>,<y>` for one display (logical origin). */
   screen: string;
+  /** "top" (default) or "bottom" (#1021). */
+  islandPosition?: "top" | "bottom";
   autostart: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
@@ -185,6 +187,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ],
   mainPill: DEFAULT_MAIN_PILL,
   screen: "primary",
+  islandPosition: "top",
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",

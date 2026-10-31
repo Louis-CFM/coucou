@@ -68,6 +68,11 @@ body {
   background: transparent;
 }
 
+body.edge-bottom #wake-strip {
+  top: auto;
+  bottom: 0;
+}
+
 /* ── Island ─────────────────────────────────────────────────────────────── */
 
 #island {
@@ -78,6 +83,12 @@ body {
   border-radius: 0 0 14px 14px;
   overflow: visible;
   will-change: width, height, transform;
+}
+
+body.edge-bottom #island {
+  top: auto;
+  bottom: 0;
+  border-radius: 14px 14px 0 0;
 }
 
 #island-clip {

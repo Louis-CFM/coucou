@@ -340,6 +340,19 @@ mod zoom_tests {
         assert_eq!(top_inset_from(0, -20), 0);
         assert_eq!(top_inset_from(0, 900), 0);
     }
+
+    #[test]
+    fn a_bottom_taskbar_moves_the_island_up_and_nothing_else_does() {
+        // Taskbar at the top (or none): the work area extends to the bottom.
+        assert_eq!(bottom_inset_from(0, 1080, 0, 1080), 0);
+        // A 48 px taskbar at the bottom of a 1080p display at (0, 0).
+        assert_eq!(bottom_inset_from(0, 1080, 0, 1032), 48);
+        // A 48 px taskbar at the bottom of a display placed at y = -1080.
+        assert_eq!(bottom_inset_from(-1080, 1080, -1080, 1032), 48);
+        // Nonsense from the system never pushes the island off the display.
+        assert_eq!(bottom_inset_from(0, 1080, 0, 1100), 0);
+        assert_eq!(bottom_inset_from(0, 1080, 0, 500), 0);
+    }
 }
 
 
@@ -379,6 +392,32 @@ fn top_inset_from(monitor_y: i32, work_y: i32) -> i32 {
     if (0..200).contains(&inset) { inset } else { 0 }
 }
 
+/// Windows: how far a taskbar docked at the bottom of this display pushes
+/// the island up, read from the display's work area, so the island sits
+/// above it (#1021). An auto-hidden taskbar takes no work area and moves nothing.
+/// Linux anchors the island to the screen edge: 0.
+fn bottom_inset(m: &tauri::Monitor) -> i32 {
+    if cfg!(windows) {
+        let p = m.position();
+        let s = m.size();
+        let wa = m.work_area();
+        bottom_inset_from(p.y, s.height, wa.position.y, wa.size.height)
+    } else {
+        0
+    }
+}
+
+fn bottom_inset_from(monitor_y: i32, monitor_h: u32, work_y: i32, work_h: u32) -> i32 {
+    let inset = (monitor_y + monitor_h as i32) - (work_y + work_h as i32);
+    if (0..200).contains(&inset) { inset } else { 0 }
+}
+
+fn island_position(app: &AppHandle) -> String {
+    app.try_state::<crate::Shared>()
+        .map(|s| s.settings.lock().unwrap().island_position.clone())
+        .unwrap_or_else(|| "top".into())
+}
+
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
@@ -391,7 +430,12 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y + top_inset(&m);
+    let is_bottom = island_position(app) == "bottom";
+    let y = if is_bottom {
+        mp.y + ms.height as i32 - bottom_inset(&m) - ph as i32
+    } else {
+        mp.y + top_inset(&m)
+    };
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -425,14 +469,22 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
 /// Position, size and scale of the monitor the island lives on. Any change here
 /// means the island has to be placed again.
 fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
-    let pref = app
+    let (pref, is_bottom) = app
         .try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().screen.clone())
-        .unwrap_or_else(|| "primary".into());
+        .map(|s| {
+            let set = s.settings.lock().unwrap();
+            (set.screen.clone(), set.island_position == "bottom")
+        })
+        .unwrap_or_else(|| ("primary".into(), false));
     let m = target_monitor(app, &pref)?;
     let p = m.position();
     let size = m.size();
-    Some((p.x, p.y + top_inset(&m), size.width, size.height, m.scale_factor().to_bits()))
+    let y_ref = if is_bottom {
+        p.y + size.height as i32 - bottom_inset(&m)
+    } else {
+        p.y + top_inset(&m)
+    };
+    Some((p.x, y_ref, size.width, size.height, m.scale_factor().to_bits()))
 }
 
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
