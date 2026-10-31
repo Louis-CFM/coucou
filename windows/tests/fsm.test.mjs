@@ -377,3 +377,48 @@ test("open on hover: an island opened by an alert keeps the normal delay", () =>
   seconds(2);
   assert.equal(fsm.state, "petit");
 });
+
+test("always show the island: the compact island never hides", () => {
+  fsm.alwaysVisible = true;
+  fsm.launch();
+  fsm.greetComplete();
+  seconds(0.6);
+  assert.equal(fsm.state, "petit");
+  seconds(3600);
+  assert.equal(fsm.state, "petit");
+  fsm.reveal();
+  fsm.mouseEntered();
+  fsm.mouseLeft();
+  seconds(3600);
+  assert.equal(fsm.state, "petit");
+});
+
+test("always show the island: turned on during the minute, the island stays", () => {
+  fsm.reveal();
+  seconds(30);
+  fsm.alwaysVisible = true;
+  seconds(3600);
+  assert.equal(fsm.state, "petit");
+});
+
+test("always show the island: turned off, the usual minute starts again", () => {
+  fsm.alwaysVisible = true;
+  fsm.reveal();
+  seconds(600);
+  fsm.alwaysVisible = false;
+  seconds(59);
+  assert.equal(fsm.state, "petit");
+  seconds(1);
+  assert.equal(fsm.state, "hidden");
+});
+
+test("always show the island: an open island still folds to compact, and pause still hides it", () => {
+  fsm.alwaysVisible = true;
+  fsm.homeToPetitDelay = 5;
+  fsm.forceHome();
+  fsm.mouseLeft();
+  seconds(5);
+  assert.equal(fsm.state, "petit");
+  fsm.forceHidden();
+  assert.equal(fsm.state, "hidden");
+});

@@ -92,6 +92,9 @@ pub struct Prefs {
     pub enabled: bool,
     pub key: FlowKey,
     pub edge: Edge,
+    /// The pill rests on screen while dictation is on. Off, it only shows while
+    /// it works: a dictation, a call being recorded, « OK Coucou », a message.
+    pub show_pill: bool,
     /// The microphone by name; empty is the system's default.
     pub mic: String,
     /// Days the history is kept: 0 = not kept, -1 = forever.
@@ -117,6 +120,7 @@ impl Default for Prefs {
             enabled: false,
             key: FlowKey::default(),
             edge: Edge::Bottom,
+            show_pill: true,
             mic: String::new(),
             keep_days: 30,
             cleanup: false,
@@ -404,5 +408,6 @@ mod tests {
         assert_eq!(p.key, FlowKey::RightAlt);
         assert_eq!(p.keep_days, 30);
         assert!(p.open_at_launch);
+        assert!(p.show_pill);
     }
 }

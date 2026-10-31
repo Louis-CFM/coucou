@@ -23,6 +23,20 @@ export class IslandStateMachine {
   }
   /** petit → hidden delay, seconds. */
   petitToHiddenDelay = 60;
+  /**
+   * The compact island never folds away to the wake strip (Settings → General →
+   * Always show the island, off by default). Turning it on stops the countdown
+   * that would hide it; turning it off starts it again.
+   */
+  get alwaysVisible(): boolean {
+    return this.keepVisible;
+  }
+  set alwaysVisible(on: boolean) {
+    if (on === this.keepVisible) return;
+    this.keepVisible = on;
+    if (on) this.clear("petitHide");
+    else if (this.state === "petit") this.schedulePetitHide();
+  }
   /** coucou → petit once the greeting animation ends (no hover). */
   greetAutoCollapseDelay = 0.6;
   /** coucou → petit while the mouse hovers the greeting. */
@@ -49,6 +63,7 @@ export class IslandStateMachine {
   homeCollapseDueAt: number | null = null;
 
   private homeDelay = 15;
+  private keepVisible = false;
   private byHover = false;
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
@@ -159,11 +174,12 @@ export class IslandStateMachine {
   private schedulePetitHide() {
     this.clear("petitHide");
     // A card folded away while it waits for an answer keeps the compact island
-    // on screen, so it can be reopened (isHeldOpen on macOS).
-    if (this.pinned) return;
+    // on screen, so it can be reopened (isHeldOpen on macOS). So does Always
+    // show the island.
+    if (this.pinned || this.keepVisible) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
-      if (this.state === "petit" && !this.pinned) this.transition("hidden");
+      if (this.state === "petit" && !this.pinned && !this.keepVisible) this.transition("hidden");
     }, this.petitToHiddenDelay * 1000);
   }
 
