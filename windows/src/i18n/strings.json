@@ -107,6 +107,36 @@
    "ko": "7일",
    "ja": "7 日"
   },
+  "A message whose sender, subject or text holds one of these words or addresses goes straight to Junk. Whole words only: “sale” does not catch “Salesforce”.": {
+   "zh-Hans": "发件人、主题或正文包含这些词或地址的邮件会直接移到垃圾邮件。只匹配完整单词：“sale”不会匹配“Salesforce”。",
+   "hi": "जिस मेल के प्रेषक, विषय या टेक्स्ट में इनमें से कोई शब्द या पता हो, वह सीधे जंक में जाता है। सिर्फ़ पूरे शब्द: “sale” से “Salesforce” नहीं पकड़ा जाता।",
+   "es": "Un correo cuyo remitente, asunto o texto contenga una de estas palabras o direcciones va directo a no deseado. Solo palabras completas: «oferta» no atrapa «ofertas».",
+   "ar": "الرسالة التي يحتوي مرسلها أو موضوعها أو نصها على إحدى هذه الكلمات أو العناوين تذهب مباشرة إلى غير المرغوب. الكلمات الكاملة فقط: «sale» لا تلتقط «Salesforce».",
+   "fr": "Un mail dont l’expéditeur, l’objet ou le texte contient un de ces mots ou adresses part direct en indésirables. Mots entiers seulement : « promo » n’attrape pas « promotion ».",
+   "bn": "যে মেলের প্রেরক, বিষয় বা লেখায় এর কোনো শব্দ বা ঠিকানা থাকে, সেটি সরাসরি জাঙ্কে যায়। শুধু পুরো শব্দ: “sale” দিয়ে “Salesforce” ধরা পড়ে না।",
+   "pt-BR": "Um e-mail cujo remetente, assunto ou texto tenha uma destas palavras ou endereços vai direto para o lixo. Só palavras inteiras: “promo” não pega “promoção”.",
+   "ru": "Письмо, где в отправителе, теме или тексте есть одно из этих слов или адресов, сразу уходит в спам. Только целые слова: «акция» не ловит «акционер».",
+   "id": "Email yang pengirim, subjek, atau isinya memuat salah satu kata atau alamat ini langsung masuk Sampah. Hanya kata utuh: “sale” tidak menangkap “Salesforce”.",
+   "de": "Eine E-Mail, deren Absender, Betreff oder Text eines dieser Wörter oder Adressen enthält, landet direkt in Werbung. Nur ganze Wörter: „Sale“ trifft nicht „Salesforce“.",
+   "tr": "Göndereni, konusu ya da metni bu kelimelerden veya adreslerden birini içeren e-posta doğrudan gereksize gider. Yalnızca tam kelimeler: “sale”, “Salesforce”u yakalamaz.",
+   "ko": "보낸 사람, 제목, 본문에 이 단어나 주소가 있는 메일은 바로 정크로 갑니다. 단어 단위로만 찾으므로 ‘sale’은 ‘Salesforce’를 잡지 않습니다.",
+   "ja": "差出人・件名・本文にこれらの語句やアドレスを含むメールは、そのまま迷惑メールへ移動します。単語単位で判定するので「sale」は「Salesforce」に一致しません。"
+  },
+  "A word, a phrase or an address": {
+   "zh-Hans": "单词、短语或地址",
+   "hi": "कोई शब्द, वाक्यांश या पता",
+   "es": "Una palabra, una frase o una dirección",
+   "ar": "كلمة أو عبارة أو عنوان",
+   "fr": "Un mot, une phrase ou une adresse",
+   "bn": "একটি শব্দ, বাক্যাংশ বা ঠিকানা",
+   "pt-BR": "Uma palavra, uma frase ou um endereço",
+   "ru": "Слово, фраза или адрес",
+   "id": "Kata, frasa, atau alamat",
+   "de": "Ein Wort, ein Satz oder eine Adresse",
+   "tr": "Bir kelime, ifade ya da adres",
+   "ko": "단어, 문구 또는 주소",
+   "ja": "単語、フレーズ、アドレス"
+  },
   "A wrong word, or the wrong person? Fix it from the line's ⋯ menu. Words you correct are remembered for your next calls.": {
    "zh-Hans": "词听错了，或说话人不对？在该行的 ⋯ 菜单里修改。你改正的词会被记住，用于之后的通话。",
    "hi": "कोई शब्द गलत है, या व्यक्ति गलत? पंक्ति के ⋯ मेनू से ठीक करें। आप जो शब्द सुधारते हैं, वे अगली कॉल के लिए याद रखे जाते हैं।",
@@ -271,6 +301,21 @@
    "tr": "Yapıştırmak için Erişilebilirlik izni gerekiyor",
    "ko": "붙여넣으려면 손쉬운 사용 권한이 필요해요",
    "ja": "ペーストにはアクセシビリティが必要です"
+  },
+  "Account": {
+   "zh-Hans": "账户",
+   "hi": "खाता",
+   "es": "Cuenta",
+   "ar": "الحساب",
+   "fr": "Compte",
+   "bn": "অ্যাকাউন্ট",
+   "pt-BR": "Conta",
+   "ru": "Учётная запись",
+   "id": "Akun",
+   "de": "Account",
+   "tr": "Hesap",
+   "ko": "계정",
+   "ja": "アカウント"
   },
   "Active pills": {
    "zh-Hans": "活跃标签页",
@@ -601,6 +646,36 @@
    "tr": "Her zaman",
    "ko": "항상",
    "ja": "常に許可"
+  },
+  "Always ignore this sender": {
+   "zh-Hans": "始终忽略此发件人",
+   "hi": "इस प्रेषक को हमेशा अनदेखा करें",
+   "es": "Ignorar siempre a este remitente",
+   "ar": "تجاهل هذا المرسل دائمًا",
+   "fr": "Toujours ignorer cet expéditeur",
+   "bn": "এই প্রেরককে সবসময় উপেক্ষা করুন",
+   "pt-BR": "Sempre ignorar este remetente",
+   "ru": "Всегда игнорировать этого отправителя",
+   "id": "Selalu abaikan pengirim ini",
+   "de": "Diesen Absender immer ignorieren",
+   "tr": "Bu göndereni her zaman yok say",
+   "ko": "이 보낸 사람 항상 무시",
+   "ja": "この差出人を常に無視"
+  },
+  "Always important (VIP)": {
+   "zh-Hans": "始终重要（VIP）",
+   "hi": "हमेशा महत्वपूर्ण (VIP)",
+   "es": "Siempre importante (VIP)",
+   "ar": "مهم دائمًا (VIP)",
+   "fr": "Toujours important (VIP)",
+   "bn": "সবসময় গুরুত্বপূর্ণ (VIP)",
+   "pt-BR": "Sempre importante (VIP)",
+   "ru": "Всегда важно (VIP)",
+   "id": "Selalu penting (VIP)",
+   "de": "Immer wichtig (VIP)",
+   "tr": "Her zaman önemli (VIP)",
+   "ko": "항상 중요 (VIP)",
+   "ja": "常に重要（VIP）"
   },
   "Amp plugin": {
    "zh-Hans": "Amp 插件",
@@ -977,6 +1052,21 @@
    "ko": "자동 (Mac의 받아쓰기 언어)",
    "ja": "自動（Mac の音声入力の言語）"
   },
+  "Automatic sorting is off: these settings do nothing until it is on.": {
+   "zh-Hans": "自动整理已关闭：开启之前这些设置不会生效。",
+   "hi": "ऑटो छँटाई बंद है: चालू होने तक ये सेटिंग कुछ नहीं करेंगी।",
+   "es": "El orden automático está desactivado: estos ajustes no hacen nada hasta que lo actives.",
+   "ar": "الفرز التلقائي متوقف: لن تعمل هذه الإعدادات حتى يُشغَّل.",
+   "fr": "Le tri automatique est désactivé : ces réglages ne font rien tant qu’il n’est pas activé.",
+   "bn": "স্বয়ংক্রিয় সাজানো বন্ধ: চালু না করা পর্যন্ত এই সেটিংস কাজ করবে না।",
+   "pt-BR": "A organização automática está desligada: estes ajustes não fazem nada até ela ser ligada.",
+   "ru": "Автосортировка выключена: эти настройки не работают, пока она не включена.",
+   "id": "Pemilahan otomatis mati: pengaturan ini tidak berpengaruh sampai dinyalakan.",
+   "de": "Die automatische Sortierung ist aus: Diese Einstellungen wirken erst, wenn sie an ist.",
+   "tr": "Otomatik düzenleme kapalı: açılana kadar bu ayarlar bir şey yapmaz.",
+   "ko": "자동 정리가 꺼져 있습니다. 켜기 전까지는 이 설정이 작동하지 않습니다.",
+   "ja": "自動整理はオフです。オンにするまでこれらの設定は働きません。"
+  },
   "Automation not allowed": {
    "zh-Hans": "不允许自动化",
    "hi": "स्वचालन की अनुमति नहीं",
@@ -991,6 +1081,36 @@
    "tr": "Otomasyona izin verilmedi",
    "ko": "자동화가 허용되지 않았어요",
    "ja": "オートメーションが許可されていません"
+  },
+  "Back": {
+   "zh-Hans": "返回",
+   "hi": "वापस",
+   "es": "Atrás",
+   "ar": "رجوع",
+   "fr": "Retour",
+   "bn": "ফিরে যান",
+   "pt-BR": "Voltar",
+   "ru": "Назад",
+   "id": "Kembali",
+   "de": "Zurück",
+   "tr": "Geri",
+   "ko": "뒤로",
+   "ja": "戻る"
+  },
+  "Banned words": {
+   "zh-Hans": "屏蔽词",
+   "hi": "प्रतिबंधित शब्द",
+   "es": "Palabras prohibidas",
+   "ar": "كلمات محظورة",
+   "fr": "Mots bannis",
+   "bn": "নিষিদ্ধ শব্দ",
+   "pt-BR": "Palavras proibidas",
+   "ru": "Запрещённые слова",
+   "id": "Kata terlarang",
+   "de": "Verbotene Wörter",
+   "tr": "Yasaklı kelimeler",
+   "ko": "금지어",
+   "ja": "禁止ワード"
   },
   "Battery {0} %": {
    "zh-Hans": "电量 {0}%",
@@ -1081,6 +1201,36 @@
    "tr": "Alt",
    "ko": "아래",
    "ja": "下"
+  },
+  "Bottom left": {
+   "zh-Hans": "左下角",
+   "hi": "नीचे बाएँ",
+   "es": "Abajo a la izquierda",
+   "ar": "أسفل اليسار",
+   "fr": "En bas à gauche",
+   "bn": "নিচে বাঁয়ে",
+   "pt-BR": "Inferior esquerdo",
+   "ru": "Внизу слева",
+   "id": "Kiri bawah",
+   "de": "Unten links",
+   "tr": "Sol alt",
+   "ko": "왼쪽 아래",
+   "ja": "左下"
+  },
+  "Bottom right": {
+   "zh-Hans": "右下角",
+   "hi": "नीचे दाएँ",
+   "es": "Abajo a la derecha",
+   "ar": "أسفل اليمين",
+   "fr": "En bas à droite",
+   "bn": "নিচে ডানে",
+   "pt-BR": "Inferior direito",
+   "ru": "Внизу справа",
+   "id": "Kanan bawah",
+   "de": "Unten rechts",
+   "tr": "Sağ alt",
+   "ko": "오른쪽 아래",
+   "ja": "右下"
   },
   "Bow": {
    "zh-Hans": "蝴蝶结",
@@ -1231,6 +1381,21 @@
    "tr": "Dikteyi iptal et",
    "ko": "받아쓰기 취소",
    "ja": "口述をキャンセル"
+  },
+  "Cancelled": {
+   "zh-Hans": "已取消",
+   "hi": "रद्द हुआ",
+   "es": "Cancelado",
+   "ar": "أُلغي",
+   "fr": "Annulé",
+   "bn": "বাতিল হয়েছে",
+   "pt-BR": "Cancelado",
+   "ru": "Отменено",
+   "id": "Dibatalkan",
+   "de": "Abgebrochen",
+   "tr": "İptal edildi",
+   "ko": "취소됨",
+   "ja": "キャンセルしました"
   },
   "Capture the screen for Claude": {
    "zh-Hans": "为 Claude 截取屏幕",
@@ -2102,6 +2267,21 @@
    "ko": "앗, Coucou가 마이크를 쓸 수 없어요. 시스템 설정 → 개인정보 보호 및 보안 → 마이크에서 허용해 주세요.",
    "ja": "Coucou がマイクを使えません。システム設定 → プライバシーとセキュリティ → マイクで許可してください。"
   },
+  "Coucou could not read the plan: {0}": {
+   "zh-Hans": "Coucou 无法读取计划：{0}",
+   "hi": "Coucou योजना नहीं पढ़ सका: {0}",
+   "es": "Coucou no pudo leer el plan: {0}",
+   "ar": "تعذّر على Coucou قراءة الخطة: {0}",
+   "fr": "Coucou n’a pas pu lire le plan : {0}",
+   "bn": "Coucou পরিকল্পনা পড়তে পারেনি: {0}",
+   "pt-BR": "O Coucou não conseguiu ler o plano: {0}",
+   "ru": "Coucou не смог прочитать план: {0}",
+   "id": "Coucou tidak bisa membaca rencananya: {0}",
+   "de": "Coucou konnte den Plan nicht lesen: {0}",
+   "tr": "Coucou planı okuyamadı: {0}",
+   "ko": "Coucou가 계획을 읽지 못했습니다: {0}",
+   "ja": "Coucou はプランを読み取れませんでした：{0}"
+  },
   "Coucou couldn't paste: your words are copied. Press ⌘V, and allow Accessibility so it pastes for you.": {
    "zh-Hans": "Coucou 无法粘贴：你的话已拷贝。按 ⌘V，并允许“辅助功能”，让它自动粘贴。",
    "hi": "Coucou चिपका नहीं सका: आपके शब्द कॉपी हो गए हैं। ⌘V दबाएँ, और एक्सेसिबिलिटी की अनुमति दें ताकि वह खुद चिपकाए।",
@@ -2131,6 +2311,21 @@
    "tr": "Coucou ücretsiz ve açık kaynak. Sana zaman kazandırıyorsa Mochi’ye bir kahve ısmarlayabilirsin.",
    "ko": "Coucou는 무료 오픈소스예요. 시간을 아껴 줬다면 모찌에게 커피 한 잔 사 주세요.",
    "ja": "Coucou は無料のオープンソースです。時間の節約になったら、Mochi にコーヒーをおごってください。"
+  },
+  "Coucou is not allowed to control Mail. Allow it in Privacy & Security → Automation.": {
+   "zh-Hans": "Coucou 无权控制“邮件”。请在“隐私与安全性”→“自动化”中允许。",
+   "hi": "Coucou को Mail नियंत्रित करने की अनुमति नहीं है। Privacy & Security → Automation में अनुमति दें।",
+   "es": "Coucou no tiene permiso para controlar Mail. Permítelo en Privacidad y seguridad → Automatización.",
+   "ar": "لا يُسمح لـ Coucou بالتحكم في Mail. اسمح بذلك من الخصوصية والأمن ← الأتمتة.",
+   "fr": "Coucou n’a pas le droit de piloter Mail. Autorise-le dans Confidentialité et sécurité → Automatisation.",
+   "bn": "Coucou-কে Mail নিয়ন্ত্রণের অনুমতি দেওয়া নেই। Privacy & Security → Automation-এ অনুমতি দিন।",
+   "pt-BR": "O Coucou não tem permissão para controlar o Mail. Permita em Privacidade e Segurança → Automação.",
+   "ru": "Coucou не может управлять Mail. Разрешите это в «Конфиденциальность и безопасность» → «Автоматизация».",
+   "id": "Coucou tidak diizinkan mengontrol Mail. Izinkan di Privasi & Keamanan → Otomatisasi.",
+   "de": "Coucou darf Mail nicht steuern. Erlaube es unter Datenschutz & Sicherheit → Automation.",
+   "tr": "Coucou’nun Mail’i kontrol etme izni yok. Gizlilik ve Güvenlik → Otomasyon’dan izin ver.",
+   "ko": "Coucou에 Mail 제어 권한이 없습니다. 개인정보 보호 및 보안 → 자동화에서 허용하세요.",
+   "ja": "Coucou に Mail の操作が許可されていません。「プライバシーとセキュリティ」→「オートメーション」で許可してください。"
   },
   "Coucou is up to date": {
    "zh-Hans": "Coucou 已是最新版本",
@@ -2221,6 +2416,21 @@
    "tr": "Coucou sesli yanıt verir",
    "ko": "Coucou가 소리 내어 답하기",
    "ja": "Coucou が声で答えます"
+  },
+  "Coucou sorts your Apple Mail inboxes: VIPs first, then banned words, then your rules. It never deletes a message.": {
+   "zh-Hans": "Coucou 会整理你的 Apple Mail 收件箱：先看 VIP，再看屏蔽词，最后是你的规则。它从不删除邮件。",
+   "hi": "Coucou आपके Apple Mail इनबॉक्स छाँटता है: पहले VIP, फिर प्रतिबंधित शब्द, फिर आपके नियम। यह कभी कोई मेल नहीं हटाता।",
+   "es": "Coucou ordena tus buzones de Apple Mail: primero los VIP, luego las palabras prohibidas y después tus reglas. Nunca borra un correo.",
+   "ar": "يفرز Coucou صناديق Apple Mail لديك: كبار الشخصيات أولًا، ثم الكلمات المحظورة، ثم قواعدك. لا يحذف أي رسالة أبدًا.",
+   "fr": "Coucou trie tes boîtes Apple Mail : les VIP d’abord, puis les mots bannis, puis tes règles. Il ne supprime jamais un mail.",
+   "bn": "Coucou আপনার Apple Mail ইনবক্স সাজায়: আগে VIP, তারপর নিষিদ্ধ শব্দ, তারপর আপনার নিয়ম। এটি কখনো কোনো মেল মুছে না।",
+   "pt-BR": "O Coucou organiza suas caixas do Apple Mail: primeiro os VIPs, depois as palavras proibidas, depois suas regras. Ele nunca apaga um e-mail.",
+   "ru": "Coucou сортирует ящики Apple Mail: сначала VIP, затем запрещённые слова, затем ваши правила. Он никогда не удаляет письма.",
+   "id": "Coucou memilah kotak masuk Apple Mail-mu: VIP dulu, lalu kata terlarang, lalu aturanmu. Coucou tidak pernah menghapus email.",
+   "de": "Coucou sortiert deine Apple-Mail-Postfächer: zuerst VIPs, dann verbotene Wörter, dann deine Regeln. Es löscht nie eine E-Mail.",
+   "tr": "Coucou, Apple Mail gelen kutularını düzenler: önce VIP’ler, sonra yasaklı kelimeler, sonra kuralların. Hiçbir e-postayı silmez.",
+   "ko": "Coucou가 Apple Mail 받은편지함을 정리합니다. VIP가 먼저, 다음은 금지어, 그다음은 내 규칙입니다. 메일을 삭제하지는 않습니다.",
+   "ja": "Coucou は Apple Mail の受信箱を整理します。まず VIP、次に禁止ワード、最後にあなたのルール。メールを削除することはありません。"
   },
   "Coucou writes your calls on your Mac with Parakeet, and tells the voices apart with a second small model. Both are downloaded once (about 650 MB), then everything works offline.": {
    "zh-Hans": "Coucou 用 Parakeet 在你的 Mac 上转写通话，并用第二个小模型区分说话人。两者只需下载一次（约 650 MB），之后一切离线运行。",
@@ -3107,6 +3317,21 @@
    "ko": "가져오기",
    "ja": "取得"
   },
+  "File not found: {0}": {
+   "zh-Hans": "找不到文件：{0}",
+   "hi": "फ़ाइल नहीं मिली: {0}",
+   "es": "Archivo no encontrado: {0}",
+   "ar": "الملف غير موجود: {0}",
+   "fr": "Fichier introuvable : {0}",
+   "bn": "ফাইল পাওয়া যায়নি: {0}",
+   "pt-BR": "Arquivo não encontrado: {0}",
+   "ru": "Файл не найден: {0}",
+   "id": "File tidak ditemukan: {0}",
+   "de": "Datei nicht gefunden: {0}",
+   "tr": "Dosya bulunamadı: {0}",
+   "ko": "파일을 찾을 수 없음: {0}",
+   "ja": "ファイルが見つかりません：{0}"
+  },
   "Fix the line": {
    "zh-Hans": "修改这一行",
    "hi": "पंक्ति ठीक करें",
@@ -3827,6 +4052,66 @@
    "ko": "아일랜드에 마우스를 올리면 열리고, 포인터가 떠나면 잠시 후 스르륵 접혀요. 계속 열어 두려면 안쪽을 클릭해 주세요.",
    "ja": "アイランドにポインタを重ねると開き、ポインタが離れると少しして畳まれます。中をクリックすると開いたままになります。"
   },
+  "If": {
+   "zh-Hans": "如果",
+   "hi": "अगर",
+   "es": "Si",
+   "ar": "إذا",
+   "fr": "Si",
+   "bn": "যদি",
+   "pt-BR": "Se",
+   "ru": "Если",
+   "id": "Jika",
+   "de": "Wenn",
+   "tr": "Eğer",
+   "ko": "조건",
+   "ja": "条件"
+  },
+  "If a message matches, Coucou does the action. The first rule that matches wins; VIPs and banned words come before.": {
+   "zh-Hans": "邮件符合条件时，Coucou 会执行操作。第一条匹配的规则生效；VIP 和屏蔽词优先。",
+   "hi": "अगर कोई मेल मेल खाता है, तो Coucou कार्रवाई करता है। पहला मिलने वाला नियम लागू होता है; VIP और प्रतिबंधित शब्द उससे पहले आते हैं।",
+   "es": "Si un correo coincide, Coucou hace la acción. Gana la primera regla que coincida; los VIP y las palabras prohibidas van antes.",
+   "ar": "إذا طابقت رسالة، ينفذ Coucou الإجراء. تفوز أول قاعدة مطابقة؛ وتأتي كبار الشخصيات والكلمات المحظورة قبلها.",
+   "fr": "Si un mail correspond, Coucou fait l’action. La première règle qui correspond l’emporte ; les VIP et les mots bannis passent avant.",
+   "bn": "কোনো মেল মিললে Coucou কাজটি করে। প্রথম মেলা নিয়মটিই প্রযোজ্য; VIP আর নিষিদ্ধ শব্দ তার আগে আসে।",
+   "pt-BR": "Se um e-mail corresponder, o Coucou faz a ação. A primeira regra que corresponder vence; VIPs e palavras proibidas vêm antes.",
+   "ru": "Если письмо подходит, Coucou выполняет действие. Срабатывает первое подходящее правило; VIP и запрещённые слова проверяются раньше.",
+   "id": "Jika email cocok, Coucou menjalankan tindakannya. Aturan pertama yang cocok yang berlaku; VIP dan kata terlarang didahulukan.",
+   "de": "Passt eine E-Mail, führt Coucou die Aktion aus. Die erste passende Regel gewinnt; VIPs und verbotene Wörter kommen vorher.",
+   "tr": "Bir e-posta eşleşirse Coucou işlemi yapar. İlk eşleşen kural geçerlidir; VIP’ler ve yasaklı kelimeler önce gelir.",
+   "ko": "메일이 조건에 맞으면 Coucou가 동작을 실행합니다. 처음 맞는 규칙이 적용되며, VIP와 금지어가 먼저 처리됩니다.",
+   "ja": "条件に合うメールに Coucou が操作を行います。最初に一致したルールが優先され、VIP と禁止ワードはそれより先に処理されます。"
+  },
+  "Important": {
+   "zh-Hans": "重要",
+   "hi": "महत्वपूर्ण",
+   "es": "Importante",
+   "ar": "مهم",
+   "fr": "Important",
+   "bn": "গুরুত্বপূর্ণ",
+   "pt-BR": "Importante",
+   "ru": "Важное",
+   "id": "Penting",
+   "de": "Wichtig",
+   "tr": "Önemli",
+   "ko": "중요",
+   "ja": "重要"
+  },
+  "In a corner, Coucou floats over your desktop and opens from there. You can also drag Mochi near a corner of the screen, or back to the top centre.": {
+   "zh-Hans": "放在角落时，Coucou 会浮在桌面上并从那里展开。你也可以把 Mochi 拖到屏幕角落附近，或拖回顶部中间。",
+   "hi": "कोने में Coucou आपके डेस्कटॉप पर तैरता है और वहीं से खुलता है। आप Mochi को स्क्रीन के किसी कोने के पास खींच सकते हैं, या वापस ऊपर बीच में ला सकते हैं।",
+   "es": "En una esquina, Coucou flota sobre tu escritorio y se abre desde ahí. También puedes arrastrar a Mochi cerca de una esquina de la pantalla, o devolverlo arriba en el centro.",
+   "ar": "في الزاوية، يطفو Coucou فوق سطح المكتب ويُفتح من هناك. يمكنك أيضًا سحب Mochi قرب زاوية من الشاشة، أو إعادته إلى أعلى الوسط.",
+   "fr": "Dans un coin, Coucou flotte sur ton bureau et s’ouvre depuis ce coin. Tu peux aussi glisser Mochi près d’un coin de l’écran, ou le ramener en haut au centre.",
+   "bn": "কোণে থাকলে Coucou আপনার ডেস্কটপের উপর ভাসে এবং সেখান থেকেই খোলে। Mochi-কে স্ক্রিনের কোনো কোণের কাছে টেনে আনতে পারেন, অথবা আবার উপরের মাঝখানে নিতে পারেন।",
+   "pt-BR": "Num canto, o Coucou flutua sobre a sua área de trabalho e abre a partir dali. Você também pode arrastar o Mochi para perto de um canto da tela, ou de volta ao centro, no alto.",
+   "ru": "В углу Coucou парит над рабочим столом и открывается оттуда. Можно также перетащить Mochi к углу экрана или обратно наверх по центру.",
+   "id": "Di sudut, Coucou melayang di atas desktop dan terbuka dari sana. Kamu juga bisa menyeret Mochi ke dekat sudut layar, atau kembali ke atas tengah.",
+   "de": "In einer Ecke schwebt Coucou über deinem Schreibtisch und öffnet sich von dort. Du kannst Mochi auch in die Nähe einer Bildschirmecke ziehen oder zurück nach oben in die Mitte.",
+   "tr": "Bir köşedeyken Coucou masaüstünün üzerinde süzülür ve oradan açılır. Mochi’yi ekranın bir köşesine yakın sürükleyebilir ya da üst ortaya geri getirebilirsin.",
+   "ko": "모서리에 두면 Coucou가 데스크톱 위에 떠 있고 그 자리에서 열려요. Mochi를 화면 모서리 근처로 끌어다 놓거나 상단 가운데로 다시 옮길 수도 있어요.",
+   "ja": "隅に置くと、Coucou はデスクトップの上に浮かび、そこから開きます。Mochi を画面の隅の近くへドラッグしたり、上部中央へ戻したりすることもできます。"
+  },
   "Inbox": {
    "zh-Hans": "收件箱",
    "hi": "इनबॉक्स",
@@ -4052,6 +4337,21 @@
    "ko": "연동",
    "ja": "連携"
   },
+  "Journal": {
+   "zh-Hans": "记录",
+   "hi": "लॉग",
+   "es": "Registro",
+   "ar": "السجل",
+   "fr": "Journal",
+   "bn": "লগ",
+   "pt-BR": "Registro",
+   "ru": "Журнал",
+   "id": "Catatan",
+   "de": "Protokoll",
+   "tr": "Günlük",
+   "ko": "기록",
+   "ja": "履歴"
+  },
   "Jump to terminal": {
    "zh-Hans": "跳转到终端",
    "hi": "टर्मिनल पर जाएं",
@@ -4066,6 +4366,21 @@
    "tr": "Terminale git",
    "ko": "터미널로 이동",
    "ja": "ターミナルへ移動"
+  },
+  "Junk": {
+   "zh-Hans": "垃圾邮件",
+   "hi": "जंक",
+   "es": "No deseado",
+   "ar": "غير مرغوب",
+   "fr": "Indésirable",
+   "bn": "জাঙ্ক",
+   "pt-BR": "Lixo",
+   "ru": "Спам",
+   "id": "Sampah",
+   "de": "Werbung",
+   "tr": "Gereksiz",
+   "ko": "정크",
+   "ja": "迷惑メール"
   },
   "Keep a history of my coding sessions": {
    "zh-Hans": "保留我的编程会话历史记录",
@@ -4292,6 +4607,21 @@
    "ko": "iPhone에서 Claude Code에 지시 보내기 허용",
    "ja": "iPhone から Claude Code に指示を送れるようにする"
   },
+  "Lets the AI see your latest messages and prepare actions on them. Nothing happens until you click Run.": {
+   "zh-Hans": "让 AI 查看你最近的邮件并准备操作。点击“执行”之前不会发生任何事。",
+   "hi": "AI को आपके नए मेल देखने और उन पर कार्रवाइयाँ तैयार करने देता है। चलाएँ पर क्लिक करने तक कुछ नहीं होता।",
+   "es": "Deja que la IA vea tus últimos correos y prepare acciones. No pasa nada hasta que pulses Ejecutar.",
+   "ar": "يتيح للذكاء الاصطناعي رؤية أحدث رسائلك وتحضير إجراءات عليها. لا يحدث شيء قبل نقرك على تشغيل.",
+   "fr": "Laisse l’IA voir tes derniers mails et préparer des actions dessus. Rien ne se passe avant ton clic sur Lancer.",
+   "bn": "AI-কে আপনার সাম্প্রতিক মেল দেখতে ও কাজ প্রস্তুত করতে দেয়। চালান-এ ক্লিক না করা পর্যন্ত কিছুই হয় না।",
+   "pt-BR": "Deixa a IA ver seus últimos e-mails e preparar ações. Nada acontece até você clicar em Executar.",
+   "ru": "ИИ видит ваши последние письма и готовит действия. Ничего не происходит, пока вы не нажмёте «Запустить».",
+   "id": "AI bisa melihat email terbarumu dan menyiapkan tindakan. Tidak ada yang terjadi sebelum kamu klik Jalankan.",
+   "de": "Lässt die KI deine neuesten E-Mails sehen und Aktionen dafür vorbereiten. Nichts passiert, bevor du auf Ausführen klickst.",
+   "tr": "Yapay zekânın son e-postalarını görmesini ve işlemler hazırlamasını sağlar. Çalıştır’a tıklayana kadar hiçbir şey olmaz.",
+   "ko": "AI가 최근 메일을 보고 작업을 준비할 수 있게 합니다. 실행을 누르기 전에는 아무 일도 일어나지 않습니다.",
+   "ja": "AI が最新のメールを見て、操作を準備できるようにします。「実行」をクリックするまで何も起きません。"
+  },
   "Lines written": {
    "zh-Hans": "写下的代码行",
    "hi": "लिखी गई पंक्तियाँ",
@@ -4351,6 +4681,21 @@
    "tr": "Canlı",
    "ko": "실시간",
    "ja": "ライブ"
+  },
+  "Load more": {
+   "zh-Hans": "加载更多",
+   "hi": "और लोड करें",
+   "es": "Cargar más",
+   "ar": "تحميل المزيد",
+   "fr": "Voir plus",
+   "bn": "আরও লোড করুন",
+   "pt-BR": "Carregar mais",
+   "ru": "Ещё",
+   "id": "Muat lebih banyak",
+   "de": "Mehr laden",
+   "tr": "Daha fazla yükle",
+   "ko": "더 보기",
+   "ja": "さらに読み込む"
   },
   "Loading models…": {
    "zh-Hans": "正在加载模型…",
@@ -4487,6 +4832,36 @@
    "ko": "Mac 음성",
    "ja": "Mac の声"
   },
+  "Mail": {
+   "zh-Hans": "邮件",
+   "hi": "मेल",
+   "es": "Correo",
+   "ar": "البريد",
+   "fr": "Mail",
+   "bn": "মেল",
+   "pt-BR": "E-mail",
+   "ru": "Почта",
+   "id": "Email",
+   "de": "Mail",
+   "tr": "Posta",
+   "ko": "메일",
+   "ja": "メール"
+  },
+  "Mail didn’t give the text of this message. Open it in Mail to read it.": {
+   "zh-Hans": "“邮件”没有提供这封邮件的正文。请在“邮件”中打开阅读。",
+   "hi": "Mail ने इस संदेश का टेक्स्ट नहीं दिया। पढ़ने के लिए इसे Mail में खोलें।",
+   "es": "Mail no ha dado el texto de este mensaje. Ábrelo en Mail para leerlo.",
+   "ar": "لم يقدّم تطبيق Mail نص هذه الرسالة. افتحها في Mail لقراءتها.",
+   "fr": "Mail n’a pas donné le texte de ce message. Ouvre-le dans Mail pour le lire.",
+   "bn": "Mail এই বার্তার লেখা দেয়নি। পড়তে Mail-এ খুলুন।",
+   "pt-BR": "O Mail não entregou o texto desta mensagem. Abra no Mail para ler.",
+   "ru": "Mail не передал текст этого письма. Откройте его в Mail, чтобы прочитать.",
+   "id": "Mail tidak memberikan teks pesan ini. Buka di Mail untuk membacanya.",
+   "de": "Mail hat den Text dieser Nachricht nicht geliefert. Öffne sie in Mail, um sie zu lesen.",
+   "tr": "Mail bu iletinin metnini vermedi. Okumak için Mail’de aç.",
+   "ko": "Mail에서 이 메시지의 본문을 가져오지 못했어요. Mail에서 열어 읽어 보세요.",
+   "ja": "Mail からこのメッセージの本文を取得できませんでした。Mail で開いて読んでください。"
+  },
   "Mail is closed": {
    "zh-Hans": "“邮件”未打开",
    "hi": "Mail बंद है",
@@ -4502,6 +4877,21 @@
    "ko": "메일이 닫혀 있네요",
    "ja": "メールが閉じています"
   },
+  "Mail is closed: nothing is sorted until it is open.": {
+   "zh-Hans": "“邮件”已关闭：打开之前不会整理任何邮件。",
+   "hi": "Mail बंद है: खुलने तक कुछ भी नहीं छाँटा जाएगा।",
+   "es": "Mail está cerrado: no se ordena nada hasta que se abra.",
+   "ar": "Mail مغلق: لن يُفرز شيء حتى يُفتح.",
+   "fr": "Mail est fermé : rien n’est trié tant qu’il n’est pas ouvert.",
+   "bn": "Mail বন্ধ: খোলা না হওয়া পর্যন্ত কিছুই সাজানো হবে না।",
+   "pt-BR": "O Mail está fechado: nada é organizado até ele ser aberto.",
+   "ru": "Mail закрыта: пока она не открыта, ничего не сортируется.",
+   "id": "Mail tertutup: tidak ada yang dipilah sampai dibuka.",
+   "de": "Mail ist geschlossen: Nichts wird sortiert, bis es geöffnet ist.",
+   "tr": "Mail kapalı: açılana kadar hiçbir şey düzenlenmez.",
+   "ko": "Mail이 닫혀 있습니다. 열 때까지 아무것도 정리되지 않습니다.",
+   "ja": "Mail が閉じています。開くまで何も整理されません。"
+  },
   "Mail not available.": {
    "zh-Hans": "邮件不可用。",
    "hi": "मेल उपलब्ध नहीं है।",
@@ -4516,6 +4906,36 @@
    "tr": "Mail kullanılamıyor.",
    "ko": "메일을 쓸 수 없어요.",
    "ja": "メールを利用できません。"
+  },
+  "Mail plan": {
+   "zh-Hans": "邮件计划",
+   "hi": "मेल योजना",
+   "es": "Plan de correo",
+   "ar": "خطة البريد",
+   "fr": "Plan mail",
+   "bn": "মেল পরিকল্পনা",
+   "pt-BR": "Plano de e-mail",
+   "ru": "План для почты",
+   "id": "Rencana email",
+   "de": "Mail-Plan",
+   "tr": "Posta planı",
+   "ko": "메일 계획",
+   "ja": "メールのプラン"
+  },
+  "Mailbox name": {
+   "zh-Hans": "邮箱名称",
+   "hi": "मेलबॉक्स का नाम",
+   "es": "Nombre del buzón",
+   "ar": "اسم الصندوق",
+   "fr": "Nom du dossier",
+   "bn": "মেলবক্সের নাম",
+   "pt-BR": "Nome da caixa",
+   "ru": "Название папки",
+   "id": "Nama kotak surat",
+   "de": "Name des Postfachs",
+   "tr": "Posta kutusu adı",
+   "ko": "메일함 이름",
+   "ja": "メールボックス名"
   },
   "Main": {
    "zh-Hans": "主要",
@@ -4592,6 +5012,51 @@
    "ko": "읽음으로 표시",
    "ja": "既読にする"
   },
+  "Mark important": {
+   "zh-Hans": "标为重要",
+   "hi": "महत्वपूर्ण चिह्नित करें",
+   "es": "Marcar como importante",
+   "ar": "وسم كمهمة",
+   "fr": "Marquer important",
+   "bn": "গুরুত্বপূর্ণ চিহ্নিত করুন",
+   "pt-BR": "Marcar como importante",
+   "ru": "Отметить важным",
+   "id": "Tandai penting",
+   "de": "Als wichtig markieren",
+   "tr": "Önemli olarak işaretle",
+   "ko": "중요로 표시",
+   "ja": "重要に設定"
+  },
+  "Marked as read": {
+   "zh-Hans": "已标为已读",
+   "hi": "पढ़ा हुआ चिह्नित",
+   "es": "Marcado como leído",
+   "ar": "وُسمت كمقروءة",
+   "fr": "Marqué comme lu",
+   "bn": "পঠিত চিহ্নিত",
+   "pt-BR": "Marcado como lido",
+   "ru": "Отмечено прочитанным",
+   "id": "Ditandai dibaca",
+   "de": "Als gelesen markiert",
+   "tr": "Okundu olarak işaretlendi",
+   "ko": "읽음으로 표시됨",
+   "ja": "既読に設定"
+  },
+  "Marked important": {
+   "zh-Hans": "已标为重要",
+   "hi": "महत्वपूर्ण चिह्नित",
+   "es": "Marcado como importante",
+   "ar": "وُسمت مهمة",
+   "fr": "Marqué important",
+   "bn": "গুরুত্বপূর্ণ চিহ্নিত",
+   "pt-BR": "Marcado como importante",
+   "ru": "Отмечено важным",
+   "id": "Ditandai penting",
+   "de": "Als wichtig markiert",
+   "tr": "Önemli olarak işaretlendi",
+   "ko": "중요로 표시됨",
+   "ja": "重要に設定"
+  },
   "Me": {
    "zh-Hans": "我",
    "hi": "मैं",
@@ -4636,6 +5101,36 @@
    "tr": "Bellek azalıyor",
    "ko": "메모리가 모자라요",
    "ja": "メモリが不足しています"
+  },
+  "Message {0} is not in the list": {
+   "zh-Hans": "邮件 {0} 不在列表中",
+   "hi": "मेल {0} सूची में नहीं है",
+   "es": "El correo {0} no está en la lista",
+   "ar": "الرسالة {0} ليست في القائمة",
+   "fr": "Le mail {0} n’est pas dans la liste",
+   "bn": "মেল {0} তালিকায় নেই",
+   "pt-BR": "O e-mail {0} não está na lista",
+   "ru": "Письма {0} нет в списке",
+   "id": "Email {0} tidak ada di daftar",
+   "de": "E-Mail {0} ist nicht in der Liste",
+   "tr": "{0} numaralı e-posta listede yok",
+   "ko": "메일 {0}이(가) 목록에 없습니다",
+   "ja": "メール {0} は一覧にありません"
+  },
+  "Messages from these addresses or domains are always flagged important, and no rule ever moves them.": {
+   "zh-Hans": "来自这些地址或域名的邮件始终标为重要，任何规则都不会移动它们。",
+   "hi": "इन पतों या डोमेन से आए मेल हमेशा महत्वपूर्ण चिह्नित होते हैं, और कोई नियम उन्हें नहीं हटाता।",
+   "es": "Los correos de estas direcciones o dominios siempre se marcan como importantes y ninguna regla los mueve.",
+   "ar": "الرسائل من هذه العناوين أو النطاقات تُوسم دائمًا كمهمة، ولا تنقلها أي قاعدة.",
+   "fr": "Les mails de ces adresses ou domaines sont toujours marqués importants, et aucune règle ne les déplace.",
+   "bn": "এই ঠিকানা বা ডোমেইন থেকে আসা মেল সবসময় গুরুত্বপূর্ণ চিহ্নিত হয়, আর কোনো নিয়ম সেগুলো সরায় না।",
+   "pt-BR": "E-mails destes endereços ou domínios são sempre marcados como importantes, e nenhuma regra os move.",
+   "ru": "Письма с этих адресов или доменов всегда отмечаются важными, и никакое правило их не перемещает.",
+   "id": "Email dari alamat atau domain ini selalu ditandai penting, dan tidak ada aturan yang memindahkannya.",
+   "de": "E-Mails von diesen Adressen oder Domains sind immer als wichtig markiert, und keine Regel verschiebt sie.",
+   "tr": "Bu adreslerden veya alan adlarından gelen e-postalar her zaman önemli olarak işaretlenir ve hiçbir kural onları taşımaz.",
+   "ko": "이 주소나 도메인에서 온 메일은 항상 중요로 표시되며, 어떤 규칙도 옮기지 않습니다.",
+   "ja": "これらのアドレスやドメインからのメールは常に重要に設定され、ルールで移動されることはありません。"
   },
   "Microphone unavailable": {
    "zh-Hans": "麦克风不可用",
@@ -4846,6 +5341,81 @@
    "tr": "Mac'im kilitlendiğinde Mochi'yi iPhone'umun Dynamic Island'ına taşı",
    "ko": "Mac이 잠기면 모찌를 iPhone의 Dynamic Island로 이사시키기",
    "ja": "Mac がロックされたら Mochi を iPhone の Dynamic Island に移す"
+  },
+  "Move to Junk": {
+   "zh-Hans": "移到垃圾邮件",
+   "hi": "जंक में भेजें",
+   "es": "Mover a no deseado",
+   "ar": "نقل إلى غير المرغوب",
+   "fr": "Mettre en indésirables",
+   "bn": "জাঙ্কে সরান",
+   "pt-BR": "Mover para o lixo",
+   "ru": "В спам",
+   "id": "Pindah ke Sampah",
+   "de": "In Werbung verschieben",
+   "tr": "Gereksize taşı",
+   "ko": "정크로 이동",
+   "ja": "迷惑メールへ移動"
+  },
+  "Move to mailbox…": {
+   "zh-Hans": "移到邮箱…",
+   "hi": "मेलबॉक्स में भेजें…",
+   "es": "Mover a un buzón…",
+   "ar": "نقل إلى صندوق…",
+   "fr": "Déplacer dans un dossier…",
+   "bn": "মেলবক্সে সরান…",
+   "pt-BR": "Mover para uma caixa…",
+   "ru": "Переместить в папку…",
+   "id": "Pindah ke kotak surat…",
+   "de": "In Postfach verschieben …",
+   "tr": "Posta kutusuna taşı…",
+   "ko": "메일함으로 이동…",
+   "ja": "メールボックスへ移動…"
+  },
+  "Move to {0}": {
+   "zh-Hans": "移到 {0}",
+   "hi": "{0} में भेजें",
+   "es": "Mover a {0}",
+   "ar": "نقل إلى {0}",
+   "fr": "Déplacer dans {0}",
+   "bn": "{0}-এ সরান",
+   "pt-BR": "Mover para {0}",
+   "ru": "Переместить в {0}",
+   "id": "Pindah ke {0}",
+   "de": "Nach {0} verschieben",
+   "tr": "{0} klasörüne taşı",
+   "ko": "{0}(으)로 이동",
+   "ja": "{0} へ移動"
+  },
+  "Moved to Junk": {
+   "zh-Hans": "已移到垃圾邮件",
+   "hi": "जंक में भेजा",
+   "es": "Movido a no deseado",
+   "ar": "نُقلت إلى غير المرغوب",
+   "fr": "Déplacé en indésirables",
+   "bn": "জাঙ্কে সরানো হয়েছে",
+   "pt-BR": "Movido para o lixo",
+   "ru": "Перемещено в спам",
+   "id": "Dipindah ke Sampah",
+   "de": "In Werbung verschoben",
+   "tr": "Gereksize taşındı",
+   "ko": "정크로 이동됨",
+   "ja": "迷惑メールへ移動"
+  },
+  "Moved to {0}": {
+   "zh-Hans": "已移到 {0}",
+   "hi": "{0} में भेजा",
+   "es": "Movido a {0}",
+   "ar": "نُقلت إلى {0}",
+   "fr": "Déplacé dans {0}",
+   "bn": "{0}-এ সরানো হয়েছে",
+   "pt-BR": "Movido para {0}",
+   "ru": "Перемещено в {0}",
+   "id": "Dipindah ke {0}",
+   "de": "Nach {0} verschoben",
+   "tr": "{0} klasörüne taşındı",
+   "ko": "{0}(으)로 이동됨",
+   "ja": "{0} へ移動"
   },
   "Muse Code hooks": {
    "zh-Hans": "Muse Code 钩子",
@@ -5102,6 +5672,36 @@
    "ko": "다음 곡",
    "ja": "次の曲"
   },
+  "No PDF found in that message": {
+   "zh-Hans": "该邮件中没有 PDF",
+   "hi": "उस मेल में कोई PDF नहीं मिला",
+   "es": "No hay ningún PDF en ese correo",
+   "ar": "لا يوجد PDF في تلك الرسالة",
+   "fr": "Aucun PDF trouvé dans ce mail",
+   "bn": "ওই মেলে কোনো PDF নেই",
+   "pt-BR": "Nenhum PDF nesse e-mail",
+   "ru": "В этом письме нет PDF",
+   "id": "Tidak ada PDF di email itu",
+   "de": "Keine PDF in dieser E-Mail gefunden",
+   "tr": "Bu e-postada PDF yok",
+   "ko": "이 메일에 PDF가 없습니다",
+   "ja": "このメールに PDF がありません"
+  },
+  "No VIPs yet. Add an address, or a whole domain with @.": {
+   "zh-Hans": "还没有 VIP。添加一个地址，或用 @ 添加整个域名。",
+   "hi": "अभी कोई VIP नहीं। कोई पता जोड़ें, या @ के साथ पूरा डोमेन।",
+   "es": "Aún no hay VIP. Añade una dirección o un dominio entero con @.",
+   "ar": "لا كبار شخصيات بعد. أضف عنوانًا، أو نطاقًا كاملًا بـ @.",
+   "fr": "Pas encore de VIP. Ajoute une adresse, ou tout un domaine avec @.",
+   "bn": "এখনো কোনো VIP নেই। একটি ঠিকানা, বা @ দিয়ে পুরো ডোমেইন যোগ করুন।",
+   "pt-BR": "Nenhum VIP ainda. Adicione um endereço, ou um domínio inteiro com @.",
+   "ru": "VIP пока нет. Добавьте адрес или весь домен через @.",
+   "id": "Belum ada VIP. Tambahkan alamat, atau seluruh domain dengan @.",
+   "de": "Noch keine VIPs. Füge eine Adresse oder eine ganze Domain mit @ hinzu.",
+   "tr": "Henüz VIP yok. Bir adres ya da @ ile tüm alan adını ekle.",
+   "ko": "아직 VIP가 없습니다. 주소를 추가하거나 @로 도메인 전체를 추가하세요.",
+   "ja": "VIP はまだいません。アドレス、または @ でドメイン全体を追加してください。"
+  },
   "No activity last week": {
    "zh-Hans": "上周无活动",
    "hi": "पिछले सप्ताह कोई गतिविधि नहीं",
@@ -5116,6 +5716,21 @@
    "tr": "Geçen hafta etkinlik yok",
    "ko": "지난주엔 활동이 없었어요",
    "ja": "先週のアクティビティはありません"
+  },
+  "No banned words. Add a word, or click “Always ignore this sender” on a message in the notch.": {
+   "zh-Hans": "没有屏蔽词。添加一个词，或在刘海里的邮件上点击“始终忽略此发件人”。",
+   "hi": "कोई प्रतिबंधित शब्द नहीं। कोई शब्द जोड़ें, या नॉच में किसी मेल पर “इस प्रेषक को हमेशा अनदेखा करें” क्लिक करें।",
+   "es": "No hay palabras prohibidas. Añade una o haz clic en «Ignorar siempre a este remitente» en un correo del notch.",
+   "ar": "لا كلمات محظورة. أضف كلمة، أو انقر «تجاهل هذا المرسل دائمًا» على رسالة في النوتش.",
+   "fr": "Aucun mot banni. Ajoute un mot, ou clique sur « Toujours ignorer cet expéditeur » sur un mail dans l’encoche.",
+   "bn": "কোনো নিষিদ্ধ শব্দ নেই। একটি শব্দ যোগ করুন, অথবা নচে কোনো মেলে “এই প্রেরককে সবসময় উপেক্ষা করুন” ক্লিক করুন।",
+   "pt-BR": "Nenhuma palavra proibida. Adicione uma, ou clique em “Sempre ignorar este remetente” num e-mail no notch.",
+   "ru": "Запрещённых слов нет. Добавьте слово или нажмите «Всегда игнорировать этого отправителя» у письма в вырезе.",
+   "id": "Belum ada kata terlarang. Tambahkan kata, atau klik “Selalu abaikan pengirim ini” pada email di notch.",
+   "de": "Keine verbotenen Wörter. Füge ein Wort hinzu oder klicke bei einer E-Mail in der Notch auf „Diesen Absender immer ignorieren“.",
+   "tr": "Yasaklı kelime yok. Bir kelime ekle ya da çentikteki bir e-postada “Bu göndereni her zaman yok say”a tıkla.",
+   "ko": "금지어가 없습니다. 단어를 추가하거나 노치의 메일에서 ‘이 보낸 사람 항상 무시’를 누르세요.",
+   "ja": "禁止ワードはありません。語句を追加するか、ノッチのメールで「この差出人を常に無視」をクリックしてください。"
   },
   "No calls scheduled": {
    "zh-Hans": "没有计划的通话",
@@ -5266,6 +5881,36 @@
    "tr": "Başka açık uygulama yok",
    "ko": "열려 있는 다른 앱이 없어요",
    "ja": "ほかに開いているアプリはありません"
+  },
+  "No rules yet. Example: if the sender contains “newsletter”, move to Junk.": {
+   "zh-Hans": "还没有规则。例如：发件人包含“newsletter”时，移到垃圾邮件。",
+   "hi": "अभी कोई नियम नहीं। उदाहरण: अगर प्रेषक में “newsletter” हो, तो जंक में भेजें।",
+   "es": "Aún no hay reglas. Ejemplo: si el remitente contiene «newsletter», mover a no deseado.",
+   "ar": "لا قواعد بعد. مثال: إذا احتوى المرسل على «newsletter»، انقلها إلى غير المرغوب.",
+   "fr": "Pas encore de règle. Exemple : si l’expéditeur contient « newsletter », mettre en indésirables.",
+   "bn": "এখনো কোনো নিয়ম নেই। উদাহরণ: প্রেরকে “newsletter” থাকলে জাঙ্কে সরান।",
+   "pt-BR": "Nenhuma regra ainda. Exemplo: se o remetente contém “newsletter”, mover para o lixo.",
+   "ru": "Правил пока нет. Пример: если отправитель содержит «newsletter», переместить в спам.",
+   "id": "Belum ada aturan. Contoh: jika pengirim berisi “newsletter”, pindahkan ke Sampah.",
+   "de": "Noch keine Regeln. Beispiel: Wenn der Absender „Newsletter“ enthält, in Werbung verschieben.",
+   "tr": "Henüz kural yok. Örnek: gönderen “newsletter” içeriyorsa gereksize taşı.",
+   "ko": "아직 규칙이 없습니다. 예: 보낸 사람에 ‘newsletter’가 있으면 정크로 이동.",
+   "ja": "ルールはまだありません。例：差出人に「newsletter」を含む場合、迷惑メールへ移動。"
+  },
+  "No setting found": {
+   "zh-Hans": "未找到设置",
+   "hi": "कोई सेटिंग नहीं मिली",
+   "es": "Ningún ajuste encontrado",
+   "ar": "لم يُعثر على أي إعداد",
+   "fr": "Aucun réglage trouvé",
+   "bn": "কোনো সেটিং পাওয়া যায়নি",
+   "pt-BR": "Nenhum ajuste encontrado",
+   "ru": "Настройка не найдена",
+   "id": "Pengaturan tidak ditemukan",
+   "de": "Keine Einstellung gefunden",
+   "tr": "Ayar bulunamadı",
+   "ko": "찾은 설정이 없어요",
+   "ja": "該当する設定はありません"
   },
   "No snippet yet. Your booking link, your signature, your address: say a few words, get the whole text.": {
    "zh-Hans": "还没有片段。你的预约链接、签名、地址：说几个字，就能得到整段文字。",
@@ -5447,6 +6092,21 @@
    "ko": "못 찾았어요: {0}",
    "ja": "見つかりません：{0}"
   },
+  "Not important": {
+   "zh-Hans": "不重要",
+   "hi": "महत्वपूर्ण नहीं",
+   "es": "No importante",
+   "ar": "غير مهم",
+   "fr": "Pas important",
+   "bn": "গুরুত্বপূর্ণ নয়",
+   "pt-BR": "Não importante",
+   "ru": "Не важное",
+   "id": "Tidak penting",
+   "de": "Nicht wichtig",
+   "tr": "Önemli değil",
+   "ko": "중요하지 않음",
+   "ja": "重要ではない"
+  },
   "Not in your library, opened search for {0}": {
    "zh-Hans": "不在你的资料库中，已打开 {0} 的搜索",
    "hi": "तुम्हारी लाइब्रेरी में नहीं है, {0} के लिए सर्च खोला",
@@ -5567,6 +6227,21 @@
    "ko": "노치",
    "ja": "ノッチ"
   },
+  "Notch (top centre)": {
+   "zh-Hans": "刘海（顶部居中）",
+   "hi": "नॉच (ऊपर बीच में)",
+   "es": "Notch (arriba en el centro)",
+   "ar": "النتوء (أعلى الوسط)",
+   "fr": "Notch (en haut au centre)",
+   "bn": "নচ (উপরে মাঝখানে)",
+   "pt-BR": "Notch (no alto, ao centro)",
+   "ru": "Вырез (вверху по центру)",
+   "id": "Notch (atas tengah)",
+   "de": "Notch (oben mittig)",
+   "tr": "Çentik (üst orta)",
+   "ko": "노치 (상단 가운데)",
+   "ja": "ノッチ（上部中央）"
+  },
   "Notch shortcuts — active when the notch is in front": {
    "zh-Hans": "岛快捷键 — 岛获得焦点时有效",
    "hi": "आइलैंड शॉर्टकट — आइलैंड फोकस में होने पर सक्रिय",
@@ -5627,6 +6302,21 @@
    "ko": "노트테이커",
    "ja": "ノートテイカー"
   },
+  "Nothing found": {
+   "zh-Hans": "没有找到",
+   "hi": "कुछ नहीं मिला",
+   "es": "No se encontró nada",
+   "ar": "لم يُعثر على شيء",
+   "fr": "Rien trouvé",
+   "bn": "কিছু পাওয়া যায়নি",
+   "pt-BR": "Nada encontrado",
+   "ru": "Ничего не найдено",
+   "id": "Tidak ditemukan",
+   "de": "Nichts gefunden",
+   "tr": "Hiçbir şey bulunamadı",
+   "ko": "찾은 항목 없음",
+   "ja": "見つかりません"
+  },
   "Nothing here": {
    "zh-Hans": "这里没有内容",
    "hi": "यहाँ कुछ नहीं",
@@ -5656,6 +6346,21 @@
    "tr": "Şu anda çalışan bir şey yok.",
    "ko": "지금은 다들 쉬는 중이에요.",
    "ja": "今は何も実行されていません。"
+  },
+  "Nothing sorted yet. What Coucou does to your messages shows up here, with an Undo.": {
+   "zh-Hans": "还没有整理任何邮件。Coucou 对邮件做的操作会显示在这里，并可撤销。",
+   "hi": "अभी कुछ नहीं छाँटा गया। Coucou आपके मेल के साथ जो करता है वह यहाँ दिखेगा, पूर्ववत के साथ।",
+   "es": "Aún no se ha ordenado nada. Lo que Coucou hace con tus correos aparece aquí, con Deshacer.",
+   "ar": "لم يُفرز شيء بعد. ما يفعله Coucou برسائلك يظهر هنا مع زر تراجع.",
+   "fr": "Rien de trié pour l’instant. Ce que Coucou fait à tes mails s’affiche ici, avec un bouton Annuler.",
+   "bn": "এখনো কিছু সাজানো হয়নি। Coucou আপনার মেলে যা করে তা এখানে দেখাবে, পূর্বাবস্থার বোতামসহ।",
+   "pt-BR": "Nada organizado ainda. O que o Coucou faz com seus e-mails aparece aqui, com Desfazer.",
+   "ru": "Пока ничего не отсортировано. Всё, что Coucou делает с письмами, появится здесь, с кнопкой «Отменить».",
+   "id": "Belum ada yang dipilah. Apa yang dilakukan Coucou pada emailmu muncul di sini, dengan tombol Urungkan.",
+   "de": "Noch nichts sortiert. Was Coucou mit deinen E-Mails macht, erscheint hier, mit Rückgängig.",
+   "tr": "Henüz bir şey düzenlenmedi. Coucou’nun e-postalarına yaptıkları burada Geri Al ile birlikte görünür.",
+   "ko": "아직 정리된 메일이 없습니다. Coucou가 메일에 한 일은 여기에 실행 취소와 함께 표시됩니다.",
+   "ja": "まだ何も整理されていません。Coucou がメールに行ったことはここに表示され、取り消せます。"
   },
   "OK": {
    "zh-Hans": "确定",
@@ -5776,6 +6481,21 @@
    "tr": "Yalnızca http:// ve https:// URL'leri kabul edilir.",
    "ko": "http://나 https:// 주소만 받아요.",
    "ja": "http:// と https:// の URL のみ使用できます。"
+  },
+  "Only messages that arrive from now on, in every account added to Mail. Mail must be open.": {
+   "zh-Hans": "仅限从现在起收到的邮件，涵盖添加到“邮件”的所有账户。“邮件”必须保持打开。",
+   "hi": "सिर्फ़ अब से आने वाले मेल, Mail में जोड़े गए हर खाते में। Mail खुला होना चाहिए।",
+   "es": "Solo los correos que lleguen a partir de ahora, en todas las cuentas añadidas a Mail. Mail debe estar abierto.",
+   "ar": "الرسائل التي تصل من الآن فقط، في كل الحسابات المضافة إلى Mail. يجب أن يكون Mail مفتوحًا.",
+   "fr": "Seulement les mails qui arrivent à partir de maintenant, dans tous les comptes ajoutés à Mail. Mail doit être ouvert.",
+   "bn": "শুধু এখন থেকে আসা মেল, Mail-এ যোগ করা সব অ্যাকাউন্টে। Mail খোলা থাকতে হবে।",
+   "pt-BR": "Só os e-mails que chegarem a partir de agora, em todas as contas adicionadas ao Mail. O Mail precisa estar aberto.",
+   "ru": "Только письма, которые придут с этого момента, во всех учётных записях Mail. Mail должна быть открыта.",
+   "id": "Hanya email yang masuk mulai sekarang, di semua akun yang ditambahkan ke Mail. Mail harus terbuka.",
+   "de": "Nur E-Mails, die ab jetzt ankommen, in allen Accounts in Mail. Mail muss geöffnet sein.",
+   "tr": "Yalnızca bundan sonra gelen e-postalar, Mail’e eklenen tüm hesaplarda. Mail açık olmalı.",
+   "ko": "지금부터 도착하는 메일만, Mail에 추가한 모든 계정에서 정리합니다. Mail이 열려 있어야 합니다.",
+   "ja": "今から届くメールのみ、Mail に追加したすべてのアカウントが対象です。Mail を開いておく必要があります。"
   },
   "Only the dictionary and the snippets: for code, terminals and AI chats.": {
    "zh-Hans": "只用词典和片段：适合代码、终端和 AI 聊天。",
@@ -6707,6 +7427,36 @@
    "ko": "다듬어서",
    "ja": "丁寧"
   },
+  "Position": {
+   "zh-Hans": "位置",
+   "hi": "स्थान",
+   "es": "Posición",
+   "ar": "الموضع",
+   "fr": "Position",
+   "bn": "অবস্থান",
+   "pt-BR": "Posição",
+   "ru": "Расположение",
+   "id": "Posisi",
+   "de": "Position",
+   "tr": "Konum",
+   "ko": "위치",
+   "ja": "位置"
+  },
+  "Preparing…": {
+   "zh-Hans": "正在准备…",
+   "hi": "तैयारी हो रही है…",
+   "es": "Preparando…",
+   "ar": "جارٍ التحضير…",
+   "fr": "Préparation…",
+   "bn": "প্রস্তুত হচ্ছে…",
+   "pt-BR": "Preparando…",
+   "ru": "Подготовка…",
+   "id": "Menyiapkan…",
+   "de": "Wird vorbereitet …",
+   "tr": "Hazırlanıyor…",
+   "ko": "준비 중…",
+   "ja": "準備中…"
+  },
   "Previous": {
    "zh-Hans": "上一首",
    "hi": "पिछला",
@@ -7202,6 +7952,21 @@
    "ko": "답장",
    "ja": "返信"
   },
+  "Reply draft to {0}": {
+   "zh-Hans": "回复 {0} 的草稿",
+   "hi": "{0} को जवाब का ड्राफ़्ट",
+   "es": "Borrador de respuesta a {0}",
+   "ar": "مسودة رد على {0}",
+   "fr": "Brouillon de réponse à {0}",
+   "bn": "{0}-কে উত্তরের খসড়া",
+   "pt-BR": "Rascunho de resposta para {0}",
+   "ru": "Черновик ответа для {0}",
+   "id": "Draf balasan untuk {0}",
+   "de": "Antwortentwurf an {0}",
+   "tr": "{0} için yanıt taslağı",
+   "ko": "{0}에게 보낼 답장 초안",
+   "ja": "{0} への返信の下書き"
+  },
   "Reply in terminal": {
    "zh-Hans": "在终端回复",
    "hi": "टर्मिनल में उत्तर दें",
@@ -7412,6 +8177,36 @@
    "ko": "동그란 안경",
    "ja": "丸メガネ"
   },
+  "Rules": {
+   "zh-Hans": "规则",
+   "hi": "नियम",
+   "es": "Reglas",
+   "ar": "القواعد",
+   "fr": "Règles",
+   "bn": "নিয়ম",
+   "pt-BR": "Regras",
+   "ru": "Правила",
+   "id": "Aturan",
+   "de": "Regeln",
+   "tr": "Kurallar",
+   "ko": "규칙",
+   "ja": "ルール"
+  },
+  "Run ({0})": {
+   "zh-Hans": "执行（{0}）",
+   "hi": "चलाएँ ({0})",
+   "es": "Ejecutar ({0})",
+   "ar": "تشغيل ({0})",
+   "fr": "Lancer ({0})",
+   "bn": "চালান ({0})",
+   "pt-BR": "Executar ({0})",
+   "ru": "Запустить ({0})",
+   "id": "Jalankan ({0})",
+   "de": "Ausführen ({0})",
+   "tr": "Çalıştır ({0})",
+   "ko": "실행 ({0})",
+   "ja": "実行（{0}）"
+  },
   "Runs": {
    "zh-Hans": "执行",
    "hi": "चलाता है",
@@ -7501,6 +8296,21 @@
    "tr": "Entegrasyonları kaydet",
    "ko": "연동 저장",
    "ja": "連携を保存"
+  },
+  "Save the attachments of {0} in {1}": {
+   "zh-Hans": "将 {0} 的附件保存到 {1}",
+   "hi": "{0} के अटैचमेंट {1} में सहेजें",
+   "es": "Guardar los adjuntos de {0} en {1}",
+   "ar": "حفظ مرفقات {0} في {1}",
+   "fr": "Enregistrer les PJ de {0} dans {1}",
+   "bn": "{0}-এর অ্যাটাচমেন্ট {1}-এ সংরক্ষণ",
+   "pt-BR": "Salvar os anexos de {0} em {1}",
+   "ru": "Сохранить вложения от {0} в {1}",
+   "id": "Simpan lampiran {0} di {1}",
+   "de": "Anhänge von {0} in {1} sichern",
+   "tr": "{0} eklerini {1} içine kaydet",
+   "ko": "{0}의 첨부 파일을 {1}에 저장",
+   "ja": "{0} の添付ファイルを {1} に保存"
   },
   "Saved with Flow": {
    "zh-Hans": "Flow 帮你节省",
@@ -7622,6 +8432,21 @@
    "ko": "스크린샷",
    "ja": "スクリーンショット"
   },
+  "Search": {
+   "zh-Hans": "搜索",
+   "hi": "खोजें",
+   "es": "Buscar",
+   "ar": "بحث",
+   "fr": "Rechercher",
+   "bn": "খুঁজুন",
+   "pt-BR": "Buscar",
+   "ru": "Поиск",
+   "id": "Cari",
+   "de": "Suchen",
+   "tr": "Ara",
+   "ko": "검색",
+   "ja": "検索"
+  },
   "Search dictations": {
    "zh-Hans": "搜索听写",
    "hi": "डिक्टेशन खोजें",
@@ -7636,6 +8461,21 @@
    "tr": "Diktelerde ara",
    "ko": "받아쓰기 검색",
    "ja": "口述を検索"
+  },
+  "Search settings": {
+   "zh-Hans": "搜索设置",
+   "hi": "सेटिंग खोजें",
+   "es": "Buscar un ajuste",
+   "ar": "البحث في الإعدادات",
+   "fr": "Rechercher un réglage",
+   "bn": "সেটিংস খুঁজুন",
+   "pt-BR": "Buscar ajustes",
+   "ru": "Поиск настроек",
+   "id": "Cari pengaturan",
+   "de": "Einstellungen suchen",
+   "tr": "Ayarlarda ara",
+   "ko": "설정 검색",
+   "ja": "設定を検索"
   },
   "Searches": {
    "zh-Hans": "搜索",
@@ -7666,6 +8506,21 @@
    "tr": "Web'de arıyor",
    "ko": "웹 검색",
    "ja": "ウェブを検索"
+  },
+  "Searching…": {
+   "zh-Hans": "正在搜索…",
+   "hi": "खोज रहा है…",
+   "es": "Buscando…",
+   "ar": "جارٍ البحث…",
+   "fr": "Recherche…",
+   "bn": "খোঁজা হচ্ছে…",
+   "pt-BR": "Buscando…",
+   "ru": "Поиск…",
+   "id": "Mencari…",
+   "de": "Suche…",
+   "tr": "Aranıyor…",
+   "ko": "검색 중…",
+   "ja": "検索中…"
   },
   "Secret key  (sk_live_… or sk_test_…)": {
    "zh-Hans": "密钥（sk_live_… 或 sk_test_…）",
@@ -7742,6 +8597,51 @@
    "ko": "채팅 메시지 보내기",
    "ja": "チャットメッセージを送信"
   },
+  "Send me a test": {
+   "zh-Hans": "给我发一封测试",
+   "hi": "मुझे टेस्ट भेजें",
+   "es": "Enviarme una prueba",
+   "ar": "أرسل اختبارًا لي",
+   "fr": "M’envoyer un test",
+   "bn": "আমাকে একটি টেস্ট পাঠান",
+   "pt-BR": "Enviar um teste para mim",
+   "ru": "Отправить тест себе",
+   "id": "Kirim tes ke saya",
+   "de": "Test an mich senden",
+   "tr": "Bana test gönder",
+   "ko": "나에게 테스트 보내기",
+   "ja": "自分にテスト送信"
+  },
+  "Sender": {
+   "zh-Hans": "发件人",
+   "hi": "प्रेषक",
+   "es": "Remitente",
+   "ar": "المرسل",
+   "fr": "Expéditeur",
+   "bn": "প্রেরক",
+   "pt-BR": "Remetente",
+   "ru": "Отправитель",
+   "id": "Pengirim",
+   "de": "Absender",
+   "tr": "Gönderen",
+   "ko": "보낸 사람",
+   "ja": "差出人"
+  },
+  "Sender’s domain": {
+   "zh-Hans": "发件人域名",
+   "hi": "प्रेषक का डोमेन",
+   "es": "Dominio del remitente",
+   "ar": "نطاق المرسل",
+   "fr": "Domaine de l’expéditeur",
+   "bn": "প্রেরকের ডোমেইন",
+   "pt-BR": "Domínio do remetente",
+   "ru": "Домен отправителя",
+   "id": "Domain pengirim",
+   "de": "Domain des Absenders",
+   "tr": "Gönderen alan adı",
+   "ko": "보낸 사람 도메인",
+   "ja": "差出人のドメイン"
+  },
   "Sending…": {
    "zh-Hans": "发送中…",
    "hi": "भेज रहा है…",
@@ -7771,6 +8671,21 @@
    "tr": "Oturumlarını iPhone'daki Coucou uygulaması için özel iCloud hesabına gönderir. Proje adları, komutlar ve sorular iCloud anahtarlarınla şifrelenir. Kapatıldığında veriler iCloud'dan kaldırılır.",
    "ko": "Coucou iPhone 앱을 위해 세션을 내 개인 iCloud로 보내요. 프로젝트 이름, 명령, 질문은 내 iCloud 키로 암호화돼요. 끄면 iCloud에서 데이터가 지워져요.",
    "ja": "iPhone の Coucou アプリのために、セッションを自分専用の iCloud に送ります。プロジェクト名、コマンド、質問は iCloud のキーで暗号化されます。オフにすると iCloud からデータが削除されます。"
+  },
+  "Sent by Coucou": {
+   "zh-Hans": "Coucou 已发送",
+   "hi": "Coucou द्वारा भेजे गए",
+   "es": "Enviados por Coucou",
+   "ar": "أرسلها Coucou",
+   "fr": "Envoyés par Coucou",
+   "bn": "Coucou পাঠিয়েছে",
+   "pt-BR": "Enviados pelo Coucou",
+   "ru": "Отправлено Coucou",
+   "id": "Dikirim oleh Coucou",
+   "de": "Von Coucou gesendet",
+   "tr": "Coucou tarafından gönderildi",
+   "ko": "Coucou가 보낸 메일",
+   "ja": "Coucou が送信"
   },
   "Services": {
    "zh-Hans": "服务",
@@ -8102,6 +9017,21 @@
    "ko": "음, 다시 한번 말해 줄래요?",
    "ja": "すみません、もう一度言ってもらえますか？"
   },
+  "Sort new messages automatically": {
+   "zh-Hans": "自动整理新邮件",
+   "hi": "नए मेल अपने आप छाँटें",
+   "es": "Ordenar automáticamente los correos nuevos",
+   "ar": "فرز الرسائل الجديدة تلقائيًا",
+   "fr": "Trier automatiquement les nouveaux mails",
+   "bn": "নতুন মেল স্বয়ংক্রিয়ভাবে সাজান",
+   "pt-BR": "Organizar automaticamente os novos e-mails",
+   "ru": "Автоматически сортировать новые письма",
+   "id": "Pilah email baru otomatis",
+   "de": "Neue E-Mails automatisch sortieren",
+   "tr": "Yeni e-postaları otomatik düzenle",
+   "ko": "새 메일 자동 정리",
+   "ja": "新着メールを自動で整理"
+  },
   "Sound": {
    "zh-Hans": "声音",
    "hi": "ध्वनि",
@@ -8176,6 +9106,21 @@
    "tr": "Spotify kurulu değil",
    "ko": "Spotify가 설치돼 있지 않아요",
    "ja": "Spotify がインストールされていません"
+  },
+  "Starting in {0} s": {
+   "zh-Hans": "{0} 秒后开始",
+   "hi": "{0} सेकंड में शुरू",
+   "es": "Empieza en {0} s",
+   "ar": "يبدأ خلال {0} ث",
+   "fr": "Lancement dans {0} s",
+   "bn": "{0} সেকেন্ডে শুরু",
+   "pt-BR": "Começa em {0} s",
+   "ru": "Запуск через {0} с",
+   "id": "Mulai dalam {0} dtk",
+   "de": "Start in {0} s",
+   "tr": "{0} sn içinde başlıyor",
+   "ko": "{0}초 후 시작",
+   "ja": "{0} 秒後に開始"
   },
   "Startup": {
    "zh-Hans": "启动",
@@ -8507,6 +9452,21 @@
    "ko": "새 버전이 나오면 알려 주기",
    "ja": "新しいバージョンが出たら知らせる"
   },
+  "Test sent to {0}": {
+   "zh-Hans": "测试已发送到 {0}",
+   "hi": "{0} पर टेस्ट भेजा",
+   "es": "Prueba enviada a {0}",
+   "ar": "أُرسل الاختبار إلى {0}",
+   "fr": "Test envoyé à {0}",
+   "bn": "{0}-এ টেস্ট পাঠানো হয়েছে",
+   "pt-BR": "Teste enviado para {0}",
+   "ru": "Тест отправлен на {0}",
+   "id": "Tes dikirim ke {0}",
+   "de": "Test an {0} gesendet",
+   "tr": "Test {0} adresine gönderildi",
+   "ko": "{0}(으)로 테스트를 보냈습니다",
+   "ja": "{0} にテスト送信しました"
+  },
   "Test the voice": {
    "zh-Hans": "试听声音",
    "hi": "आवाज़ आज़माएँ",
@@ -8536,6 +9496,21 @@
    "tr": "Test ediyor",
    "ko": "테스트",
    "ja": "テスト"
+  },
+  "Text": {
+   "zh-Hans": "正文",
+   "hi": "टेक्स्ट",
+   "es": "Texto",
+   "ar": "النص",
+   "fr": "Texte",
+   "bn": "লেখা",
+   "pt-BR": "Texto",
+   "ru": "Текст",
+   "id": "Isi",
+   "de": "Text",
+   "tr": "Metin",
+   "ko": "본문",
+   "ja": "本文"
   },
   "The AI of the notch's chat, with your own keys.": {
    "zh-Hans": "刘海聊天使用的 AI，用你自己的密钥。",
@@ -8852,6 +9827,36 @@
    "ko": "고친 단어는 다음 통화 때도 기억해 둘게요.",
    "ja": "追加した単語は次回の通話でも覚えています。"
   },
+  "Then": {
+   "zh-Hans": "则",
+   "hi": "तो",
+   "es": "Entonces",
+   "ar": "إذن",
+   "fr": "Alors",
+   "bn": "তাহলে",
+   "pt-BR": "Então",
+   "ru": "Тогда",
+   "id": "Maka",
+   "de": "Dann",
+   "tr": "O zaman",
+   "ko": "그러면",
+   "ja": "実行"
+  },
+  "This message has no text.": {
+   "zh-Hans": "这封邮件没有正文。",
+   "hi": "इस संदेश में कोई टेक्स्ट नहीं है।",
+   "es": "Este mensaje no tiene texto.",
+   "ar": "لا يحتوي هذا البريد على نص.",
+   "fr": "Ce message n’a pas de texte.",
+   "bn": "এই বার্তায় কোনো লেখা নেই।",
+   "pt-BR": "Esta mensagem não tem texto.",
+   "ru": "В этом письме нет текста.",
+   "id": "Pesan ini tidak berisi teks.",
+   "de": "Diese Nachricht hat keinen Text.",
+   "tr": "Bu iletide metin yok.",
+   "ko": "이 메시지에는 본문이 없어요.",
+   "ja": "このメッセージには本文がありません。"
+  },
   "This model is not available.": {
    "zh-Hans": "此模型不可用。",
    "hi": "यह मॉडल उपलब्ध नहीं है।",
@@ -9017,6 +10022,21 @@
    "ko": "최애 에이전트",
    "ja": "トップのエージェント"
   },
+  "Top left": {
+   "zh-Hans": "左上角",
+   "hi": "ऊपर बाएँ",
+   "es": "Arriba a la izquierda",
+   "ar": "أعلى اليسار",
+   "fr": "En haut à gauche",
+   "bn": "উপরে বাঁয়ে",
+   "pt-BR": "Superior esquerdo",
+   "ru": "Вверху слева",
+   "id": "Kiri atas",
+   "de": "Oben links",
+   "tr": "Sol üst",
+   "ko": "왼쪽 위",
+   "ja": "左上"
+  },
   "Top project": {
    "zh-Hans": "最活跃项目",
    "hi": "शीर्ष प्रोजेक्ट",
@@ -9031,6 +10051,21 @@
    "tr": "En çok çalışılan proje",
    "ko": "최애 프로젝트",
    "ja": "トップのプロジェクト"
+  },
+  "Top right": {
+   "zh-Hans": "右上角",
+   "hi": "ऊपर दाएँ",
+   "es": "Arriba a la derecha",
+   "ar": "أعلى اليمين",
+   "fr": "En haut à droite",
+   "bn": "উপরে ডানে",
+   "pt-BR": "Superior direito",
+   "ru": "Вверху справа",
+   "id": "Kanan atas",
+   "de": "Oben rechts",
+   "tr": "Sağ üst",
+   "ko": "오른쪽 위",
+   "ja": "右上"
   },
   "Transcript": {
    "zh-Hans": "转写",
@@ -9077,6 +10112,21 @@
    "ko": "데모 모드 체험",
    "ja": "デモモードを試す"
   },
+  "Turn on": {
+   "zh-Hans": "开启",
+   "hi": "चालू करें",
+   "es": "Activar",
+   "ar": "تشغيل",
+   "fr": "Activer",
+   "bn": "চালু করুন",
+   "pt-BR": "Ligar",
+   "ru": "Включить",
+   "id": "Nyalakan",
+   "de": "Einschalten",
+   "tr": "Aç",
+   "ko": "켜기",
+   "ja": "オンにする"
+  },
   "Turn on dictation": {
    "zh-Hans": "开启听写",
    "hi": "डिक्टेशन चालू करें",
@@ -9091,6 +10141,36 @@
    "tr": "Dikteyi aç",
    "ko": "받아쓰기 켜기",
    "ja": "口述をオンにする"
+  },
+  "Undo": {
+   "zh-Hans": "撤销",
+   "hi": "पूर्ववत करें",
+   "es": "Deshacer",
+   "ar": "تراجع",
+   "fr": "Annuler",
+   "bn": "পূর্বাবস্থা",
+   "pt-BR": "Desfazer",
+   "ru": "Отменить",
+   "id": "Urungkan",
+   "de": "Rückgängig",
+   "tr": "Geri al",
+   "ko": "실행 취소",
+   "ja": "取り消す"
+  },
+  "Undone": {
+   "zh-Hans": "已撤销",
+   "hi": "पूर्ववत हुआ",
+   "es": "Deshecho",
+   "ar": "تم التراجع",
+   "fr": "Annulé",
+   "bn": "পূর্বাবস্থায় ফেরানো",
+   "pt-BR": "Desfeito",
+   "ru": "Отменено",
+   "id": "Diurungkan",
+   "de": "Rückgängig gemacht",
+   "tr": "Geri alındı",
+   "ko": "취소됨",
+   "ja": "取り消し済み"
   },
   "Uninstall": {
    "zh-Hans": "卸载",
@@ -9151,6 +10231,21 @@
    "tr": "Sınırsız ve ücretsiz",
    "ko": "무제한, 게다가 무료!",
    "ja": "無制限・無料"
+  },
+  "Unread": {
+   "zh-Hans": "未读",
+   "hi": "अपठित",
+   "es": "No leídos",
+   "ar": "غير مقروءة",
+   "fr": "Non lus",
+   "bn": "অপঠিত",
+   "pt-BR": "Não lidos",
+   "ru": "Непрочитанные",
+   "id": "Belum dibaca",
+   "de": "Ungelesen",
+   "tr": "Okunmamış",
+   "ko": "읽지 않음",
+   "ja": "未読"
   },
   "Until Parakeet is downloaded, Coucou uses your Mac's speech recognition.": {
    "zh-Hans": "在下载 Parakeet 之前，Coucou 使用 Mac 的语音识别。",
@@ -9271,6 +10366,36 @@
    "tr": "Sohbette kullanılır. Liste Anthropic hesabından alınır.",
    "ko": "채팅에서 쓰는 모델이에요. 목록은 Anthropic 계정에서 가져와요.",
    "ja": "チャットで使われます。リストはあなたの Anthropic アカウントから取得されます。"
+  },
+  "VIP": {
+   "zh-Hans": "VIP",
+   "hi": "VIP",
+   "es": "VIP",
+   "ar": "كبار الشخصيات",
+   "fr": "VIP",
+   "bn": "VIP",
+   "pt-BR": "VIP",
+   "ru": "VIP",
+   "id": "VIP",
+   "de": "VIP",
+   "tr": "VIP",
+   "ko": "VIP",
+   "ja": "VIP"
+  },
+  "VIP {0}": {
+   "zh-Hans": "VIP {0}",
+   "hi": "VIP {0}",
+   "es": "VIP {0}",
+   "ar": "VIP {0}",
+   "fr": "VIP {0}",
+   "bn": "VIP {0}",
+   "pt-BR": "VIP {0}",
+   "ru": "VIP {0}",
+   "id": "VIP {0}",
+   "de": "VIP {0}",
+   "tr": "VIP {0}",
+   "ko": "VIP {0}",
+   "ja": "VIP {0}"
   },
   "Voice": {
    "zh-Hans": "声音",
@@ -10232,6 +11357,36 @@
    "ko": "이제 Coucou {0}을 쓰고 있어요",
    "ja": "Coucou {0} をお使いです"
   },
+  "banned word “{0}”": {
+   "zh-Hans": "屏蔽词“{0}”",
+   "hi": "प्रतिबंधित शब्द “{0}”",
+   "es": "palabra prohibida «{0}»",
+   "ar": "كلمة محظورة «{0}»",
+   "fr": "mot banni « {0} »",
+   "bn": "নিষিদ্ধ শব্দ “{0}”",
+   "pt-BR": "palavra proibida “{0}”",
+   "ru": "запрещённое слово «{0}»",
+   "id": "kata terlarang “{0}”",
+   "de": "verbotenes Wort „{0}“",
+   "tr": "yasaklı kelime “{0}”",
+   "ko": "금지어 ‘{0}’",
+   "ja": "禁止ワード「{0}」"
+  },
+  "by hand": {
+   "zh-Hans": "手动",
+   "hi": "हाथ से",
+   "es": "a mano",
+   "ar": "يدويًا",
+   "fr": "à la main",
+   "bn": "হাতে",
+   "pt-BR": "manualmente",
+   "ru": "вручную",
+   "id": "manual",
+   "de": "von Hand",
+   "tr": "elle",
+   "ko": "직접",
+   "ja": "手動"
+  },
   "coding": {
    "zh-Hans": "编程",
    "hi": "कोडिंग",
@@ -10261,6 +11416,21 @@
    "tr": "komut",
    "ko": "명령",
    "ja": "コマンド"
+  },
+  "contains": {
+   "zh-Hans": "包含",
+   "hi": "में है",
+   "es": "contiene",
+   "ar": "يحتوي",
+   "fr": "contient",
+   "bn": "আছে",
+   "pt-BR": "contém",
+   "ru": "содержит",
+   "id": "berisi",
+   "de": "enthält",
+   "tr": "içerir",
+   "ko": "포함",
+   "ja": "を含む"
   },
   "days in a row": {
    "zh-Hans": "连续天数",
@@ -10337,6 +11507,21 @@
    "ko": "fn (🌐)",
    "ja": "fn（🌐）"
   },
+  "from:anne invoice": {
+   "zh-Hans": "from:anne 发票",
+   "hi": "from:anne इनवॉइस",
+   "es": "de:anne factura",
+   "ar": "from:anne فاتورة",
+   "fr": "de:anne facture",
+   "bn": "from:anne ইনভয়েস",
+   "pt-BR": "de:anne fatura",
+   "ru": "from:anne счёт",
+   "id": "from:anne faktur",
+   "de": "von:anne Rechnung",
+   "tr": "from:anne fatura",
+   "ko": "from:anne 청구서",
+   "ja": "from:anne 請求書"
+  },
   "has a plan ready": {
    "zh-Hans": "的计划已就绪",
    "hi": "की योजना तैयार है",
@@ -10382,6 +11567,21 @@
    "ko": "{m}분 후",
    "ja": "{m} 分後"
   },
+  "invalid address": {
+   "zh-Hans": "地址无效",
+   "hi": "अमान्य पता",
+   "es": "dirección no válida",
+   "ar": "عنوان غير صالح",
+   "fr": "adresse invalide",
+   "bn": "অবৈধ ঠিকানা",
+   "pt-BR": "endereço inválido",
+   "ru": "неверный адрес",
+   "id": "alamat tidak valid",
+   "de": "ungültige Adresse",
+   "tr": "geçersiz adres",
+   "ko": "잘못된 주소",
+   "ja": "無効なアドレス"
+  },
   "just now": {
    "zh-Hans": "刚刚",
    "hi": "अभी",
@@ -10396,6 +11596,21 @@
    "tr": "az önce",
    "ko": "방금",
    "ja": "たった今"
+  },
+  "marked important": {
+   "zh-Hans": "标为重要",
+   "hi": "महत्वपूर्ण चिह्नित",
+   "es": "marcados como importantes",
+   "ar": "وُسمت مهمة",
+   "fr": "marqués importants",
+   "bn": "গুরুত্বপূর্ণ চিহ্নিত",
+   "pt-BR": "marcados como importantes",
+   "ru": "отмечено важными",
+   "id": "ditandai penting",
+   "de": "als wichtig markiert",
+   "tr": "önemli olarak işaretlendi",
+   "ko": "중요로 표시됨",
+   "ja": "重要に設定"
   },
   "min without movement": {
    "zh-Hans": "分钟无动作",
@@ -10427,6 +11642,36 @@
    "ko": "권한이 필요하대요",
    "ja": "が許可を求めています"
   },
+  "newsletter, @shop.com, invoice…": {
+   "zh-Hans": "新闻通讯、@shop.cn、发票…",
+   "hi": "न्यूज़लेटर, @shop.in, इनवॉइस…",
+   "es": "boletín, @tienda.es, factura…",
+   "ar": "نشرة، ‎@shop.com، فاتورة…",
+   "fr": "newsletter, @boutique.fr, facture…",
+   "bn": "নিউজলেটার, @shop.com, ইনভয়েস…",
+   "pt-BR": "newsletter, @loja.com, fatura…",
+   "ru": "рассылка, @shop.ru, счёт…",
+   "id": "buletin, @toko.id, faktur…",
+   "de": "Newsletter, @shop.de, Rechnung …",
+   "tr": "bülten, @magaza.com, fatura…",
+   "ko": "뉴스레터, @shop.kr, 청구서…",
+   "ja": "ニュースレター、@shop.jp、請求書…"
+  },
+  "no page found": {
+   "zh-Hans": "找不到页面",
+   "hi": "कोई पेज नहीं मिला",
+   "es": "ninguna página encontrada",
+   "ar": "لم يُعثر على صفحة",
+   "fr": "aucune page trouvée",
+   "bn": "কোনো পৃষ্ঠা পাওয়া যায়নি",
+   "pt-BR": "nenhuma página encontrada",
+   "ru": "страница не найдена",
+   "id": "halaman tidak ditemukan",
+   "de": "keine Seite gefunden",
+   "tr": "sayfa bulunamadı",
+   "ko": "페이지 없음",
+   "ja": "ページが見つかりません"
+  },
   "now": {
    "zh-Hans": "刚刚",
    "hi": "अभी",
@@ -10441,6 +11686,21 @@
    "tr": "şimdi",
    "ko": "방금",
    "ja": "今"
+  },
+  "paul@client.com or @client.com": {
+   "zh-Hans": "paul@client.cn 或 @client.cn",
+   "hi": "paul@client.in या @client.in",
+   "es": "paul@cliente.es o @cliente.es",
+   "ar": "paul@client.com أو ‎@client.com",
+   "fr": "paul@client.fr ou @client.fr",
+   "bn": "paul@client.com বা @client.com",
+   "pt-BR": "paul@cliente.com ou @cliente.com",
+   "ru": "paul@client.ru или @client.ru",
+   "id": "paul@klien.id atau @klien.id",
+   "de": "paul@kunde.de oder @kunde.de",
+   "tr": "paul@musteri.com veya @musteri.com",
+   "ko": "paul@client.kr 또는 @client.kr",
+   "ja": "paul@client.jp または @client.jp"
   },
   "presses this → island opens": {
    "zh-Hans": "按此键 → 岛打开",
@@ -10457,6 +11717,21 @@
    "ko": "이 키를 누르면 → 아일랜드가 열려요",
    "ja": "これを押す → アイランドが開く"
   },
+  "rule “{0}”": {
+   "zh-Hans": "规则“{0}”",
+   "hi": "नियम “{0}”",
+   "es": "regla «{0}»",
+   "ar": "القاعدة «{0}»",
+   "fr": "règle « {0} »",
+   "bn": "নিয়ম “{0}”",
+   "pt-BR": "regra “{0}”",
+   "ru": "правило «{0}»",
+   "id": "aturan “{0}”",
+   "de": "Regel „{0}“",
+   "tr": "kural “{0}”",
+   "ko": "규칙 ‘{0}’",
+   "ja": "ルール「{0}」"
+  },
   "s inactive": {
    "zh-Hans": "秒无活动",
    "hi": "से. निष्क्रिय",
@@ -10471,6 +11746,21 @@
    "tr": "sn etkinlik yok",
    "ko": "초 동안 활동 없을 때",
    "ja": "秒間操作がなければ"
+  },
+  "sent to Junk": {
+   "zh-Hans": "移到垃圾邮件",
+   "hi": "जंक में भेजे गए",
+   "es": "enviados a no deseado",
+   "ar": "أُرسلت إلى غير المرغوب",
+   "fr": "envoyés en indésirables",
+   "bn": "জাঙ্কে পাঠানো হয়েছে",
+   "pt-BR": "enviados para o lixo",
+   "ru": "отправлено в спам",
+   "id": "dikirim ke Sampah",
+   "de": "in Werbung verschoben",
+   "tr": "gereksize gönderildi",
+   "ko": "정크로 이동",
+   "ja": "迷惑メールへ"
   },
   "session": {
    "zh-Hans": "个会话",
@@ -10501,6 +11791,21 @@
    "tr": "oturum",
    "ko": "세션",
    "ja": "セッション"
+  },
+  "sorted today": {
+   "zh-Hans": "今天已整理",
+   "hi": "आज छाँटे गए",
+   "es": "ordenados hoy",
+   "ar": "فُرزت اليوم",
+   "fr": "triés aujourd’hui",
+   "bn": "আজ সাজানো হয়েছে",
+   "pt-BR": "organizados hoje",
+   "ru": "отсортировано сегодня",
+   "id": "dipilah hari ini",
+   "de": "heute sortiert",
+   "tr": "bugün düzenlendi",
+   "ko": "오늘 정리됨",
+   "ja": "今日の整理件数"
   },
   "vs typing at 45 words/min": {
    "zh-Hans": "相比每分钟打 45 个词",
@@ -10622,6 +11927,21 @@
    "ko": "{0} 추가 완료! 근데 훅이 아직 설치 안 됐어요",
    "ja": "{0} を追加しました — フックが未インストールです"
   },
+  "{0} contains “{1}” → {2}": {
+   "zh-Hans": "{0}包含“{1}”→ {2}",
+   "hi": "{0} में “{1}” → {2}",
+   "es": "{0} contiene «{1}» → {2}",
+   "ar": "{0} يحتوي «{1}» ← {2}",
+   "fr": "{0} contient « {1} » → {2}",
+   "bn": "{0}-এ “{1}” আছে → {2}",
+   "pt-BR": "{0} contém “{1}” → {2}",
+   "ru": "{0} содержит «{1}» → {2}",
+   "id": "{0} berisi “{1}” → {2}",
+   "de": "{0} enthält „{1}“ → {2}",
+   "tr": "{0} “{1}” içerir → {2}",
+   "ko": "{0}에 ‘{1}’ 포함 → {2}",
+   "ja": "{0} に「{1}」を含む → {2}"
+  },
   "{0} custom": {
    "zh-Hans": "{0} 个自定义",
    "hi": "{0} कस्टम",
@@ -10651,6 +11971,21 @@
    "tr": "{0} yanıt vermedi",
    "ko": "{0}이(가) 대답이 없어요",
    "ja": "{0} が応答しませんでした"
+  },
+  "{0} done · {1} failed": {
+   "zh-Hans": "完成 {0} · 失败 {1}",
+   "hi": "{0} पूरे · {1} विफल",
+   "es": "{0} hechos · {1} fallidos",
+   "ar": "تم {0} · فشل {1}",
+   "fr": "{0} faits · {1} échecs",
+   "bn": "{0} সম্পন্ন · {1} ব্যর্থ",
+   "pt-BR": "{0} feitos · {1} falharam",
+   "ru": "Готово: {0} · ошибок: {1}",
+   "id": "{0} selesai · {1} gagal",
+   "de": "{0} erledigt · {1} fehlgeschlagen",
+   "tr": "{0} tamam · {1} başarısız",
+   "ko": "완료 {0} · 실패 {1}",
+   "ja": "完了 {0} · 失敗 {1}"
   },
   "{0} h %02lld": {
    "zh-Hans": "{0} 小时 %02lld 分",
@@ -10682,6 +12017,21 @@
    "ko": "{0}이(가) 설치되어 있지 않습니다. 설정 → 채팅에서 설치하고, 터미널에서 한 번 로그인한 뒤 다시 물어보세요.",
    "ja": "{0} がインストールされていません。設定 → チャットからインストールし、ターミナルで一度サインインしてから、もう一度質問してください。"
   },
+  "{0} mails to send": {
+   "zh-Hans": "待发送 {0} 封",
+   "hi": "भेजने के लिए {0} मेल",
+   "es": "{0} correos por enviar",
+   "ar": "{0} رسالة للإرسال",
+   "fr": "{0} mails à envoyer",
+   "bn": "পাঠানোর জন্য {0}টি মেল",
+   "pt-BR": "{0} e-mails para enviar",
+   "ru": "Писем к отправке: {0}",
+   "id": "{0} email untuk dikirim",
+   "de": "{0} E-Mails zu senden",
+   "tr": "Gönderilecek {0} e-posta",
+   "ko": "보낼 메일 {0}개",
+   "ja": "送信するメール {0} 件"
+  },
   "{0} min": {
    "zh-Hans": "{0} 分钟",
    "hi": "{0} मिनट",
@@ -10696,6 +12046,21 @@
    "tr": "{0} dk",
    "ko": "{0}분",
    "ja": "{0} 分"
+  },
+  "{0} new messages checked today. None matched a VIP, a banned word or a rule, so Coucou left them as they are.": {
+   "zh-Hans": "今天检查了 {0} 封新邮件。没有一封匹配 VIP、屏蔽词或规则，所以 Coucou 保持原样。",
+   "hi": "आज {0} नए संदेश जाँचे गए। कोई भी VIP, प्रतिबंधित शब्द या नियम से मेल नहीं खाया, इसलिए Coucou ने उन्हें वैसे ही छोड़ दिया।",
+   "es": "{0} mensajes nuevos revisados hoy. Ninguno coincidía con un VIP, una palabra prohibida o una regla, así que Coucou los dejó como estaban.",
+   "ar": "تم فحص {0} رسالة جديدة اليوم. لم تطابق أيٌّ منها شخصًا مهمًا أو كلمة محظورة أو قاعدة، لذا تركها Coucou كما هي.",
+   "fr": "{0} nouveaux messages vérifiés aujourd’hui. Aucun ne correspondait à un VIP, un mot banni ou une règle : Coucou les a laissés tels quels.",
+   "bn": "আজ {0} টি নতুন বার্তা দেখা হয়েছে। কোনোটি VIP, নিষিদ্ধ শব্দ বা নিয়মের সাথে মেলেনি, তাই Coucou সেগুলো যেমন ছিল তেমনই রেখেছে।",
+   "pt-BR": "{0} mensagens novas verificadas hoje. Nenhuma correspondia a um VIP, uma palavra banida ou uma regra, então o Coucou as deixou como estavam.",
+   "ru": "Сегодня проверено новых писем: {0}. Ни одно не совпало с VIP, запрещённым словом или правилом, поэтому Coucou оставил их как есть.",
+   "id": "{0} pesan baru diperiksa hari ini. Tidak ada yang cocok dengan VIP, kata terlarang, atau aturan, jadi Coucou membiarkannya apa adanya.",
+   "de": "Heute {0} neue Nachrichten geprüft. Keine passte zu einem VIP, einem gesperrten Wort oder einer Regel, also hat Coucou sie gelassen, wie sie sind.",
+   "tr": "Bugün {0} yeni ileti kontrol edildi. Hiçbiri bir VIP, yasaklı kelime veya kuralla eşleşmedi, bu yüzden Coucou onları olduğu gibi bıraktı.",
+   "ko": "오늘 새 메시지 {0}개를 확인했어요. VIP, 금지어, 규칙 중 어느 것에도 해당하지 않아 Coucou는 그대로 두었어요.",
+   "ja": "今日は新着メッセージを {0} 件確認しました。VIP、禁止ワード、ルールのどれにも当てはまらなかったので、Coucou はそのままにしました。"
   },
   "{0} removed": {
    "zh-Hans": "已移除 {0}",
@@ -10756,6 +12121,21 @@
    "tr": "{0} → {1}",
    "ko": "{0} → {1}",
    "ja": "{0} → {1}"
+  },
+  "{0}: {1} messages": {
+   "zh-Hans": "{0}：{1} 封邮件",
+   "hi": "{0}: {1} मेल",
+   "es": "{0}: {1} correos",
+   "ar": "{0}: {1} رسالة",
+   "fr": "{0} : {1} mails",
+   "bn": "{0}: {1}টি মেল",
+   "pt-BR": "{0}: {1} e-mails",
+   "ru": "{0}: писем — {1}",
+   "id": "{0}: {1} email",
+   "de": "{0}: {1} E-Mails",
+   "tr": "{0}: {1} e-posta",
+   "ko": "{0}: 메일 {1}개",
+   "ja": "{0}：{1} 件"
   },
   "{count}/4 slots used": {
    "zh-Hans": "已用 {count}/4 个插槽",

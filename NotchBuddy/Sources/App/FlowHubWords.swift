@@ -79,8 +79,8 @@ struct HubDictionaryPage: View {
     }
 }
 
-/// A word of the dictionary, with its × to remove it.
-private struct HubChip: View {
+/// A word of the dictionary (or a banned word, a VIP), with its × to remove it.
+struct HubChip: View {
     let text: String
     let remove: () -> Void
     @State private var hover = false

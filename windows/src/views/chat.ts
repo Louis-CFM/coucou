@@ -18,6 +18,9 @@ import { chipLabel, loadSubscriptions, subscribedProviders, subscription } from 
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
 import { N_, t, tl } from "../i18n/i18n";
+import { HOST_OS } from "../core/pills";
+import { MailChat, splitPlan } from "../core/mail";
+import { mailPlanCard } from "./mailplan";
 
 const STRINGS = {
   placeholderFirst: N_("Ask me anything…"),
@@ -41,7 +44,10 @@ function bubble(message: ChatMessage): HTMLElement {
     );
   }
   const reply = h("div", { class: "reply" });
-  renderMarkdown(reply, message.content);
+  // A mail plan (```coucou-mail) is never shown as raw JSON: its card goes under the answer.
+  const { prose, plan } = splitPlan(message.content);
+  renderMarkdown(reply, prose);
+  if (plan) reply.append(mailPlanCard(`chat-${message.id}-${message.content.length}`, "", message.content));
   return h("div", { class: "chat-row" }, reply);
 }
 
@@ -234,7 +240,16 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     modelName,
     svg(ICONS.chevronUpDown, 9, { stroke: 2 }),
   );
+  // The Mail switch (classic Outlook, Windows): on, the AI sees the latest messages and may
+  // prepare actions on them, which run only after a click on the plan's card.
+  const mailBtn = h("button", { class: "mail-toggle", title: tl("Lets the AI see your latest messages and prepare actions on them. Nothing happens until you click Run.") },
+    h("span", { text: "✉" }), h("span", { text: tl("Mail") }));
+  mailBtn.addEventListener("click", () => {
+    MailChat.on = !MailChat.on;
+    mailBtn.classList.toggle("on", MailChat.on);
+  });
   const modelRow = h("div", { class: "model-row" }, modelBtn);
+  if (HOST_OS === "windows") modelRow.prepend(mailBtn);
 
   const body = h("div", { class: "chat-body" });
   const picker = buildPicker(() => {
@@ -273,7 +288,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       log.querySelector(".typing")?.parentElement?.remove();
       log.append(h("div", { class: "chat-row" }, live));
     }
-    renderMarkdown(live, text);
+    renderMarkdown(live, splitPlan(text).prose);
     log.scrollTop = log.scrollHeight;
   });
 
@@ -296,7 +311,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
+      const reply = await Bridge.chatSend(query, context, MailChat.on && HOST_OS === "windows");
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
