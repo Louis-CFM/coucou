@@ -51,6 +51,9 @@ jobs:
       - name: Test the chat on your subscription (Claude Code, Antigravity, Gemini, Codex, Cursor, Copilot)
         run: bash scripts/test-cli-relay.sh
 
+      - name: Test a subscription run on stand-in tools (stdin, no thinking, signed out, time limit, started ahead)
+        run: bash scripts/test-cli-relay-run.sh
+
       - name: Test Mail triage (rules, banned words, VIPs, search)
         run: bash scripts/test-mail-triage.sh
 

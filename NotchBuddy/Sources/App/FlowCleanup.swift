@@ -3,21 +3,144 @@ import Foundation
 
 /// The clean-up of Flow dictation: Claude removes the "euh", the repeats and the corrections said
 /// on the way ("at 3, no, at 4" → "at 4"), fixes the punctuation and writes in the app's style.
-/// Only when it is turned on in the Coucou Flow window and a Claude key is set in Settings; the words
-/// then go to Anthropic with that key, and nowhere else. Any problem (no network, slow answer, odd
-/// reply) and the words are pasted as they were heard.
+/// Only when it is turned on in the Coucou Flow window and Claude can answer: through the user's own
+/// Claude Code when Claude's switch is on in Settings → Chat → Your AI subscriptions (CLIRelay.swift),
+/// else with the Claude key set there. The words then go to Anthropic that way, and nowhere else.
+/// Any problem (no network, slow answer, odd reply) and the words are pasted as they were heard;
+/// with Claude Code signed out, the key stands in when there is one and the pill says how to sign in.
 enum FlowCleanup {
     static let model = "claude-haiku-4-5"
     /// Past this, the words are pasted as heard rather than keeping you waiting.
     static let timeout: TimeInterval = 4
+    /// What Claude Code adds to the wait: it takes a moment just to start (10 s for a clean-up,
+    /// as on Windows and Linux).
+    static let toolStart: TimeInterval = 6
 
     static var hasKey: Bool {
         !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
     }
 
-    static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> String {
-        guard style != .verbatim, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty,
-              FlowText.wordCount(text) >= 3 else { return text }
+    /// The tool that answers Flow on the user's Claude plan: Claude's switch is on in
+    /// Settings → Chat and Claude Code is installed.
+    @MainActor static var tool: SubscriptionCLI? {
+        AppState.shared.usesSubscription(.anthropic) ? ChatProvider.anthropic.installedCLI : nil
+    }
+
+    /// Claude can answer Flow, through Claude Code or with the key.
+    @MainActor static var isAvailable: Bool { tool != nil || hasKey }
+
+    /// What a clean-up or a transform gives back.
+    struct Outcome: Sendable {
+        /// The words to paste: Claude's, or as heard.
+        var text: String
+        /// Claude Code could not answer: it is signed out.
+        var signedOut: SubscriptionCLI?
+        /// …and the key answered instead.
+        var keyStoodIn = false
+    }
+
+    /// `warm`: Claude Code started when the key went down (`warmUp`), used when it was started
+    /// for this same call.
+    static func clean(_ text: String, style: FlowStyle, app: String?, words: [String],
+                      warm: CLIRelay.Pending? = nil) async -> Outcome {
+        guard style != .verbatim, FlowText.wordCount(text) >= 3 else { return Outcome(text: text) }
+        return await ask(text, system: system(style: style, app: app, words: words), wait: timeout,
+                         what: "clean-up", warm: warm) {
+            plausible($0, from: text)
+        }
+    }
+
+    /// Prompt mode and translation: one call that cleans the words, shapes them as a prompt when
+    /// asked, and writes them in the chosen language. Like the clean-up, any problem and the words
+    /// are pasted as heard.
+    static func transform(_ text: String, prompt: Bool, language: FlowLanguage?, style: FlowStyle,
+                          app: String?, words: [String], warm: CLIRelay.Pending? = nil) async -> Outcome {
+        guard prompt || language != nil, FlowText.wordCount(text) >= 1 else { return Outcome(text: text) }
+        let system = transformSystem(prompt: prompt, language: language, style: style, app: app, words: words)
+        return await ask(text, system: system, wait: transformWait(prompt: prompt), what: "prompt or translation",
+                         warm: warm) {
+            plausibleTransform($0, from: text, prompt: prompt)
+        }
+    }
+
+    /// A prompt takes a little longer to write than a clean-up.
+    private static func transformWait(prompt: Bool) -> TimeInterval { prompt ? 12 : 8 }
+
+    /// The first line of what Claude is given, written as soon as a warmed-up Claude Code starts.
+    private static let opening = "<dictation>\n"
+
+    /// Claude Code started when the dictation key goes down, with the first line of its prompt,
+    /// so it is ready when the words are: 1.7 s instead of 2.1 s for a clean-up on an M3 Max. The
+    /// key going down already knows what the call will be (the app, its style, the dictionary,
+    /// the mode). Nil when Claude Code doesn't answer Flow or the words won't go to Claude.
+    @MainActor static func warmUp(prompt: Bool, language: FlowLanguage?, cleanup: Bool, style: FlowStyle,
+                                  app: String?, words: [String]) -> CLIRelay.Pending? {
+        guard let tool else { return nil }
+        let system: String
+        let wait: TimeInterval
+        if prompt || language != nil {
+            system = transformSystem(prompt: prompt, language: language, style: style, app: app, words: words)
+            wait = transformWait(prompt: prompt)
+        } else if cleanup, style != .verbatim {
+            system = Self.system(style: style, app: app, words: words)
+            wait = timeout
+        } else {
+            return nil
+        }
+        return CLIRelay.start(tool, request(system, wait: wait, prompt: ""), head: opening)
+    }
+
+    /// What Claude Code is asked: Haiku, no tools, no web, no thinking.
+    private static func request(_ system: String, wait: TimeInterval, prompt: String) -> CLIRequest {
+        CLIRequest(model: model, system: system, prompt: prompt, web: false, readDir: nil,
+                   noWebPolicy: nil, timeout: wait + toolStart, thinking: false)
+    }
+
+    /// One call to Claude: through Claude Code when it answers Flow, else with the key. `wait` is
+    /// the key's; Claude Code gets `toolStart` more. When Claude Code fails early (signed out, no
+    /// answer), the key stands in with what is left of that time.
+    private static func ask(_ text: String, system: String, wait: TimeInterval, what: String,
+                            warm: CLIRelay.Pending?, accept: (String) -> Bool) async -> Outcome {
+        let user = opening + text + "\n</dictation>"
+        var outcome = Outcome(text: text)
+        var left = wait
+        if let tool = await MainActor.run(body: { Self.tool }) {
+            let started = Date()
+            let request = request(system, wait: wait, prompt: user)
+            let budget = request.timeout
+            do {
+                let reply: String
+                // Started for this very call and still waiting: it only needs the words.
+                if let warm, warm.cli == tool, warm.request.system == system, warm.request.timeout == budget,
+                   warm.isRunning {
+                    reply = try await warm.finish(String(user.dropFirst(opening.count)))
+                } else {
+                    warm?.cancel()
+                    reply = try await CLIRelay.ask(tool, request)
+                }
+                let out = unwrap(reply)
+                return Outcome(text: accept(out) ? out : text)
+            } catch {
+                appendAppLog("nb.log", "[Flow] \(what) through \(tool.displayName) skipped: \(error.localizedDescription)")
+                if case CLIFailure.failed(let why) = error, CLIRelay.needsSignIn(why) { outcome.signedOut = tool }
+            }
+            left = min(wait, budget - Date().timeIntervalSince(started))
+        }
+        guard left >= 1, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return outcome }
+        do {
+            let out = unwrap(try await askWithKey(key, system: system, user: user, timeout: left))
+            if accept(out) {
+                outcome.text = out
+                outcome.keyStoodIn = outcome.signedOut != nil
+            }
+        } catch {
+            appendAppLog("nb.log", "[Flow] \(what) skipped: \(error.localizedDescription)")
+        }
+        return outcome
+    }
+
+    /// Anthropic's Messages API, with the key from Settings → Chat.
+    private static func askWithKey(_ key: String, system: String, user: String, timeout: TimeInterval) async throws -> String {
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         request.httpMethod = "POST"
         request.timeoutInterval = timeout
@@ -28,64 +151,23 @@ enum FlowCleanup {
             "model": model,
             "max_tokens": 2048,
             "temperature": 0,
-            "system": system(style: style, app: app, words: words),
-            "messages": [["role": "user", "content": "<dictation>\n\(text)\n</dictation>"]],
+            "system": system,
+            "messages": [["role": "user", "content": user]],
         ]
-        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return text }
-        request.httpBody = data
-        do {
-            let (reply, response) = try await URLSession.shared.data(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200,
-                  let json = try? JSONSerialization.jsonObject(with: reply) as? [String: Any],
-                  let content = json["content"] as? [[String: Any]] else { return text }
-            let cleaned = content.compactMap { $0["text"] as? String }.joined()
-                .replacingOccurrences(of: "<dictation>", with: "")
-                .replacingOccurrences(of: "</dictation>", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return plausible(cleaned, from: text) ? cleaned : text
-        } catch {
-            appendAppLog("nb.log", "[Flow] clean-up skipped: \(error.localizedDescription)")
-            return text
-        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (reply, response) = try await URLSession.shared.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200,
+              let json = try? JSONSerialization.jsonObject(with: reply) as? [String: Any],
+              let content = json["content"] as? [[String: Any]] else { throw CLIFailure.failed("Anthropic answered \(status)") }
+        return content.compactMap { $0["text"] as? String }.joined()
     }
 
-    /// Prompt mode and translation: one call that cleans the words, shapes them as a prompt when
-    /// asked, and writes them in the chosen language. Like the clean-up, any problem and the words
-    /// are pasted as heard.
-    static func transform(_ text: String, prompt: Bool, language: FlowLanguage?, style: FlowStyle,
-                          app: String?, words: [String]) async -> String {
-        guard prompt || language != nil, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty,
-              FlowText.wordCount(text) >= 1 else { return text }
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-        request.httpMethod = "POST"
-        // A prompt takes a little longer to write than a clean-up.
-        request.timeoutInterval = prompt ? 12 : 8
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 2048,
-            "temperature": 0,
-            "system": transformSystem(prompt: prompt, language: language, style: style, app: app, words: words),
-            "messages": [["role": "user", "content": "<dictation>\n\(text)\n</dictation>"]],
-        ]
-        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return text }
-        request.httpBody = data
-        do {
-            let (reply, response) = try await URLSession.shared.data(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200,
-                  let json = try? JSONSerialization.jsonObject(with: reply) as? [String: Any],
-                  let content = json["content"] as? [[String: Any]] else { return text }
-            let out = content.compactMap { $0["text"] as? String }.joined()
-                .replacingOccurrences(of: "<dictation>", with: "")
-                .replacingOccurrences(of: "</dictation>", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return plausibleTransform(out, from: text, prompt: prompt) ? out : text
-        } catch {
-            appendAppLog("nb.log", "[Flow] prompt or translation skipped: \(error.localizedDescription)")
-            return text
-        }
+    /// The reply without the tags it sometimes keeps.
+    private static func unwrap(_ reply: String) -> String {
+        reply.replacingOccurrences(of: "<dictation>", with: "")
+            .replacingOccurrences(of: "</dictation>", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Counted in characters, not words: Chinese or Japanese have no spaces, and a prompt is longer
