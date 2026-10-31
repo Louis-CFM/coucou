@@ -607,8 +607,8 @@ interface CloudDef {
 }
 
 const CLOUD: CloudDef[] = [
-  { id: "google", name: "Google AI", placeholder: "AIza…", where: "aistudio.google.com" },
-  { id: "openai", name: "OpenAI", placeholder: "sk-…", where: "platform.openai.com" },
+  { id: "google", name: N_("Google AI"), placeholder: "AIza…", where: "aistudio.google.com" },
+  { id: "openai", name: N_("OpenAI"), placeholder: "sk-…", where: "platform.openai.com" },
   { id: "openrouter", name: "OpenRouter", placeholder: "sk-or-…", where: "openrouter.ai/keys" },
 ];
 
@@ -665,7 +665,7 @@ function chatProvidersSection(
       h("div", { class: "row" },
         h("label", {},
           h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
-          h("span", { text: def.name }),
+          h("span", { text: t(def.name) }),
         ),
         input, saveBtn, removeBtn, dotEl,
       ),

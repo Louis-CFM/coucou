@@ -107,7 +107,9 @@ test("System follows the system's language when Coucou has it, else English", ()
   assert.equal(resolveLanguage("", ["pt-PT"]), "pt-BR");
   assert.equal(resolveLanguage("", ["pt"]), "pt-BR");
   assert.equal(resolveLanguage("", ["zh-CN"]), "zh-Hans");
-  assert.equal(resolveLanguage("", ["zh-TW"]), "en"); // Traditional is not one of ours
+  assert.equal(resolveLanguage("", ["zh-TW"]), "zh-Hant");
+  assert.equal(resolveLanguage("", ["zh-HK"]), "zh-Hant");
+  assert.equal(resolveLanguage("", ["th-TH"]), "th");
   assert.equal(resolveLanguage("", ["ar-EG"]), "ar");
   assert.equal(resolveLanguage("", ["it-IT"]), "en");
   assert.equal(resolveLanguage("", []), "en");
@@ -117,7 +119,7 @@ test("System follows the system's language when Coucou has it, else English", ()
 });
 
 test("the picker offers the Mac's languages, Arabic reads right to left", () => {
-  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja"]);
+  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja", "th", "zh-Hant"]);
   assert.equal(isRtl("ar"), true);
   assert.equal(OTHERS.some((l) => l !== "ar" && isRtl(l)), false);
 });
@@ -490,4 +492,19 @@ test("no known user-facing English literal outside t() in the views and settings
     }
   }
   assert.deepEqual(offenders, []);
+});
+
+
+test("Thai and Traditional Chinese keep their scripts and numeric placeholders", () => {
+  inLanguage("th", () => {
+    assert.equal(t("Allow"), "อนุญาต");
+    assert.equal(t("Open the chat"), "เปิดแชท");
+    for (const count of [0, 1, 2, 21]) assert.equal(tn("{count} repo", "{count} repos", count), `${count} คลังโค้ด`);
+  });
+  inLanguage("zh-Hant", () => {
+    assert.equal(t("Allow"), "允許");
+    assert.equal(t("API error {code}", { code: 401 }), "API 錯誤 401");
+  });
+  assert.equal(resolveLanguage("zh-Hant", ["zh-CN"]), "zh-Hant");
+  assert.equal(resolveLanguage("", ["zh-Hant-HK"]), "zh-Hant");
 });
