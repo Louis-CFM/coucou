@@ -853,7 +853,7 @@ function buildPlaceholder(title: Msg, sub: string): ViewHost {
 
 export function buildViews(
   actions: ViewActions,
-  /** A view changed its own height: the chat as it grows, the overview opening a diff. */
+  /** A view changed its own height: the chat as it grows, the overview opening a diff or a WhatsApp conversation. */
   onHeightChange: () => void,
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
