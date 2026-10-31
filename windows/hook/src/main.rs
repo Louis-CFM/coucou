@@ -239,7 +239,16 @@ fn term_editor(env: &dyn Fn(&str) -> Option<String>) -> Option<&'static str> {
     }
     let helper = env("VSCODE_GIT_ASKPASS_NODE").unwrap_or_default();
     let exe = helper.rsplit(['/', '\\']).next().unwrap_or_default().to_ascii_lowercase();
-    exe.starts_with("cursor").then_some("cursor")
+    if exe.starts_with("cursor") {
+        return Some("cursor");
+    }
+    if env("TERM_PROGRAM").as_deref() == Some("vscode")
+        || env("VSCODE_PID").is_some_and(|v| !v.is_empty())
+        || exe.starts_with("code")
+    {
+        return Some("vscode");
+    }
+    None
 }
 
 /// Caps the strings of a payload: every field to MAX_FIELD_LEN, except the edit
@@ -400,10 +409,10 @@ mod tests {
                 "VSCODE_GIT_ASKPASS_NODE",
                 r"C:\Users\me\AppData\Local\Programs\Microsoft VS Code\Code.exe"
             )])),
-            None
+            Some("vscode")
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
-        assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+        assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), Some("vscode"));
     }
 
     #[test]
