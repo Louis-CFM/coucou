@@ -186,10 +186,10 @@ final class LiveVoiceInfo: VoiceInfoProviding {
         NotificationCenter.default.post(name: .voiceShowMailCard, object: nil)
     }
 
-    // MARK: Web search (opt-in, the user's Anthropic key)
+    // MARK: Web search (opt-in, selected Chat provider)
 
     var webSearchEnabled: Bool { VoiceSettings.webSearchEnabled }
-    var hasWebKey: Bool { !(ClaudeService.shared.apiKey ?? "").isEmpty }
+    var hasWebKey: Bool { ClaudeVoiceBrain.isActive }
 
     func webAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String? {
         await ClaudeService.shared.voiceAnswer(question, history: history, french: french)

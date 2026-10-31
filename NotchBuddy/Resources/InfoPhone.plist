@@ -42,9 +42,9 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>Coucou asks for Face ID before allowing a command from your iPhone.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Coucou uses the microphone when you dictate an instruction for Claude Code.</string>
+	<string>Coucou uses the microphone when you dictate an instruction for your coding agent.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Coucou turns your voice into the text of an instruction for Claude Code.</string>
+	<string>Coucou turns your voice into the text of an instruction for your coding agent.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>

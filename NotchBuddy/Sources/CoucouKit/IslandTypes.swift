@@ -55,6 +55,11 @@ struct ApprovalInfo: Sendable {
     var inputKey: String
     /// Pill that owns this approval: "integration_claude", "agent_cursor", or "agent_codex".
     var pillId: String
+    var allowsSession: Bool = false
+    var requestId: String? = nil
+    var threadId: String? = nil
+    var turnId: String? = nil
+    var ruleLabels: [String] = []
     /// Queued request this card answers (Mac): a decision is only accepted for this id.
     var id: UUID = UUID()
     /// Requests waiting, this one included; the card shows the count when above 1.
@@ -82,7 +87,39 @@ struct AgentTask: Identifiable, Equatable {
     var miniEye: EyeShape? = nil
     var pillBadge: PillBadge? = nil  // alert badge shown on pill when not focused
     var sessionCwd: String?  = nil  // last known working directory (Claude Code sessions)
-    var sessionBundleId: String? = nil  // app the session runs in (hook bundle_id), for "Open terminal"
+    var sessionId: String? = nil // hook identity, distinct from a confirmed native thread
+    var codexThreadId: String? = nil
+    var codexTurnId: String? = nil
+    var codexRolloutPath: String? = nil
+    var codexManaged: Bool = false
+    var sessionBundleId: String? = nil
+    var sessionTerminalId: String? = nil
+    var lastEventAt: Date? = nil
+    var sessionOriginLabel: String {
+        if codexManaged { return "Codex · Coucou" }
+        let host: String
+        switch sessionBundleId {
+        case "com.microsoft.VSCode": host = "VS Code"
+        case "com.microsoft.VSCodeInsiders": host = "VS Code Insiders"
+        case "com.vscodium": host = "VSCodium"
+        case "com.openai.codex": host = "Codex Desktop"
+        case "com.openai.chat": host = pill == "agent_codex" ? "Codex Desktop" : "ChatGPT"
+        case "com.todesktop.230313mzl4w4u92": host = "Cursor"
+        case "com.apple.Terminal": host = "Terminal"
+        case "com.googlecode.iterm2": host = "iTerm2"
+        case "com.mitchellh.ghostty": host = "Ghostty"
+        case "net.kovidgoyal.kitty": host = "kitty"
+        case "com.cmuxterm.app": host = "cmux"
+        case "com.stablyai.orca": host = "Orca"
+        case "dev.warp.Warp-Stable", "dev.warp.Warp-Preview": host = "Warp"
+        case "com.github.wez.wezterm": host = "WezTerm"
+        case "org.alacritty": host = "Alacritty"
+        case "co.zeit.hyper": host = "Hyper"
+        case "dev.zed.Zed": host = "Zed"
+        default: return pill == "agent_codex" ? "Codex" : name
+        }
+        return pill == "agent_codex" && host != "Codex Desktop" ? "Codex · \(host)" : host
+    }
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
     var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
     /// The sessions sharing this pill, for the open card; empty while one session (or none) is behind it.
@@ -115,6 +152,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     case anthropic = "anthropic"
     case google    = "google"
     case openai    = "openai"
+    case codex     = "codex"
     case ollama    = "ollama"
     case lmstudio  = "lmstudio"
     case deepseek  = "deepseek"
@@ -129,6 +167,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "Anthropic"
         case .google:    "Google"
         case .openai:    "OpenAI"
+        case .codex:     "Codex (ChatGPT)"
         case .ollama:    "Ollama"
         case .lmstudio:  "LM Studio"
         case .deepseek:  "DeepSeek"
@@ -144,6 +183,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "#E07950"
         case .google:    "#4285F4"
         case .openai:    "#10A37F"
+        case .codex:     "#10A37F"
         case .ollama:    "#FACC15"
         case .lmstudio:  "#A3E635"
         case .deepseek:  "#5B8FF9"
@@ -159,6 +199,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "claude-sonnet-4-6"
         case .google:    "gemini-2.0-flash"
         case .openai:    "gpt-4o"
+        case .codex:     ""
         case .ollama:    "llama3.2"
         case .lmstudio:  "local-model"
         case .deepseek:  "deepseek-chat"
@@ -174,6 +215,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "anthropic-api-key"
         case .google:    "google-api-key"
         case .openai:    "openai-api-key"
+        case .codex:     ""
         case .ollama:    ""
         case .lmstudio:  ""
         case .deepseek:  "deepseek-api-key"
@@ -193,6 +235,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "ai_anthropic"
         case .google:    "ai_google"
         case .openai:    "ai_openai"
+        case .codex:     "ai_openai"
         case .ollama:    "ai_ollama"
         case .lmstudio:  "ai_lmstudio"
         case .deepseek:  "ai_deepseek"

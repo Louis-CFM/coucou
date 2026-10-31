@@ -32,6 +32,7 @@ final class QuestionRelay {
         guard cancellable == nil else { return }
         // @Published sends the new value before the property changes: use the value passed along.
         cancellable = AppState.shared.$waitingQuestions
+            .map { $0.filter { !$0.question.questions.contains(where: \.isSecret) } }
             .removeDuplicates()
             .sink { [weak self] questions in
                 MainActor.assumeIsolated { self?.waitingChanged(to: questions) }
@@ -105,7 +106,7 @@ final class QuestionRelay {
     private func apply(_ answer: Answer) {
         // Check again right before answering the hook: read what waits now.
         guard let entry = QuestionQueue.question(answering: answer.fingerprint, onRecord: answer.recordId,
-                                                 in: AppState.shared.waitingQuestions,
+                                                 in: AppState.shared.waitingQuestions.filter { !$0.question.questions.contains(where: \.isSecret) },
                                                  fingerprintOf: { QuestionPayload(ask: $0).fingerprint }) else {
             log("answer for a question no longer waiting, ignored")
             return
@@ -134,8 +135,9 @@ extension QuestionPayload {
         self.init(items: ask.questions.map { item in
             Item(question: item.question, header: item.header,
                  options: item.options.map { Option(label: $0.label, description: $0.description) },
-                 multiSelect: item.multiSelect)
-        })
+                 multiSelect: item.multiSelect, id: item.id, isOther: item.isOther, isSecret: item.isSecret)
+        }, pillId: ask.pillId, sessionId: ask.sessionId, threadId: ask.threadId,
+           turnId: ask.turnId, requestId: ask.requestId)
     }
 }
 #endif

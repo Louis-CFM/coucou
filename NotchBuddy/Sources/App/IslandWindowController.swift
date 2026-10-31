@@ -32,6 +32,7 @@ final class IslandWindowController: NSWindowController {
     /// Context (last action, on-device model session) is kept a little after a turn so
     /// "OK Coucou, et Stripe aussi" still works; this resets it.
     private var voiceContextExpiry: DispatchWorkItem?
+    private var voiceCommandID = UUID()
     private var conversationContext = ConversationContext()
     private var consecutiveFailures = 0
     private var hasSpokenPasCompris = false
@@ -866,7 +867,9 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        if !TerminalTarget.activate(sessionBundleId: state.focusTask?.sessionBundleId) {
+        if state.focusTask?.pill == "agent_codex" || state.focusTask?.codexManaged == true {
+            SessionTarget.open(state.focusTask)
+        } else if !TerminalTarget.activate(sessionBundleId: state.focusTask?.sessionBundleId) {
             NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
         }
@@ -1638,6 +1641,8 @@ extension IslandWindowController {
     /// Run the intent derived from `transcript`, show VoiceResultView, then continue conversation or collapse.
     @MainActor
     func handleVoiceCommand(_ transcript: String) async {
+        let commandID = UUID()
+        voiceCommandID = commandID
         let t0     = Date()
         let pills  = PillCatalog.available
         let runner = VoiceActionRunner.shared
@@ -1661,7 +1666,7 @@ extension IslandWindowController {
         // Every phrase goes to Claude, which acts with Coucou's tools. Only when Claude
         // can't be reached does the phrase parser below take over.
         if runner.pendingQuestion == nil, ClaudeVoiceBrain.isActive {
-            if await handleWithClaude(transcript) { return }
+            if await handleWithClaude(transcript, commandID: commandID) { return }
             appendAppLog("nb.log", "[Voice] Claude unreachable, phrase parser used")
         }
 
@@ -2035,15 +2040,18 @@ extension IslandWindowController {
     /// One turn with Claude: caption, spoken answer, and a re-listen when Claude asked
     /// something (its answer ends with "?"). False when Claude couldn't be reached.
     @MainActor
-    private func handleWithClaude(_ transcript: String) async -> Bool {
+    private func handleWithClaude(_ transcript: String, commandID: UUID) async -> Bool {
         VoiceCaptionManager.shared.setUserLine(transcript)
         // A stale "finished speaking" handler must not reopen the mic during the wait.
         VoiceSpeaker.shared.onDidFinish = nil
         let t0 = Date()
-        guard let reply = await ClaudeVoiceBrain.shared.respond(to: transcript), !reply.failed else {
-            return false
+        guard let reply = await ClaudeVoiceBrain.shared.respond(to: transcript) else {
+            return voiceCommandID != commandID
         }
-        appendAppLog("nb.log", "[Voice] Claude turn \(Int(Date().timeIntervalSince(t0) * 1000)) ms\(reply.acted ? ", acted" : "")")
+        guard voiceCommandID == commandID else { return true }
+        if reply.discarded { closeVoiceTurn(); return true }
+        guard !reply.failed else { return false }
+        appendAppLog("nb.log", "[Voice] AI turn \(Int(Date().timeIntervalSince(t0) * 1000)) ms\(reply.acted ? ", acted" : "")")
         let fr = VoiceSettings.language == "fr"
         let text = reply.text.isEmpty ? (fr ? "C'est fait." : "Done.") : reply.text
         VoiceTranscriptHistory.shared.record(transcript: transcript, note: text, origin: .brain)

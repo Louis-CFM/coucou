@@ -2,7 +2,7 @@ import AVFoundation
 import Speech
 import SwiftUI
 
-/// Write or dictate an instruction for a Claude Code session; Face ID sends
+/// Write or dictate an instruction for an agent session; Face ID sends
 /// it to the Mac, which continues the conversation in the background.
 struct InstructionComposer: View {
     let link: PhoneLink
@@ -24,7 +24,7 @@ struct InstructionComposer: View {
                 composer
                 status
             } else {
-                Label("This session doesn't take instructions from your iPhone. When Coucou on your Mac offers \"Let my iPhone send instructions to Claude Code\" in its Settings, turn it on to write to Claude from here.",
+                Label("This session doesn’t take instructions from your iPhone. If your Mac offers iPhone instructions, enable them in Settings. Codex also needs an idle conversation managed by Coucou (GitHub version on the Mac).",
                       systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -98,7 +98,7 @@ struct InstructionComposer: View {
         let empty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return HStack(alignment: .bottom, spacing: 8) {
             HStack(alignment: .bottom, spacing: 2) {
-                TextField("Tell Claude what to do next…", text: $text, axis: .vertical)
+                TextField("Tell your agent what to do next…", text: $text, axis: .vertical)
                     .lineLimit(1...8)
                     .focused($focused)
                     .padding(.leading, 16)
@@ -165,12 +165,12 @@ struct InstructionComposer: View {
         sending = true
         defer { sending = false }
         error = nil
-        guard await OwnerCheck.confirm(reason: "Send this instruction to Claude Code on your Mac") else {
+        guard await OwnerCheck.confirm(reason: "Send this instruction to \(session.pillName) on your Mac") else {
             error = "Face ID didn't confirm. Nothing was sent."
             Haptics.warning()
             return
         }
-        if await link.sendInstruction(instruction, pillId: session.id) {
+        if await link.sendInstruction(instruction, pillId: session.id, targetIdentity: session.instructionTargetIdentity) {
             sentAt = .now
             text = ""
             Haptics.success()
