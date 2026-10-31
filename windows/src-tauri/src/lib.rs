@@ -19,6 +19,7 @@ mod integrations;
 mod island;
 mod local_chat;
 mod log;
+mod mail;
 mod net;
 mod notes;
 mod openai_compat;
@@ -338,8 +339,8 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     }
 }
 
-/// The Claude Desktop pill's target: the Claude app (Windows only — it has no
-/// Linux build).
+/// The Claude Desktop pill's target: the Claude app (Windows, and Linux with
+/// Anthropic's .deb).
 #[tauri::command]
 fn open_claude_desktop() -> bool {
     platform::open_claude_desktop()
@@ -473,6 +474,7 @@ fn status_line_apply(
         // As on the Mac: taking the relay out turns the pill off with it.
         if !install {
             current.show_plan_in_notch = false;
+            current.show_plan_in_compact_island = false;
         }
         if let Err(err) = settings::save(&current) {
             log::line(format!("could not save settings: {err}"));
@@ -535,8 +537,18 @@ async fn chat_send(
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
+    mail: Option<bool>,
 ) -> Result<ChatReply, String> {
     let settings = shared.settings.lock().unwrap().clone();
+    // The chat's Mail switch: the latest Outlook messages ride under the request, and the
+    // system prompt says how to write a plan (mail/plan.rs) that runs only after a click.
+    if mail == Some(true) {
+        let query = mail::decorate(&query).await;
+        mail::MAIL_TURN.store(true, std::sync::atomic::Ordering::Relaxed);
+        let reply = chat::send(&app, &chat, &settings, query, context).await;
+        mail::MAIL_TURN.store(false, std::sync::atomic::Ordering::Relaxed);
+        return reply;
+    }
     chat::send(&app, &chat, &settings, query, context).await
 }
 
@@ -850,6 +862,20 @@ pub fn run() {
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
             boot,
+            mail::mail_refresh,
+            mail::mail_more,
+            mail::mail_search,
+            mail::mail_detail,
+            mail::mail_open,
+            mail::mail_act,
+            mail::mail_triage,
+            mail::mail_triage_set,
+            mail::mail_journal_clear,
+            mail::mail_undo,
+            mail::mail_plan_show,
+            mail::mail_plan_test,
+            mail::mail_plan_start,
+            mail::mail_plan_cancel,
             save_settings,
             set_system_languages,
             set_collapsed,
@@ -1052,6 +1078,7 @@ pub fn run() {
             pipe::start(handle.clone());
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
+            mail::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
