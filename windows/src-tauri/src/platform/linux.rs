@@ -235,6 +235,11 @@ pub fn user_full_name() -> Option<String> {
 // ── Processes ─────────────────────────────────────────────────────────────────
 
 /// Nothing to hide: a spawned process only gets a terminal if it asks for one.
+/// Outlook (the Mail pill) is a Windows program: nothing to look for here.
+pub fn process_running(_exe: &str) -> bool {
+    false
+}
+
 pub fn no_console(cmd: &mut Command) -> &mut Command {
     cmd
 }

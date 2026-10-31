@@ -45,6 +45,7 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_stripe", "Stripe", "#0570DE", "service", "Integration"],
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
+    ["integration_mail", "Mail", "#2F8CFF", "service", "Integration"],
     ["integration_whatsapp", "WhatsApp", "#25D366", "service", "Integration"],
   ];
   assert.deepEqual(
@@ -108,11 +109,14 @@ test("this build leaves out what only macOS has, and Claude Desktop on Linux", (
     assert.ok(linux.includes(id), id);
   }
   assert.ok(windows.includes("agent_claude-desktop"));
+  // Mail is Outlook's, and Outlook is a Windows program.
+  assert.ok(windows.includes("integration_mail"));
+  assert.ok(!linux.includes("integration_mail"));
   assert.ok(!linux.includes("agent_claude-desktop"));
   // Spotify: MPRIS on Linux, the system media controls on Windows.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(windows.includes("integration_spotify"));
-  assert.deepEqual(linux, windows.filter((id) => id !== "agent_claude-desktop"));
+  assert.deepEqual(linux, windows.filter((id) => id !== "agent_claude-desktop" && id !== "integration_mail"));
 });
 
 test("Spotify: a service on both systems with nothing to set up", () => {

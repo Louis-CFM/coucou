@@ -128,6 +128,7 @@ for line in sys.stdin:
         previous_turn=(thread,turn)
         send({'method':'turn/started','params':{'threadId':thread,'turn':{'id':turn}}})
         query=p['input'][0].get('text')
+        with open(os.path.join(os.path.dirname(__file__),'last-query'),'w') as marker: marker.write(query or '')
         if query in ['hold for cancel','start rpc error','start rpc timeout','start malformed response']:
             held_turn=(thread,turn)
             send({'method':'item/agentMessage/delta','params':{'threadId':thread,'turnId':turn,'itemId':'partial','delta':'Partial old response'}})
@@ -163,6 +164,16 @@ import AppKit
  func open(_ url:URL)->Bool { opened.append(url);return true }
 }
 @MainActor enum CodexTextService { static var disables = 0; static func disable() { disables += 1 } }
+enum MailAgentPrompt { static let instructions = "Fixture mail plan instructions" }
+@MainActor final class MailAgent {
+ static let shared = MailAgent()
+ var blocked = false
+ var pending: CheckedContinuation<String, Never>?
+ func decorate(_ query: String) async -> String {
+  if blocked { return await withCheckedContinuation { pending = $0 } }
+  return query + "\n<mail>fixture snapshot</mail>"
+ }
+}
 enum ChatProvider { case codex, anthropic }
 enum ChatRole { case user, assistant }
 enum PromptContext { case window(appName:String,title:String,url:String?);case file(name:String,fileURL:URL?) }
@@ -180,7 +191,7 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
    if restoringModel { startupResets+=1;CodexChatService.shared.reset() }
   }
  }
- var codexProjectPath="",codexSearchMode="cached",codexCanWrite=false,codexChatBusy=false
+ var codexProjectPath="",codexSearchMode="cached",codexCanWrite=false,codexChatBusy=false,chatMailMode=false
  var chatProvider=ChatProvider.codex,chatHistory:[ChatMessage]=[],stateOverride:BotState?,view=IslandView.prompt
  init(restoringModel:Bool=false) {
   self.restoringModel=restoringModel
@@ -378,6 +389,12 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   assert(state.chatHistory.last?.content=="Hello Codex")
   let threadStarts=try String(contentsOf:root.appendingPathComponent("thread-started"),encoding:.utf8)
   assert(threadStarts=="1","Mutable search mode changed the owned-thread snapshot")
+  state.chatMailMode = true
+  await chat.chat(query: "sort mail", context: nil, state: state)
+  let mailQuery = try String(contentsOf: root.appendingPathComponent("last-query"), encoding: .utf8)
+  assert(mailQuery.contains(MailAgentPrompt.instructions) && mailQuery.contains("<mail>fixture snapshot</mail>") && mailQuery.contains("sort mail"))
+  assert(state.chatHistory.last?.content == "Hello Codex")
+  state.chatMailMode = false
   do { try await chat.sendManagedInstruction(threadId:"external-thread",text:"bad",expectedCwd:root.path);assertionFailure("External writer accepted") } catch {}
   let phoneTurn=Task { @MainActor in try await chat.sendManagedInstruction(threadId:"owned-thread",text:"continue",expectedCwd:root.path) }
   await waitUntil({chat.isBusy},"Phone instruction did not begin")
@@ -493,7 +510,21 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   assert(replacementChat.threadId=="owned-thread-2" && CodexEventAdapter.shared.unregisteredThreads.count==unregisterBefore+1 && CodexEventAdapter.shared.unregisteredThreads.last=="owned-thread","New project kept the old registry owner")
   replacementChat.reset();replacementConnection.stop()
   try await authenticationChecks(root:root)
-  print("Codex services: connection, cancellation, bounds, hooks, usage, exact rollout, managed Chat and external-writer guards passed (fixtures; no model inference).")
+  chat.reset()
+  let startsBeforeMail = try Data(contentsOf: root.appendingPathComponent("thread-started"))
+  state.chatMailMode = true
+  MailAgent.shared.blocked = true
+  let staleMail = Task { @MainActor in await chat.chat(query: "cancel mail before native start", context: nil, state: state) }
+  await waitUntil({ MailAgent.shared.pending != nil }, "Mail fixture did not begin")
+  chat.reset()
+  MailAgent.shared.pending?.resume(returning: "stale mail snapshot")
+  MailAgent.shared.pending = nil
+  await staleMail.value
+  assert(!chat.isBusy && state.chatHistory.isEmpty && chat.threadId == nil)
+  let startsAfterMail = try Data(contentsOf: root.appendingPathComponent("thread-started"))
+  assert(startsAfterMail == startsBeforeMail)
+  state.chatMailMode = false
+  print("Codex services: connection, cancellation, bounds, hooks, usage, exact rollout, managed Chat, native Mail snapshot/instructions/cancellation and external-writer guards passed (fixtures; no model inference).")
  }
 }
 SWIFT
@@ -591,11 +622,14 @@ route = source[start:end] + "    }\n"
 fixture = r"""
 import Foundation
 enum ChatProvider { case codex, anthropic, openai }
+enum MailAgentPrompt { static let instructions = "Fixture mail instructions" }
+@MainActor final class MailAgent { static let shared = MailAgent(); func decorate(_ query: String) async -> String { query } }
 enum BotState { case thinking }
 struct PromptContext {}
 @MainActor final class AppState {
     var chatProvider: ChatProvider = .codex
     var stateOverride: BotState?
+    var chatMailMode = false
     var subscriptionEnabled = true
     var subscriptionChecks = 0
     func usesSubscription(_ provider: ChatProvider) -> Bool {
@@ -615,6 +649,8 @@ struct PromptContext {}
     func chat(query: String, context: PromptContext?, state: AppState) async { calls += 1 }
 }
 @MainActor final class ClaudeService {
+    var relayGeneration = UUID()
+    var extraSystem = ""
     var relayCalls = 0
     var relayProvider: ChatProvider?
     func chatThroughSubscription(_ provider: ChatProvider, query: String, context: PromptContext?, state: AppState) async {
@@ -694,7 +730,7 @@ extension CLIRelay {
 }
 @MainActor final class ClaudeService {
     var conversationMessages: [[String: Any]] = []
-    var model = "fixture", systemPrompt = "fixture"
+    var model = "fixture", systemPrompt = "fixture", extraSystem = ""
     var errors: [String] = []
     func showError(_ message: String, state: AppState) async { errors.append(message) }
 PROPS

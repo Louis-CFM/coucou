@@ -138,6 +138,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // Mail: classic Outlook on Windows, driven on this computer through its COM objects
+  // (src-tauri/src/mail). The new Outlook has none, and Linux has no Outlook.
+  { id: "integration_mail", name: "Mail", color: "#2F8CFF", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
   // WhatsApp (experimental) through a gateway on this computer (src-tauri/src/whatsapp): set up,
   // linked and turned on in Settings → Integrations → WhatsApp, off until then.
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", category: "service",

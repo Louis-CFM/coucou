@@ -226,21 +226,6 @@
       "ko": "자동 닫기",
       "ja": "自動で閉じる"
     },
-    "Back": {
-      "zh-Hans": "返回",
-      "hi": "वापस",
-      "es": "Atrás",
-      "ar": "رجوع",
-      "fr": "Retour",
-      "bn": "ফিরে যান",
-      "pt-BR": "Voltar",
-      "ru": "Назад",
-      "id": "Kembali",
-      "de": "Zurück",
-      "tr": "Geri",
-      "ko": "뒤로",
-      "ja": "戻る"
-    },
     "Back up and remove": {
       "zh-Hans": "备份并移除",
       "hi": "बैकअप लें और हटाएँ",
@@ -675,6 +660,21 @@
       "tr": "Coucou, Claude Code oturumlarına bağlı. Araç çağrıları, sorular ve izin istekleri adada görünür; bunları oradan yanıtlayabilirsin.",
       "ko": "Coucou가 Claude Code 세션에 연결됐어요. 도구 실행, 질문, 권한 요청이 아일랜드에 뜨고, 거기서 바로 답할 수 있어요.",
       "ja": "Coucou は Claude Code のセッションにつながっています。ツールの呼び出し、質問、許可のリクエストがアイランドに表示され、そこで答えられます。"
+    },
+    "Coucou sorts your Outlook inboxes: VIPs first, then banned words, then your rules. It never deletes a message.": {
+      "zh-Hans": "Coucou 会整理你的 Outlook 收件箱：先看 VIP，再看屏蔽词，最后是你的规则。它从不删除邮件。",
+      "hi": "Coucou आपके Outlook इनबॉक्स छाँटता है: पहले VIP, फिर प्रतिबंधित शब्द, फिर आपके नियम। यह कभी कोई मेल नहीं हटाता।",
+      "es": "Coucou ordena tus buzones de Outlook: primero los VIP, luego las palabras prohibidas y después tus reglas. Nunca borra un correo.",
+      "ar": "يفرز Coucou صناديق Outlook لديك: كبار الشخصيات أولًا، ثم الكلمات المحظورة، ثم قواعدك. لا يحذف أي رسالة أبدًا.",
+      "fr": "Coucou trie tes boîtes Outlook : les VIP d’abord, puis les mots bannis, puis tes règles. Il ne supprime jamais un mail.",
+      "bn": "Coucou আপনার Outlook ইনবক্স সাজায়: আগে VIP, তারপর নিষিদ্ধ শব্দ, তারপর আপনার নিয়ম। এটি কখনো কোনো মেল মুছে না।",
+      "pt-BR": "O Coucou organiza suas caixas do Outlook: primeiro os VIPs, depois as palavras proibidas, depois suas regras. Ele nunca apaga um e-mail.",
+      "ru": "Coucou сортирует ящики Outlook: сначала VIP, затем запрещённые слова, затем ваши правила. Он никогда не удаляет письма.",
+      "id": "Coucou memilah kotak masuk Outlook-mu: VIP dulu, lalu kata terlarang, lalu aturanmu. Coucou tidak pernah menghapus email.",
+      "de": "Coucou sortiert deine Outlook-Postfächer: zuerst VIPs, dann verbotene Wörter, dann deine Regeln. Es löscht nie eine E-Mail.",
+      "tr": "Coucou, Outlook gelen kutularını düzenler: önce VIP’ler, sonra yasaklı kelimeler, sonra kuralların. Hiçbir e-postayı silmez.",
+      "ko": "Coucou가 Outlook 받은편지함을 정리합니다. VIP가 먼저, 다음은 금지어, 그다음은 내 규칙입니다. 메일을 삭제하지는 않습니다.",
+      "ja": "Coucou は Outlook の受信トレイを整理します。まず VIP、次に禁止ワード、最後にあなたのルール。メールを削除することはありません。"
     },
     "Could not remove {path}: {error}": {
       "zh-Hans": "无法删除 {path}：{error}",
@@ -1636,6 +1636,21 @@
       "ko": "저장할 사진이나 다운로드 폴더가 없어요.",
       "ja": "保存先のピクチャやダウンロードフォルダがありません。"
     },
+    "No banned words. Add a word, or click “Always ignore this sender” on a message in the island.": {
+      "zh-Hans": "没有屏蔽词。添加一个词，或在灵动岛里的邮件上点击“始终忽略此发件人”。",
+      "hi": "कोई प्रतिबंधित शब्द नहीं। कोई शब्द जोड़ें, या आइलैंड में किसी मेल पर “इस प्रेषक को हमेशा अनदेखा करें” क्लिक करें।",
+      "es": "No hay palabras prohibidas. Añade una o haz clic en «Ignorar siempre a este remitente» en un correo de la isla.",
+      "ar": "لا كلمات محظورة. أضف كلمة، أو انقر «تجاهل هذا المرسل دائمًا» على رسالة في الجزيرة.",
+      "fr": "Aucun mot banni. Ajoute un mot, ou clique sur « Toujours ignorer cet expéditeur » sur un mail dans l’île.",
+      "bn": "কোনো নিষিদ্ধ শব্দ নেই। একটি শব্দ যোগ করুন, অথবা আইল্যান্ডে কোনো মেলে “এই প্রেরককে সবসময় উপেক্ষা করুন” ক্লিক করুন।",
+      "pt-BR": "Nenhuma palavra proibida. Adicione uma, ou clique em “Sempre ignorar este remetente” num e-mail na ilha.",
+      "ru": "Запрещённых слов нет. Добавьте слово или нажмите «Всегда игнорировать этого отправителя» у письма на острове.",
+      "id": "Belum ada kata terlarang. Tambahkan kata, atau klik “Selalu abaikan pengirim ini” pada email di pulau.",
+      "de": "Keine verbotenen Wörter. Füge ein Wort hinzu oder klicke bei einer E-Mail auf der Insel auf „Diesen Absender immer ignorieren“.",
+      "tr": "Yasaklı kelime yok. Bir kelime ekle ya da adadaki bir e-postada “Bu göndereni her zaman yok say”a tıkla.",
+      "ko": "금지어가 없습니다. 단어를 추가하거나 아일랜드의 메일에서 ‘이 보낸 사람 항상 무시’를 누르세요.",
+      "ja": "禁止ワードはありません。語句を追加するか、アイランドのメールで「この差出人を常に無視」をクリックしてください。"
+    },
     "No change.": {
       "zh-Hans": "没有改动。",
       "hi": "कोई बदलाव नहीं।",
@@ -1861,6 +1876,51 @@
       "ko": "아일랜드에 놓은 파일만 추가할 수 있어요.",
       "ja": "アイランドにドロップしたファイルだけを追加できます。"
     },
+    "Only messages that arrive from now on, in every Outlook account. The classic Outlook must be open.": {
+      "zh-Hans": "仅限从现在起收到的邮件，涵盖所有 Outlook 账户。经典版 Outlook 必须保持打开。",
+      "hi": "सिर्फ़ अब से आने वाले मेल, हर Outlook खाते में। क्लासिक Outlook खुला होना चाहिए।",
+      "es": "Solo los correos que lleguen a partir de ahora, en todas las cuentas de Outlook. El Outlook clásico debe estar abierto.",
+      "ar": "الرسائل التي تصل من الآن فقط، في كل حسابات Outlook. يجب أن يكون Outlook الكلاسيكي مفتوحًا.",
+      "fr": "Seulement les mails qui arrivent à partir de maintenant, dans tous les comptes Outlook. L’Outlook classique doit être ouvert.",
+      "bn": "শুধু এখন থেকে আসা মেল, সব Outlook অ্যাকাউন্টে। ক্লাসিক Outlook খোলা থাকতে হবে।",
+      "pt-BR": "Só os e-mails que chegarem a partir de agora, em todas as contas do Outlook. O Outlook clássico precisa estar aberto.",
+      "ru": "Только письма, которые придут с этого момента, во всех учётных записях Outlook. Классический Outlook должен быть открыт.",
+      "id": "Hanya email yang masuk mulai sekarang, di semua akun Outlook. Outlook klasik harus terbuka.",
+      "de": "Nur E-Mails, die ab jetzt ankommen, in allen Outlook-Konten. Das klassische Outlook muss geöffnet sein.",
+      "tr": "Yalnızca bundan sonra gelen e-postalar, tüm Outlook hesaplarında. Klasik Outlook açık olmalı.",
+      "ko": "지금부터 도착하는 메일만, 모든 Outlook 계정에서 정리합니다. 클래식 Outlook이 열려 있어야 합니다.",
+      "ja": "今から届くメールのみ、すべての Outlook アカウントが対象です。クラシック版 Outlook を開いておく必要があります。"
+    },
+    "Open Outlook (the classic one) to see your mail here.": {
+      "zh-Hans": "打开 Outlook（经典版），即可在这里看到你的邮件。",
+      "hi": "अपने मेल यहाँ देखने के लिए Outlook (क्लासिक) खोलें।",
+      "es": "Abre Outlook (el clásico) para ver tus correos aquí.",
+      "ar": "افتح Outlook (الكلاسيكي) لترى بريدك هنا.",
+      "fr": "Ouvre Outlook (le classique) pour voir tes mails ici.",
+      "bn": "আপনার মেল এখানে দেখতে Outlook (ক্লাসিক) খুলুন।",
+      "pt-BR": "Abra o Outlook (o clássico) para ver seus e-mails aqui.",
+      "ru": "Откройте Outlook (классический), чтобы видеть почту здесь.",
+      "id": "Buka Outlook (yang klasik) untuk melihat email-mu di sini.",
+      "de": "Öffne Outlook (das klassische), um deine E-Mails hier zu sehen.",
+      "tr": "E-postalarını burada görmek için Outlook’u (klasik olanı) aç.",
+      "ko": "여기에서 메일을 보려면 Outlook(클래식)을 여세요.",
+      "ja": "ここでメールを見るには Outlook（クラシック版）を開いてください。"
+    },
+    "Open in Outlook": {
+      "zh-Hans": "在 Outlook 中打开",
+      "hi": "Outlook में खोलें",
+      "es": "Abrir en Outlook",
+      "ar": "فتح في Outlook",
+      "fr": "Ouvrir dans Outlook",
+      "bn": "Outlook-এ খুলুন",
+      "pt-BR": "Abrir no Outlook",
+      "ru": "Открыть в Outlook",
+      "id": "Buka di Outlook",
+      "de": "In Outlook öffnen",
+      "tr": "Outlook’ta aç",
+      "ko": "Outlook에서 열기",
+      "ja": "Outlook で開く"
+    },
     "Open in VS Code": {
       "zh-Hans": "在 VS Code 中打开",
       "hi": "VS Code में खोलें",
@@ -1965,6 +2025,36 @@
       "tr": "OpenAI uyumlu sunucu",
       "ko": "OpenAI 호환 서버",
       "ja": "OpenAI 互換サーバー"
+    },
+    "Outlook is closed: nothing is sorted until it is open.": {
+      "zh-Hans": "Outlook 已关闭：打开之前不会整理任何邮件。",
+      "hi": "Outlook बंद है: खुलने तक कुछ भी नहीं छाँटा जाएगा।",
+      "es": "Outlook está cerrado: no se ordena nada hasta que se abra.",
+      "ar": "Outlook مغلق: لن يُفرز شيء حتى يُفتح.",
+      "fr": "Outlook est fermé : rien n’est trié tant qu’il n’est pas ouvert.",
+      "bn": "Outlook বন্ধ: খোলা না হওয়া পর্যন্ত কিছুই সাজানো হবে না।",
+      "pt-BR": "O Outlook está fechado: nada é organizado até ele ser aberto.",
+      "ru": "Outlook закрыт: пока он не открыт, ничего не сортируется.",
+      "id": "Outlook tertutup: tidak ada yang dipilah sampai dibuka.",
+      "de": "Outlook ist geschlossen: Nichts wird sortiert, bis es geöffnet ist.",
+      "tr": "Outlook kapalı: açılana kadar hiçbir şey düzenlenmez.",
+      "ko": "Outlook이 닫혀 있습니다. 열 때까지 아무것도 정리되지 않습니다.",
+      "ja": "Outlook が閉じています。開くまで何も整理されません。"
+    },
+    "Outlook is only reached on Windows.": {
+      "zh-Hans": "Outlook 只能在 Windows 上使用。",
+      "hi": "Outlook सिर्फ़ Windows पर उपलब्ध है।",
+      "es": "Outlook solo se puede usar en Windows.",
+      "ar": "لا يمكن الوصول إلى Outlook إلا على Windows.",
+      "fr": "Outlook n’est accessible que sur Windows.",
+      "bn": "Outlook শুধু Windows-এ ব্যবহার করা যায়।",
+      "pt-BR": "O Outlook só é acessível no Windows.",
+      "ru": "Outlook доступен только в Windows.",
+      "id": "Outlook hanya bisa dijangkau di Windows.",
+      "de": "Outlook ist nur unter Windows erreichbar.",
+      "tr": "Outlook’a yalnızca Windows’ta erişilebilir.",
+      "ko": "Outlook은 Windows에서만 사용할 수 있습니다.",
+      "ja": "Outlook は Windows でのみ利用できます。"
     },
     "PDF": {
       "zh-Hans": "PDF",

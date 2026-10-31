@@ -227,14 +227,17 @@ struct SettingsView: View {
                         .padding(.top, 20)
                         .padding(.bottom, 12)
                 }
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        sectionContent
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            sectionContent
+                        }
+                        .padding(.horizontal, embeddedSection == nil ? 20 : 28)
+                        .padding(.top, embeddedSection == nil ? 0 : 20)
+                        .padding(.bottom, 16)
+                        .frame(maxWidth: embeddedSection == nil ? .infinity : 1100, alignment: .leading)
                     }
-                    .padding(.horizontal, embeddedSection == nil ? 20 : 28)
-                    .padding(.top, embeddedSection == nil ? 0 : 20)
-                    .padding(.bottom, 16)
-                    .frame(maxWidth: embeddedSection == nil ? .infinity : 1100, alignment: .leading)
+                    .settingsSearchScroll(proxy)
                 }
                 if !statusMessage.isEmpty {
                     Divider()
@@ -321,6 +324,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("general.demo")
 
         GroupBox("Sound") {
             VStack(alignment: .leading, spacing: 10) {
@@ -355,6 +359,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("general.sound")
 
         GroupBox("Behavior") {
             VStack(alignment: .leading, spacing: 10) {
@@ -379,6 +384,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("general.behavior")
 
         GroupBox("Display") {
             VStack(alignment: .leading, spacing: 10) {
@@ -400,6 +406,22 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                #if !APPSTORE
+                // The notch or a corner of the screen (IslandPlacement).
+                Picker(String(localized: "island.position"), selection: $state.islandPlacement) {
+                    Text("island.position.notch").tag(IslandPlacement.notch)
+                    Divider()
+                    Text("island.position.top-left").tag(IslandPlacement.topLeft)
+                    Text("island.position.top-right").tag(IslandPlacement.topRight)
+                    Text("island.position.bottom-left").tag(IslandPlacement.bottomLeft)
+                    Text("island.position.bottom-right").tag(IslandPlacement.bottomRight)
+                }
+                .frame(maxWidth: 360)
+                Text("island.position.hint")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                #endif
             }
             .padding(6)
             .onAppear { refreshConnectedScreens() }
@@ -408,6 +430,7 @@ struct SettingsView: View {
                 refreshConnectedScreens()
             }
         }
+            .settingsAnchor("general.display")
 
         GroupBox(String(localized: "vitals.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -421,6 +444,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("general.vitals")
 
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
@@ -449,15 +473,18 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("general.hotkey")
 
         GroupBox("Startup") {
             Toggle("Launch at Mac startup", isOn: $launchAtStartup)
                 .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
                 .padding(6)
         }
+            .settingsAnchor("general.startup")
 
         #if !APPSTORE
         UpdateSettingsSection()
+            .settingsAnchor("general.update")
         #endif
 
         GroupBox(String(localized: "Weekly recap")) {
@@ -473,6 +500,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("general.recap")
 
         GroupBox(String(localized: "Language")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -523,6 +551,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("general.language")
 
         #if PHONE_LINK
         GroupBox("iPhone") {
@@ -552,6 +581,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("general.iphone")
         #endif
     }
 
@@ -599,6 +629,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("pills.main")
     }
 
     // MARK: - Agents section
@@ -679,9 +710,11 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.claude")
 
         #if !APPSTORE
         ClaudeDesktopChatSettingsSection()
+            .settingsAnchor("agents.claude-desktop")
 
         GroupBox(String(localized: "hooks.gemini.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -716,6 +749,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.gemini")
 
         GroupBox(String(localized: "hooks.antigravity.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -750,6 +784,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.antigravity")
 
         GroupBox(String(localized: "hooks.codex.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -828,6 +863,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.codex")
 
         GroupBox(String(localized: "hooks.copilot.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -862,6 +898,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.copilot")
 
         GroupBox(String(localized: "hooks.muse.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -896,6 +933,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.muse")
 
         GroupBox(String(localized: "plugin.opencode.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -930,6 +968,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.opencode")
 
         GroupBox(String(localized: "plugin.amp.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -964,6 +1003,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.amp")
 
         GroupBox(String(localized: "plugin.hermes.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -1037,6 +1077,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.hermes")
         #if !APPSTORE
         .task(id: hermesPluginInstalled) {
             guard hermesPluginInstalled else { hermesSupportsApprovals = false; return }
@@ -1116,6 +1157,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("agents.plan")
         #endif
     }
 
@@ -1254,6 +1296,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+        .settingsAnchor("chat.codex")
         .task { await codexChat.refreshAuthentication() }
         GroupBox(String(localized: "chat.subscriptions.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -1269,6 +1312,7 @@ struct SettingsView: View {
             .padding(6)
             .id(cliScan)
         }
+            .settingsAnchor("chat.subscriptions")
         .onAppear { CLILocator.shared.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: CLILocator.changed)) { _ in cliScan += 1 }
         #endif
@@ -1313,6 +1357,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("chat.anthropic")
 
         GroupBox(String(localized: "chat.other-providers.title")) {
             VStack(alignment: .leading, spacing: 12) {
@@ -1390,6 +1435,7 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
         }
+            .settingsAnchor("chat.others")
 
         GroupBox(String(localized: "chat.local.title")) {
             VStack(alignment: .leading, spacing: 12) {
@@ -1467,6 +1513,7 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
         }
+            .settingsAnchor("chat.local")
     }
 
     // MARK: - Integrations section
@@ -1619,6 +1666,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("integrations.all")
     }
 
     // MARK: - Voice section
@@ -1706,6 +1754,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("voice.wake")
         .onAppear {
             voicePermissionsGranted = VoiceSettings.micStatus == .granted
                 && VoiceSettings.speechStatus == .granted
@@ -1744,6 +1793,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("voice.language")
 
         GroupBox(String(localized: "voice.tts-engine")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -1811,6 +1861,7 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+            .settingsAnchor("voice.tts")
     }
 
     #if !APPSTORE
@@ -1865,6 +1916,7 @@ struct SettingsView: View {
                     }
                     .padding(6)
                 }
+                    .settingsAnchor("voice.history")
             }
         }
     }

@@ -2,6 +2,167 @@
   "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 16 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.7",
+      "items": [
+        {
+          "icon": "bell",
+          "title": {
+            "en": "Mail in the notch",
+            "fr": "Mail dans le notch",
+            "es": "Mail en el notch",
+            "pt-BR": "Mail no notch",
+            "ru": "Почта в вырезе",
+            "zh-Hans": "刘海里的邮件",
+            "hi": "नॉच में मेल",
+            "ar": "البريد في النوتش",
+            "bn": "নচে মেল",
+            "id": "Mail di notch",
+            "de": "Mail in der Notch",
+            "tr": "Çentikte Mail",
+            "th": "อีเมลในรอยบาก",
+            "zh-Hant": "瀏海裡的郵件",
+            "ko": "노치 속 메일",
+            "ja": "ノッチでメール"
+          },
+          "detail": {
+            "en": "Search, filter and read your Apple Mail inboxes, and reply, right from the Mail pill.",
+            "fr": "Cherche, filtre et lis tes boîtes Apple Mail, et réponds, depuis la pill Mail.",
+            "es": "Busca, filtra y lee tus buzones de Apple Mail, y responde, desde la pastilla Mail.",
+            "pt-BR": "Pesquise, filtre e leia suas caixas do Apple Mail, e responda, direto da pílula Mail.",
+            "ru": "Ищите, фильтруйте и читайте письма Apple Mail и отвечайте прямо из пилюли Mail.",
+            "zh-Hans": "在 Mail 胶囊中直接搜索、筛选和阅读 Apple Mail 邮件，并回复。",
+            "hi": "Mail पिल से ही अपने Apple Mail इनबॉक्स खोजें, फ़िल्टर करें, पढ़ें और जवाब दें।",
+            "ar": "ابحث في صناديق Apple Mail وصفِّها واقرأ الرسائل وردّ عليها من حبة Mail مباشرة.",
+            "bn": "Mail পিল থেকেই Apple Mail ইনবক্স খুঁজুন, ফিল্টার করুন, পড়ুন ও উত্তর দিন।",
+            "id": "Cari, saring, dan baca kotak masuk Apple Mail, lalu balas, langsung dari pil Mail.",
+            "de": "Durchsuche, filtere und lies deine Apple-Mail-Postfächer und antworte direkt in der Mail-Pille.",
+            "tr": "Apple Mail gelen kutularını Mail hapından arayın, süzün, okuyun ve yanıtlayın.",
+            "th": "ค้นหา กรอง อ่าน และตอบอีเมลใน Apple Mail ได้จากพิลล์ Mail โดยตรง",
+            "zh-Hant": "在 Mail 膠囊中直接搜尋、篩選和閱讀 Apple Mail 郵件，並回覆。",
+            "ko": "Mail 필에서 바로 Apple Mail 받은편지함을 검색하고 필터링하고 읽고 답장하세요.",
+            "ja": "Mail ピルから Apple Mail の受信箱を検索・絞り込み・閲覧し、返信できます。"
+          }
+        },
+        {
+          "icon": "checklist",
+          "title": {
+            "en": "Mail sorted for you",
+            "fr": "Tes mails triés pour toi",
+            "es": "Tu correo, ordenado",
+            "pt-BR": "Seus e-mails organizados",
+            "ru": "Почта сама по папкам",
+            "zh-Hans": "自动整理邮件",
+            "hi": "आपके लिए छँटी मेल",
+            "ar": "بريدك مرتّب لك",
+            "bn": "আপনার মেল সাজানো",
+            "id": "Email tersortir otomatis",
+            "de": "Deine Mails sortiert",
+            "tr": "Postanız sizin için sıralı",
+            "th": "จัดอีเมลให้อัตโนมัติ",
+            "zh-Hant": "自動整理郵件",
+            "ko": "알아서 정리되는 메일",
+            "ja": "メールを自動で整理"
+          },
+          "detail": {
+            "en": "Rules, banned words and VIPs sort new mail in Coucou → Mail, each action with Undo.",
+            "fr": "Règles, mots bannis et VIP trient les nouveaux mails dans Coucou → Mail, avec Annuler.",
+            "es": "Reglas, palabras prohibidas y VIP ordenan el correo nuevo en Coucou → Mail, con Deshacer.",
+            "pt-BR": "Regras, palavras banidas e VIPs organizam e-mails novos em Coucou → Mail, com Desfazer.",
+            "ru": "Правила, запрещённые слова и VIP сортируют новые письма в Coucou → Mail, с отменой.",
+            "zh-Hans": "在 Coucou → Mail 中用规则、屏蔽词和 VIP 整理新邮件，每个操作都可撤销。",
+            "hi": "Coucou → Mail में नियम, प्रतिबंधित शब्द और VIP नई मेल छाँटते हैं, हर कदम पूर्ववत् हो सकता है।",
+            "ar": "القواعد والكلمات المحظورة وكبار المرسلين ترتّب البريد الجديد في Coucou → Mail، مع التراجع.",
+            "bn": "Coucou → Mail-এ নিয়ম, নিষিদ্ধ শব্দ ও VIP নতুন মেল সাজায়, প্রতিটি কাজ ফেরানো যায়।",
+            "id": "Aturan, kata terlarang, dan VIP menyortir email baru di Coucou → Mail, bisa Urungkan.",
+            "de": "Regeln, gesperrte Wörter und VIPs sortieren neue Mails in Coucou → Mail, mit Widerrufen.",
+            "tr": "Kurallar, yasaklı kelimeler ve VIP'ler yeni postaları Coucou → Mail'de sıralar, geri alınabilir.",
+            "th": "กฎ คำต้องห้าม และ VIP จัดอีเมลใหม่ใน Coucou → Mail ทุกการกระทำเลิกทำได้",
+            "zh-Hant": "在 Coucou → Mail 中用規則、封鎖詞和 VIP 整理新郵件，每個動作都可復原。",
+            "ko": "Coucou → Mail에서 규칙, 금지어, VIP로 새 메일을 정리하고 모든 작업은 실행 취소할 수 있어요.",
+            "ja": "Coucou → Mail でルール・禁止語・VIP が新着メールを整理。どの操作も取り消せます。"
+          }
+        },
+        {
+          "icon": "sparkles",
+          "title": {
+            "en": "Coucou in a corner",
+            "fr": "Coucou dans un coin",
+            "es": "Coucou en una esquina",
+            "pt-BR": "Coucou num canto",
+            "ru": "Coucou в углу",
+            "zh-Hans": "把 Coucou 放到角落",
+            "hi": "कोने में Coucou",
+            "ar": "Coucou في الزاوية",
+            "bn": "কোণে Coucou",
+            "id": "Coucou di sudut",
+            "de": "Coucou in einer Ecke",
+            "tr": "Köşede Coucou",
+            "th": "Coucou ที่มุมจอ",
+            "zh-Hant": "把 Coucou 放到角落",
+            "ko": "구석의 Coucou",
+            "ja": "Coucou を画面の隅に"
+          },
+          "detail": {
+            "en": "Drag Mochi to a corner of the screen, or pick one in Settings → General → Position.",
+            "fr": "Glisse Mochi dans un coin de l'écran, ou choisis-le dans Réglages → Général → Position.",
+            "es": "Arrastra a Mochi a una esquina de la pantalla o elígela en Ajustes → General → Posición.",
+            "pt-BR": "Arraste o Mochi para um canto da tela ou escolha em Ajustes → Geral → Posição.",
+            "ru": "Перетащите Mochi в угол экрана или выберите его в Настройках → Основные → Положение.",
+            "zh-Hans": "把 Mochi 拖到屏幕一角，或在设置 → 通用 → 位置中选择。",
+            "hi": "Mochi को स्क्रीन के कोने में खींचें, या सेटिंग्स → सामान्य → स्थिति में चुनें।",
+            "ar": "اسحب Mochi إلى زاوية الشاشة، أو اخترها من الإعدادات ← عام ← الموضع.",
+            "bn": "Mochi-কে স্ক্রিনের কোণে টেনে আনুন, বা সেটিংস → সাধারণ → অবস্থান থেকে বেছে নিন।",
+            "id": "Seret Mochi ke sudut layar, atau pilih di Pengaturan → Umum → Posisi.",
+            "de": "Zieh Mochi in eine Bildschirmecke oder wähle sie in Einstellungen → Allgemein → Position.",
+            "tr": "Mochi'yi ekranın bir köşesine sürükleyin ya da Ayarlar → Genel → Konum'dan seçin.",
+            "th": "ลาก Mochi ไปที่มุมจอ หรือเลือกใน การตั้งค่า → ทั่วไป → ตำแหน่ง",
+            "zh-Hant": "把 Mochi 拖到螢幕一角，或在設定 → 一般 → 位置中選擇。",
+            "ko": "Mochi를 화면 구석으로 끌어 놓거나 설정 → 일반 → 위치에서 고르세요.",
+            "ja": "Mochi を画面の隅へドラッグするか、設定 → 一般 → 位置 で選べます。"
+          }
+        },
+        {
+          "icon": "eye",
+          "title": {
+            "en": "Search the settings",
+            "fr": "Cherche dans les réglages",
+            "es": "Busca en los ajustes",
+            "pt-BR": "Pesquise nos ajustes",
+            "ru": "Поиск по настройкам",
+            "zh-Hans": "搜索设置",
+            "hi": "सेटिंग्स खोजें",
+            "ar": "ابحث في الإعدادات",
+            "bn": "সেটিংসে খুঁজুন",
+            "id": "Cari di pengaturan",
+            "de": "Einstellungen durchsuchen",
+            "tr": "Ayarlarda arayın",
+            "th": "ค้นหาในการตั้งค่า",
+            "zh-Hant": "搜尋設定",
+            "ko": "설정 검색",
+            "ja": "設定を検索"
+          },
+          "detail": {
+            "en": "Type in the Coucou window's sidebar to find any setting.",
+            "fr": "Tape dans la barre latérale de la fenêtre Coucou pour trouver n'importe quel réglage.",
+            "es": "Escribe en la barra lateral de la ventana de Coucou para encontrar cualquier ajuste.",
+            "pt-BR": "Digite na barra lateral da janela do Coucou para achar qualquer ajuste.",
+            "ru": "Начните печатать в боковой панели окна Coucou, чтобы найти любую настройку.",
+            "zh-Hans": "在 Coucou 窗口的侧边栏输入，即可找到任何设置。",
+            "hi": "कोई भी सेटिंग ढूँढने के लिए Coucou विंडो की साइडबार में टाइप करें।",
+            "ar": "اكتب في الشريط الجانبي لنافذة Coucou لتجد أي إعداد.",
+            "bn": "যেকোনো সেটিং খুঁজতে Coucou উইন্ডোর সাইডবারে টাইপ করুন।",
+            "id": "Ketik di bilah samping jendela Coucou untuk menemukan pengaturan apa pun.",
+            "de": "Tippe in der Seitenleiste des Coucou-Fensters, um jede Einstellung zu finden.",
+            "tr": "Herhangi bir ayarı bulmak için Coucou penceresinin kenar çubuğuna yazın.",
+            "th": "พิมพ์ในแถบด้านข้างของหน้าต่าง Coucou เพื่อหาการตั้งค่าใดก็ได้",
+            "zh-Hant": "在 Coucou 視窗的側邊欄輸入，即可找到任何設定。",
+            "ko": "Coucou 창의 사이드바에 입력해 원하는 설정을 찾으세요.",
+            "ja": "Coucou ウインドウのサイドバーに入力して、どの設定もすぐ見つかります。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.6",
       "items": [
         {

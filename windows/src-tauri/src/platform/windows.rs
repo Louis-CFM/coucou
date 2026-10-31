@@ -371,6 +371,12 @@ pub fn pipe_client_pid(handle: RawHandle) -> Option<u32> {
     (pid != 0).then_some(pid)
 }
 
+/// Whether a program runs (by its executable's name, any case): the Mail pill asks for
+/// OUTLOOK.EXE before it starts PowerShell, so a closed Outlook costs nothing.
+pub fn process_running(exe: &str) -> bool {
+    process_table().values().any(|p| p.exe.eq_ignore_ascii_case(exe))
+}
+
 /// Every process, by ID: its parent and its executable's name.
 fn process_table() -> HashMap<u32, Proc> {
     let mut out = HashMap::new();

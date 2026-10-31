@@ -2,6 +2,81 @@
   "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 14 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.7",
+      "items": [
+        {
+          "icon": "bell",
+          "title": {
+            "en": "Mail with classic Outlook",
+            "zh-Hans": "经典 Outlook 邮件",
+            "hi": "क्लासिक Outlook के साथ मेल",
+            "es": "Mail con Outlook clásico",
+            "ar": "البريد مع Outlook الكلاسيكي",
+            "fr": "Mail avec Outlook classique",
+            "bn": "ক্লাসিক Outlook-এ মেল",
+            "pt-BR": "Mail com o Outlook clássico",
+            "ru": "Почта с классическим Outlook",
+            "id": "Mail dengan Outlook klasik",
+            "de": "Mail mit klassischem Outlook",
+            "tr": "Klasik Outlook ile Mail",
+            "ko": "클래식 Outlook 메일",
+            "ja": "クラシック Outlook でメール"
+          },
+          "detail": {
+            "en": "On Windows, search, read and sort your Outlook mail from the Mail pill, with rules and Undo.",
+            "zh-Hans": "在 Windows 上通过 Mail 胶囊搜索、阅读和整理 Outlook 邮件，支持规则和撤销。",
+            "hi": "Windows पर Mail पिल से Outlook मेल खोजें, पढ़ें और छाँटें, नियमों और पूर्ववत् के साथ।",
+            "es": "En Windows, busca, lee y ordena tu correo de Outlook desde la pastilla Mail, con reglas y Deshacer.",
+            "ar": "على Windows، ابحث في بريد Outlook واقرأه ورتّبه من حبة Mail، مع قواعد وتراجع.",
+            "fr": "Sur Windows, cherche, lis et trie tes mails Outlook depuis la pill Mail, avec règles et Annuler.",
+            "bn": "Windows-এ Mail পিল থেকে Outlook মেল খুঁজুন, পড়ুন ও সাজান, নিয়ম ও ফেরানোর সুবিধাসহ।",
+            "pt-BR": "No Windows, pesquise, leia e organize seus e-mails do Outlook na pílula Mail, com regras e Desfazer.",
+            "ru": "В Windows ищите, читайте и сортируйте почту Outlook из пилюли Mail, с правилами и отменой.",
+            "id": "Di Windows, cari, baca, dan sortir email Outlook dari pil Mail, dengan aturan dan Urungkan.",
+            "de": "Unter Windows Outlook-Mails in der Mail-Pille suchen, lesen und sortieren, mit Regeln und Widerrufen.",
+            "tr": "Windows'ta Outlook postalarınızı Mail hapından arayın, okuyun ve sıralayın; kurallar ve geri al ile.",
+            "ko": "Windows에서 Mail 필로 Outlook 메일을 검색하고 읽고 정리하세요. 규칙과 실행 취소도 돼요.",
+            "ja": "Windows で Mail ピルから Outlook のメールを検索・閲覧・整理。ルールと取り消しにも対応。"
+          }
+        },
+        {
+          "icon": "eye",
+          "title": {
+            "en": "Search the settings",
+            "zh-Hans": "搜索设置",
+            "hi": "सेटिंग्स खोजें",
+            "es": "Busca en los ajustes",
+            "ar": "ابحث في الإعدادات",
+            "fr": "Cherche dans les réglages",
+            "bn": "সেটিংসে খুঁজুন",
+            "pt-BR": "Pesquise nos ajustes",
+            "ru": "Поиск по настройкам",
+            "id": "Cari di pengaturan",
+            "de": "Einstellungen durchsuchen",
+            "tr": "Ayarlarda arayın",
+            "ko": "설정 검색",
+            "ja": "設定を検索"
+          },
+          "detail": {
+            "en": "Type in the Coucou window's sidebar to find any setting.",
+            "zh-Hans": "在 Coucou 窗口的侧边栏输入，即可找到任何设置。",
+            "hi": "कोई भी सेटिंग ढूँढने के लिए Coucou विंडो की साइडबार में टाइप करें।",
+            "es": "Escribe en la barra lateral de la ventana de Coucou para encontrar cualquier ajuste.",
+            "ar": "اكتب في الشريط الجانبي لنافذة Coucou لتجد أي إعداد.",
+            "fr": "Tape dans la barre latérale de la fenêtre Coucou pour trouver n'importe quel réglage.",
+            "bn": "যেকোনো সেটিং খুঁজতে Coucou উইন্ডোর সাইডবারে টাইপ করুন।",
+            "pt-BR": "Digite na barra lateral da janela do Coucou para achar qualquer ajuste.",
+            "ru": "Начните печатать в боковой панели окна Coucou, чтобы найти любую настройку.",
+            "id": "Ketik di bilah samping jendela Coucou untuk menemukan pengaturan apa pun.",
+            "de": "Tippe in der Seitenleiste des Coucou-Fensters, um jede Einstellung zu finden.",
+            "tr": "Herhangi bir ayarı bulmak için Coucou penceresinin kenar çubuğuna yazın.",
+            "ko": "Coucou 창의 사이드바에 입력해 원하는 설정을 찾으세요.",
+            "ja": "Coucou ウインドウのサイドバーに入力して、どの設定もすぐ見つかります。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.6",
       "items": [
         {

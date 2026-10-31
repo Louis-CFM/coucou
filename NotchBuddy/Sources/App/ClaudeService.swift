@@ -281,7 +281,7 @@ final class ClaudeService {
         }()
         let request = CLIRequest(
             model: provider == .anthropic ? model : nil,
-            system: systemPrompt,
+            system: systemPrompt + extraSystem,
             prompt: CLIRelay.chatPrompt(history: relayHistory, context: contextLine, query: query),
             web: !readsFile,
             readDir: readDir,
@@ -306,6 +306,8 @@ final class ClaudeService {
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
     private let systemPrompt = ClaudeService.makeSystemPrompt()
+    /// Added to the system prompt for this turn (the chat's Mail switch).
+    private var extraSystem = ""
 
     /// Greets the user by their macOS first name when there is one worth using, and stays
     /// neutral otherwise — same wording as the Windows build.
@@ -341,6 +343,21 @@ final class ClaudeService {
             await CodexChatService.shared.chat(query: query, context: context, state: state)
             return
         }
+        let provider = state.chatProvider
+        let generation = relayGeneration
+        #endif
+        var query = query
+        extraSystem = ""
+        #if !APPSTORE
+        // Mail on: the AI gets the latest messages under the request, and may answer with a
+        // plan of actions (MailPlan.swift) that runs only after the user's click.
+        if state.chatMailMode {
+            query = await MailAgent.shared.decorate(query)
+            guard generation == relayGeneration, state.chatProvider == provider, !Task.isCancelled else { return }
+            extraSystem = MailAgentPrompt.instructions
+        }
+        #endif
+        #if !APPSTORE
         // Other providers can use the upstream subscription relay; native Codex keeps its owning connection.
         if state.usesSubscription(state.chatProvider) {
             await chatThroughSubscription(state.chatProvider, query: query, context: context, state: state)
@@ -381,7 +398,7 @@ final class ClaudeService {
             "model": model,
             "max_tokens": 4096,
             "tools": webSearchTools,
-            "system": systemPrompt,
+            "system": systemPrompt + extraSystem,
             "messages": conversationMessages,
         ]
 
@@ -442,7 +459,7 @@ final class ClaudeService {
         }
 
         // Build messages
-        var msgs: [[String: Any]] = [["role": "system", "content": systemPrompt]]
+        var msgs: [[String: Any]] = [["role": "system", "content": systemPrompt + extraSystem]]
         for m in conversationMessages {
             var simplified = m
             if let content = m["content"] as? [[String: Any]],

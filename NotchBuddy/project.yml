@@ -143,8 +143,8 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "23"
-        CFBundleShortVersionString: "0.5.6"
+        CFBundleVersion: "24"
+        CFBundleShortVersionString: "0.5.7"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES

@@ -87,158 +87,191 @@ struct OverviewView: View {
         return state.sessionDiffs[key] ?? []
     }
 
-    var body: some View {
-        HStack(spacing: 10) {
-            // Left card: title row + ticker below + ↗ button overlay
-            ZStack(alignment: .topLeading) {
-                CardBackground(wash: nil)
+    /// The focused pill's card (the left card at the notch).
+    @ViewBuilder private var leftCard: some View {
+        ZStack(alignment: .topLeading) {
+            CardBackground(wash: nil)
 
-                // Title row + ticker stacked (or integration card)
-                if let agent = agent {
-                    if agent.isIntegration {
-                        IntegrationCardView(task: agent, showingDetail: $showingN8nDetail, onDiffTap: { diffIdx in
-                            withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
-                        })
-                    } else {
-                        VStack(alignment: .leading, spacing: 0) {
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(Color(hex: agent.color))
-                                    .frame(width: 7, height: 7)
-                                Text(agent.name)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(Color(hex: "#F5F6F8"))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                    .layoutPriority(1)
-                                Text({ () -> String in
-                                    switch agent.source {
-                                    case .claudeCode: return "Claude Code"
-                                    case .agent:      return "Agent"
-                                    case .n8n:        return "n8n"
-                                    }
-                                }())
-                                    .font(.system(size: 11))
-                                    .foregroundColor(Color(hex: "#8E939C"))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                Spacer(minLength: 2)
-                                if agent.steps.count > 1 && agent.sessionLines.isEmpty {
-                                    Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(Color(hex: "#6B7079"))
-                                        .fixedSize()
+            // Title row + ticker stacked (or integration card)
+            if let agent = agent {
+                if agent.isIntegration {
+                    IntegrationCardView(task: agent, showingDetail: $showingN8nDetail, onDiffTap: { diffIdx in
+                        withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
+                    })
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color(hex: agent.color))
+                                .frame(width: 7, height: 7)
+                            Text(agent.name)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color(hex: "#F5F6F8"))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .layoutPriority(1)
+                            Text({ () -> String in
+                                switch agent.source {
+                                case .claudeCode: return "Claude Code"
+                                case .agent:      return "Agent"
+                                case .n8n:        return "n8n"
                                 }
+                            }())
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                            Spacer(minLength: 2)
+                            if agent.steps.count > 1 && agent.sessionLines.isEmpty {
+                                Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Color(hex: "#6B7079"))
+                                    .fixedSize()
                             }
+                        }
+                        .padding(.top, 6)
+                        .padding(.leading, 108)
+                        .padding(.trailing, 36)
+
+                        // Several sessions share the pill: one line each, instead of the steps.
+                        Group {
+                            if agent.sessionLines.isEmpty {
+                                TickerView(task: agent, onDiffTap: { diffIdx in
+                                    withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
+                                })
+                            } else {
+                                SessionLinesView(lines: agent.sessionLines)
+                            }
+                        }
+                            .frame(height: 44)
                             .padding(.top, 6)
                             .padding(.leading, 108)
-                            .padding(.trailing, 36)
-
-                            // Several sessions share the pill: one line each, instead of the steps.
-                            Group {
-                                if agent.sessionLines.isEmpty {
-                                    TickerView(task: agent, onDiffTap: { diffIdx in
-                                        withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
-                                    })
-                                } else {
-                                    SessionLinesView(lines: agent.sessionLines)
-                                }
-                            }
-                                .frame(height: 44)
-                                .padding(.top, 6)
-                                .padding(.leading, 108)
-                                .padding(.trailing, 12)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.top, 4)
+                            .padding(.trailing, 12)
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(.top, 4)
                 }
+            }
 
-                // Plan detail overlays on top of normal content (GitHub build, home view only)
-                #if !APPSTORE
-                if state.showingPlanDetail {
-                    CardBackground(wash: nil)
-                    Group {
-                        if state.planDetailIsCodex {
-                            CodexPlanCardView()
-                        } else {
-                            // Claude and Codex both on: the header shows only the Claude pill,
-                            // Codex is a third row here that opens its own card.
-                            let bothPlans = state.showPlanInNotch && state.planRelayInstalled
-                                && state.showCodexPlanInNotch
-                            ClaudePlanCardView(usage: state.claudePlanUsage,
-                                               codexRow: bothPlans,
-                                               codexUsage: codexInfo.currentPlanUsage,
-                                               onCodex: {
-                                                   withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                                                       state.planDetailIsCodex = true
-                                                   }
-                                                   state.refreshCodexPlanUsage()
-                                               })
-                        }
-                    }
-                    .transition(.opacity)
-                }
-                #endif
-
-                // Diff overlay — replaces ticker when a diff step is tapped
-                if let diffId = activeDiffId,
-                   let task = agent,
-                   let diff = agentDiffs.first(where: { $0.id == diffId }) {
-                    CardBackground(wash: nil)
-                    DiffCardView(diff: diff, files: task.pill == "agent_codex" ? agentDiffs : [],
-                                 onSelect: { activeDiffId = $0 }, onDismiss: { activeDiffId = nil })
-                        .transition(.opacity)
-                }
-
-                #if !APPSTORE
-                if let plan = codexTurnPlan, !state.showingPlanDetail, activeDiffId == nil {
-                    if showingCodexTurnPlan {
-                        CardBackground(wash: nil)
-                        CodexTurnPlanView(plan: plan, onDismiss: { showingCodexTurnPlan = false })
+            // Plan detail overlays on top of normal content (GitHub build, home view only)
+            #if !APPSTORE
+            if state.showingPlanDetail {
+                CardBackground(wash: nil)
+                Group {
+                    if state.planDetailIsCodex {
+                        CodexPlanCardView()
                     } else {
-                        Button(action: { showingCodexTurnPlan = true }) {
-                            Image(systemName: "list.bullet.rectangle")
-                                .font(.system(size: 10))
-                                .foregroundColor(Color(hex: "#A9ADB5"))
-                                .frame(width: 16, height: 16)
-                        }
-                        .buttonStyle(.plain)
-                        .help(String(localized: "codex.turn-plan", defaultValue: "Codex plan"))
-                        .accessibilityLabel(String(localized: "codex.turn-plan", defaultValue: "Codex plan"))
-                        .padding(.top, 8)
-                        .padding(.trailing, 32)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        // Claude and Codex both on: the header shows only the Claude pill,
+                        // Codex is a third row here that opens its own card.
+                        let bothPlans = state.showPlanInNotch && state.planRelayInstalled
+                            && state.showCodexPlanInNotch
+                        ClaudePlanCardView(usage: state.claudePlanUsage,
+                                           codexRow: bothPlans,
+                                           codexUsage: codexInfo.currentPlanUsage,
+                                           onCodex: {
+                                               withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                                   state.planDetailIsCodex = true
+                                               }
+                                               state.refreshCodexPlanUsage()
+                                           })
                     }
                 }
-                #endif
+                .transition(.opacity)
+            }
+            #endif
 
-                // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                #if !APPSTORE
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil || (showingCodexTurnPlan && codexTurnPlan != nil)
-                #else
-                let hideJumpButton = showingN8nDetail || activeDiffId != nil
-                #endif
-                if !hideJumpButton {
-                    Button(action: { openAgentTarget(agent) }) {
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundColor(Color(hex: "#5F646D"))
+            // Diff overlay — replaces ticker when a diff step is tapped
+            if let diffId = activeDiffId,
+               let task = agent,
+               let diff = agentDiffs.first(where: { $0.id == diffId }) {
+                CardBackground(wash: nil)
+                DiffCardView(diff: diff, files: task.pill == "agent_codex" ? agentDiffs : [],
+                             onSelect: { activeDiffId = $0 }, onDismiss: { activeDiffId = nil })
+                    .transition(.opacity)
+            }
+
+            #if !APPSTORE
+            if let plan = codexTurnPlan, !state.showingPlanDetail, activeDiffId == nil {
+                if showingCodexTurnPlan {
+                    CardBackground(wash: nil)
+                    CodexTurnPlanView(plan: plan, onDismiss: { showingCodexTurnPlan = false })
+                } else {
+                    Button(action: { showingCodexTurnPlan = true }) {
+                        Image(systemName: "list.bullet.rectangle")
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#A9ADB5"))
                             .frame(width: 16, height: 16)
-                            .background(Color.white.opacity(0.07))
-                            .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .help(String(localized: "codex.turn-plan", defaultValue: "Codex plan"))
+                    .accessibilityLabel(String(localized: "codex.turn-plan", defaultValue: "Codex plan"))
                     .padding(.top, 8)
-                    .padding(.trailing, 10)
+                    .padding(.trailing, 32)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
-            .frame(width: 322)
+            #endif
 
-            // Right card: agent pills
-            CardBackground(wash: nil) {
-                AgentPillsView(state: state)
+            // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
+            #if !APPSTORE
+            let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil || (showingCodexTurnPlan && codexTurnPlan != nil)
+            #else
+            let hideJumpButton = showingN8nDetail || activeDiffId != nil
+            #endif
+            if !hideJumpButton {
+                Button(action: { openAgentTarget(agent) }) {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundColor(Color(hex: "#5F646D"))
+                        .frame(width: 16, height: 16)
+                        .background(Color.white.opacity(0.07))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
+                .padding(.trailing, 10)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+    }
+
+    /// Open in a corner: the card beside Mochi and his circle (CornerArcView, drawn over the
+    /// island), full height. The cards keep room on their left for Mochi at the notch; here it
+    /// is cut off, so they start at the card's edge.
+    private var cornerBody: some View {
+        let placement = state.islandPlacement
+        let shift: CGFloat = 96
+        return GeometryReader { geo in
+            let cardW = max(200, geo.size.width - IslandPlacement.cornerColumn)
+            leftCard
+                .frame(width: cardW + shift, height: geo.size.height)
+                .offset(x: -shift)
+                .frame(width: cardW, height: geo.size.height, alignment: .leading)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .contentShape(Rectangle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity,
+                       alignment: placement.isLeft ? .trailing : .leading)
+        }
+    }
+
+    var body: some View {
+        Group {
+            if state.islandPlacement.isCorner {
+                cornerBody
+            } else {
+                // Top-aligned: a mail open in the Mail card makes the left card taller, downwards
+                // only; the pills on the right keep their place and their height (98 pt).
+                HStack(alignment: .top, spacing: 10) {
+                    // Left card: title row + ticker below + ↗ button overlay
+                    leftCard
+                        .frame(width: 322)
+
+                    // Right card: agent pills
+                    CardBackground(wash: nil) {
+                        AgentPillsView(state: state)
+                    }
+                    .frame(height: 98)
+                }
             }
         }
         .onChange(of: state.focusId) { _, new in
@@ -1620,8 +1653,11 @@ struct PromptView: View {
                     Spacer()
                 }
 
-                HStack(spacing: 0) {
+                HStack(spacing: 6) {
                     Spacer()
+                    #if !APPSTORE
+                    ChatMailToggle(state: state)
+                    #endif
                     Button {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                             showModelPicker.toggle()
@@ -1982,13 +2018,28 @@ struct ChatBubble: View {
                         if isStreaming {
                             TimelineView(.periodic(from: .now, by: 0.5)) { tl in
                                 let show = Int(tl.date.timeIntervalSinceReferenceDate / 0.5).isMultiple(of: 2)
-                                Text(message.content + (show ? "▌" : " "))
+                                // A plan being written (```coucou-mail) is not shown as raw JSON.
+                                Text(MailPlanParser.extract(message.content).prose + (show ? "▌" : " "))
                                     .font(.system(size: 12.5))
                                     .foregroundColor(Color(hex: "#B0B5BE"))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         } else {
-                            ChatMarkdownView(markdown: message.content)
+                            let parsed = MailPlanParser.extract(message.content)
+                            VStack(alignment: .leading, spacing: 6) {
+                                if !parsed.prose.isEmpty {
+                                    ChatMarkdownView(markdown: parsed.prose)
+                                }
+                                #if !APPSTORE
+                                if let plan = parsed.plan {
+                                    MailPlanCard(plan: plan, messageId: message.id)
+                                } else if let error = parsed.error {
+                                    Text(String(format: String(localized: "mail.plan.error %@"), error))
+                                        .font(.system(size: 10.5))
+                                        .foregroundColor(Color(hex: "#F5A524"))
+                                }
+                                #endif
+                            }
                         }
                     }
                     .padding(.horizontal, 8).padding(.vertical, 6)

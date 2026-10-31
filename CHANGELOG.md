@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.7 — October 31, 2026
+
+GitHub build: the App Store build is unchanged.
+
+- **Mail in the notch** — the Mail pill searches every Apple Mail inbox from its magnifier: free words, `from:anne`, `subject:"May quote"`, and quick filters (All, Unread, Important, Today). Click a message to read it in the notch, which grows under the Mail card; Open, Reply (Mail's own window: nothing leaves from Coucou), Mark as read, Important, Junk, and in ⋯ Always important (VIP) or Always ignore this sender. The unread badge is just the number. Coucou no longer slows Mail down: it reads messages in small batches, never with whole-mailbox searches, and waits for Mail to settle after it opens
+- **Mail sorted for you** — a Mail section in the Coucou window: Overview, Rules, Banned words, VIP. **Sort new messages automatically** (off by default) looks only at what arrives after you turn it on, each message once: VIPs are flagged, banned words (whole words) send to Junk, then the first rule that matches marks as important or read, sends to Junk or moves to a folder. A journal lists every action with its reason and **Undo**. Coucou never deletes a message
+- **Your mail in the chat** — turn on **Mail** next to the model and the chat's AI sees your 40 newest messages and can answer with a plan: sort, reply drafts, sends, or a mail merge that gives each recipient their page of a PDF. The plan shows as a card; nothing happens before **Send me a test** or **Run**, which waits 5 seconds (Cancel). Works with every chat provider, key or subscription
+- **Search the settings** — a field at the top of the Coucou window's sidebar finds any setting as you type, whatever the accents; a click opens the page, scrolls to the box and makes it glow. Enter opens the first result
+- **Coucou in a corner of the screen** — Settings → General → Display → Position, or drag Mochi to a corner and let go: a magnet shows where he'll land. At rest, a small rounded tile with Mochi alone; hover it and the other pills come out one after the other. Open, Mochi sits in the corner with the other pills' Mochis on a quarter circle around him; click one and they swap places. Drop him at the top centre to bring him back to the notch
+
+## Windows and Linux 0.5.7 — October 31, 2026
+
+- **Mail with classic Outlook** *(Windows)* — the Mail pill reads the classic Outlook already open on your PC through its own COM objects: no sign-in, no app to register at Microsoft, no admin consent, and Coucou never starts Outlook. Search and filters, reading and actions, the Mail section with automatic sorting, rules, banned words, VIPs and a journal with Undo, and the chat's Mail switch with plans that run only after Run, as on the Mac. Outlook's scripts use unique temporary files that are always removed, and a script that hangs is stopped and reaped (#1004 by @Ohualtex). The new Outlook for Windows has no COM objects and Linux has no Outlook, so the pill is for classic Outlook only
+- **Search the settings** — a field under the brand in the Coucou window's sidebar finds any setting as you type; Enter opens the first result, Esc clears it, and the box found glows (#1002 by @Ohualtex)
+
 ## 0.5.6 — October 30, 2026
 
 - **Chat on your own AI subscription** — Settings → Chat → Your AI subscriptions: one switch per provider. On, the chat goes through the provider's official terminal tool, signed in with your own account: Claude Code (Claude plan), Antigravity CLI or Gemini CLI (Google AI plan), Codex CLI (ChatGPT plan), and two new choices in the chat, Cursor CLI and GitHub Copilot CLI. Off, the API key as before. Replaces 0.5.5's hidden rule (empty the key and Claude Code answers): each row says whether the tool is installed, how to install it and how to sign in, and the chat's model chip names the tool that answers. Every run is read-only (plan or ask modes, no shell, no edits), loads none of your hooks, MCP servers or extensions where the tool lets Coucou turn them off, saves no session, and searches the web for the chat only; a dropped file is read with no web. Coucou reads no credential. GitHub build: the App Store build is sandboxed and still needs a key

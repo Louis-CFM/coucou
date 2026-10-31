@@ -228,6 +228,13 @@ final class CodexChatService: ObservableObject {
             guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, query.utf8.count <= 100_000 else {
                 throw CodexServiceError.message(String(localized: "Enter a question under 100 KB."))
             }
+            var query = query
+            if state.chatMailMode {
+                query = await MailAgent.shared.decorate(query)
+                guard revision == current, state.chatProvider == .codex, !Task.isCancelled else { throw CancellationError() }
+                query = MailAgentPrompt.instructions + "\n\n" + query
+                guard query.utf8.count <= 100_000 else { throw CodexServiceError.oversized }
+            }
             let chosenModel = state.codexModel
             let chosenCanWrite = state.codexCanWrite
             let chosenSearchMode = state.codexSearchMode
