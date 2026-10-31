@@ -18,6 +18,7 @@ mod identity;
 mod integrations;
 mod island;
 mod local_chat;
+mod text_ai;
 mod log;
 mod mail;
 mod net;
