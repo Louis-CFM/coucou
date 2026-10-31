@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "e81015ff-4294-427f-af41-4fe27aa86885",
+  "receiptId": "08f8ce17-3ebd-441f-818a-ba4c2e369c8c",
   "status": "current",
   "command": "deliver",
   "type": "architecture",
   "input": "/Users/shawn.h/.codex/worktrees/coucou-codex-pr/coucou/docs/architecture/codex-parity.architecture.json",
   "output": "/Users/shawn.h/.codex/worktrees/coucou-codex-pr/coucou/docs/architecture/codex-parity.html",
   "specification": {
-    "sha256": "89a441254db3176a382ca06f208ad660d3eb210bf7a169600e713b16aa618af2",
-    "bytes": 7765
+    "sha256": "f02c22239ebe46eedb47aad7bf2ddeafea85add67eff335fa5fa1e752cbb3664",
+    "bytes": 8277
   },
   "artifact": {
-    "sha256": "ad53b39b71510e8252535c845af031da993779c875d2cc0c501a9cab6a219224",
-    "bytes": 827740
+    "sha256": "f718aa309f5f1d1ed110de8dee0a2e964077ef73f159e59238f76f9ba30b65d2",
+    "bytes": 828565
   }
 }
