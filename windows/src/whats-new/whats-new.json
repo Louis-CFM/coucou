@@ -20,7 +20,9 @@
             "de": "Anfragen warten, bis sie dran sind",
             "tr": "İzin istekleri sırasını bekler",
             "ko": "권한 요청이 차례를 기다려요",
-            "ja": "許可リクエストが順番待ち"
+            "ja": "許可リクエストが順番待ち",
+            "zh-Hant": "權限請求排隊等候",
+            "th": "คำขอสิทธิ์รอตามคิว"
           },
           "detail": {
             "en": "Up to 5 requests queue in the island instead of going back to the terminal.",
@@ -36,7 +38,9 @@
             "de": "Bis zu 5 Anfragen warten in der Insel, statt zurück ins Terminal zu gehen.",
             "tr": "En fazla 5 istek terminale dönmek yerine adada sırada bekler.",
             "ko": "요청 최대 5개가 터미널로 돌아가지 않고 아일랜드에서 대기해요.",
-            "ja": "最大 5 件のリクエストがターミナルに戻らずアイランドで待ちます。"
+            "ja": "最大 5 件のリクエストがターミナルに戻らずアイランドで待ちます。",
+            "zh-Hant": "最多 5 個請求在島中排隊，不再退回終端機。",
+            "th": "รอคิวในเกาะได้สูงสุด 5 คำขอ แทนที่จะส่งกลับไปยังเทอร์มินัล"
           }
         },
         {
@@ -55,7 +59,9 @@
             "de": "Planverbrauch in der kompakten Insel",
             "tr": "Kompakt adada plan kullanımı",
             "ko": "컴팩트 아일랜드에 요금제 사용량",
-            "ja": "コンパクトアイランドにプラン使用量"
+            "ja": "コンパクトアイランドにプラン使用量",
+            "zh-Hant": "精簡島顯示方案用量",
+            "th": "การใช้งานแพ็กเกจในเกาะแบบกะทัดรัด"
           },
           "detail": {
             "en": "Turn it on to see your Claude plan percentage next to the agent dots.",
@@ -71,7 +77,9 @@
             "de": "Einschalten, um deinen Claude-Plan in Prozent neben den Agentenpunkten zu sehen.",
             "tr": "Açın, Claude planınızın yüzdesini ajan noktalarının yanında görün.",
             "ko": "켜면 에이전트 점 옆에 Claude 요금제 사용률이 보여요.",
-            "ja": "オンにすると、エージェントの点の横に Claude プランの割合が表示されます。"
+            "ja": "オンにすると、エージェントの点の横に Claude プランの割合が表示されます。",
+            "zh-Hant": "開啟後，在代理圓點旁顯示你的 Claude 方案百分比。",
+            "th": "เปิดใช้งานเพื่อดูเปอร์เซ็นต์แพ็กเกจ Claude ถัดจากจุดเอเจนต์"
           }
         },
         {
@@ -90,7 +98,9 @@
             "de": "Claude Desktop in der Insel",
             "tr": "Adada Claude Desktop",
             "ko": "아일랜드 속 Claude Desktop",
-            "ja": "アイランドに Claude Desktop"
+            "ja": "アイランドに Claude Desktop",
+            "zh-Hant": "在島中使用 Claude Desktop",
+            "th": "Claude Desktop ในเกาะ"
           },
           "detail": {
             "en": "Answer its approvals and questions from the island on Windows; its own pill on Linux.",
@@ -106,7 +116,9 @@
             "de": "Freigaben und Fragen unter Windows in der Insel beantworten; eigene Pille unter Linux.",
             "tr": "Windows'ta onaylarını ve sorularını adadan yanıtlayın; Linux'ta kendi hapı var.",
             "ko": "Windows에서는 승인과 질문에 아일랜드에서 답하고, Linux에서는 전용 필이 생겨요.",
-            "ja": "Windows では承認と質問にアイランドから回答、Linux では専用ピル。"
+            "ja": "Windows では承認と質問にアイランドから回答、Linux では専用ピル。",
+            "zh-Hant": "在 Windows 上的島中回答它的審核和問題；在 Linux 上有專屬藥丸。",
+            "th": "ตอบคำขออนุมัติและคำถามจากเกาะบน Windows และมีเม็ดยาของตัวเองบน Linux"
           }
         },
         {
@@ -125,7 +137,9 @@
             "de": "Danke, @Ohualtex",
             "tr": "Teşekkürler, @Ohualtex",
             "ko": "고마워요, @Ohualtex",
-            "ja": "ありがとう、@Ohualtex"
+            "ja": "ありがとう、@Ohualtex",
+            "zh-Hant": "感謝 @Ohualtex",
+            "th": "ขอบคุณ @Ohualtex"
           },
           "detail": {
             "en": "14 fixes and features in this version come from Ohualtex. Thank you!",
@@ -141,7 +155,9 @@
             "de": "14 Korrekturen und Neuerungen dieser Version stammen von Ohualtex. Danke!",
             "tr": "Bu sürümdeki 14 düzeltme ve özellik Ohualtex'ten geliyor. Teşekkürler!",
             "ko": "이번 버전의 수정과 기능 14개는 Ohualtex가 만들었어요. 고마워요!",
-            "ja": "このバージョンの 14 件の修正と新機能は Ohualtex によるものです。感謝！"
+            "ja": "このバージョンの 14 件の修正と新機能は Ohualtex によるものです。感謝！",
+            "zh-Hant": "此版本中的 14 項修正與新功能來自 Ohualtex。非常感謝！",
+            "th": "การแก้ไขและฟีเจอร์ 14 รายการในเวอร์ชันนี้มาจาก Ohualtex ขอบคุณครับ!"
           }
         }
       ]
