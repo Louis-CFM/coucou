@@ -888,6 +888,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Nothing to enter either: any app in the Windows media controls.
+  { id: "integration_nowplaying", name: "Now Playing", color: "#22D3EE", fields: [],
+    hint: N_("Music and videos from any app in the Windows media controls, such as YouTube in your browser or Apple Music.") },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -1083,6 +1086,11 @@ function generalSection(): HTMLElement {
       toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Show synced lyrics") }),
+      toggle(settings.lyricsEnabled, (v) => { settings.lyricsEnabled = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("The line being sung on the Spotify and Now Playing cards. Looks the song up on LRCLIB (lrclib.net), a free lyrics database: only its title, artist, album and length are sent.") }),
     h("div", { class: "row" },
       h("label", { text: t("Open for every pill’s alerts") }),
       toggle(settings.alertsFromAllPills, (v) => { settings.alertsFromAllPills = v; void save(); }),

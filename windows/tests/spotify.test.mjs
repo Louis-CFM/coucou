@@ -8,8 +8,8 @@ import assert from "node:assert/strict";
 import { emit, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
 import {
-  IDLE_SPOTIFY, SPOTIFY_ID, Spotify, currentArtwork, desktopDances, formatTime, isAd, islandDances,
-  musicPlaying, spotifyPosition, volumeLevel, withPlaying,
+  IDLE_NOW_PLAYING, IDLE_SPOTIFY, NOWPLAYING_ID, NowPlaying, SPOTIFY_ID, Spotify, currentArtwork, desktopDances,
+  formatTime, isAd, islandDances, musicPlaying, spotifyPosition, takes, volumeLevel, withPlaying,
 } from "../src/core/spotify.ts";
 import { BotEngine, danceTransform, stepDanceLevel } from "../src/mochi/engine.ts";
 import { registerSpotifyHandlers } from "../src/island/spotify.ts";
@@ -301,4 +301,117 @@ test("the pill shows play/pause and next on hover, only with a track", () => {
   assert.equal(Spotify.state.playing, false);
   pill.el.fire("mouseleave");
   assert.ok(!pill.el.classList.contains("controls"));
+});
+
+// ── Now Playing (any app's media session, Windows) ────────────────────────────
+
+const video = (over = {}) => playing({
+  app: "Chrome", canShuffle: false, canRepeat: false, canSkip: true, hasVolume: false,
+  track: track({ id: "media:track:7", title: "Lo-fi beats", artist: "Some Channel", album: "", artUrl: "smtc:7" }),
+  ...over,
+});
+
+function nowPlayingOn() {
+  State.os = "windows";
+  State.settings = { ...DEFAULT_SETTINGS, activeIntegrations: [NOWPLAYING_ID] };
+  State.loadIntegrationTasks();
+  NowPlaying.state = { ...IDLE_NOW_PLAYING };
+  NowPlaying.artwork = null;
+}
+
+test("a missing capability means yes, as on Spotify", () => {
+  assert.ok(takes(IDLE_SPOTIFY, "canSeek"));
+  assert.ok(takes(IDLE_SPOTIFY, "hasVolume"));
+  assert.ok(!takes(IDLE_NOW_PLAYING, "hasVolume"));
+  assert.ok(!takes(video(), "canShuffle"));
+});
+
+test("Now Playing follows its own events: the pill wears the title, the cover is its own", () => {
+  nowPlayingOn();
+  const task = () => State.tasks.find((t) => t.id === NOWPLAYING_ID);
+  assert.equal(task().name, "Now Playing");
+  emit("nowplaying", video());
+  assert.equal(NowPlaying.state.app, "Chrome");
+  assert.equal(task().name, "Lo-fi beats", "a video with no album is no ad");
+  assert.equal(Spotify.state.track, null, "Spotify's pill is untouched");
+  assert.ok(State.spotifyPlaying, "Mochi dances to it");
+  assert.equal(island.reveals, 1, "music starting shows the island, as Spotify's does");
+
+  emit("nowplaying-artwork", { artUrl: "smtc:7", dataUrl: "data:image/png;base64,BB" });
+  assert.equal(currentArtwork(NowPlaying.state, NowPlaying), "data:image/png;base64,BB");
+  assert.equal(currentArtwork(), null, "not Spotify's cover");
+
+  emit("nowplaying", { ...IDLE_NOW_PLAYING, running: true });
+  assert.equal(task().name, "Now Playing");
+  assert.ok(!State.spotifyPlaying);
+});
+
+test("Now Playing counts only on its own declared pill, and Mochi dances on its card", () => {
+  assert.ok(musicPlaying(video(), [NOWPLAYING_ID], NOWPLAYING_ID));
+  assert.ok(!musicPlaying(video(), [SPOTIFY_ID], NOWPLAYING_ID));
+  assert.ok(islandDances({ music: true, state: "idle", mode: "expanded", view: "overview", focusId: NOWPLAYING_ID }));
+});
+
+test("Now Playing's card reads its own player when it comes on screen", () => {
+  nowPlayingOn();
+  const before = sent("nowplaying_refresh").length;
+  const spotifyBefore = sent("spotify_refresh").length;
+  State.mode = "expanded";
+  State.view = "overview";
+  State.setFocus(NOWPLAYING_ID);
+  assert.equal(sent("nowplaying_refresh").length, before + 1);
+  assert.equal(sent("spotify_refresh").length, spotifyBefore);
+});
+
+test("Now Playing's card: the app's name, only the controls it takes, its own commands", () => {
+  nowPlayingOn();
+  const card = buildSpotifyCard(NowPlaying);
+  card.sync();
+  assert.match(card.el.textContent, /Now Playing.*Integration.*Not playing/);
+
+  NowPlaying.state = video();
+  card.sync();
+  const text = card.el.textContent;
+  assert.ok(text.includes("Lo-fi beats") && text.includes("Some Channel"));
+  const [shuffle, prev, play, next, repeat] = card.el.querySelector("np-buttons").children;
+  assert.equal(shuffle.style.display, "none");
+  assert.equal(repeat.style.display, "none");
+  assert.equal(next.style.display, "");
+  assert.equal(card.el.querySelector("np-volume").style.display, "none", "no volume: it would be the whole browser's");
+
+  const before = sent("nowplaying_control").length;
+  const spotifyBefore = sent("spotify_control").length;
+  play.fire("click");
+  next.fire("click");
+  prev.fire("click");
+  assert.deepEqual(sent("nowplaying_control").slice(before), [
+    { action: "playPause", value: null },
+    { action: "next", value: null },
+    { action: "previous", value: null },
+  ]);
+  assert.equal(sent("spotify_control").length, spotifyBefore);
+
+  const opened = sent("nowplaying_open").length;
+  card.el.querySelector("np-art").fire("click");
+  assert.equal(sent("nowplaying_open").length, opened + 1);
+  assert.equal(card.el.querySelector("np-art").title, "Open Chrome");
+
+  // A page with no length: no progress bar.
+  NowPlaying.state = video({ track: track({ id: "media:track:8", title: "Live", artist: "", album: "", duration: 0 }) });
+  card.sync();
+  assert.equal(card.el.querySelector("np-progress").style.display, "none");
+});
+
+test("Now Playing's pill: play/pause to its own command, next only when the app takes it", () => {
+  nowPlayingOn();
+  const task = State.tasks.find((t) => t.id === NOWPLAYING_ID);
+  const pill = buildSpotifyPill(task, () => {}, NowPlaying);
+  NowPlaying.state = video({ canSkip: false });
+  pill.el.fire("mouseenter");
+  const [playBtn, nextBtn] = pill.el.querySelector("np-pill-controls").children;
+  assert.equal(nextBtn.style.display, "none");
+  const before = sent("nowplaying_control").length;
+  playBtn.fire("click");
+  assert.deepEqual(sent("nowplaying_control").slice(before), [{ action: "playPause", value: null }]);
+  assert.equal(NowPlaying.state.playing, false);
 });

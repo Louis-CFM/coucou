@@ -12,7 +12,7 @@ import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
-import { Spotify, musicPlaying } from "./spotify";
+import { NOWPLAYING_ID, NowPlaying, Spotify, musicPlaying } from "./spotify";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -154,6 +154,8 @@ export interface Settings {
    * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
    */
   language: string;
+  /** Synced lyrics on the music cards, from LRCLIB (src-tauri/src/lyrics.rs). Off by default. */
+  lyricsEnabled: boolean;
   /**
    * The phone link for Coucou for Android is on. Rust owns it (only the switch in
    * Settings → Android phone turns it on): whatever the page sends back is ignored.
@@ -202,6 +204,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  lyricsEnabled: false,
 };
 
 type Listener = () => void;
@@ -298,9 +301,10 @@ class AppState {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
   }
 
-  /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
+  /** Music plays on a declared player pill, Spotify or Now Playing: Mochi dances. */
   get spotifyPlaying(): boolean {
-    return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
+    const active = sanitizeDeclared(this.settings, this.os).activeIntegrations;
+    return musicPlaying(Spotify.state, active) || musicPlaying(NowPlaying.state, active, NOWPLAYING_ID);
   }
 
   get otherTasks(): AgentTask[] {
