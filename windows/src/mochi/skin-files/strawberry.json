@@ -1,0 +1,24 @@
+{
+  "id": "strawberry",
+  "name": "Strawberry",
+  "kind": "face",
+  "layer": "front",
+  "glow": "#F43F5E",
+  "_about": "A strawberry: red body covered in little yellow seeds that follow the surface, and a green leafy crown on top.",
+  "body": ["#FF6B7F", "#D4122E"],
+  "vars": {
+    "sx": "rx*sin(yaw)*0.10"
+  },
+  "shapes": [
+    { "type": "repeat", "count": 35, "as": "i", "vars": {
+        "col": "i - 7*floor(i/7)", "row": "floor(i/7)", "lon": "-1.2 + 0.4*col", "v": "-0.62 + 0.40*row + 0.12*(col - 2*floor(col/2))",
+        "th": "lon + yaw", "cc": "cos(th)", "px": "rx*head(v)*sin(th)", "py": "ry*v" }, "shapes": [
+      { "type": "ellipse", "layer": "body", "when": "cc - 0.12", "x": "px - R*0.032*cc", "y": "py - R*0.05", "w": "R*0.064*cc", "h": "R*0.10", "fill": "#FFE08A", "stroke": "rgba(120,0,20,0.25)", "lineWidth": 0.5 }
+    ] },
+    { "type": "repeat", "count": 5, "as": "i", "vars": { "a": "-0.9 + 0.45*i" }, "shapes": [
+      { "type": "poly", "points": [["sx - R*0.08", "0 - ry*0.93"], ["sx + R*0.08", "0 - ry*0.93"], ["sx + rx*0.52*sin(a)", "0 - ry - R*0.04 + R*0.18*abs(sin(a))*abs(sin(a)) - R*0.16*cos(a)"]],
+        "fill": { "gradient": ["#7BD63B", "#2F8A1B"], "from": ["sx", "0 - ry*0.9"], "to": ["sx", "0 - ry - R*0.2"] }, "stroke": "rgba(0,60,0,0.3)", "lineWidth": 0.6 }
+    ] },
+    { "type": "rect", "x": "sx - R*0.035", "y": "0 - ry - R*0.20", "w": "R*0.07", "h": "R*0.16", "fill": "#4D8A22" }
+  ]
+}

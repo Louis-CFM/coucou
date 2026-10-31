@@ -227,6 +227,37 @@ fn list_monitors(app: AppHandle) -> Vec<island::MonitorChoice> {
     island::monitor_choices(&app)
 }
 
+/// The user's own skins: every `*.json` in <config>/skins, as text for the page to
+/// check. The folder is made on first use, so there is somewhere to drop a file.
+/// Capped, so a stray folder of thousands of files costs nothing.
+#[tauri::command]
+fn user_skins() -> Vec<String> {
+    let dir = settings::config_dir().join("skins");
+    let _ = std::fs::create_dir_all(&dir);
+    let mut files: Vec<_> = std::fs::read_dir(&dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("json"))
+        .collect();
+    files.sort();
+    files
+        .into_iter()
+        .take(64)
+        .filter(|p| std::fs::metadata(p).map(|m| m.len() <= 64 * 1024).unwrap_or(false))
+        .filter_map(|p| std::fs::read_to_string(p).ok())
+        .collect()
+}
+
+/// Opens the user's skins folder in the file manager.
+#[tauri::command]
+fn open_skins_folder() {
+    let dir = settings::config_dir().join("skins");
+    let _ = std::fs::create_dir_all(&dir);
+    platform::reveal_folder(&dir.to_string_lossy());
+}
+
 #[tauri::command]
 fn open_url(url: String) {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
@@ -925,6 +956,8 @@ pub fn run() {
             github_refresh,
             open_n8n,
             open_settings_window,
+            user_skins,
+            open_skins_folder,
             set_paused,
             shortcuts_status,
             shortcuts_suspend,

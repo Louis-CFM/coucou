@@ -1,0 +1,27 @@
+{
+  "id": "duck",
+  "name": "Duckling",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "glow": "#FACC15",
+  "_about": "A yellow duckling: an orange bill (upper and lower), a little tuft of feathers on top.",
+  "body": ["#FFE873", "#F7B500"],
+  "vars": {
+    "S": "sin(yaw)",
+    "C": "cos(yaw)",
+    "bx": "rx*S*0.93",
+    "by": "ry*0.52",
+    "bw": "R*0.78*(0.45+0.55*C)"
+  },
+  "shapes": [
+    { "type": "ellipse", "follow": true, "clip": true, "x": "bx - bw*0.40", "y": "by + R*0.02", "w": "bw*0.80", "h": "R*0.22",
+      "fill": { "gradient": ["#FF9E2C", "#E8590C"], "from": ["bx", "by"], "to": ["bx", "by + R*0.25"] }, "stroke": "rgba(120,40,0,0.35)", "lineWidth": 0.8 },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "bx - bw/2", "y": "by - R*0.14", "w": "bw", "h": "R*0.28",
+      "fill": { "gradient": ["#FFC04D", "#FF8A1F"], "from": ["bx", "by - R*0.14"], "to": ["bx", "by + R*0.14"] }, "stroke": "rgba(120,40,0,0.35)", "lineWidth": 0.8 },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "bx - bw*0.33", "y": "by - R*0.10", "w": "bw*0.30", "h": "R*0.07", "fill": "rgba(255,255,255,0.45)" },
+    { "type": "repeat", "count": 3, "as": "i", "shapes": [
+      { "type": "ellipse", "x": "rx*S*0.22 + (i-1)*R*0.13 - R*0.06", "y": "0 - ry - R*0.20 + abs(i-1)*R*0.05", "w": "R*0.12", "h": "R*0.26", "fill": "#FFD43B", "stroke": "rgba(160,100,0,0.3)", "lineWidth": 0.6 }
+    ] }
+  ]
+}

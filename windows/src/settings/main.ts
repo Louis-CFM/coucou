@@ -18,6 +18,13 @@ import {
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
+import { drawWardrobeIcon } from "../mochi/skin-outfits";
+import { loadUserSkins } from "../mochi/skin-loader";
+import { isSkinSelection, onSkinsChange, skinLabel, skinSelections } from "../mochi/skins";
+import {
+  OUTFIT_KEYS, OUTFIT_SELECTIONS, WARDROBE_STRINGS, parseOutfit, seasonalOutfit, wardrobeHeader,
+  type OutfitSelection,
+} from "../mochi/wardrobe";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
@@ -1113,6 +1120,107 @@ function generalSection(): HTMLElement {
 }
 
 /**
+ * Settings → Wardrobe: what Mochi wears. The built-in outfits and every skin (the
+ * shipped ones and the user's folder), a click keeps one. The island learns of it
+ * through the saved settings, like any other preference.
+ */
+let wardrobeOff: (() => void) | null = null;
+
+/**
+ * Paints an icon on `canvas` so that it is whole and inside it, `margin` pixels from
+ * every edge. The icon is first drawn on a canvas twice as large (a tall hat, wide
+ * wings, a scarf's tail, or a body the icon code itself would cut at its own edge all
+ * come out complete), then scaled down and moved only as far as needed.
+ */
+function paintFitted(canvas: HTMLCanvasElement, dpr: number, margin: number, paint: (ctx: CanvasRenderingContext2D) => void) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const { width: W, height: H } = canvas;
+  const big = document.createElement("canvas");
+  big.width = W * 2;
+  big.height = H * 2;
+  const bctx = big.getContext("2d", { willReadFrequently: true });
+  if (!bctx) return;
+  // The icon's own origin lands half a canvas inside the large one, so it can overflow on every side.
+  bctx.setTransform(dpr, 0, 0, dpr, W / 2, H / 2);
+  paint(bctx);
+  const px = bctx.getImageData(0, 0, W * 2, H * 2).data;
+  let [x0, y0, x1, y1] = [W * 2, H * 2, -1, -1];
+  for (let y = 0; y < H * 2; y++) {
+    for (let x = 0; x < W * 2; x++) {
+      if (px[(y * W * 2 + x) * 4 + 3] > 8) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (x1 < 0) return;
+  // The picture's edges in the icon's own coordinates, then after shrinking about the middle.
+  const [l, r, t, b] = [x0 - W / 2, x1 + 1 - W / 2, y0 - H / 2, y1 + 1 - H / 2];
+  const s = Math.min(1, (W - 2 * margin) / (r - l), (H - 2 * margin) / (b - t));
+  const [sl, sr] = [W / 2 + (l - W / 2) * s, W / 2 + (r - W / 2) * s];
+  const [st, sb] = [H / 2 + (t - H / 2) * s, H / 2 + (b - H / 2) * s];
+  const dx = sl < margin ? margin - sl : sr > W - margin ? W - margin - sr : 0;
+  const dy = st < margin ? margin - st : sb > H - margin ? H - margin - sb : 0;
+  ctx.setTransform(s, 0, 0, s, W / 2 - s * W + dx, H / 2 - s * H + dy);
+  ctx.drawImage(big, 0, 0);
+}
+
+function wardrobeSection(): HTMLElement {
+  const ICON = 72;
+  const note = h("span", { class: "hint" });
+  const grid = h("div", { class: "wardrobe-set" });
+  const buttons = new Map<OutfitSelection, HTMLButtonElement>();
+
+  const nameOf = (sel: OutfitSelection) => (isSkinSelection(sel) ? skinLabel(sel) : t(OUTFIT_KEYS[sel]));
+  const refresh = () => {
+    const current = parseOutfit(settings.mochiOutfit);
+    for (const [sel, button] of buttons) button.classList.toggle("on", sel === current);
+    note.textContent = wardrobeHeader(null, current, new Date());
+  };
+  const draw = () => {
+    clear(grid);
+    buttons.clear();
+    const season = seasonalOutfit(new Date());
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const all = [...new Set<OutfitSelection>([...OUTFIT_SELECTIONS, ...(skinSelections() as OutfitSelection[])])];
+    for (const sel of all) {
+      const canvas = h("canvas") as HTMLCanvasElement;
+      canvas.width = canvas.height = Math.round(ICON * dpr);
+      paintFitted(canvas, dpr, Math.round(3 * dpr), (ctx) => {
+        drawWardrobeIcon(ctx, ICON, sel, season, WARDROBE_STRINGS.autoBadge);
+      });
+      const button = h("button", { class: "wardrobe-pick", title: nameOf(sel), "aria-label": nameOf(sel) },
+        canvas, h("span", { text: nameOf(sel) }));
+      button.addEventListener("click", () => {
+        settings.mochiOutfit = sel;
+        void save();
+        refresh();
+      });
+      buttons.set(sel, button);
+      grid.append(button);
+    }
+    refresh();
+  };
+
+  wardrobeOff?.();
+  wardrobeOff = onSkinsChange(draw);
+  void loadUserSkins();
+  declaredViews.push(refresh);
+  draw();
+  const folder = h("div", { class: "row" },
+    h("label", { text: t("Your own skins") }),
+    h("button", { text: t("Open skins folder"), onclick: () => void Bridge.openSkinsFolder() }),
+    h("span", { class: "hint", text: t("Drop a skin file (.json) in it: it shows up here by itself.") }),
+  );
+  return h("section", {}, h("h2", {}, h("span", { text: t("Wardrobe") }), note), grid, folder);
+}
+
+/**
  * Settings → General → Language, as on the Mac: "System" follows the
  * system's language when Coucou has it (else English), or one of the ten.
  * Both windows and the tray switch in place, without a restart.
@@ -1494,6 +1602,7 @@ async function render() {
   clear(root);
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
     general: () => [generalSection()],
+    wardrobe: () => [wardrobeSection()],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
     chat: () => [subscriptionsSection(), apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],

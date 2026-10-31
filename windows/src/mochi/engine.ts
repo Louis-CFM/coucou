@@ -7,7 +7,7 @@
 import { Ease, lerp, type EaseFn } from "../core/anim";
 import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
-import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
+import { drawOutfitBehind, drawOutfitBody, drawOutfitFront, makeHead, outfitBodyColors, outfitLookRange, stateTintScale } from "./skin-outfits"; // skins + built-ins
 import type { Outfit } from "./wardrobe";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -643,7 +643,7 @@ export class BotEngine {
     }
 
     this.tgYaw = ty;
-    this.tgPitch = tp;
+    this.tgPitch = tp * outfitLookRange(this.outfit);
     this.tgTilt = this.cfg.tilt;
 
     if (n > this.waveStart && n < this.waveUntil) {
@@ -839,6 +839,7 @@ export class BotEngine {
       x.restore();
     }
 
+    if (head) drawOutfitBody(x, this.outfit, head, outfitState);
     this.drawEyes(x, body, R, rx, ry);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
 
@@ -881,9 +882,9 @@ export class BotEngine {
     return p;
   }
 
-  /** How much of the pumpkin's orange shows on the body (it comes and goes with the outfit). */
+  /** How much of the outfit's body colour shows (the pumpkin's orange, a fruit skin's…); it comes and goes with the outfit. */
   private get pumpkinAlpha(): number {
-    if (this.isMini || this.outfit !== "pumpkin") return 0;
+    if (this.isMini || !outfitBodyColors(this.outfit)) return 0;
     return Math.min(1, this.outfitPresence * 2.5) * (1 - this.morph);
   }
 
@@ -904,8 +905,9 @@ export class BotEngine {
     x.save();
     if (pumpkin > 0.001) {
       const pg = x.createLinearGradient(rx * 0.7, -ry * 0.85, -rx * 0.8, ry * 0.9);
-      pg.addColorStop(0, PUMPKIN_BODY[0]);
-      pg.addColorStop(1, PUMPKIN_BODY[1]);
+      const colors = outfitBodyColors(this.outfit) ?? ["#fff", "#fff"];
+      pg.addColorStop(0, colors[0]);
+      pg.addColorStop(1, colors[1]);
       x.globalAlpha = pumpkin;
       x.fillStyle = pg;
       x.fill(body);
@@ -913,7 +915,7 @@ export class BotEngine {
       x.globalAlpha = this.bodyColor ? pumpkin : 1;
     }
 
-    const effectiveTint = this.tint * (1 - this.morph);
+    const effectiveTint = this.tint * (1 - this.morph) * stateTintScale(this.state, this.outfit);
     if (effectiveTint > 0.01) {
       const tg = x.createLinearGradient(0, ry, 0, -ry);
       tg.addColorStop(0, rgba(this.col, 0.72 * effectiveTint));

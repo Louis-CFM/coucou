@@ -4,6 +4,7 @@
 // in ./outfits.ts.
 
 import { N_, labels, t } from "../i18n/i18n";
+import { isSkinSelection, skinLabel } from "./skins";
 
 /** Every outfit, plus "auto" (dress for the season) and "none". Order of the wardrobe. */
 export const OUTFIT_SELECTIONS = [
@@ -58,7 +59,9 @@ const SELECTION_SET: ReadonlySet<string> = new Set(OUTFIT_SELECTIONS);
  * exactly like `Outfit.stored` on macOS.
  */
 export function parseOutfit(raw: unknown): OutfitSelection {
-  return typeof raw === "string" && SELECTION_SET.has(raw) ? (raw as OutfitSelection) : DEFAULT_OUTFIT;
+  // A skin ("skin:<id>") is kept while its file is there; once it is gone it reads as "auto".
+  if (typeof raw === "string" && (SELECTION_SET.has(raw) || isSkinSelection(raw))) return raw as OutfitSelection;
+  return DEFAULT_OUTFIT;
 }
 
 /** Easter Sunday of `year` (Meeus/Jones/Butcher), as [month 1–12, day]. */
@@ -112,6 +115,11 @@ export function resolveOutfit(selection: OutfitSelection, date: Date): Outfit {
   return selection === "auto" ? seasonalOutfit(date) : selection;
 }
 
+/** The name of a choice: a built-in outfit's, or a skin's own. */
+export function outfitLabel(selection: OutfitSelection): string {
+  return isSkinSelection(selection) ? skinLabel(selection) : OUTFIT_LABELS[selection];
+}
+
 /**
  * The grey text at the right of the wardrobe header: the hovered outfit,
  * otherwise the current choice — WardrobeView.headerRight on macOS.
@@ -122,8 +130,8 @@ export function wardrobeHeader(
   date: Date,
 ): string {
   const season = OUTFIT_LABELS[seasonalOutfit(date)];
-  if (hovered) return hovered === "auto" ? WARDROBE_STRINGS.autoHover(season) : OUTFIT_LABELS[hovered];
-  return selection === "auto" ? WARDROBE_STRINGS.autoNow(season) : OUTFIT_LABELS[selection];
+  if (hovered) return hovered === "auto" ? WARDROBE_STRINGS.autoHover(season) : outfitLabel(hovered);
+  return selection === "auto" ? WARDROBE_STRINGS.autoNow(season) : outfitLabel(selection);
 }
 
 /** Same as resolveOutfit, remembered for the day — it is asked every frame. */

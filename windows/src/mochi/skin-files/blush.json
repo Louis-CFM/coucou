@@ -1,0 +1,25 @@
+{
+  "id": "blush",
+  "name": "Blush",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "_about": "Pink cheeks with three freckles each. They sit on the face, so they slide round and narrow as the head turns, and the far one disappears.",
+  "vars": {
+    "sv": "sin(yaw)",
+    "cv": "cos(yaw)",
+    "lx": "rx*(0 - 0.62*cos(yaw) + 0.675*sin(yaw))",
+    "ld": "0.62*sin(yaw) + 0.675*cos(yaw)",
+    "rxx": "rx*(0.62*cos(yaw) + 0.675*sin(yaw))",
+    "rd": "0 - 0.62*sin(yaw) + 0.675*cos(yaw)",
+    "cy": "ry*0.42"
+  },
+  "shapes": [
+    { "type": "ellipse", "follow": true, "clip": true, "when": "ld - 0.08", "x": "lx - R*0.25*ld", "y": "cy - R*0.15", "w": "R*0.50*ld", "h": "R*0.30", "fill": "rgba(251,113,133,0.55)" },
+    { "type": "ellipse", "follow": true, "clip": true, "when": "rd - 0.08", "x": "rxx - R*0.25*rd", "y": "cy - R*0.15", "w": "R*0.50*rd", "h": "R*0.30", "fill": "rgba(251,113,133,0.55)" },
+    { "type": "repeat", "count": 3, "as": "i", "shapes": [
+      { "type": "ellipse", "follow": true, "clip": true, "when": "ld - 0.25", "x": "lx + (i-1)*R*0.10*ld - R*0.018", "y": "cy - R*0.12 + abs(i-1)*R*0.05", "w": "R*0.04", "h": "R*0.04", "fill": "rgba(190,60,80,0.55)" },
+      { "type": "ellipse", "follow": true, "clip": true, "when": "rd - 0.25", "x": "rxx + (i-1)*R*0.10*rd - R*0.018", "y": "cy - R*0.12 + abs(i-1)*R*0.05", "w": "R*0.04", "h": "R*0.04", "fill": "rgba(190,60,80,0.55)" }
+    ] }
+  ]
+}

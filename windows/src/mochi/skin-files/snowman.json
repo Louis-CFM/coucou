@@ -1,0 +1,35 @@
+{
+  "id": "snowman",
+  "name": "Snowman",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "glow": "#93C5FD",
+  "_about": "A snowman: white body, twig arms behind it, a carrot nose that points the way the head turns, a smile of coal and rosy cheeks.",
+  "body": ["#FFFFFF", "#C4DAF2"],
+  "vars": {
+    "S": "sin(yaw)",
+    "C": "cos(yaw)",
+    "nx": "rx*S*0.95",
+    "ny": "ry*0.32",
+    "nc": "0.5+0.5*C",
+    "lx": "rx*(0 - 0.66*cos(yaw) + 0.7*sin(yaw))",
+    "ld": "0.66*sin(yaw) + 0.7*cos(yaw)",
+    "rxx": "rx*(0.66*cos(yaw) + 0.7*sin(yaw))",
+    "rd": "0 - 0.66*sin(yaw) + 0.7*cos(yaw)",
+    "cy": "ry*0.36"
+  },
+  "shapes": [
+    { "type": "poly", "layer": "behind", "points": [["rx*sin(-1.42+yaw)*0.9", "ry*0.02"], ["rx*sin(-1.42+yaw)*0.9 - R*0.55", "0 - ry*0.42"], ["rx*sin(-1.42+yaw)*0.9 - R*0.50", "0 - ry*0.42 - R*0.06"], ["rx*sin(-1.42+yaw)*0.9", "ry*0.02 - R*0.07"]],
+      "fill": "#6B4423", "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.6 },
+    { "type": "poly", "layer": "behind", "points": [["rx*sin(1.42+yaw)*0.9", "ry*0.02"], ["rx*sin(1.42+yaw)*0.9 + R*0.55", "0 - ry*0.42"], ["rx*sin(1.42+yaw)*0.9 + R*0.50", "0 - ry*0.42 - R*0.06"], ["rx*sin(1.42+yaw)*0.9", "ry*0.02 - R*0.07"]],
+      "fill": "#6B4423", "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.6 },
+    { "type": "ellipse", "follow": true, "clip": true, "layer": "body", "when": "ld - 0.08", "x": "lx - R*0.21*ld", "y": "cy - R*0.11", "w": "R*0.42*ld", "h": "R*0.22", "fill": "rgba(251,146,170,0.50)" },
+    { "type": "ellipse", "follow": true, "clip": true, "layer": "body", "when": "rd - 0.08", "x": "rxx - R*0.21*rd", "y": "cy - R*0.11", "w": "R*0.42*rd", "h": "R*0.22", "fill": "rgba(251,146,170,0.50)" },
+    { "type": "poly", "follow": true, "points": [["nx - R*0.08*nc", "ny - R*0.05"], ["nx + R*0.08*nc", "ny - R*0.05"], ["nx + R*0.62*S", "ny + R*0.10 + R*0.16*(1-abs(S))"]],
+      "fill": { "gradient": ["#FFA64D", "#E8590C"], "from": ["nx", "ny - R*0.05"], "to": ["nx + R*0.62*S", "ny + R*0.2"] }, "stroke": "rgba(120,40,0,0.35)", "lineWidth": 0.7 },
+    { "type": "repeat", "count": 5, "as": "i", "vars": { "lon": "-0.5 + 0.25*i", "lat": "0.52 + 0.13*(1 - abs(i-2)/2)", "th": "lon + yaw", "cc": "cos(th)" }, "shapes": [
+      { "type": "ellipse", "follow": true, "clip": true, "when": "cc - 0.1", "x": "rx*sin(th)*cos(lat) - R*0.04*cc", "y": "ry*sin(lat) - R*0.04", "w": "R*0.08*cc", "h": "R*0.08", "fill": "#1F2328" }
+    ] }
+  ]
+}

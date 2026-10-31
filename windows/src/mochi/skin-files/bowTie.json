@@ -1,0 +1,26 @@
+{
+  "id": "bowTie",
+  "name": "Bow tie",
+  "kind": "face",
+  "layer": "front",
+  "_about": "A bow tie under the chin; it slides round the body and narrows as the head turns.",
+  "vars": {
+    "sv": "sin(yaw)",
+    "cv": "cos(yaw)",
+    "bx": "rx*0.62*sin(yaw)",
+    "by": "ry*0.80",
+    "s": "R*0.36",
+    "wl": "s*(0.45+0.55*cos(yaw))"
+  },
+  "shapes": [
+    { "type": "poly", "points": [["bx - wl", "by - s*0.62"], ["bx - s*0.10", "by - s*0.12"], ["bx - s*0.10", "by + s*0.12"], ["bx - wl", "by + s*0.62"]],
+      "fill": { "gradient": ["#3B5BDB", "#1E3A8A"], "from": ["bx - wl", "by"], "to": ["bx", "by"] },
+      "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.8 },
+    { "type": "poly", "points": [["bx + wl", "by - s*0.62"], ["bx + s*0.10", "by - s*0.12"], ["bx + s*0.10", "by + s*0.12"], ["bx + wl", "by + s*0.62"]],
+      "fill": { "gradient": ["#1E3A8A", "#3B5BDB"], "from": ["bx", "by"], "to": ["bx + wl", "by"] },
+      "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.8 },
+    { "type": "ellipse", "x": "bx - s*0.17*(0.6+0.4*cv)", "y": "by - s*0.2", "w": "s*0.34*(0.6+0.4*cv)", "h": "s*0.4",
+      "fill": "#1E40AF", "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 },
+    { "type": "ellipse", "x": "bx - s*0.07", "y": "by - s*0.14", "w": "s*0.10", "h": "s*0.10", "fill": "rgba(255,255,255,0.45)" }
+  ]
+}

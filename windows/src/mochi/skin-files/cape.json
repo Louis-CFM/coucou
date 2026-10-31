@@ -1,0 +1,32 @@
+{
+  "id": "cape",
+  "name": "Cape",
+  "kind": "face",
+  "layer": "front",
+  "_about": "A hero's cape that hangs behind the body and swings the other way when the head turns; a gold clasp and two cords at the neck.",
+  "vars": {
+    "sv": "sin(yaw)",
+    "cv": "cos(yaw)",
+    "sw": "0 - sin(yaw)*rx*0.25",
+    "bot": "ry + R*0.78"
+  },
+  "shapes": [
+    { "type": "poly", "layer": "behind",
+      "points": [
+        ["sw - rx*0.78", "ry*0.10"], ["sw + rx*0.78", "ry*0.10"], ["sw + rx*1.32", "bot - R*0.20"],
+        ["sw + rx*0.70", "bot - R*0.04"], ["sw", "bot + R*0.10"], ["sw - rx*0.70", "bot - R*0.04"], ["sw - rx*1.32", "bot - R*0.20"]
+      ],
+      "fill": { "gradient": ["#DC2626", "#7F1D1D"], "from": ["sw", "ry*0.1"], "to": ["sw", "bot"] },
+      "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.9 },
+    { "type": "poly", "layer": "behind",
+      "points": [
+        ["sw - rx*0.50", "ry*0.30"], ["sw + rx*0.50", "ry*0.30"], ["sw + rx*0.86", "bot - R*0.32"],
+        ["sw", "bot - R*0.12"], ["sw - rx*0.86", "bot - R*0.32"]
+      ],
+      "fill": "rgba(0,0,0,0.16)" },
+    { "type": "ellipse", "x": "rx*0.55*sv - R*0.17", "y": "ry*0.84 - R*0.17", "w": "R*0.34", "h": "R*0.34",
+      "fill": { "gradient": ["#FCD34D", "#B45309"], "from": ["rx*0.55*sv - R*0.17", "ry*0.84 - R*0.17"], "to": ["rx*0.55*sv + R*0.17", "ry*0.84 + R*0.17"] },
+      "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 },
+    { "type": "ellipse", "x": "rx*0.55*sv - R*0.06", "y": "ry*0.84 - R*0.10", "w": "R*0.10", "h": "R*0.10", "fill": "rgba(255,255,255,0.55)" }
+  ]
+}

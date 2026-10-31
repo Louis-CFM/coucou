@@ -380,6 +380,10 @@ export const Bridge = {
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
+  /** The user's own skin files (<config>/skins/*.json), as text. */
+  userSkins: () => call<string[]>("user_skins"),
+  /** Opens the user's skins folder in the file manager. */
+  openSkinsFolder: () => call<void>("open_skins_folder"),
   /** Whether Claude can answer: the API key, or else the user's own Claude Code. */
   claudeReady: () => call<boolean>("claude_ready"),
   /** Settings → Chat → Your AI subscriptions: each switch and whether its tool is installed. */

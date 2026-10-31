@@ -1,0 +1,21 @@
+{
+  "id": "kiwi",
+  "name": "Kiwi",
+  "kind": "face",
+  "layer": "front",
+  "glow": "#84CC16",
+  "_about": "A kiwi cut in half: green flesh, a brown rim, a pale core and a ring of black seeds that drifts a little as the head turns.",
+  "body": ["#A8E063", "#4C9A1C"],
+  "vars": {
+    "cx": "rx*sin(yaw)*0.30",
+    "cy": "ry*0.02"
+  },
+  "shapes": [
+    { "type": "band", "layer": "body", "from": -1, "to": 1, "steps": 36, "x": "u*rx", "top": "0 - ry*head(u)*0.92", "bottom": "ry*head(u)*0.92",
+      "stroke": "#7A5230", "lineWidth": "R*0.22" },
+    { "type": "ellipse", "layer": "body", "x": "cx - R*0.36", "y": "cy - R*0.30", "w": "R*0.72", "h": "R*0.60", "fill": "rgba(247,252,225,0.88)" },
+    { "type": "repeat", "layer": "body", "count": 14, "as": "i", "vars": { "a": "i*0.4488", "px": "cx + R*0.62*cos(a)", "py": "cy + R*0.50*sin(a)" }, "shapes": [
+      { "type": "ellipse", "layer": "body", "x": "px - R*0.032", "y": "py - R*0.05", "w": "R*0.064", "h": "R*0.10", "fill": "#1E1A14" }
+    ] }
+  ]
+}

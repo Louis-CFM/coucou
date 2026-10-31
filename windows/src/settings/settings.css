@@ -428,6 +428,29 @@ html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="t
   direction: ltr;
 }
 
+/* ── Wardrobe: one button per outfit or skin, its picture over its name ───── */
+.wardrobe-set {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+.wardrobe-pick {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border-radius: 9px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--dim);
+  font: 400 11px var(--font);
+  text-align: center;
+  cursor: pointer;
+}
+.wardrobe-pick:hover { background: rgba(255, 255, 255, 0.09); color: var(--ink); }
+.wardrobe-pick.on { border-color: rgba(255, 255, 255, 0.45); color: var(--ink); }
+.wardrobe-pick canvas { width: 72px; height: 72px; pointer-events: none; }
+
 /* Settings → Android phone: the pairing QR code (an SVG from Rust, black on white). */
 .qr { width: 220px; max-width: 100%; background: #fff; border-radius: 8px; padding: 4px; }
 .qr svg { display: block; width: 100%; height: auto; }

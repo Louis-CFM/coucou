@@ -1,0 +1,29 @@
+{
+  "id": "heartsHeadband",
+  "name": "Hearts",
+  "kind": "hat",
+  "layer": "front",
+  "_about": "From the first wardrobe (commit 16cbd56, drawHeartsHeadband; it was the Valentine's outfit), redrawn as an arc over the head; the hearts sit round it and turn with the head.",
+  "vars": {
+    "hw": "rx*0.97",
+    "cx": "0",
+    "thick": "R*0.13",
+    "heartS": "R*0.27",
+    "hA": "sin(0.55+yaw)",
+    "hAc": "cos(0.55+yaw)",
+    "hB": "sin(-0.55+yaw)",
+    "hBc": "cos(-0.55+yaw)"
+  },
+  "shapes": [
+    { "type": "band", "from": -0.97, "to": 0.97, "steps": 32, "x": "cx+u*hw*0.97",
+      "top": "-ry*head(u*0.97) - R*0.04", "bottom": "-ry*head(u*0.97) - R*0.04 + thick",
+      "fill": "#F472B6", "stroke": "rgba(0,0,0,0.12)", "lineWidth": 0.8 },
+    { "type": "band", "from": -0.97, "to": 0.97, "steps": 32, "x": "cx+u*hw*0.97",
+      "top": "-ry*head(u*0.97) - R*0.04", "bottom": "-ry*head(u*0.97) - R*0.04 + thick*0.35",
+      "fill": "rgba(255,255,255,0.28)" },
+    { "type": "heart", "when": "hAc - 0.12", "x": "cx+hw*0.97*hA", "y": "-ry*head(hA*0.97) - R*0.04 - R*0.10",
+      "size": "heartS*(0.55+0.45*hAc)", "fill": "#F43F5E", "stroke": "rgba(0,0,0,0.12)", "lineWidth": 0.7 },
+    { "type": "heart", "when": "hBc - 0.12", "x": "cx+hw*0.97*hB", "y": "-ry*head(hB*0.97) - R*0.04 - R*0.10",
+      "size": "heartS*(0.55+0.45*hBc)", "fill": "#F43F5E", "stroke": "rgba(0,0,0,0.12)", "lineWidth": 0.7 }
+  ]
+}

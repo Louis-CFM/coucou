@@ -1,0 +1,40 @@
+{
+  "id": "topHat",
+  "name": "Top hat",
+  "kind": "hat",
+  "layer": "front",
+  "_about": "From the first wardrobe (commit 16cbd56, drawTopHat), redrawn: the brim goes behind and in front of the head, the crown rises from it, the buckle and the shine turn with the head.",
+  "vars": {
+    "hw": "rx*0.97",
+    "cx": "0",
+    "brimY": "-ry*0.80",
+    "brimW": "hw*1.02",
+    "brimH": "R*0.17",
+    "crownW": "hw*0.64",
+    "crownH": "R*0.80",
+    "rim": "R*0.07",
+    "curl": "R*0.035",
+    "sv": "sin(yaw)",
+    "cv": "cos(yaw)",
+    "shine": "sin(-0.8+yaw)",
+    "shineC": "cos(-0.8+yaw)"
+  },
+  "shapes": [
+    { "type": "band", "layer": "behind", "x": "cx+u*brimW", "top": "brimY-brimH*sqrt(1-u*u)-curl*u*u", "bottom": "brimY-curl*u*u",
+      "fill": "#0F0D0C" },
+    { "type": "band", "x": "cx+u*brimW", "top": "brimY-curl*u*u", "bottom": "brimY+brimH*sqrt(1-u*u)-curl*u*u",
+      "fill": "#1D1917", "stroke": "rgba(0,0,0,0.35)", "lineWidth": 0.8 },
+    { "type": "band", "x": "cx+u*crownW", "top": "brimY-crownH", "bottom": "brimY+rim*sqrt(1-u*u)",
+      "fill": { "gradient": ["#3A3531", "#14110F"], "from": ["cx-crownW", 0], "to": ["cx+crownW", 0] },
+      "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 },
+    { "type": "band", "when": "shineC - 0.1", "x": "cx+crownW*shine+u*crownW*0.09*shineC", "top": "brimY-crownH+R*0.07", "bottom": "brimY-R*0.06",
+      "fill": "rgba(255,255,255,0.09)" },
+    { "type": "band", "x": "cx+u*crownW", "top": "brimY-R*0.30+rim*sqrt(1-u*u)", "bottom": "brimY-R*0.10+rim*sqrt(1-u*u)",
+      "fill": "#991B1B" },
+    { "type": "band", "when": "cv - 0.25", "x": "cx+crownW*sv+u*crownW*0.20*cv",
+      "top": "brimY-R*0.335+rim*sqrt(max(0,1-pow(sv+u*0.20*cv,2)))", "bottom": "brimY-R*0.065+rim*sqrt(max(0,1-pow(sv+u*0.20*cv,2)))",
+      "fill": "#D8A31A", "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.7 },
+    { "type": "ellipse", "x": "cx-crownW", "y": "brimY-crownH-R*0.06", "w": "2*crownW", "h": "R*0.12",
+      "fill": "#3B3531", "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 }
+  ]
+}

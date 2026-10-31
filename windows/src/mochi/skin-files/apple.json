@@ -1,0 +1,23 @@
+{
+  "id": "apple",
+  "name": "Apple",
+  "kind": "face",
+  "layer": "front",
+  "glow": "#EF4444",
+  "_about": "A shiny red apple: a dimple on top, a stem and a leaf, a soft highlight on the side the head turns to.",
+  "body": ["#FF7B7B", "#C21F1F"],
+  "vars": {
+    "sx": "rx*sin(yaw)*0.10",
+    "hx": "rx*sin(-0.75+yaw)*0.80",
+    "hc": "cos(-0.75+yaw)"
+  },
+  "shapes": [
+    { "type": "ellipse", "layer": "body", "x": "sx - R*0.26", "y": "0 - ry - R*0.04", "w": "R*0.52", "h": "R*0.22", "fill": "rgba(110,10,10,0.45)" },
+    { "type": "ellipse", "layer": "body", "when": "hc - 0.1", "x": "hx - R*0.10*hc", "y": "0 - ry*0.62", "w": "R*0.20*hc", "h": "R*0.34", "fill": "rgba(255,255,255,0.42)" },
+    { "type": "ellipse", "layer": "body", "when": "hc - 0.1", "x": "hx - R*0.04*hc", "y": "0 - ry*0.22", "w": "R*0.08*hc", "h": "R*0.08", "fill": "rgba(255,255,255,0.40)" },
+    { "type": "poly", "points": [["sx - R*0.045", "0 - ry*0.98"], ["sx + R*0.045", "0 - ry*0.98"], ["sx + R*0.11", "0 - ry - R*0.26"], ["sx + R*0.03", "0 - ry - R*0.27"]],
+      "fill": "#6B4423", "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.6 },
+    { "type": "poly", "points": [["sx + R*0.06", "0 - ry - R*0.16"], ["sx + R*0.26", "0 - ry - R*0.34"], ["sx + R*0.52", "0 - ry - R*0.22"], ["sx + R*0.28", "0 - ry - R*0.10"]],
+      "fill": { "gradient": ["#A6E05A", "#3C8A1A"], "from": ["sx", "0 - ry - R*0.3"], "to": ["sx + R*0.5", "0 - ry - R*0.1"] }, "stroke": "rgba(0,60,0,0.3)", "lineWidth": 0.7 }
+  ]
+}

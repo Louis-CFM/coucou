@@ -1,0 +1,22 @@
+{
+  "id": "orange",
+  "name": "Orange",
+  "kind": "face",
+  "layer": "front",
+  "glow": "#FB923C",
+  "_about": "An orange: dimpled peel (dots that follow the surface), a short stem and a leaf.",
+  "body": ["#FFC766", "#F2750A"],
+  "vars": {
+    "sx": "rx*sin(yaw)*0.10"
+  },
+  "shapes": [
+    { "type": "repeat", "count": 34, "as": "i", "vars": {
+        "a": "i*0.713", "lon": "-1.4 + a - 2.8*floor(a/2.8)", "v": "sin(i*2.399)*0.88",
+        "th": "lon + yaw", "cc": "cos(th)", "px": "rx*head(v)*sin(th)", "py": "ry*v" }, "shapes": [
+      { "type": "ellipse", "layer": "body", "when": "cc - 0.1", "x": "px - R*0.032*cc", "y": "py - R*0.032", "w": "R*0.064*cc", "h": "R*0.064", "fill": "rgba(176,72,0,0.32)" }
+    ] },
+    { "type": "ellipse", "x": "sx - R*0.06", "y": "0 - ry - R*0.07", "w": "R*0.12", "h": "R*0.14", "fill": "#6B4A1E" },
+    { "type": "poly", "points": [["sx", "0 - ry - R*0.04"], ["sx + R*0.20", "0 - ry - R*0.26"], ["sx + R*0.46", "0 - ry - R*0.10"], ["sx + R*0.22", "0 - ry + R*0.02"]],
+      "fill": { "gradient": ["#9AD94A", "#3F8A17"], "from": ["sx", "0 - ry"], "to": ["sx + R*0.46", "0 - ry - R*0.2"] }, "stroke": "rgba(0,60,0,0.3)", "lineWidth": 0.7 }
+  ]
+}

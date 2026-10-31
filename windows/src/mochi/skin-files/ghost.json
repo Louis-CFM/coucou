@@ -1,0 +1,28 @@
+{
+  "id": "ghost",
+  "name": "Ghost",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "glow": "#C7D2FE",
+  "_about": "A friendly ghost: pale body, a wavy sheet hem that sways as the head turns, rosy cheeks and a little round mouth.",
+  "body": ["#FFFFFF", "#C6D4EA"],
+  "vars": {
+    "S": "sin(yaw)",
+    "C": "cos(yaw)",
+    "lx": "rx*(0 - 0.62*cos(yaw) + 0.675*sin(yaw))",
+    "ld": "0.62*sin(yaw) + 0.675*cos(yaw)",
+    "rxx": "rx*(0.62*cos(yaw) + 0.675*sin(yaw))",
+    "rd": "0 - 0.62*sin(yaw) + 0.675*cos(yaw)",
+    "cy": "ry*0.40",
+    "mx": "rx*S*0.92"
+  },
+  "shapes": [
+    { "type": "ellipse", "follow": true, "clip": true, "layer": "body", "when": "ld - 0.08", "x": "lx - R*0.22*ld", "y": "cy - R*0.12", "w": "R*0.44*ld", "h": "R*0.24", "fill": "rgba(251,146,170,0.55)" },
+    { "type": "ellipse", "follow": true, "clip": true, "layer": "body", "when": "rd - 0.08", "x": "rxx - R*0.22*rd", "y": "cy - R*0.12", "w": "R*0.44*rd", "h": "R*0.24", "fill": "rgba(251,146,170,0.55)" },
+    { "type": "band", "x": "u*rx*0.98", "top": "ry*head(u*0.97)*0.70",
+      "bottom": "ry*0.30 + ry*0.62*sqrt(head(u*0.97)) + R*0.15*sin(u*9 + yaw*2.5)*(0.3 + 0.7*head(u*0.97))",
+      "fill": { "gradient": ["#F4F8FD", "#BCCBE2"], "from": [0, "ry*0.4"], "to": [0, "ry*1.1"] }, "stroke": "rgba(70,90,130,0.5)", "lineWidth": 0.9 },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "mx - R*0.07*(0.5+0.5*C)", "y": "ry*0.52", "w": "R*0.14*(0.5+0.5*C)", "h": "R*0.19", "fill": "rgba(40,40,60,0.85)" }
+  ]
+}

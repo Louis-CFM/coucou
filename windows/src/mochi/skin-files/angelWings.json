@@ -1,0 +1,33 @@
+{
+  "id": "angelWings",
+  "name": "Angel wings",
+  "kind": "face",
+  "layer": "front",
+  "_about": "Two white wings behind the body and a golden halo above the head. The wings spread a little as the head turns.",
+  "vars": {
+    "sv": "sin(yaw)",
+    "cv": "cos(yaw)",
+    "sh": "0 - sin(yaw)*rx*0.12",
+    "k": "0.90 + 0.10*cos(yaw)"
+  },
+  "shapes": [
+    { "type": "poly", "layer": "behind",
+      "points": [
+        ["sh - rx*0.80", "ry*0.18"], ["sh - rx*1.04*k", "ry*0.00 - R*0.35"], ["sh - rx*1.30*k", "0 - ry*0.95"], ["sh - rx*1.42*k", "0 - ry*0.25"],
+        ["sh - rx*1.36*k", "ry*0.15"], ["sh - rx*1.24*k", "ry*0.52"], ["sh - rx*1.04*k", "ry*0.58"], ["sh - rx*0.85", "ry*0.52"]
+      ],
+      "fill": { "gradient": ["#FFFFFF", "#CBD5E1"], "from": ["sh - rx*1.4", "0 - ry*0.9"], "to": ["sh - rx*0.8", "ry*0.5"] },
+      "stroke": "rgba(0,0,0,0.16)", "lineWidth": 0.8 },
+    { "type": "poly", "layer": "behind",
+      "points": [
+        ["sh + rx*0.80", "ry*0.18"], ["sh + rx*1.04*k", "ry*0.00 - R*0.35"], ["sh + rx*1.30*k", "0 - ry*0.95"], ["sh + rx*1.42*k", "0 - ry*0.25"],
+        ["sh + rx*1.36*k", "ry*0.15"], ["sh + rx*1.24*k", "ry*0.52"], ["sh + rx*1.04*k", "ry*0.58"], ["sh + rx*0.85", "ry*0.52"]
+      ],
+      "fill": { "gradient": ["#CBD5E1", "#FFFFFF"], "from": ["sh + rx*0.8", "ry*0.5"], "to": ["sh + rx*1.4", "0 - ry*0.9"] },
+      "stroke": "rgba(0,0,0,0.16)", "lineWidth": 0.8 },
+    { "type": "ellipse", "x": "0 - rx*0.46 + rx*0.10*sv", "y": "0 - ry - R*0.46", "w": "rx*0.92", "h": "R*0.24",
+      "stroke": "#F5B50A", "lineWidth": "R*0.11" },
+    { "type": "ellipse", "x": "0 - rx*0.46 + rx*0.10*sv", "y": "0 - ry - R*0.49", "w": "rx*0.92", "h": "R*0.24",
+      "stroke": "rgba(255,240,170,0.85)", "lineWidth": "R*0.04" }
+  ]
+}
