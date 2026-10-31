@@ -20,6 +20,9 @@ import {
 import { h, clear } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
+import { claudeModelControl } from "./claude-models";
+import { marketsSection } from "./markets";
+import { portfolioSection } from "./portfolio";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
@@ -413,12 +416,6 @@ function subscriptionsSection(): HTMLElement {
 
 // ── Claude API section ────────────────────────────────────────────────────────
 
-const MODELS: [string, string][] = [
-  ["claude-opus-5", "Claude Opus 5"],
-  ["claude-sonnet-5", "Claude Sonnet 5"],
-  ["claude-haiku-4-5", "Claude Haiku 4.5"],
-];
-
 /** The state line under Claude: the key, else Claude Code (switched on above), else what is missing. */
 function apiState(hasKey: boolean, relay: boolean): string {
   if (hasKey) return t("Key saved in the {store}.", { store: KEY_STORE });
@@ -450,6 +447,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     state.textContent = apiState(present, ready && !present);
     field.placeholder = present ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
+    void model.reload(present);
   }
 
   saveBtn.addEventListener("click", async () => {
@@ -477,16 +475,11 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     }
   });
 
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
-  model.addEventListener("change", () => {
-    settings.model = model.value;
-    void save();
+  const model = claudeModelControl(() => settings.model, async (value) => {
+    await Bridge.saveSettings({ ...settings, model: value });
+    settings.model = value;
   });
+  void model.reload(hasKey);
 
   clearBtn.style.display = hasKey ? "" : "none";
 
@@ -496,7 +489,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
     h("div", { class: "row" }, h("label", { text: t("API key") }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
+    model.element,
     feedback,
   );
 }
@@ -616,8 +609,8 @@ interface CloudDef {
 }
 
 const CLOUD: CloudDef[] = [
-  { id: "google", name: "Google AI", placeholder: "AIza…", where: "aistudio.google.com" },
-  { id: "openai", name: "OpenAI", placeholder: "sk-…", where: "platform.openai.com" },
+  { id: "google", name: N_("Google AI"), placeholder: "AIza…", where: "aistudio.google.com" },
+  { id: "openai", name: N_("OpenAI"), placeholder: "sk-…", where: "platform.openai.com" },
   { id: "openrouter", name: "OpenRouter", placeholder: "sk-or-…", where: "openrouter.ai/keys" },
 ];
 
@@ -674,7 +667,7 @@ function chatProvidersSection(
       h("div", { class: "row" },
         h("label", {},
           h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
-          h("span", { text: def.name }),
+          h("span", { text: t(def.name) }),
         ),
         input, saveBtn, removeBtn, dotEl,
       ),
@@ -888,6 +881,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  { id: "integration_music", name: "Apple Music", color: "#FA2D48", fields: [] },
+  { id: "integration_crypto", name: "Crypto", color: "#F7931A", fields: [] },
+  { id: "integration_portfolio", name: "Portfolio", color: "#FFD700", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -1497,7 +1493,7 @@ async function render() {
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
     chat: () => [subscriptionsSection(), apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
-    integrations: () => [integrationsSection(present), ...whatsappSections()],
+    integrations: () => [integrationsSection(present), marketsSection(), portfolioSection(), ...whatsappSections()],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],
   };

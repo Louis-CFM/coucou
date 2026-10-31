@@ -16,8 +16,11 @@ mod hooks;
 mod i18n;
 mod identity;
 mod integrations;
+mod calcom;
+mod markets;
 mod island;
 mod local_chat;
+mod text_ai;
 mod log;
 mod mail;
 mod net;
@@ -35,6 +38,10 @@ mod settings;
 mod shortcuts;
 mod sounds;
 mod speech;
+mod media;
+#[cfg(windows)]
+mod media_windows;
+mod apple_music;
 mod spotify;
 mod tray;
 mod update;
@@ -133,6 +140,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    apple_music::sync(&app, &settings.active_integrations);
     whatsapp::sync(&settings.active_integrations);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
@@ -560,6 +568,12 @@ async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<
     chat::models(&settings, &provider).await
 }
 
+/// The Claude API settings use their own key even when chat uses a CLI plan.
+#[tauri::command]
+async fn claude_api_models() -> Result<Vec<ModelInfo>, String> {
+    claude::available_models().await
+}
+
 /// Settings → Local models → Connect: does the server answer, and with which models?
 #[tauri::command]
 async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
@@ -779,10 +793,17 @@ fn set_hub_shown(win: &tauri::WebviewWindow, shown: bool) {
     }
 }
 
-/// The page asks once at load, in case it missed the event.
+/// Take the initial snapshot on the UI queue, after startup has shown or kept
+/// the window hidden. WebView2 can answer an IPC call while native setup is
+/// still running, before the queued JavaScript listener has been installed;
+/// a startup visibility event can therefore precede that listener.
 #[tauri::command]
-fn hub_shown() -> bool {
-    HUB_SHOWN.load(Ordering::Relaxed)
+async fn hub_shown(app: AppHandle) -> Result<bool, String> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(HUB_SHOWN.load(Ordering::Relaxed));
+    }).map_err(|error| error.to_string())?;
+    rx.await.map_err(|error| error.to_string())
 }
 
 pub fn show_settings_window(app: &AppHandle) {
@@ -911,6 +932,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            claude_api_models,
             local_connect,
             local_set_key,
             chat_reset,
@@ -979,7 +1001,16 @@ pub fn run() {
             sounds::custom_sound,
             sounds::reveal_sounds_folder,
             sounds::reload_sounds,
+            markets::portfolio::portfolio_settings,
+            markets::portfolio::portfolio_save_wallets,
+            markets::portfolio::portfolio_connect,
+            markets::portfolio::portfolio_disconnect,
+            markets::markets_prefs,
+            markets::markets_save,
             spotify::spotify_refresh,
+            apple_music::apple_music_refresh,
+            apple_music::apple_music_control,
+            apple_music::apple_music_open,
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
@@ -1011,6 +1042,7 @@ pub fn run() {
             flow::flow_paste_again,
             flow::flow_models_download,
             flow::flow_models_remove,
+            flow::flow_retune_speech,
             flow::pill_state,
             flow::pill_hot,
             flow::pill_hover,
@@ -1043,6 +1075,8 @@ pub fn run() {
             let handle = app.handle().clone();
             app.manage(phone_link::PhoneLink::new(handle.clone()));
             tray::build(&handle)?;
+            // Pages may invoke Flow commands as soon as WebView2 loads them.
+            flow::init(&handle);
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
             // Same rule for Mochi's desktop window and the dictation pill.
@@ -1080,6 +1114,7 @@ pub fn run() {
             integrations::start(handle.clone());
             mail::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            apple_music::sync(&handle, &loaded.active_integrations);
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
@@ -1103,6 +1138,7 @@ pub fn run() {
             if let tauri::RunEvent::Exit = event {
                 phone_link::stop_on_exit(app);
                 notes::shutdown(app);
+                speech::performance::shutdown();
                 // GOWA started by Coucou stops with it; the conversations were only in memory.
                 whatsapp::shutdown();
             }

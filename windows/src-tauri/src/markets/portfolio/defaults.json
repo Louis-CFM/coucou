@@ -1,0 +1,35 @@
+{
+  "exchanges": {
+    "binance": "https://api.binance.com",
+    "okx": "https://www.okx.com",
+    "bybit": "https://api.bybit.com",
+    "kraken": "https://api.kraken.com",
+    "coinbase": "https://api.coinbase.com"
+  },
+  "rates": "https://api.coinbase.com/v2/exchange-rates?currency=USD",
+  "wallets": {
+    "bitcoin": { "name": "Bitcoin", "symbol": "BTC", "scale": 100000000, "url": "https://blockchain.info/balance", "protocol": "bitcoin" },
+    "dogecoin": { "name": "Dogecoin", "symbol": "DOGE", "scale": 100000000, "url": "https://api.blockchair.com/dogecoin/dashboards/address/", "protocol": "blockchair" },
+    "litecoin": { "name": "Litecoin", "symbol": "LTC", "scale": 100000000, "url": "https://api.blockchair.com/litecoin/dashboards/address/", "protocol": "blockchair" },
+    "ethereum": { "name": "Ethereum", "symbol": "ETH", "scale": 1e18, "url": "https://ethereum-rpc.publicnode.com", "protocol": "evm" },
+    "polygon": { "name": "Polygon", "symbol": "POL", "scale": 1e18, "url": "https://polygon-bor-rpc.publicnode.com", "protocol": "evm" },
+    "bnbChain": { "name": "BNB Chain", "symbol": "BNB", "scale": 1e18, "url": "https://bsc-dataseed.binance.org", "protocol": "evm" },
+    "avalanche": { "name": "Avalanche", "symbol": "AVAX", "scale": 1e18, "url": "https://api.avax.network/ext/bc/C/rpc", "protocol": "evm" },
+    "arbitrum": { "name": "Arbitrum", "symbol": "ETH", "scale": 1e18, "url": "https://arb1.arbitrum.io/rpc", "protocol": "evm" },
+    "optimism": { "name": "Optimism", "symbol": "ETH", "scale": 1e18, "url": "https://mainnet.optimism.io", "protocol": "evm" },
+    "base": { "name": "Base", "symbol": "ETH", "scale": 1e18, "url": "https://mainnet.base.org", "protocol": "evm" },
+    "solana": { "name": "Solana", "symbol": "SOL", "scale": 1e9, "url": "https://api.mainnet-beta.solana.com", "protocol": "solana" },
+    "tron": { "name": "TRON", "symbol": "TRX", "scale": 1e6, "url": "https://api.trongrid.io/v1/accounts/", "protocol": "tron" },
+    "xrp": { "name": "XRP Ledger", "symbol": "XRP", "scale": 1e6, "url": "https://xrplcluster.com", "protocol": "xrp" },
+    "cardano": { "name": "Cardano", "symbol": "ADA", "scale": 1e6, "url": "https://api.koios.rest/api/v1/address_info", "protocol": "cardano" },
+    "cosmos": { "name": "Cosmos", "symbol": "ATOM", "scale": 1e6, "url": "https://rest.cosmos.directory/cosmoshub/cosmos/bank/v1beta1/balances/", "protocol": "cosmos" },
+    "near": { "name": "NEAR", "symbol": "NEAR", "scale": 1e24, "url": "https://rpc.mainnet.near.org", "protocol": "near" }
+  },
+  "maxWallets": 32,
+  "maxPages": 20,
+  "maxHoldings": 500,
+  "receiveWindowMs": 5000,
+  "pollSeconds": 60,
+  "accountTimeoutSeconds": 45,
+  "priceTimeoutSeconds": 45
+}

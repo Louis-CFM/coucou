@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 14] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja"];
+pub const LANGUAGES: [&str; 16] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja", "th", "zh-Hant"];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -85,7 +85,7 @@ pub fn resolve(picked: &str, system: &[String]) -> &'static str {
         if base == "zh" {
             let traditional = ["zh-hant", "zh-tw", "zh-hk", "zh-mo"].iter().any(|p| tag.starts_with(p));
             if traditional {
-                continue;
+                return "zh-Hant";
             }
             return "zh-Hans";
         }
@@ -151,7 +151,7 @@ fn lookup_in(lang: &str, key: &str) -> Option<&'static Value> {
 /// CLDR plural category of `n` (whole numbers) in `lang`.
 fn plural_category(lang: &str, n: u64) -> &'static str {
     match lang {
-        "zh-Hans" | "id" | "ko" | "ja" => "other",
+        "zh-Hans" | "zh-Hant" | "th" | "id" | "ko" | "ja" => "other",
         "fr" | "pt-BR" | "hi" | "bn" => {
             if n <= 1 { "one" } else { "other" }
         }
@@ -243,7 +243,7 @@ mod tests {
         assert_eq!(resolve("", &sys(&["fr_FR.UTF-8"])), "fr");
         assert_eq!(resolve("", &sys(&["pt-PT"])), "pt-BR");
         assert_eq!(resolve("", &sys(&["zh-CN"])), "zh-Hans");
-        assert_eq!(resolve("", &sys(&["zh-TW", "it", "es-MX"])), "es");
+        assert_eq!(resolve("", &sys(&["zh-TW", "it", "es-MX"])), "zh-Hant");
         assert_eq!(resolve("", &sys(&["it-IT"])), "en");
         assert_eq!(resolve("xx", &[]), "en");
     }

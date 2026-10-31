@@ -257,7 +257,40 @@ body {
 }
 
 /* The bubble beside the pill: a tip, a short message, an announcement. */
+.bubble-slot {
+  position: absolute;
+  display: flex;
+  pointer-events: none;
+}
+
+#pill.bottom .bubble-slot {
+  left: 6px;
+  right: 6px;
+  bottom: calc(var(--pill-thickness) + 10px);
+  justify-content: center;
+}
+
+#pill.vertical .bubble-slot {
+  top: 6px;
+  bottom: 6px;
+  align-items: center;
+}
+
+#pill.left .bubble-slot {
+  left: calc(var(--pill-thickness) + 10px);
+  right: 6px;
+  justify-content: flex-start;
+}
+
+#pill.right .bubble-slot {
+  left: 6px;
+  right: calc(var(--pill-thickness) + 10px);
+  justify-content: flex-end;
+}
+
 .bubble {
+  pointer-events: auto;
+  max-width: 100%;
   flex: 0 0 auto;
   background: rgba(0, 0, 0, 0.94);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
@@ -277,7 +310,7 @@ body {
   padding: 10px 10px 10px 14px;
   gap: 10px;
   white-space: normal;
-  max-width: 420px;
+  max-width: min(420px, 100%);
   align-items: center;
 }
 
@@ -289,7 +322,7 @@ body {
   align-items: flex-start;
   gap: 3px;
   white-space: normal;
-  max-width: 440px;
+  max-width: min(440px, 100%);
 }
 
 .bubble.voice .heard {

@@ -2,7 +2,7 @@
 // src/island/whatsapp.ts, the card in src/views/whatsapp.ts. The gateway side — payloads,
 // signatures, filters, the inbox, the installer — is tested in src-tauri/src/whatsapp/.
 
-import { beforeEach, test } from "node:test";
+import { afterEach, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { emit, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
@@ -18,6 +18,10 @@ import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 import { lookup, setLanguage } from "../src/i18n/i18n.ts";
 
 installFakeDom();
+
+afterEach(() => {
+  handlePillEvent({ reveal() {}, emote() {} }, { kind: "reset" });
+});
 
 const NOW = 1_800_000_000_000;
 

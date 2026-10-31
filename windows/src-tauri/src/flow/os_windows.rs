@@ -1,10 +1,9 @@
 // Flow dictation on Windows: the key, through a low-level keyboard hook (it
-// only watches, it never swallows a key); the paste, through SendInput; and
+// observes modifiers and consumes an opted-in Copilot chord); paste through SendInput; and
 // the app in front, from the foreground window's program.
 
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::cell::RefCell;
 use std::sync::mpsc::Sender;
-use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use windows::core::PWSTR;
@@ -19,106 +18,45 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, EnumWindows, GetForegroundWindow, GetMessageW, GetWindowTextLengthW,
-    GetWindowThreadProcessId, IsWindowVisible, PostThreadMessageW, SetWindowsHookExW, TranslateMessage,
-    UnhookWindowsHookEx, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_QUIT,
+    GetWindowThreadProcessId, IsWindowVisible, PeekMessageW, PostThreadMessageW, SetWindowsHookExW, TranslateMessage,
+    UnhookWindowsHookEx, KBDLLHOOKSTRUCT, LLKHF_EXTENDED, LLKHF_INJECTED, MSG, PM_NOREMOVE, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_QUIT,
     WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
+use super::keyboard::Keys;
 use super::logic::FlowKey;
 use super::KeyEvent;
 
-const VK_ESCAPE: u32 = 0x1B;
 const VK_V: u16 = 0x56;
 const VK_CONTROL: u16 = 0x11;
 const VK_SHIFT_KEY: u16 = 0x10;
-const VK_LSHIFT: u32 = 0xA0;
 const VK_RSHIFT: u32 = 0xA1;
-const VK_LCONTROL: u32 = 0xA2;
 const VK_RCONTROL: u32 = 0xA3;
 const VK_RMENU: u32 = 0xA5;
 const VK_LWIN: u32 = 0x5B;
-const VK_RWIN: u32 = 0x5C;
 
-/// Modifier keys never count as "another key": AltGr even sends a fake left
-/// Ctrl with every right Alt.
-fn is_modifier(vk: u32) -> bool {
-    matches!(vk, 0x10 | 0x11 | 0x12 | VK_LSHIFT..=VK_RMENU | VK_LWIN | VK_RWIN | 0x14)
-}
-
-static SINK: Mutex<Option<Sender<(KeyEvent, Instant)>>> = Mutex::new(None);
-static KEY: AtomicU8 = AtomicU8::new(0);
-/// For Ctrl + Win: which of the two is down (bit 0 Ctrl, bit 1 Win).
-static COMBO: AtomicU8 = AtomicU8::new(0);
-static HELD: AtomicU8 = AtomicU8::new(0);
-
-fn key_code(key: FlowKey) -> u8 {
-    match key {
-        FlowKey::RightCtrl => 0,
-        FlowKey::RightAlt => 1,
-        FlowKey::RightShift => 2,
-        FlowKey::LeftCtrlSuper => 3,
-    }
-}
-
-fn send(event: KeyEvent) {
-    if let Some(tx) = SINK.lock().unwrap().as_ref() {
-        let _ = tx.send((event, Instant::now()));
-    }
+thread_local! {
+    // The hook runs on its installing thread. No global lock or shared state
+    // crosses a stop/restart, and the callback only classifies and queues.
+    static KEYS: RefCell<Option<(Keys, Sender<(KeyEvent, Instant)>)>> = const { RefCell::new(None) };
 }
 
 unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    if code >= 0 {
+    if code >= 0 && matches!(wparam.0 as u32, WM_KEYDOWN | WM_SYSKEYDOWN | WM_KEYUP | WM_SYSKEYUP) {
         let info = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
-        // Our own Ctrl+V, and other programs' synthetic keys, are not the user's.
-        if info.flags.0 & LLKHF_INJECTED.0 == 0 {
-            let down = matches!(wparam.0 as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
-            let up = matches!(wparam.0 as u32, WM_KEYUP | WM_SYSKEYUP);
-            on_key(info.vkCode, down, up);
-        }
+        let consumed = KEYS.with(|slot| {
+            let mut slot = slot.borrow_mut();
+            let Some((keys, tx)) = slot.as_mut() else { return false };
+            let (event, consumed) = keys.event(info.vkCode, info.scanCode,
+                info.flags.0 & LLKHF_EXTENDED.0 != 0,
+                matches!(wparam.0 as u32, WM_KEYDOWN | WM_SYSKEYDOWN),
+                info.flags.0 & LLKHF_INJECTED.0 != 0);
+            if let Some(event) = event { let _ = tx.send((event, Instant::now())); }
+            consumed
+        });
+        if consumed { return LRESULT(1); }
     }
     CallNextHookEx(None, code, wparam, lparam)
-}
-
-fn on_key(vk: u32, down: bool, up: bool) {
-    let key = KEY.load(Ordering::Relaxed);
-    let ours = match key {
-        0 => vk == VK_RCONTROL,
-        1 => vk == VK_RMENU,
-        2 => vk == VK_RSHIFT,
-        _ => false,
-    };
-    if key == 3 && matches!(vk, VK_LCONTROL | VK_LWIN) {
-        let bit = if vk == VK_LCONTROL { 1 } else { 2 };
-        let before = COMBO.load(Ordering::Relaxed);
-        let after = if down { before | bit } else if up { before & !bit } else { before };
-        COMBO.store(after, Ordering::Relaxed);
-        if before != 3 && after == 3 {
-            send(KeyEvent::Down);
-        } else if before == 3 && after != 3 {
-            send(KeyEvent::Up);
-        } else if after == 3 && down {
-            send(KeyEvent::Down); // repeat
-        }
-        return;
-    }
-    if ours {
-        if down {
-            HELD.store(1, Ordering::Relaxed);
-            send(KeyEvent::Down);
-        } else if up {
-            HELD.store(0, Ordering::Relaxed);
-            send(KeyEvent::Up);
-        }
-        return;
-    }
-    if !down {
-        return;
-    }
-    if vk == VK_ESCAPE {
-        send(KeyEvent::Escape);
-    } else if !is_modifier(vk) {
-        send(KeyEvent::Other);
-    }
 }
 
 /// The hook's thread; it ends when dropped.
@@ -135,18 +73,18 @@ impl Drop for KeyListener {
         if let Some(t) = self.thread.take() {
             let _ = t.join();
         }
-        *SINK.lock().unwrap() = None;
     }
 }
 
 pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListener, String> {
-    KEY.store(key_code(key), Ordering::Relaxed);
-    COMBO.store(0, Ordering::Relaxed);
-    *SINK.lock().unwrap() = Some(tx);
     let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<u32, String>>();
     let thread = std::thread::Builder::new()
         .name("coucou-flow-keys".into())
         .spawn(move || unsafe {
+            // Create the queue before announcing readiness: Drop may post WM_QUIT immediately.
+            let mut msg = MSG::default();
+            let _ = PeekMessageW(&mut msg, None, 0, 0, PM_NOREMOVE);
+            KEYS.with(|slot| *slot.borrow_mut() = Some((Keys::new(key), tx)));
             let module = GetModuleHandleW(None).ok();
             let handle = match SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook), module.map(Into::into), 0) {
                 Ok(h) => h,
@@ -156,12 +94,12 @@ pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListen
                 }
             };
             let _ = ready_tx.send(Ok(GetCurrentThreadId()));
-            let mut msg = MSG::default();
-            while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+            while GetMessageW(&mut msg, None, 0, 0).0 > 0 {
                 let _ = TranslateMessage(&msg);
                 DispatchMessageW(&msg);
             }
             let _ = UnhookWindowsHookEx(handle);
+            KEYS.with(|slot| *slot.borrow_mut() = None);
         })
         .map_err(|e| e.to_string())?;
     match ready_rx.recv_timeout(Duration::from_secs(3)) {
@@ -174,16 +112,16 @@ pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListen
 /// Waits (up to a second) until the dictation key is up, so the paste is a
 /// plain Ctrl+V and not Ctrl+Alt+V or Ctrl+Shift+V.
 pub fn wait_key_released(key: FlowKey) {
-    let vk = match key {
-        FlowKey::RightCtrl => VK_RCONTROL,
-        FlowKey::RightAlt => VK_RMENU,
-        FlowKey::RightShift => VK_RSHIFT,
-        FlowKey::LeftCtrlSuper => VK_LWIN,
-    } as i32;
+    let keys: &[u32] = match key {
+        FlowKey::RightCtrl => &[VK_RCONTROL],
+        FlowKey::RightAlt => &[VK_RMENU],
+        FlowKey::RightShift => &[VK_RSHIFT],
+        FlowKey::LeftCtrlSuper => &[0xA2, VK_LWIN],
+        FlowKey::Copilot => &[0x86, 0xA0, VK_RSHIFT, VK_LWIN, 0x5C],
+    };
     let until = Instant::now() + Duration::from_secs(1);
     while Instant::now() < until {
-        let state = unsafe { GetAsyncKeyState(vk) } as u16;
-        if state & 0x8000 == 0 {
+        if keys.iter().all(|vk| (unsafe { GetAsyncKeyState(*vk as i32) } as u16) & 0x8000 == 0) {
             return;
         }
         std::thread::sleep(Duration::from_millis(15));

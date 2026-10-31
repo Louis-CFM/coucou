@@ -133,7 +133,7 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
   // Spotify through MPRIS on Linux and the system media controls on Windows
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
@@ -142,6 +142,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // (src-tauri/src/mail). The new Outlook has none, and Linux has no Outlook.
   { id: "integration_mail", name: "Mail", color: "#2F8CFF", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
+  { id: "integration_crypto", name: "Crypto", color: "#F7931A", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  { id: "integration_portfolio", name: "Portfolio", color: "#FFD700", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
   // WhatsApp (experimental) through a gateway on this computer (src-tauri/src/whatsapp): set up,
   // linked and turned on in Settings → Integrations → WhatsApp, off until then.
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", category: "service",

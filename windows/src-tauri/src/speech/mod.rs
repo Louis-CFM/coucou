@@ -8,6 +8,7 @@
 // ~/.local/share/coucou/Models (Linux). From then on everything runs offline.
 
 pub mod audio;
+pub mod performance;
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -257,17 +258,21 @@ async fn download_all(app: &AppHandle) -> Result<(), String> {
 
 /// Deletes the models (Settings → Remove the models).
 pub fn remove(app: &AppHandle) {
+    performance::shutdown();
+    let _loading = load_lock().lock().unwrap();
+    let _files = model_files_lock().lock().unwrap();
     unload();
     let _ = std::fs::remove_dir_all(PARAKEET.dir());
     let _ = std::fs::remove_dir_all(DIARIZER.dir());
     downloads().lock().unwrap().error = None;
+    performance::retune();
     emit_status(app);
 }
 
 // ── Recognition ───────────────────────────────────────────────────────────────
 
-fn recognizer_slot() -> &'static Mutex<Option<Arc<OfflineRecognizer>>> {
-    static R: OnceLock<Mutex<Option<Arc<OfflineRecognizer>>>> = OnceLock::new();
+fn recognizer_slot() -> &'static Mutex<Option<(i32, Arc<OfflineRecognizer>)>> {
+    static R: OnceLock<Mutex<Option<(i32, Arc<OfflineRecognizer>)>>> = OnceLock::new();
     R.get_or_init(|| Mutex::new(None))
 }
 
@@ -277,22 +282,40 @@ fn load_lock() -> &'static Mutex<()> {
     L.get_or_init(|| Mutex::new(()))
 }
 
-fn threads() -> i32 {
-    std::thread::available_parallelism().map(|n| n.get().clamp(1, 4) as i32).unwrap_or(2)
+fn model_files_lock() -> &'static Mutex<()> {
+    static L: OnceLock<Mutex<()>> = OnceLock::new();
+    L.get_or_init(|| Mutex::new(()))
 }
+
+fn threads() -> i32 { performance::threads() }
 
 /// The loaded recognizer, loading it on first use (about 2 s).
 pub fn recognizer() -> Option<Arc<OfflineRecognizer>> {
-    if let Some(r) = recognizer_slot().lock().unwrap().clone() {
-        return Some(r);
+    let selected = threads();
+    if let Some((n, r)) = recognizer_slot().lock().unwrap().clone() {
+        if n == selected { return Some(r); }
     }
     if !PARAKEET.is_present() {
         return None;
     }
     let _guard = load_lock().lock().unwrap();
-    if let Some(r) = recognizer_slot().lock().unwrap().clone() {
-        return Some(r);
+    let selected = threads();
+    if let Some((n, r)) = recognizer_slot().lock().unwrap().clone() {
+        if n == selected { return Some(r); }
     }
+    let started = Instant::now();
+    let r = create_recognizer(selected).map(Arc::new);
+    match &r {
+        Some(_) => crate::log::line(format!("Parakeet loaded in {:?}", started.elapsed())),
+        None => crate::log::line("Parakeet could not be loaded"),
+    }
+    *recognizer_slot().lock().unwrap() = r.clone().map(|r| (selected, r));
+    r
+}
+
+fn create_recognizer(selected: i32) -> Option<OfflineRecognizer> {
+    let _files = model_files_lock().lock().unwrap();
+    if !PARAKEET.is_present() { return None; }
     let mut config = OfflineRecognizerConfig::default();
     config.model_config.transducer = OfflineTransducerModelConfig {
         encoder: Some(PARAKEET.path("encoder.int8.onnx")),
@@ -301,15 +324,9 @@ pub fn recognizer() -> Option<Arc<OfflineRecognizer>> {
     };
     config.model_config.tokens = Some(PARAKEET.path("tokens.txt"));
     config.model_config.model_type = Some("nemo_transducer".into());
-    config.model_config.num_threads = threads();
-    let started = Instant::now();
-    let r = OfflineRecognizer::create(&config).map(Arc::new);
-    match &r {
-        Some(_) => crate::log::line(format!("Parakeet loaded in {:?}", started.elapsed())),
-        None => crate::log::line("Parakeet could not be loaded"),
-    }
-    *recognizer_slot().lock().unwrap() = r.clone();
-    r
+    config.model_config.num_threads = selected;
+    config.model_config.provider = Some("cpu".into());
+    OfflineRecognizer::create(&config)
 }
 
 /// Loads the model in the background, so the first dictation is not slowed down.
@@ -361,6 +378,7 @@ pub fn transcribe(samples: &[f32]) -> Option<Transcript> {
         }
         out.words.extend(words);
     }
+    if !out.text.is_empty() { performance::consider(samples); }
     Some(out)
 }
 
@@ -397,6 +415,7 @@ pub fn words_from_tokens(tokens: &[String], timestamps: &[f32], offset: f64, len
 
 /// The voices of a recording, as turns "0", "1"… Empty when it can't tell.
 pub fn diarize(samples: &[f32]) -> Vec<Turn> {
+    let files = model_files_lock().lock().unwrap();
     if !DIARIZER.is_present() || samples.len() < SAMPLE_RATE as usize * 2 {
         return Vec::new();
     }
@@ -412,6 +431,7 @@ pub fn diarize(samples: &[f32]) -> Vec<Turn> {
         crate::log::line("diarizer could not be loaded");
         return Vec::new();
     };
+    drop(files);
     let Some(result) = d.process(samples) else { return Vec::new() };
     result
         .sort_by_start_time()
@@ -474,5 +494,33 @@ mod with_models {
         assert!(!t.text.is_empty());
         let turns = super::diarize(&samples);
         println!("{turns:?}");
+        assert!(!turns.is_empty(), "the fixture must contain a detected voice");
+        super::performance::shutdown();
+        assert!(!super::performance::status().tuning);
+    }
+}
+
+#[cfg(test)]
+mod performance_fixture {
+    #[test]
+    #[ignore = "requires verified downloaded models and COUCOU_TEST_WAV"]
+    fn calibrates_real_parakeet_and_honors_the_manual_override() {
+        super::performance::configure(0);
+        super::performance::retune();
+        let path = std::env::var("COUCOU_TEST_WAV").expect("COUCOU_TEST_WAV");
+        let samples = super::audio::read_wav(std::path::Path::new(&path)).unwrap();
+        let text = super::transcribe(&samples).expect("models").text;
+        assert!(text.to_lowercase().contains("friday"), "{text}");
+        let started = std::time::Instant::now();
+        while super::performance::status().tuning {
+            assert!(started.elapsed() < std::time::Duration::from_secs(180));
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }
+        let status = super::performance::status();
+        assert!(status.measured, "{:?}", status.error);
+        println!("Parakeet measurements: {:?}", status.measurements);
+        super::performance::configure(1);
+        assert_eq!(super::performance::threads(), 1);
+        assert_eq!(super::transcribe(&samples).unwrap().text, text);
     }
 }

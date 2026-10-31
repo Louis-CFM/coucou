@@ -43,7 +43,7 @@ pub struct IntegrationEvent {
     pub detail: Option<String>,
 }
 
-fn emit(app: &AppHandle, update: IntegrationUpdate) {
+pub(crate) fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
@@ -72,12 +72,14 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_gitlab", 7, 300, poll_gitlab);
     spawn(app.clone(), "integration_gitea", 7, 300, poll_gitea);
     spawn_github_loops(app.clone());
-    spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
+    spawn(app.clone(), "integration_calcom", 8, 300, crate::calcom::poll);
+    spawn(app.clone(), "integration_portfolio", 11, crate::markets::portfolio::config().poll_seconds, crate::markets::portfolio::poll);
+    spawn(app.clone(), "integration_crypto", 10, crate::markets::network().poll_seconds, crate::markets::poll);
     spawn(app, "integration_notion", 9, 300, poll_notion);
 }
 
 /// True when the user has this integration switched on in settings.
-fn enabled(app: &AppHandle, id: &str) -> bool {
+pub(crate) fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
             let settings = shared.settings.lock().unwrap();
@@ -94,6 +96,7 @@ where
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(Duration::from_secs(delay_secs)).await;
         let mut ticker = tokio::time::interval(Duration::from_secs(every_secs));
+        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             ticker.tick().await;
             // The ticker keeps its cadence; we just decline to do the work. An
@@ -111,6 +114,8 @@ where
 /// One-shot refresh from the Refresh buttons in the island.
 pub async fn poll_once(app: AppHandle, id: &str) {
     match id {
+        "integration_portfolio" => crate::markets::portfolio::poll(app).await,
+        "integration_crypto" => crate::markets::poll(app).await,
         "integration_stripe" => poll_stripe(app).await,
         "integration_github" => {
             wake_github_pulse();
@@ -123,7 +128,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_n8n" => poll_n8n(app).await,
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
-        "integration_calcom" => poll_calcom(app).await,
+        "integration_calcom" => crate::calcom::poll(app).await,
         _ => {}
     }
 }
@@ -1145,65 +1150,6 @@ fn parse_notion_page(obj: &Value) -> Option<Value> {
 }
 
 // ── Cal.com ───────────────────────────────────────────────────────────────────
-
-async fn poll_calcom(app: AppHandle) {
-    let Some(key) = secrets::get("calcom-api-key") else { return };
-    let response = client()
-        .get("https://api.cal.com/v2/bookings?status=upcoming")
-        .header("Authorization", format!("Bearer {key}"))
-        .header("cal-api-version", "2024-08-13")
-        .send()
-        .await;
-    let Ok(response) = response else { return };
-    if !response.status().is_success() {
-        emit(&app, IntegrationUpdate {
-            id: "integration_calcom",
-            data: json!({}),
-            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Key lacks access"))),
-            event: None,
-        });
-        return;
-    }
-    let json: Value = response.json().await.unwrap_or(json!({}));
-    let bookings: Vec<Value> = json
-        .get("data")
-        .and_then(Value::as_array)
-        .map(|list| {
-            list.iter()
-                .filter_map(|b| {
-                    let start = b
-                        .get("start")
-                        .or_else(|| b.get("startTime"))
-                        .and_then(Value::as_str)?;
-                    let attendee = b.get("attendees").and_then(Value::as_array).and_then(|a| a.first());
-                    let notes = b
-                        .get("responses")
-                        .and_then(|r| r.get("notes"))
-                        .and_then(|n| n.get("value"))
-                        .and_then(Value::as_str)
-                        .or_else(|| b.get("description").and_then(Value::as_str))
-                        .filter(|s| !s.is_empty());
-                    Some(json!({
-                        "id": b.get("id").map(|v| v.to_string()).unwrap_or_default(),
-                        "title": b.get("title").and_then(Value::as_str).unwrap_or("Meeting"),
-                        "start": start,
-                        "status": b.get("status").and_then(Value::as_str).unwrap_or("accepted"),
-                        "attendeeName": attendee.and_then(|a| a.get("name")).and_then(Value::as_str),
-                        "attendeeEmail": attendee.and_then(|a| a.get("email")).and_then(Value::as_str),
-                        "attendeeNotes": notes,
-                    }))
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-
-    emit(&app, IntegrationUpdate {
-        id: "integration_calcom",
-        data: json!({ "bookings": bookings }),
-        error: None,
-        event: None,
-    });
-}
 
 // ── n8n ───────────────────────────────────────────────────────────────────────
 

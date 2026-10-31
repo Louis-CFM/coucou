@@ -138,6 +138,13 @@ class FakeElement {
 
 export function installFakeDom() {
   globalThis.requestAnimationFrame = (fn) => fn();
+  if (!globalThis.ResizeObserver) {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
   globalThis.document = {
     createElement: (tag) => new FakeElement(tag),
     createElementNS: (ns, tag) => new FakeElement(tag, ns),

@@ -12,6 +12,7 @@ import type { Settings } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { resolveLanguage, setLanguage, systemLanguages, t } from "../i18n/i18n";
 import { HUB_ICONS, keyLabel } from "../hub/ui";
+import { PillSurface, hotRects, insideHot, type HotRect } from "./surface";
 
 const RESTING_LENGTH = 44;
 const RESTING_THICKNESS = 8;
@@ -28,6 +29,7 @@ const levels = new Array<number>(BANDS).fill(0);
 const target = new Array<number>(BANDS).fill(0);
 
 const root = document.getElementById("pill")!;
+const surface = new PillSurface(root);
 
 function svgIcon(name: string): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -122,6 +124,7 @@ function openLength(l: Look): number {
 
 function pillButton(icon: string, tip: string, action: () => void, opts: { small?: boolean; filled?: boolean } = {}): HTMLElement {
   const b = el("button", ["pbtn", opts.small ? "small" : "", opts.filled ? "filled" : ""].filter(Boolean).join(" "));
+  b.setAttribute("aria-label", tip);
   b.append(svgIcon(icon));
   b.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -237,54 +240,47 @@ function bubble(): HTMLElement | null {
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
 
-let capsule: HTMLElement | null = null;
-let lastKey = "";
+const capsule = surface.capsule;
+let hitRects: HotRect[] = [];
+let hotFrame: number | null = null;
+let languageRevision = 0;
 
 function render() {
   if (!visible) {
     root.style.display = "none";
     root.replaceChildren();
-    void FlowBridge.pillHot([]);
+    reportHot();
+    setTimeout(reportHot, 60);
+    setTimeout(reportHot, 420);
     return;
   }
-  root.style.display = "flex";
+  root.style.display = "";
+  if (capsule.parentNode !== root) {
+    root.append(surface.bubbles, capsule);
+  }
   const l = look();
   const open = l !== "resting";
   const length = open ? openLength(l) : RESTING_LENGTH;
   const thickness = open ? OPEN_THICKNESS : RESTING_THICKNESS;
   root.className = `${state.edge}${vertical() ? " vertical" : ""}`;
-  const key = `${l}|${state.edge}|${state.phase}|${state.key}|${state.noteStartedAt}|${platform}|${state.voice?.phase ?? ""}`;
-  if (!capsule || key !== lastKey) {
-    lastKey = key;
-    const next = el("div", "capsule");
-    next.append(content(l));
-    if (capsule) {
-      // Keep the size it had, so the new one grows from it.
-      next.style.width = capsule.style.width;
-      next.style.height = capsule.style.height;
-    }
-    capsule?.remove();
-    capsule = next;
-  }
+  root.style.setProperty("--pill-thickness", `${thickness}px`);
+  const key = `${l}|${state.edge}|${state.phase}|${state.key}|${state.noteStartedAt}|${platform}|${state.voice?.phase ?? ""}|${languageRevision}`;
+  if (surface.content(key, () => content(l))) tooltip = null;
   capsule.classList.toggle("open", open);
   capsule.classList.toggle("handsfree", l === "handsFree");
   requestAnimationFrame(() => {
-    if (!capsule) return;
     capsule.style.width = `${vertical() ? thickness : length}px`;
     capsule.style.height = `${vertical() ? length : thickness}px`;
   });
-  // Bubble first in the DOM: the flex direction puts it beside the pill. The
-  // capsule itself stays attached: taking it out and back in re-fires
-  // pointerenter on the button under the cursor, which renders again, in a
-  // loop that also eats every click (the press and the release land on a
-  // node that was removed in between).
-  for (const old of root.querySelectorAll(".bubble")) old.remove();
-  const b = bubble();
-  if (b) root.prepend(b);
-  if (capsule.parentNode !== root) root.append(capsule);
+  surface.bubble(JSON.stringify([state.announcement, state.voice, tooltip, vertical() ? messageText() : null, languageRevision]), bubble);
+  resize.disconnect();
+  resize.observe(root);
+  resize.observe(capsule);
+  const shownBubble = surface.bubbles.firstElementChild;
+  if (shownBubble) resize.observe(shownBubble);
   mochi.setState(state.phase === "thinking" || state.voice?.phase === "thinking" ? "thinking" : "idle");
   wake();
-  // Where the mouse is taken, once the sizes have settled.
+  scheduleHot();
   setTimeout(reportHot, 60);
   setTimeout(reportHot, 420);
 }
@@ -294,35 +290,27 @@ function reportHot() {
     void FlowBridge.pillHot([]);
     return;
   }
-  const rects: [number, number, number, number][] = [];
-  const W = window.innerWidth;
-  const H = window.innerHeight;
-  const open = look() !== "resting";
-  // The pill: a generous zone around the small resting one, the capsule once open.
-  if (state.edge === "bottom") {
-    const w = open ? 200 : 96;
-    const h = open ? 46 : 26;
-    rects.push([(W - w) / 2, H - h, w, h]);
-  } else if (state.edge === "bottom-left") {
-    const w = open ? 200 : 96;
-    const h = open ? 46 : 26;
-    rects.push([0, H - h, w, h]);
-  } else if (state.edge === "bottom-right") {
-    const w = open ? 200 : 96;
-    const h = open ? 46 : 26;
-    rects.push([W - w, H - h, w, h]);
-  } else {
-    const w = open ? 46 : 26;
-    const h = open ? 200 : 96;
-    rects.push([state.edge === "left" ? 0 : W - w, (H - h) / 2, w, h]);
-  }
+  const l = look();
+  const length = l === "resting" ? RESTING_LENGTH : openLength(l);
+  const thickness = l === "resting" ? RESTING_THICKNESS : OPEN_THICKNESS;
   const b = root.querySelector<HTMLElement>(".bubble");
-  if (b) {
-    const r = b.getBoundingClientRect();
-    rects.push([r.left - 6, r.top - 6, r.width + 12, r.height + 12]);
-  }
-  void FlowBridge.pillHot(rects);
+  hitRects = hotRects(capsule.getBoundingClientRect(), b?.getBoundingClientRect() ?? null, state.edge,
+    vertical() ? thickness : length, vertical() ? length : thickness);
+  void FlowBridge.pillHot(hitRects);
 }
+
+function scheduleHot() {
+  if (hotFrame !== null) return;
+  hotFrame = requestAnimationFrame(() => { hotFrame = null; reportHot(); });
+}
+
+// Track actual layout during expansion, translated messages and DPI changes.
+const resize = new ResizeObserver(scheduleHot);
+resize.observe(root);
+resize.observe(capsule);
+resize.observe(surface.bubbles);
+window.addEventListener("resize", scheduleHot);
+root.addEventListener("animationend", scheduleHot);
 
 // ── Hover ─────────────────────────────────────────────────────────────────────
 
@@ -350,18 +338,11 @@ function setHovered(inside: boolean) {
 }
 
 document.addEventListener("pointermove", (e) => {
-  const overPill = capsule?.contains(e.target as Node) || (e.target as HTMLElement)?.closest?.(".bubble");
-  const near = capsule ? distanceTo(capsule, e.clientX, e.clientY) < 14 : false;
-  setHovered(Boolean(overPill || near));
+  if (platform !== "windows") setHovered(insideHot(hitRects, e.clientX, e.clientY));
 });
-document.addEventListener("pointerleave", () => setHovered(false));
-
-function distanceTo(elm: HTMLElement, x: number, y: number): number {
-  const r = elm.getBoundingClientRect();
-  const dx = Math.max(r.left - x, 0, x - r.right);
-  const dy = Math.max(r.top - y, 0, y - r.bottom);
-  return Math.hypot(dx, dy);
-}
+// On Windows, click-through changes synthesize DOM leave events. Only the
+// native cursor position decides hover there, including entry without movement.
+document.addEventListener("pointerleave", () => { if (platform !== "windows") setHovered(false); });
 
 // ── The animation loop (only while something moves) ───────────────────────────
 
@@ -517,20 +498,23 @@ async function main() {
   setLanguage(resolveLanguage(boot?.settings.language, systemLanguages()));
   const status = await FlowBridge.status();
   if (status) platform = status.platform;
-  state = (await FlowBridge.pillState()) ?? state;
-  visible = state.enabled || state.noteStartedAt !== null || state.announcement !== null || state.voice !== null || state.phase !== "idle";
-  render();
-  void onEvent<PillState>("pill-state", (s) => {
+
+  let revision = 0;
+  const applyState = (s: PillState) => {
     state = s;
     visible = s.enabled || s.noteStartedAt !== null || s.announcement !== null || s.voice !== null || s.phase !== "idle";
+    if (!visible) { hovered = false; tooltip = null; }
     if (s.phase === "listening") target.fill(0);
     render();
-  });
-  void onEvent<number[]>("pill-bands", (bands) => {
+  };
+  // Listen before the initial snapshot, so startup and cursor entry cannot
+  // fall between a command response and listener registration.
+  await onEvent<PillState>("pill-state", (s) => { revision++; applyState(s); });
+  await onEvent<number[]>("pill-bands", (bands) => {
     for (let i = 0; i < BANDS; i++) target[i] = bands[i] ?? 0;
     wake();
   });
-  void onEvent<boolean>("pill-visible", (v) => {
+  await onEvent<boolean>("pill-visible", (v) => {
     visible = v;
     if (!v) {
       hovered = false;
@@ -539,14 +523,19 @@ async function main() {
     render();
   });
   // Windows: the cursor poll tells when the pointer is over the pill.
-  void onEvent<boolean>("pill-pointer", (inside) => {
-    if (!inside) setHovered(false);
+  await onEvent<boolean>("pill-pointer", (inside) => {
+    setHovered(inside);
   });
-  void onEvent<Say>("voice-say", (s) => void say(s));
-  void onEvent<Settings>("settings-changed", (s) => {
+  await onEvent<Say>("voice-say", (s) => void say(s));
+  await onEvent<Settings>("settings-changed", (s) => {
     setLanguage(resolveLanguage(s.language, systemLanguages()));
+    languageRevision++;
     render();
   });
+  const before = revision;
+  const snapshot = await FlowBridge.pillState();
+  if (snapshot && revision === before) applyState(snapshot);
+  else render();
 }
 
 void main();

@@ -29,4 +29,8 @@ registerHooks({
 
 // The island reaches timers and Tauri through `window`.
 globalThis.window = globalThis;
+if (!globalThis.addEventListener) {
+  globalThis.addEventListener = () => {};
+  globalThis.removeEventListener = () => {};
+}
 globalThis.__TAURI_INTERNALS__ = internals;

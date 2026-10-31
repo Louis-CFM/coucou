@@ -14,6 +14,8 @@ pub mod paste;
 pub mod pill;
 pub mod store;
 pub mod text;
+#[cfg(windows)]
+mod keyboard;
 
 #[cfg(windows)]
 #[path = "os_windows.rs"]
@@ -58,6 +60,7 @@ pub enum KeyEvent {
 pub struct Flow {
     pub store: Mutex<Store>,
     running: Mutex<Option<Running>>,
+    ready: tokio::sync::watch::Sender<bool>,
 }
 
 struct Running {
@@ -115,11 +118,16 @@ fn is_terminal(id: &str) -> bool {
 
 // ── Setup, on and off ─────────────────────────────────────────────────────────
 
+pub fn init(app: &AppHandle) {
+    let flow = Arc::new(Flow { store: Mutex::new(Store::load()), running: Mutex::new(None), ready: tokio::sync::watch::channel(false).0 });
+    app.manage(flow);
+}
+
 pub fn setup(app: &AppHandle) {
-    let flow = Arc::new(Flow { store: Mutex::new(Store::load()), running: Mutex::new(None) });
-    app.manage(flow.clone());
+    let flow = app.state::<Arc<Flow>>().inner().clone();
     pill::setup(app);
     let prefs = flow.store.lock().unwrap().prefs.clone();
+    speech::performance::configure(prefs.speech_threads);
     pill::update(app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
         s.key = key_id(prefs.key);
@@ -128,6 +136,7 @@ pub fn setup(app: &AppHandle) {
         enable(app, &flow);
     }
     crate::voice::sync(app);
+    flow.ready.send_replace(true);
 }
 
 /// The key as the pages write it ("right_ctrl"…), or "wayland" where the
@@ -444,6 +453,7 @@ fn paste_again(app: &AppHandle, flow: &Arc<Flow>) {
 pub struct FlowStatus {
     prefs: Prefs,
     models: speech::ModelsStatus,
+    performance: speech::performance::Status,
     /// "ok", or why the key can't be watched here ("wayland", "no-display").
     keys: String,
     has_claude_key: bool,
@@ -456,14 +466,23 @@ pub struct FlowStatus {
 }
 
 #[tauri::command]
-pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
-    FlowStatus {
-        prefs: flow.store.lock().unwrap().prefs.clone(),
+pub async fn flow_status(flow: State<'_, Arc<Flow>>) -> Result<FlowStatus, String> {
+    // WebView2 can ask before setup has installed the listener. Await setup
+    // without blocking its UI thread instead of caching a false failure.
+    let mut ready = flow.ready.subscribe();
+    ready.wait_for(|ready| *ready).await.map_err(|_| "Dictation setup stopped".to_string())?;
+    let prefs = flow.store.lock().unwrap().prefs.clone();
+    let listener_started = flow.running.lock().unwrap().as_ref().is_some_and(|r| r._listener.is_some());
+    let keys = match os::keys_supported() {
+        Ok(()) if prefs.enabled && !listener_started => "unavailable",
+        Ok(()) => "ok",
+        Err(why) => why,
+    };
+    Ok(FlowStatus {
+        prefs,
         models: speech::status(),
-        keys: match os::keys_supported() {
-            Ok(()) => "ok".into(),
-            Err(why) => why.into(),
-        },
+        performance: speech::performance::status(),
+        keys: keys.into(),
         has_claude_key: cleanup::has_key(),
         mics: audio::input_devices(),
         platform: if cfg!(windows) { "windows" } else { "linux" },
@@ -471,22 +490,23 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
         user_name: crate::platform::user_full_name()
             .and_then(|n| n.split_whitespace().next().map(String::from))
             .filter(|n| !n.is_empty()),
-    }
+    })
 }
 
 #[tauri::command]
-pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
+pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, mut prefs: Prefs) -> Result<(), String> {
+    prefs.speech_threads = prefs.speech_threads.min(speech::performance::available_threads());
     let flow = flow.inner().clone();
     let before = {
         let mut store = flow.store.lock().unwrap();
         let before = store.prefs.clone();
-        store.prefs = prefs.clone();
-        store.save_prefs();
+        store.set_prefs(prefs.clone())?;
         if before.keep_days != prefs.keep_days {
             store.prune(store::now_ms());
         }
         before
     };
+    speech::performance::configure(prefs.speech_threads);
     pill::update(&app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
         s.key = key_id(prefs.key);
@@ -506,6 +526,7 @@ pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
         }
     }
     let _ = app.emit("flow-prefs", &prefs);
+    Ok(())
 }
 
 #[tauri::command]
@@ -514,17 +535,17 @@ pub fn flow_history(flow: State<Arc<Flow>>) -> Vec<Entry> {
 }
 
 #[tauri::command]
-pub fn flow_delete(flow: State<Arc<Flow>>, id: String) {
-    flow.store.lock().unwrap().delete(&id);
+pub fn flow_delete(flow: State<Arc<Flow>>, id: String) -> Result<(), String> {
+    flow.store.lock().unwrap().delete(&id)
 }
 
 #[tauri::command]
-pub fn flow_clear(flow: State<Arc<Flow>>, everything: bool) {
+pub fn flow_clear(flow: State<Arc<Flow>>, everything: bool) -> Result<(), String> {
     let mut store = flow.store.lock().unwrap();
     if everything {
-        store.clear_everything();
+        store.clear_everything()
     } else {
-        store.clear_history();
+        store.clear_history()
     }
 }
 
@@ -588,10 +609,8 @@ pub fn flow_words(flow: State<Arc<Flow>>) -> Words {
 }
 
 #[tauri::command]
-pub fn flow_set_words(flow: State<Arc<Flow>>, words: Words) {
-    let mut store = flow.store.lock().unwrap();
-    store.words = words;
-    store.save_words();
+pub fn flow_set_words(flow: State<Arc<Flow>>, words: Words) -> Result<(), String> {
+    flow.store.lock().unwrap().set_words(words)
 }
 
 #[tauri::command]
@@ -600,10 +619,8 @@ pub fn flow_snippets(flow: State<Arc<Flow>>) -> Vec<Snippet> {
 }
 
 #[tauri::command]
-pub fn flow_set_snippets(flow: State<Arc<Flow>>, snippets: Vec<Snippet>) {
-    let mut store = flow.store.lock().unwrap();
-    store.snippets = snippets;
-    store.save_snippets();
+pub fn flow_set_snippets(flow: State<Arc<Flow>>, snippets: Vec<Snippet>) -> Result<(), String> {
+    flow.store.lock().unwrap().set_snippets(snippets)
 }
 
 #[tauri::command]
@@ -612,10 +629,8 @@ pub fn flow_styles(flow: State<Arc<Flow>>) -> Vec<AppStyle> {
 }
 
 #[tauri::command]
-pub fn flow_set_styles(flow: State<Arc<Flow>>, styles: Vec<AppStyle>) {
-    let mut store = flow.store.lock().unwrap();
-    store.app_styles = styles;
-    store.save_styles();
+pub fn flow_set_styles(flow: State<Arc<Flow>>, styles: Vec<AppStyle>) -> Result<(), String> {
+    flow.store.lock().unwrap().set_styles(styles)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -708,3 +723,6 @@ pub fn pill_action(app: AppHandle, flow: State<Arc<Flow>>, action: String, id: O
         _ => {}
     }
 }
+
+#[tauri::command]
+pub fn flow_retune_speech() { speech::performance::retune(); }

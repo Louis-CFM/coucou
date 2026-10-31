@@ -82,9 +82,10 @@ export interface HubOptions {
 const DEFAULT_STATUS: FlowStatus = {
   prefs: {
     enabled: false, key: "right_ctrl", edge: "bottom", mic: "", keepDays: 30, cleanup: false,
-    defaultStyle: "natural", summaryEngine: "claude", openAtLaunch: true, voice: false, voiceOutput: "system", voiceGender: "female",
+    defaultStyle: "natural", summaryEngine: "claude", speechThreads: 0, openAtLaunch: true, voice: false, voiceOutput: "system", voiceGender: "female",
   },
   models: { parakeet: { state: "missing" }, downloadMb: 700 },
+  performance: { provider: "cpu", automatic: true, threads: 1, availableThreads: 1, tuning: false, measured: false, measurements: [], error: null },
   keys: "ok",
   hasClaudeKey: false,
   mics: [],
@@ -110,6 +111,9 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   const scroll = h("div", { class: "hub-scroll" });
   let rendering = 0;
 
+  let prefsWrite: Promise<void> = Promise.resolve();
+  const prefsError = h("div", { class: "hub-warn", role: "alert" });
+  prefsError.hidden = true;
   const ctx: HubContext = {
     get status() {
       return status;
@@ -120,13 +124,18 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       drawStatus();
       return status;
     },
-    setPrefs: async (change) => {
-      const next = { ...status.prefs };
-      change(next);
-      status = { ...status, prefs: next };
-      drawStatus();
-      await FlowBridge.setPrefs(next);
-    },
+    setPrefs: (change) => {
+      const save = prefsWrite.then(async () => {
+        const next = { ...status.prefs };
+        change(next);
+        await FlowBridge.setPrefs(next);
+        status = (await FlowBridge.status()) ?? { ...status, prefs: next };
+        prefsError.textContent = "";
+        prefsError.hidden = true;
+        drawStatus();
+      });
+      prefsWrite = save.catch(error => { prefsError.textContent = String(error); prefsError.hidden = false; });
+      return save;    },
     hero: (page, title, subtitle, actions = [], compact = false) => hero(page, title, subtitle, actions, compact),
   };
 
@@ -312,7 +321,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   side.append(h("div", { class: "spacer" }), statusLine, h("div", { class: "hub-version", text: `Coucou ${opts.version}` }));
 
   clear(root);
-  root.append(side, h("main", { class: "hub-panel" }, scroll));
+  root.append(side, h("main", { class: "hub-panel" }, prefsError, scroll));
   drawStatus();
   await show(current);
 

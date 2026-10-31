@@ -7,10 +7,8 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { emit, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
-import {
-  IDLE_SPOTIFY, SPOTIFY_ID, Spotify, currentArtwork, desktopDances, formatTime, isAd, islandDances,
-  musicPlaying, spotifyPosition, volumeLevel, withPlaying,
-} from "../src/core/spotify.ts";
+import { IDLE_MEDIA, desktopDances, formatTime, isAd, islandDances, mediaPosition, volumeLevel, withPlaying } from "../src/core/media-state.ts";
+import { SPOTIFY_ID, Spotify, currentArtwork, musicPlaying } from "../src/core/spotify.ts";
 import { BotEngine, danceTransform, stepDanceLevel } from "../src/mochi/engine.ts";
 import { registerSpotifyHandlers } from "../src/island/spotify.ts";
 import { buildSpotifyCard, buildSpotifyPill } from "../src/views/spotify.ts";
@@ -25,7 +23,7 @@ const track = (over = {}) => ({
 });
 
 const playing = (over = {}) => ({
-  ...IDLE_SPOTIFY, running: true, installed: true, track: track(), playing: true,
+  ...IDLE_MEDIA, running: true, installed: true, track: track(), playing: true,
   position: 10, positionAt: 1_000, volume: 70, ...over,
 });
 
@@ -33,12 +31,12 @@ const playing = (over = {}) => ({
 
 test("the position runs on from its timestamp while playing, and stops at the end", () => {
   const s = playing();
-  assert.equal(spotifyPosition(s, 1_000), 10);
-  assert.equal(spotifyPosition(s, 3_500), 12.5);
-  assert.equal(spotifyPosition(s, 0), 10, "a clock behind the anchor never moves it back");
-  assert.equal(spotifyPosition(s, 1_000_000), 180, "capped at the track's length");
-  assert.equal(spotifyPosition({ ...s, playing: false }, 60_000), 10, "paused, it stays put");
-  assert.equal(spotifyPosition({ ...s, track: null }, 3_000), 12, "no length, no cap");
+  assert.equal(mediaPosition(s, 1_000), 10);
+  assert.equal(mediaPosition(s, 3_500), 12.5);
+  assert.equal(mediaPosition(s, 0), 10, "a clock behind the anchor never moves it back");
+  assert.equal(mediaPosition(s, 1_000_000), 180, "capped at the track's length");
+  assert.equal(mediaPosition({ ...s, playing: false }, 60_000), 10, "paused, it stays put");
+  assert.equal(mediaPosition({ ...s, track: null }, 3_000), 12, "no length, no cap");
 });
 
 test("a play/pause click freezes or restarts the clock where it is", () => {
@@ -46,9 +44,9 @@ test("a play/pause click freezes or restarts the clock where it is", () => {
   assert.equal(paused.playing, false);
   assert.equal(paused.position, 14);
   assert.equal(paused.positionAt, 5_000);
-  assert.equal(spotifyPosition(paused, 9_000), 14);
+  assert.equal(mediaPosition(paused, 9_000), 14);
   const again = withPlaying(paused, true, 9_000);
-  assert.equal(spotifyPosition(again, 10_000), 15);
+  assert.equal(mediaPosition(again, 10_000), 15);
   const same = playing();
   assert.equal(withPlaying(same, true, 99), same, "no change, same object");
 });
@@ -175,7 +173,7 @@ beforeEach(() => {
   State.view = "overview";
   State.paused = false;
   State.loadIntegrationTasks();
-  Spotify.state = { ...IDLE_SPOTIFY };
+  Spotify.state = { ...IDLE_MEDIA };
   Spotify.artwork = null;
   island.reveals = 0;
 });
@@ -189,7 +187,7 @@ test("the pill wears the track's title, and its own name when nothing plays", ()
   assert.equal(spotifyTask().name, "Get Lucky");
   emit("spotify", playing({ track: track({ id: "spotify:ad:1", title: "" }) }));
   assert.equal(spotifyTask().name, "Advertisement");
-  emit("spotify", { ...IDLE_SPOTIFY, running: true });
+  emit("spotify", { ...IDLE_MEDIA, running: true });
   assert.equal(spotifyTask().name, "Spotify");
 });
 
@@ -203,7 +201,7 @@ test("music starting shows the hidden island once, silently; nothing on Windows-
   assert.ok(State.spotifyPlaying);
 
   // Not declared: nothing dances, nothing shows.
-  emit("spotify", { ...IDLE_SPOTIFY });
+  emit("spotify", { ...IDLE_MEDIA });
   State.settings.activeIntegrations = [];
   emit("spotify", playing());
   assert.equal(island.reveals, 1);
@@ -235,10 +233,10 @@ test("the card reads the player again each time it comes on screen", () => {
 
 test("the idle card: not playing, or not installed with a way to get it", () => {
   const card = buildSpotifyCard();
-  Spotify.state = { ...IDLE_SPOTIFY, installed: true };
+  Spotify.state = { ...IDLE_MEDIA, installed: true };
   card.sync();
   assert.match(card.el.textContent, /Spotify.*Integration.*Not playing.*Open Spotify/);
-  Spotify.state = { ...IDLE_SPOTIFY };
+  Spotify.state = { ...IDLE_MEDIA };
   card.sync();
   assert.match(card.el.textContent, /Spotify not installed.*Get Spotify/);
   card.el.find("BUTTON")[0].fire("click");

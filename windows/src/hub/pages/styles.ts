@@ -6,6 +6,7 @@ import { h, clear } from "../../views/dom";
 import { t } from "../../i18n/i18n";
 import { FlowBridge, type AppStyle, type Style } from "../../core/flow";
 import type { HubContext } from "../shell";
+import { pageSave } from "../save";
 import { card, divider, iconButton, label, row, select, toggle } from "../ui";
 
 export function styleOptions(): [Style, string][] {
@@ -15,8 +16,15 @@ export function styleOptions(): [Style, string][] {
 export async function stylesPage(page: HTMLElement, ctx: HubContext) {
   const status = await ctx.refresh();
   let styles: AppStyle[] = (await FlowBridge.styles()) ?? [];
-  const save = () => void FlowBridge.setStyles(styles);
   page.append(ctx.hero("styles", t("Styles"), t("Claude cleans up what you say, in the style of the app you write in.")));
+  const write = pageSave(page);
+  const save = async (next: AppStyle[]) => {
+    const result = await write(() => FlowBridge.setStyles(next));
+    if (result === "pending") return;
+    if (result === "saved") styles = next;
+    // Restore the actual selection as well when the native store rejects it.
+    drawApps();
+  };
 
   const perApp = h("div", {});
   const drawApps = () => {
@@ -26,13 +34,10 @@ export async function stylesPage(page: HTMLElement, ctx: HubContext) {
       if (i > 0) perApp.append(divider());
       perApp.append(row(s.name, null,
         select(styleOptions(), s.style, (style) => {
-          styles = styles.map((x) => (x.id === s.id ? { ...x, style } : x));
-          save();
+          void save(styles.map((x) => (x.id === s.id ? { ...x, style } : x)));
         }),
         iconButton("x", t("Delete"), () => {
-          styles = styles.filter((x) => x.id !== s.id);
-          save();
-          drawApps();
+          void save(styles.filter((x) => x.id !== s.id));
         }),
       ));
     });
@@ -66,12 +71,10 @@ export async function stylesPage(page: HTMLElement, ctx: HubContext) {
     add.value = "";
   };
   add.addEventListener("focus", () => void fillAdd());
-  add.addEventListener("change", () => {
+  add.addEventListener("change", async () => {
     const [id, name] = add.value.split("\n");
     if (!id || id === "-") return;
-    styles = [...styles, { id, name: name ?? id, style: ctx.status.prefs.defaultStyle }];
-    save();
-    drawApps();
+    await save([...styles, { id, name: name ?? id, style: ctx.status.prefs.defaultStyle }]);
     void fillAdd();
   });
   void fillAdd();

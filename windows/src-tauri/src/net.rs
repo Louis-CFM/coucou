@@ -113,6 +113,7 @@ pub fn anthropic_endpoint(raw: &str) -> Result<Url, String> {
 /// would otherwise see (and usually fail) a loopback address.
 pub fn client(url: &Url, timeout: Duration) -> Result<reqwest::Client, String> {
     let mut builder = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(10).min(timeout))
         .timeout(timeout);
     if is_loopback_url(url) {

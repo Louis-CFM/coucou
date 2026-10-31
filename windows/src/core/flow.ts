@@ -20,7 +20,7 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
   return invoke<T>(cmd, args);
 }
 
-export type FlowKey = "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super";
+export type FlowKey = "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super" | "copilot";
 export type Edge = "bottom" | "bottom-left" | "bottom-right" | "left" | "right";
 export type Style = "verbatim" | "natural" | "polished";
 
@@ -32,7 +32,8 @@ export interface FlowPrefs {
   keepDays: number;
   cleanup: boolean;
   defaultStyle: Style;
-  summaryEngine: "claude" | "off";
+  summaryEngine: "claude" | "ollama" | "lmstudio" | "custom" | "off";
+  speechThreads: number;
   openAtLaunch: boolean;
   /** « OK Coucou »: listen for it and answer with Claude. */
   voice: boolean;
@@ -51,9 +52,21 @@ export interface ModelsStatus {
   downloadMb: number;
 }
 
+export interface SpeechPerformance {
+  provider: "cpu";
+  automatic: boolean;
+  threads: number;
+  availableThreads: number;
+  tuning: boolean;
+  measured: boolean;
+  measurements: { threads: number; milliseconds: number }[];
+  error: string | null;
+}
+
 export interface FlowStatus {
   prefs: FlowPrefs;
   models: ModelsStatus;
+  performance: SpeechPerformance;
   /** "ok", or why the key can't be watched ("wayland", "no-display"). */
   keys: string;
   hasClaudeKey: boolean;
@@ -183,20 +196,21 @@ export interface VoiceView {
 export type VoiceOutput = "system" | "elevenlabs" | "off";
 
 export const FlowBridge = {
+  retuneSpeech: () => callOrThrow<void>("flow_retune_speech"),
   status: () => call<FlowStatus>("flow_status"),
   /** The Coucou window is on screen (shown, not minimised); `hub-visible` tells when it changes. */
   hubShown: () => call<boolean>("hub_shown"),
-  setPrefs: (prefs: FlowPrefs) => call<void>("flow_set_prefs", { prefs }),
+  setPrefs: (prefs: FlowPrefs) => callOrThrow<void>("flow_set_prefs", { prefs }),
   history: () => call<FlowEntry[]>("flow_history"),
-  deleteEntry: (id: string) => call<void>("flow_delete", { id }),
-  clear: (everything: boolean) => call<void>("flow_clear", { everything }),
+  deleteEntry: (id: string) => callOrThrow<void>("flow_delete", { id }),
+  clear: (everything: boolean) => callOrThrow<void>("flow_clear", { everything }),
   stats: () => call<FlowStats>("flow_stats"),
   words: () => call<{ words: string[]; replacements: Replacement[] }>("flow_words"),
-  setWords: (words: { words: string[]; replacements: Replacement[] }) => call<void>("flow_set_words", { words }),
+  setWords: (words: { words: string[]; replacements: Replacement[] }) => callOrThrow<void>("flow_set_words", { words }),
   snippets: () => call<Snippet[]>("flow_snippets"),
-  setSnippets: (snippets: Snippet[]) => call<void>("flow_set_snippets", { snippets }),
+  setSnippets: (snippets: Snippet[]) => callOrThrow<void>("flow_set_snippets", { snippets }),
   styles: () => call<AppStyle[]>("flow_styles"),
-  setStyles: (styles: AppStyle[]) => call<void>("flow_set_styles", { styles }),
+  setStyles: (styles: AppStyle[]) => callOrThrow<void>("flow_set_styles", { styles }),
   runningApps: () => call<{ id: string; name: string }[]>("flow_running_apps"),
   copy: (text: string) => call<boolean>("flow_copy", { text }),
   pasteAgain: () => call<void>("flow_paste_again"),
@@ -213,7 +227,7 @@ export const FlowBridge = {
   summarize: (id: string) => call<void>("notes_summarize", { id }),
   retryNote: (id: string) => call<void>("notes_retry", { id }),
   markdown: (id: string) => call<string>("notes_markdown", { id }),
-  exportNote: (id: string) => callOrThrow<string>("notes_export", { id }),
+  exportNote: (id: string) => callOrThrow<string | null>("notes_export", { id }),
 
   pillState: () => call<PillState>("pill_state"),
   pillHot: (rects: [number, number, number, number][]) => call<void>("pill_hot", { rects }),

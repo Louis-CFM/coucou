@@ -7,7 +7,9 @@ import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
-import type { SpotifyState } from "./spotify";
+import type { MediaState } from "./media-state";
+import type { MarketPrefs } from "./markets";
+import type { PortfolioWallet, PortfolioSettings, PortfolioCredentials } from "./portfolio";
 import type { UpdateStatus } from "./update";
 import type { WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
 
@@ -365,11 +367,20 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null, mail = false) =>
     callOrThrow<{ text: string }>("chat_send", { query, context, mail }),
   chatReset: () => call<void>("chat_reset"),
-  /**
+  appleMusicRefresh: () => call<MediaState | null>("apple_music_refresh"),
+  appleMusicControl: (action: string, value?: number) => call<boolean>("apple_music_control", { action, value: value ?? null }),
+  appleMusicOpen: () => call<boolean>("apple_music_open"),
+  portfolioSettings: () => call<PortfolioSettings>("portfolio_settings"),
+  portfolioSaveWallets: (wallets: PortfolioWallet[]) => invoke<void>("portfolio_save_wallets", { wallets }),
+  portfolioConnect: (exchange: string, credentials: PortfolioCredentials) => invoke<void>("portfolio_connect", { exchange, credentials }),
+  portfolioDisconnect: (exchange: string) => invoke<void>("portfolio_disconnect", { exchange }),
+  marketPrefs: () => call<MarketPrefs>("markets_prefs"),
+  marketSave: (prefs: MarketPrefs) => invoke<MarketPrefs>("markets_save", { prefs }),  /**
    * The models a provider offers, for the picker in the chat view. Rust asks
    * the provider only when it has a key (or a server address).
    */
   chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
+  claudeApiModels: () => callOrThrow<ModelInfo[]>("claude_api_models"),
   /** Settings → Local models → Connect: does the server answer, and with which models? */
   /** The custom server's key, bound to the address it is entered for. */
   localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
@@ -445,7 +456,7 @@ export const Bridge = {
 
   // ── Spotify (src-tauri/src/spotify.rs) ────────────────────────────────────
   /** Reads the player again (the card came on screen) and reports it. */
-  spotifyRefresh: () => call<SpotifyState | null>("spotify_refresh"),
+  spotifyRefresh: () => call<MediaState | null>("spotify_refresh"),
   /** True when Spotify took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
   spotifyControl: (action: SpotifyAction, value?: number) =>
     call<boolean>("spotify_control", { action, value: value ?? null }),
