@@ -66,7 +66,12 @@ final class VoiceCaptionManager {
 
     /// Height of the black capsule, reported by the view (it follows the answer's length).
     var capsuleHeight: CGFloat = 0 {
-        didSet { if capsuleHeight != oldValue { updateMouseAcceptance() } }
+        didSet {
+            guard capsuleHeight != oldValue else { return }
+            // Above a bottom-corner island, the panel follows the capsule's height.
+            if AppState.shared.islandPlacement.isBottom { reposition(animated: false) }
+            updateMouseAcceptance()
+        }
     }
 
     private init() {
@@ -220,8 +225,8 @@ final class VoiceCaptionManager {
     private func reposition(animated: Bool, closing: Bool = false) {
         guard let p = panel, let screen else { return }
         let app = AppState.shared
-        let (_, fixedH) = islandSize(mode: app.mode, view: app.view, progress: app.uploadProgress,
-                                     nw: app.notchWidth, nh: app.notchHeight)
+        let (islandW, fixedH) = islandSize(mode: app.mode, view: app.view, progress: app.uploadProgress,
+                                           nw: app.notchWidth, nh: app.notchHeight)
         var islandH = fixedH
         if app.mode == .expanded && app.view == .prompt {
             islandH = min(300, 240 + CGFloat(app.chatHistory.count) * 40)
@@ -229,10 +234,19 @@ final class VoiceCaptionManager {
         let visibleH = max(islandH, app.notchHeight)
         let sf = screen.frame
         let w = Self.panelWidth, h = Self.panelHeight
-        let frame = NSRect(x: sf.midX - w / 2, y: sf.maxY - h, width: w, height: h)
+        let offset = min(visibleH + notchGap, Self.islandRoom)
+        var frame = NSRect(x: sf.midX - w / 2, y: sf.maxY - h, width: w, height: h)
+        if app.islandPlacement.isCorner {
+            // Under the island in a top corner; above it in a bottom one (the capsule then ends
+            // just over the island's top).
+            let island = IslandWindowController.islandScreenRect(size: CGSize(width: islandW, height: islandH))
+            let top = app.islandPlacement.isBottom
+                ? island.maxY + notchGap + capsuleHeight + offset
+                : island.maxY
+            frame = NSRect(x: island.midX - w / 2, y: top - h, width: w, height: h)
+        }
         if p.frame != frame { p.setFrame(frame, display: true) }
 
-        let offset = min(visibleH + notchGap, Self.islandRoom)
         if offset != state.topOffset {
             if animated && p.isVisible && state.isVisible {
                 withAnimation(closing ? closeEase : openSpring) { state.topOffset = offset }

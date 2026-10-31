@@ -34,8 +34,8 @@ type Box = Pick<DOMRect, "left" | "top" | "width" | "height">;
 export function hotRects(capsule: Box, bubble: Box | null, edge: string, width: number, height: number): HotRect[] {
   const w = Math.max(capsule.width, width);
   const h = Math.max(capsule.height, height);
-  const x = edge === "left" ? capsule.left : edge === "right" ? capsule.left + capsule.width - w : capsule.left + (capsule.width - w) / 2;
-  const y = edge === "bottom" ? capsule.top + capsule.height - h : capsule.top + (capsule.height - h) / 2;
+  const x = (edge === "left" || edge === "bottom-left") ? capsule.left : (edge === "right" || edge === "bottom-right") ? capsule.left + capsule.width - w : capsule.left + (capsule.width - w) / 2;
+  const y = (edge === "bottom" || edge === "bottom-left" || edge === "bottom-right") ? capsule.top + capsule.height - h : capsule.top + (capsule.height - h) / 2;
   const rects: HotRect[] = [[x - 14, y - 14, w + 28, h + 28]];
   if (bubble) rects.push([bubble.left - 6, bubble.top - 6, bubble.width + 12, bubble.height + 12]);
   return rects;

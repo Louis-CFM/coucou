@@ -364,8 +364,8 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSend: (query: string, context: ChatContext | null, mail = false) =>
+    callOrThrow<{ text: string }>("chat_send", { query, context, mail }),
   chatReset: () => call<void>("chat_reset"),
   appleMusicRefresh: () => call<MediaState | null>("apple_music_refresh"),
   appleMusicControl: (action: string, value?: number) => call<boolean>("apple_music_control", { action, value: value ?? null }),

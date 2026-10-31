@@ -7,8 +7,8 @@ import { t } from "../../i18n/i18n";
 import { onEvent } from "../../core/bridge";
 import { FlowBridge, type Edge, type FlowKey, type ModelsStatus } from "../../core/flow";
 import type { HubContext } from "../shell";
+import { anchor, button, card, divider, keyKeycap, keycap, label, number, row, segmented, select, toggle } from "../ui";
 import { pageSave } from "../save";
-import { button, card, divider, keyKeycap, keycap, label, number, row, segmented, select, toggle } from "../ui";
 
 /** Download / progress / installed, for the voice model. Redraws itself. */
 export function modelsControl(ctx: HubContext, onReady?: () => void): HTMLElement {
@@ -69,7 +69,7 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
     ["right_shift", t("Right {0}", { 0: "Shift" })],
     ["left_ctrl_super", status.platform === "windows" ? "Ctrl + Win" : "Ctrl + Super"],
   ];
-  const edges: [Edge, string][] = [["bottom", t("Bottom")], ["left", t("Left")], ["right", t("Right")]];
+  const edges: [Edge, string][] = [["bottom", t("Bottom")], ["bottom-left", t("Bottom-left")], ["bottom-right", t("Bottom-right")], ["left", t("Left")], ["right", t("Right")]];
   page.append(label(t("Keys")));
   const keysCard = card(
     row(t("Hold a key to dictate anywhere"), null, toggle(prefs.enabled, (on) => void ctx.setPrefs((p) => (p.enabled = on)))),
@@ -95,20 +95,20 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
   } else if (status.keys !== "ok") {
     keysCard.append(h("div", { class: "hub-warn", text: t("Coucou can't watch the keyboard here: use the pill's microphone to dictate.") }));
   }
-  page.append(keysCard);
+  page.append(anchor("flow.keys", keysCard));
 
   // ── Microphone ──
   page.append(label(t("Microphone")));
   const mics: [string, string][] = [["", t("System default")], ...status.mics.map((m): [string, string] => [m.name, m.name])];
   if (prefs.mic && !mics.some(([id]) => id === prefs.mic)) mics.push([prefs.mic, prefs.mic]);
-  page.append(card(row(t("Microphone"), t("The one Coucou listens to for dictation and calls."), select(mics, prefs.mic, (mic) => void ctx.setPrefs((p) => (p.mic = mic))))));
+  page.append(anchor("flow.permission", card(row(t("Microphone"), t("The one Coucou listens to for dictation and calls."), select(mics, prefs.mic, (mic) => void ctx.setPrefs((p) => (p.mic = mic)))))));
 
   // ── Recognition ──
   page.append(label(t("Recognition")));
-  page.append(card(
+  page.append(anchor("flow.recognition", card(
     row(t("Parakeet, on your computer"), t("The most accurate, offline, 25 languages. Downloaded once (about {0} MB).", { 0: number(status.models.downloadMb) }), modelsControl(ctx)),
     h("div", { class: "hub-note", text: t("Your voice never leaves this computer: Parakeet turns it into text here, and the recording is dropped as soon as it is pasted.") }),
-  ));
+  )));
 
   const performance = status.performance ?? { availableThreads: 4, threads: 4, automatic: true, tuning: false, measured: false, error: null };
   const choices: [string, string][] = [["0", t("Automatic (measured on this computer)")]];
@@ -145,18 +145,18 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
 
   // ── Notetaker ──
   page.append(label(t("Notetaker")));
-  page.append(card(
+page.append(anchor("flow.summary", card(
     row(t("Summaries"), null, select([["claude", t("Claude (your key)")], ["ollama", "Ollama"], ["lmstudio", "LM Studio"], ["custom", t("OpenAI-compatible server")], ["off", t("No summary")]], prefs.summaryEngine, (engine) => void ctx.setPrefs((p) => (p.summaryEngine = engine)))),
     h("div", { class: "hub-note", text: t("Summaries use the selected provider and its model from Chat. Only the transcript is sent; chat history is not included.") }),
     divider(),
     h("div", { class: "hub-note", text: t("Audio and transcripts are stored on this computer. Summaries send text to the provider selected in Flow Settings. Tell the people in the call that you are recording.") }),
-  ));
+  )));
 
   // ── App ──
   page.append(label(t("App")));
-  page.append(card(
+  page.append(anchor("flow.app", card(
     row(t("Open this window when you open Coucou"), t("Not when Coucou starts with the computer."), toggle(prefs.openAtLaunch, (on) => void ctx.setPrefs((p) => (p.openAtLaunch = on)))),
-  ));
+  )));
 
   // ── Privacy ──
   page.append(label(t("Privacy")));
@@ -189,5 +189,5 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
     );
   };
   erase();
-  page.append(privacy);
+  page.append(anchor("flow.privacy", privacy));
 }

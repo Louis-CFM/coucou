@@ -83,7 +83,7 @@ function look(): Look {
   }
 }
 
-const vertical = () => state.edge !== "bottom";
+const vertical = () => state.edge === "left" || state.edge === "right";
 
 function messageText(): string | null {
   switch (state.phase) {
@@ -246,6 +246,18 @@ let hotFrame: number | null = null;
 let languageRevision = 0;
 
 function render() {
+  if (!visible) {
+    root.style.display = "none";
+    root.replaceChildren();
+    reportHot();
+    setTimeout(reportHot, 60);
+    setTimeout(reportHot, 420);
+    return;
+  }
+  root.style.display = "";
+  if (capsule.parentNode !== root) {
+    root.append(surface.bubbles, capsule);
+  }
   const l = look();
   const open = l !== "resting";
   const length = open ? openLength(l) : RESTING_LENGTH;
@@ -269,9 +281,15 @@ function render() {
   mochi.setState(state.phase === "thinking" || state.voice?.phase === "thinking" ? "thinking" : "idle");
   wake();
   scheduleHot();
+  setTimeout(reportHot, 60);
+  setTimeout(reportHot, 420);
 }
 
 function reportHot() {
+  if (!visible) {
+    void FlowBridge.pillHot([]);
+    return;
+  }
   const l = look();
   const length = l === "resting" ? RESTING_LENGTH : openLength(l);
   const thickness = l === "resting" ? RESTING_THICKNESS : OPEN_THICKNESS;
@@ -476,6 +494,11 @@ async function say(s: Say) {
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 async function main() {
+  const boot = await Bridge.boot();
+  setLanguage(resolveLanguage(boot?.settings.language, systemLanguages()));
+  const status = await FlowBridge.status();
+  if (status) platform = status.platform;
+
   let revision = 0;
   const applyState = (s: PillState) => {
     state = s;
@@ -509,9 +532,6 @@ async function main() {
     languageRevision++;
     render();
   });
-  const boot = await Bridge.boot();
-  setLanguage(resolveLanguage(boot?.settings.language, systemLanguages()));
-  languageRevision++;
   const before = revision;
   const snapshot = await FlowBridge.pillState();
   if (snapshot && revision === before) applyState(snapshot);

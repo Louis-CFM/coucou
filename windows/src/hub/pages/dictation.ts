@@ -96,6 +96,7 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
   const left = h("div", { style: "display:flex;flex-direction:column;gap:10px;min-width:0" },
     h("div", { class: "hub-history-head" }, label(t("History")), search),
   );
+  left.dataset.anchor = "flow.history";
   const saveHistory = pageSave(left);
   left.append(list);
   const right = h("div", { style: "display:flex;flex-direction:column;gap:14px" }, numbers(stats), promo(ctx));
