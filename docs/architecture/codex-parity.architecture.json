@@ -8,7 +8,7 @@
     "quality_profile": "showcase",
     "repository": {
       "url": "https://github.com/Louis-CFM/coucou.git",
-      "revision": "4f7be6e8c438ef23bb21188f4f07a7f142031ece",
+      "revision": "421d0480a7e211b1828b16b5f23e1c67497144bb",
       "link_mode": "web"
     }
   },
@@ -186,8 +186,8 @@
         },
         {
           "path": "NotchBuddy/Sources/App/HookServer.swift",
-          "line": 1348,
-          "end_line": 1383
+          "line": 1353,
+          "end_line": 1388
         }
       ]
     },
