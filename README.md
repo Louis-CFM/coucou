@@ -278,11 +278,68 @@ rest of the differences.
 - **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
 - **Fedora / openSUSE**: `sudo dnf install ./Coucou-Linux-*.rpm`
 
-Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. On Arch Linux, build it with the [PKGBUILD](linux/arch/PKGBUILD).
+Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. On Arch Linux, build it with the [PKGBUILD](linux/arch/PKGBUILD); on NixOS, use the [flake](#nixos).
 
 The island sits on the top edge on compositors with layer-shell — COSMIC, KDE
 Plasma, Hyprland, Sway and other wlroots compositors. GNOME has no layer-shell,
 so there it runs through XWayland as a dock window at the top of the screen. See [`windows/README.md`](windows/README.md#linux).
+
+### NixOS
+
+Coucou has a Nix flake for `x86_64-linux` and `aarch64-linux`. It builds Coucou from source on your machine, so the first build takes a while (about 20 minutes on a laptop, mostly Rust).
+
+**Try it** without installing anything:
+
+```bash
+nix run github:Louis-CFM/coucou
+```
+
+Flakes not turned on yet? Add `--extra-experimental-features 'nix-command flakes'` after `nix`.
+
+**Install it** from your system flake:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    coucou.url = "github:Louis-CFM/coucou";
+  };
+
+  outputs = { nixpkgs, coucou, ... }: {
+    nixosConfigurations.my-machine = nixpkgs.lib.nixosSystem {
+      modules = [
+        ./configuration.nix
+        ({ pkgs, ... }: {
+          environment.systemPackages = [
+            coucou.packages.${pkgs.stdenv.hostPlatform.system}.default
+          ];
+        })
+      ];
+    };
+  };
+}
+```
+
+Then `sudo nixos-rebuild switch`. With Home Manager, the same package goes in `home.packages`. To build it against your own nixpkgs rather than the one pinned in Coucou's `flake.lock`, add `coucou.inputs.nixpkgs.follows = "nixpkgs";` (the flake is tested with nixos-unstable).
+
+**Or through the overlay**, as `pkgs.coucou`. Your nixpkgs then has to allow it (see *License* below):
+
+```nix
+nixpkgs.overlays = [ coucou.overlays.default ];
+nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "coucou" ];
+environment.systemPackages = [ pkgs.coucou ];
+```
+
+**Update** with `nix flake update coucou`, then rebuild. The input follows `main`; to stay on releases, point it at a tag instead, like `github:Louis-CFM/coucou/linux-v0.6.0` (from the first release that has the flake). Coucou's own update card only links to the release page on Linux, so it never touches your system.
+
+**Good to know**
+
+- **License.** The package is marked unfree: the code is MIT, but the name, Mochi, the icon and the sounds are not (see [LICENSE-ASSETS.md](LICENSE-ASSETS.md)). Building it for yourself is allowed, which is what the flake does; it also keeps Coucou off public binary caches. The flake's `packages` allow it on their own; with the overlay, your config decides.
+- **Claude Code hooks** work as on any Linux. Coucou copies its relay to `~/.local/share/coucou/bin/` at each launch, so the hooks in `~/.claude/settings.json` keep working across updates and garbage collections. **Start at login** and the shortcut commands in Settings use `coucou` from your `PATH`, for the same reason.
+- **API keys** go to the Secret Service. GNOME and Plasma have one; on Hyprland, Sway and other window managers, add `services.gnome.gnome-keyring.enable = true;`.
+- **On Wayland**, Flow dictation and global shortcuts go through `xdg-desktop-portal`, which the NixOS GNOME, Plasma and Hyprland modules turn on for you.
+- **The tray icon on GNOME** needs the AppIndicator extension: add `pkgs.gnomeExtensions.appindicator` and turn it on in Extensions. Without it, launch Coucou again to open its window.
+- **WhatsApp.** *Install WhatsApp* downloads GOWA's build for generic Linux. If it doesn't start (the dot stays grey and `~/.local/share/coucou/coucou.log` says `GOWA could not start`), add `programs.nix-ld.enable = true;` so programs built for other distributions can run.
 
 ### Build from source
 
@@ -318,6 +375,8 @@ cd coucou/windows
 npm install
 npm run pack                # AppImage, .deb and .rpm land in windows/release/
 ```
+
+On NixOS, `nix develop` gives you all of this: then `cd windows && npm ci && npm run tauri dev`.
 
 **Android** — requirements: JDK 17 and the Android SDK (platform 35).
 
