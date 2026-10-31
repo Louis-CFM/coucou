@@ -8,6 +8,9 @@ import type { BotStateName, IslandMode, IslandViewName } from "./layout";
 export const SPOTIFY_ID = "integration_spotify";
 /** SpotifyController.green. */
 export const SPOTIFY_GREEN = "#1DB954";
+/** Now Playing (Windows): whatever app plays, through the same system media controls. */
+export const NOWPLAYING_ID = "integration_nowplaying";
+export const NOWPLAYING_COLOR = "#22D3EE";
 
 export interface SpotifyTrack {
   /** spotify:track:…, spotify:episode:…, spotify:ad:… */
@@ -34,6 +37,14 @@ export interface SpotifyState {
   repeat: boolean;
   /** 0…100. */
   volume: number;
+  /** Now Playing: the app that plays ("Chrome", "Apple Music"). */
+  app?: string;
+  /** What the player takes (Now Playing says per app); missing means yes, as on Spotify. */
+  canSeek?: boolean;
+  canSkip?: boolean;
+  canShuffle?: boolean;
+  canRepeat?: boolean;
+  hasVolume?: boolean;
 }
 
 export const IDLE_SPOTIFY: SpotifyState = {
@@ -41,15 +52,37 @@ export const IDLE_SPOTIFY: SpotifyState = {
   position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50,
 };
 
-/** The page's copy of the player, and the cover of the track that has one. */
-export const Spotify = {
-  state: { ...IDLE_SPOTIFY } as SpotifyState,
-  artwork: null as { artUrl: string; dataUrl: string } | null,
+/** Now Playing before any app plays: nothing to install, no volume of its own. */
+export const IDLE_NOW_PLAYING: SpotifyState = { ...IDLE_SPOTIFY, installed: true, hasVolume: false };
+
+/** A player pill: the page's copy of its player, and the cover of the track that has one. */
+export interface Player {
+  readonly pillId: string;
+  readonly color: string;
+  /** "spotify": the Spotify pill. "any": Now Playing, whatever app plays. */
+  readonly kind: "spotify" | "any";
+  state: SpotifyState;
+  artwork: { artUrl: string; dataUrl: string } | null;
+}
+
+export const Spotify: Player = {
+  pillId: SPOTIFY_ID, color: SPOTIFY_GREEN, kind: "spotify", state: { ...IDLE_SPOTIFY }, artwork: null,
 };
 
+export const NowPlaying: Player = {
+  pillId: NOWPLAYING_ID, color: NOWPLAYING_COLOR, kind: "any", state: { ...IDLE_NOW_PLAYING }, artwork: null,
+};
+
+export const PLAYERS: readonly Player[] = [Spotify, NowPlaying];
+
+/** Whether the player takes a control; Spotify takes them all. */
+export function takes(s: SpotifyState, what: "canSeek" | "canSkip" | "canShuffle" | "canRepeat" | "hasVolume"): boolean {
+  return s[what] !== false;
+}
+
 /** The cover to show for the current track, if it has arrived. */
-export function currentArtwork(s: SpotifyState = Spotify.state): string | null {
-  const art = Spotify.artwork;
+export function currentArtwork(s: SpotifyState = Spotify.state, player: Player = Spotify): string | null {
+  const art = player.artwork;
   return art && s.track?.artUrl && art.artUrl === s.track.artUrl ? art.dataUrl : null;
 }
 
@@ -91,9 +124,9 @@ export function volumeLevel(volume: number): 0 | 1 | 2 | 3 {
   return 3;
 }
 
-/** Music is playing on a declared Spotify pill. */
-export function musicPlaying(s: SpotifyState, activeIntegrations: readonly string[]): boolean {
-  return s.playing && s.track != null && activeIntegrations.includes(SPOTIFY_ID);
+/** Music is playing on a declared player pill (Spotify's unless said). */
+export function musicPlaying(s: SpotifyState, activeIntegrations: readonly string[], pillId: string = SPOTIFY_ID): boolean {
+  return s.playing && s.track != null && activeIntegrations.includes(pillId);
 }
 
 /** The states Mochi dances in; the rest (an alert, an error, sleep) win. */
@@ -112,7 +145,7 @@ export function islandDances(o: {
 }): boolean {
   if (!o.music || !DANCE_STATES.has(o.state)) return false;
   if (o.mode === "compact") return true;
-  return o.mode === "expanded" && o.view === "overview" && o.focusId === SPOTIFY_ID;
+  return o.mode === "expanded" && o.view === "overview" && (o.focusId === SPOTIFY_ID || o.focusId === NOWPLAYING_ID);
 }
 
 /** Mochi on the desktop: the compact island's rules (DesktopMochi.swift). */

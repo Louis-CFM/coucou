@@ -888,6 +888,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Nothing to enter either: any app in the Windows media controls.
+  { id: "integration_nowplaying", name: "Now Playing", color: "#22D3EE", fields: [],
+    hint: N_("Music and videos from any app in the Windows media controls, such as YouTube in your browser or Apple Music.") },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;

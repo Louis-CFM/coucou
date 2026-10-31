@@ -7353,6 +7353,21 @@
       "tr": "Kompakt adada göster",
       "ko": "컴팩트 아일랜드에 표시",
       "ja": "コンパクトアイランドに表示"
+    },
+    "Music and videos from any app in the Windows media controls, such as YouTube in your browser or Apple Music.": {
+      "zh-Hans": "来自 Windows 媒体控件中任意应用的音乐和视频，例如浏览器中的 YouTube 或 Apple Music。",
+      "hi": "Windows मीडिया कंट्रोल में दिखने वाले किसी भी ऐप का संगीत और वीडियो, जैसे आपके ब्राउज़र में YouTube या Apple Music।",
+      "es": "Música y vídeos de cualquier app de los controles multimedia de Windows, como YouTube en tu navegador o Apple Music.",
+      "ar": "الموسيقى والفيديو من أي تطبيق في عناصر التحكم بالوسائط في Windows، مثل YouTube في متصفحك أو Apple Music.",
+      "fr": "La musique et les vidéos de n’importe quelle app des contrôles multimédias de Windows, comme YouTube dans ton navigateur ou Apple Music.",
+      "bn": "Windows মিডিয়া কন্ট্রোলে থাকা যেকোনো অ্যাপের গান ও ভিডিও, যেমন আপনার ব্রাউজারে YouTube বা Apple Music।",
+      "pt-BR": "Músicas e vídeos de qualquer app nos controles de mídia do Windows, como o YouTube no seu navegador ou o Apple Music.",
+      "ru": "Музыка и видео из любого приложения в элементах управления мультимедиа Windows, например YouTube в браузере или Apple Music.",
+      "id": "Musik dan video dari aplikasi apa pun di kontrol media Windows, seperti YouTube di browser Anda atau Apple Music.",
+      "de": "Musik und Videos aus jeder App in der Mediensteuerung von Windows, etwa YouTube in deinem Browser oder Apple Music.",
+      "tr": "Windows medya denetimlerindeki herhangi bir uygulamadan müzik ve videolar; örneğin tarayıcınızdaki YouTube veya Apple Music.",
+      "ko": "Windows 미디어 컨트롤에 있는 모든 앱의 음악과 동영상(브라우저의 YouTube나 Apple Music 등).",
+      "ja": "Windows のメディアコントロールにあるあらゆるアプリの音楽や動画（ブラウザーの YouTube や Apple Music など）。"
     }
   }
 }

@@ -12,7 +12,7 @@ import { registerShortcutHandlers } from "./island/shortcuts";
 import { registerVoiceHandlers } from "./island/voice";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { registerWhatsAppHandlers } from "./island/whatsapp";
-import { SPOTIFY_ID } from "./core/spotify";
+import { NOWPLAYING_ID, NowPlaying, SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
 import { WhatsNew } from "./whats-new/controller";
@@ -167,6 +167,9 @@ async function main() {
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));
+  }
+  if (State.settings.activeIntegrations.includes(NOWPLAYING_ID)) {
+    void Bridge.nowPlayingRefresh().then((s) => s && applySpotify(island, s, NowPlaying));
   }
 
   // Monday recap: app start (greeting over), an agent starting work, waking up.
