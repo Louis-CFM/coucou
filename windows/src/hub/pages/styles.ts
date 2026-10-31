@@ -41,7 +41,7 @@ export async function stylesPage(page: HTMLElement, ctx: HubContext) {
   const keyNote = h("div", { class: "hub-warn", text: t("The clean-up uses your Claude key. Add it in Notch → Chat.") });
   keyNote.style.display = status.hasClaudeKey ? "none" : "";
   const defaultRow = row(t("Other apps"), null, select(styleOptions(), status.prefs.defaultStyle, (style) => void ctx.setPrefs((p) => (p.defaultStyle = style))));
-  page.append(card(
+  const stylesCard = card(
     row(t("Clean up with Claude"), t("Removes the “um”, the repeats and the corrections you made while speaking, and fixes the punctuation."),
       toggle(status.prefs.cleanup, (on) => {
         void ctx.setPrefs((p) => (p.cleanup = on));
@@ -51,7 +51,9 @@ export async function stylesPage(page: HTMLElement, ctx: HubContext) {
     divider(),
     defaultRow,
     h("div", { class: "hub-note", text: t("With the clean-up on, the text (never your voice) goes to Anthropic with your Claude key. Off, everything stays on this computer.") }),
-  ));
+  );
+  stylesCard.dataset.anchor = "flow.styles";
+  page.append(stylesCard);
 
   // "Add an app": the apps with a window right now.
   const add = h("select", { class: "hub-select" }) as HTMLSelectElement;

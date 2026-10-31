@@ -25,7 +25,7 @@ pub const KNOWN_KEYS: &[&str] = &[
     "gitea-token",
     "stripe-api-key",
     "resend-api-key",
-    // The sender address Resend sends "Send by email" from (mail.rs).
+    // The sender address Resend sends "Send by email" from (send_mail.rs).
     "resend-from",
     "notion-api-key",
     "calcom-api-key",

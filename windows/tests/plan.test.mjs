@@ -11,7 +11,7 @@ import {
 import { emit } from "./tauri.mjs";
 import { registerHookHandlers } from "../src/island/hooks.ts";
 import {
-  claudePillVisible, codexPillVisible, openPlanColor, planCardOpen,
+  claudeCompactPillVisible, claudePillVisible, codexPillVisible, openPlanColor, planCardOpen,
 } from "../src/views/usage.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
@@ -217,6 +217,17 @@ test("the Claude pill needs the switch, numbers and the overview", () => {
   assert.equal(claudePillVisible(), false);
 });
 
+test("the compact Claude pill needs compact mode, the switch and the relay", () => {
+  assert.equal(claudeCompactPillVisible(), false);
+  State.mode = "compact";
+  State.settings.showPlanInCompactIsland = true;
+  assert.equal(claudeCompactPillVisible(), false);
+  State.settings.planRelayInstalled = true;
+  assert.equal(claudeCompactPillVisible(), true);
+  State.mode = "expanded";
+  assert.equal(claudeCompactPillVisible(), false);
+});
+
 test("the Codex pill needs its switch and Codex's numbers, on the overview", () => {
   State.settings.showCodexPlanInNotch = true;
   // No Codex here, or no answer yet: no pill of dashes.
@@ -244,6 +255,15 @@ test("an open card follows its pill, and Mochi wears that plan's colour", () => 
   State.codexPlanUsage = { sevenDay: win(85, Date.now() / 1000 + 3600), updatedAt: Date.now() };
   assert.equal(planCardOpen(), true);
   assert.equal(openPlanColor(), "#F4505E");
+});
+
+test("the plan card opens via compact island setting on the overview", () => {
+  State.view = "overview";
+  State.settings.showPlanInNotch = false;
+  State.settings.showPlanInCompactIsland = true;
+  State.settings.planRelayInstalled = true;
+  State.showingPlanDetail = true;
+  assert.equal(planCardOpen(), true);
 });
 
 test("focusing another pill closes the plan card", () => {

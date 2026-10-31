@@ -363,8 +363,8 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSend: (query: string, context: ChatContext | null, mail = false) =>
+    callOrThrow<{ text: string }>("chat_send", { query, context, mail }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
@@ -506,7 +506,7 @@ export const Bridge = {
   chatDictateStop: () => call<string>("chat_dictate_stop"),
   chatDictateCancel: () => call<void>("chat_dictate_cancel"),
 
-  // ── Send by email (src-tauri/src/mail.rs) ─────────────────────────────────
+  // ── Send by email (src-tauri/src/send_mail.rs) ─────────────────────────────────
   /** "resend" when Resend sent it, "mailApp" when the mail app was opened instead. */
   mailSend: (to: string, subject: string, body: string, path: string | null) =>
     callOrThrow<"resend" | "mailApp">("mail_send", { to, subject, body, path }),

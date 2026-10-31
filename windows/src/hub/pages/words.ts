@@ -54,7 +54,9 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
     }
   };
   wordInput.style.flex = "1";
-  page.append(card(h("div", { class: "hub-row" }, wordInput, button(t("Add"), addWord, "primary")), chips));
+  const wordsCard = card(h("div", { class: "hub-row" }, wordInput, button(t("Add"), addWord, "primary")), chips);
+  wordsCard.dataset.anchor = "flow.dictionary";
+  page.append(wordsCard);
   drawWords();
 
   // ── Replacements ──
@@ -129,6 +131,7 @@ export async function snippetsPage(page: HTMLElement, ctx: HubContext) {
 
   const list = h("div", {});
   const listCard = card(list);
+  listCard.dataset.anchor = "flow.snippets";
   page.append(listCard);
   const draw = () => {
     clear(list);

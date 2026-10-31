@@ -134,6 +134,8 @@ export interface Settings {
   model: string;
   /** Show the Claude plan pill (5 h and weekly limits) in the island's header. */
   showPlanInNotch: boolean;
+  /** Show the Claude plan percentage in the compact island next to the agent dots. */
+  showPlanInCompactIsland: boolean;
   /** Coucou's status line relay is installed in Claude Code's settings. */
   planRelayInstalled: boolean;
   /** Show the Codex plan pill in the island's header. */
@@ -208,6 +210,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hooksInstalled: false,
   model: "claude-opus-5",
   showPlanInNotch: false,
+  showPlanInCompactIsland: false,
   planRelayInstalled: false,
   showCodexPlanInNotch: false,
   chatProvider: "anthropic",
@@ -258,6 +261,8 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** Requests waiting in line when another card is already up (Mac ApprovalQueue). */
+  approvalQueue: ApprovalInfo[] = [];
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;
 
@@ -380,6 +385,16 @@ class AppState {
     this.isPinned = false;
     this.updateTask(req.pillId, "working");
     this.setPillBadge(req.pillId, null);
+
+    // If another request is waiting in line, promote it next
+    const next = this.approvalQueue.shift();
+    if (next) {
+      this.beginApproval(next);
+      this.updateTask(next.pillId, next.questions ? "question" : "approval");
+      this.notify();
+      return;
+    }
+
     const previous = this.focusBeforeApproval;
     this.focusBeforeApproval = null;
     if (previous && this.focusId === req.pillId && this.tasks.some((t) => t.id === previous)) {

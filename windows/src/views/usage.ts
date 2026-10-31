@@ -31,15 +31,24 @@ export function claudePillVisible(): boolean {
   return State.view === "overview" && State.settings.showPlanInNotch && hasNumbers(State.planUsage);
 }
 
+/** The compact island's Claude plan gauge: compact mode, turned on, relay in. */
+export function claudeCompactPillVisible(): boolean {
+  const s = State.settings;
+  return State.mode === "compact" && s.showPlanInCompactIsland && s.planRelayInstalled;
+}
+
 /** The Codex pill is in the header: overview, turned on, and Codex answered with numbers. */
 export function codexPillVisible(): boolean {
   return State.view === "overview" && State.settings.showCodexPlanInNotch && hasNumbers(State.codexPlanUsage);
 }
 
-/** A plan card is open and its pill is still there. */
+/** A plan card is open and either of its pills (header or compact) is enabled. */
 export function planCardOpen(): boolean {
   if (!State.showingPlanDetail) return false;
-  return State.planDetailIsCodex ? codexPillVisible() : claudePillVisible();
+  if (State.planDetailIsCodex) return codexPillVisible();
+  // The header pill's card needs numbers (no card of dashes); the compact gauge's, its relay.
+  const s = State.settings;
+  return claudePillVisible() || (State.view === "overview" && s.showPlanInCompactIsland && s.planRelayInstalled);
 }
 
 const claudeColor = (now = Date.now()) => planColor(dominantPct(State.planUsage, now));
