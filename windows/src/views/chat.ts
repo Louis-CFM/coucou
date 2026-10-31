@@ -14,9 +14,13 @@ import {
   activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
+import { chipLabel, loadSubscriptions, subscribedProviders, subscription } from "../core/subscriptions";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
 import { N_, t, tl } from "../i18n/i18n";
+import { HOST_OS } from "../core/pills";
+import { MailChat, splitPlan } from "../core/mail";
+import { mailPlanCard } from "./mailplan";
 
 const STRINGS = {
   placeholderFirst: N_("Ask me anything…"),
@@ -40,7 +44,10 @@ function bubble(message: ChatMessage): HTMLElement {
     );
   }
   const reply = h("div", { class: "reply" });
-  renderMarkdown(reply, message.content);
+  // A mail plan (```coucou-mail) is never shown as raw JSON: its card goes under the answer.
+  const { prose, plan } = splitPlan(message.content);
+  renderMarkdown(reply, prose);
+  if (plan) reply.append(mailPlanCard(`chat-${message.id}-${message.content.length}`, "", message.content));
   return h("div", { class: "chat-row" }, reply);
 }
 
@@ -85,7 +92,7 @@ function buildPicker(onChange: () => void): Picker {
 
   function drawChips() {
     clear(chips);
-    for (const p of visibleProviders(State.settings)) {
+    for (const p of visibleProviders(State.settings, subscribedProviders())) {
       const on = p.id === State.settings.chatProvider;
       const chip = h(
         "button",
@@ -123,7 +130,9 @@ function buildPicker(onChange: () => void): Picker {
 
   function drawModels(p: ProviderDef, models: ModelInfo[]) {
     clear(list);
-    const current = activeModel(State.settings);
+    // Through a subscription, a tool other than Claude Code uses its own model ("").
+    const ownModel = subscription(p.id)?.on && p.id !== "anthropic";
+    const current = ownModel ? "" : activeModel(State.settings);
     for (const m of models) {
       const on = m.id === current;
       const row = h(
@@ -133,6 +142,7 @@ function buildPicker(onChange: () => void): Picker {
         on ? svg(ICONS.check, 11, { stroke: 2.2 }) : null,
       );
       row.addEventListener("click", () => {
+        if (!m.id) return close();
         State.settings = withModel(State.settings, p.id, m.id);
         saveSettings();
         Sound.play("blip");
@@ -146,13 +156,15 @@ function buildPicker(onChange: () => void): Picker {
   async function loadModels() {
     const p = providerDef(State.settings.chatProvider);
     const ticket = ++request;
-    const cached = p.urlField ? undefined : cache.get(p.id);
+    const subscribed = subscription(p.id)?.on ?? false;
+    const cacheKey = `${p.id}:${subscribed}`;
+    const cached = p.urlField ? undefined : cache.get(cacheKey);
     if (cached) {
       drawModels(p, cached);
       return;
     }
-    // Nothing is asked of a provider that has no key yet.
-    if (p.key && !(await Bridge.secretPresent(p.key))) {
+    // Nothing is asked of a provider that has no key yet (its subscription needs none).
+    if (!subscribed && p.key && !(await Bridge.keyReady(p.key))) {
       if (ticket === request) status(t(STRINGS.noKey), true);
       return;
     }
@@ -161,8 +173,8 @@ function buildPicker(onChange: () => void): Picker {
     try {
       const models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
-      if (!p.urlField) cache.set(p.id, models);
-      const keep = pickModel(p, models.map((m) => m.id), activeModel(State.settings));
+      if (!p.urlField) cache.set(cacheKey, models);
+      const keep = subscribed && p.id !== "anthropic" ? null : pickModel(p, models.map((m) => m.id), activeModel(State.settings));
       if (keep && keep !== activeModel(State.settings)) {
         State.settings = withModel(State.settings, p.id, keep);
         saveSettings();
@@ -179,7 +191,13 @@ function buildPicker(onChange: () => void): Picker {
     el.classList.add("on");
     drawChips();
     onChange();
-    void loadModels();
+    // Which subscriptions are on may have changed in Settings: ask, then list.
+    void loadSubscriptions().then(() => {
+      if (!isOpen) return;
+      drawChips();
+      onChange();
+      void loadModels();
+    });
   }
 
   function close() {
@@ -222,7 +240,16 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     modelName,
     svg(ICONS.chevronUpDown, 9, { stroke: 2 }),
   );
+  // The Mail switch (classic Outlook, Windows): on, the AI sees the latest messages and may
+  // prepare actions on them, which run only after a click on the plan's card.
+  const mailBtn = h("button", { class: "mail-toggle", title: tl("Lets the AI see your latest messages and prepare actions on them. Nothing happens until you click Run.") },
+    h("span", { text: "✉" }), h("span", { text: tl("Mail") }));
+  mailBtn.addEventListener("click", () => {
+    MailChat.on = !MailChat.on;
+    mailBtn.classList.toggle("on", MailChat.on);
+  });
   const modelRow = h("div", { class: "model-row" }, modelBtn);
+  if (HOST_OS === "windows") modelRow.prepend(mailBtn);
 
   const body = h("div", { class: "chat-body" });
   const picker = buildPicker(() => {
@@ -230,6 +257,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     drawModelButton();
   });
   body.append(chipRow, log, picker.el, modelRow, bar);
+  void loadSubscriptions().then(() => drawModelButton());
 
   const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, body));
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
@@ -242,7 +270,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
+    modelName.textContent = chipLabel(State.settings, activeModel(State.settings)) || t(STRINGS.noModel);
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
   }
@@ -260,7 +288,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       log.querySelector(".typing")?.parentElement?.remove();
       log.append(h("div", { class: "chat-row" }, live));
     }
-    renderMarkdown(live, text);
+    renderMarkdown(live, splitPlan(text).prose);
     log.scrollTop = log.scrollHeight;
   });
 
@@ -283,7 +311,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
+      const reply = await Bridge.chatSend(query, context, MailChat.on && HOST_OS === "windows");
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
@@ -299,7 +327,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       drawModelButton();
       State.notify();
       onHeightChange();
-      input.focus();
+      // Back to typing without a click. The field was disabled while the
+      // answer came, which took the focus away, and the sync that enables it
+      // again is a frame away: a disabled field can't take the focus.
+      if (State.view === "prompt") {
+        input.disabled = false;
+        input.focus();
+      }
     }
   }
 

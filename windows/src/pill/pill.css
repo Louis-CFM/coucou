@@ -34,6 +34,22 @@ body {
   padding-bottom: 2px;
 }
 
+#pill.bottom-left {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-bottom: 2px;
+  padding-left: 2px;
+}
+
+#pill.bottom-right {
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-bottom: 2px;
+  padding-right: 2px;
+}
+
 #pill.left {
   flex-direction: row;
   align-items: center;
@@ -46,6 +62,15 @@ body {
   align-items: center;
   justify-content: flex-start;
   padding-right: 2px;
+}
+
+/* On a side the pill keeps the edge and its bubble opens inward beside it.
+   The bubble comes first in the DOM (right for the bottom, where it sits
+   above), which on a side would put it at the edge and push the pill inward,
+   out of the zone that takes the mouse. */
+#pill.left .capsule,
+#pill.right .capsule {
+  order: -1;
 }
 
 .capsule {

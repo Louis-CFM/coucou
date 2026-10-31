@@ -191,6 +191,10 @@ final class MachineVitals: ObservableObject {
 
     /// The apps using the processor the most since the last reading ("node", "Google Chrome").
     private func topProcessNames() -> [String] {
+        #if APPSTORE
+        // Sandboxed: other apps' usage isn't ours to read (each try is a sandbox violation).
+        return []
+        #else
         let estimate = proc_listallpids(nil, 0)
         guard estimate > 0 else { return [] }
         var pids = [pid_t](repeating: 0, count: Int(estimate) + 64)
@@ -219,6 +223,7 @@ final class MachineVitals: ObservableObject {
             if names.count == 2 { break }
         }
         return names
+        #endif
     }
 
     /// "Google Chrome" for its helpers, the app's name when it has one, else the process name.

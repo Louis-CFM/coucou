@@ -24,14 +24,38 @@ jobs:
       - name: Test Claude hook detection
         run: bash scripts/test-claude-hooks.sh
 
+      - name: Test the nb-hook relay (socket, decisions, remote sessions)
+        run: python3 scripts/test-nb-hook.py
+
       - name: Test display choice
         run: bash scripts/test-display-choice.sh
+
+      - name: Test island placement (notch and the four corners)
+        run: bash scripts/test-island-placement.sh
 
       - name: Test parallel Claude Code sessions
         run: bash scripts/test-session-registry.sh
 
       - name: Test approval queue
         run: bash scripts/test-approval-queue.sh
+
+      - name: Test question queue
+        run: bash scripts/test-question-queue.sh
+
+      - name: Test the session board (sessions behind a pill, popping out, places)
+        run: bash scripts/test-session-board.sh
+
+      - name: Test session titles in the relay
+        run: python3 scripts/test-session-title.py
+
+      - name: Test the chat on your subscription (Claude Code, Antigravity, Gemini, Codex, Cursor, Copilot)
+        run: bash scripts/test-cli-relay.sh
+
+      - name: Test Mail triage (rules, banned words, VIPs, search)
+        run: bash scripts/test-mail-triage.sh
+
+      - name: Test the settings search (accents, words, labels)
+        run: bash scripts/test-settings-search.sh
 
       - name: Test Flow dictation keys
         run: bash scripts/test-flow-keys.sh

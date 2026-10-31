@@ -116,7 +116,9 @@ final class InstructionRunner {
         guard Self.isEnabled else { log("ignored: instructions are off"); return }
         guard Date().timeIntervalSince(createdAt) < maxAge else { log("ignored: older than 10 min"); return }
         guard !text.isEmpty, text.count <= 8000 else { log("ignored: empty or too long"); return }
-        guard pillId == "integration_claude" || pillId == "agent_cursor" else { log("ignored: \(pillId) can't take instructions"); return }
+        // A session's own pill ("integration_claude#2") resumes that very session.
+        let client = PillCatalog.basePillId(pillId)
+        guard client == "integration_claude" || client == "agent_cursor" else { log("ignored: \(pillId) can't take instructions"); return }
         guard let session = TurnRecorder.shared.lastSession(for: pillId) else {
             log("ignored: no Claude Code session seen for \(pillId) yet")
             return
@@ -149,7 +151,7 @@ final class InstructionRunner {
         env["PATH"] = [URL(fileURLWithPath: claude).deletingLastPathComponent().path, "/opt/homebrew/bin", "/usr/local/bin",
                        "/usr/bin", "/bin", "/usr/sbin", "/sbin", "\(home)/.local/bin", env["PATH"] ?? ""].joined(separator: ":")
         // The hooks route events by editor: keep them on the same pill.
-        if pillId == "agent_cursor" {
+        if PillCatalog.basePillId(pillId) == "agent_cursor" {
             env["__CFBundleIdentifier"] = "com.todesktop.230313mzl4w4u92"
         } else {
             env["TERM_PROGRAM"] = "vscode"

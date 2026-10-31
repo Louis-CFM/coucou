@@ -65,6 +65,8 @@ pub struct Pill {
     shown: AtomicBool,
     /// The pointer is on the pill or its bubble: a message waits for it to leave.
     pub hovered: AtomicBool,
+    #[cfg(target_os = "linux")]
+    pointer_watch: AtomicBool,
     /// Parks the Windows cursor poll while the pill is hidden.
     poll: (Mutex<bool>, Condvar),
     announce_seq: std::sync::atomic::AtomicU64,
@@ -117,9 +119,14 @@ pub fn setup(app: &AppHandle) {
         }
         match builder.build() {
             Ok(win) => {
+                // Windows: prepare_pill_window also makes the idle window
+                // click-through. Not here for every system: on Linux the
+                // window is not realized yet, and tao unwraps its GdkWindow.
                 if !platform::prepare_pill_window(&win, mode) {
                     let _ = win.destroy();
                     mode = DesktopMode::Off;
+                } else if park {
+                    let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
                 }
             }
             Err(err) => {
@@ -134,10 +141,13 @@ pub fn setup(app: &AppHandle) {
         hot: Mutex::new(Vec::new()),
         shown: AtomicBool::new(false),
         hovered: AtomicBool::new(false),
+        #[cfg(target_os = "linux")]
+        pointer_watch: AtomicBool::new(false),
         poll: (Mutex::new(false), Condvar::new()),
         announce_seq: std::sync::atomic::AtomicU64::new(1),
     });
     app.manage(pill.clone());
+    show(app, &pill, false);
     if mode == DesktopMode::Poll {
         spawn_poll(app.clone(), pill);
     }
@@ -152,21 +162,69 @@ pub fn get(app: &AppHandle) -> Option<Arc<Pill>> {
     app.try_state::<Arc<Pill>>().map(|s| s.inner().clone())
 }
 
+/// WebKitGTK can miss pointerleave when the window's input region changes.
+/// Check GTK's pointer focus while hovered, as the island does, and park the
+/// timer as soon as the page folds the toolbar or the pill is hidden.
+#[cfg(target_os = "linux")]
+pub fn watch_pointer_leave(app: &AppHandle) {
+    use gtk::prelude::*;
+
+    let Some(pill) = get(app) else { return };
+    if pill.pointer_watch.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let app_for_watch = app.clone();
+    let watched = pill.clone();
+    if app.run_on_main_thread(move || {
+        let Some(win) = window(&app_for_watch) else {
+            watched.pointer_watch.store(false, Ordering::Relaxed);
+            return;
+        };
+        let Ok(gw) = win.gtk_window() else {
+            watched.pointer_watch.store(false, Ordering::Relaxed);
+            return;
+        };
+        gtk::glib::timeout_add_local(Duration::from_millis(100), move || {
+            if !watched.shown.load(Ordering::Relaxed)
+                || !watched.hovered.load(Ordering::Relaxed)
+                || !gw.is_visible()
+            {
+                watched.pointer_watch.store(false, Ordering::Relaxed);
+                return gtk::glib::ControlFlow::Break;
+            }
+            if let (Some(ours), Some(pointer)) = (
+                gw.window(),
+                gtk::gdk::Display::default().and_then(|d| d.default_seat()).and_then(|s| s.pointer()),
+            ) {
+                let (under, _, _) = pointer.window_at_position();
+                if !under.is_some_and(|w| w.toplevel() == ours.toplevel()) {
+                    let _ = win.emit("pill-pointer", false);
+                }
+            }
+            gtk::glib::ControlFlow::Continue
+        });
+    }).is_err() {
+        pill.pointer_watch.store(false, Ordering::Relaxed);
+    }
+}
+
 fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(LABEL)
 }
 
 fn size_for(edge: &str) -> (f64, f64) {
-    if edge == "bottom" {
-        BOTTOM
-    } else {
+    if edge == "left" || edge == "right" {
         SIDE
+    } else {
+        BOTTOM
     }
 }
 
 pub fn edge_name(edge: Edge) -> &'static str {
     match edge {
         Edge::Bottom => "bottom",
+        Edge::BottomLeft => "bottom-left",
+        Edge::BottomRight => "bottom-right",
         Edge::Left => "left",
         Edge::Right => "right",
     }
@@ -198,6 +256,7 @@ fn show(app: &AppHandle, pill: &Pill, visible: bool) {
         DesktopMode::Poll => {
             if !visible {
                 let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
+                let _ = win.set_ignore_cursor_events(true);
             }
             let (lock, cv) = &pill.poll;
             *lock.lock().unwrap() = visible;
@@ -251,6 +310,8 @@ fn place(app: &AppHandle, pill: &Pill, edge: &str, on_cursor: bool) {
             let (x, y) = match edge {
                 "left" => (ax + gap, ay + (ah - ph) / 2),
                 "right" => (ax + aw - pw - gap, ay + (ah - ph) / 2),
+                "bottom-left" => (ax + gap, ay + ah - ph - gap),
+                "bottom-right" => (ax + aw - pw - gap, ay + ah - ph - gap),
                 _ => (ax + (aw - pw) / 2, ay + ah - ph - gap),
             };
             #[cfg(target_os = "linux")]
@@ -285,13 +346,18 @@ pub fn set_hot(app: &AppHandle, rects: Vec<(f64, f64, f64, f64)>) {
 /// mouse only over the pill and its bubble.
 fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
     std::thread::spawn(move || {
-        let mut ignoring: Option<bool> = None;
+        let mut ignoring: Option<bool> = Some(true);
         loop {
             {
                 let (lock, cv) = &pill.poll;
                 let mut on = lock.lock().unwrap();
                 while !*on {
-                    ignoring = None;
+                    if ignoring != Some(true) {
+                        ignoring = Some(true);
+                        if let Some(win) = window(&app) {
+                            let _ = win.set_ignore_cursor_events(true);
+                        }
+                    }
                     on = cv.wait(on).unwrap();
                 }
             }
@@ -353,4 +419,24 @@ pub fn rest_after(app: &AppHandle, phase: &str, ms: u64) {
             }
         });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn edge_names_and_sizes_match_expected() {
+        assert_eq!(edge_name(Edge::Bottom), "bottom");
+        assert_eq!(edge_name(Edge::BottomLeft), "bottom-left");
+        assert_eq!(edge_name(Edge::BottomRight), "bottom-right");
+        assert_eq!(edge_name(Edge::Left), "left");
+        assert_eq!(edge_name(Edge::Right), "right");
+
+        assert_eq!(size_for("bottom"), BOTTOM);
+        assert_eq!(size_for("bottom-left"), BOTTOM);
+        assert_eq!(size_for("bottom-right"), BOTTOM);
+        assert_eq!(size_for("left"), SIDE);
+        assert_eq!(size_for("right"), SIDE);
+    }
 }

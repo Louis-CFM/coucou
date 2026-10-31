@@ -66,10 +66,12 @@ pub struct AppStyle {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 pub enum Edge {
     #[default]
     Bottom,
+    BottomLeft,
+    BottomRight,
     Left,
     Right,
 }
@@ -379,6 +381,20 @@ mod tests {
         s.prefs.default_style = Style::Polished;
         assert_eq!(s.style_for(None), Style::Polished);
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn edge_serialization_round_trips_all_positions() {
+        for (edge, s) in [
+            (Edge::Bottom, "\"bottom\""),
+            (Edge::BottomLeft, "\"bottom-left\""),
+            (Edge::BottomRight, "\"bottom-right\""),
+            (Edge::Left, "\"left\""),
+            (Edge::Right, "\"right\""),
+        ] {
+            assert_eq!(serde_json::to_string(&edge).unwrap(), s);
+            assert_eq!(serde_json::from_str::<Edge>(s).unwrap(), edge);
+        }
     }
 
     #[test]

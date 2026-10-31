@@ -19,6 +19,7 @@ pub struct Settings {
     /// Hovering the island opens it all the way, and it folds again shortly
     /// after the pointer leaves (the Mac's "Open on hover"). Off by default.
     pub open_on_hover: bool,
+    pub alerts_from_all_pills: bool,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
@@ -32,6 +33,8 @@ pub struct Settings {
     /// Show the Claude plan pill (5 h and weekly limits) in the island's header.
     /// Off until the user turns it on, so the header stays as it shipped.
     pub show_plan_in_notch: bool,
+    /// Show the Claude plan percentage in the compact island next to the agent dots.
+    pub show_plan_in_compact_island: bool,
     /// Coucou's status line relay is the one in Claude Code's settings.json.
     /// Like `hooks_installed`, the real state wins at launch over what was stored.
     pub plan_relay_installed: bool,
@@ -45,6 +48,10 @@ pub struct Settings {
     /// The model picked for each provider other than Anthropic (whose model is
     /// `model`), by provider id.
     pub chat_models: BTreeMap<String, String>,
+    /// Settings → Chat → Your AI subscriptions: the switch of each provider
+    /// that can answer through its own terminal tool (cli_relay.rs). A
+    /// provider not in it was never switched: see cli_relay::uses_subscription.
+    pub chat_subscriptions: BTreeMap<String, bool>,
     /// Addresses of the model servers once connected; empty means not connected.
     pub ollama_url: String,
     pub lmstudio_url: String,
@@ -131,6 +138,7 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             open_on_hover: false,
+            alerts_from_all_pills: false,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -144,10 +152,12 @@ impl Default for Settings {
             hooks_installed: false,
             model: default_model(),
             show_plan_in_notch: false,
+            show_plan_in_compact_island: false,
             plan_relay_installed: false,
             show_codex_plan_in_notch: false,
             chat_provider: crate::chat::ANTHROPIC.into(),
             chat_models: BTreeMap::new(),
+            chat_subscriptions: BTreeMap::new(),
             ollama_url: String::new(),
             lmstudio_url: String::new(),
             custom_url: String::new(),
@@ -203,6 +213,14 @@ static NOT_LOADED: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
 
 fn not_loaded() -> MutexGuard<'static, Vec<PathBuf>> {
     NOT_LOADED.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Serializes saves across all threads so concurrent writes do not collide on
+/// the temporary file or interleave file renames.
+static SAVE_LOCK: Mutex<()> = Mutex::new(());
+
+fn save_lock() -> MutexGuard<'static, ()> {
+    SAVE_LOCK.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// One line in coucou.log. Tests must never write to the real one.
@@ -390,6 +408,7 @@ fn write_whole(file: &mut std::fs::File, bytes: &[u8]) -> std::io::Result<()> {
 
 /// `save`, for the file at `path`, whose directory already exists.
 fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
+    let _lock = save_lock();
     keep_what_was_not_loaded(path)?;
     let json = serde_json::to_vec_pretty(settings)
         .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
@@ -425,6 +444,7 @@ mod tests {
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
   "openOnHover": true,
+  "alertsFromAllPills": true,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
@@ -433,10 +453,12 @@ mod tests {
   "hooksInstalled": true,
   "model": "some-model",
   "showPlanInNotch": true,
+  "showPlanInCompactIsland": true,
   "planRelayInstalled": true,
   "showCodexPlanInNotch": true,
   "chatProvider": "ollama",
   "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
+  "chatSubscriptions": { "google": true, "anthropic": false },
   "ollamaUrl": "http://127.0.0.1:11434",
   "lmstudioUrl": "http://127.0.0.1:1234",
   "customUrl": "https://llm.example.com",
@@ -943,6 +965,7 @@ mod tests {
                 "soundVolume",
                 "autoCloseInterval",
                 "openOnHover",
+                "alertsFromAllPills",
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",
@@ -951,10 +974,12 @@ mod tests {
                 "hooksInstalled",
                 "model",
                 "showPlanInNotch",
+                "showPlanInCompactIsland",
                 "planRelayInstalled",
                 "showCodexPlanInNotch",
                 "chatProvider",
                 "chatModels",
+                "chatSubscriptions",
                 "ollamaUrl",
                 "lmstudioUrl",
                 "customUrl",
@@ -1009,6 +1034,30 @@ mod tests {
 
         assert!(save_to(&file, &Settings::default()).is_err());
         assert_eq!(std::fs::read(&file).unwrap(), CUSTOM.as_bytes());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn concurrent_saves_never_collide() {
+        let (dir, file) = scratch("concurrent");
+        let handles: Vec<_> = (0..20)
+            .map(|i| {
+                let path = file.clone();
+                std::thread::spawn(move || {
+                    let mut s = Settings::default();
+                    s.sound_volume = (i as f64) * 0.05;
+                    save_to(&path, &s)
+                })
+            })
+            .collect();
+
+        for h in handles {
+            assert!(h.join().unwrap().is_ok());
+        }
+
+        // Must still be valid settings that load cleanly without corruption
+        let loaded = load_from(&file);
+        assert!(loaded.sound_volume >= 0.0);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

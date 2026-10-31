@@ -1,6 +1,412 @@
 {
-  "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 12 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
+  "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 14 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
+    {
+      "version": "0.5.8",
+      "items": [
+        {
+          "icon": "checklist",
+          "title": {
+            "en": "Permission requests wait their turn",
+            "zh-Hans": "权限请求排队等候",
+            "hi": "अनुमति अनुरोध अपनी बारी का इंतज़ार करते हैं",
+            "es": "Las solicitudes esperan su turno",
+            "ar": "طلبات الإذن تنتظر دورها",
+            "fr": "Les demandes attendent leur tour",
+            "bn": "অনুমতির অনুরোধ পালা অপেক্ষা করে",
+            "pt-BR": "Os pedidos esperam a vez",
+            "ru": "Запросы ждут своей очереди",
+            "id": "Permintaan izin menunggu giliran",
+            "de": "Anfragen warten, bis sie dran sind",
+            "tr": "İzin istekleri sırasını bekler",
+            "ko": "권한 요청이 차례를 기다려요",
+            "ja": "許可リクエストが順番待ち"
+          },
+          "detail": {
+            "en": "Up to 5 requests queue in the island instead of going back to the terminal.",
+            "zh-Hans": "最多 5 个请求在岛中排队，不再退回终端。",
+            "hi": "5 तक अनुरोध टर्मिनल में लौटने की बजाय आइलैंड में कतार में रहते हैं।",
+            "es": "Hasta 5 solicitudes esperan en la isla en lugar de volver a la terminal.",
+            "ar": "تنتظر حتى 5 طلبات في الجزيرة بدل العودة إلى الطرفية.",
+            "fr": "Jusqu'à 5 demandes font la queue dans l'île au lieu de repartir vers le terminal.",
+            "bn": "৫টি পর্যন্ত অনুরোধ টার্মিনালে না ফিরে আইল্যান্ডে সারিতে থাকে।",
+            "pt-BR": "Até 5 pedidos esperam na ilha em vez de voltar para o terminal.",
+            "ru": "До 5 запросов ждут на острове, а не уходят обратно в терминал.",
+            "id": "Hingga 5 permintaan antre di pulau, tak lagi kembali ke terminal.",
+            "de": "Bis zu 5 Anfragen warten in der Insel, statt zurück ins Terminal zu gehen.",
+            "tr": "En fazla 5 istek terminale dönmek yerine adada sırada bekler.",
+            "ko": "요청 최대 5개가 터미널로 돌아가지 않고 아일랜드에서 대기해요.",
+            "ja": "最大 5 件のリクエストがターミナルに戻らずアイランドで待ちます。"
+          }
+        },
+        {
+          "icon": "eye",
+          "title": {
+            "en": "Plan usage in the compact island",
+            "zh-Hans": "紧凑岛显示套餐用量",
+            "hi": "कॉम्पैक्ट आइलैंड में प्लान उपयोग",
+            "es": "Uso del plan en la isla compacta",
+            "ar": "استخدام الخطة في الجزيرة المصغّرة",
+            "fr": "Ton forfait dans l'île compacte",
+            "bn": "কম্প্যাক্ট আইল্যান্ডে প্ল্যান ব্যবহার",
+            "pt-BR": "Uso do plano na ilha compacta",
+            "ru": "Лимиты тарифа в компактном острове",
+            "id": "Pemakaian paket di pulau ringkas",
+            "de": "Planverbrauch in der kompakten Insel",
+            "tr": "Kompakt adada plan kullanımı",
+            "ko": "컴팩트 아일랜드에 요금제 사용량",
+            "ja": "コンパクトアイランドにプラン使用量"
+          },
+          "detail": {
+            "en": "Turn it on to see your Claude plan percentage next to the agent dots.",
+            "zh-Hans": "开启后，在代理圆点旁显示你的 Claude 套餐百分比。",
+            "hi": "चालू करें और एजेंट बिंदुओं के पास अपने Claude प्लान का प्रतिशत देखें।",
+            "es": "Actívalo para ver el porcentaje de tu plan de Claude junto a los puntos de los agentes.",
+            "ar": "فعّله لترى نسبة خطة Claude بجانب نقاط الوكلاء.",
+            "fr": "Active-le pour voir le pourcentage de ton forfait Claude à côté des points des agents.",
+            "bn": "চালু করলে এজেন্টের বিন্দুর পাশে Claude প্ল্যানের শতাংশ দেখবেন।",
+            "pt-BR": "Ative para ver a porcentagem do seu plano Claude ao lado dos pontos dos agentes.",
+            "ru": "Включите, чтобы видеть процент тарифа Claude рядом с точками агентов.",
+            "id": "Aktifkan untuk melihat persentase paket Claude di samping titik agen.",
+            "de": "Einschalten, um deinen Claude-Plan in Prozent neben den Agentenpunkten zu sehen.",
+            "tr": "Açın, Claude planınızın yüzdesini ajan noktalarının yanında görün.",
+            "ko": "켜면 에이전트 점 옆에 Claude 요금제 사용률이 보여요.",
+            "ja": "オンにすると、エージェントの点の横に Claude プランの割合が表示されます。"
+          }
+        },
+        {
+          "icon": "terminal",
+          "title": {
+            "en": "Claude Desktop in the island",
+            "zh-Hans": "岛中的 Claude Desktop",
+            "hi": "आइलैंड में Claude Desktop",
+            "es": "Claude Desktop en la isla",
+            "ar": "Claude Desktop في الجزيرة",
+            "fr": "Claude Desktop dans l'île",
+            "bn": "আইল্যান্ডে Claude Desktop",
+            "pt-BR": "Claude Desktop na ilha",
+            "ru": "Claude Desktop на острове",
+            "id": "Claude Desktop di pulau",
+            "de": "Claude Desktop in der Insel",
+            "tr": "Adada Claude Desktop",
+            "ko": "아일랜드 속 Claude Desktop",
+            "ja": "アイランドに Claude Desktop"
+          },
+          "detail": {
+            "en": "Answer its approvals and questions from the island on Windows; its own pill on Linux.",
+            "zh-Hans": "在 Windows 上从岛中回复它的审批和问题；在 Linux 上有自己的胶囊。",
+            "hi": "Windows पर उसकी मंज़ूरियों और सवालों का जवाब आइलैंड से दें; Linux पर अपनी पिल।",
+            "es": "Responde sus aprobaciones y preguntas desde la isla en Windows; su pastilla en Linux.",
+            "ar": "أجب عن موافقاته وأسئلته من الجزيرة على Windows؛ وحبة خاصة به على Linux.",
+            "fr": "Réponds à ses approbations et questions depuis l'île sur Windows ; sa pill sur Linux.",
+            "bn": "Windows-এ আইল্যান্ড থেকে এর অনুমোদন ও প্রশ্নের উত্তর দিন; Linux-এ নিজস্ব পিল।",
+            "pt-BR": "Responda aprovações e perguntas pela ilha no Windows; pílula própria no Linux.",
+            "ru": "Отвечайте на его запросы и вопросы с острова в Windows; своя пилюля в Linux.",
+            "id": "Jawab persetujuan dan pertanyaannya dari pulau di Windows; pil sendiri di Linux.",
+            "de": "Freigaben und Fragen unter Windows in der Insel beantworten; eigene Pille unter Linux.",
+            "tr": "Windows'ta onaylarını ve sorularını adadan yanıtlayın; Linux'ta kendi hapı var.",
+            "ko": "Windows에서는 승인과 질문에 아일랜드에서 답하고, Linux에서는 전용 필이 생겨요.",
+            "ja": "Windows では承認と質問にアイランドから回答、Linux では専用ピル。"
+          }
+        },
+        {
+          "icon": "heart",
+          "title": {
+            "en": "Thank you, @Ohualtex",
+            "zh-Hans": "感谢 @Ohualtex",
+            "hi": "धन्यवाद, @Ohualtex",
+            "es": "Gracias, @Ohualtex",
+            "ar": "شكرًا، @Ohualtex",
+            "fr": "Merci, @Ohualtex",
+            "bn": "ধন্যবাদ, @Ohualtex",
+            "pt-BR": "Obrigado, @Ohualtex",
+            "ru": "Спасибо, @Ohualtex",
+            "id": "Terima kasih, @Ohualtex",
+            "de": "Danke, @Ohualtex",
+            "tr": "Teşekkürler, @Ohualtex",
+            "ko": "고마워요, @Ohualtex",
+            "ja": "ありがとう、@Ohualtex"
+          },
+          "detail": {
+            "en": "14 fixes and features in this version come from Ohualtex. Thank you!",
+            "zh-Hans": "本版本的 14 项修复和新功能来自 Ohualtex。谢谢！",
+            "hi": "इस संस्करण के 14 सुधार और नई सुविधाएँ Ohualtex से आई हैं। धन्यवाद!",
+            "es": "14 correcciones y novedades de esta versión son de Ohualtex. ¡Gracias!",
+            "ar": "14 إصلاحًا وميزة في هذا الإصدار من Ohualtex. شكرًا!",
+            "fr": "14 correctifs et nouveautés de cette version viennent d'Ohualtex. Merci !",
+            "bn": "এই সংস্করণের ১৪টি সংশোধন ও নতুন ফিচার Ohualtex-এর। ধন্যবাদ!",
+            "pt-BR": "14 correções e novidades desta versão vêm do Ohualtex. Obrigado!",
+            "ru": "14 исправлений и новинок этой версии — от Ohualtex. Спасибо!",
+            "id": "14 perbaikan dan fitur di versi ini dari Ohualtex. Terima kasih!",
+            "de": "14 Korrekturen und Neuerungen dieser Version stammen von Ohualtex. Danke!",
+            "tr": "Bu sürümdeki 14 düzeltme ve özellik Ohualtex'ten geliyor. Teşekkürler!",
+            "ko": "이번 버전의 수정과 기능 14개는 Ohualtex가 만들었어요. 고마워요!",
+            "ja": "このバージョンの 14 件の修正と新機能は Ohualtex によるものです。感謝！"
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.5.7",
+      "items": [
+        {
+          "icon": "bell",
+          "title": {
+            "en": "Mail with classic Outlook",
+            "zh-Hans": "经典 Outlook 邮件",
+            "hi": "क्लासिक Outlook के साथ मेल",
+            "es": "Mail con Outlook clásico",
+            "ar": "البريد مع Outlook الكلاسيكي",
+            "fr": "Mail avec Outlook classique",
+            "bn": "ক্লাসিক Outlook-এ মেল",
+            "pt-BR": "Mail com o Outlook clássico",
+            "ru": "Почта с классическим Outlook",
+            "id": "Mail dengan Outlook klasik",
+            "de": "Mail mit klassischem Outlook",
+            "tr": "Klasik Outlook ile Mail",
+            "ko": "클래식 Outlook 메일",
+            "ja": "クラシック Outlook でメール"
+          },
+          "detail": {
+            "en": "On Windows, search, read and sort your Outlook mail from the Mail pill, with rules and Undo.",
+            "zh-Hans": "在 Windows 上通过 Mail 胶囊搜索、阅读和整理 Outlook 邮件，支持规则和撤销。",
+            "hi": "Windows पर Mail पिल से Outlook मेल खोजें, पढ़ें और छाँटें, नियमों और पूर्ववत् के साथ।",
+            "es": "En Windows, busca, lee y ordena tu correo de Outlook desde la pastilla Mail, con reglas y Deshacer.",
+            "ar": "على Windows، ابحث في بريد Outlook واقرأه ورتّبه من حبة Mail، مع قواعد وتراجع.",
+            "fr": "Sur Windows, cherche, lis et trie tes mails Outlook depuis la pill Mail, avec règles et Annuler.",
+            "bn": "Windows-এ Mail পিল থেকে Outlook মেল খুঁজুন, পড়ুন ও সাজান, নিয়ম ও ফেরানোর সুবিধাসহ।",
+            "pt-BR": "No Windows, pesquise, leia e organize seus e-mails do Outlook na pílula Mail, com regras e Desfazer.",
+            "ru": "В Windows ищите, читайте и сортируйте почту Outlook из пилюли Mail, с правилами и отменой.",
+            "id": "Di Windows, cari, baca, dan sortir email Outlook dari pil Mail, dengan aturan dan Urungkan.",
+            "de": "Unter Windows Outlook-Mails in der Mail-Pille suchen, lesen und sortieren, mit Regeln und Widerrufen.",
+            "tr": "Windows'ta Outlook postalarınızı Mail hapından arayın, okuyun ve sıralayın; kurallar ve geri al ile.",
+            "ko": "Windows에서 Mail 필로 Outlook 메일을 검색하고 읽고 정리하세요. 규칙과 실행 취소도 돼요.",
+            "ja": "Windows で Mail ピルから Outlook のメールを検索・閲覧・整理。ルールと取り消しにも対応。"
+          }
+        },
+        {
+          "icon": "eye",
+          "title": {
+            "en": "Search the settings",
+            "zh-Hans": "搜索设置",
+            "hi": "सेटिंग्स खोजें",
+            "es": "Busca en los ajustes",
+            "ar": "ابحث في الإعدادات",
+            "fr": "Cherche dans les réglages",
+            "bn": "সেটিংসে খুঁজুন",
+            "pt-BR": "Pesquise nos ajustes",
+            "ru": "Поиск по настройкам",
+            "id": "Cari di pengaturan",
+            "de": "Einstellungen durchsuchen",
+            "tr": "Ayarlarda arayın",
+            "ko": "설정 검색",
+            "ja": "設定を検索"
+          },
+          "detail": {
+            "en": "Type in the Coucou window's sidebar to find any setting.",
+            "zh-Hans": "在 Coucou 窗口的侧边栏输入，即可找到任何设置。",
+            "hi": "कोई भी सेटिंग ढूँढने के लिए Coucou विंडो की साइडबार में टाइप करें।",
+            "es": "Escribe en la barra lateral de la ventana de Coucou para encontrar cualquier ajuste.",
+            "ar": "اكتب في الشريط الجانبي لنافذة Coucou لتجد أي إعداد.",
+            "fr": "Tape dans la barre latérale de la fenêtre Coucou pour trouver n'importe quel réglage.",
+            "bn": "যেকোনো সেটিং খুঁজতে Coucou উইন্ডোর সাইডবারে টাইপ করুন।",
+            "pt-BR": "Digite na barra lateral da janela do Coucou para achar qualquer ajuste.",
+            "ru": "Начните печатать в боковой панели окна Coucou, чтобы найти любую настройку.",
+            "id": "Ketik di bilah samping jendela Coucou untuk menemukan pengaturan apa pun.",
+            "de": "Tippe in der Seitenleiste des Coucou-Fensters, um jede Einstellung zu finden.",
+            "tr": "Herhangi bir ayarı bulmak için Coucou penceresinin kenar çubuğuna yazın.",
+            "ko": "Coucou 창의 사이드바에 입력해 원하는 설정을 찾으세요.",
+            "ja": "Coucou ウインドウのサイドバーに入力して、どの設定もすぐ見つかります。"
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.5.6",
+      "items": [
+        {
+          "icon": "chat",
+          "title": {
+            "en": "Chat on your AI subscription",
+            "zh-Hans": "用你的 AI 订阅聊天",
+            "hi": "अपनी AI सदस्यता से चैट",
+            "es": "Chat con tu suscripción de IA",
+            "ar": "دردشة باشتراكك في الذكاء الاصطناعي",
+            "fr": "Le chat sur ton abonnement IA",
+            "bn": "আপনার AI সাবস্ক্রিপশনে চ্যাট",
+            "pt-BR": "Chat com sua assinatura de IA",
+            "ru": "Чат по вашей подписке на ИИ",
+            "id": "Chat dengan langganan AI-mu",
+            "de": "Chat mit deinem KI-Abo",
+            "tr": "Yapay zekâ aboneliğinizle sohbet",
+            "ko": "내 AI 구독으로 채팅",
+            "ja": "AI サブスクリプションでチャット"
+          },
+          "detail": {
+            "en": "Claude, Gemini, ChatGPT, Cursor or Copilot, no key: turn it on in Settings → Chat.",
+            "zh-Hans": "Claude、Gemini、ChatGPT、Cursor 或 Copilot，无需密钥：在 设置 → 聊天 中开启。",
+            "hi": "Claude, Gemini, ChatGPT, Cursor या Copilot, बिना कुंजी: सेटिंग्स → चैट में चालू करें।",
+            "es": "Claude, Gemini, ChatGPT, Cursor o Copilot, sin clave: actívalo en Ajustes → Chat.",
+            "ar": "Claude وGemini وChatGPT وCursor وCopilot دون مفتاح: فعّله من الإعدادات ← الدردشة.",
+            "fr": "Claude, Gemini, ChatGPT, Cursor ou Copilot, sans clé : active-le dans Réglages → Chat.",
+            "bn": "Claude, Gemini, ChatGPT, Cursor বা Copilot, কী ছাড়াই: সেটিংস → চ্যাট-এ চালু করুন।",
+            "pt-BR": "Claude, Gemini, ChatGPT, Cursor ou Copilot, sem chave: ative em Ajustes → Chat.",
+            "ru": "Claude, Gemini, ChatGPT, Cursor или Copilot без ключа: включите в Настройки → Чат.",
+            "id": "Claude, Gemini, ChatGPT, Cursor, atau Copilot, tanpa kunci: nyalakan di Pengaturan → Chat.",
+            "de": "Claude, Gemini, ChatGPT, Cursor oder Copilot ohne Schlüssel: in Einstellungen → Chat einschalten.",
+            "tr": "Claude, Gemini, ChatGPT, Cursor veya Copilot, anahtarsız: Ayarlar → Sohbet'ten açın.",
+            "ko": "Claude, Gemini, ChatGPT, Cursor, Copilot을 키 없이: 설정 → 채팅에서 켜세요.",
+            "ja": "Claude、Gemini、ChatGPT、Cursor、Copilot をキーなしで：設定 → チャットでオンに。"
+          }
+        },
+        {
+          "icon": "languages",
+          "title": {
+            "en": "Korean and Japanese",
+            "zh-Hans": "韩语和日语",
+            "hi": "कोरियाई और जापानी",
+            "es": "Coreano y japonés",
+            "ar": "الكورية واليابانية",
+            "fr": "Coréen et japonais",
+            "bn": "কোরিয়ান ও জাপানি",
+            "pt-BR": "Coreano e japonês",
+            "ru": "Корейский и японский",
+            "id": "Bahasa Korea dan Jepang",
+            "de": "Koreanisch und Japanisch",
+            "tr": "Korece ve Japonca",
+            "ko": "한국어와 일본어",
+            "ja": "韓国語と日本語"
+          },
+          "detail": {
+            "en": "Coucou now speaks 14 languages. Korean thanks to @lovyestar.",
+            "zh-Hans": "Coucou 现在支持 14 种语言。韩语由 @lovyestar 贡献。",
+            "hi": "Coucou अब 14 भाषाएँ बोलता है। कोरियाई @lovyestar की बदौलत।",
+            "es": "Coucou ya habla 14 idiomas. El coreano gracias a @lovyestar.",
+            "ar": "يتحدث Coucou الآن 14 لغة. الكورية بفضل @lovyestar.",
+            "fr": "Coucou parle maintenant 14 langues. Le coréen grâce à @lovyestar.",
+            "bn": "Coucou এখন 14টি ভাষায় কথা বলে। কোরিয়ান @lovyestar-এর সৌজন্যে।",
+            "pt-BR": "O Coucou agora fala 14 idiomas. O coreano graças a @lovyestar.",
+            "ru": "Coucou теперь говорит на 14 языках. Корейский — благодаря @lovyestar.",
+            "id": "Coucou kini berbicara 14 bahasa. Bahasa Korea berkat @lovyestar.",
+            "de": "Coucou spricht jetzt 14 Sprachen. Koreanisch dank @lovyestar.",
+            "tr": "Coucou artık 14 dil konuşuyor. Korece @lovyestar sayesinde.",
+            "ko": "Coucou가 이제 14개 언어를 지원합니다. 한국어는 @lovyestar 덕분이에요.",
+            "ja": "Coucou は 14 言語に対応しました。韓国語は @lovyestar のおかげです。"
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.5.5",
+      "items": [
+        {
+          "icon": "chat",
+          "title": {
+            "en": "Chat with no API key",
+            "zh-Hans": "无需 API 密钥即可聊天",
+            "hi": "API कुंजी के बिना चैट",
+            "es": "Chat sin clave de API",
+            "ar": "دردشة دون مفتاح API",
+            "fr": "Le chat sans clé API",
+            "bn": "API কী ছাড়াই চ্যাট",
+            "pt-BR": "Chat sem chave de API",
+            "ru": "Чат без API-ключа",
+            "id": "Chat tanpa kunci API",
+            "de": "Chat ohne API-Schlüssel",
+            "tr": "API anahtarı olmadan sohbet",
+            "ko": "API 키 없이 채팅",
+            "ja": "API キーなしでチャット"
+          },
+          "detail": {
+            "en": "No key? Your own Claude Code answers the chat, Flow and your notes, on your plan.",
+            "zh-Hans": "没有密钥？你的 Claude Code 会用你的套餐处理聊天、Flow 和笔记。",
+            "hi": "कुंजी नहीं? आपका Claude Code आपके प्लान पर चैट, Flow और नोट्स संभालता है।",
+            "es": "¿Sin clave? Tu Claude Code responde al chat, a Flow y a tus notas, con tu plan.",
+            "ar": "لا مفتاح؟ يتولى Claude Code الدردشة وFlow والملاحظات ضمن اشتراكك.",
+            "fr": "Pas de clé ? Ton Claude Code répond au chat, à Flow et aux notes, sur ton abonnement.",
+            "bn": "কী নেই? আপনার Claude Code আপনার প্ল্যানে চ্যাট, Flow ও নোট সামলায়।",
+            "pt-BR": "Sem chave? O seu Claude Code responde ao chat, ao Flow e às notas, no seu plano.",
+            "ru": "Нет ключа? Ваш Claude Code отвечает в чате, во Flow и в заметках — по вашему тарифу.",
+            "id": "Tanpa kunci? Claude Code-mu menangani chat, Flow, dan catatan dengan paketmu.",
+            "de": "Kein Schlüssel? Dein Claude Code übernimmt Chat, Flow und Notizen, über dein Abo.",
+            "tr": "Anahtar yok mu? Claude Code’un sohbeti, Flow’u ve notları planınla yanıtlar.",
+            "ko": "키가 없나요? 내 Claude Code가 내 요금제로 채팅, Flow, 노트에 답합니다.",
+            "ja": "キーがなくても、あなたの Claude Code がプランでチャット、Flow、ノートに答えます。"
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.5.4",
+      "items": [
+        {
+          "icon": "shield",
+          "title": {
+            "en": "Coucou keeps listening",
+            "zh-Hans": "Coucou 始终在线",
+            "hi": "Coucou हमेशा सुनता रहे",
+            "es": "Coucou sigue escuchando",
+            "ar": "Coucou يبقى منصتًا",
+            "fr": "Coucou reste à l’écoute",
+            "bn": "Coucou সবসময় শোনে",
+            "pt-BR": "O Coucou continua ouvindo",
+            "ru": "Coucou всегда на связи",
+            "id": "Coucou terus mendengarkan",
+            "de": "Coucou hört weiter zu",
+            "tr": "Coucou dinlemeye devam eder",
+            "ja": "Coucou は聞き続けます"
+          },
+          "detail": {
+            "en": "One failed connection no longer cuts Claude Code off, and a card goes once the terminal takes over.",
+            "zh-Hans": "一次连接失败不再让 Claude Code 断开；终端接手后卡片会自动消失。",
+            "hi": "एक कनेक्शन फ़ेल होने से अब Claude Code नहीं कटता, और टर्मिनल के संभालते ही कार्ड हट जाता है।",
+            "es": "Una conexión fallida ya no corta Claude Code, y la tarjeta se va cuando la terminal toma el control.",
+            "ar": "لم يعد فشل اتصال واحد يقطع Claude Code، وتختفي البطاقة حين تتولى الطرفية الأمر.",
+            "fr": "Une connexion ratée ne coupe plus Claude Code, et la carte part quand le terminal reprend la main.",
+            "bn": "একটি সংযোগ ব্যর্থ হলে আর Claude Code বিচ্ছিন্ন হয় না, আর টার্মিনাল দায়িত্ব নিলে কার্ডটি সরে যায়।",
+            "pt-BR": "Uma conexão com falha não corta mais o Claude Code, e o cartão some quando o terminal assume.",
+            "ru": "Сбой одного соединения больше не отключает Claude Code, а карточка исчезает, когда управление берёт терминал.",
+            "id": "Satu koneksi gagal tak lagi memutus Claude Code, dan kartu hilang saat terminal mengambil alih.",
+            "de": "Eine fehlgeschlagene Verbindung trennt Claude Code nicht mehr; die Karte geht, wenn das Terminal übernimmt.",
+            "tr": "Tek bir başarısız bağlantı artık Claude Code’u koparmıyor; terminal devraldığında kart kapanır.",
+            "ja": "1 回接続に失敗しても Claude Code が途切れず、ターミナルが引き継ぐとカードは消えます。"
+          }
+        },
+        {
+          "icon": "bug",
+          "title": {
+            "en": "25 community fixes",
+            "zh-Hans": "25 项社区修复",
+            "hi": "समुदाय के 25 सुधार",
+            "es": "25 arreglos de la comunidad",
+            "ar": "25 إصلاحًا من المجتمع",
+            "fr": "25 correctifs de la communauté",
+            "bn": "কমিউনিটির ২৫টি সমাধান",
+            "pt-BR": "25 correções da comunidade",
+            "ru": "25 исправлений от сообщества",
+            "id": "25 perbaikan dari komunitas",
+            "de": "25 Fixes aus der Community",
+            "tr": "Topluluktan 25 düzeltme",
+            "ja": "コミュニティによる 25 の修正"
+          },
+          "detail": {
+            "en": "The Flow pill takes clicks, WhatsApp groups show their names, and truer service pills.",
+            "zh-Hans": "Flow 胶囊可点击，WhatsApp 群组显示名称，服务胶囊更准确。",
+            "hi": "Flow पिल क्लिक लेती है, WhatsApp ग्रुप अपना नाम दिखाते हैं, और सर्विस पिल्स ज़्यादा सटीक।",
+            "es": "La pill de Flow acepta clics, los grupos de WhatsApp muestran su nombre y pills de servicios más precisas.",
+            "ar": "كبسولة Flow تستجيب للنقر، ومجموعات واتساب تظهر بأسمائها، وكبسولات الخدمات أدق.",
+            "fr": "La pill Flow prend les clics, les groupes WhatsApp ont leur nom, et des pills de services plus justes.",
+            "bn": "Flow পিল ক্লিক নেয়, WhatsApp গ্রুপ নিজের নাম দেখায়, আর সার্ভিস পিল আরও সঠিক।",
+            "pt-BR": "A pill do Flow aceita cliques, grupos do WhatsApp mostram o nome e pills de serviços mais precisas.",
+            "ru": "Пилюля Flow принимает клики, группы WhatsApp показывают названия, а пилюли сервисов точнее.",
+            "id": "Pill Flow menerima klik, grup WhatsApp menampilkan namanya, dan pill layanan lebih akurat.",
+            "de": "Die Flow-Pill nimmt Klicks an, WhatsApp-Gruppen zeigen ihre Namen, und genauere Dienst-Pills.",
+            "tr": "Flow hapı tıklamaları alıyor, WhatsApp grupları adlarını gösteriyor, servis hapları daha doğru.",
+            "ja": "Flow のピルがクリックに反応し、WhatsApp のグループ名が表示され、サービスのピルがより正確に。"
+          }
+        }
+      ]
+    },
     {
       "version": "0.5.3",
       "items": [
@@ -18,7 +424,9 @@
             "ru": "WhatsApp на острове",
             "id": "WhatsApp di pulau",
             "de": "WhatsApp in der Insel",
-            "tr": "Adada WhatsApp"
+            "tr": "Adada WhatsApp",
+            "ko": "아일랜드에서 WhatsApp",
+            "ja": "アイランドに WhatsApp"
           },
           "detail": {
             "en": "Your chats in the island, and replies without opening WhatsApp. Experimental.",
@@ -32,7 +440,9 @@
             "ru": "Чаты на острове и ответы без открытия WhatsApp. Экспериментально.",
             "id": "Obrolanmu di pulau, dan balas tanpa membuka WhatsApp. Eksperimental.",
             "de": "Deine Chats in der Insel und Antworten, ohne WhatsApp zu öffnen. Experimentell.",
-            "tr": "Sohbetlerin adada; WhatsApp’ı açmadan yanıtla. Deneysel."
+            "tr": "Sohbetlerin adada; WhatsApp’ı açmadan yanıtla. Deneysel.",
+            "ko": "채팅을 아일랜드에서 보고, WhatsApp을 열지 않고도 답장할 수 있어요. 실험적 기능이에요.",
+            "ja": "チャットをアイランドに表示し、WhatsApp を開かずに返信できます。実験的機能。"
           }
         },
         {
@@ -49,7 +459,9 @@
             "ru": "Настройка в один клик",
             "id": "Siap dalam sekali klik",
             "de": "Eingerichtet mit einem Klick",
-            "tr": "Tek tıkla kurulum"
+            "tr": "Tek tıkla kurulum",
+            "ko": "클릭 한 번으로 설정",
+            "ja": "1 クリックで設定"
           },
           "detail": {
             "en": "Coucou installs the gateway, checks it and shows the QR code to scan.",
@@ -63,7 +475,9 @@
             "ru": "Coucou ставит шлюз, проверяет его и показывает QR-код.",
             "id": "Coucou memasang gateway, memeriksanya, dan menampilkan kode QR.",
             "de": "Coucou installiert das Gateway, prüft es und zeigt den QR-Code.",
-            "tr": "Coucou ağ geçidini kurar, doğrular ve taranacak QR kodunu gösterir."
+            "tr": "Coucou ağ geçidini kurar, doğrular ve taranacak QR kodunu gösterir.",
+            "ko": "Coucou가 게이트웨이를 설치하고 확인한 다음, 스캔할 QR 코드까지 보여 줘요.",
+            "ja": "Coucou がゲートウェイをインストールして確認し、読み取る QR コードを表示します。"
           }
         },
         {
@@ -80,7 +494,9 @@
             "ru": "Ничего не покидает компьютер",
             "id": "Tak ada yang keluar dari komputermu",
             "de": "Nichts verlässt deinen Computer",
-            "tr": "Hiçbir şey bilgisayarından çıkmaz"
+            "tr": "Hiçbir şey bilgisayarından çıkmaz",
+            "ko": "내용은 컴퓨터 밖으로 나가지 않아요",
+            "ja": "何もパソコンの外に出ません"
           },
           "detail": {
             "en": "Messages stay in memory and are gone when Coucou quits.",
@@ -94,7 +510,9 @@
             "ru": "Сообщения хранятся только в памяти и исчезают при выходе из Coucou.",
             "id": "Pesan hanya di memori dan hilang saat Coucou ditutup.",
             "de": "Nachrichten bleiben im Speicher und sind weg, wenn Coucou beendet wird.",
-            "tr": "Mesajlar bellekte kalır, Coucou kapanınca silinir."
+            "tr": "Mesajlar bellekte kalır, Coucou kapanınca silinir.",
+            "ko": "메시지는 메모리에만 남고, Coucou를 끄면 사라져요.",
+            "ja": "メッセージはメモリ上にだけあり、Coucou を終了すると消えます。"
           }
         }
       ]
@@ -116,7 +534,9 @@
             "bn": "আপডেটে Mochi নীল",
             "id": "Mochi biru saat ada pembaruan",
             "de": "Mochi wird blau bei Updates",
-            "tr": "Güncellemede Mochi maviye döner"
+            "tr": "Güncellemede Mochi maviye döner",
+            "ko": "업데이트가 있으면 모찌가 파랗게 돼요",
+            "ja": "アップデートで Mochi が青に"
           },
           "detail": {
             "en": "A new version turns him blue, in the island and the tray. On Windows, one click installs it.",
@@ -130,7 +550,9 @@
             "ru": "Новая версия делает его синим — на острове и в области уведомлений. В Windows — в один клик.",
             "id": "Versi baru membuatnya biru, di pulau dan baki sistem. Di Windows, sekali klik untuk memasang.",
             "de": "Eine neue Version macht ihn blau, in der Insel und im Infobereich. Unter Windows reicht ein Klick.",
-            "tr": "Yeni sürüm onu adada ve sistem tepsisinde maviye çevirir. Windows’ta tek tıkla kurulur."
+            "tr": "Yeni sürüm onu adada ve sistem tepsisinde maviye çevirir. Windows’ta tek tıkla kurulur.",
+            "ko": "새 버전이 나오면 모찌가 아일랜드와 트레이에서 파랗게 변해요. Windows에서는 클릭 한 번이면 설치돼요.",
+            "ja": "新しいバージョンが出るとアイランドとトレイで青くなります。Windows では 1 クリックでインストール。"
           }
         },
         {
@@ -147,7 +569,9 @@
             "bn": "নতুন কী, এখানেই",
             "id": "Yang baru, langsung di sini",
             "de": "Neuigkeiten, direkt hier",
-            "tr": "Yenilikler, tam burada"
+            "tr": "Yenilikler, tam burada",
+            "ko": "새 소식을 여기서 바로",
+            "ja": "新機能をここで"
           },
           "detail": {
             "en": "After each update: what it brings, then your Coucou so far.",
@@ -161,7 +585,9 @@
             "bn": "প্রতিটি আপডেটের পর: কী নতুন, তারপর এ পর্যন্ত আপনার Coucou।",
             "id": "Setelah tiap pembaruan: isinya, lalu Coucou-mu sejauh ini.",
             "de": "Nach jedem Update: was es bringt, dann dein Coucou bisher.",
-            "tr": "Her güncellemeden sonra: getirdikleri, ardından şimdiye kadar Coucou’n."
+            "tr": "Her güncellemeden sonra: getirdikleri, ardından şimdiye kadar Coucou’n.",
+            "ko": "업데이트할 때마다 새로 뭐가 생겼는지 보여 주고, 지금까지의 Coucou도 알려 줘요.",
+            "ja": "アップデートのたびに、新しい内容とこれまでのあなたの Coucou を表示します。"
           }
         },
         {
@@ -178,7 +604,9 @@
             "ru": "GitLab и Gitea",
             "id": "GitLab dan Gitea",
             "de": "GitLab und Gitea",
-            "tr": "GitLab ve Gitea"
+            "tr": "GitLab ve Gitea",
+            "ko": "GitLab과 Gitea",
+            "ja": "GitLab と Gitea"
           },
           "detail": {
             "en": "Two new pills with your projects’ activity, like GitHub’s.",
@@ -192,7 +620,9 @@
             "ru": "Две новые пилюли с активностью ваших проектов, как у GitHub.",
             "id": "Dua pil baru berisi aktivitas proyekmu, seperti pil GitHub.",
             "de": "Zwei neue Pills mit der Aktivität deiner Projekte, wie bei GitHub.",
-            "tr": "Projelerinin etkinliğini gösteren iki yeni araç, GitHub’ınki gibi."
+            "tr": "Projelerinin etkinliğini gösteren iki yeni araç, GitHub’ınki gibi.",
+            "ko": "GitHub처럼 프로젝트 활동을 보여 주는 모찌가 두 개 더 생겼어요.",
+            "ja": "プロジェクトのアクティビティを表示する 2 つの新しいピル。GitHub と同じように。"
           }
         },
         {
@@ -209,7 +639,9 @@
             "ru": "Итоги недели на Android",
             "id": "Rekap mingguan di Android",
             "de": "Wochenrückblick auf Android",
-            "tr": "Android’de haftalık özet"
+            "tr": "Android’de haftalık özet",
+            "ko": "Android 주간 리캡",
+            "ja": "Android で週間まとめ"
           },
           "detail": {
             "en": "Last week’s numbers on your Android phone, if you turn it on.",
@@ -223,7 +655,9 @@
             "ru": "Цифры прошлой недели на вашем Android, если включите.",
             "id": "Angka minggu lalu di ponsel Android-mu, kalau kamu nyalakan.",
             "de": "Die Zahlen der letzten Woche auf deinem Android-Handy, wenn du es einschaltest.",
-            "tr": "Geçen haftanın sayıları Android telefonunda, açarsan."
+            "tr": "Geçen haftanın sayıları Android telefonunda, açarsan.",
+            "ko": "켜 두면 지난주 숫자를 Android 폰에서 볼 수 있어요.",
+            "ja": "オンにすると、先週の数字を Android スマートフォンで見られます。"
           }
         }
       ]
@@ -245,7 +679,8 @@
             "ru": "Новая версия на острове",
             "id": "Versi baru di pulau",
             "de": "Neue Version in der Insel",
-            "tr": "Adada yeni sürüm"
+            "tr": "Adada yeni sürüm",
+            "ja": "アイランドに新バージョン"
           },
           "detail": {
             "en": "Coucou tells you when a new version is out. On Windows, one click installs it.",
@@ -259,7 +694,8 @@
             "ru": "Coucou сообщит о новой версии. В Windows она ставится одним кликом.",
             "id": "Coucou memberi tahu saat versi baru keluar. Di Windows, sekali klik untuk memasang.",
             "de": "Coucou sagt dir, wenn eine neue Version da ist. Unter Windows installiert sie ein Klick.",
-            "tr": "Yeni sürüm çıkınca Coucou haber verir. Windows'ta tek tıkla kurulur."
+            "tr": "Yeni sürüm çıkınca Coucou haber verir. Windows'ta tek tıkla kurulur.",
+            "ja": "新しいバージョンが出ると Coucou が知らせます。Windows では 1 クリックでインストール。"
           }
         },
         {
@@ -276,7 +712,8 @@
             "ru": "Немецкий и турецкий",
             "id": "Jerman dan Turki",
             "de": "Deutsch und Türkisch",
-            "tr": "Almanca ve Türkçe"
+            "tr": "Almanca ve Türkçe",
+            "ja": "ドイツ語とトルコ語"
           },
           "detail": {
             "en": "Coucou now speaks 12 languages.",
@@ -290,7 +727,8 @@
             "ru": "Теперь Coucou говорит на 12 языках.",
             "id": "Coucou kini berbicara 12 bahasa.",
             "de": "Coucou spricht jetzt 12 Sprachen.",
-            "tr": "Coucou artık 12 dil konuşuyor."
+            "tr": "Coucou artık 12 dil konuşuyor.",
+            "ja": "Coucou は 12 言語を話せるようになりました。"
           }
         },
         {
@@ -307,7 +745,8 @@
             "ru": "Часы на острове",
             "id": "Jam di pulau",
             "de": "Eine Uhr in der Insel",
-            "tr": "Adada saat"
+            "tr": "Adada saat",
+            "ja": "アイランドに時計"
           },
           "detail": {
             "en": "Optional, in the middle of the compact island.",
@@ -321,7 +760,8 @@
             "ru": "По желанию, в центре компактного острова.",
             "id": "Opsional, di tengah pulau ringkas.",
             "de": "Optional, in der Mitte der kompakten Insel.",
-            "tr": "İsteğe bağlı, kompakt adanın ortasında."
+            "tr": "İsteğe bağlı, kompakt adanın ortasında.",
+            "ja": "コンパクトなアイランドの中央に、オプションで。"
           }
         },
         {
@@ -338,7 +778,8 @@
             "ru": "Легче на Linux",
             "id": "Lebih ringan di Linux",
             "de": "Leichter unter Linux",
-            "tr": "Linux'ta daha hafif"
+            "tr": "Linux'ta daha hafif",
+            "ja": "Linux でより軽く"
           },
           "detail": {
             "en": "The closed window no longer keeps a processor core busy on KDE.",
@@ -352,7 +793,8 @@
             "ru": "Закрытое окно больше не занимает ядро процессора в KDE.",
             "id": "Jendela yang ditutup tak lagi menyibukkan satu inti prosesor di KDE.",
             "de": "Das geschlossene Fenster hält unter KDE keinen Prozessorkern mehr beschäftigt.",
-            "tr": "Kapalı pencere KDE'de artık bir işlemci çekirdeğini meşgul etmiyor."
+            "tr": "Kapalı pencere KDE'de artık bir işlemci çekirdeğini meşgul etmiyor.",
+            "ja": "KDE で閉じたウインドウがプロセッサのコアを占有しなくなりました。"
           }
         }
       ]

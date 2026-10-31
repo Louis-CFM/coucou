@@ -362,8 +362,8 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSend: (query: string, context: ChatContext | null, mail = false) =>
+    callOrThrow<{ text: string }>("chat_send", { query, context, mail }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
@@ -380,6 +380,16 @@ export const Bridge = {
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
+  /** Whether Claude can answer: the API key, or else the user's own Claude Code. */
+  claudeReady: () => call<boolean>("claude_ready"),
+  /** Settings → Chat → Your AI subscriptions: each switch and whether its tool is installed. */
+  subscriptionStatus: () => call<SubscriptionStatus[]>("subscription_status"),
+  /** Moves a switch; returns the rows as they are now. */
+  subscriptionSet: (provider: string, on: boolean) =>
+    call<SubscriptionStatus[]>("subscription_set", { provider, on }),
+  /** Whether a provider can answer with this key: Claude Code stands in for a missing Anthropic one. */
+  keyReady: (key: string) =>
+    key === "anthropic-api-key" ? call<boolean>("claude_ready") : call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
   secretClear: (key: string) => callOrThrow<void>("secret_clear", { key }),
 
@@ -539,6 +549,19 @@ export type ChatContext =
 export interface ModelInfo {
   id: string;
   label: string;
+}
+
+/** One row of Settings → Chat → Your AI subscriptions (cli_relay.rs `Status`). */
+export interface SubscriptionStatus {
+  provider: string;
+  /** The terminal tool that answers, or would once installed. */
+  tool: string;
+  installed: boolean;
+  on: boolean;
+  /** What to type once in a terminal to sign in. */
+  signIn: string;
+  installUrl: string;
+  subscriptionOnly: boolean;
 }
 
 export interface LocalServer {

@@ -319,7 +319,10 @@ final class VoiceEngine: ObservableObject {
             let e = error as NSError
             let msg = "[Voice] pipeline start failed: \(e.domain)/\(e.code) \(e.localizedDescription)"
             appendAppLog("nb.log", msg)
-            audioError = "\(e.domain)/\(e.code): \(e.localizedDescription)"
+            // "No audio input device" is self-explanatory — show it bare.
+            audioError = (e.domain == "VoiceAudio" && e.code == -1)
+                ? e.localizedDescription
+                : "\(e.domain)/\(e.code): \(e.localizedDescription)"
         }
     }
 

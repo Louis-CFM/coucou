@@ -4,6 +4,10 @@
 // Everything happens here rather than in the island: the API key never leaves
 // the credential store, and file bytes never cross the IPC boundary.
 //
+// Without a key, the chat and the one-shot answers go to the user's own Claude
+// Code instead (claude_code.rs); « OK Coucou » still needs the key, its tools
+// being Coucou's own.
+//
 // COUCOU_ANTHROPIC_BASE_URL points the chat at an Anthropic-compatible gateway
 // instead (issue #180). Only that variable is read: Claude Code's own
 // ANTHROPIC_BASE_URL may name a proxy the user never meant to hand this key to.
@@ -16,7 +20,7 @@ use serde_json::{json, Value};
 
 use crate::chat::{self, Chat, ChatContext, ChatReply, ModelInfo};
 use crate::i18n::{t, tf};
-use crate::{net, secrets};
+use crate::{claude_code, net, secrets};
 
 /// Credential store entry of the Anthropic API key.
 pub const KEY: &str = "anthropic-api-key";
@@ -31,6 +35,16 @@ const MAX_TOKENS: u32 = 4096;
 const MAX_INLINE_TEXT: u64 = 200_000;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5";
+
+/// Whether Claude can answer at all: an API key, or else Claude Code.
+pub fn ready() -> bool {
+    secrets::present(KEY) || claude_code::available()
+}
+
+/// True when the answers come from Claude Code rather than the API.
+pub fn uses_relay() -> bool {
+    !secrets::present(KEY) && claude_code::available()
+}
 
 /// The Messages endpoint: Anthropic's, or the gateway in COUCOU_ANTHROPIC_BASE_URL.
 /// Read once; the gateway's host (never the key) goes to the log once.
@@ -143,7 +157,11 @@ pub async fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get(KEY).ok_or_else(|| t("API key missing. Open settings."))?;
+    // No key: Settings → Chat → Your AI subscriptions lets Claude Code answer
+    // instead (cli_relay.rs); chat.rs sends the turn there before it gets here.
+    let Some(key) = secrets::get(KEY) else {
+        return Err(t("API key missing. Open settings."));
+    };
     let endpoint = endpoint()?;
 
     let turn = chat.begin(chat::ANTHROPIC);
@@ -163,7 +181,13 @@ pub async fn send(
 /// One question, one answer, no history: the dictation clean-up and the notes
 /// of a call. The text of the answer, or why there is none.
 pub async fn complete(model: &str, system: &str, user: &str, max_tokens: u32, timeout: Duration) -> Result<String, String> {
-    let key = secrets::get(KEY).ok_or_else(|| t("API key missing. Open settings."))?;
+    let Some(key) = secrets::get(KEY) else {
+        if !claude_code::available() {
+            return Err(t("API key missing. Open settings."));
+        }
+        let request = claude_code::Request { model, system, prompt: user, tools: &[], read_dir: None, timeout };
+        return claude_code::ask(&request).await;
+    };
     let endpoint = endpoint()?;
     let body = json!({
         "model": model,

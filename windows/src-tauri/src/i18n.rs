@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 12] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr"];
+pub const LANGUAGES: [&str; 14] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja"];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -151,7 +151,7 @@ fn lookup_in(lang: &str, key: &str) -> Option<&'static Value> {
 /// CLDR plural category of `n` (whole numbers) in `lang`.
 fn plural_category(lang: &str, n: u64) -> &'static str {
     match lang {
-        "zh-Hans" | "id" => "other",
+        "zh-Hans" | "id" | "ko" | "ja" => "other",
         "fr" | "pt-BR" | "hi" | "bn" => {
             if n <= 1 { "one" } else { "other" }
         }
