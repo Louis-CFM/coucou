@@ -361,7 +361,9 @@ final class HookServer: @unchecked Sendable {
     private func showQuestionHead() {
         let state = AppState.shared
         state.waitingQuestions = questions.entries
-        guard approvals.isEmpty, let head = questions.head, shownQuestion != head.id else { return }
+        guard approvals.isEmpty, let head = questions.head else { return }
+        let needsDisplay = shownQuestion != head.id || state.view != .question
+        guard needsDisplay else { return }
         shownQuestion = head.id
         var identified = head.question
         identified.requestId = head.id.uuidString
@@ -420,24 +422,24 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
-    /// No question left: close the card and give the focus back.
+    /// No question left: close the card and give the focus back, or restore its approval.
     @MainActor
     private func closeQuestionCard(pill: String?) {
         let state = AppState.shared
         shownQuestion = nil
         state.pendingQuestion = nil
-        if let approval = approvals.head {
-            state.isPinned = true
-            state.focusId = approval.displayPill
-            expandIfNeeded(to: .approval)
-            return
-        }
         state.isPinned = false
         if let prev = focusBeforeQuestion {
             focusBeforeQuestion = nil
             if let pill, state.focusId == pill, state.tasks.contains(where: { $0.id == prev }) {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
             }
+        }
+        if approvals.head != nil {
+            // Rebuild through the shared helper so native request identity and decisions survive.
+            state.pendingApproval = nil
+            showApprovalHead()
+            return
         }
         state.view = state.tasks.isEmpty ? .empty : .overview
     }
@@ -487,9 +489,8 @@ final class HookServer: @unchecked Sendable {
         removeQuestion(id: entry.id, answer: json)
     }
 
-    /// Called by QuestionView.onDisappear — the card left the screen without an answer.
-    /// Every waiting question goes back to its terminal ("ask") at once, since none of them
-    /// is on screen any more; does NOT navigate (view already changed).
+    /// Explicitly releases the current waiting queue without navigating. Hiding the card
+    /// alone leaves its questions waiting so reopening it can resume the same request.
     @MainActor
     func releaseQuestionFD(for id: UUID? = nil) {
         guard let id, questions.head?.id == id, AppState.shared.view != .approval else { return }
@@ -497,9 +498,13 @@ final class HookServer: @unchecked Sendable {
         let gone = questions.removeAll()
         for entry in gone { releaseQuestionTransport(entry, answer: #"{"permissionDecision":"ask"}"#) }
         shownQuestion = nil
+        focusBeforeQuestion = nil
         state.waitingQuestions = []
         state.pendingQuestion = nil
-        for pill in Set(gone.map(\.pillId)) { syncPill(pill) }
+        for pill in Set(gone.map(\.pillId)) {
+            syncPill(pill)
+            clearPillBadge(id: pill)
+        }
     }
 
     /// Called by QuestionView "Reply in terminal" button: question `id` (the card's when nil)

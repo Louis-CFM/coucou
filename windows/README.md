@@ -191,7 +191,7 @@ reset times. Both are off by default; turn them on in **Settings… → Plan usa
   `%USERPROFILE%\.claude\settings.json`, takes a dated backup and writes only
   after your click, with the same writer as the hooks: the status line becomes `coucou-hook --statusline`, which
   passes only the limits on (300 ms at most) and runs the status line you had
-  before — kept in `statusline-previous.json` next to the relay — with the same
+  before — kept in `statusline-previous.json` outside `bin` in Coucou's data folder — with the same
   input, printing what it prints. On Windows that one runs through Git Bash, as
   Claude Code runs it (`CLAUDE_CODE_GIT_BASH_PATH`, then the Git for Windows that
   `git.exe` on `PATH` belongs to, then the usual install folders); it gets 10 s
@@ -523,7 +523,7 @@ Linux.
 | Gemini CLI | `.gemini\settings.json` | asked in Gemini CLI |
 | Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity |
 | Cursor Agent | `.cursor\hooks.json` — Claude Code in Cursor's terminal also goes on the Cursor pill, through the Claude Code hooks | asked in Cursor |
-| Claude Desktop (Windows) | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
+| Claude Desktop | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
 | OpenCode | plugin `.config\opencode\plugins\coucou.js` | asked in OpenCode |
 | Amp | plugin `.config\amp\plugins\coucou.ts` | asked in Amp |
 | Hermes Agent | plugin `.hermes\plugins\coucou\` — then `hermes plugins enable coucou` once | asked in Hermes |
@@ -820,4 +820,5 @@ What changes on Linux:
     app's native window forward (an XWayland one, such as VS Code's by default,
     still can be). There, and for a session under tmux, screen or ssh, whose
     terminal is no ancestor, the folder opens in VS Code as before.
-- No **Claude Desktop** pill: the Claude app has no Linux build.
+- The **Claude Desktop** pill opens Anthropic's Linux app (its `.deb`): through
+  its `claude-desktop.desktop` entry, else its binary, else the `claude://` link.

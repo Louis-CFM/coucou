@@ -339,8 +339,8 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     }
 }
 
-/// The Claude Desktop pill's target: the Claude app (Windows only — it has no
-/// Linux build).
+/// The Claude Desktop pill's target: the Claude app (Windows, and Linux with
+/// Anthropic's .deb).
 #[tauri::command]
 fn open_claude_desktop() -> bool {
     platform::open_claude_desktop()
@@ -474,6 +474,7 @@ fn status_line_apply(
         // As on the Mac: taking the relay out turns the pill off with it.
         if !install {
             current.show_plan_in_notch = false;
+            current.show_plan_in_compact_island = false;
         }
         if let Err(err) = settings::save(&current) {
             log::line(format!("could not save settings: {err}"));

@@ -2,6 +2,151 @@
   "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 14 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.8",
+      "items": [
+        {
+          "icon": "checklist",
+          "title": {
+            "en": "Permission requests wait their turn",
+            "zh-Hans": "权限请求排队等候",
+            "hi": "अनुमति अनुरोध अपनी बारी का इंतज़ार करते हैं",
+            "es": "Las solicitudes esperan su turno",
+            "ar": "طلبات الإذن تنتظر دورها",
+            "fr": "Les demandes attendent leur tour",
+            "bn": "অনুমতির অনুরোধ পালা অপেক্ষা করে",
+            "pt-BR": "Os pedidos esperam a vez",
+            "ru": "Запросы ждут своей очереди",
+            "id": "Permintaan izin menunggu giliran",
+            "de": "Anfragen warten, bis sie dran sind",
+            "tr": "İzin istekleri sırasını bekler",
+            "ko": "권한 요청이 차례를 기다려요",
+            "ja": "許可リクエストが順番待ち"
+          },
+          "detail": {
+            "en": "Up to 5 requests queue in the island instead of going back to the terminal.",
+            "zh-Hans": "最多 5 个请求在岛中排队，不再退回终端。",
+            "hi": "5 तक अनुरोध टर्मिनल में लौटने की बजाय आइलैंड में कतार में रहते हैं।",
+            "es": "Hasta 5 solicitudes esperan en la isla en lugar de volver a la terminal.",
+            "ar": "تنتظر حتى 5 طلبات في الجزيرة بدل العودة إلى الطرفية.",
+            "fr": "Jusqu'à 5 demandes font la queue dans l'île au lieu de repartir vers le terminal.",
+            "bn": "৫টি পর্যন্ত অনুরোধ টার্মিনালে না ফিরে আইল্যান্ডে সারিতে থাকে।",
+            "pt-BR": "Até 5 pedidos esperam na ilha em vez de voltar para o terminal.",
+            "ru": "До 5 запросов ждут на острове, а не уходят обратно в терминал.",
+            "id": "Hingga 5 permintaan antre di pulau, tak lagi kembali ke terminal.",
+            "de": "Bis zu 5 Anfragen warten in der Insel, statt zurück ins Terminal zu gehen.",
+            "tr": "En fazla 5 istek terminale dönmek yerine adada sırada bekler.",
+            "ko": "요청 최대 5개가 터미널로 돌아가지 않고 아일랜드에서 대기해요.",
+            "ja": "最大 5 件のリクエストがターミナルに戻らずアイランドで待ちます。"
+          }
+        },
+        {
+          "icon": "eye",
+          "title": {
+            "en": "Plan usage in the compact island",
+            "zh-Hans": "紧凑岛显示套餐用量",
+            "hi": "कॉम्पैक्ट आइलैंड में प्लान उपयोग",
+            "es": "Uso del plan en la isla compacta",
+            "ar": "استخدام الخطة في الجزيرة المصغّرة",
+            "fr": "Ton forfait dans l'île compacte",
+            "bn": "কম্প্যাক্ট আইল্যান্ডে প্ল্যান ব্যবহার",
+            "pt-BR": "Uso do plano na ilha compacta",
+            "ru": "Лимиты тарифа в компактном острове",
+            "id": "Pemakaian paket di pulau ringkas",
+            "de": "Planverbrauch in der kompakten Insel",
+            "tr": "Kompakt adada plan kullanımı",
+            "ko": "컴팩트 아일랜드에 요금제 사용량",
+            "ja": "コンパクトアイランドにプラン使用量"
+          },
+          "detail": {
+            "en": "Turn it on to see your Claude plan percentage next to the agent dots.",
+            "zh-Hans": "开启后，在代理圆点旁显示你的 Claude 套餐百分比。",
+            "hi": "चालू करें और एजेंट बिंदुओं के पास अपने Claude प्लान का प्रतिशत देखें।",
+            "es": "Actívalo para ver el porcentaje de tu plan de Claude junto a los puntos de los agentes.",
+            "ar": "فعّله لترى نسبة خطة Claude بجانب نقاط الوكلاء.",
+            "fr": "Active-le pour voir le pourcentage de ton forfait Claude à côté des points des agents.",
+            "bn": "চালু করলে এজেন্টের বিন্দুর পাশে Claude প্ল্যানের শতাংশ দেখবেন।",
+            "pt-BR": "Ative para ver a porcentagem do seu plano Claude ao lado dos pontos dos agentes.",
+            "ru": "Включите, чтобы видеть процент тарифа Claude рядом с точками агентов.",
+            "id": "Aktifkan untuk melihat persentase paket Claude di samping titik agen.",
+            "de": "Einschalten, um deinen Claude-Plan in Prozent neben den Agentenpunkten zu sehen.",
+            "tr": "Açın, Claude planınızın yüzdesini ajan noktalarının yanında görün.",
+            "ko": "켜면 에이전트 점 옆에 Claude 요금제 사용률이 보여요.",
+            "ja": "オンにすると、エージェントの点の横に Claude プランの割合が表示されます。"
+          }
+        },
+        {
+          "icon": "terminal",
+          "title": {
+            "en": "Claude Desktop in the island",
+            "zh-Hans": "岛中的 Claude Desktop",
+            "hi": "आइलैंड में Claude Desktop",
+            "es": "Claude Desktop en la isla",
+            "ar": "Claude Desktop في الجزيرة",
+            "fr": "Claude Desktop dans l'île",
+            "bn": "আইল্যান্ডে Claude Desktop",
+            "pt-BR": "Claude Desktop na ilha",
+            "ru": "Claude Desktop на острове",
+            "id": "Claude Desktop di pulau",
+            "de": "Claude Desktop in der Insel",
+            "tr": "Adada Claude Desktop",
+            "ko": "아일랜드 속 Claude Desktop",
+            "ja": "アイランドに Claude Desktop"
+          },
+          "detail": {
+            "en": "Answer its approvals and questions from the island on Windows; its own pill on Linux.",
+            "zh-Hans": "在 Windows 上从岛中回复它的审批和问题；在 Linux 上有自己的胶囊。",
+            "hi": "Windows पर उसकी मंज़ूरियों और सवालों का जवाब आइलैंड से दें; Linux पर अपनी पिल।",
+            "es": "Responde sus aprobaciones y preguntas desde la isla en Windows; su pastilla en Linux.",
+            "ar": "أجب عن موافقاته وأسئلته من الجزيرة على Windows؛ وحبة خاصة به على Linux.",
+            "fr": "Réponds à ses approbations et questions depuis l'île sur Windows ; sa pill sur Linux.",
+            "bn": "Windows-এ আইল্যান্ড থেকে এর অনুমোদন ও প্রশ্নের উত্তর দিন; Linux-এ নিজস্ব পিল।",
+            "pt-BR": "Responda aprovações e perguntas pela ilha no Windows; pílula própria no Linux.",
+            "ru": "Отвечайте на его запросы и вопросы с острова в Windows; своя пилюля в Linux.",
+            "id": "Jawab persetujuan dan pertanyaannya dari pulau di Windows; pil sendiri di Linux.",
+            "de": "Freigaben und Fragen unter Windows in der Insel beantworten; eigene Pille unter Linux.",
+            "tr": "Windows'ta onaylarını ve sorularını adadan yanıtlayın; Linux'ta kendi hapı var.",
+            "ko": "Windows에서는 승인과 질문에 아일랜드에서 답하고, Linux에서는 전용 필이 생겨요.",
+            "ja": "Windows では承認と質問にアイランドから回答、Linux では専用ピル。"
+          }
+        },
+        {
+          "icon": "heart",
+          "title": {
+            "en": "Thank you, @Ohualtex",
+            "zh-Hans": "感谢 @Ohualtex",
+            "hi": "धन्यवाद, @Ohualtex",
+            "es": "Gracias, @Ohualtex",
+            "ar": "شكرًا، @Ohualtex",
+            "fr": "Merci, @Ohualtex",
+            "bn": "ধন্যবাদ, @Ohualtex",
+            "pt-BR": "Obrigado, @Ohualtex",
+            "ru": "Спасибо, @Ohualtex",
+            "id": "Terima kasih, @Ohualtex",
+            "de": "Danke, @Ohualtex",
+            "tr": "Teşekkürler, @Ohualtex",
+            "ko": "고마워요, @Ohualtex",
+            "ja": "ありがとう、@Ohualtex"
+          },
+          "detail": {
+            "en": "14 fixes and features in this version come from Ohualtex. Thank you!",
+            "zh-Hans": "本版本的 14 项修复和新功能来自 Ohualtex。谢谢！",
+            "hi": "इस संस्करण के 14 सुधार और नई सुविधाएँ Ohualtex से आई हैं। धन्यवाद!",
+            "es": "14 correcciones y novedades de esta versión son de Ohualtex. ¡Gracias!",
+            "ar": "14 إصلاحًا وميزة في هذا الإصدار من Ohualtex. شكرًا!",
+            "fr": "14 correctifs et nouveautés de cette version viennent d'Ohualtex. Merci !",
+            "bn": "এই সংস্করণের ১৪টি সংশোধন ও নতুন ফিচার Ohualtex-এর। ধন্যবাদ!",
+            "pt-BR": "14 correções e novidades desta versão vêm do Ohualtex. Obrigado!",
+            "ru": "14 исправлений и новинок этой версии — от Ohualtex. Спасибо!",
+            "id": "14 perbaikan dan fitur di versi ini dari Ohualtex. Terima kasih!",
+            "de": "14 Korrekturen und Neuerungen dieser Version stammen von Ohualtex. Danke!",
+            "tr": "Bu sürümdeki 14 düzeltme ve özellik Ohualtex'ten geliyor. Teşekkürler!",
+            "ko": "이번 버전의 수정과 기능 14개는 Ohualtex가 만들었어요. 고마워요!",
+            "ja": "このバージョンの 14 件の修正と新機能は Ohualtex によるものです。感謝！"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.7",
       "items": [
         {

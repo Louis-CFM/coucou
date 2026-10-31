@@ -2,6 +2,167 @@
   "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 16 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.8",
+      "items": [
+        {
+          "icon": "checklist",
+          "title": {
+            "en": "Approvals and questions stay put",
+            "fr": "Approbations et questions restent là",
+            "es": "Aprobaciones y preguntas se quedan",
+            "pt-BR": "Aprovações e perguntas ficam",
+            "ru": "Запросы и вопросы не теряются",
+            "zh-Hans": "审批和问题不再丢失",
+            "hi": "मंज़ूरी और सवाल बने रहते हैं",
+            "ar": "الموافقات والأسئلة تبقى",
+            "bn": "অনুমোদন ও প্রশ্ন থেকে যায়",
+            "id": "Persetujuan dan pertanyaan tetap ada",
+            "de": "Freigaben und Fragen bleiben",
+            "tr": "Onaylar ve sorular yerinde kalır",
+            "th": "คำขออนุมัติและคำถามไม่หาย",
+            "zh-Hant": "審核和問題不再遺失",
+            "ko": "승인과 질문이 그대로",
+            "ja": "承認と質問が消えない"
+          },
+          "detail": {
+            "en": "Answer a question and the approval waiting behind it comes back; a waiting question is never lost.",
+            "fr": "Réponds à une question et l'approbation en attente revient ; une question en attente n'est plus perdue.",
+            "es": "Responde una pregunta y vuelve la aprobación que esperaba; una pregunta pendiente ya no se pierde.",
+            "pt-BR": "Responda uma pergunta e a aprovação que esperava volta; uma pergunta pendente não se perde mais.",
+            "ru": "Ответьте на вопрос, и ожидающий запрос вернётся; ожидающий вопрос больше не пропадает.",
+            "zh-Hans": "回答问题后，排在后面的审批会回来；等待中的问题也不会再丢失。",
+            "hi": "सवाल का जवाब दें तो पीछे रुकी मंज़ूरी लौट आती है; रुका सवाल अब खोता नहीं।",
+            "ar": "أجب عن سؤال فتعود الموافقة التي تنتظر خلفه؛ ولم يعد السؤال المنتظر يضيع.",
+            "bn": "প্রশ্নের উত্তর দিলে পেছনে থাকা অনুমোদন ফিরে আসে; অপেক্ষমাণ প্রশ্ন আর হারায় না।",
+            "id": "Jawab pertanyaan dan persetujuan yang menunggu kembali; pertanyaan yang menunggu tak lagi hilang.",
+            "de": "Beantworte eine Frage und die wartende Freigabe kommt zurück; eine wartende Frage geht nicht mehr verloren.",
+            "tr": "Bir soruyu yanıtlayın, arkasında bekleyen onay geri gelir; bekleyen soru artık kaybolmaz.",
+            "th": "ตอบคำถามแล้วคำขออนุมัติที่รออยู่จะกลับมา คำถามที่รอก็ไม่หายอีกต่อไป",
+            "zh-Hant": "回答問題後，排在後面的審核會回來；等待中的問題也不會再遺失。",
+            "ko": "질문에 답하면 뒤에서 기다리던 승인이 돌아오고, 대기 중인 질문도 사라지지 않아요.",
+            "ja": "質問に答えると待っていた承認が戻り、待機中の質問ももう消えません。"
+          }
+        },
+        {
+          "icon": "eye",
+          "title": {
+            "en": "Desktop Mochi stays visible",
+            "fr": "Mochi reste sur le bureau",
+            "es": "Mochi se queda en el escritorio",
+            "pt-BR": "Mochi fica na mesa",
+            "ru": "Mochi остаётся на рабочем столе",
+            "zh-Hans": "桌面 Mochi 保持可见",
+            "hi": "डेस्कटॉप पर Mochi दिखता रहता है",
+            "ar": "Mochi يبقى على سطح المكتب",
+            "bn": "ডেস্কটপে Mochi থাকে",
+            "id": "Mochi tetap di desktop",
+            "de": "Mochi bleibt auf dem Schreibtisch",
+            "tr": "Masaüstündeki Mochi görünür kalır",
+            "th": "Mochi บนเดสก์ท็อปไม่หาย",
+            "zh-Hant": "桌面 Mochi 保持可見",
+            "ko": "데스크톱 Mochi가 그대로",
+            "ja": "デスクトップの Mochi が消えない"
+          },
+          "detail": {
+            "en": "Mochi no longer vanishes from the desktop when you switch apps.",
+            "fr": "Mochi ne disparaît plus du bureau quand tu changes d'app.",
+            "es": "Mochi ya no desaparece del escritorio al cambiar de app.",
+            "pt-BR": "O Mochi não some mais da mesa quando você troca de app.",
+            "ru": "Mochi больше не исчезает с рабочего стола при переключении приложений.",
+            "zh-Hans": "切换应用时，Mochi 不会再从桌面消失。",
+            "hi": "ऐप बदलने पर Mochi अब डेस्कटॉप से गायब नहीं होता।",
+            "ar": "لم يعد Mochi يختفي من سطح المكتب عند التبديل بين التطبيقات.",
+            "bn": "অ্যাপ বদলালে Mochi আর ডেস্কটপ থেকে হারিয়ে যায় না।",
+            "id": "Mochi tak lagi hilang dari desktop saat kamu berganti aplikasi.",
+            "de": "Mochi verschwindet nicht mehr vom Schreibtisch, wenn du die App wechselst.",
+            "tr": "Uygulama değiştirdiğinizde Mochi artık masaüstünden kaybolmuyor.",
+            "th": "สลับแอปแล้ว Mochi จะไม่หายไปจากเดสก์ท็อปอีก",
+            "zh-Hant": "切換 App 時，Mochi 不會再從桌面消失。",
+            "ko": "앱을 바꿔도 Mochi가 더 이상 데스크톱에서 사라지지 않아요.",
+            "ja": "アプリを切り替えても、Mochi がデスクトップから消えなくなりました。"
+          }
+        },
+        {
+          "icon": "bug",
+          "title": {
+            "en": "Dropped files kept apart",
+            "fr": "Fichiers déposés gardés à part",
+            "es": "Archivos soltados por separado",
+            "pt-BR": "Arquivos soltos mantidos à parte",
+            "ru": "Файлы больше не перезаписываются",
+            "zh-Hans": "拖入的文件分开保存",
+            "hi": "छोड़ी गई फ़ाइलें अलग रहती हैं",
+            "ar": "الملفات المُسقطة تبقى منفصلة",
+            "bn": "ছাড়া ফাইল আলাদা থাকে",
+            "id": "File yang dijatuhkan tetap terpisah",
+            "de": "Abgelegte Dateien bleiben getrennt",
+            "tr": "Bırakılan dosyalar ayrı kalır",
+            "th": "ไฟล์ที่วางแยกจากกัน",
+            "zh-Hant": "拖入的檔案分開保存",
+            "ko": "놓은 파일은 따로 보관",
+            "ja": "ドロップしたファイルを別々に"
+          },
+          "detail": {
+            "en": "Two files with the same name dropped on the notch no longer overwrite each other.",
+            "fr": "Deux fichiers du même nom déposés sur le notch ne s'écrasent plus.",
+            "es": "Dos archivos con el mismo nombre soltados en el notch ya no se sobrescriben.",
+            "pt-BR": "Dois arquivos com o mesmo nome soltos no notch não se sobrescrevem mais.",
+            "ru": "Два файла с одинаковым именем, брошенные на вырез, больше не заменяют друг друга.",
+            "zh-Hans": "拖到刘海上的两个同名文件不会再互相覆盖。",
+            "hi": "नॉच पर छोड़ी गई एक ही नाम की दो फ़ाइलें अब एक-दूसरे को नहीं मिटातीं।",
+            "ar": "لم يعد ملفان بالاسم نفسه أُسقطا على النوتش يستبدل أحدهما الآخر.",
+            "bn": "নচে ছাড়া একই নামের দুটি ফাইল আর একটি অন্যটিকে মুছে দেয় না।",
+            "id": "Dua file bernama sama yang dijatuhkan ke notch tak lagi saling menimpa.",
+            "de": "Zwei gleichnamige Dateien auf der Notch überschreiben sich nicht mehr.",
+            "tr": "Çentiğe bırakılan aynı adlı iki dosya artık birbirinin üzerine yazmıyor.",
+            "th": "ไฟล์ชื่อเดียวกันสองไฟล์ที่วางบนรอยบากจะไม่เขียนทับกันอีก",
+            "zh-Hant": "拖到瀏海上的兩個同名檔案不會再互相覆蓋。",
+            "ko": "노치에 놓은 같은 이름의 파일 두 개가 더 이상 서로 덮어쓰지 않아요.",
+            "ja": "ノッチにドロップした同名のファイル同士が上書きされなくなりました。"
+          }
+        },
+        {
+          "icon": "heart",
+          "title": {
+            "en": "Thank you, @Ohualtex",
+            "fr": "Merci, @Ohualtex",
+            "es": "Gracias, @Ohualtex",
+            "pt-BR": "Obrigado, @Ohualtex",
+            "ru": "Спасибо, @Ohualtex",
+            "zh-Hans": "感谢 @Ohualtex",
+            "hi": "धन्यवाद, @Ohualtex",
+            "ar": "شكرًا، @Ohualtex",
+            "bn": "ধন্যবাদ, @Ohualtex",
+            "id": "Terima kasih, @Ohualtex",
+            "de": "Danke, @Ohualtex",
+            "tr": "Teşekkürler, @Ohualtex",
+            "th": "ขอบคุณ @Ohualtex",
+            "zh-Hant": "感謝 @Ohualtex",
+            "ko": "고마워요, @Ohualtex",
+            "ja": "ありがとう、@Ohualtex"
+          },
+          "detail": {
+            "en": "These fixes come from Ohualtex, one of Coucou's most active contributors.",
+            "fr": "Ces correctifs viennent d'Ohualtex, l'un des contributeurs les plus actifs de Coucou.",
+            "es": "Estas correcciones son de Ohualtex, uno de los colaboradores más activos de Coucou.",
+            "pt-BR": "Essas correções vêm do Ohualtex, um dos colaboradores mais ativos do Coucou.",
+            "ru": "Эти исправления — от Ohualtex, одного из самых активных участников Coucou.",
+            "zh-Hans": "这些修复来自 Ohualtex，Coucou 最活跃的贡献者之一。",
+            "hi": "ये सुधार Ohualtex से आए हैं, जो Coucou के सबसे सक्रिय योगदानकर्ताओं में से हैं।",
+            "ar": "هذه الإصلاحات من Ohualtex، أحد أنشط المساهمين في Coucou.",
+            "bn": "এই সংশোধনগুলো Ohualtex-এর, Coucou-র সবচেয়ে সক্রিয় অবদানকারীদের একজন।",
+            "id": "Perbaikan ini dari Ohualtex, salah satu kontributor Coucou yang paling aktif.",
+            "de": "Diese Korrekturen stammen von Ohualtex, einem der aktivsten Mitwirkenden von Coucou.",
+            "tr": "Bu düzeltmeler Coucou'nun en aktif katkıcılarından Ohualtex'ten geliyor.",
+            "th": "การแก้ไขเหล่านี้มาจาก Ohualtex หนึ่งในผู้ร่วมพัฒนา Coucou ที่ขยันที่สุด",
+            "zh-Hant": "這些修正來自 Ohualtex，Coucou 最活躍的貢獻者之一。",
+            "ko": "이번 수정은 Coucou에서 가장 활발한 기여자 중 한 명인 Ohualtex가 했어요.",
+            "ja": "これらの修正は、Coucou で最も活発なコントリビューターの一人 Ohualtex によるものです。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.7",
       "items": [
         {

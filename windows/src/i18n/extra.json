@@ -7308,6 +7308,51 @@
       "tr": "Anahtar yok: sohbet yukarıdaki Claude aboneliğinizi kullanabilir.",
       "ko": "키 없음: 채팅은 위의 Claude 구독을 사용할 수 있습니다.",
       "ja": "キーなし: チャットは上の Claude サブスクリプションを使えます。"
+    },
+    "Bottom-left": {
+      "zh-Hans": "左下",
+      "hi": "नीचे-बाएँ",
+      "es": "Abajo a la izquierda",
+      "ar": "أسفل اليسار",
+      "fr": "Bas gauche",
+      "bn": "নিচে-বামে",
+      "pt-BR": "Inferior esquerdo",
+      "ru": "Снизу слева",
+      "id": "Bawah-kiri",
+      "de": "Unten links",
+      "tr": "Sol alt",
+      "ko": "왼쪽 아래",
+      "ja": "左下"
+    },
+    "Bottom-right": {
+      "zh-Hans": "右下",
+      "hi": "नीचे-दाएँ",
+      "es": "Abajo a la derecha",
+      "ar": "أسفل اليمين",
+      "fr": "Bas droite",
+      "bn": "নিচে-ডানে",
+      "pt-BR": "Inferior direito",
+      "ru": "Снизу справа",
+      "id": "Bawah-kanan",
+      "de": "Unten rechts",
+      "tr": "Sağ alt",
+      "ko": "오른쪽 아래",
+      "ja": "右下"
+    },
+    "Show in compact island": {
+      "zh-Hans": "在紧凑岛中显示",
+      "hi": "कॉम्पैक्ट आइलैंड में दिखाएं",
+      "es": "Mostrar en la isla compacta",
+      "ar": "عرض في الجزيرة المصغّرة",
+      "fr": "Afficher dans l'île compacte",
+      "bn": "কম্প্যাক্ট আইল্যান্ডে দেখান",
+      "pt-BR": "Mostrar na ilha compacta",
+      "ru": "Показывать в компактном острове",
+      "id": "Tampilkan di pulau ringkas",
+      "de": "In der kompakten Insel anzeigen",
+      "tr": "Kompakt adada göster",
+      "ko": "컴팩트 아일랜드에 표시",
+      "ja": "コンパクトアイランドに表示"
     }
   }
 }

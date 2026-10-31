@@ -804,7 +804,7 @@ dependencies = [
 
 [[package]]
 name = "coucou"
-version = "0.5.7"
+version = "0.5.8"
 dependencies = [
  "arboard",
  "cpal",
@@ -841,7 +841,7 @@ dependencies = [
 
 [[package]]
 name = "coucou-hook"
-version = "0.5.7"
+version = "0.5.8"
 dependencies = [
  "libc",
  "serde_json",

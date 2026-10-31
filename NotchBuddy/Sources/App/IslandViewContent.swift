@@ -533,7 +533,6 @@ struct QuestionView: View {
     var question: AskQuestion? { state.pendingQuestion }
 
     var body: some View {
-        let shownQuestionId = question?.requestId.flatMap(UUID.init(uuidString:))
         ZStack {
             CardBackground(wash: .cyan)
             if let q = question, !q.questions.isEmpty {
@@ -611,6 +610,7 @@ struct QuestionView: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(Color(hex: "#F5F6F8"))
                                 .focused($otherFieldFocused)
+                                .writingToolsBehavior(.disabled)
                                 .onAppear { otherFieldFocused = true }
                                 .onSubmit { commitOtherAndProceed(q: q, qi: qi, isLast: isLast) }
                                 .onExitCommand { if qi < showOther.count { showOther[qi] = false } }
@@ -723,7 +723,6 @@ struct QuestionView: View {
         .onAppear { resetQuestionState() }
         .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
         .onChange(of: state.waitingQuestions.first?.id) { _, _ in resetQuestionState() }
-        .onDisappear { if let shownQuestionId { HookServer.shared.releaseQuestionFD(for: shownQuestionId) } }
     }
 
     private func questionSource(for question: AskQuestion) -> AgentTask? {
@@ -1692,6 +1691,8 @@ struct PromptView: View {
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
                         .focused($focused)
+                        // No Writing Tools button on the island's fields: it lands near the notch (#936).
+                        .writingToolsBehavior(.disabled)
                         .onSubmit { sendMessage() }
 
                     #if !APPSTORE

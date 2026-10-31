@@ -207,8 +207,34 @@ Path(sys.argv[1]).write_text('import Foundation\nimport CryptoKit\n' + relay_typ
             assert(RecapStore.shared.decisions.last == (decision == "plan_change" ? "deny" : "allow"))
             assert(server.approvals.isEmpty && state.pendingApproval == nil && server.codexApprovals.isEmpty)
         }
+        // Hiding the question card keeps its UUID/transport; opening it again resumes that question.
+        server.sessions.note(pill: "agent_codex", display: PillSessionRegistry.Display(session: "child",
+            projectName: "Native project", cwd: "/native", hookSessionId: "root", codexThreadId: "child",
+            codexTurnId: "turn", codexManaged: true), working: true)
+        server.record(pill: "agent_codex", session: "child", raw: "child", title: "Native project") { $0.state = .working }
+        server.receiveCodexRequest(method: "item/tool/requestUserInput", params: questionParams, id: 30)
+        let reopenedID = server.questions.head!.id
+        let nativeAnswersBeforeHide = connection.answers.count
+        state.view = .overview
+        server.showQuestionHead()
+        assert(state.view == .question && state.pendingQuestion?.requestId == reopenedID.uuidString)
+        assert(server.codexQuestions[reopenedID] != nil && connection.answers.count == nativeAnswersBeforeHide)
+        var rememberedParams = params
+        rememberedParams["availableDecisions"] = ["accept", "decline", "acceptForSession",
+            ["acceptWithExecpolicyAmendment": ["execpolicy_amendment": ["git", "status"]]]] as [Any]
+        server.receiveCodexRequest(method: "item/commandExecution/requestApproval", params: rememberedParams, id: 31)
+        let interruptedApproval = state.pendingApproval!
+        assert(state.view == .approval && !interruptedApproval.ruleLabels.isEmpty)
+        server.sendQuestionAnswers(answer, for: reopenedID)
+        let restoredApproval = state.pendingApproval!
+        assert(state.view == .approval && state.isPinned && restoredApproval.id == interruptedApproval.id)
+        assert(restoredApproval.requestId == "[31]" && restoredApproval.threadId == "child" && restoredApproval.turnId == "turn")
+        assert(restoredApproval.allowsSession && restoredApproval.ruleLabels == interruptedApproval.ruleLabels)
+        assert(ApprovalRelay.fingerprint(restoredApproval) == ApprovalRelay.fingerprint(interruptedApproval))
+        server.sendApprovalDecision("deny", for: restoredApproval.id)
+        assert(server.questions.isEmpty && server.approvals.isEmpty)
         assert(ClaudeHost.activated == ["com.apple.Terminal"])
-        print("PASS actual HookServer: display/identity handoff, mixed socket/native FIFO, bounded multiple native approvals, captured UUID/question ID, socket question fallback, stale turn/read-only denial, exact request cleanup, phone fingerprint, plan card decisions")
+        print("PASS actual HookServer: display/identity handoff, mixed socket/native FIFO, bounded multiple native approvals, captured UUID/question ID, socket question fallback, stale turn/read-only denial, exact request cleanup, phone fingerprint, plan card decisions, same UUID reopening and native approval restoration")
     }
 }
 @main enum Check { @MainActor static func main() async { await HookServer.check() } }

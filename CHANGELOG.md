@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.5.8 — October 31, 2026
+
+Fixes by @Ohualtex.
+
+- **Approval comes back after a question** — answering a question now brings back the approval that was waiting behind it (#993 by @Ohualtex, #851)
+- **Questions stay put** — a new permission request or switching pills no longer sends a waiting question back to the terminal; opening the island shows it again (#994 by @Ohualtex, #852)
+- **Desktop Mochi stays visible** — Mochi no longer disappears from the desktop when you switch apps (#992 by @Ohualtex, #921)
+- **Dropped files no longer overwrite each other** — a second file with the same name is kept beside the first, and the copies Coucou keeps are cleaned up after 7 days (#986 by @Ohualtex, #856)
+- **No misplaced Writing Tools button** — the island's text fields no longer show the macOS Writing Tools button near the notch (#997 by @Ohualtex, #936)
+
+## Windows and Linux 0.5.8 — October 31, 2026
+
+Fourteen fixes and features by @Ohualtex.
+
+- **Permission requests wait their turn** — up to 5 requests now queue in the island instead of the second one going back to the terminal (#984 by @Ohualtex, #870)
+- **Claude Desktop cards** *(Windows)* — permission requests and questions from Claude Desktop sessions are answered from the island (#441 by @Ohualtex, #328); **Claude Desktop pill on Linux**: Anthropic's Linux app gets its pill, and ↗ opens it (#975 by @Ohualtex, #941)
+- **Plan usage in the compact island** — a new option shows your Claude plan percentage next to the agent dots; click it for the details (#979 by @Ohualtex, #889)
+- **Alerts from every pill** — a new option: when another pill finishes or hits an error, the island shows it for a moment, then your pill comes back (#976 by @Ohualtex, #942)
+- **Flow pill in a corner** — bottom-left and bottom-right join bottom, left and right in Flow settings, out of the way of a centred dock (#980 by @Ohualtex, #958)
+- **"Open terminal" brings the window forward** *(Windows)* — Coucou raises the session's terminal or editor instead of falling back to VS Code (#704 by @Ohualtex, #604)
+- **The dictation pill stays out of sight when dictation is off** *(Windows)* — it is parked off-screen at launch and draws nothing while hidden (#699 by @Ohualtex, #698, #711); the idle Flow pill lets clicks through until the pointer is on it (#981 by @Ohualtex, #929)
+- **The island sits under a taskbar at the top** *(Windows)* — it starts below a top taskbar, on every display, instead of covering it (#989 by @Ohualtex, #956)
+- **Uninstalling keeps your status line** *(Windows)* — the status line Coucou stands in for is saved outside the folder the uninstaller removes, and an existing copy is moved there at launch (#995 by @Ohualtex, #855)
+- **Apps opened from Coucou keep your own display settings** *(Linux)* — browsers, editors and apps no longer inherit Coucou's GDK and GStreamer overrides (#977 by @Ohualtex, #859)
+- **Gitea and Forgejo Actions CI** — the default branch's CI shows the latest Actions run when the instance reports no commit statuses (#988 by @Ohualtex, #891)
+- **The sidebar follows the language** — changing the language now relabels the Coucou window's sidebar and the dictation status too (#705 by @Ohualtex)
+
 ## 0.5.7 — October 31, 2026
 
 GitHub build: the App Store build is unchanged.

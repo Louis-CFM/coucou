@@ -23,7 +23,9 @@ use ::windows::Win32::System::Diagnostics::ToolHelp::{
 use ::windows::Win32::System::Ole::RevokeDragDrop;
 use ::windows::Win32::System::Pipes::GetNamedPipeClientProcessId;
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
-use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+use ::windows::Win32::System::Threading::{
+    AttachThreadInput, GetCurrentProcess, GetCurrentThreadId, OpenProcessToken,
+};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, GetKeyboardLayoutList, MapVirtualKeyExW, ToUnicodeEx, HKL, MAPVK_VK_TO_VSC,
     VK_CONTROL, VK_LBUTTON, VK_MENU, VK_SHIFT,
@@ -32,10 +34,10 @@ use ::windows::Win32::UI::Shell::{
     ShellExecuteExW, SHELLEXECUTEINFOW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC,
 };
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindow, GetWindowLongPtrW,
-    GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow,
-    SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, GW_OWNER, SW_RESTORE, SW_SHOWNORMAL, WS_EX_NOACTIVATE,
-    WS_EX_TOOLWINDOW,
+    BringWindowToTop, EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos,
+    GetForegroundWindow, GetWindow, GetWindowLongPtrW, GetWindowTextW, GetWindowThreadProcessId,
+    IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow, SetWindowLongPtrW, ShowWindow,
+    GWL_EXSTYLE, GW_OWNER, SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
 use super::LocalTime;
@@ -448,11 +450,54 @@ pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
 fn bring_forward(raw: isize) -> bool {
     let hwnd = HWND(raw as *mut _);
     unsafe {
+        if !IsWindow(Some(hwnd)).as_bool() {
+            return false;
+        }
         if IsIconic(hwnd).as_bool() {
             let _ = ShowWindow(hwnd, SW_RESTORE);
+        } else {
+            let _ = ShowWindow(hwnd, SW_SHOW);
         }
-        // Allowed: the click on the island that asked for this was the last input.
-        SetForegroundWindow(hwnd).as_bool()
+
+        // The island window has WS_EX_NOACTIVATE, so clicks on it do not make Coucou
+        // the active foreground window. Windows blocks SetForegroundWindow unless the
+        // calling thread is attached to the foreground thread or owns foreground rights.
+        let fg_hwnd = GetForegroundWindow();
+        if fg_hwnd == hwnd {
+            return true;
+        }
+
+        let cur_thread = GetCurrentThreadId();
+        let fg_thread = if fg_hwnd.0.is_null() {
+            0
+        } else {
+            GetWindowThreadProcessId(fg_hwnd, None)
+        };
+        let target_thread = GetWindowThreadProcessId(hwnd, None);
+
+        let attached_fg = if fg_thread != 0 && fg_thread != cur_thread {
+            AttachThreadInput(cur_thread, fg_thread, true).as_bool()
+        } else {
+            false
+        };
+
+        let attached_target = if target_thread != 0 && target_thread != cur_thread && target_thread != fg_thread {
+            AttachThreadInput(cur_thread, target_thread, true).as_bool()
+        } else {
+            false
+        };
+
+        let _ = BringWindowToTop(hwnd);
+        let ok = SetForegroundWindow(hwnd).as_bool();
+
+        if attached_target {
+            let _ = AttachThreadInput(cur_thread, target_thread, false);
+        }
+        if attached_fg {
+            let _ = AttachThreadInput(cur_thread, fg_thread, false);
+        }
+
+        ok || GetForegroundWindow() == hwnd
     }
 }
 
@@ -642,6 +687,7 @@ pub fn layer_display(_island: &WebviewWindow, _mochi: &WebviewWindow) -> Option<
 
 pub fn prepare_pill_window(win: &WebviewWindow, _mode: super::DesktopMode) -> bool {
     make_non_activating(win);
+    let _ = win.set_ignore_cursor_events(true);
     true
 }
 

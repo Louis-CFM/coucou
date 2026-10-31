@@ -213,14 +213,100 @@ fn gitea_ci(state: Option<&str>) -> CiState {
     }
 }
 
+pub(crate) fn gitea_workflow_ci(status: Option<&str>, conclusion: Option<&str>) -> CiState {
+    let s = status.map(str::to_ascii_lowercase);
+    let c = conclusion.map(str::to_ascii_lowercase);
+
+    match (s.as_deref(), c.as_deref()) {
+        (Some("completed") | Some("done"), Some("success")) => CiState::Success,
+        (
+            Some("completed") | Some("done"),
+            Some("failure") | Some("timed_out") | Some("cancelled") | Some("action_required"),
+        ) => CiState::Failure,
+        (Some("completed") | Some("done"), Some("skipped") | Some("neutral")) => CiState::Success,
+        (
+            Some(
+                "running"
+                | "in_progress"
+                | "queued"
+                | "waiting"
+                | "pending"
+                | "blocked"
+                | "requested",
+            ),
+            _,
+        ) => CiState::Pending,
+        _ => match (s.as_deref(), c.as_deref()) {
+            (Some("success"), _) | (_, Some("success")) => CiState::Success,
+            (Some("failure"), _) | (_, Some("failure")) => CiState::Failure,
+            (Some("pending"), _) | (_, Some("pending")) => CiState::Pending,
+            _ => CiState::Unknown,
+        },
+    }
+}
+
+async fn gitea_actions_ci(
+    http: &reqwest::Client,
+    token: &str,
+    base: &str,
+    repo: &str,
+    branch: &str,
+) -> Option<(CiState, Option<String>)> {
+    let url = format!("{base}/repos/{repo}/actions/runs?branch={branch}&page=1&limit=5");
+    let resp = http
+        .get(url)
+        .header("Authorization", format!("token {token}"))
+        .send()
+        .await
+        .ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let body: Value = resp.json().await.ok()?;
+    let runs = if let Some(arr) = body.get("workflow_runs").and_then(Value::as_array) {
+        arr.as_slice()
+    } else if let Some(arr) = body.as_array() {
+        arr.as_slice()
+    } else {
+        &[]
+    };
+
+    let target = runs.iter().find(|r| {
+        r.get("head_branch")
+            .and_then(Value::as_str)
+            .map_or(true, |b| b.eq_ignore_ascii_case(branch))
+    })?;
+
+    let status = target.get("status").and_then(Value::as_str);
+    let conclusion = target.get("conclusion").and_then(Value::as_str);
+    let head_sha = target
+        .get("head_sha")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let ci = gitea_workflow_ci(status, conclusion);
+    if ci != CiState::Unknown {
+        Some((ci, head_sha))
+    } else {
+        None
+    }
+}
+
 async fn gitea_main_ci(http: &reqwest::Client, token: &str, base: &str, repos: &[Value]) -> Vec<GitHubRepoCi> {
     let mut out = Vec::new();
     for repo in repos.iter().take(20) {
         let Some(name) = repo.get("full_name").and_then(Value::as_str) else { continue };
         let branch = repo.get("default_branch").and_then(Value::as_str).unwrap_or("main");
         let statuses = gitea_get(http, token, format!("{base}/repos/{name}/commits/{branch}/statuses?limit=1&sort=recentupdate")).await;
+        let mut ci = gitea_ci(statuses.first().and_then(|s| s.get("state")).and_then(Value::as_str));
+        let mut head_sha = None;
+        if ci == CiState::Unknown {
+            if let Some((action_ci, action_sha)) = gitea_actions_ci(http, token, base, name, branch).await {
+                ci = action_ci;
+                head_sha = action_sha;
+            }
+        }
         out.push(GitHubRepoCi { repo: name.to_string(), url: repo.get("html_url").and_then(Value::as_str).unwrap_or("").to_string(),
-            branch: branch.to_string(), ci: gitea_ci(statuses.first().and_then(|s| s.get("state")).and_then(Value::as_str)), head_sha: None });
+            branch: branch.to_string(), ci, head_sha });
     }
     out
 }
@@ -1327,6 +1413,21 @@ mod tests {
         let first_day = days.iter().find(|day| day.date == "1970-01-01").unwrap();
         assert_eq!((first_day.count, first_day.level, first_day.weekday), (2, 2, 4));
         assert_eq!(activity.total, 2);
+    }
+
+    #[test]
+    fn gitea_workflow_ci_maps_runs_and_conclusions() {
+        assert_eq!(gitea_workflow_ci(Some("completed"), Some("success")), CiState::Success);
+        assert_eq!(gitea_workflow_ci(Some("completed"), Some("failure")), CiState::Failure);
+        assert_eq!(gitea_workflow_ci(Some("completed"), Some("timed_out")), CiState::Failure);
+        assert_eq!(gitea_workflow_ci(Some("completed"), Some("cancelled")), CiState::Failure);
+        assert_eq!(gitea_workflow_ci(Some("completed"), Some("skipped")), CiState::Success);
+        assert_eq!(gitea_workflow_ci(Some("running"), None), CiState::Pending);
+        assert_eq!(gitea_workflow_ci(Some("in_progress"), None), CiState::Pending);
+        assert_eq!(gitea_workflow_ci(Some("queued"), None), CiState::Pending);
+        assert_eq!(gitea_workflow_ci(Some("waiting"), None), CiState::Pending);
+        assert_eq!(gitea_workflow_ci(None, Some("success")), CiState::Success);
+        assert_eq!(gitea_workflow_ci(None, None), CiState::Unknown);
     }
 
     #[test]
