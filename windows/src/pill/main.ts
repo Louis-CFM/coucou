@@ -81,7 +81,7 @@ function look(): Look {
   }
 }
 
-const vertical = () => state.edge !== "bottom";
+const vertical = () => state.edge === "left" || state.edge === "right";
 
 function messageText(): string | null {
   switch (state.phase) {
@@ -128,6 +128,7 @@ function pillButton(icon: string, tip: string, action: () => void, opts: { small
     action();
   });
   b.addEventListener("pointerenter", () => {
+    if (tooltip === tip) return;
     tooltip = tip;
     render();
   });
@@ -240,12 +241,13 @@ let capsule: HTMLElement | null = null;
 let lastKey = "";
 
 function render() {
-  // Hidden, nothing is drawn: Windows may leave the window on screen.
-  root.style.display = visible ? "" : "none";
   if (!visible) {
+    root.style.display = "none";
+    root.replaceChildren();
     void FlowBridge.pillHot([]);
     return;
   }
+  root.style.display = "flex";
   const l = look();
   const open = l !== "resting";
   const length = open ? openLength(l) : RESTING_LENGTH;
@@ -271,10 +273,15 @@ function render() {
     capsule.style.width = `${vertical() ? thickness : length}px`;
     capsule.style.height = `${vertical() ? length : thickness}px`;
   });
-  // Bubble first in the DOM: the flex direction puts it beside the pill.
+  // Bubble first in the DOM: the flex direction puts it beside the pill. The
+  // capsule itself stays attached: taking it out and back in re-fires
+  // pointerenter on the button under the cursor, which renders again, in a
+  // loop that also eats every click (the press and the release land on a
+  // node that was removed in between).
   for (const old of root.querySelectorAll(".bubble")) old.remove();
   const b = bubble();
-  root.replaceChildren(...(b ? [b] : []), capsule);
+  if (b) root.prepend(b);
+  if (capsule.parentNode !== root) root.append(capsule);
   mochi.setState(state.phase === "thinking" || state.voice?.phase === "thinking" ? "thinking" : "idle");
   wake();
   // Where the mouse is taken, once the sizes have settled.
@@ -283,8 +290,10 @@ function render() {
 }
 
 function reportHot() {
-  // A report still due from before the pill hid.
-  if (!visible) return;
+  if (!visible) {
+    void FlowBridge.pillHot([]);
+    return;
+  }
   const rects: [number, number, number, number][] = [];
   const W = window.innerWidth;
   const H = window.innerHeight;
@@ -294,6 +303,14 @@ function reportHot() {
     const w = open ? 200 : 96;
     const h = open ? 46 : 26;
     rects.push([(W - w) / 2, H - h, w, h]);
+  } else if (state.edge === "bottom-left") {
+    const w = open ? 200 : 96;
+    const h = open ? 46 : 26;
+    rects.push([0, H - h, w, h]);
+  } else if (state.edge === "bottom-right") {
+    const w = open ? 200 : 96;
+    const h = open ? 46 : 26;
+    rects.push([W - w, H - h, w, h]);
   } else {
     const w = open ? 46 : 26;
     const h = open ? 200 : 96;
@@ -505,6 +522,7 @@ async function main() {
   render();
   void onEvent<PillState>("pill-state", (s) => {
     state = s;
+    visible = s.enabled || s.noteStartedAt !== null || s.announcement !== null || s.voice !== null || s.phase !== "idle";
     if (s.phase === "listening") target.fill(0);
     render();
   });

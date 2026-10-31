@@ -1,8 +1,95 @@
 # Changelog
 
-## Unreleased
+## 0.5.8 — October 31, 2026
 
-- **Mac: WhatsApp statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the WhatsApp pill (#901, same fix as #910)
+Fixes by @Ohualtex.
+
+- **Approval comes back after a question** — answering a question now brings back the approval that was waiting behind it (#993 by @Ohualtex, #851)
+- **Questions stay put** — a new permission request or switching pills no longer sends a waiting question back to the terminal; opening the island shows it again (#994 by @Ohualtex, #852)
+- **Desktop Mochi stays visible** — Mochi no longer disappears from the desktop when you switch apps (#992 by @Ohualtex, #921)
+- **Dropped files no longer overwrite each other** — a second file with the same name is kept beside the first, and the copies Coucou keeps are cleaned up after 7 days (#986 by @Ohualtex, #856)
+- **No misplaced Writing Tools button** — the island's text fields no longer show the macOS Writing Tools button near the notch (#997 by @Ohualtex, #936)
+
+## Windows and Linux 0.5.8 — October 31, 2026
+
+Fourteen fixes and features by @Ohualtex.
+
+- **Permission requests wait their turn** — up to 5 requests now queue in the island instead of the second one going back to the terminal (#984 by @Ohualtex, #870)
+- **Claude Desktop cards** *(Windows)* — permission requests and questions from Claude Desktop sessions are answered from the island (#441 by @Ohualtex, #328); **Claude Desktop pill on Linux**: Anthropic's Linux app gets its pill, and ↗ opens it (#975 by @Ohualtex, #941)
+- **Plan usage in the compact island** — a new option shows your Claude plan percentage next to the agent dots; click it for the details (#979 by @Ohualtex, #889)
+- **Alerts from every pill** — a new option: when another pill finishes or hits an error, the island shows it for a moment, then your pill comes back (#976 by @Ohualtex, #942)
+- **Flow pill in a corner** — bottom-left and bottom-right join bottom, left and right in Flow settings, out of the way of a centred dock (#980 by @Ohualtex, #958)
+- **"Open terminal" brings the window forward** *(Windows)* — Coucou raises the session's terminal or editor instead of falling back to VS Code (#704 by @Ohualtex, #604)
+- **The dictation pill stays out of sight when dictation is off** *(Windows)* — it is parked off-screen at launch and draws nothing while hidden (#699 by @Ohualtex, #698, #711); the idle Flow pill lets clicks through until the pointer is on it (#981 by @Ohualtex, #929)
+- **The island sits under a taskbar at the top** *(Windows)* — it starts below a top taskbar, on every display, instead of covering it (#989 by @Ohualtex, #956)
+- **Uninstalling keeps your status line** *(Windows)* — the status line Coucou stands in for is saved outside the folder the uninstaller removes, and an existing copy is moved there at launch (#995 by @Ohualtex, #855)
+- **Apps opened from Coucou keep your own display settings** *(Linux)* — browsers, editors and apps no longer inherit Coucou's GDK and GStreamer overrides (#977 by @Ohualtex, #859)
+- **Gitea and Forgejo Actions CI** — the default branch's CI shows the latest Actions run when the instance reports no commit statuses (#988 by @Ohualtex, #891)
+- **The sidebar follows the language** — changing the language now relabels the Coucou window's sidebar and the dictation status too (#705 by @Ohualtex)
+
+## 0.5.7 — October 31, 2026
+
+GitHub build: the App Store build is unchanged.
+
+- **Mail in the notch** — the Mail pill searches every Apple Mail inbox from its magnifier: free words, `from:anne`, `subject:"May quote"`, and quick filters (All, Unread, Important, Today). Click a message to read it in the notch, which grows under the Mail card; Open, Reply (Mail's own window: nothing leaves from Coucou), Mark as read, Important, Junk, and in ⋯ Always important (VIP) or Always ignore this sender. The unread badge is just the number. Coucou no longer slows Mail down: it reads messages in small batches, never with whole-mailbox searches, and waits for Mail to settle after it opens
+- **Mail sorted for you** — a Mail section in the Coucou window: Overview, Rules, Banned words, VIP. **Sort new messages automatically** (off by default) looks only at what arrives after you turn it on, each message once: VIPs are flagged, banned words (whole words) send to Junk, then the first rule that matches marks as important or read, sends to Junk or moves to a folder. A journal lists every action with its reason and **Undo**. Coucou never deletes a message
+- **Your mail in the chat** — turn on **Mail** next to the model and the chat's AI sees your 40 newest messages and can answer with a plan: sort, reply drafts, sends, or a mail merge that gives each recipient their page of a PDF. The plan shows as a card; nothing happens before **Send me a test** or **Run**, which waits 5 seconds (Cancel). Works with every chat provider, key or subscription
+- **Search the settings** — a field at the top of the Coucou window's sidebar finds any setting as you type, whatever the accents; a click opens the page, scrolls to the box and makes it glow. Enter opens the first result
+- **Coucou in a corner of the screen** — Settings → General → Display → Position, or drag Mochi to a corner and let go: a magnet shows where he'll land. At rest, a small rounded tile with Mochi alone; hover it and the other pills come out one after the other. Open, Mochi sits in the corner with the other pills' Mochis on a quarter circle around him; click one and they swap places. Drop him at the top centre to bring him back to the notch
+
+## Windows and Linux 0.5.7 — October 31, 2026
+
+- **Mail with classic Outlook** *(Windows)* — the Mail pill reads the classic Outlook already open on your PC through its own COM objects: no sign-in, no app to register at Microsoft, no admin consent, and Coucou never starts Outlook. Search and filters, reading and actions, the Mail section with automatic sorting, rules, banned words, VIPs and a journal with Undo, and the chat's Mail switch with plans that run only after Run, as on the Mac. Outlook's scripts use unique temporary files that are always removed, and a script that hangs is stopped and reaped (#1004 by @Ohualtex). The new Outlook for Windows has no COM objects and Linux has no Outlook, so the pill is for classic Outlook only
+- **Search the settings** — a field under the brand in the Coucou window's sidebar finds any setting as you type; Enter opens the first result, Esc clears it, and the box found glows (#1002 by @Ohualtex)
+
+## 0.5.6 — October 30, 2026
+
+- **Chat on your own AI subscription** — Settings → Chat → Your AI subscriptions: one switch per provider. On, the chat goes through the provider's official terminal tool, signed in with your own account: Claude Code (Claude plan), Antigravity CLI or Gemini CLI (Google AI plan), Codex CLI (ChatGPT plan), and two new choices in the chat, Cursor CLI and GitHub Copilot CLI. Off, the API key as before. Replaces 0.5.5's hidden rule (empty the key and Claude Code answers): each row says whether the tool is installed, how to install it and how to sign in, and the chat's model chip names the tool that answers. Every run is read-only (plan or ask modes, no shell, no edits), loads none of your hooks, MCP servers or extensions where the tool lets Coucou turn them off, saves no session, and searches the web for the chat only; a dropped file is read with no web. Coucou reads no credential. GitHub build: the App Store build is sandboxed and still needs a key
+- **The tools are found where you installed them** — nvm, fnm, Volta, Bun, pnpm, Homebrew or the tools' own installers, and else through your login shell (a Claude Code installed with npm under nvm was not found before)
+- **Korean** (#880 by @lovyestar) **and Japanese**: 16 languages
+
+## Windows and Linux 0.5.6 — October 30, 2026
+
+- **Chat on your own AI subscription** — the same switches as on the Mac in Settings → Chat (Claude Code, Antigravity CLI or Gemini CLI, Codex CLI, Cursor CLI, Copilot CLI), read-only runs, and the phone's chat takes the same path. Through npm's `.cmd` shims on Windows the prompt goes in on stdin. Without a key and with Claude's switch off, the chat asks for a key instead of answering through Claude Code anyway; Flow's clean-up and the notes of a call still use Claude Code when no key is saved
+- **Korean** (#880 by @lovyestar) **and Japanese**: 14 languages
+
+## 0.5.5 — October 29, 2026
+
+- **Chat on your Claude plan, no API key** — with no Anthropic key saved, the chat is answered by your own Claude Code (`claude -p`), signed in with your account. Each run loads none of your settings or hooks, no MCP server, saves no session, and may only search the web or, with no web at all, read the file you dropped (copied alone into a folder of its own). GitHub build: the App Store build is sandboxed and still needs a key. Saving a key switches back to the API
+- **Each session apart behind its pill** — two terminals or two VS Code windows stay one pill, but each session keeps its own name, steps and finish; a session waiting for you takes a place in the grid beside the pill, and the open card lists the sessions (#878 by @NikitaBulichev, #429)
+- **Questions from several sessions wait side by side** instead of sending each other back to the terminal, and every waiting question reaches the iPhone (#877, #874 by @NikitaBulichev)
+- **Sessions named after their title** — Claude Code's own title when you never used /rename, so two sessions in one repository no longer both read its folder (#876 by @NikitaBulichev)
+- **Claude Code on a remote machine** — the relay runs on a Linux server reached over SSH, follows `COUCOU_SOCKET`, and counts VS Code Remote sessions as VS Code; setup in [docs/REMOTE.md](docs/REMOTE.md) (#875 by @NikitaBulichev)
+
+## Windows and Linux 0.5.5 — October 29, 2026
+
+- **Chat on your Claude plan, no API key** — with no Anthropic key saved, the chat, Flow's clean-up and the notes of a call run through your own Claude Code (`claude -p`), signed in with your account. Each run loads none of your settings or hooks, no MCP server, saves no session, and may only search the web or, with no web at all, read the file you dropped. « OK Coucou » still needs the key. Saving a key switches everything back to the API (#903 by @RomainBrocheton)
+
+## 0.5.4 — October 29, 2026
+
+Reliability: bugs reported by @romainb82 and others, fixed by the community.
+
+- **The hook server never gives up** — one failed connection no longer stops Coucou from hearing Claude Code until the next launch (#872 by @seongj-un, #853)
+- **Your own hooks are safe** — installing or removing Coucou's hooks only touches Coucou's own entries, never a hook of yours whose path mentions "coucou" (#944 by @rahul05ranjan, #854)
+- **No crash without a microphone** (#950 by @gabbe-swe, #949)
+- **"Hide after" is used** — the delay set in Settings now hides the compact island (#780 by @Ohualtex, #675)
+- **Nothing drawn over the real notch while hidden** (#789 by @orrrrli); a third-party agent's finished card no longer says "Claude Code finished" (#865 by @Ohualtex, #593)
+- **Service pills tell the truth** — n8n no longer replays an old run as new at launch, and keeps each run's real time (#948, #861); Stripe no longer adds different currencies together (#938, #860); GitHub counts the stars of all your repositories, past the first 100 (#939, #862); Kraken keeps tickers such as XTZ and ZRX whole (#926, #863). All by @Ohualtex
+- **WhatsApp statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the WhatsApp pill (#901, same fix as #910)
+
+## Windows and Linux 0.5.4 — October 29, 2026
+
+Reliability: 25 community fixes, shared with the Mac where they apply.
+
+- **The hook relay never gives up** — a failed pipe connection no longer stops Coucou from hearing Claude Code (#872 by @seongj-un, #853); the pipe no longer crashes under many connections (mio 1.2.4, #911 by @afpruivo)
+- **Windows: an approval card goes once the terminal has taken over** (#890 by @afpruivo, #857); the hooks go where `CLAUDE_CONFIG_DIR` points (#810 by @afpruivo)
+- **Settings saved at the same moment no longer collide** (#888 by @Ohualtex, #858)
+- **The Flow pill's buttons take clicks** and the pill keeps its edge (#760 by @arnavaggarwal-dev, #759); on Linux its toolbar folds even when the leave event is lost (#946 by @dougkusanagi, #584)
+- **Windows: the Settings window opens even when creating it at startup failed** (#807 by @afpruivo, #775); the last edit stays on the ticker after Claude Code finishes (#846 by @afpruivo, #840); the chat field keeps the focus after an answer (#931 by @ce017); no coloured bar under Mochi at 150 % scale (#867 by @PythonTilk)
+- **WhatsApp groups show their names** instead of "Group <id>" (#907 by @arnavaggarwal-dev)
+- **OpenCode 2 sessions finish properly in the island** (#808 by @afpruivo, #717)
+- **Service pills tell the truth** — n8n, Stripe and GitHub, as on the Mac (#948, #938, #939 by @Ohualtex)
+- **Linux: 24-bit microphones work for Flow and notes** (#785 by @eduardo-qts); on Arch, the desktop entry uses the portal's app id (#947 by @rahul05ranjan, #804); the build has no warnings left (#893 by @ZouaouiB)
 
 ## Windows and Linux 0.5.3 — October 22, 2026
 

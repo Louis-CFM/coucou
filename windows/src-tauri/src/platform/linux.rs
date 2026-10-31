@@ -92,6 +92,7 @@ fn xdg_user_dir(text: &str, key: &str, home: &Path) -> Option<PathBuf> {
 /// every launch, so each launch would rewrite the system's registry with
 /// plugin paths that vanish once Coucou quits. Give ours its own file.
 pub fn prepare_environment() {
+    let _ = INHERITED.set(OWN_OVERRIDES.iter().map(|k| (*k, std::env::var_os(k))).collect());
     prefer_x11_on_gnome();
     follow_gnome_text_scaling();
     if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
@@ -234,17 +235,69 @@ pub fn user_full_name() -> Option<String> {
 
 // ── Processes ─────────────────────────────────────────────────────────────────
 
-/// Nothing to hide: a spawned process only gets a terminal if it asks for one.
+/// Outlook (the Mail pill) is a Windows program: nothing to look for here.
+pub fn process_running(_exe: &str) -> bool {
+    false
+}
+
+/// What the variables Coucou sets for itself (prepare_environment) were when it
+/// started, so its children get the user's own values back.
+static INHERITED: std::sync::OnceLock<Vec<(&'static str, Option<std::ffi::OsString>)>> = std::sync::OnceLock::new();
+/// Set or changed by prepare_environment for this process only.
+const OWN_OVERRIDES: [&str; 3] = ["GDK_BACKEND", "GDK_DPI_SCALE", "GST_REGISTRY"];
+/// Set by the AppImage's launcher for its bundled GStreamer: dropped when they
+/// point inside the AppImage, which a child cannot use.
+const APPIMAGE_GST: [&str; 3] = ["GST_REGISTRY_1_0", "GST_PLUGIN_SYSTEM_PATH", "GST_PLUGIN_SYSTEM_PATH_1_0"];
+
+/// The changes a child's environment needs: `Some` sets the value back, `None`
+/// removes the variable. Nothing for a variable Coucou left as it found it.
+fn child_env(
+    inherited: &[(&str, Option<std::ffi::OsString>)],
+    current: impl Fn(&str) -> Option<std::ffi::OsString>,
+    appdir: Option<&std::ffi::OsStr>,
+) -> Vec<(String, Option<std::ffi::OsString>)> {
+    let mut out = Vec::new();
+    for (key, was) in inherited {
+        if current(key) != *was {
+            out.push((key.to_string(), was.clone()));
+        }
+    }
+    if let Some(dir) = appdir.and_then(|d| d.to_str()).filter(|d| !d.is_empty()) {
+        for key in APPIMAGE_GST {
+            if current(key).is_some_and(|v| v.to_string_lossy().contains(dir)) {
+                out.push((key.to_string(), None));
+            }
+        }
+    }
+    out
+}
+
+/// Prepares a command to launch a child process: Coucou's own GDK and
+/// GStreamer settings (GDK_BACKEND=x11 on GNOME, GDK_DPI_SCALE, the AppImage's
+/// GStreamer paths) go back to what the user had, so they do not leak into the
+/// browser, the editor or the apps it opens (#859).
 pub fn no_console(cmd: &mut Command) -> &mut Command {
+    let inherited = INHERITED.get().map(Vec::as_slice).unwrap_or(&[]);
+    let appdir = std::env::var_os("APPDIR");
+    for (key, value) in child_env(inherited, |k| std::env::var_os(k), appdir.as_deref()) {
+        match value {
+            Some(v) => cmd.env(key, v),
+            None => cmd.env_remove(key),
+        };
+    }
     cmd
 }
 
 pub fn open_url(url: &str) {
-    let _ = Command::new("xdg-open").arg(url).spawn();
+    let mut cmd = Command::new("xdg-open");
+    cmd.arg(url);
+    let _ = no_console(&mut cmd).spawn();
 }
 
 pub fn reveal_folder(path: &str) {
-    let _ = Command::new("xdg-open").arg(path).spawn();
+    let mut cmd = Command::new("xdg-open");
+    cmd.arg(path);
+    let _ = no_console(&mut cmd).spawn();
 }
 
 /// Our own `which`: the first executable file named `stem` on $PATH.
@@ -261,30 +314,74 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
 
 // ── Session windows ("Open terminal") ─────────────────────────────────────────
 //
-// Finding and raising a session's window lives in linux_focus.rs. There is no
-// Claude desktop app for Linux.
+// Finding and raising a session's window lives in linux_focus.rs.
 
+/// The Claude desktop app on Linux: launched via its desktop entry
+/// (installed by Anthropic's official .deb package as claude-desktop.desktop),
+/// directly by executable, or via its registered claude:// scheme handler.
 pub fn open_claude_desktop() -> bool {
-    false
+    open_claude_with(
+        || {
+            // gtk-launch itself starts fine whether the entry exists or not:
+            // look for the entry first, or the fallbacks below never run.
+            desktop_entry_exists("claude-desktop.desktop")
+                && no_console(Command::new("gtk-launch").arg("claude-desktop")).spawn().is_ok()
+        },
+        || {
+            let candidates = [
+                find_on_path("claude-desktop"),
+                Some(PathBuf::from("/usr/bin/claude-desktop")),
+                Some(PathBuf::from("/opt/Claude/claude-desktop")),
+                Some(PathBuf::from("/opt/Claude/claude")),
+                Some(home_dir().join(".local/bin/claude-desktop")),
+            ];
+            for path in candidates.into_iter().flatten() {
+                if path.is_file() && no_console(&mut Command::new(path)).spawn().is_ok() {
+                    return true;
+                }
+            }
+            false
+        },
+        || no_console(Command::new("xdg-open").arg("claude://")).spawn().is_ok(),
+    )
 }
 
-/// Where the Codex CLI may be, best first: $PATH, then the usual per-user
-/// install folders, which a desktop launch often leaves out of $PATH (npm's
-/// global prefix, Volta, Bun, pnpm, and nvm with its newest Node first).
-pub fn codex_candidates() -> Vec<PathBuf> {
+/// A desktop entry with this file name in the system's or the user's
+/// applications folders (XDG_DATA_HOME, then XDG_DATA_DIRS).
+fn desktop_entry_exists(file: &str) -> bool {
+    let dirs = std::env::var("XDG_DATA_DIRS").unwrap_or_default();
+    let system = if dirs.trim().is_empty() { "/usr/local/share:/usr/share".to_string() } else { dirs };
+    std::iter::once(xdg("XDG_DATA_HOME", ".local/share"))
+        .chain(std::env::split_paths(&system))
+        .any(|dir| dir.join("applications").join(file).is_file())
+}
+
+fn open_claude_with(
+    desktop: impl FnOnce() -> bool,
+    binary: impl FnOnce() -> bool,
+    protocol: impl FnOnce() -> bool,
+) -> bool {
+    desktop() || binary() || protocol()
+}
+
+/// Where a CLI such as `codex` or `claude` may be, best first: $PATH, then the
+/// usual per-user install folders, which a desktop launch often leaves out of
+/// $PATH (the native installers' ~/.local/bin, npm's global prefix, Volta, Bun,
+/// pnpm, and nvm with its newest Node first).
+pub fn cli_candidates(name: &str) -> Vec<PathBuf> {
     let home = home_dir();
-    let mut out: Vec<PathBuf> = find_on_path("codex").into_iter().collect();
+    let mut out: Vec<PathBuf> = find_on_path(name).into_iter().collect();
     for dir in [".local/bin", ".npm-global/bin", ".volta/bin", ".bun/bin", ".local/share/pnpm"] {
-        out.push(home.join(dir).join("codex"));
+        out.push(home.join(dir).join(name));
     }
-    out.push(PathBuf::from("/usr/local/bin/codex"));
-    out.push(PathBuf::from("/usr/bin/codex"));
+    out.push(PathBuf::from("/usr/local/bin").join(name));
+    out.push(PathBuf::from("/usr/bin").join(name));
     let nvm = home.join(".nvm/versions/node");
     if let Ok(entries) = std::fs::read_dir(&nvm) {
         let mut versions: Vec<String> =
             entries.filter_map(|e| e.ok()?.file_name().into_string().ok()).collect();
         versions.sort_by(|a, b| crate::codex_plan::compare_versions(b, a));
-        out.extend(versions.iter().map(|v| nvm.join(v).join("bin/codex")));
+        out.extend(versions.iter().map(|v| nvm.join(v).join("bin").join(name)));
     }
     out.retain(|p| {
         std::fs::metadata(p)
@@ -842,6 +939,33 @@ mod tests {
         assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"pics\"", "XDG_PICTURES_DIR", home), None);
         assert_eq!(xdg_user_dir("", "XDG_PICTURES_DIR", home), None);
     }
+
+    #[test]
+    fn children_get_the_users_own_gdk_and_gstreamer_settings_back() {
+        use std::ffi::{OsStr, OsString};
+        let current = |k: &str| -> Option<OsString> {
+            match k {
+                "GDK_BACKEND" => Some("x11".into()),
+                "GDK_DPI_SCALE" => Some("0.8".into()),
+                "GST_REGISTRY" => Some("/home/u/.cache/coucou/gstreamer-registry.bin".into()),
+                "GST_PLUGIN_SYSTEM_PATH_1_0" => Some("/tmp/.mount_CoucouX/usr/lib/gstreamer-1.0".into()),
+                "GST_PLUGIN_SYSTEM_PATH" => Some("/usr/lib/gstreamer-1.0".into()),
+                _ => None,
+            }
+        };
+        // Coucou forced x11 over the user's wayland, and set the other two itself.
+        let inherited = [("GDK_BACKEND", Some(OsString::from("wayland"))), ("GDK_DPI_SCALE", None), ("GST_REGISTRY", None)];
+        let fixes = child_env(&inherited, current, Some(OsStr::new("/tmp/.mount_CoucouX")));
+        assert_eq!(fixes, vec![
+            ("GDK_BACKEND".to_string(), Some(OsString::from("wayland"))),
+            ("GDK_DPI_SCALE".to_string(), None),
+            ("GST_REGISTRY".to_string(), None),
+            ("GST_PLUGIN_SYSTEM_PATH_1_0".to_string(), None),
+        ]);
+        // Values the user set and Coucou kept (an explicit GDK_DPI_SCALE) stay.
+        let kept = [("GDK_BACKEND", Some(OsString::from("x11"))), ("GDK_DPI_SCALE", Some(OsString::from("0.8")))];
+        assert!(child_env(&kept, current, None).is_empty());
+    }
 }
 
 // ── Flow dictation's pill ─────────────────────────────────────────────────────
@@ -908,10 +1032,13 @@ pub fn prepare_pill_window(win: &WebviewWindow, mode: super::DesktopMode) -> boo
 pub fn set_pill_edge(win: &WebviewWindow, edge: &str) {
     let Ok(gw) = win.gtk_window() else { return };
     let ptr = gtk_window_ptr(&gw);
+    let bottom = edge == "bottom" || edge == "bottom-left" || edge == "bottom-right";
+    let left = edge == "left" || edge == "bottom-left";
+    let right = edge == "right" || edge == "bottom-right";
     unsafe {
-        layer::gtk_layer_set_anchor(ptr, layer::EDGE_BOTTOM, (edge == "bottom") as i32);
-        layer::gtk_layer_set_anchor(ptr, layer::EDGE_LEFT, (edge == "left") as i32);
-        layer::gtk_layer_set_anchor(ptr, layer::EDGE_RIGHT, (edge == "right") as i32);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_BOTTOM, bottom as i32);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_LEFT, left as i32);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_RIGHT, right as i32);
         layer::gtk_layer_set_anchor(ptr, layer::EDGE_TOP, 0);
     }
 }
@@ -936,4 +1063,38 @@ fn apply_rects(gw: &impl IsA<gtk::Widget>, rects: &[(f64, f64, f64, f64)]) {
         ));
     }
     gdk_window.input_shape_combine_region(&region, 0, 0);
+}
+
+#[cfg(test)]
+mod claude_launch_tests {
+    use super::open_claude_with;
+    use std::cell::RefCell;
+
+    #[test]
+    fn tries_launchers_in_order_and_stops_after_success() {
+        for (desktop, binary, protocol, expected, calls) in [
+            (true, true, true, true, vec!["desktop"]),
+            (false, true, true, true, vec!["desktop", "binary"]),
+            (false, false, true, true, vec!["desktop", "binary", "protocol"]),
+            (false, false, false, false, vec!["desktop", "binary", "protocol"]),
+        ] {
+            let seen = RefCell::new(Vec::new());
+            let result = open_claude_with(
+                || {
+                    seen.borrow_mut().push("desktop");
+                    desktop
+                },
+                || {
+                    seen.borrow_mut().push("binary");
+                    binary
+                },
+                || {
+                    seen.borrow_mut().push("protocol");
+                    protocol
+                },
+            );
+            assert_eq!(result, expected);
+            assert_eq!(seen.into_inner(), calls);
+        }
+    }
 }

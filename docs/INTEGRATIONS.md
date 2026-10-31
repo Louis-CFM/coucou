@@ -320,6 +320,28 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
   Le `delay` laisse le temps à la pièce jointe d'être prise en compte (comportement connu de Mail). `Info.plist` : `NSAppleEventsUsageDescription`.
 - Succès : vue `note` « Mail envoyé à … », émote Clin d'œil, son `send`. Échec : état `error` avec la raison.
 
+### Pill Mail : recherche et filtres
+
+- Loupe dans l'en-tête de la carte : un champ de recherche. Mots libres (objet ou expéditeur), `de:` / `from:` pour l'expéditeur, `objet:` / `subject:` pour l'objet, guillemets pour une phrase (`MailQuery.parse`).
+- Filtres rapides sous l'en-tête : Tous · Non lus · Importants (drapeau de Mail) · Aujourd'hui. Pas de clause `whose` AppleScript (elle parcourt toute la boîte et fige Mail) : Coucou lit les 300 mails les plus récents de chaque boîte de réception par tranches de 50 (`messages a thru b`, 30 s au plus par lecture) et filtre en Swift (`MailSearch.matches`), 60 résultats au plus, les plus récents d'abord. Un mail ouvert est retrouvé par sa référence directe (`«class mssg» id N`), la recherche dans la boîte ne sert qu'en secours. Au lancement de Mail, Coucou attend 30 s qu'il ait fini de se synchroniser.
+- « Voir plus » au bas de la liste : 12 mails de plus à chaque clic, jusqu'à 60.
+- Détail d'un mail : Important / Pas important (drapeau), Indésirable, et dans « … » : Toujours important (VIP), Toujours ignorer cet expéditeur (son adresse devient un mot banni).
+
+### Section Mail de la fenêtre Coucou (tri automatique)
+
+- Quatre pages, après Flow et Notch : Aperçu, Règles, Mots bannis, VIP. Réglages et journal en JSON dans `Application Support/NotchBuddy/Mail` (`MailTriageStore`).
+- Tri automatique, désactivé par défaut. Une fois activé, seuls les mails arrivés après l'activation sont regardés (`autoSortSince`), chacun une seule fois (`seen.json`). Le relevé de Mail tourne alors toutes les 60 s même si la pill est éteinte, seulement quand Mail est ouvert.
+- Ordre de décision (`MailTriage.decide`) : VIP (drapeau, jamais déplacé) → mots bannis dans l'expéditeur, l'objet ou le texte, mots entiers (indésirables) → règles dans l'ordre, la première qui correspond gagne. Le texte n'est lu que si un mot banni ou une règle « Texte » en a besoin (4 000 caractères).
+- Actions possibles : indésirables (statut indésirable + déplacement dans la boîte Junk/Spam du compte), important (drapeau), marquer comme lu, déplacer dans un dossier. Jamais de suppression.
+- Journal : chaque action avec sa raison et un bouton Annuler, qui retrouve le mail par son Message-ID (l'id de Mail change quand un mail est déplacé) et le remet en place.
+
+### Chat : actions sur les mails (bouton Mail du chat)
+
+- Bouton « Mail » à côté du choix du modèle, éteint à chaque lancement. Allumé, chaque message du chat part avec, en dessous, les 40 derniers mails des boîtes de réception, numérotés `[n]` (`MailAgent.decorate`) : comptes et adresses, date, lu ou non, expéditeur, objet. Les 8 plus récents ont leurs pièces jointes et le début du texte ; ceux que la demande nomme (expéditeur ou mot de l'objet) ont 3 000 caractères de texte.
+- Le prompt système reçoit `MailAgentPrompt.instructions` : l'IA répond en une phrase puis donne au plus un plan, bloc ` ```coucou-mail ` en JSON. Actions : `flag` / `junk` / `read` / `move`, `reply` (brouillon ouvert dans Mail, jamais envoyé), `send` (destinataires, objet, texte, pièces jointes d'un mail ou fichiers du Mac), `merge` (un mail par destinataire, chacun avec la page d'un PDF qui contient sa clé, ou la page dans l'ordre), `save_attachments`. Pas de suppression. Marche avec tous les fournisseurs du chat (clé API ou abonnement).
+- Le bloc n'est jamais affiché tel quel : la bulle montre une carte (`MailPlanCard`) qui prépare le plan (PDF enregistré depuis Mail, découpé page par page avec PDFKit, chaque page nommée « Plans - Bordeaux.pdf »), liste les mails, en rouge ceux sans page trouvée ou à l'adresse invalide (jamais envoyés).
+- Rien ne se passe sans clic : « M'envoyer un test » envoie le premier mail à l'adresse du premier compte, « Lancer (N) » démarre un compte à rebours de 5 s annulable, puis les étapes une par une, 1,2 s entre deux envois. Rapport : faits / échecs. Les envois sont listés dans Aperçu → Envoyés par Coucou.
+
 ---
 
 ## 6bis. WhatsApp (expérimental, build GitHub uniquement)
