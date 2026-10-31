@@ -81,3 +81,30 @@ test("leaving the overview closes the diff and its size with it", () => {
   assert.equal(State.wideCard, false);
   assert.ok(!overview.el.classList.contains("wide"));
 });
+
+test("the session's card made bigger lists every step, an edit opens its diff", () => {
+  const expand = overview.el.find(".expand")[0];
+  assert.notEqual(expand.style.display, "none", "the button shows on a session's card");
+  expand.fire("click");
+  overview.sync();
+  assert.equal(State.wideCard, true);
+  assert.equal(heightChanges, 1);
+  const rows = overview.el.find(".hist-row");
+  assert.equal(rows.length, State.focusTask.steps.length);
+  const edit = overview.el.querySelector(".hist-row.edit");
+  assert.match(edit.textContent, /app\.ts/);
+  edit.fire("click");
+  overview.sync();
+  assert.equal(overview.el.find(".diff-card").length, 1, "the edit opens its diff, still big");
+  assert.equal(State.wideCard, true);
+});
+
+test("made bigger, the button brings the card back to its size", () => {
+  const expand = overview.el.find(".expand")[0];
+  expand.fire("click");
+  overview.sync();
+  overview.el.find(".expand")[0].fire("click");
+  overview.sync();
+  assert.equal(State.wideCard, false);
+  assert.ok(!overview.el.classList.contains("wide"));
+});

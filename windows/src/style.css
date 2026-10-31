@@ -481,7 +481,8 @@ body {
 }
 
 .who {
-  padding: 0 36px 0 108px;
+  /* Room on the right for ↗ and the make-it-bigger button. */
+  padding: 0 52px 0 108px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -514,6 +515,85 @@ body {
   top: 8px;
   right: 10px;
   z-index: 2;
+}
+
+/* Beside ↗: makes the session's card or Spotify's as big as the chat. */
+.expand {
+  position: absolute;
+  top: 8px;
+  right: 28px;
+  z-index: 2;
+}
+
+/* The session's every step, once its card is made bigger; an edit opens its diff. */
+.hist {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 36px 0 108px;
+  max-height: 210px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.hist-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.hist-row.edit {
+  color: var(--ink);
+}
+
+.hist-row.edit:hover .hist-file {
+  text-decoration: underline;
+}
+
+.hist-row .tick-count {
+  flex: 0 0 auto;
+  font: 500 10px var(--mono);
+}
+
+.hist-row .plus {
+  color: var(--green);
+}
+
+.hist-row .minus {
+  color: var(--red);
+}
+
+.hist-file {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Spotify made bigger: the cover and the names grow with the card. */
+.overview.wide .np-art {
+  flex-basis: 96px;
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+}
+
+.overview.wide .np-title {
+  font-size: 15px;
+}
+
+.overview.wide .np-sub {
+  font-size: 12px;
 }
 
 /* Folds a waiting permission card or question away without answering it. */

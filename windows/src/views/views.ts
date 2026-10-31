@@ -17,7 +17,7 @@ import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
-import { lastTextStep } from "../core/diff";
+import { lastTextStep, parseDiffStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
@@ -203,14 +203,25 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
     State.notify();
   });
   const who = h("div", { class: "who" });
-  const tickerBody = h("div", { class: "card-body" }, who, ticker.el);
+  // Made bigger, the session's card lists every step instead of the ticker's three.
+  const history = h("div", { class: "hist" });
+  let historyKey = "";
+  const tickerBody = h("div", { class: "card-body" }, who, ticker.el, history);
   const leftBody = h("div", { class: "left-body" });
   const jump = h(
     "button",
     { class: "icon-btn jump", title: tl("Open"), onclick: () => actions.openTarget() },
     svg(ICONS.arrowUpRight, 8),
   );
-  const left = card(null, leftBody, jump);
+  /** The session's card or Spotify's, made as big as the chat by its button (Escape: back). */
+  let expanded = false;
+  const expandBtn = h("button", { class: "icon-btn expand" });
+  expandBtn.addEventListener("click", () => {
+    actions.blip();
+    expanded = !expanded;
+    State.notify();
+  });
+  const left = card(null, leftBody, jump, expandBtn);
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
   // Opened from a plan pill in the header: stands in for the left card.
@@ -247,19 +258,56 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
   State.subscribe(() => {
     if (State.view === "overview" && State.mode === "expanded") return;
     activeDiffId = null;
+    expanded = false;
     State.wideCard = false;
     el.classList.remove("wide");
   });
-  // Escape steps back out of the diff before it closes the island.
+  // Escape steps back out of the diff, then out of a card made bigger, before
+  // it closes the island.
   window.addEventListener(
     "keydown",
     (e) => {
-      if (e.key !== "Escape" || activeDiffId == null || State.view !== "overview") return;
+      if (e.key !== "Escape" || State.view !== "overview" || (activeDiffId == null && !expanded)) return;
       e.stopImmediatePropagation();
-      closeDiff();
+      if (activeDiffId != null) {
+        closeDiff();
+        return;
+      }
+      expanded = false;
+      State.notify();
     },
     true,
   );
+
+  /** Every step of the session, the newest last; an edit opens its diff. */
+  function syncHistory(task: AgentTask) {
+    const key = `${task.id}~${task.steps.join("\u0001")}`;
+    if (key === historyKey) return;
+    historyKey = key;
+    clear(history);
+    for (const step of task.steps) {
+      const edit = parseDiffStep(step);
+      if (!edit) {
+        history.append(h("div", { class: "hist-row", text: step }));
+        continue;
+      }
+      const row = h("button", { class: "hist-row edit" },
+        h("span", { class: "hist-file", text: edit.filename }),
+        edit.added > 0 ? h("span", { class: "tick-count plus", text: `+${edit.added}` }) : null,
+        edit.removed > 0 ? h("span", { class: "tick-count minus", text: `−${edit.removed}` }) : null,
+      );
+      if (edit.diffId != null) {
+        const diffId = edit.diffId;
+        row.addEventListener("click", () => {
+          actions.blip();
+          activeDiffId = diffId;
+          State.notify();
+        });
+      }
+      history.append(row);
+    }
+    history.scrollTop = history.scrollHeight;
+  }
 
   const hooks: IntegrationCardHooks = {
     get detailOpen() {
@@ -325,6 +373,7 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
         lastFocus = task?.id ?? null;
         detailOpen = false;
         activeDiffId = null;
+        expanded = false;
         cardKey = "";
         mode = null;
       }
@@ -387,6 +436,9 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
           }));
         }
         ticker.sync(task);
+        ticker.el.style.display = expanded ? "none" : "";
+        history.style.display = expanded ? "" : "none";
+        if (expanded) syncHistory(task);
       } else if (task && task.id === SPOTIFY_ID) {
         // Its own card for every state: playing, idle, not installed.
         if (mode !== "spotify") {
@@ -428,7 +480,12 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
         }
       }
 
-      showWide(mode === "diff" || (mode === "whatsapp" && whatsappCard.conversationOpen));
+      const canExpand = mode === "ticker" || mode === "spotify";
+      expandBtn.style.display = canExpand ? "" : "none";
+      clear(expandBtn);
+      expandBtn.append(svg(expanded ? ICONS.collapse : ICONS.expand, 8));
+      expandBtn.title = expanded ? t("Make it smaller") : t("Make it bigger");
+      showWide(mode === "diff" || (mode === "whatsapp" && whatsappCard.conversationOpen) || (expanded && canExpand));
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
 
