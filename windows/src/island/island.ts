@@ -16,7 +16,7 @@ import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
-import { SeasonCache, parseOutfit, withMusic } from "../mochi/wardrobe";
+import { SeasonCache, outfitChange, parseOutfit, withMusic } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { dominantPct, planColor } from "../core/plan";
@@ -1202,7 +1202,8 @@ export class Island {
     });
     // Dancing to music, he puts headphones on if asked — on the music card too.
     const music = !inWardrobe && withMusic(outfit, dancing, State.settings.headphonesWithMusic) === "headphones";
-    this.engine.setOutfit(music ? "headphones" : showOutfit ? outfit : "none", !inWardrobe);
+    const change = outfitChange(this.engine.outfit, music ? "headphones" : showOutfit ? outfit : "none", this.engine.dancingLevel);
+    this.engine.setOutfit(change.outfit, !inWardrobe && change.animated);
     this.engine.setDancing(dancing);
 
     this.engine.update(dt);

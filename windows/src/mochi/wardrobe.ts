@@ -127,6 +127,20 @@ export function withMusic(outfit: Outfit, dancing: boolean, headphonesWithMusic:
 }
 
 /**
+ * How to go from what Mochi wears to what he should: the headphones go on and
+ * off at once — no fade, drop-in or squash — and come off only once the dance
+ * has faded out. Wearing anything, his dance roll turns his whole body; the
+ * usual swap leaves him bare for a few frames, and mid-dance that jolted him.
+ * Every other change keeps the usual animation.
+ */
+export function outfitChange(current: Outfit, want: Outfit, dancingLevel: number): { outfit: Outfit; animated: boolean } {
+  if (current === "headphones" && want !== "headphones" && dancingLevel > 0.01) {
+    return { outfit: "headphones", animated: false };
+  }
+  return { outfit: want, animated: current !== "headphones" && want !== "headphones" };
+}
+
+/**
  * The grey text at the right of the wardrobe header: the hovered outfit,
  * otherwise the current choice — WardrobeView.headerRight on macOS.
  */

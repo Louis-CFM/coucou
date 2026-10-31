@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  OUTFIT_SELECTIONS, OUTFIT_LABELS, SeasonCache, easterDate, parseOutfit, resolveOutfit, withMusic,
+  OUTFIT_SELECTIONS, OUTFIT_LABELS, SeasonCache, easterDate, outfitChange, parseOutfit, resolveOutfit, withMusic,
   seasonalOutfit, wardrobeHeader,
 } from "../src/mochi/wardrobe.ts";
 import { DEFAULT_SETTINGS } from "../src/core/state.ts";
@@ -138,4 +138,17 @@ test("headphones while dancing to music, only when asked, then his own outfit ag
   // Only for music: not a choice of the wardrobe, nor a stored value.
   assert.ok(!OUTFIT_SELECTIONS.includes("headphones"));
   assert.equal(parseOutfit("headphones"), "auto");
+});
+
+test("headphones go on and off at once, and only once the dance has faded out", () => {
+  // On: at once, whatever he wore — no fade, drop-in or squash mid-dance.
+  assert.deepEqual(outfitChange("witchHat", "headphones", 0), { outfit: "headphones", animated: false });
+  assert.deepEqual(outfitChange("none", "headphones", 0.4), { outfit: "headphones", animated: false });
+  // Off: kept while the dance fades, then at once.
+  assert.deepEqual(outfitChange("headphones", "witchHat", 0.6), { outfit: "headphones", animated: false });
+  assert.deepEqual(outfitChange("headphones", "witchHat", 0), { outfit: "witchHat", animated: false });
+  assert.deepEqual(outfitChange("headphones", "none", 0.005), { outfit: "none", animated: false });
+  // Anything else keeps the usual animation.
+  assert.deepEqual(outfitChange("none", "crown", 0), { outfit: "crown", animated: true });
+  assert.deepEqual(outfitChange("crown", "beanie", 0.8), { outfit: "beanie", animated: true });
 });
