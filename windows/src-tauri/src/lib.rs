@@ -1018,6 +1018,7 @@ pub fn run() {
             flow::flow_paste_again,
             flow::flow_models_download,
             flow::flow_models_remove,
+            flow::flow_retune_speech,
             flow::pill_state,
             flow::pill_hot,
             flow::pill_hover,
@@ -1110,6 +1111,7 @@ pub fn run() {
             if let tauri::RunEvent::Exit = event {
                 phone_link::stop_on_exit(app);
                 notes::shutdown(app);
+                speech::performance::shutdown();
                 // GOWA started by Coucou stops with it; the conversations were only in memory.
                 whatsapp::shutdown();
             }

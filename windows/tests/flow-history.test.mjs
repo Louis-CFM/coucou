@@ -50,8 +50,9 @@ async function fixture(t, render) {
   });
   const page = root();
   const status = {
-    prefs: { enabled: true, key: "right_ctrl", keepDays: 30, mic: "" },
+    prefs: { enabled: true, key: "right_ctrl", keepDays: 30, mic: "", speechThreads: 0 },
     models: { parakeet: { state: "ready" }, downloadMb: 700 },
+    performance: { availableThreads: 1, automatic: true, measured: false },
     mics: [], keys: "ok", platform: "windows",
   };
   const ctx = { hero: root, status, refresh: async () => status, setPrefs: async change => change(status.prefs) };
