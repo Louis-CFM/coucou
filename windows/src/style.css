@@ -1640,6 +1640,41 @@ input[type="range"]::-webkit-slider-thumb {
   padding-top: 6px;
 }
 
+/* The focus timer's card (views/focus.ts): time left and a bar that fills. */
+.focus-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 24px 0 0;
+}
+
+.focus-time {
+  font: 600 20px var(--font);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  min-width: 58px;
+}
+
+.focus-bar {
+  position: relative;
+  flex: 1 1 auto;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.focus-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 2px;
+}
+
+.focus-card .focus-quiet {
+  color: var(--dim-3);
+}
+
 .int-rows {
   display: flex;
   flex-direction: column;
