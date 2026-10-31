@@ -560,6 +560,12 @@ async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<
     chat::models(&settings, &provider).await
 }
 
+/// The Claude API settings use their own key even when chat uses a CLI plan.
+#[tauri::command]
+async fn claude_api_models() -> Result<Vec<ModelInfo>, String> {
+    claude::available_models().await
+}
+
 /// Settings → Local models → Connect: does the server answer, and with which models?
 #[tauri::command]
 async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
@@ -911,6 +917,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            claude_api_models,
             local_connect,
             local_set_key,
             chat_reset,

@@ -18,6 +18,8 @@ cd NotchBuddy && xcodegen && xcodebuild -scheme NotchBuddy -configuration Debug 
 To run it day to day on the Mac (signed, iPhone link, permissions kept across builds): `./scripts/dev-install.sh` — it installs the only Coucou in /Applications and removes the copies earlier builds left.
 Windows and Linux: `cd windows && npm install && npm run tauri dev`
 
+The Claude API model picker discovers account models independently of subscription routing. Opening Settings, changing the API key and Refresh reload the list without changing the saved model. Keep saved and custom choices; commit a model choice only after settings save succeeds.
+
 ## Rules
 - Swift 6, SwiftUI + AppKit. No third-party dependencies unless truly unavoidable. The character is drawn in code (`Canvas` + `TimelineView`), no Rive/Lottie/images.
 - Secrets live in the Keychain, never on disk or in git.

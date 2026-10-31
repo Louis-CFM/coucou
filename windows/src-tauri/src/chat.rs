@@ -262,8 +262,7 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
         return Ok(cli_relay::models(provider));
     }
     if provider == ANTHROPIC {
-        let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
-        return claude::models(&key).await;
+        return claude::available_models().await;
     }
     if let Some(p) = openai_compat::provider(provider) {
         let key = secrets::get(p.key).ok_or_else(no_key)?;
