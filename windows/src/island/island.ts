@@ -363,6 +363,7 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
+    document.body.classList.toggle("edge-bottom", State.settings.islandPosition === "bottom");
     this.root.append(this.wakeStrip, this.islandEl);
     this.applyGeometry();
   }
@@ -757,12 +758,13 @@ export class Island {
   }
 
   private applyGeometry() {
+    const isBottom = document.body.classList.contains("edge-bottom");
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    this.islandEl.style.borderRadius = isBottom ? `${r}px ${r}px 0 0` : `0 0 ${r}px ${r}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
@@ -773,9 +775,11 @@ export class Island {
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
     const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
-    const rect = { x: (viewportW - w) / 2, y: 0, w, h: hh };
+    const viewportH = window.innerHeight > 0 ? window.innerHeight : PANEL_H;
+    const y = isBottom ? Math.max(0, viewportH - hh) : 0;
+    const rect = { x: (viewportW - w) / 2, y, w, h: hh };
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
+    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.y - rect.y) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
       void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
     }
@@ -783,10 +787,13 @@ export class Island {
 
   /** Island rect in window coordinates (origin top-left of the 720×320 window). */
   private islandRect(): { x: number; y: number; w: number; h: number } {
+    const isBottom = document.body.classList.contains("edge-bottom");
     const w = this.width.value;
     const hh = this.height.value;
     const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
-    return { x: (viewportW - w) / 2, y: 0, w, h: hh };
+    const viewportH = window.innerHeight > 0 ? window.innerHeight : PANEL_H;
+    const y = isBottom ? Math.max(0, viewportH - hh) : 0;
+    return { x: (viewportW - w) / 2, y, w, h: hh };
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -1335,6 +1342,7 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    document.body.classList.toggle("edge-bottom", State.settings.islandPosition === "bottom");
     State.notify();
     // ponytail: one timer for the life of the window; a minute is the clock's finest tick.
     this.clockTimer ??= window.setInterval(() => this.updateClock(), 10_000);
