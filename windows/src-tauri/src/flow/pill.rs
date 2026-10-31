@@ -252,6 +252,7 @@ pub fn update(app: &AppHandle, change: impl FnOnce(&mut PillState)) {
 
 fn show(app: &AppHandle, pill: &Pill, visible: bool) {
     let Some(win) = window(app) else { return };
+    crate::webview_memory::set_low(&win, !visible);
     match pill.mode {
         DesktopMode::Poll => {
             if !visible {

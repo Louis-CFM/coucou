@@ -334,7 +334,10 @@ fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
     }
     let built = builder.build();
     match built {
-        Ok(win) => Some(win),
+        Ok(win) => {
+            crate::webview_memory::set_low(&win, true); // he starts at home
+            Some(win)
+        }
         Err(err) => {
             crate::log::line(format!("desktop Mochi window failed: {err}"));
             None
@@ -448,6 +451,7 @@ fn show(app: &AppHandle, d: &Desktop, at: (f64, f64)) {
     place(app, d, at);
     d.inner.lock().unwrap().shown = true;
     if let Some(win) = window(app) {
+        crate::webview_memory::set_low(&win, false);
         if !PARK {
             let _ = win.show();
         }
@@ -467,6 +471,9 @@ fn hide(app: &AppHandle, d: &Desktop) {
         i.asleep = false;
     }
     refresh(app, d);
+    if let Some(win) = window(app) {
+        crate::webview_memory::set_low(&win, true); // nothing to draw while he is home
+    }
     if PARK {
         place(app, d, PARKED);
     } else if let Some(win) = window(app) {

@@ -41,6 +41,7 @@ mod update;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
+mod webview_memory;
 mod whatsapp;
 
 use std::process::Command;
@@ -712,7 +713,7 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required --renderer-process-limit=1";
 
 /// In a dev build the pages are served by Vite, so the second window needs the
 /// absolute dev URL; a bundled build resolves it inside the app bundle.
@@ -754,6 +755,7 @@ fn create_settings_window(app: &AppHandle) {
                     api.prevent_close();
                     let _ = this.hide();
                     set_hub_shown(&this, false);
+                    webview_memory::set_low(&this, true);
                 }
                 // Minimised (a 0×0 resize on Windows) or back from it.
                 tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true) => {
@@ -762,6 +764,7 @@ fn create_settings_window(app: &AppHandle) {
                 }
                 _ => {}
             });
+            webview_memory::set_low(&win, true); // created hidden
         }
         Err(err) => log::line(format!("Coucou window failed: {err}")),
     }
@@ -801,6 +804,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
         let _ = app.run_on_main_thread(move || {
             create_settings_window(&handle);
             if let Some(win) = handle.get_webview_window(HUB_LABEL) {
+                webview_memory::set_low(&win, false);
                 let _ = win.show();
                 let _ = win.set_focus();
             }
@@ -810,6 +814,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     if let Some(page) = page {
         let _ = win.emit("hub-page", page.to_string());
     }
+    webview_memory::set_low(&win, false);
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
