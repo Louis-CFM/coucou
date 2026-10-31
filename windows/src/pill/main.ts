@@ -83,7 +83,7 @@ function look(): Look {
   }
 }
 
-const vertical = () => state.edge !== "bottom";
+const vertical = () => state.edge === "left" || state.edge === "right";
 
 function messageText(): string | null {
   switch (state.phase) {
@@ -246,6 +246,16 @@ let hotFrame: number | null = null;
 let languageRevision = 0;
 
 function render() {
+  if (!visible) {
+    root.style.display = "none";
+    root.replaceChildren();
+    hitRects = [];
+    resize.disconnect();
+    void FlowBridge.pillHot([]);
+    return;
+  }
+  root.style.display = "flex";
+  if (capsule.parentElement !== root) root.append(surface.bubbles, capsule);
   const l = look();
   const open = l !== "resting";
   const length = open ? openLength(l) : RESTING_LENGTH;
@@ -272,6 +282,11 @@ function render() {
 }
 
 function reportHot() {
+  if (!visible) {
+    hitRects = [];
+    void FlowBridge.pillHot([]);
+    return;
+  }
   const l = look();
   const length = l === "resting" ? RESTING_LENGTH : openLength(l);
   const thickness = l === "resting" ? RESTING_THICKNESS : OPEN_THICKNESS;
@@ -512,6 +527,8 @@ async function main() {
   const boot = await Bridge.boot();
   setLanguage(resolveLanguage(boot?.settings.language, systemLanguages()));
   languageRevision++;
+  const status = await FlowBridge.status();
+  if (status) platform = status.platform;
   const before = revision;
   const snapshot = await FlowBridge.pillState();
   if (snapshot && revision === before) applyState(snapshot);

@@ -21,7 +21,7 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
 }
 
 export type FlowKey = "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super" | "copilot";
-export type Edge = "bottom" | "left" | "right";
+export type Edge = "bottom" | "bottom-left" | "bottom-right" | "left" | "right";
 export type Style = "verbatim" | "natural" | "polished";
 
 export interface FlowPrefs {
@@ -188,15 +188,15 @@ export const FlowBridge = {
   hubShown: () => call<boolean>("hub_shown"),
   setPrefs: (prefs: FlowPrefs) => call<void>("flow_set_prefs", { prefs }),
   history: () => call<FlowEntry[]>("flow_history"),
-  deleteEntry: (id: string) => call<void>("flow_delete", { id }),
-  clear: (everything: boolean) => call<void>("flow_clear", { everything }),
+  deleteEntry: (id: string) => callOrThrow<void>("flow_delete", { id }),
+  clear: (everything: boolean) => callOrThrow<void>("flow_clear", { everything }),
   stats: () => call<FlowStats>("flow_stats"),
   words: () => call<{ words: string[]; replacements: Replacement[] }>("flow_words"),
-  setWords: (words: { words: string[]; replacements: Replacement[] }) => call<void>("flow_set_words", { words }),
+  setWords: (words: { words: string[]; replacements: Replacement[] }) => callOrThrow<void>("flow_set_words", { words }),
   snippets: () => call<Snippet[]>("flow_snippets"),
-  setSnippets: (snippets: Snippet[]) => call<void>("flow_set_snippets", { snippets }),
+  setSnippets: (snippets: Snippet[]) => callOrThrow<void>("flow_set_snippets", { snippets }),
   styles: () => call<AppStyle[]>("flow_styles"),
-  setStyles: (styles: AppStyle[]) => call<void>("flow_set_styles", { styles }),
+  setStyles: (styles: AppStyle[]) => callOrThrow<void>("flow_set_styles", { styles }),
   runningApps: () => call<{ id: string; name: string }[]>("flow_running_apps"),
   copy: (text: string) => call<boolean>("flow_copy", { text }),
   pasteAgain: () => call<void>("flow_paste_again"),

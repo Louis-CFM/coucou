@@ -530,17 +530,17 @@ pub fn flow_history(flow: State<Arc<Flow>>) -> Vec<Entry> {
 }
 
 #[tauri::command]
-pub fn flow_delete(flow: State<Arc<Flow>>, id: String) {
-    flow.store.lock().unwrap().delete(&id);
+pub fn flow_delete(flow: State<Arc<Flow>>, id: String) -> Result<(), String> {
+    flow.store.lock().unwrap().delete(&id)
 }
 
 #[tauri::command]
-pub fn flow_clear(flow: State<Arc<Flow>>, everything: bool) {
+pub fn flow_clear(flow: State<Arc<Flow>>, everything: bool) -> Result<(), String> {
     let mut store = flow.store.lock().unwrap();
     if everything {
-        store.clear_everything();
+        store.clear_everything()
     } else {
-        store.clear_history();
+        store.clear_history()
     }
 }
 
@@ -604,10 +604,8 @@ pub fn flow_words(flow: State<Arc<Flow>>) -> Words {
 }
 
 #[tauri::command]
-pub fn flow_set_words(flow: State<Arc<Flow>>, words: Words) {
-    let mut store = flow.store.lock().unwrap();
-    store.words = words;
-    store.save_words();
+pub fn flow_set_words(flow: State<Arc<Flow>>, words: Words) -> Result<(), String> {
+    flow.store.lock().unwrap().set_words(words)
 }
 
 #[tauri::command]
@@ -616,10 +614,8 @@ pub fn flow_snippets(flow: State<Arc<Flow>>) -> Vec<Snippet> {
 }
 
 #[tauri::command]
-pub fn flow_set_snippets(flow: State<Arc<Flow>>, snippets: Vec<Snippet>) {
-    let mut store = flow.store.lock().unwrap();
-    store.snippets = snippets;
-    store.save_snippets();
+pub fn flow_set_snippets(flow: State<Arc<Flow>>, snippets: Vec<Snippet>) -> Result<(), String> {
+    flow.store.lock().unwrap().set_snippets(snippets)
 }
 
 #[tauri::command]
@@ -628,10 +624,8 @@ pub fn flow_styles(flow: State<Arc<Flow>>) -> Vec<AppStyle> {
 }
 
 #[tauri::command]
-pub fn flow_set_styles(flow: State<Arc<Flow>>, styles: Vec<AppStyle>) {
-    let mut store = flow.store.lock().unwrap();
-    store.app_styles = styles;
-    store.save_styles();
+pub fn flow_set_styles(flow: State<Arc<Flow>>, styles: Vec<AppStyle>) -> Result<(), String> {
+    flow.store.lock().unwrap().set_styles(styles)
 }
 
 #[derive(Serialize, Deserialize)]

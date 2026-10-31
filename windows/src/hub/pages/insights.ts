@@ -20,6 +20,7 @@ export async function insightsPage(page: HTMLElement, ctx: HubContext) {
   const stats: FlowStats | null = await FlowBridge.stats();
   let period: Period = "month";
   const body = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
+  body.dataset.anchor = "flow.insights";
   const picker = segmented<Period>([["week", t("Week")], ["month", t("Month")], ["all", t("All")]], period, (p) => {
     period = p;
     draw();

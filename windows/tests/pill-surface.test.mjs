@@ -58,6 +58,16 @@ test("both side edges keep hover anchored through expansion and into the tooltip
   }
 });
 
+test("bottom corners cover the expanded toolbar inward from their anchored edge", () => {
+  for (const edge of ["bottom-left", "bottom-right"]) {
+    const capsule = { left: edge === "bottom-left" ? 0 : 476, top: 160, width: 44, height: 8 };
+    const rects = hotRects(capsule, null, edge, 150, 34);
+    assert.equal(insideHot(rects, edge === "bottom-left" ? 140 : 380, 140), true);
+    assert.equal(insideHot(rects, 260, 140), false);
+    assert.equal(insideHot(rects, edge === "bottom-left" ? 140 : 380, 100), false);
+  }
+});
+
 test("long messages use their actual width instead of a fixed 200px click zone", () => {
   const rects = hotRects({ left: 60, top: 134, width: 400, height: 34 }, null, "bottom", 400, 34);
   assert.equal(insideHot(rects, 65, 145), true);
