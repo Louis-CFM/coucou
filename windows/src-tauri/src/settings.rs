@@ -118,8 +118,6 @@ pub struct Settings {
     pub clipboard_history: bool,
     /// A neon light runs around the island's edge when a notification comes. On by default.
     pub neon_notifications: bool,
-    /// Another pill's finish or error opens the island for a moment (Mac #683). Off by default.
-    pub alerts_from_all_pills: bool,
     /// Double-check unclear test results: "off", "local" (Laya) or "cloud" (Jev).
     pub test_checker: String,
     /// Laya's address when it isn't the default one (tests_check.rs keeps it local).
@@ -201,7 +199,6 @@ impl Default for Settings {
             show_clock: false,
             clipboard_history: true,
             neon_notifications: true,
-            alerts_from_all_pills: false,
             test_checker: "off".into(),
             laya_url: String::new(),
             laya_dir: String::new(),
@@ -510,7 +507,6 @@ mod tests {
   "showClock": true,
   "clipboardHistory": false,
   "neonNotifications": false,
-  "alertsFromAllPills": true,
   "testChecker": "local",
   "layaUrl": "http://127.0.0.1:8001",
   "layaDir": "D:\\Laya",
@@ -1039,7 +1035,6 @@ mod tests {
                 "showClock",
                 "clipboardHistory",
                 "neonNotifications",
-                "alertsFromAllPills",
                 "testChecker",
                 "layaUrl",
                 "layaDir",
