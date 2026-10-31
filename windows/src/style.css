@@ -580,20 +580,68 @@ body {
   text-overflow: ellipsis;
 }
 
-/* Spotify made bigger: the cover and the names grow with the card. */
+/* Spotify made bigger: a large cover on the left, the names, the bar and the
+   buttons beside it, the whole thing centred in the card. */
+.overview.wide .np-card {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px 28px 16px 120px;
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  grid-template-rows: 1fr auto auto 1fr;
+  column-gap: 22px;
+}
+
+.overview.wide .np-head {
+  display: contents;
+}
+
 .overview.wide .np-art {
-  flex-basis: 96px;
-  width: 96px;
-  height: 96px;
-  border-radius: 10px;
+  grid-column: 1;
+  grid-row: 1 / 5;
+  align-self: center;
+  width: 176px;
+  height: 176px;
+  border-radius: 12px;
+}
+
+.overview.wide .np-text {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+}
+
+.overview.wide .np-progress {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: 14px;
+}
+
+.overview.wide .np-controls {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: start;
+  padding-top: 8px;
 }
 
 .overview.wide .np-title {
-  font-size: 15px;
+  font-size: 20px;
 }
 
 .overview.wide .np-sub {
-  font-size: 12px;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+/* ‹ on a card made bigger, where WhatsApp's back button sits: its size again. */
+.card-back {
+  position: absolute;
+  top: 9px;
+  left: 84px;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
 }
 
 /* Folds a waiting permission card or question away without answering it. */

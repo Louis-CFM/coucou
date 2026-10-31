@@ -3,7 +3,8 @@
 //
 // The list: one row per conversation (never one per message) with initials, name, age, the last
 // message cut short and the unread count; when the gateway isn't linked, why, and a way to Settings.
-// A click on a row opens the conversation: its last ten messages and a reply field. Enter sends,
+// A click on a row opens the conversation, as big as the chat: every message Coucou keeps (the
+// last twenty, Inbox::KEEP in Rust) and a reply field. Enter sends,
 // Shift+Enter starts a new line, Escape goes back to the list. Nothing is sent without the user's
 // own Enter or click, and while a reply is being typed the island stays open.
 //
@@ -220,7 +221,8 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
 
   function syncConversation(c: WaConversation) {
     const v = WhatsApp.view;
-    const shown = lastMessages(c);
+    // The conversation has the chat's room: all twenty kept, not ten.
+    const shown = lastMessages(c, 20);
     const key = [language(), c.id, c.name, ...shown.map((m) => m.id)].join("~");
     if (key !== convoKey) {
       const wasAtBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 24;

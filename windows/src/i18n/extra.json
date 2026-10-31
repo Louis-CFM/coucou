@@ -7368,21 +7368,6 @@
       "tr": "Büyüt",
       "ko": "크게 보기",
       "ja": "大きくする"
-    },
-    "Make it smaller": {
-      "zh-Hans": "缩小",
-      "hi": "छोटा करें",
-      "es": "Hacer más pequeño",
-      "ar": "تصغير",
-      "fr": "Réduire",
-      "bn": "ছোট করুন",
-      "pt-BR": "Diminuir",
-      "ru": "Уменьшить",
-      "id": "Perkecil",
-      "de": "Verkleinern",
-      "tr": "Küçült",
-      "ko": "작게 보기",
-      "ja": "小さくする"
     }
   }
 }

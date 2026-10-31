@@ -99,11 +99,13 @@ test("the session's card made bigger lists every step, an edit opens its diff", 
   assert.equal(State.wideCard, true);
 });
 
-test("made bigger, the button brings the card back to its size", () => {
-  const expand = overview.el.find(".expand")[0];
-  expand.fire("click");
-  overview.sync();
+test("made bigger, ‹ brings the card back to its size, like a WhatsApp conversation", () => {
   overview.el.find(".expand")[0].fire("click");
+  overview.sync();
+  const back = overview.el.find(".card-back")[0];
+  assert.notEqual(back.style.display, "none", "‹ shows while the card is big");
+  assert.equal(overview.el.find(".expand")[0].style.display, "none");
+  back.fire("click");
   overview.sync();
   assert.equal(State.wideCard, false);
   assert.ok(!overview.el.classList.contains("wide"));

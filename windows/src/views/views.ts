@@ -215,13 +215,20 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
   );
   /** The session's card or Spotify's, made as big as the chat by its button (Escape: back). */
   let expanded = false;
-  const expandBtn = h("button", { class: "icon-btn expand" });
+  const expandBtn = h("button", { class: "icon-btn expand", title: tl("Make it bigger") }, svg(ICONS.expand, 8));
   expandBtn.addEventListener("click", () => {
     actions.blip();
-    expanded = !expanded;
+    expanded = true;
     State.notify();
   });
-  const left = card(null, leftBody, jump, expandBtn);
+  // Made bigger, ‹ brings it back, where WhatsApp's conversation has its own.
+  const backBtn = h("button", { class: "int-back card-back", title: tl("Back") }, svg(ICONS.chevronLeft, 10, { stroke: 2.4 }));
+  backBtn.addEventListener("click", () => {
+    actions.blip();
+    expanded = false;
+    State.notify();
+  });
+  const left = card(null, leftBody, jump, expandBtn, backBtn);
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
   // Opened from a plan pill in the header: stands in for the left card.
@@ -481,10 +488,8 @@ function buildOverview(actions: ViewActions, onHeightChange: () => void): ViewHo
       }
 
       const canExpand = mode === "ticker" || mode === "spotify";
-      expandBtn.style.display = canExpand ? "" : "none";
-      clear(expandBtn);
-      expandBtn.append(svg(expanded ? ICONS.collapse : ICONS.expand, 8));
-      expandBtn.title = expanded ? t("Make it smaller") : t("Make it bigger");
+      expandBtn.style.display = canExpand && !expanded ? "" : "none";
+      backBtn.style.display = canExpand && expanded ? "" : "none";
       showWide(mode === "diff" || (mode === "whatsapp" && whatsappCard.conversationOpen) || (expanded && canExpand));
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";

@@ -19,8 +19,6 @@ export const ICONS = {
   arrowUpRight: "M8.5 7h8.5v8.5h-2V10.4l-7.1 7.1-1.4-1.4 7.1-7.1H8.5V7z",
   // arrow.up.left.and.arrow.down.right: a card made bigger
   expand: "M4 4h7v2H7.4l4.3 4.3-1.4 1.4L6 7.4V11H4V4zm16 16h-7v-2h3.6l-4.3-4.3 1.4-1.4 4.3 4.3V13h2v7z",
-  // arrow.down.right.and.arrow.up.left: back to its size
-  collapse: "M11 11H4V9h3.6L3.3 4.7l1.4-1.4L9 7.6V4h2v7zm2 2h7v2h-3.6l4.3 4.3-1.4 1.4-4.3-4.3V20h-2v-7z",
   // arrow.clockwise (stroke)
   arrowClockwise: "M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5",
   // chevron.right
