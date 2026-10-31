@@ -9,7 +9,7 @@ import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { UpdateStatus } from "./update";
-import type { WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
+import type { WaChatSummary, WaIslandView, WaMessage, WaSettingsView, WaTestResult } from "./whatsapp";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -460,6 +460,32 @@ export const Bridge = {
   /** A conversation opened in the card: its latest messages, the receipt if Settings says so. */
   whatsappOpen: (chat: string) => call<void>("whatsapp_open", { chat }),
   whatsappClose: (chat: string) => call<void>("whatsapp_close", { chat }),
+  /** The big WhatsApp chat: the gateway's latest chats, and a page of one chat's history up to
+   *  `before` (ms; null for the latest). Null when the gateway didn't answer. */
+  whatsappChats: () => call<WaChatSummary[]>("whatsapp_chats"),
+  whatsappHistory: (chat: string, before: number | null) => call<WaMessage[]>("whatsapp_history", { chat, before }),
+  /** A message's photo or video as a blob: URL (revoke it when the chat closes), or null. */
+  whatsappMedia: async (chat: string, id: string, type: string): Promise<string | null> => {
+    const bytes = await call<ArrayBuffer>("whatsapp_media", { chat, id });
+    return bytes ? URL.createObjectURL(new Blob([bytes], { type })) : null;
+  },
+  /** The "Forward to …" click only. True once the gateway took it. */
+  whatsappForward: (from: string, id: string, to: string) => call<boolean>("whatsapp_forward", { from, id, to }),
+  /** A photo or video with its caption, on Enter or the send button only: a dropped file by its
+   *  path, a picked one by its bytes. True once the gateway took it. */
+  whatsappSendFile: (chat: string, path: string, caption: string) => call<boolean>("whatsapp_send_file", { chat, path, caption }),
+  whatsappSendBytes: async (chat: string, file: Blob & { name?: string }, caption: string): Promise<boolean | null> => {
+    if (!IS_TAURI) return null;
+    const b64 = (s: string) => btoa(Array.from(new TextEncoder().encode(s), (b) => String.fromCharCode(b)).join(""));
+    try {
+      return await invoke<boolean>("whatsapp_send_bytes", new Uint8Array(await file.arrayBuffer()), {
+        headers: { "x-chat": chat, "x-name": b64(file.name ?? ""), "x-caption": b64(caption) },
+      });
+    } catch (err) {
+      console.error("[coucou] whatsapp_send_bytes failed", err);
+      return null;
+    }
+  },
   /** Enter or the send button only. True once the gateway took it. */
   whatsappSend: (chat: string, text: string) => call<boolean>("whatsapp_send", { chat, text }),
   /** A chat id, or (Settings) a phone number. */

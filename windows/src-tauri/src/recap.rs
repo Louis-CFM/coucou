@@ -585,7 +585,7 @@ fn is_week_key(week: &str) -> bool {
 // ── Saving the shared image ───────────────────────────────────────────────────
 
 /// Standard base64, with or without a `data:…;base64,` prefix.
-fn decode_base64(data: &str) -> Option<Vec<u8>> {
+pub(crate) fn decode_base64(data: &str) -> Option<Vec<u8>> {
     let body = match data.split_once(',') {
         Some((head, rest)) if head.starts_with("data:") => rest,
         _ => data,

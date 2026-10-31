@@ -93,6 +93,14 @@ class FakeElement {
       this.childNodes.push(node);
     }
   }
+  insertBefore(node, ref) {
+    node.parentNode?.removeChild(node);
+    node.parentNode = this;
+    const at = ref ? this.childNodes.indexOf(ref) : -1;
+    if (at < 0) this.childNodes.push(node);
+    else this.childNodes.splice(at, 0, node);
+    return node;
+  }
   replaceChildren(...nodes) {
     this.childNodes = [];
     this.append(...nodes);

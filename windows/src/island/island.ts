@@ -7,7 +7,7 @@ import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
-  QUESTION_PICKER_H,
+  QUESTION_PICKER_H, WHATSAPP_CHAT_H, WHATSAPP_CHAT_W,
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
@@ -20,6 +20,7 @@ import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
+import { showsWhatsAppChat, whatsAppDropTarget } from "../views/whatsapp";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
@@ -572,6 +573,13 @@ export class Island {
   private onDragDrop(e: { type: string; paths?: string[] }) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
     if (State.paused) return;
+    // A photo or video dropped on a chat open in the big WhatsApp chat goes with its next reply
+    // (views/whatsapp.ts), not into the drop sequence.
+    const whatsapp = State.mode === "expanded" && State.view === "prompt" && showsWhatsAppChat() ? whatsAppDropTarget() : null;
+    if (whatsapp) {
+      if (e.type === "drop" && e.paths?.[0]) whatsapp(e.paths[0]);
+      return;
+    }
     switch (e.type) {
       case "enter":
       case "over": {
@@ -692,6 +700,11 @@ export class Island {
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
+    // The chat view on WhatsApp's Mochi is the big WhatsApp chat.
+    if (State.mode === "expanded" && State.view === "prompt" && showsWhatsAppChat()) {
+      w = WHATSAPP_CHAT_W;
+      h = WHATSAPP_CHAT_H;
+    }
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -735,7 +748,7 @@ export class Island {
     }
   }
 
-  /** Island rect in window coordinates (origin top-left of the 720×320 window). */
+  /** Island rect in window coordinates (origin top-left of the 720×460 window). */
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;

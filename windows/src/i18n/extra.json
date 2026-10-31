@@ -136,6 +136,19 @@
       "ko": "터미널에서 답해 주세요.",
       "ja": "ターミナルで答えてください。"
     },
+    "Archived": {
+      "zh-Hans": "已归档",
+      "hi": "संग्रहित",
+      "es": "Archivados",
+      "ar": "المؤرشفة",
+      "fr": "Archivées",
+      "bn": "আর্কাইভ করা",
+      "pt-BR": "Arquivadas",
+      "ru": "Архив",
+      "id": "Diarsipkan",
+      "de": "Archiviert",
+      "tr": "Arşivlenmiş"
+    },
     "Ask": {
       "zh-Hans": "提问",
       "hi": "पूछें",
@@ -420,6 +433,19 @@
       "tr": "Kendin çalıştırdığın bir modelle sohbet et: Ollama veya LM Studio (bu bilgisayardaki varsayılan adres için adresi boş bırak) ya da vLLM veya llama.cpp gibi OpenAI API'siyle uyumlu bir sunucu. Bağlandıktan sonra sohbet kutusunun üstünden seç.",
       "ko": "내가 직접 돌리는 모델과 채팅해 보세요: Ollama나 LM Studio(이 컴퓨터의 기본 주소라면 비워 두세요), 또는 vLLM, llama.cpp처럼 OpenAI API를 쓰는 서버면 다 돼요. 연결되면 채팅창 위에서 골라 주세요.",
       "ja": "自分で動かしているモデルとチャットできます：Ollama や LM Studio（このパソコンの通常のアドレスなら空欄のまま）、または vLLM や llama.cpp など OpenAI API を話すサーバー。接続したら、チャット欄の上で選んでください。"
+    },
+    "Choose a conversation": {
+      "zh-Hans": "选择一个对话",
+      "hi": "कोई बातचीत चुनें",
+      "es": "Elige una conversación",
+      "ar": "اختر محادثة",
+      "fr": "Choisis une conversation",
+      "bn": "একটি কথোপকথন বেছে নিন",
+      "pt-BR": "Escolha uma conversa",
+      "ru": "Выберите чат",
+      "id": "Pilih percakapan",
+      "de": "Wähle eine Unterhaltung",
+      "tr": "Bir sohbet seç"
     },
     "Choose a model": {
       "zh-Hans": "选择模型",
@@ -1035,6 +1061,58 @@
       "tr": "Klasörler henüz bırakılamıyor.",
       "ko": "폴더는 아직 놓을 수 없어요.",
       "ja": "フォルダはまだドロップできません。"
+    },
+    "Forward": {
+      "zh-Hans": "转发",
+      "hi": "फ़ॉरवर्ड करें",
+      "es": "Reenviar",
+      "ar": "إعادة توجيه",
+      "fr": "Transférer",
+      "bn": "ফরওয়ার্ড করুন",
+      "pt-BR": "Encaminhar",
+      "ru": "Переслать",
+      "id": "Teruskan",
+      "de": "Weiterleiten",
+      "tr": "İlet"
+    },
+    "Forward to {name}": {
+      "zh-Hans": "转发给 {name}",
+      "hi": "{name} को फ़ॉरवर्ड करें",
+      "es": "Reenviar a {name}",
+      "ar": "إعادة توجيه إلى {name}",
+      "fr": "Transférer à {name}",
+      "bn": "{name}-কে ফরওয়ার্ড করুন",
+      "pt-BR": "Encaminhar para {name}",
+      "ru": "Переслать: {name}",
+      "id": "Teruskan ke {name}",
+      "de": "An {name} weiterleiten",
+      "tr": "{name} kişisine ilet"
+    },
+    "Forwarded": {
+      "zh-Hans": "已转发",
+      "hi": "फ़ॉरवर्ड किया गया",
+      "es": "Reenviado",
+      "ar": "مُعاد توجيهها",
+      "fr": "Transféré",
+      "bn": "ফরওয়ার্ড করা",
+      "pt-BR": "Encaminhada",
+      "ru": "Пересланное сообщение",
+      "id": "Diteruskan",
+      "de": "Weitergeleitet",
+      "tr": "İletildi"
+    },
+    "Forwarded to {name}": {
+      "zh-Hans": "已转发给 {name}",
+      "hi": "{name} को फ़ॉरवर्ड किया गया",
+      "es": "Reenviado a {name}",
+      "ar": "تمت إعادة التوجيه إلى {name}",
+      "fr": "Transféré à {name}",
+      "bn": "{name}-কে ফরওয়ার্ড করা হয়েছে",
+      "pt-BR": "Encaminhada para {name}",
+      "ru": "Переслано: {name}",
+      "id": "Diteruskan ke {name}",
+      "de": "An {name} weitergeleitet",
+      "tr": "{name} kişisine iletildi"
     },
     "Friday": {
       "zh-Hans": "星期五",
@@ -1921,6 +1999,19 @@
       "ko": "Outlook에서 열기",
       "ja": "Outlook で開く"
     },
+    "Only photos and videos can be sent here.": {
+      "zh-Hans": "这里只能发送照片和视频。",
+      "hi": "यहाँ से सिर्फ़ फ़ोटो और वीडियो भेजे जा सकते हैं।",
+      "es": "Aquí solo se pueden enviar fotos y vídeos.",
+      "ar": "يمكن إرسال الصور ومقاطع الفيديو فقط من هنا.",
+      "fr": "Ici, tu ne peux envoyer que des photos et des vidéos.",
+      "bn": "এখান থেকে শুধু ছবি আর ভিডিও পাঠানো যায়।",
+      "pt-BR": "Aqui só dá para enviar fotos e vídeos.",
+      "ru": "Отсюда можно отправить только фото и видео.",
+      "id": "Di sini hanya foto dan video yang bisa dikirim.",
+      "de": "Hier kannst du nur Fotos und Videos senden.",
+      "tr": "Buradan yalnızca fotoğraf ve video gönderebilirsin."
+    },
     "Open in VS Code": {
       "zh-Hans": "在 VS Code 中打开",
       "hi": "VS Code में खोलें",
@@ -2101,6 +2192,19 @@
       "ko": "read_api와 read_user 범위가 있는 개인 액세스 토큰.",
       "ja": "read_api と read_user スコープ付きのパーソナルアクセストークン。"
     },
+    "Photo or video": {
+      "zh-Hans": "照片或视频",
+      "hi": "फ़ोटो या वीडियो",
+      "es": "Foto o vídeo",
+      "ar": "صورة أو فيديو",
+      "fr": "Photo ou vidéo",
+      "bn": "ছবি বা ভিডিও",
+      "pt-BR": "Foto ou vídeo",
+      "ru": "Фото или видео",
+      "id": "Foto atau video",
+      "de": "Foto oder Video",
+      "tr": "Fotoğraf veya video"
+    },
     "Pick a model above the chat box first.": {
       "zh-Hans": "请先在聊天框上方选择一个模型。",
       "hi": "पहले चैट बॉक्स के ऊपर एक मॉडल चुनें।",
@@ -2130,6 +2234,19 @@
       "tr": "Sohbet kutusunun üstünden bir {name} modeli seç.",
       "ko": "채팅창 위에서 {name} 모델을 골라 주세요.",
       "ja": "チャット欄の上で {name} のモデルを選んでください。"
+    },
+    "Pick the chat to forward to": {
+      "zh-Hans": "选择要转发到的聊天",
+      "hi": "वह चैट चुनें जिसमें फ़ॉरवर्ड करना है",
+      "es": "Elige el chat al que reenviar",
+      "ar": "اختر المحادثة التي تريد إعادة التوجيه إليها",
+      "fr": "Choisis la discussion où transférer",
+      "bn": "যে চ্যাটে ফরওয়ার্ড করবেন সেটি বেছে নিন",
+      "pt-BR": "Escolha a conversa para onde encaminhar",
+      "ru": "Выберите чат, куда переслать",
+      "id": "Pilih chat tujuan penerusan",
+      "de": "Wähle den Chat zum Weiterleiten",
+      "tr": "İletilecek sohbeti seç"
     },
     "Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.": {
       "zh-Hans": "最多选择 {max} 个标签显示在 Mochi 旁边 — 已用 {used}/{max}。密钥保存在 {store} 中，绝不写入磁盘。",
@@ -3045,6 +3162,19 @@
       "tr": "Token gerekli kapsama sahip değil",
       "ko": "토큰에 필요한 범위가 없어요",
       "ja": "トークンに必要なスコープがありません"
+    },
+    "Too big to send (16 MB at most).": {
+      "zh-Hans": "文件太大，无法发送（最大 16 MB）。",
+      "hi": "भेजने के लिए बहुत बड़ा है (अधिकतम 16 MB)।",
+      "es": "Demasiado grande para enviarlo (16 MB como máximo).",
+      "ar": "أكبر من أن يُرسل (16 ميغابايت كحد أقصى).",
+      "fr": "Trop lourd pour être envoyé (16 Mo au maximum).",
+      "bn": "পাঠানোর জন্য খুব বড় (সর্বোচ্চ 16 MB)।",
+      "pt-BR": "Grande demais para enviar (16 MB no máximo).",
+      "ru": "Слишком большой файл (не больше 16 МБ).",
+      "id": "Terlalu besar untuk dikirim (maksimal 16 MB).",
+      "de": "Zu groß zum Senden (höchstens 16 MB).",
+      "tr": "Göndermek için çok büyük (en fazla 16 MB)."
     },
     "Total stars": {
       "zh-Hans": "星标总数",

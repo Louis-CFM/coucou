@@ -52,10 +52,11 @@ export interface ViewLayout {
   agentMode: AgentLayoutMode;
 }
 
-// The window is a fixed 720×320 (largest view) like the macOS panel; the island is
-// drawn inside it, glued to the top edge and horizontally centred.
+// The window is a fixed 720×460 (largest view); the island is drawn inside it, glued
+// to the top edge and horizontally centred. The Mac's panel is 720×320; the extra
+// height is the big WhatsApp chat's, below.
 export const PANEL_W = 720;
-export const PANEL_H = 320;
+export const PANEL_H = 460;
 
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
@@ -108,6 +109,10 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 
 /** The question view with options to pick from: room for two rows of them. */
 export const QUESTION_PICKER_H = 200;
+
+/** The chat view on WhatsApp's Mochi is WhatsApp itself, the chats beside the conversation. */
+export const WHATSAPP_CHAT_W = PANEL_W;
+export const WHATSAPP_CHAT_H = PANEL_H;
 
 /** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
 export function chatPromptHeight(messageCount: number): number {
