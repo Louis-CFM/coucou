@@ -44,11 +44,12 @@ fn tools() -> Vec<Value> {
         }),
         json!({
             "name": "music",
-            "description": "Control Spotify: play or pause, next, previous, set the volume, or search a song, an artist or a playlist in Spotify.",
+            "description": "Control Spotify or Apple Music: play or pause, next, previous, set the volume, or search. Set player to apple_music when the user asks for Apple Music; otherwise spotify.",
             "input_schema": {
                 "type": "object",
                 "properties": {
                     "action": { "type": "string", "enum": ["play_pause", "next", "previous", "set_volume", "search"] },
+                    "player": { "type": "string", "enum": ["spotify", "apple_music"] },
                     "query": { "type": "string", "description": "What to search, for search." },
                     "volume": { "type": "integer", "description": "0-100 for set_volume." }
                 },

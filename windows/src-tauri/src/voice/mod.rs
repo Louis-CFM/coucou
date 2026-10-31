@@ -407,6 +407,8 @@ pub fn run_tool(app: &AppHandle, name: &str, input: &Value) -> (String, bool) {
 }
 
 fn music(app: &AppHandle, input: &Value) -> (String, bool) {
+    let apple = input["player"].as_str() == Some("apple_music");
+    let player = if apple { "Apple Music" } else { "Spotify" };
     let action = input["action"].as_str().unwrap_or("");
     let (control, value) = match action {
         "play_pause" => ("playPause", None),
@@ -419,17 +421,22 @@ fn music(app: &AppHandle, input: &Value) -> (String, bool) {
                 return ("missing query".into(), false);
             }
             let encoded: String = q.chars().map(|c| if c.is_alphanumeric() { c.to_string() } else { "%20".into() }).collect();
-            crate::platform::open_url(&format!("spotify:search:{encoded}"));
-            return (format!("Spotify opened on a search for {q}: the user picks what to play."), true);
+            let url = if apple { format!("https://music.apple.com/search?term={encoded}") } else { format!("spotify:search:{encoded}") };
+            crate::platform::open_url(&url);
+            return (format!("{player} opened on a search for {q}: the user picks what to play."), true);
         }
         _ => return ("unknown action".into(), false),
     };
     let app2 = app.clone();
-    let done = tauri::async_runtime::block_on(crate::spotify::spotify_control(app2, control.into(), value));
+    let done = if apple {
+        tauri::async_runtime::block_on(crate::apple_music::apple_music_control(app2, control.into(), value))
+    } else {
+        tauri::async_runtime::block_on(crate::spotify::spotify_control(app2, control.into(), value))
+    };
     if done {
         ("done".into(), true)
     } else {
-        ("Spotify is not running or not playing: tell the user to open it.".into(), false)
+        (format!("{player} did not accept this control. It may be closed or this control may be unavailable."), false)
     }
 }
 

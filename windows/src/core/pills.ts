@@ -133,7 +133,7 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
   // Spotify through MPRIS on Linux and the system media controls on Windows
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
