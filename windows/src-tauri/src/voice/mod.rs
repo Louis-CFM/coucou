@@ -508,7 +508,9 @@ fn find_app(wanted: &str) -> Option<(String, Box<dyn FnOnce()>)> {
     }
     let (_, label, id) = best?;
     Some((label, Box::new(move || {
-        let _ = std::process::Command::new("gtk-launch").arg(&id).spawn();
+        let mut cmd = std::process::Command::new("gtk-launch");
+        cmd.arg(&id);
+        let _ = crate::platform::no_console(&mut cmd).spawn();
     })))
 }
 

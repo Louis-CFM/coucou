@@ -119,9 +119,14 @@ pub fn setup(app: &AppHandle) {
         }
         match builder.build() {
             Ok(win) => {
+                // Windows: prepare_pill_window also makes the idle window
+                // click-through. Not here for every system: on Linux the
+                // window is not realized yet, and tao unwraps its GdkWindow.
                 if !platform::prepare_pill_window(&win, mode) {
                     let _ = win.destroy();
                     mode = DesktopMode::Off;
+                } else if park {
+                    let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
                 }
             }
             Err(err) => {
@@ -142,6 +147,7 @@ pub fn setup(app: &AppHandle) {
         announce_seq: std::sync::atomic::AtomicU64::new(1),
     });
     app.manage(pill.clone());
+    show(app, &pill, false);
     if mode == DesktopMode::Poll {
         spawn_poll(app.clone(), pill);
     }
@@ -207,16 +213,18 @@ fn window(app: &AppHandle) -> Option<WebviewWindow> {
 }
 
 fn size_for(edge: &str) -> (f64, f64) {
-    if edge == "bottom" {
-        BOTTOM
-    } else {
+    if edge == "left" || edge == "right" {
         SIDE
+    } else {
+        BOTTOM
     }
 }
 
 pub fn edge_name(edge: Edge) -> &'static str {
     match edge {
         Edge::Bottom => "bottom",
+        Edge::BottomLeft => "bottom-left",
+        Edge::BottomRight => "bottom-right",
         Edge::Left => "left",
         Edge::Right => "right",
     }
@@ -248,6 +256,7 @@ fn show(app: &AppHandle, pill: &Pill, visible: bool) {
         DesktopMode::Poll => {
             if !visible {
                 let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
+                let _ = win.set_ignore_cursor_events(true);
             }
             let (lock, cv) = &pill.poll;
             *lock.lock().unwrap() = visible;
@@ -301,6 +310,8 @@ fn place(app: &AppHandle, pill: &Pill, edge: &str, on_cursor: bool) {
             let (x, y) = match edge {
                 "left" => (ax + gap, ay + (ah - ph) / 2),
                 "right" => (ax + aw - pw - gap, ay + (ah - ph) / 2),
+                "bottom-left" => (ax + gap, ay + ah - ph - gap),
+                "bottom-right" => (ax + aw - pw - gap, ay + ah - ph - gap),
                 _ => (ax + (aw - pw) / 2, ay + ah - ph - gap),
             };
             #[cfg(target_os = "linux")]
@@ -335,13 +346,18 @@ pub fn set_hot(app: &AppHandle, rects: Vec<(f64, f64, f64, f64)>) {
 /// mouse only over the pill and its bubble.
 fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
     std::thread::spawn(move || {
-        let mut ignoring: Option<bool> = None;
+        let mut ignoring: Option<bool> = Some(true);
         loop {
             {
                 let (lock, cv) = &pill.poll;
                 let mut on = lock.lock().unwrap();
                 while !*on {
-                    ignoring = None;
+                    if ignoring != Some(true) {
+                        ignoring = Some(true);
+                        if let Some(win) = window(&app) {
+                            let _ = win.set_ignore_cursor_events(true);
+                        }
+                    }
                     on = cv.wait(on).unwrap();
                 }
             }
@@ -403,4 +419,24 @@ pub fn rest_after(app: &AppHandle, phase: &str, ms: u64) {
             }
         });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn edge_names_and_sizes_match_expected() {
+        assert_eq!(edge_name(Edge::Bottom), "bottom");
+        assert_eq!(edge_name(Edge::BottomLeft), "bottom-left");
+        assert_eq!(edge_name(Edge::BottomRight), "bottom-right");
+        assert_eq!(edge_name(Edge::Left), "left");
+        assert_eq!(edge_name(Edge::Right), "right");
+
+        assert_eq!(size_for("bottom"), BOTTOM);
+        assert_eq!(size_for("bottom-left"), BOTTOM);
+        assert_eq!(size_for("bottom-right"), BOTTOM);
+        assert_eq!(size_for("left"), SIDE);
+        assert_eq!(size_for("right"), SIDE);
+    }
 }

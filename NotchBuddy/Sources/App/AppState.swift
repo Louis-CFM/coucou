@@ -121,6 +121,10 @@ final class AppState: ObservableObject {
     }
 
     // In-chat provider + model — picked via the model selector in the prompt view
+    /// The chat's Mail switch (GitHub build): the AI sees the latest messages and may prepare
+    /// actions on them. Off at each launch.
+    @Published var chatMailMode = false
+
     @Published var chatProvider: ChatProvider = .anthropic {
         didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
     }
@@ -353,6 +357,21 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(Int(hotkeyCode), forKey: "hotkeyCode") }
     }
 
+    /// Two Mochis swapping places in a corner (CornerArcView draws both): the main one hides.
+    @Published var cornerSwapping = false
+    /// The pointer on the compact tile in a corner: the other pills come out of it (CornerBubbles).
+    @Published var cornerPeek = false
+    /// One of them clicked: once open, the island swaps it with Mochi (CornerArcView).
+    @Published var cornerPendingSwap: String? = nil
+
+    /// Where the island lives on its screen: the notch, or a corner (IslandPlacement) — persisted.
+    @Published var islandPlacement: IslandPlacement = .notch {
+        didSet {
+            IslandPlacement.current = islandPlacement
+            UserDefaults.standard.set(islandPlacement.rawValue, forKey: "islandPlacement")
+        }
+    }
+
     // Screen hosting the island (notch screen by default) — persisted
     @Published var islandDisplay: IslandDisplayChoice = .notch {
         didSet { UserDefaults.standard.set(islandDisplay.storageValue, forKey: "islandDisplay") }
@@ -579,6 +598,10 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }
         if let v = ud.string(forKey: "islandDisplay") { islandDisplay = IslandDisplayChoice(storageValue: v) }
+        if let v = ud.string(forKey: "islandPlacement"), let p = IslandPlacement(rawValue: v) {
+            islandPlacement = p
+            IslandPlacement.current = p   // didSet doesn't run from init
+        }
         if let d = ud.data(forKey: "vercelProjectFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
         if let d = ud.data(forKey: "n8nWorkflowFilter"),

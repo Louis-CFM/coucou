@@ -93,12 +93,20 @@ class FakeElement {
       this.childNodes.push(node);
     }
   }
+  prepend(...nodes) {
+    const added = nodes.map((n) => (typeof n === "string" ? new FakeText(n) : n));
+    for (const node of added) node.parentNode = this;
+    this.childNodes.unshift(...added);
+  }
   replaceChildren(...nodes) {
+    // As in a real DOM, the old children no longer have a parent.
+    for (const old of this.childNodes) old.parentNode = null;
     this.childNodes = [];
     this.append(...nodes);
   }
   removeChild(node) {
     this.childNodes = this.childNodes.filter((n) => n !== node);
+    node.parentNode = null;
     return node;
   }
   remove() {
