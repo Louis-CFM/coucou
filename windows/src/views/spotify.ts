@@ -17,6 +17,7 @@ import {
   SPOTIFY_GREEN, Spotify, currentArtwork, formatTime, isAd, spotifyPosition, takes, volumeLevel, withPlaying,
   type Player, type SpotifyTrack,
 } from "../core/spotify";
+import { Lyrics, lineAt } from "../core/lyrics";
 import { createMiniBot } from "../mochi/minibots";
 import { pillDefinition } from "../core/pills";
 import { N_, t } from "../i18n/i18n";
@@ -351,6 +352,8 @@ export function buildSpotifyCard(player: Player = Spotify): SpotifyCardHost {
   let playIcon: boolean | null = null;
   let volIconLevel = -1;
   let timer: number | null = null;
+  /** Artist · album, shown under the title whenever no lyric line is. */
+  let baseSub = "";
 
   function paintProgress() {
     const s = player.state;
@@ -360,6 +363,19 @@ export function buildSpotifyCard(player: Player = Spotify): SpotifyCardHost {
     progress.set(f);
     elapsed.textContent = formatTime(f * d);
     remaining.textContent = d > 0 ? `-${formatTime(Math.max(0, d - f * d))}` : "";
+    paintSubtitle(pos);
+  }
+
+  /** The line being sung takes artist · album's place; between lines they come back. */
+  function paintSubtitle(pos: number) {
+    const track = player.state.track;
+    const lines = State.settings.lyricsEnabled && track ? Lyrics.byTrack.get(track.id) : null;
+    const line = lines ? lineAt(lines, pos) : null;
+    const text = line ?? baseSub;
+    if (subtitle.textContent !== text) subtitle.textContent = text;
+    subtitle.style.display = text ? "" : "none";
+    subtitle.style.color = line ? "#C5C8CD" : "";
+    subtitle.title = line ?? "";
   }
 
   /** The position runs on its own clock, twice a second, only while it plays on screen. */
@@ -386,9 +402,7 @@ export function buildSpotifyCard(player: Player = Spotify): SpotifyCardHost {
     if (shownTrack !== track) {
       shownTrack = track;
       title.textContent = isAd(track) ? t("Advertisement") : track.title;
-      const sub = [track.artist, track.album].filter((x) => x).join(" · ");
-      subtitle.textContent = sub;
-      subtitle.style.display = sub ? "" : "none";
+      baseSub = [track.artist, track.album].filter((x) => x).join(" · ");
     } else if (isAd(track)) {
       title.textContent = t("Advertisement");
     }

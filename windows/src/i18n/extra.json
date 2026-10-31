@@ -7368,6 +7368,36 @@
       "tr": "Windows medya denetimlerindeki herhangi bir uygulamadan müzik ve videolar; örneğin tarayıcınızdaki YouTube veya Apple Music.",
       "ko": "Windows 미디어 컨트롤에 있는 모든 앱의 음악과 동영상(브라우저의 YouTube나 Apple Music 등).",
       "ja": "Windows のメディアコントロールにあるあらゆるアプリの音楽や動画（ブラウザーの YouTube や Apple Music など）。"
+    },
+    "Show synced lyrics": {
+      "zh-Hans": "显示同步歌词",
+      "hi": "सिंक किए गए बोल दिखाएँ",
+      "es": "Mostrar letras sincronizadas",
+      "ar": "عرض كلمات الأغاني المتزامنة",
+      "fr": "Afficher les paroles synchronisées",
+      "bn": "সিঙ্ক করা গানের কথা দেখান",
+      "pt-BR": "Mostrar letras sincronizadas",
+      "ru": "Показывать синхронный текст песен",
+      "id": "Tampilkan lirik tersinkron",
+      "de": "Synchronisierte Songtexte anzeigen",
+      "tr": "Senkronize şarkı sözlerini göster",
+      "ko": "싱크 가사 표시",
+      "ja": "同期歌詞を表示"
+    },
+    "The line being sung on the Spotify and Now Playing cards. Looks the song up on LRCLIB (lrclib.net), a free lyrics database: only its title, artist, album and length are sent.": {
+      "zh-Hans": "在 Spotify 和 Now Playing 卡片上显示正在演唱的歌词。会在免费歌词数据库 LRCLIB (lrclib.net) 上查找歌曲：只发送歌名、艺人、专辑和时长。",
+      "hi": "Spotify और Now Playing कार्ड पर गाई जा रही पंक्ति। गाने को मुफ़्त बोल डेटाबेस LRCLIB (lrclib.net) पर खोजता है: केवल उसका शीर्षक, कलाकार, एल्बम और अवधि भेजी जाती है।",
+      "es": "La línea que se está cantando en las tarjetas de Spotify y Now Playing. Busca la canción en LRCLIB (lrclib.net), una base de datos de letras gratuita: solo se envían su título, artista, álbum y duración.",
+      "ar": "السطر الذي يُغنّى الآن على بطاقتَي Spotify وNow Playing. يبحث عن الأغنية في LRCLIB (lrclib.net)، وهي قاعدة بيانات مجانية لكلمات الأغاني: لا يُرسل سوى عنوانها والفنان والألبوم والمدة.",
+      "fr": "La ligne chantée sur les cartes Spotify et Now Playing. Cherche le morceau sur LRCLIB (lrclib.net), une base de paroles gratuite : seuls son titre, son artiste, son album et sa durée sont envoyés.",
+      "bn": "Spotify ও Now Playing কার্ডে যে লাইনটি গাওয়া হচ্ছে। গানটি বিনামূল্যের গানের কথার ডেটাবেস LRCLIB (lrclib.net)-এ খোঁজে: শুধু শিরোনাম, শিল্পী, অ্যালবাম ও দৈর্ঘ্য পাঠানো হয়।",
+      "pt-BR": "A linha que está sendo cantada nos cartões do Spotify e do Now Playing. Procura a música no LRCLIB (lrclib.net), um banco de letras gratuito: só o título, o artista, o álbum e a duração são enviados.",
+      "ru": "Строка, которая звучит сейчас, на карточках Spotify и Now Playing. Песня ищется в LRCLIB (lrclib.net) — бесплатной базе текстов: отправляются только название, исполнитель, альбом и длительность.",
+      "id": "Baris yang sedang dinyanyikan di kartu Spotify dan Now Playing. Mencari lagu di LRCLIB (lrclib.net), basis data lirik gratis: hanya judul, artis, album, dan durasinya yang dikirim.",
+      "de": "Die gerade gesungene Zeile auf den Karten von Spotify und Now Playing. Sucht den Song bei LRCLIB (lrclib.net), einer kostenlosen Songtext-Datenbank: Nur Titel, Künstler, Album und Länge werden gesendet.",
+      "tr": "Spotify ve Now Playing kartlarında söylenen satır. Şarkıyı ücretsiz bir şarkı sözü veritabanı olan LRCLIB'de (lrclib.net) arar: yalnızca adı, sanatçısı, albümü ve süresi gönderilir.",
+      "ko": "Spotify와 Now Playing 카드에 지금 부르는 가사 한 줄을 보여 줍니다. 무료 가사 데이터베이스 LRCLIB(lrclib.net)에서 곡을 찾으며, 제목·아티스트·앨범·길이만 전송됩니다.",
+      "ja": "Spotify と Now Playing のカードに、いま歌われている歌詞の行を表示します。無料の歌詞データベース LRCLIB (lrclib.net) で曲を探し、送信するのは曲名・アーティスト・アルバム・長さだけです。"
     }
   }
 }

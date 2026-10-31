@@ -154,6 +154,8 @@ export interface Settings {
    * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
    */
   language: string;
+  /** Synced lyrics on the music cards, from LRCLIB (src-tauri/src/lyrics.rs). Off by default. */
+  lyricsEnabled: boolean;
   /**
    * The phone link for Coucou for Android is on. Rust owns it (only the switch in
    * Settings → Android phone turns it on): whatever the page sends back is ignored.
@@ -202,6 +204,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  lyricsEnabled: false,
 };
 
 type Listener = () => void;
