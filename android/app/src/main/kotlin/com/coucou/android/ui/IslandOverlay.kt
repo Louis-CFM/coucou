@@ -2,10 +2,12 @@ package com.coucou.android.ui
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.Display
 import android.view.Gravity
 import android.view.WindowInsets
 import android.view.WindowManager
@@ -24,6 +26,7 @@ import com.coucou.android.core.MotionState
 import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.Tokens
 import com.coucou.android.core.TypeScale
+import kotlin.math.max
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -221,7 +224,12 @@ class IslandOverlay(
         val cutout = insets.displayCutout?.boundingRectTop?.let { PxRect(it.left, it.top, it.right, it.bottom) }
         val statusBar = insets.getInsetsIgnoringVisibility(WindowInsets.Type.statusBars()).top
             .takeIf { it > 0 } ?: (24 * density).toInt()
-        return IslandGeometry.place(metrics.bounds.width(), density, cutout, statusBar)
+        // The panel's own resolution, to tell when the screen is set lower (then the cut-out's x may be in panel pixels).
+        val scaled = runCatching {
+            val mode = context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY).mode
+            max(mode.physicalWidth, mode.physicalHeight) != max(metrics.bounds.width(), metrics.bounds.height())
+        }.getOrDefault(false)
+        return IslandGeometry.place(metrics.bounds.width(), density, cutout, statusBar, scaled)
     }
 
     private fun ensureView(): Boolean {
