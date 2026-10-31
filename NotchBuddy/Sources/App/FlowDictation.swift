@@ -96,6 +96,8 @@ final class FlowDictation: ObservableObject {
     private let bands: FlowAudioBands
     /// The system's Accessibility prompt is shown at most once per launch, when a paste could not happen.
     private var promptedThisRun = false
+    /// Claude Code signed out with the key standing in: said once per launch, nothing was lost.
+    private var toldKeyStoodIn = false
     let pill: FlowPillController
 
     private init() {
@@ -350,17 +352,20 @@ final class FlowDictation: ObservableObject {
             var body = prepared.text
             // Prompt mode or translation: one call to Claude does the clean-up too.
             let language = FlowLanguages.language(store.translateTo)
+            var shaping: FlowCleanup.Outcome?
             if (store.promptMode || language != nil), !body.isEmpty {
                 let shaped = await FlowCleanup.transform(body, prompt: store.promptMode, language: language,
                                                          style: store.style(for: listen.app?.bundleIdentifier),
                                                          app: listen.app?.localizedName, words: store.words)
                 guard !listen.cancelled else { return }
-                if FlowText.keepsMarks(shaped, prepared.snippets) { body = shaped }
+                if FlowText.keepsMarks(shaped.text, prepared.snippets) { body = shaped.text }
+                shaping = shaped
             } else if store.cleanupEnabled, !body.isEmpty {
                 let cleaned = await FlowCleanup.clean(body, style: store.style(for: listen.app?.bundleIdentifier),
                                                       app: listen.app?.localizedName, words: store.words)
                 guard !listen.cancelled else { return }
-                if FlowText.keepsMarks(cleaned, prepared.snippets) { body = cleaned }
+                if FlowText.keepsMarks(cleaned.text, prepared.snippets) { body = cleaned.text }
+                shaping = cleaned
             }
             let text = FlowText.finish(body, snippets: prepared.snippets)
             if !text.isEmpty {
@@ -377,7 +382,9 @@ final class FlowDictation: ObservableObject {
             if latest { self.pill.rest() }
             switch result {
             case .pasted:
-                break
+                if latest, let shaping, let tool = shaping.signedOut {
+                    self.announceSignedOut(tool, keyStoodIn: shaping.keyStoodIn)
+                }
             case .noAccess:
                 // No Accessibility: the words wait on the clipboard, and macOS is asked once.
                 self.trusted = false
@@ -387,6 +394,22 @@ final class FlowDictation: ObservableObject {
             case .noField:
                 self.announceNoField()
             }
+        }
+    }
+
+    /// Claude Code is signed out, so Claude's clean-up was lost (or the key did it instead, said once
+    /// per launch): the pill says how to sign in again.
+    private func announceSignedOut(_ tool: SubscriptionCLI, keyStoodIn: Bool) {
+        if keyStoodIn {
+            guard !toldKeyStoodIn else { return }
+            toldKeyStoodIn = true
+        }
+        let format = keyStoodIn ? String(localized: "flow.ann.signed-out-key %@ %@")
+                                : String(localized: "flow.ann.signed-out %@ %@")
+        pill.announce(FlowAnnouncement(symbol: "person.crop.circle.badge.exclamationmark",
+                                       text: String(format: format, tool.displayName, tool.signIn),
+                                       action: String(localized: "flow.ann.terminal"))) {
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
         }
     }
 

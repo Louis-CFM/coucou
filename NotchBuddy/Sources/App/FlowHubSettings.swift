@@ -61,7 +61,7 @@ struct HubSettingsPage: View {
                     Toggle("", isOn: $store.promptMode)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .disabled(!FlowCleanup.hasKey && !store.promptMode)
+                        .disabled(!FlowCleanup.isAvailable && !store.promptMode)
                 }
                 HubDivider()
                 HubRow(title: String(localized: "flow.translate"),
@@ -75,9 +75,9 @@ struct HubSettingsPage: View {
                     }
                     .labelsHidden()
                     .fixedSize()
-                    .disabled(!FlowCleanup.hasKey && store.translateTo.isEmpty)
+                    .disabled(!FlowCleanup.isAvailable && store.translateTo.isEmpty)
                 }
-                if !FlowCleanup.hasKey {
+                if !FlowCleanup.isAvailable {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
                             .foregroundColor(HubTheme.accent)
