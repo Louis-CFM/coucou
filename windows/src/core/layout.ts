@@ -109,6 +109,9 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 /** The question view with options to pick from: room for two rows of them. */
 export const QUESTION_PICKER_H = 200;
 
+/** The overview while a file's diff or a WhatsApp conversation is open: as tall as the longest chat. */
+export const WIDE_CARD_H = 300;
+
 /** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
 export function chatPromptHeight(messageCount: number): number {
   return Math.min(300, 240 + messageCount * 40);

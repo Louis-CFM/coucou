@@ -3,7 +3,8 @@
 //
 // The list: one row per conversation (never one per message) with initials, name, age, the last
 // message cut short and the unread count; when the gateway isn't linked, why, and a way to Settings.
-// A click on a row opens the conversation: its last ten messages and a reply field. Enter sends,
+// A click on a row opens the conversation, as big as the chat: every message Coucou keeps (the
+// last twenty, Inbox::KEEP in Rust) and a reply field. Enter sends,
 // Shift+Enter starts a new line, Escape goes back to the list. Nothing is sent without the user's
 // own Enter or click, and while a reply is being typed the island stays open.
 //
@@ -30,6 +31,8 @@ export interface WhatsAppCardHost {
 export interface WhatsAppCard {
   el: HTMLElement;
   sync(): void;
+  /** A conversation is open: the overview gives the card the whole island for it. */
+  readonly conversationOpen: boolean;
 }
 
 /** Initials on WhatsApp green: no photo is ever fetched (they live on WhatsApp's servers). */
@@ -89,6 +92,8 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     host.keyboard(true);
     window.setTimeout(() => field.focus(), 120);
     sync();
+    // The overview grows the island for the conversation.
+    State.notify();
   }
 
   function close() {
@@ -115,7 +120,12 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     field.focus();
   }
 
-  back.addEventListener("click", close);
+  // Back to the list: the overview gives the island its own size back.
+  const closeAndShrink = () => {
+    close();
+    State.notify();
+  };
+  back.addEventListener("click", closeAndShrink);
   sendBtn.addEventListener("click", () => void send());
   field.addEventListener("input", () => {
     host.holdOpen(field.value.trim().length > 0);
@@ -130,7 +140,7 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
       // Back to the list, not the island folding away.
       e.preventDefault();
       e.stopPropagation();
-      close();
+      closeAndShrink();
     }
   });
 
@@ -211,7 +221,8 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
 
   function syncConversation(c: WaConversation) {
     const v = WhatsApp.view;
-    const shown = lastMessages(c);
+    // The conversation has the chat's room: all twenty kept, not ten.
+    const shown = lastMessages(c, 20);
     const key = [language(), c.id, c.name, ...shown.map((m) => m.id)].join("~");
     if (key !== convoKey) {
       const wasAtBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 24;
@@ -254,5 +265,11 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     else syncList();
   }
 
-  return { el, sync };
+  return {
+    el,
+    sync,
+    get conversationOpen() {
+      return openChat != null;
+    },
+  };
 }

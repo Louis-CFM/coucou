@@ -258,6 +258,8 @@ class AppState {
   private sessionDiffTimers = new Map<string, number>();
   /** Never reset, so an id can never point at a newer diff than the one tapped. */
   private nextDiffId = 0;
+  /** The overview's left card needs the room (a file's diff, a WhatsApp conversation): the island grows to WIDE_CARD_H. */
+  wideCard = false;
   /** Ctrl+↑ / Ctrl+↓: the highlighted row of the card's list (AppState.cardSelection). */
   cardSelection: number | null = null;
   /** Rows in the list on screen, 0 when there is none (AppState.cardItemCount). */

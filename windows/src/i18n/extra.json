@@ -7353,6 +7353,21 @@
       "tr": "Kompakt adada göster",
       "ko": "컴팩트 아일랜드에 표시",
       "ja": "コンパクトアイランドに表示"
+    },
+    "Make it bigger": {
+      "zh-Hans": "放大",
+      "hi": "बड़ा करें",
+      "es": "Hacer más grande",
+      "ar": "تكبير",
+      "fr": "Agrandir",
+      "bn": "বড় করুন",
+      "pt-BR": "Aumentar",
+      "ru": "Увеличить",
+      "id": "Perbesar",
+      "de": "Vergrößern",
+      "tr": "Büyüt",
+      "ko": "크게 보기",
+      "ja": "大きくする"
     }
   }
 }
