@@ -11,7 +11,7 @@ import { desktopDances } from "../core/spotify";
 import {
   DESKTOP_EVENTS, DesktopMochiController, alertActive, type DesktopSnapshot,
 } from "../mochi/desktop-logic";
-import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
+import { SeasonCache, parseOutfit, withMusic } from "../mochi/wardrobe";
 
 /** Label of the desktop Mochi's window (desktop.rs LABEL). */
 const WINDOW = "mochi";
@@ -165,13 +165,15 @@ export class DesktopLink {
   }
 
   private push() {
+    const dancing = desktopDances(State.spotifyPlaying, State.effectiveState);
+    const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
     const snapshot: DesktopSnapshot = {
       state: State.effectiveState,
-      outfit: State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit)),
+      outfit: State.wardrobePreview ? outfit : withMusic(outfit, dancing, State.settings.headphonesWithMusic),
       soundEnabled: State.settings.soundEnabled,
       soundVolume: State.settings.soundVolume,
       paused: State.paused,
-      dancing: desktopDances(State.spotifyPlaying, State.effectiveState),
+      dancing,
     };
     const key = JSON.stringify(snapshot);
     if (key === this.pushed) return;

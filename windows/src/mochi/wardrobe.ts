@@ -14,8 +14,14 @@ export const OUTFIT_SELECTIONS = [
 /** What can be stored in the preferences. The raw values are the Mac's, keep them stable. */
 export type OutfitSelection = (typeof OUTFIT_SELECTIONS)[number];
 
-/** What Mochi actually wears: a selection with "auto" resolved. */
-export type Outfit = Exclude<OutfitSelection, "auto">;
+/**
+ * What Mochi actually wears: a selection with "auto" resolved, or the
+ * headphones he puts on to dance to music (never stored, never in the wardrobe).
+ */
+export type Outfit = WardrobeOutfit | "headphones";
+
+/** An outfit of the wardrobe: a selection with "auto" resolved. */
+export type WardrobeOutfit = Exclude<OutfitSelection, "auto">;
 
 export const DEFAULT_OUTFIT: OutfitSelection = "auto";
 
@@ -86,7 +92,7 @@ const DAY_MS = 86_400_000;
  * The seasonal outfit for `date`, read in the user's local calendar.
  * Priority: party hat > Santa hat > witch hat > bunny ears > sunglasses > none.
  */
-export function seasonalOutfit(date: Date): Outfit {
+export function seasonalOutfit(date: Date): WardrobeOutfit {
   const day = date.getDate();
   const month = date.getMonth() + 1;
   const year = date.getFullYear();
@@ -108,8 +114,16 @@ export function seasonalOutfit(date: Date): Outfit {
 }
 
 /** "auto" → the season's outfit; anything else is worn as chosen. */
-export function resolveOutfit(selection: OutfitSelection, date: Date): Outfit {
+export function resolveOutfit(selection: OutfitSelection, date: Date): WardrobeOutfit {
   return selection === "auto" ? seasonalOutfit(date) : selection;
+}
+
+/**
+ * What Mochi wears while music may be playing: headphones while he dances, if
+ * the user asked for them (Settings → General), else his own outfit.
+ */
+export function withMusic(outfit: Outfit, dancing: boolean, headphonesWithMusic: boolean): Outfit {
+  return dancing && headphonesWithMusic ? "headphones" : outfit;
 }
 
 /**

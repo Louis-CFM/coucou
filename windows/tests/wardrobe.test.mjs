@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  OUTFIT_SELECTIONS, OUTFIT_LABELS, SeasonCache, easterDate, parseOutfit, resolveOutfit,
+  OUTFIT_SELECTIONS, OUTFIT_LABELS, SeasonCache, easterDate, parseOutfit, resolveOutfit, withMusic,
   seasonalOutfit, wardrobeHeader,
 } from "../src/mochi/wardrobe.ts";
 import { DEFAULT_SETTINGS } from "../src/core/state.ts";
@@ -128,4 +128,14 @@ test("the per-frame season lookup follows the calendar day", () => {
   assert.equal(cache.get("auto", new Date(2026, 9, 1, 0, 0, 1)), "witchHat");
   assert.equal(cache.get("bow", day(2026, 10, 1)), "bow");
   assert.equal(cache.get("auto", day(2026, 12, 2)), "santaHat");
+});
+
+test("headphones while dancing to music, only when asked, then his own outfit again", () => {
+  assert.equal(withMusic("crown", true, true), "headphones");
+  assert.equal(withMusic("none", true, true), "headphones");
+  assert.equal(withMusic("crown", false, true), "crown", "not dancing: his outfit");
+  assert.equal(withMusic("crown", true, false), "crown", "not asked: his outfit");
+  // Only for music: not a choice of the wardrobe, nor a stored value.
+  assert.ok(!OUTFIT_SELECTIONS.includes("headphones"));
+  assert.equal(parseOutfit("headphones"), "auto");
 });
