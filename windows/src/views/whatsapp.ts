@@ -15,7 +15,7 @@ import { Bridge } from "../core/bridge";
 import { State } from "../core/state";
 import {
   WHATSAPP_GREEN, WHATSAPP_ID, WhatsApp, canSend, initials, keyAction, lastMessages, linkColor, linkLabel,
-  preview, previewParts, sendErrorLabel, timeAgo, type WaConversation, type WaMessage,
+  messageTime, preview, previewParts, sendErrorLabel, timeAgo, type WaConversation, type WaMessage,
 } from "../core/whatsapp";
 import { language, t, tl } from "../i18n/i18n";
 
@@ -47,6 +47,7 @@ function bubble(m: WaMessage, isGroup: boolean): HTMLElement {
   if (isGroup && !m.fromMe && m.senderName) box.append(h("div", { class: "wa-sender", text: m.senderName }));
   if (label) box.append(h("div", { class: "wa-media", text: t(label) }));
   if (value) box.append(h("div", { class: "wa-text", text: value }));
+  box.append(h("div", { class: "wa-time", text: messageTime(m.date) }));
   return h("div", { class: m.fromMe ? "wa-line mine" : "wa-line" }, box);
 }
 
