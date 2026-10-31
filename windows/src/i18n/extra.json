@@ -5775,7 +5775,9 @@
       "ru": "Всегда показывать остров",
       "id": "Selalu tampilkan pulau",
       "de": "Insel immer anzeigen",
-      "tr": "Adayı her zaman göster"
+      "tr": "Adayı her zaman göster",
+      "ko": "아일랜드 항상 표시",
+      "ja": "アイランドを常に表示"
     },
     "The compact island stays at the top of the screen instead of hiding after a minute.": {
       "zh-Hans": "收起的岛一直停留在屏幕顶部，不会在一分钟后隐藏。",
@@ -5788,7 +5790,9 @@
       "ru": "Свёрнутый остров остаётся вверху экрана, а не прячется через минуту.",
       "id": "Pulau ringkas tetap di atas layar alih-alih bersembunyi setelah satu menit.",
       "de": "Die kompakte Insel bleibt oben am Bildschirm, statt nach einer Minute zu verschwinden.",
-      "tr": "Kompakt ada bir dakika sonra gizlenmek yerine ekranın üstünde kalır."
+      "tr": "Kompakt ada bir dakika sonra gizlenmek yerine ekranın üstünde kalır.",
+      "ko": "작게 접힌 아일랜드가 1분 뒤에 숨지 않고 화면 위쪽에 계속 있어요.",
+      "ja": "コンパクトなアイランドが1分後に隠れず、画面の上に残ります。"
     },
     "Show the pill": {
       "zh-Hans": "显示胶囊",
@@ -5801,7 +5805,9 @@
       "ru": "Показывать пилюлю",
       "id": "Tampilkan pil",
       "de": "Diktierleiste anzeigen",
-      "tr": "Dikte aracını göster"
+      "tr": "Dikte aracını göster",
+      "ko": "받아쓰는 모찌 표시",
+      "ja": "ピルを表示"
     },
     "Off, the pill only appears while you dictate, record a call or « OK Coucou » answers.": {
       "zh-Hans": "关闭后，胶囊只在你听写、录制通话或「OK Coucou」回答时出现。",
@@ -5814,7 +5820,9 @@
       "ru": "Если выключено, пилюля появляется только во время диктовки, записи звонка или ответа « OK Coucou ».",
       "id": "Jika mati, pil hanya muncul saat Anda mendikte, merekam panggilan, atau « OK Coucou » menjawab.",
       "de": "Aus: Die Diktierleiste erscheint nur, während du diktierst, ein Gespräch aufnimmst oder « OK Coucou » antwortet.",
-      "tr": "Kapalıyken dikte aracı yalnızca dikte ederken, görüşme kaydederken veya « OK Coucou » yanıt verirken görünür."
+      "tr": "Kapalıyken dikte aracı yalnızca dikte ederken, görüşme kaydederken veya « OK Coucou » yanıt verirken görünür.",
+      "ko": "끄면 받아쓰는 모찌는 받아쓰기나 통화 녹음 중, 또는 « OK Coucou »가 대답할 때만 나타나요.",
+      "ja": "オフにすると、ピルは音声入力中、通話の録音中、または「OK Coucou」が答えるときだけ表示されます。"
     },
     "Get new versions from the island?": {
       "zh-Hans": "在岛里获取新版本？",
