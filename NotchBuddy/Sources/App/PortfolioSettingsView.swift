@@ -143,6 +143,7 @@ private struct AddExchangeSheet: View {
     @State private var apiKey     = ""
     @State private var apiSecret  = ""
     @State private var passphrase = ""
+    @State private var okxRegion  = PortfolioSettings.okxRegion
     @State private var testing    = false
     @State private var error: String?
 
