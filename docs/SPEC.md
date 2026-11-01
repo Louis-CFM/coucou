@@ -452,11 +452,14 @@ Réglages → Raccourcis (`ShortcutsSettingsView`) :
 
 ## 17. Flow : mode prompt et traduction (build GitHub)
 
-Coucou → Flow → Réglages → « Prompt et traduction ». Les deux passent par Claude avec la clé de l'utilisateur (comme le nettoyage) : seuls les mots partent chez Anthropic, jamais la voix.
+Coucou → Flow → Réglages → « Prompt et traduction ». Les deux passent par Claude, comme le nettoyage : par le Claude Code de l'utilisateur (son abonnement Claude) quand l'interrupteur Claude est allumé dans Réglages → Chat → Tes abonnements IA et que Claude Code est installé, sinon avec sa clé. Seuls les mots partent chez Anthropic, jamais la voix.
 
 - **Mode prompt** (`flowPromptMode`) : ce qui est dit devient un prompt structuré pour un agent (Claude Code, Cursor, ChatGPT…) : objectif, contexte, étapes numérotées, contraintes, « fini quand », seulement les parties qui ont du contenu. Une demande courte reste une ou deux phrases. Rien n'est inventé : chaque exigence, nom, nombre et fichier dit est gardé.
 - **Traduire en** (`flowTranslateTo`, vide = comme je parle) : on parle dans n'importe quelle langue, c'est collé dans la langue choisie. ~70 langues et variantes régionales (`FlowLanguages`), chacune avec ce qui la distingue : anglais US / UK / australien / canadien / irlandais / indien…, français de France / Québec / Suisse (septante, nonante) / Belgique, allemand d'Allemagne / Suisse (jamais ß) / Autriche, espagnol d'Espagne / Mexique / Argentine (voseo) / Colombie / Amérique latine, portugais du Brésil / du Portugal, italien, néerlandais / flamand, chinois simplifié / traditionnel (Taïwan, Hong Kong), turc, arabe, japonais, coréen…
-- Un seul appel fait nettoyage + prompt + traduction (`FlowCleanup.transform`, Claude Haiku, 8 s, 12 s en mode prompt). Les marques ⟦n⟧ des snippets sont gardées. Réponse vide, trop longue ou trop courte (comptée en caractères), ou pas de réponse à temps : les mots sont collés tels qu'entendus.
+- Un seul appel fait nettoyage + prompt + traduction (`FlowCleanup.transform`, Claude Haiku, 8 s avec la clé, 12 s en mode prompt). Les marques ⟦n⟧ des snippets sont gardées. Réponse vide, trop longue ou trop courte (comptée en caractères), ou pas de réponse à temps : les mots sont collés tels qu'entendus.
+- **Par l'abonnement** (`FlowCleanup.tool`, nettoyage compris) : `claude -p` avec les garde-fous du chat (aucun réglage, hook ni MCP, rien d'enregistré, dossier vide de Coucou), sans aucun outil ni web, Claude Haiku 4.5 sans réflexion (`MAX_THINKING_TOKENS=0`). Claude Code a 6 s de plus que la clé, le temps de démarrer : 10 s pour le nettoyage (comme sur Windows et Linux), 14 s pour une traduction, 18 s en mode prompt. Passé ce délai, l'outil reçoit SIGTERM, puis SIGKILL une seconde après.
+- **Claude Code déconnecté** (ou toute erreur rapide) : la clé prend le relais s'il y en a une, avec le temps qui reste ; sinon les mots sont collés tels qu'entendus. Déconnecté, la pastille le dit avec la commande pour se reconnecter et un bouton Terminal ; quand la clé a pris le relais, une seule fois par lancement.
+- Les autres outils d'abonnement (Codex, Gemini, Antigravity, Cursor, Copilot) ne répondent pas à Flow : `scripts/measure-flow-subscription.py` mesure leurs temps sur le Mac.
 
 ## 18. Notetaker : écho, intervenants et mots mal entendus (build GitHub)
 
