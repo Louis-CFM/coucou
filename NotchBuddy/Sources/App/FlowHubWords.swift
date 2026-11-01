@@ -212,6 +212,11 @@ struct HubStylesPage: View {
     @ObservedObject var router: HubRouter
     @ObservedObject private var store = FlowStore.shared
 
+    /// Only where it can matter: a Korean Mac, Korean as the translation, or a level already chosen.
+    private var showsKoreanLevel: Bool {
+        Locale.preferredLanguages.first?.hasPrefix("ko") == true || store.translateTo == "ko" || store.koreanLevel != .keep
+    }
+
     var body: some View {
         HubPageScaffold(title: String(localized: "hub.page.styles"),
                         subtitle: String(localized: "hub.styles-sub")) {
@@ -240,6 +245,17 @@ struct HubStylesPage: View {
                 HubDivider()
                 HubRow(title: String(localized: "hub.style-default"), detail: store.defaultStyle.detail) {
                     stylePicker($store.defaultStyle)
+                }
+                if showsKoreanLevel {
+                    HubDivider()
+                    HubRow(title: String(localized: "flow.korean-level"), detail: String(localized: "flow.korean-level-detail")) {
+                        Picker("", selection: $store.koreanLevel) {
+                            ForEach(KoreanSpeechLevel.allCases) { Text($0.label).tag($0) }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                        .disabled(!FlowCleanup.hasKey && store.koreanLevel == .keep)
+                    }
                 }
             }
             .opacity(1)

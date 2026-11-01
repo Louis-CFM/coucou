@@ -353,12 +353,14 @@ final class FlowDictation: ObservableObject {
             if (store.promptMode || language != nil), !body.isEmpty {
                 let shaped = await FlowCleanup.transform(body, prompt: store.promptMode, language: language,
                                                          style: store.style(for: listen.app?.bundleIdentifier),
-                                                         app: listen.app?.localizedName, words: store.words)
+                                                         app: listen.app?.localizedName, words: store.words,
+                                                         koreanLevel: store.koreanLevel)
                 guard !listen.cancelled else { return }
                 if FlowText.keepsMarks(shaped, prepared.snippets) { body = shaped }
             } else if store.cleanupEnabled, !body.isEmpty {
                 let cleaned = await FlowCleanup.clean(body, style: store.style(for: listen.app?.bundleIdentifier),
-                                                      app: listen.app?.localizedName, words: store.words)
+                                                      app: listen.app?.localizedName, words: store.words,
+                                                      koreanLevel: store.koreanLevel)
                 guard !listen.cancelled else { return }
                 if FlowText.keepsMarks(cleaned, prepared.snippets) { body = cleaned }
             }
