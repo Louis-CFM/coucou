@@ -27,17 +27,33 @@ fn is_ok(word: &str) -> bool {
     matches!(word, "ok" | "okay" | "oke" | "okey" | "hey")
 }
 
-/// How Parakeet may write "coucou", in one word.
+/// How Parakeet may write "coucou", in one word. Said with a Spanish accent it
+/// comes out as "coco" or "gogo" (the Mac's spotter takes "coco" too).
 fn is_coucou(word: &str) -> bool {
     matches!(
         word,
-        "coucou" | "coucous" | "cuckoo" | "cucu" | "kuku" | "koukou" | "cookoo" | "coocoo" | "cocou" | "kukuu" | "couscous"
+        "coucou"
+            | "coucous"
+            | "cuckoo"
+            | "cucu"
+            | "kuku"
+            | "koukou"
+            | "cookoo"
+            | "coocoo"
+            | "cocou"
+            | "kukuu"
+            | "couscous"
+            | "coco"
+            | "gogo"
     )
 }
 
 /// …or in two.
 fn is_coucou_pair(a: &str, b: &str) -> bool {
-    matches!((a, b), ("cou", "cou") | ("coo", "coo") | ("ku", "ku") | ("cu", "cu") | ("koo", "koo") | ("cuck", "oo"))
+    matches!(
+        (a, b),
+        ("cou", "cou") | ("coo", "coo") | ("ku", "ku") | ("cu", "cu") | ("koo", "koo") | ("cuck", "oo") | ("co", "co") | ("go", "go")
+    )
 }
 
 /// When `text` holds the wake phrase, what was said after it (maybe nothing).
@@ -201,6 +217,14 @@ mod tests {
         assert_eq!(after_wake("ok cou cou ajoute Stripe").as_deref(), Some("ajoute Stripe"));
         assert_eq!(after_wake("OK Coucou.").as_deref(), Some(""));
         assert_eq!(after_wake("Hey coucou, ça va ?").as_deref(), Some("ça va ?"));
+        // A Spanish speaker's « OK Coucou », as Parakeet wrote it.
+        assert_eq!(after_wake("Okay, coco.").as_deref(), Some(""));
+        assert_eq!(after_wake("Okay, Co Co, ¿qué hora es?").as_deref(), Some("¿qué hora es?"));
+        assert_eq!(after_wake("Okay, Go Go, ¿qué hora es?").as_deref(), Some("¿qué hora es?"));
+        assert_eq!(after_wake("Okay, go go.").as_deref(), Some(""));
+        assert_eq!(after_wake("Okay, gogo.").as_deref(), Some(""));
+        // Another assistant's wake phrase never wakes Coucou.
+        assert_eq!(after_wake("Okay, Google."), None);
         assert_eq!(after_wake("on a dit coucou à Paul"), None);
         assert_eq!(after_wake("ok let's go"), None);
         assert_eq!(normalize("Ça VA, Élodie ?"), "ca va elodie");
