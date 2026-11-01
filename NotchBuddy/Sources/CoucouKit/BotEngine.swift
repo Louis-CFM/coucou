@@ -852,6 +852,22 @@ final class BotEngine: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
                 SoundEngine.shared.play("annoyed")
             }
+        case .sweat:
+            // A start, then cold sweat: three drops thrown from his sides (MochiMood.swift).
+            anim("oy", keys: [
+                TweenKey(target: -0.12, duration: 120, ease: Ease.out),
+                TweenKey(target: 0,     duration: 320, ease: Ease.back),
+            ])
+            anim("sx", keys: [
+                TweenKey(target: 0.92, duration: 140, ease: Ease.out),
+                TweenKey(target: 1,    duration: 400, ease: Ease.inOut),
+            ])
+            throwDrop(now: now)
+            for i in 1...2 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2 * Double(i)) { [weak self] in
+                    self?.throwDrop(now: CACurrentMediaTime())
+                }
+            }
         case .listening:
             // Attentive: slight head tilt + wide-open eyes
             anim("tilt", keys: [
@@ -1894,6 +1910,7 @@ private func emoteEyeShape(_ e: BotEmote) -> EyeShape {
     case .happy:     return .happy
     case .annoyed:   return .line
     case .listening: return .wide
+    case .sweat:     return .flat
     }
 }
 
