@@ -93,19 +93,17 @@ fn hook_command(event: &str) -> String {
     agents::relay_command(Shell::Sh, event)
 }
 
+/// A hook command Coucou wrote.
+fn command_is_ours(command: Option<&Value>) -> bool {
+    command.and_then(Value::as_str).is_some_and(|c| c.contains(MARKER))
+}
+
+/// A group holding at least one of Coucou's hooks.
 fn entry_is_ours(entry: &Value) -> bool {
     entry
         .get("hooks")
         .and_then(Value::as_array)
-        .map(|hooks| {
-            hooks.iter().any(|h| {
-                h.get("command")
-                    .and_then(Value::as_str)
-                    .map(|c| c.contains(MARKER))
-                    .unwrap_or(false)
-            })
-        })
-        .unwrap_or(false)
+        .is_some_and(|hooks| hooks.iter().any(|h| command_is_ours(h.get("command"))))
 }
 
 /// The status line in settings.json is Coucou's relay (old installs wrote
@@ -126,12 +124,12 @@ fn merged(existing: &Value) -> Result<Value, String> {
     };
 
     for (event, timeout) in HOOK_EVENTS {
+        // Only Coucou's own hooks go: a user's hook in the same group stays.
         let mut list = match hooks.get(*event) {
             None => Vec::new(),
-            Some(Value::Array(list)) => list.clone(),
+            Some(Value::Array(list)) => agents::without_ours_in_groups(list, command_is_ours),
             Some(_) => return Err(unexpected(&format!("\"hooks\".\"{event}\""))),
         };
-        list.retain(|entry| !entry_is_ours(entry));
         list.push(json!({
             "hooks": [{
                 "type": "command",
@@ -162,8 +160,7 @@ fn without_ours(existing: &Value) -> Result<Value, String> {
     for (event, value) in hooks {
         match value.as_array() {
             Some(list) => {
-                let kept: Vec<Value> =
-                    list.iter().filter(|e| !entry_is_ours(e)).cloned().collect();
+                let kept = agents::without_ours_in_groups(list, command_is_ours);
                 if !kept.is_empty() {
                     out.insert(event, Value::Array(kept));
                 }
@@ -555,6 +552,27 @@ mod tests {
         // And removing ours puts it back exactly as it was.
         let cleaned = without_ours(&after).unwrap();
         assert_eq!(cleaned, existing);
+    }
+
+    #[test]
+    fn a_users_hook_in_the_same_group_as_ours_survives_install_and_uninstall() {
+        let mine = json!({ "type": "command", "command": "my-own-check.sh" });
+        let existing = json!({ "hooks": { "PreToolUse": [{
+            "matcher": "Bash",
+            "hooks": [
+                { "type": "command", "command": "\"C:/old/coucou-hook.exe\" PreToolUse", "timeout": 5 },
+                mine,
+            ]
+        }] } });
+        let user_only = json!([{ "matcher": "Bash", "hooks": [mine] }]);
+
+        let installed = merged(&existing).unwrap();
+        let pre = installed["hooks"]["PreToolUse"].as_array().unwrap();
+        assert_eq!(pre[0], user_only[0], "the user's hook keeps its group, without our old one");
+        assert_eq!(pre.iter().filter(|e| entry_is_ours(e)).count(), 1);
+
+        let removed = without_ours(&existing).unwrap();
+        assert_eq!(removed["hooks"]["PreToolUse"], user_only);
     }
 
     #[test]

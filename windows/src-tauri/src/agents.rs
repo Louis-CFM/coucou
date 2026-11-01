@@ -398,20 +398,20 @@ fn is_our_command(command: Option<&Value>, agent: &str) -> bool {
 }
 
 /// Claude-style groups (`{"matcher"?, "hooks": [{"command"}]}`, or a legacy
-/// flat `{"command"}`) without Coucou's entries for `agent`. A group left
-/// empty goes; everything else stays exactly as it was.
-fn without_ours_in_groups(groups: &[Value], agent: &str) -> Vec<Value> {
+/// flat `{"command"}`) without the hooks whose command `ours` claims. A group
+/// left empty goes; everything else stays exactly as it was.
+pub(crate) fn without_ours_in_groups(groups: &[Value], ours: impl Fn(Option<&Value>) -> bool) -> Vec<Value> {
     groups
         .iter()
         .filter_map(|group| {
-            if is_our_command(group.get("command"), agent) {
+            if ours(group.get("command")) {
                 return None;
             }
             let Some(inner) = group.get("hooks").and_then(Value::as_array) else {
                 return Some(group.clone());
             };
             let kept: Vec<Value> =
-                inner.iter().filter(|h| !is_our_command(h.get("command"), agent)).cloned().collect();
+                inner.iter().filter(|h| !ours(h.get("command"))).cloned().collect();
             if kept.len() == inner.len() {
                 return Some(group.clone());
             }
@@ -435,7 +435,7 @@ fn groups_install(
     let mut root = root.as_object().cloned().unwrap_or_default();
     let mut hooks = object_at(&root, "hooks")?;
     for (event, group) in events {
-        let mut list = without_ours_in_groups(&list_at(&hooks, &event)?, agent);
+        let mut list = without_ours_in_groups(&list_at(&hooks, &event)?, |c| is_our_command(c, agent));
         list.push(group);
         hooks.insert(event, Value::Array(list));
     }
@@ -455,7 +455,7 @@ fn groups_uninstall(root: &Value, agent: &str) -> Result<Value, String> {
     for (event, value) in hooks {
         match value.as_array() {
             Some(list) => {
-                let kept = without_ours_in_groups(list, agent);
+                let kept = without_ours_in_groups(list, |c| is_our_command(c, agent));
                 if !kept.is_empty() {
                     out.insert(event, Value::Array(kept));
                 }
