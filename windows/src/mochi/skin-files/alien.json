@@ -1,0 +1,30 @@
+{
+  "id": "alien",
+  "name": "Alien",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "glow": "#A3E635",
+  "_about": "A little green alien: two antennae with glowing tips, freckle-like spots on the head, a small smile.",
+  "body": ["#C9F57E", "#4FB02A"],
+  "vars": {
+    "S": "sin(yaw)",
+    "C": "cos(yaw)",
+    "ax": "rx*S*0.25",
+    "mx": "rx*S*0.93"
+  },
+  "shapes": [
+    { "type": "repeat", "count": 7, "as": "i", "vars": {
+        "lon": "-0.9 + 0.3*i", "v": "-0.55 + 0.20*(i - 2*floor(i/2))", "th": "lon + yaw", "cc": "cos(th)",
+        "px": "rx*head(v)*sin(th)", "py": "ry*v" }, "shapes": [
+      { "type": "ellipse", "layer": "body", "when": "cc - 0.1", "x": "px - R*0.05*cc", "y": "py - R*0.045", "w": "R*0.10*cc", "h": "R*0.09", "fill": "rgba(46,125,20,0.35)" }
+    ] },
+    { "type": "poly", "layer": "behind", "points": [["ax - rx*0.32 - R*0.035", "0 - ry*0.90"], ["ax - rx*0.32 + R*0.035", "0 - ry*0.90"], ["ax - rx*0.58 + R*0.025", "0 - ry - R*0.58"], ["ax - rx*0.58 - R*0.025", "0 - ry - R*0.58"]], "fill": "#6BB83A" },
+    { "type": "poly", "layer": "behind", "points": [["ax + rx*0.32 - R*0.035", "0 - ry*0.90"], ["ax + rx*0.32 + R*0.035", "0 - ry*0.90"], ["ax + rx*0.58 + R*0.025", "0 - ry - R*0.58"], ["ax + rx*0.58 - R*0.025", "0 - ry - R*0.58"]], "fill": "#6BB83A" },
+    { "type": "ellipse", "x": "ax - rx*0.58 - R*0.12", "y": "0 - ry - R*0.70", "w": "R*0.24", "h": "R*0.24",
+      "fill": { "gradient": ["#FFF59D", "#FACC15"], "from": ["ax - rx*0.58", "0 - ry - R*0.7"], "to": ["ax - rx*0.58", "0 - ry - R*0.46"] }, "stroke": "rgba(120,90,0,0.3)", "lineWidth": 0.7 },
+    { "type": "ellipse", "x": "ax + rx*0.58 - R*0.12", "y": "0 - ry - R*0.70", "w": "R*0.24", "h": "R*0.24",
+      "fill": { "gradient": ["#FFF59D", "#FACC15"], "from": ["ax + rx*0.58", "0 - ry - R*0.7"], "to": ["ax + rx*0.58", "0 - ry - R*0.46"] }, "stroke": "rgba(120,90,0,0.3)", "lineWidth": 0.7 },
+    { "type": "band", "follow": true, "clip": true, "from": -1, "to": 1, "steps": 10, "x": "mx + u*R*0.17*(0.5+0.5*C)", "top": "ry*0.56 + R*0.05*(1-u*u)", "bottom": "ry*0.56 + R*0.05*(1-u*u) + 1.4", "fill": "rgba(30,80,10,0.7)" }
+  ]
+}

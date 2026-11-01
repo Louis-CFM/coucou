@@ -1,0 +1,36 @@
+{
+  "id": "headphones",
+  "name": "Headphones",
+  "kind": "face",
+  "layer": "front",
+  "_about": "Over-ear headphones: a band over the head and an ear cup at each side. The cup on the side the head turns away from goes behind the body.",
+  "vars": {
+    "hw": "rx*0.97",
+    "sv": "sin(yaw)",
+    "cv": "cos(yaw)",
+    "cupH": "R*0.66",
+    "cupW": "R*(0.16 + 0.16*abs(sin(yaw)))",
+    "lx": "0 - rx*0.99*cos(yaw)",
+    "rxx": "rx*0.99*cos(yaw)",
+    "cy": "0 - ry*0.02",
+    "off": "R*0.20",
+    "thick": "R*0.12"
+  },
+  "shapes": [
+    { "type": "band", "from": -0.98, "to": 0.98, "steps": 32, "x": "u*hw*1.02",
+      "top": "0 - ry*head(u*0.97) - off", "bottom": "0 - ry*head(u*0.97) - off + thick",
+      "fill": { "gradient": ["#374151", "#111827"], "from": [0, "0 - ry - off"], "to": [0, "0 - ry"] },
+      "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 },
+    { "type": "band", "from": -0.98, "to": 0.98, "steps": 32, "x": "u*hw*1.02",
+      "top": "0 - ry*head(u*0.97) - off", "bottom": "0 - ry*head(u*0.97) - off + thick*0.3",
+      "fill": "rgba(255,255,255,0.18)" },
+    { "type": "ellipse", "layer": "behind", "when": "0 - sv - 0.25", "x": "lx - cupW", "y": "cy - cupH/2", "w": "2*cupW", "h": "cupH", "fill": "#1F2937", "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 },
+    { "type": "ellipse", "layer": "behind", "when": "sv - 0.25", "x": "rxx - cupW", "y": "cy - cupH/2", "w": "2*cupW", "h": "cupH", "fill": "#1F2937", "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 },
+    { "type": "ellipse", "when": "sv + 0.25", "x": "lx - cupW", "y": "cy - cupH/2", "w": "2*cupW", "h": "cupH",
+      "fill": { "gradient": ["#4B5563", "#1F2937"], "from": ["lx", "cy - cupH/2"], "to": ["lx", "cy + cupH/2"] }, "stroke": "rgba(0,0,0,0.35)", "lineWidth": 0.9 },
+    { "type": "ellipse", "when": "0.25 - sv", "x": "rxx - cupW", "y": "cy - cupH/2", "w": "2*cupW", "h": "cupH",
+      "fill": { "gradient": ["#4B5563", "#1F2937"], "from": ["rxx", "cy - cupH/2"], "to": ["rxx", "cy + cupH/2"] }, "stroke": "rgba(0,0,0,0.35)", "lineWidth": 0.9 },
+    { "type": "ellipse", "when": "sv + 0.10", "x": "lx - cupW*0.55", "y": "cy - cupH*0.28", "w": "cupW*1.1", "h": "cupH*0.56", "fill": "#22D3EE" },
+    { "type": "ellipse", "when": "0.10 - sv", "x": "rxx - cupW*0.55", "y": "cy - cupH*0.28", "w": "cupW*1.1", "h": "cupH*0.56", "fill": "#22D3EE" }
+  ]
+}

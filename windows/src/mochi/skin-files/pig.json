@@ -1,0 +1,34 @@
+{
+  "id": "pig",
+  "name": "Piglet",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "glow": "#F9A8D4",
+  "_about": "A pink piglet: floppy triangle ears, a round snout with two nostrils.",
+  "body": ["#FFC8D6", "#F28BA8"],
+  "vars": {
+    "S": "sin(yaw)",
+    "C": "cos(yaw)",
+    "aL": "sin(-0.80+yaw)",
+    "aLc": "cos(-0.80+yaw)",
+    "aR": "sin(0.80+yaw)",
+    "aRc": "cos(0.80+yaw)",
+    "sx": "rx*S*0.92",
+    "sy": "ry*0.55",
+    "sw": "R*0.70*(0.45+0.55*C)",
+    "k": "0.5+0.5*C"
+  },
+  "shapes": [
+    { "type": "poly", "layer": "behind", "when": "aLc + 0.35",
+      "points": [["rx*aL*0.80 - R*0.26*(0.4+0.6*aLc)", "0 - ry*head(aL*0.80) + R*0.22"], ["rx*aL*0.80 + R*0.26*(0.4+0.6*aLc)", "0 - ry*head(aL*0.80) + R*0.22"], ["rx*aL*0.86 - R*0.20", "0 - ry*head(aL*0.80) - R*0.34"]],
+      "fill": "#F27799", "stroke": "rgba(0,0,0,0.2)", "lineWidth": 0.8 },
+    { "type": "poly", "layer": "behind", "when": "aRc + 0.35",
+      "points": [["rx*aR*0.80 - R*0.26*(0.4+0.6*aRc)", "0 - ry*head(aR*0.80) + R*0.22"], ["rx*aR*0.80 + R*0.26*(0.4+0.6*aRc)", "0 - ry*head(aR*0.80) + R*0.22"], ["rx*aR*0.86 + R*0.20", "0 - ry*head(aR*0.80) - R*0.34"]],
+      "fill": "#F27799", "stroke": "rgba(0,0,0,0.2)", "lineWidth": 0.8 },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "sx - sw/2", "y": "sy - R*0.21", "w": "sw", "h": "R*0.42",
+      "fill": { "gradient": ["#FFB3C7", "#F0799C"], "from": ["sx", "sy - R*0.2"], "to": ["sx", "sy + R*0.2"] }, "stroke": "rgba(170,50,90,0.45)", "lineWidth": 0.9 },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "sx - sw*0.22 - R*0.045*k", "y": "sy - R*0.08", "w": "R*0.09*k", "h": "R*0.16", "fill": "#A8315E" },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "sx + sw*0.22 - R*0.045*k", "y": "sy - R*0.08", "w": "R*0.09*k", "h": "R*0.16", "fill": "#A8315E" }
+  ]
+}

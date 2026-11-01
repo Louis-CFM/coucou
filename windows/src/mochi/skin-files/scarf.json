@@ -1,0 +1,51 @@
+{
+  "id": "scarf",
+  "name": "Scarf",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "_about": "A striped scarf round the bottom of the body: a thick wrap that dips in the middle, with a soft tail hanging from one side. The stripes and the tail turn with the head.",
+  "vars": {
+    "hw": "rx*0.97",
+    "wt": "ry*0.44",
+    "dip": "R*0.13",
+    "tailX": "hw*0.78*sin(0.95+yaw)",
+    "tailC": "cos(0.95+yaw)",
+    "tw": "R*0.17"
+  },
+  "shapes": [
+    { "type": "poly", "when": "tailC + 0.15",
+      "points": [
+        ["tailX - tw", "ry*0.62"], ["tailX + tw", "ry*0.62"],
+        ["tailX + tw + R*0.03", "ry + R*0.02"], ["tailX + tw + R*0.07", "ry + R*0.32"], ["tailX + tw + R*0.08", "ry + R*0.60"],
+        ["tailX + tw*0.5 + R*0.08", "ry + R*0.72"], ["tailX + R*0.07", "ry + R*0.66"], ["tailX - tw*0.5 + R*0.07", "ry + R*0.74"],
+        ["tailX - tw + R*0.05", "ry + R*0.62"], ["tailX - tw + R*0.07", "ry + R*0.32"], ["tailX - tw + R*0.03", "ry + R*0.02"]
+      ],
+      "fill": { "gradient": ["#F05A5A", "#A31515"], "from": ["tailX", "ry*0.6"], "to": ["tailX", "ry + R*0.7"] },
+      "stroke": "rgba(0,0,0,0.18)", "lineWidth": 0.8 },
+    { "type": "poly", "when": "tailC + 0.15",
+      "points": [
+        ["tailX - tw + R*0.06", "ry + R*0.30"], ["tailX + tw + R*0.08", "ry + R*0.30"],
+        ["tailX + tw + R*0.08", "ry + R*0.37"], ["tailX - tw + R*0.06", "ry + R*0.37"]
+      ],
+      "fill": "rgba(255,255,255,0.45)" },
+    { "type": "poly", "when": "tailC + 0.15",
+      "points": [
+        ["tailX - tw + R*0.07", "ry + R*0.48"], ["tailX + tw + R*0.08", "ry + R*0.48"],
+        ["tailX + tw + R*0.08", "ry + R*0.55"], ["tailX - tw + R*0.07", "ry + R*0.55"]
+      ],
+      "fill": "rgba(255,255,255,0.45)" },
+    { "type": "band", "x": "u*hw", "top": "min(wt + dip*(1-u*u), ry*head(u*0.97) - R*0.10)", "bottom": "ry*head(u*0.97) + R*0.06",
+      "fill": { "gradient": ["#EF4444", "#B91C1C"], "from": [0, "wt"], "to": [0, "ry"] },
+      "stroke": "rgba(0,0,0,0.16)", "lineWidth": 0.8 },
+    { "type": "repeat", "count": 7, "as": "i", "shapes": [
+      { "type": "band", "when": "cos(-1.2+0.4*i+yaw) - 0.12",
+        "x": "hw*0.96*sin(-1.2+0.4*i+yaw) + u*R*0.06*cos(-1.2+0.4*i+yaw)",
+        "top": "min(wt + dip*(1-pow(sin(-1.2+0.4*i+yaw),2)), ry*head(sin(-1.2+0.4*i+yaw)*0.97) - R*0.10)",
+        "bottom": "ry*head(sin(-1.2+0.4*i+yaw)*0.97) + R*0.06",
+        "fill": "rgba(255,255,255,0.38)" }
+    ] },
+    { "type": "band", "x": "u*hw", "top": "min(wt + dip*(1-u*u), ry*head(u*0.97) - R*0.10)", "bottom": "min(wt + dip*(1-u*u), ry*head(u*0.97) - R*0.10) + R*0.05",
+      "fill": "rgba(255,255,255,0.20)" }
+  ]
+}

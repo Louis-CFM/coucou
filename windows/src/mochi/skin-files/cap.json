@@ -1,0 +1,42 @@
+{
+  "id": "cap",
+  "name": "Cap",
+  "kind": "hat",
+  "layer": "front",
+  "_about": "From the first wardrobe (commit 16cbd56, drawCap), redrawn: the dome hugs the head, the seams and the visor turn with it.",
+  "vars": {
+    "hw": "rx*0.97",
+    "cx": "0",
+    "rimY": "-ry*0.42",
+    "domeW": "rx*0.97",
+    "lift": "R*0.30",
+    "sv": "sin(yaw)",
+    "cv": "cos(yaw)",
+    "visorX": "cx + hw*0.62*sv",
+    "visorW": "hw*0.74*(0.40+0.60*cv)",
+    "visorY": "rimY + R*0.04",
+    "seamA": "sin(0.95+yaw)",
+    "seamB": "sin(-0.95+yaw)"
+  },
+  "shapes": [
+    { "type": "band", "from": -1, "to": 1, "x": "cx+u*domeW",
+      "top": "-ry*head(u*0.97) - lift*sqrt(1-u*u) - R*0.03", "bottom": "rimY",
+      "fill": { "gradient": ["#F0456A", "#BE123C"], "from": ["cx", "-ry-lift"], "to": ["cx", "rimY"] },
+      "stroke": "rgba(0,0,0,0.14)", "lineWidth": 0.9 },
+    { "type": "band", "when": "cos(0.95+yaw) - 0.05", "from": 0, "to": 1, "steps": 16, "x": "cx+u*domeW*seamA",
+      "top": "-ry*head(u*seamA*0.97) - lift*sqrt(max(0,1-u*u*seamA*seamA)) - R*0.03 - 0.5",
+      "bottom": "-ry*head(u*seamA*0.97) - lift*sqrt(max(0,1-u*u*seamA*seamA)) - R*0.03 + 0.5",
+      "fill": "rgba(0,0,0,0.18)" },
+    { "type": "band", "when": "cos(-0.95+yaw) - 0.05", "from": 0, "to": 1, "steps": 16, "x": "cx+u*domeW*seamB",
+      "top": "-ry*head(u*seamB*0.97) - lift*sqrt(max(0,1-u*u*seamB*seamB)) - R*0.03 - 0.5",
+      "bottom": "-ry*head(u*seamB*0.97) - lift*sqrt(max(0,1-u*u*seamB*seamB)) - R*0.03 + 0.5",
+      "fill": "rgba(0,0,0,0.18)" },
+    { "type": "ellipse", "x": "visorX-visorW", "y": "visorY-R*0.10", "w": "2*visorW", "h": "R*0.28",
+      "fill": "#7F0F2D" },
+    { "type": "ellipse", "x": "visorX-visorW", "y": "visorY-R*0.13", "w": "2*visorW", "h": "R*0.26",
+      "fill": { "gradient": ["#C21A47", "#9F1239"], "from": ["visorX", "visorY-R*0.13"], "to": ["visorX", "visorY+R*0.13"] },
+      "stroke": "rgba(0,0,0,0.22)", "lineWidth": 0.9 },
+    { "type": "ellipse", "x": "cx+hw*0.08*sv-R*0.08", "y": "-ry-lift-R*0.11", "w": "R*0.16", "h": "R*0.12",
+      "fill": "#9F1239" }
+  ]
+}

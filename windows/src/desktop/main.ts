@@ -11,6 +11,7 @@ import { Bridge, emitToWindow, onEvent, type DesktopMode } from "../core/bridge"
 import type { BotEmoteName } from "../core/layout";
 import { Sound } from "../core/sound";
 import { BotEngine } from "../mochi/engine";
+import { loadUserSkins } from "../mochi/skin-loader";
 import {
   DESKTOP_EVENTS, DOUBLE_CLICK_MS, DRAG_THRESHOLD, PANEL_SIZE, agentActive, gaze, isOverBody,
   layerDragTopLeft, lookOrigin, pointerDistance, shouldSleep, windowDragTopLeft,
@@ -18,6 +19,11 @@ import {
 } from "../mochi/desktop-logic";
 
 const ISLAND = "island";
+
+// The user's own skins (<config>/skins), for a skin chosen in the wardrobe: read
+// now and every half minute, so one dropped there later is found too.
+void loadUserSkins();
+window.setInterval(() => void loadUserSkins(), 30_000);
 
 /**
  * Width Mochi is drawn at. The engine's body radius is 0.3 × width, so this

@@ -7353,6 +7353,66 @@
       "tr": "Kompakt adada göster",
       "ko": "컴팩트 아일랜드에 표시",
       "ja": "コンパクトアイランドに表示"
+    },
+    "What Mochi wears: outfits and skins.": {
+      "zh-Hans": "Mochi 的穿着：服装和外观。",
+      "hi": "Mochi क्या पहनता है: पोशाकें और स्किन।",
+      "es": "Lo que lleva Mochi: atuendos y aspectos.",
+      "ar": "ما يرتديه Mochi: الأزياء والمظاهر.",
+      "fr": "Ce que porte Mochi : tenues et apparences.",
+      "bn": "Mochi যা পরে: পোশাক ও স্কিন।",
+      "pt-BR": "O que o Mochi veste: roupas e skins.",
+      "ru": "Во что одет Mochi: наряды и скины.",
+      "id": "Pakaian Mochi: kostum dan skin.",
+      "de": "Was Mochi trägt: Outfits und Skins.",
+      "tr": "Mochi'nin giydikleri: kıyafetler ve görünümler.",
+      "ko": "Mochi가 입는 것: 의상과 스킨.",
+      "ja": "Mochiの着るもの：コスチュームとスキン。"
+    },
+    "Your own skins": {
+      "zh-Hans": "你自己的外观",
+      "hi": "आपकी अपनी स्किन",
+      "es": "Tus propios aspectos",
+      "ar": "مظاهرك الخاصة",
+      "fr": "Vos propres apparences",
+      "bn": "আপনার নিজের স্কিন",
+      "pt-BR": "Suas próprias skins",
+      "ru": "Ваши собственные скины",
+      "id": "Skin buatan Anda",
+      "de": "Deine eigenen Skins",
+      "tr": "Kendi görünümlerin",
+      "ko": "나만의 스킨",
+      "ja": "自分のスキン"
+    },
+    "Open skins folder": {
+      "zh-Hans": "打开外观文件夹",
+      "hi": "स्किन फ़ोल्डर खोलें",
+      "es": "Abrir la carpeta de aspectos",
+      "ar": "فتح مجلد المظاهر",
+      "fr": "Ouvrir le dossier des apparences",
+      "bn": "স্কিন ফোল্ডার খুলুন",
+      "pt-BR": "Abrir a pasta de skins",
+      "ru": "Открыть папку со скинами",
+      "id": "Buka folder skin",
+      "de": "Skin-Ordner öffnen",
+      "tr": "Görünümler klasörünü aç",
+      "ko": "스킨 폴더 열기",
+      "ja": "スキンフォルダを開く"
+    },
+    "Drop a skin file (.json) in it: it shows up here by itself.": {
+      "zh-Hans": "把外观文件（.json）放进去：它会自动出现在这里。",
+      "hi": "इसमें एक स्किन फ़ाइल (.json) डालें: वह अपने आप यहाँ दिखने लगेगी।",
+      "es": "Suelta ahí un archivo de aspecto (.json): aparece aquí solo.",
+      "ar": "ضع فيه ملف مظهر (.json): سيظهر هنا من تلقاء نفسه.",
+      "fr": "Déposez-y un fichier d'apparence (.json) : il apparaît ici tout seul.",
+      "bn": "এতে একটি স্কিন ফাইল (.json) রাখুন: এটি নিজে থেকেই এখানে দেখা যাবে।",
+      "pt-BR": "Solte ali um arquivo de skin (.json): ele aparece aqui sozinho.",
+      "ru": "Положите в неё файл скина (.json): он появится здесь сам.",
+      "id": "Taruh file skin (.json) di sana: akan muncul di sini dengan sendirinya.",
+      "de": "Leg eine Skin-Datei (.json) hinein: Sie erscheint hier von selbst.",
+      "tr": "İçine bir görünüm dosyası (.json) bırak: burada kendiliğinden görünür.",
+      "ko": "스킨 파일(.json)을 넣으면 여기에 자동으로 나타납니다.",
+      "ja": "スキンファイル（.json）を入れると、ここに自動で表示されます。"
     }
   }
 }

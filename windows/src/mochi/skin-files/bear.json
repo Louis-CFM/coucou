@@ -1,0 +1,37 @@
+{
+  "id": "bear",
+  "name": "Teddy bear",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.4,
+  "glow": "#C98F60",
+  "_about": "A brown teddy bear: round ears half hidden behind the head, a cream muzzle and a small dark nose.",
+  "body": ["#C98F60", "#7C4A28"],
+  "vars": {
+    "S": "sin(yaw)",
+    "C": "cos(yaw)",
+    "aL": "sin(-0.88+yaw)",
+    "aLc": "abs(cos(-0.88+yaw))",
+    "aR": "sin(0.88+yaw)",
+    "aRc": "abs(cos(0.88+yaw))",
+    "mx": "rx*S*0.92",
+    "my": "ry*0.52",
+    "mw": "R*0.74*(0.45+0.55*C)",
+    "nx": "rx*S*0.94",
+    "ny": "ry*0.45",
+    "nw": "R*0.28*(0.5+0.5*C)"
+  },
+  "shapes": [
+    { "type": "ellipse", "layer": "behind", "x": "rx*aL*0.86 - R*0.32*(0.45+0.55*aLc)", "y": "0 - ry*head(aL*0.86) - R*0.20", "w": "R*0.64*(0.45+0.55*aLc)", "h": "R*0.58",
+      "fill": { "gradient": ["#C98F60", "#7C4A28"], "from": [0, "0 - ry - R*0.2"], "to": [0, "0 - ry + R*0.4"] }, "stroke": "rgba(0,0,0,0.22)", "lineWidth": 0.8 },
+    { "type": "ellipse", "layer": "behind", "x": "rx*aL*0.86 - R*0.17*(0.45+0.55*aLc)", "y": "0 - ry*head(aL*0.86) - R*0.06", "w": "R*0.34*(0.45+0.55*aLc)", "h": "R*0.32", "fill": "#E9B98F" },
+    { "type": "ellipse", "layer": "behind", "x": "rx*aR*0.86 - R*0.32*(0.45+0.55*aRc)", "y": "0 - ry*head(aR*0.86) - R*0.20", "w": "R*0.64*(0.45+0.55*aRc)", "h": "R*0.58",
+      "fill": { "gradient": ["#C98F60", "#7C4A28"], "from": [0, "0 - ry - R*0.2"], "to": [0, "0 - ry + R*0.4"] }, "stroke": "rgba(0,0,0,0.22)", "lineWidth": 0.8 },
+    { "type": "ellipse", "layer": "behind", "x": "rx*aR*0.86 - R*0.17*(0.45+0.55*aRc)", "y": "0 - ry*head(aR*0.86) - R*0.06", "w": "R*0.34*(0.45+0.55*aRc)", "h": "R*0.32", "fill": "#E9B98F" },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "mx - mw/2", "y": "my - R*0.20", "w": "mw", "h": "R*0.40", "fill": "rgba(246,224,196,0.97)" },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "nx - nw/2", "y": "ny - R*0.09", "w": "nw", "h": "R*0.19",
+      "fill": { "gradient": ["#5A3A24", "#1E120A"], "from": ["nx", "ny - R*0.09"], "to": ["nx", "ny + R*0.1"] } },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "nx - nw*0.22", "y": "ny - R*0.065", "w": "nw*0.24", "h": "R*0.05", "fill": "rgba(255,255,255,0.5)" },
+    { "type": "band", "follow": true, "clip": true, "from": -1, "to": 1, "steps": 10, "x": "nx + u*R*0.17*(0.5+0.5*C)", "top": "ny + R*0.10 + R*0.045*(1-u*u)", "bottom": "ny + R*0.10 + R*0.045*(1-u*u) + 1.3", "fill": "rgba(60,30,15,0.7)" }
+  ]
+}

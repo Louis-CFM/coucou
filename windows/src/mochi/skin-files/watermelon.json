@@ -1,0 +1,21 @@
+{
+  "id": "watermelon",
+  "name": "Watermelon",
+  "kind": "face",
+  "layer": "front",
+  "glow": "#22C55E",
+  "_about": "A whole watermelon: green body with dark stripes that run down the surface and turn with the head, and a little stem on top.",
+  "body": ["#86E8A0", "#1F9E4B"],
+  "vars": {
+    "sx": "rx*sin(yaw)*0.10"
+  },
+  "shapes": [
+    { "type": "repeat", "count": 9, "as": "i", "vars": { "l": "-1.6 + 0.4*i" }, "shapes": [
+      { "type": "meridian", "layer": "body", "lon": "l", "width": 0.085, "steps": 20, "fill": "rgba(8,78,36,0.55)" },
+      { "type": "meridian", "layer": "body", "lon": "l + 0.02", "width": 0.025, "steps": 20, "fill": "rgba(8,78,36,0.35)" }
+    ] },
+    { "type": "poly", "points": [["sx - R*0.07", "0 - ry*0.96"], ["sx + R*0.07", "0 - ry*0.96"], ["sx + R*0.05", "0 - ry - R*0.16"], ["sx - R*0.04", "0 - ry - R*0.20"]],
+      "fill": { "gradient": ["#7A9A33", "#4B6A1B"], "from": ["sx - R*0.07", 0], "to": ["sx + R*0.07", 0] }, "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.7 },
+    { "type": "ellipse", "x": "sx - R*0.20", "y": "0 - ry - R*0.04", "w": "R*0.16", "h": "R*0.08", "fill": "rgba(60,100,20,0.85)" }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "robot",
+  "name": "Robot",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "glow": "#94A3B8",
+  "_about": "A little robot: steel body, a light face plate that slides with the head, a speaker grille, side bolts and an antenna with a red light.",
+  "body": ["#DCE4EE", "#7B8BA3"],
+  "vars": {
+    "S": "sin(yaw)",
+    "C": "cos(yaw)",
+    "px": "rx*S*0.30",
+    "pw": "rx*1.50*(0.62+0.38*C)",
+    "ax": "rx*S*0.12",
+    "lx": "rx*sin(-1.38+yaw)*1.04",
+    "lw": "R*(0.14+0.08*abs(cos(-1.38+yaw)))",
+    "rxx": "rx*sin(1.38+yaw)*1.04",
+    "rw": "R*(0.14+0.08*abs(cos(1.38+yaw)))"
+  },
+  "shapes": [
+    { "type": "ellipse", "layer": "behind", "x": "lx - lw", "y": "0 - R*0.18", "w": "2*lw", "h": "R*0.36",
+      "fill": { "gradient": ["#AAB6C8", "#6B7A92"], "from": ["lx", "0 - R*0.18"], "to": ["lx", "R*0.18"] }, "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 },
+    { "type": "ellipse", "layer": "behind", "x": "rxx - rw", "y": "0 - R*0.18", "w": "2*rw", "h": "R*0.36",
+      "fill": { "gradient": ["#AAB6C8", "#6B7A92"], "from": ["rxx", "0 - R*0.18"], "to": ["rxx", "R*0.18"] }, "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.8 },
+    { "type": "rect", "follow": true, "clip": true, "layer": "body", "x": "px - pw/2", "y": "0 - ry*0.42", "w": "pw", "h": "ry*0.92", "r": "R*0.24",
+      "fill": "rgba(244,248,252,0.85)", "stroke": "#4B5A70", "lineWidth": 1.1 },
+    { "type": "repeat", "count": 4, "as": "i", "shapes": [
+      { "type": "rect", "follow": true, "clip": true, "layer": "body", "x": "px + (i - 1.5)*R*0.15*(0.5+0.5*C) - 0.8", "y": "ry*0.34", "w": 1.6, "h": "R*0.14", "fill": "rgba(71,85,105,0.8)" }
+    ] },
+    { "type": "rect", "x": "ax - R*0.03", "y": "0 - ry - R*0.34", "w": "R*0.06", "h": "R*0.38", "fill": "#64748B" },
+    { "type": "ellipse", "x": "ax - R*0.10", "y": "0 - ry - R*0.50", "w": "R*0.20", "h": "R*0.20",
+      "fill": { "gradient": ["#FF8A8A", "#D61F1F"], "from": ["ax - R*0.05", "0 - ry - R*0.5"], "to": ["ax + R*0.08", "0 - ry - R*0.3"] }, "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.7 }
+  ]
+}

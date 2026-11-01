@@ -1,0 +1,33 @@
+{
+  "id": "strawHat",
+  "name": "Straw hat",
+  "kind": "hat",
+  "layer": "front",
+  "_about": "From the first wardrobe (commit 16cbd56, drawStrawHat), redrawn: a wide brim that curls up at the ends and passes behind and in front of the head, a rounded crown, a ribbon whose knot turns with the head.",
+  "vars": {
+    "hw": "rx*0.97",
+    "cx": "0",
+    "brimY": "-ry*0.70",
+    "brimW": "hw*1.30",
+    "brimH": "R*0.22",
+    "lift": "R*0.46",
+    "arc": "R*0.10",
+    "curl": "R*0.06",
+    "kS": "sin(0.45+yaw)",
+    "kC": "cos(0.45+yaw)"
+  },
+  "shapes": [
+    { "type": "band", "layer": "behind", "x": "cx+u*brimW", "top": "brimY-brimH*sqrt(1-u*u)-curl*u*u", "bottom": "brimY-curl*u*u",
+      "fill": "#C26A06", "stroke": "rgba(0,0,0,0.12)", "lineWidth": 0.8 },
+    { "type": "band", "x": "cx+u*brimW", "top": "brimY-curl*u*u", "bottom": "brimY+brimH*sqrt(1-u*u)-curl*u*u",
+      "fill": { "gradient": ["#E3900C", "#F2A720"], "from": ["cx", "brimY"], "to": ["cx", "brimY+brimH"] },
+      "stroke": "rgba(0,0,0,0.14)", "lineWidth": 0.8 },
+    { "type": "band", "x": "cx+u*hw*0.80", "top": "-ry*head(u*0.80) - lift*sqrt(1-u*u)", "bottom": "brimY+arc*sqrt(1-u*u)",
+      "fill": { "gradient": ["#F9BB43", "#E39A12"], "from": ["cx", "-ry-lift"], "to": ["cx", "brimY"] },
+      "stroke": "rgba(0,0,0,0.12)", "lineWidth": 0.9 },
+    { "type": "band", "x": "cx+u*hw*0.80", "top": "brimY-R*0.15+arc*sqrt(1-u*u)", "bottom": "brimY+arc*sqrt(1-u*u)",
+      "fill": "#78350F" },
+    { "type": "ellipse", "when": "kC - 0.1", "x": "cx+hw*0.80*kS-(R*0.07+R*0.07*kC)", "y": "brimY-R*0.16+arc*kC",
+      "w": "2*(R*0.07+R*0.07*kC)", "h": "R*0.17", "fill": "#4F2008", "stroke": "rgba(0,0,0,0.3)", "lineWidth": 0.7 }
+  ]
+}

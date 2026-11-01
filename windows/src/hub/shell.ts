@@ -14,7 +14,7 @@ import { searchSettings, type SettingsSearchHit } from "./search";
 
 export type PageId =
   | "dictation" | "notes" | "insights" | "dictionary" | "snippets" | "styles" | "flowsettings"
-  | "general" | "pills" | "agents" | "chat" | "voice" | "integrations" | "phone" | "shortcuts"
+  | "general" | "wardrobe" | "pills" | "agents" | "chat" | "voice" | "integrations" | "phone" | "shortcuts"
   | "mailOverview" | "mailRules" | "mailBanned" | "mailVIP";
 
 interface PageDef {
@@ -37,6 +37,7 @@ export const FLOW_PAGES: PageDef[] = [
 
 export const NOTCH_PAGES: PageDef[] = [
   { id: "general", icon: "gear", title: () => t("General"), subtitle: () => t("Mochi, his sounds and how the island behaves.") },
+  { id: "wardrobe", icon: "shirt", title: () => t("Wardrobe"), subtitle: () => t("What Mochi wears: outfits and skins.") },
   { id: "pills", icon: "grid", title: () => t("Active pills"), subtitle: () => t("The pills shown in the island, their order and their colours.") },
   { id: "agents", icon: "terminal", title: () => t("Agents"), subtitle: () => t("Claude Code, Codex and the other agents Mochi follows.") },
   { id: "chat", icon: "chat", title: () => t("Chat"), subtitle: () => t("The AI of the island's chat, with your own keys.") },

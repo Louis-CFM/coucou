@@ -1,0 +1,34 @@
+{
+  "id": "mustache",
+  "name": "Moustache",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.5,
+  "_about": "A handlebar moustache: two halves, thick at the middle, tapering to tips that curl up. It sits under the eyes and slides and narrows with the head.",
+  "vars": {
+    "cv": "cos(yaw)",
+    "mx": "rx*0.88*sin(yaw)",
+    "my": "ry*0.54",
+    "mw": "R*0.60*(0.40+0.60*cos(yaw))"
+  },
+  "shapes": [
+    { "type": "band", "follow": true, "clip": true, "from": 0, "to": 1, "steps": 24, "x": "mx - u*mw",
+      "top": "my + R*0.05*sin(u*3.1) - R*0.24*u*u*u - (R*0.15*pow(1-u,0.7) + R*0.018)",
+      "bottom": "my + R*0.05*sin(u*3.1) - R*0.24*u*u*u + (R*0.13*pow(1-u,0.7) + R*0.018)",
+      "fill": { "gradient": ["#6B4423", "#2B1A0E"], "from": ["mx", "my - R*0.15"], "to": ["mx", "my + R*0.15"] },
+      "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.7 },
+    { "type": "band", "follow": true, "clip": true, "from": 0, "to": 1, "steps": 24, "x": "mx + u*mw",
+      "top": "my + R*0.05*sin(u*3.1) - R*0.24*u*u*u - (R*0.15*pow(1-u,0.7) + R*0.018)",
+      "bottom": "my + R*0.05*sin(u*3.1) - R*0.24*u*u*u + (R*0.13*pow(1-u,0.7) + R*0.018)",
+      "fill": { "gradient": ["#6B4423", "#2B1A0E"], "from": ["mx", "my - R*0.15"], "to": ["mx", "my + R*0.15"] },
+      "stroke": "rgba(0,0,0,0.25)", "lineWidth": 0.7 },
+    { "type": "band", "follow": true, "clip": true, "from": 0.05, "to": 0.7, "steps": 12, "x": "mx - u*mw",
+      "top": "my + R*0.05*sin(u*3.1) - R*0.24*u*u*u - R*0.10*pow(1-u,0.7)",
+      "bottom": "my + R*0.05*sin(u*3.1) - R*0.24*u*u*u - R*0.07*pow(1-u,0.7)",
+      "fill": "rgba(255,255,255,0.16)" },
+    { "type": "band", "follow": true, "clip": true, "from": 0.05, "to": 0.7, "steps": 12, "x": "mx + u*mw",
+      "top": "my + R*0.05*sin(u*3.1) - R*0.24*u*u*u - R*0.10*pow(1-u,0.7)",
+      "bottom": "my + R*0.05*sin(u*3.1) - R*0.24*u*u*u - R*0.07*pow(1-u,0.7)",
+      "fill": "rgba(255,255,255,0.16)" }
+  ]
+}

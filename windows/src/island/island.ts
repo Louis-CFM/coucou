@@ -5,7 +5,7 @@ import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
-  ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
+  ROUNDED_CORNER, VIEW_LAYOUTS, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
   type BotEmoteName, type IslandMode, type IslandViewName,
@@ -17,6 +17,7 @@ import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
+import { glowColor } from "../mochi/skin-outfits";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { dominantPct, planColor } from "../core/plan";
@@ -1124,7 +1125,7 @@ export class Island {
 
     if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive && !away) {
       const d = p.diameter;
-      const color = botGlowColor(State.effectiveState);
+      const color = glowColor(State.effectiveState, this.engine.outfit); // a skin gives its own
       this.botGlow.style.display = "block";
       this.botGlow.style.width = `${d * 2.2}px`;
       this.botGlow.style.height = `${d * 2.2}px`;

@@ -4,7 +4,9 @@
 
 import { h } from "./dom";
 import { State } from "../core/state";
-import { drawWardrobeIcon } from "../mochi/outfits";
+import { drawWardrobeIcon } from "../mochi/skin-outfits";
+import { loadUserSkins } from "../mochi/skin-loader";
+import { isSkinSelection, onSkinsChange, skinLabel, skinSelections } from "../mochi/skins";
 import {
   OUTFIT_KEYS, OUTFIT_SELECTIONS, WARDROBE_STRINGS, parseOutfit, resolveOutfit, seasonalOutfit,
   wardrobeHeader, type Outfit, type OutfitSelection,
@@ -42,11 +44,15 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
     note.textContent = wardrobeHeader(hovered, parseOutfit(State.settings.mochiOutfit), new Date());
   };
 
-  for (const sel of OUTFIT_SELECTIONS) {
+  /** The names of the buttons: a skin carries its own, a built-in outfit is translated. */
+  const nameOf = (sel: OutfitSelection) => (isSkinSelection(sel) ? skinLabel(sel) : tl(OUTFIT_KEYS[sel]));
+  const drawn = new Set<OutfitSelection>();
+
+  const addItem = (sel: OutfitSelection) => {
     const canvas = h("canvas");
     const button = h(
       "button",
-      { class: "wardrobe-item", title: tl(OUTFIT_KEYS[sel]), "aria-label": tl(OUTFIT_KEYS[sel]) },
+      { class: "wardrobe-item", title: nameOf(sel), "aria-label": nameOf(sel) },
       canvas,
     );
     button.addEventListener("mouseenter", () => {
@@ -63,20 +69,42 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
     button.addEventListener("click", () => actions.chooseOutfit(sel));
     items.set(sel, { button, canvas });
     grid.append(button);
-  }
+  };
+  for (const sel of OUTFIT_SELECTIONS) addItem(sel);
+
+  /** The skins (shipped, and the user's folder) follow the collection: new ones appear, gone ones leave. */
+  const syncSkins = () => {
+    const want = new Set(skinSelections() as OutfitSelection[]);
+    for (const [sel, { button }] of items) {
+      if (isSkinSelection(sel) && !want.has(sel)) {
+        button.remove();
+        items.delete(sel);
+        drawn.delete(sel);
+      }
+    }
+    for (const sel of want) if (!items.has(sel)) addItem(sel);
+  };
+  syncSkins();
+  onSkinsChange(() => {
+    syncSkins();
+    State.notify();
+  });
+  let lastReload = 0;
 
   /** Icons are drawn once; only "auto" changes, with the season and its badge's language. */
   const drawIcons = () => {
     const season = seasonalOutfit(new Date());
+    const pending = [...items.keys()].some((sel) => !drawn.has(sel));
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (season === drawnSeason && drawnLanguage === language() && drawnDpr === dpr) return;
+    if (season === drawnSeason && drawnLanguage === language() && drawnDpr === dpr && !pending) return;
     // On a monitor of another scale every icon is drawn again, sharp and whole.
     const first = drawnSeason == null || drawnDpr !== dpr;
     drawnSeason = season;
     drawnLanguage = language();
     drawnDpr = dpr;
     for (const [sel, { canvas }] of items) {
-      if (!first && sel !== "auto") continue;
+      if (!first && sel !== "auto" && drawn.has(sel)) continue;
+      drawn.add(sel);
       canvas.width = Math.round(ICON * dpr);
       canvas.height = Math.round(ICON * dpr);
       const ctx = canvas.getContext("2d");
@@ -89,6 +117,12 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
   return {
     el,
     sync() {
+      // The user's folder is read again now and then while the wardrobe is open:
+      // a skin dropped there shows up without restarting.
+      if (State.view === "wardrobe" && Date.now() - lastReload > 3000) {
+        lastReload = Date.now();
+        void loadUserSkins();
+      }
       drawIcons();
       // The island drops the preview when the view closes: so does the hover.
       if (State.wardrobePreview == null) hovered = null;

@@ -1,0 +1,21 @@
+{
+  "id": "watermelonSlice",
+  "name": "Watermelon slice",
+  "kind": "face",
+  "layer": "front",
+  "glow": "#FB7185",
+  "_about": "A slice of watermelon: red flesh, a white and green rind along the bottom, black seeds that slide with the head.",
+  "body": ["#FF7A8C", "#E0243F"],
+  "vars": {},
+  "shapes": [
+    { "type": "band", "layer": "body", "x": "u*rx", "top": "ry*head(u)*0.74", "bottom": "ry*head(u)*1.3", "fill": "#F6FBE9" },
+    { "type": "band", "layer": "body", "x": "u*rx", "top": "ry*head(u)*0.87", "bottom": "ry*head(u)*1.3",
+      "fill": { "gradient": ["#43B35A", "#1F7A38"], "from": [0, "ry*0.85"], "to": [0, "ry"] } },
+    { "type": "repeat", "layer": "body", "count": 6, "as": "i", "vars": {
+        "par": "i - 2*floor(i/2)", "lon": "-0.95 + 0.38*i", "th": "lon + yaw", "cc": "cos(th)",
+        "px": "rx*sin(th)*0.9", "py": "ry*(0.50 - 1.05*par)" }, "shapes": [
+      { "type": "ellipse", "layer": "body", "when": "cc - 0.12", "x": "px - R*0.045*cc", "y": "py - R*0.07", "w": "R*0.09*cc", "h": "R*0.15", "fill": "#241418" },
+      { "type": "ellipse", "layer": "body", "when": "cc - 0.12", "x": "px - R*0.02*cc", "y": "py - R*0.05", "w": "R*0.025*cc", "h": "R*0.05", "fill": "rgba(255,255,255,0.35)" }
+    ] }
+  ]
+}

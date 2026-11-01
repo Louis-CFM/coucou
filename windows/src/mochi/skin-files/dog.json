@@ -1,0 +1,40 @@
+{
+  "id": "dog",
+  "name": "Dog",
+  "kind": "face",
+  "layer": "front",
+  "lookRange": 0.4,
+  "_about": "Floppy brown ears at the sides, a cream muzzle, a big black nose and a pink tongue. The ears swing round with the head, the muzzle slides and narrows.",
+  "vars": {
+    "S": "sin(yaw)",
+    "C": "cos(yaw)",
+    "lc": "cos(-1.32+yaw)",
+    "rc": "cos(1.32+yaw)",
+    "lx": "rx*sin(-1.32+yaw)",
+    "lw": "R*(0.26+0.14*abs(cos(-1.32+yaw)))",
+    "rxx": "rx*sin(1.32+yaw)",
+    "rw": "R*(0.26+0.14*abs(cos(1.32+yaw)))",
+    "mx": "rx*S*0.92",
+    "my": "ry*0.52",
+    "mw": "R*0.78*(0.45+0.55*C)",
+    "nx": "rx*S*0.94",
+    "ny": "ry*0.44",
+    "nw": "R*0.36*(0.5+0.5*C)"
+  },
+  "shapes": [
+    { "type": "ellipse", "layer": "behind", "when": "0.5 - lc", "x": "lx - lw", "y": "0 - ry*0.62", "w": "2*lw", "h": "R*1.0",
+      "fill": { "gradient": ["#B4763F", "#6B3F1D"], "from": ["lx", "0 - ry*0.6"], "to": ["lx", "ry*0.4"] }, "stroke": "rgba(0,0,0,0.22)", "lineWidth": 0.8 },
+    { "type": "ellipse", "when": "lc - 0.5", "x": "lx - lw", "y": "0 - ry*0.62", "w": "2*lw", "h": "R*1.0",
+      "fill": { "gradient": ["#B4763F", "#6B3F1D"], "from": ["lx", "0 - ry*0.6"], "to": ["lx", "ry*0.4"] }, "stroke": "rgba(0,0,0,0.22)", "lineWidth": 0.8 },
+    { "type": "ellipse", "layer": "behind", "when": "0.5 - rc", "x": "rxx - rw", "y": "0 - ry*0.62", "w": "2*rw", "h": "R*1.0",
+      "fill": { "gradient": ["#B4763F", "#6B3F1D"], "from": ["rxx", "0 - ry*0.6"], "to": ["rxx", "ry*0.4"] }, "stroke": "rgba(0,0,0,0.22)", "lineWidth": 0.8 },
+    { "type": "ellipse", "when": "rc - 0.5", "x": "rxx - rw", "y": "0 - ry*0.62", "w": "2*rw", "h": "R*1.0",
+      "fill": { "gradient": ["#B4763F", "#6B3F1D"], "from": ["rxx", "0 - ry*0.6"], "to": ["rxx", "ry*0.4"] }, "stroke": "rgba(0,0,0,0.22)", "lineWidth": 0.8 },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "mx - mw/2", "y": "my - R*0.19", "w": "mw", "h": "R*0.40", "fill": "rgba(250,236,214,0.96)" },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "mx - nw*0.28", "y": "my + R*0.06", "w": "nw*0.56", "h": "R*0.27",
+      "fill": { "gradient": ["#FF8FA3", "#E64A6B"], "from": ["mx", "my"], "to": ["mx", "my + R*0.3"] }, "stroke": "rgba(0,0,0,0.2)", "lineWidth": 0.7 },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "nx - nw/2", "y": "ny - R*0.12", "w": "nw", "h": "R*0.24",
+      "fill": { "gradient": ["#3B3B42", "#0B0B0E"], "from": ["nx", "ny - R*0.12"], "to": ["nx", "ny + R*0.12"] } },
+    { "type": "ellipse", "follow": true, "clip": true, "x": "nx - nw*0.24", "y": "ny - R*0.085", "w": "nw*0.26", "h": "R*0.07", "fill": "rgba(255,255,255,0.55)" }
+  ]
+}
