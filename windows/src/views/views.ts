@@ -14,7 +14,8 @@ import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
 import {
-  PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
+  PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, kimiPillVisible, planCardOpen,
+  refreshCodexPlanUsage, refreshKimiPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
 import { lastTextStep } from "../core/diff";
@@ -123,11 +124,13 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
-  // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
-  const claudePill = buildPlanPill(false);
-  const codexPill = buildPlanPill(true);
-  const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
+  // Plan usage pills (off by default): before the gear, Claude first.
+  const claudePill = buildPlanPill("claude");
+  const codexPill = buildPlanPill("codex");
+  const kimiPill = buildPlanPill("kimi");
+  const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el, kimiPill.el);
   let codexShown = false;
+  let kimiShown = false;
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -162,17 +165,23 @@ export function buildHeader(actions: ViewActions): ViewHost {
   function syncPlanPills() {
     const claudeOn = claudePillVisible();
     const codexOn = codexPillVisible();
+    const kimiOn = kimiPillVisible();
     claudePill.el.style.display = claudeOn ? "" : "none";
     codexPill.el.style.display = codexOn ? "" : "none";
-    planPills.classList.toggle("on", claudeOn || codexOn);
-    // Both pills: the right side tightens so it still clears the screen edge.
-    headerActions.classList.toggle("both-plans", claudeOn && codexOn);
+    kimiPill.el.style.display = kimiOn ? "" : "none";
+    planPills.classList.toggle("on", claudeOn || codexOn || kimiOn);
+    // Multiple pills: the right side tightens so it still clears the screen edge.
+    headerActions.classList.toggle("both-plans", [claudeOn, codexOn, kimiOn].filter(Boolean).length > 1);
     if (claudeOn) claudePill.sync();
     if (codexOn) codexPill.sync();
-    // Codex is asked when its pill comes into view (stale answers only).
+    if (kimiOn) kimiPill.sync();
+    // The CLIs are asked when their pills come into view (stale answers only).
     const shown = codexOn && State.mode === "expanded";
     if (shown && !codexShown) refreshCodexPlanUsage();
     codexShown = shown;
+    const kimiVisible = kimiOn && State.mode === "expanded";
+    if (kimiVisible && !kimiShown) refreshKimiPlanUsage();
+    kimiShown = kimiVisible;
   }
 }
 

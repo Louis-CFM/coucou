@@ -450,7 +450,7 @@ export class Island {
     Sound.resume();
     State.lastActivity = performance.now();
     this.fsm.userInteracted();
-    State.planDetailIsCodex = false;
+    State.planDetailKind = "claude";
     State.showingPlanDetail = true;
     this.fsm.forceHome();
     this.expand("overview");

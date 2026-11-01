@@ -11,6 +11,7 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
   cursor: { name: "Cursor", color: "#C0C4CC" },
   antigravity: { name: "Antigravity", color: "#E879F9" },
   codex: { name: "Codex", color: "#2DD4BF" },
+  kimi: { name: "Kimi Code", color: "#3B82F6" },
   gemini: { name: "Gemini CLI", color: "#8AB4F8" },
   copilot: { name: "Copilot CLI", color: "#818CF8" },
   muse: { name: "Muse Code", color: "#38BDF8" },

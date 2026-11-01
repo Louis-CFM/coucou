@@ -6,12 +6,13 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct, effectivePct,
-  parseClaudePlan, parseCodexPlan, pillLabel, planColor, resetLabel, restorePlanUsage,
+  kimiDominantPct, kimiIsStale, kimiPillLabel, kimiSubtitle, parseClaudePlan, parseCodexPlan,
+  parseKimiPlan, pillLabel, planColor, resetLabel, restorePlanUsage,
 } from "../src/core/plan.ts";
 import { emit } from "./tauri.mjs";
 import { registerHookHandlers } from "../src/island/hooks.ts";
 import {
-  claudeCompactPillVisible, claudePillVisible, codexPillVisible, openPlanColor, planCardOpen,
+  claudeCompactPillVisible, claudePillVisible, codexPillVisible, kimiPillVisible, openPlanColor, planCardOpen,
 } from "../src/views/usage.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
@@ -188,6 +189,39 @@ test("Codex is asked again only once its numbers are a minute old", () => {
   assert.equal(codexIsStale({ updatedAt: NOW - 60_000 }, NOW), true);
 });
 
+// ── Kimi Code quota ───────────────────────────────────────────────────────────
+
+test("Kimi quota keeps every window the account actually has", () => {
+  const u = parseKimiPlan({ usages: {
+    limit5h: { usedRatio: 0.1464, resetAt: "2026-10-07T14:00:00Z" },
+    monthTotal: { usedRatio: 0.0234, resetAt: "2026-11-01T00:00:00Z" },
+    monthCode: { usedRatio: 0.018 },
+  } }, NOW);
+  assert.equal(u.fiveHour.usedPct, 14.64);
+  assert.equal(u.fiveHour.resetsAt, Date.UTC(2026, 9, 7, 14));
+  assert.equal(u.sevenDay, undefined);
+  assert.equal(u.monthTotal.usedPct, 2.34);
+  assert.ok(Math.abs(u.monthCode.usedPct - 1.8) < 1e-10);
+  assert.equal(u.monthCode.resetsAt, undefined);
+  assert.equal(resetLabel(u.monthCode, true, NOW), "—");
+  assert.equal(kimiPillLabel(u, NOW), "Kimi 15%");
+  assert.equal(kimiSubtitle(u, NOW), "just now");
+});
+
+test("Kimi weekly quota appears only on plans that return it, and malformed data is dropped", () => {
+  const weekly = parseKimiPlan({ usages: {
+    limit7d: { usedRatio: 0.72, resetAt: "2026-10-10T12:00:00Z" },
+  } }, NOW);
+  assert.equal(weekly.sevenDay.usedPct, 72);
+  assert.equal(kimiDominantPct(weekly, NOW), 72);
+  assert.equal(parseKimiPlan(null, NOW), null);
+  assert.equal(parseKimiPlan({}, NOW), null);
+  assert.equal(parseKimiPlan({ usages: { limit5h: { usedRatio: "0.5" } } }, NOW), null);
+  assert.equal(kimiIsStale(null, NOW), true);
+  assert.equal(kimiIsStale({ updatedAt: NOW - 59_000 }, NOW), false);
+  assert.equal(kimiIsStale({ updatedAt: NOW - 60_000 }, NOW), true);
+});
+
 // ── The pills in the island ───────────────────────────────────────────────────
 
 registerHookHandlers({ alert() {}, setView() {}, reveal() {}, dropPin() {} });
@@ -198,13 +232,15 @@ beforeEach(() => {
   State.paused = false;
   State.planUsage = null;
   State.codexPlanUsage = null;
+  State.kimiPlanUsage = null;
   State.showingPlanDetail = false;
-  State.planDetailIsCodex = false;
+  State.planDetailKind = "claude";
 });
 
-test("both pills are off by default, so the header is as it shipped", () => {
+test("all three pills are off by default, so the header is as it shipped", () => {
   assert.equal(claudePillVisible(), false);
   assert.equal(codexPillVisible(), false);
+  assert.equal(kimiPillVisible(), false);
 });
 
 test("the Claude pill needs the switch and the relay, and the overview", () => {
@@ -234,6 +270,13 @@ test("the Codex pill needs only its switch, on the overview", () => {
   assert.equal(codexPillVisible(), false);
 });
 
+test("the Kimi pill needs only its switch, on the overview", () => {
+  State.settings.showKimiPlanInNotch = true;
+  assert.equal(kimiPillVisible(), true);
+  State.view = "settings";
+  assert.equal(kimiPillVisible(), false);
+});
+
 test("an open card follows its pill, and Mochi wears that plan's colour", () => {
   State.settings.showPlanInNotch = true;
   State.settings.planRelayInstalled = true;
@@ -241,7 +284,7 @@ test("an open card follows its pill, and Mochi wears that plan's colour", () => 
   assert.equal(planCardOpen(), true);
   assert.equal(openPlanColor(), "#6B7079");
   // The Codex card cannot be open without its pill.
-  State.planDetailIsCodex = true;
+  State.planDetailKind = "codex";
   assert.equal(planCardOpen(), false);
   State.settings.showCodexPlanInNotch = true;
   assert.equal(planCardOpen(), true);

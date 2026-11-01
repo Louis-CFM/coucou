@@ -255,6 +255,8 @@ const PLAN_SETTINGS_TEXT = {
   get showClaudeCompact() { return t("Show in compact island"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
+  get kimi() { return t("Shows your Kimi Code plan usage in the island's header. Coucou asks Kimi Code's local server API when the pill shows; nothing is installed and no credentials are read. Kimi Code must be signed in."); },
+  get showKimi() { return t("Show Kimi Code plan in the notch"); },
 };
 
 function planSection(status: HookStatus): HTMLElement {
@@ -340,6 +342,14 @@ function planSection(status: HookStatus): HTMLElement {
         h("label", { text: PLAN_SETTINGS_TEXT.showCodex }),
         toggle(settings.showCodexPlanInNotch, (on) => {
           settings.showCodexPlanInNotch = on;
+          void save();
+        }),
+      ),
+      h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.kimi }),
+      h("div", { class: "row" },
+        h("label", { text: PLAN_SETTINGS_TEXT.showKimi }),
+        toggle(settings.showKimiPlanInNotch, (on) => {
+          settings.showKimiPlanInNotch = on;
           void save();
         }),
       ),

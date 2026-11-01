@@ -155,8 +155,8 @@ ElevenLabs with yours.
 **Settings… → Active pills** lists the tools you use, from the same catalog as
 the Mac app. Pick your **main tool** — VS Code, Cursor, Codex or Antigravity —
 which is always there and doesn't take a slot, then declare up to four more:
-agents (Gemini CLI, Copilot CLI, Muse Code, OpenCode, Amp, Hermes, Claude
-Desktop), the chat providers (Anthropic, Google AI, OpenAI, Ollama, LM Studio),
+agents (Gemini CLI, Kimi Code, Copilot CLI, Muse Code, OpenCode, Amp, Hermes,
+Claude Desktop), the chat providers (Anthropic, Google AI, OpenAI, Ollama, LM Studio),
 and the services under **Integrations**. A pill fed by hooks says whether its
 hooks are installed, never asks for a key; a local model server's pill says
 whether the chat is connected to it. A session on a pill you didn't
@@ -181,10 +181,10 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
 ### Plan usage
 
-As on the Mac, the island's header can show your plan limits: a small pill
-("Claude 73%", green below 50 %, orange up to 80 %, red above) for the 5-hour and
-weekly Claude limits, and another for Codex. Click one for the details and the
-reset times. Both are off by default; turn them on in **Settings… → Plan usage**.
+The island's header can show your plan limits: a small pill ("Claude 73%",
+green below 50 %, orange up to 80 %, red above) for Claude, Codex and Kimi Code.
+Click one for the details and the reset times. All are off by default; turn them
+on in **Settings… → Plan usage**.
 
 - **Claude** (Pro and Max plans): the numbers come from Claude Code's own status
   line. **Show in notch** first shows you the diff of the `statusLine` change in
@@ -203,6 +203,10 @@ reset times. Both are off by default; turn them on in **Settings… → Plan usa
   once a minute) Coucou starts `codex app-server` and asks it
   `account/rateLimits/read`, as Codex's `/status` does, then stops it (15 s at
   most, never while paused). Codex must be signed in with ChatGPT.
+- **Kimi Code**: nothing is installed for the limits. When the pill shows (or is
+  clicked, at most once a minute) Coucou starts `kimi web --no-open` and asks its
+  local usage API, then stops it. The startup token stays in Coucou's backend and
+  is never sent to the interface. Kimi Code must be signed in.
 
 ## Weekly recap
 

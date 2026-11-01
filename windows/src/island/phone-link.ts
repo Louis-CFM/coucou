@@ -52,8 +52,8 @@ function stepText(step: string): string {
 function planFor(u: PlanUsage | CodexPlanUsage | null | undefined): PhoneLinkPlan | null {
   if (!u || (!u.fiveHour && !u.sevenDay)) return null;
   const plan: PhoneLinkPlan = { updatedAt: u.updatedAt };
-  if (u.fiveHour) plan.fiveHour = { usedPct: u.fiveHour.usedPct, resetsAt: u.fiveHour.resetsAt };
-  if (u.sevenDay) plan.sevenDay = { usedPct: u.sevenDay.usedPct, resetsAt: u.sevenDay.resetsAt };
+  if (u.fiveHour?.resetsAt != null) plan.fiveHour = { usedPct: u.fiveHour.usedPct, resetsAt: u.fiveHour.resetsAt };
+  if (u.sevenDay?.resetsAt != null) plan.sevenDay = { usedPct: u.sevenDay.usedPct, resetsAt: u.sevenDay.resetsAt };
   const codex = u as CodexPlanUsage;
   if (typeof codex.resetCredits === "number") plan.resetCredits = codex.resetCredits;
   if (codex.planType) plan.planType = codex.planType;

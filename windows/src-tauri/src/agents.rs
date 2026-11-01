@@ -96,6 +96,7 @@ pub enum Agent {
     Antigravity,
     Cursor,
     Codex,
+    Kimi,
     Copilot,
     Muse,
     OpenCode,
@@ -106,6 +107,7 @@ pub enum Agent {
 impl Agent {
     pub const ALL: &'static [Agent] = &[
         Agent::Codex,
+        Agent::Kimi,
         Agent::Copilot,
         Agent::Muse,
         Agent::Gemini,
@@ -123,6 +125,7 @@ impl Agent {
             Agent::Antigravity => "antigravity",
             Agent::Cursor => "cursor",
             Agent::Codex => "codex",
+            Agent::Kimi => "kimi",
             Agent::Copilot => "copilot",
             Agent::Muse => "muse",
             Agent::OpenCode => "opencode",
@@ -142,6 +145,10 @@ impl Agent {
             Agent::Antigravity => vec![home.join(".gemini").join("config").join("hooks.json")],
             Agent::Cursor => vec![home.join(".cursor").join("hooks.json")],
             Agent::Codex => vec![home.join(".codex").join("hooks.json")],
+            Agent::Kimi => vec![std::env::var_os("KIMI_CODE_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".kimi-code"))
+                .join("config.toml")],
             Agent::Copilot => vec![home.join(".copilot").join("hooks").join("coucou.json")],
             Agent::Muse => vec![home.join(".config").join("muse").join("settings.json")],
             // OpenCode and Amp read ~/.config on Windows too.
@@ -157,6 +164,15 @@ impl Agent {
     /// The edits that install (or remove) Coucou for this agent.
     fn edits(self, home: &Path, relay: &Relay, install: bool) -> Vec<FileEdit<'static>> {
         let files = self.files(home);
+        if self == Agent::Kimi {
+            let path = files[0].clone();
+            let label = path.display().to_string();
+            let command = relay.command(Shell::Cmd, "--agent kimi");
+            return vec![FileEdit {
+                path,
+                edit: config_file::text_edit(label, move |current| kimi_edit(current, &command, install)),
+            }];
+        }
         if let Some(contents) = self.plugin(relay) {
             return files.into_iter().zip(contents).map(|(path, text)| plugin_edit(path, text, install)).collect();
         }
@@ -210,6 +226,8 @@ impl Agent {
                 let command = relay.command(Shell::Cmd, "--agent codex");
                 Box::new(move |v| codex_install(v, &command).map(Some))
             }
+            // Kimi Code's config is TOML; `edits` handles it before this one.
+            (Agent::Kimi, _) => Box::new(|_| Err(crate::i18n::t("Kimi Code takes TOML hooks, not JSON."))),
             (Agent::Copilot, false) => Box::new(copilot_uninstall),
             (Agent::Copilot, true) => {
                 let entries: Vec<(String, Value)> = COPILOT_EVENTS
@@ -243,6 +261,9 @@ impl Agent {
         if matches!(self, Agent::OpenCode | Agent::Amp | Agent::Hermes) {
             return std::fs::read_to_string(&files[0]).is_ok_and(|text| is_our_plugin(&text));
         }
+        if self == Agent::Kimi {
+            return std::fs::read_to_string(&files[0]).is_ok_and(|text| kimi_installed(&text));
+        }
         let json = || {
             config_file::read(&files[0])
                 .ok()
@@ -255,6 +276,7 @@ impl Agent {
             Agent::Antigravity => json().get("coucou").is_some_and(antigravity_is_ours),
             Agent::Cursor => groups_have_ours(&json(), "cursor"),
             Agent::Codex => groups_have_ours(&json(), "codex"),
+            Agent::Kimi => false,
             Agent::Copilot => json()
                 .get("hooks")
                 .and_then(Value::as_object)
@@ -282,6 +304,7 @@ impl Agent {
             Agent::Antigravity => "Antigravity",
             Agent::Cursor => "Cursor Agent",
             Agent::Codex => "Codex",
+            Agent::Kimi => "Kimi Code",
             Agent::Copilot => "GitHub Copilot CLI",
             Agent::Muse => "Muse Code",
             Agent::OpenCode => "OpenCode",
@@ -298,6 +321,7 @@ impl Agent {
             Agent::Antigravity => t("Start a new Antigravity conversation to pick the hooks up."),
             Agent::Cursor => t("Restart Cursor to pick the hooks up."),
             Agent::Codex => t("Codex runs new hooks only once you trust them: start Codex and review them once with /hooks."),
+            Agent::Kimi => t("Start a new Kimi Code session to pick the hooks up."),
             Agent::Copilot => t("Start a new Copilot CLI session to pick the hooks up."),
             Agent::Muse => t("Start a new Muse Code session to pick the hooks up."),
             Agent::OpenCode => t("Restart OpenCode to load the plugin."),
@@ -623,6 +647,76 @@ fn codex_install(root: &Value, command: &str) -> Result<Value, String> {
         (event.to_string(), json!({ "hooks": [hook] }))
     });
     groups_install(root, "codex", events).map(Value::Object)
+}
+
+// ── Kimi Code — $KIMI_CODE_HOME/config.toml ───────────────────────────────────
+//
+// Kimi's hooks are an array of tables. Coucou appends one marked region and
+// removes that region only; every other byte of the user's TOML stays as it was.
+// PermissionRequest is observation-only in Kimi Code, so approvals stay there.
+
+const KIMI_EVENTS: &[&str] = &[
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PermissionRequest",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "Stop",
+    "StopFailure",
+    "SubagentStart",
+    "SubagentStop",
+    "Interrupt",
+    "SessionEnd",
+];
+const KIMI_BEGIN: &str = "# >>> coucou-hook kimi";
+const KIMI_END: &str = "# <<< coucou-hook kimi";
+
+fn kimi_edit(current: Option<&str>, command: &str, install: bool) -> Result<Option<String>, String> {
+    let mut out = current.map(without_kimi).unwrap_or_default();
+    if !install {
+        return Ok(current.map(|_| out));
+    }
+    if !out.is_empty() && !out.ends_with('\n') {
+        out.push('\n');
+    }
+    out.push_str(KIMI_BEGIN);
+    out.push('\n');
+    let command = serde_json::to_string(command).unwrap_or_default();
+    for event in KIMI_EVENTS {
+        out.push_str(&format!(
+            "[[hooks]]\nevent = {}\ncommand = {}\ntimeout = 5\n\n",
+            serde_json::to_string(event).unwrap_or_default(),
+            command,
+        ));
+    }
+    out.push_str(KIMI_END);
+    out.push('\n');
+    Ok(Some(out))
+}
+
+fn without_kimi(text: &str) -> String {
+    let mut out = String::new();
+    let mut ours = false;
+    for line in text.split_inclusive('\n') {
+        let trimmed = line.trim_end_matches(['\r', '\n']);
+        if trimmed == KIMI_BEGIN {
+            ours = true;
+            continue;
+        }
+        if ours {
+            if trimmed == KIMI_END {
+                ours = false;
+            }
+            continue;
+        }
+        out.push_str(line);
+    }
+    out
+}
+
+fn kimi_installed(text: &str) -> bool {
+    text.contains(KIMI_BEGIN) && text.contains(MARKER) && text.contains("--agent kimi")
 }
 
 // ── GitHub Copilot CLI — ~/.copilot/hooks/coucou.json ─────────────────────────
@@ -1235,6 +1329,29 @@ mod tests {
         assert!(installed.get("schema_version").is_none());
         assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
         let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn kimi_toml_keeps_the_users_config_and_removes_only_coucous_region() {
+        let existing = "default_model = \"kimi-code/kimi-for-coding\"\n\n[[hooks]]\nevent = \"Stop\"\ncommand = \"mine\"\n";
+        let installed = kimi_edit(Some(existing), "'/opt/coucou/coucou-hook' --agent kimi", true).unwrap().unwrap();
+        assert!(installed.starts_with(existing));
+        assert_eq!(installed.matches(KIMI_BEGIN).count(), 1);
+        for event in KIMI_EVENTS {
+            assert!(installed.contains(&format!("event = \"{event}\"")), "{event}");
+        }
+        assert!(kimi_installed(&installed));
+
+        // Reinstalling replaces our region rather than adding another one.
+        let reinstalled = kimi_edit(Some(&installed), "'/new/coucou-hook' --agent kimi", true).unwrap().unwrap();
+        assert_eq!(reinstalled.matches(KIMI_BEGIN).count(), 1);
+        assert!(reinstalled.contains("/new/coucou-hook"));
+        assert!(!reinstalled.contains("/opt/coucou/coucou-hook"));
+        assert!(reinstalled.contains("command = \"mine\""));
+
+        let removed = kimi_edit(Some(&reinstalled), "unused", false).unwrap().unwrap();
+        assert_eq!(removed, existing);
+        assert!(!kimi_installed(&removed));
     }
 
     #[test]

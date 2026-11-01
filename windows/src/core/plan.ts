@@ -6,14 +6,14 @@
 // what it hands its status line command), through the relay. Pro and Max only.
 // Codex: the numbers come from the Codex CLI itself (`codex app-server`,
 // `account/rateLimits/read`, the source of Codex's /status), asked by the app
-// when the pill shows. Nothing is read from any credentials, nothing is fetched
-// by Coucou itself.
+// when the pill shows. Kimi Code: its own local `kimi web` server answers
+// GET /api/v1/oauth/usage. No credential file is read for either CLI.
 
 export interface PlanWindow {
   /** 0–100, clamped. */
   usedPct: number;
-  /** Epoch milliseconds. */
-  resetsAt: number;
+  /** Epoch milliseconds; Kimi Code may omit a window's reset time. */
+  resetsAt?: number;
 }
 
 export interface PlanUsage {
@@ -31,6 +31,13 @@ export interface CodexPlanUsage extends PlanUsage {
   planType?: string;
 }
 
+export interface KimiPlanUsage extends PlanUsage {
+  monthTotal?: PlanWindow;
+  monthCode?: PlanWindow;
+}
+
+export type PlanKind = "claude" | "codex" | "kimi";
+
 import { dayMonth, t, weekdayShort } from "../i18n/i18n";
 
 const DAY_MS = 86_400_000;
@@ -39,15 +46,20 @@ const DAY_MS = 86_400_000;
 export const PLAN_TEXT = {
   get claudeTitle() { return t("Claude plan"); },
   get codexTitle() { return t("Codex plan"); },
+  get kimiTitle() { return t("Kimi Code plan"); },
   get claudePillTitle() { return t("Claude plan usage"); },
   get codexPillTitle() { return t("Codex plan usage"); },
+  get kimiPillTitle() { return t("Kimi Code plan usage"); },
   get waiting() { return t("Waiting for a response from Claude Code"); },
   get askingCodex() { return t("Asking Codex…"); },
+  get askingKimi() { return t("Asking Kimi Code…"); },
   get justNow() { return t("just now"); },
   minAgo: (n: number) => t("{n} min ago", { n }),
   hAgo: (n: number) => t("{n} h ago", { n }),
   get fiveHours() { return t("5 hours"); },
   get week() { return t("Week"); },
+  get monthTotal() { return t("Month total"); },
+  get monthCode() { return t("Month Code"); },
   get resets() { return t("Resets"); },
   get resetting() { return t("Resetting…"); },
   inHM: (h: number, m: number) => t("in {h} h {m}", { h, m }),
@@ -125,10 +137,63 @@ export function parseCodexPlan(result: unknown, now = Date.now()): CodexPlanUsag
   return usage.fiveHour || usage.sevenDay ? usage : null;
 }
 
+// ── Kimi Code ─────────────────────────────────────────────────────────────────
+
+function parseKimiWindow(raw: unknown): PlanWindow | undefined {
+  const w = asObj(raw);
+  if (!w || !isNum(w.usedRatio)) return undefined;
+  const window: PlanWindow = { usedPct: Math.min(100, Math.max(0, w.usedRatio * 100)) };
+  if (typeof w.resetAt === "string") {
+    const reset = Date.parse(w.resetAt);
+    if (Number.isFinite(reset)) window.resetsAt = reset;
+  }
+  return window;
+}
+
+/** The quota returned by Kimi Code's local GET /api/v1/oauth/usage. */
+export function parseKimiPlan(result: unknown, now = Date.now()): KimiPlanUsage | null {
+  const usages = asObj(asObj(result)?.usages);
+  if (!usages) return null;
+  const usage: KimiPlanUsage = { updatedAt: now };
+  const fiveHour = parseKimiWindow(usages.limit5h);
+  const sevenDay = parseKimiWindow(usages.limit7d);
+  const monthTotal = parseKimiWindow(usages.monthTotal);
+  const monthCode = parseKimiWindow(usages.monthCode);
+  if (fiveHour) usage.fiveHour = fiveHour;
+  if (sevenDay) usage.sevenDay = sevenDay;
+  if (monthTotal) usage.monthTotal = monthTotal;
+  if (monthCode) usage.monthCode = monthCode;
+  return fiveHour || sevenDay || monthTotal || monthCode ? usage : null;
+}
+
+/** The highest of Kimi Code's active quota windows. */
+export function kimiDominantPct(u: KimiPlanUsage | null | undefined, now = Date.now()): number | null {
+  const pcts = [u?.fiveHour, u?.sevenDay, u?.monthTotal, u?.monthCode]
+    .filter((w): w is PlanWindow => !!w)
+    .map((w) => effectivePct(w, now));
+  return pcts.length ? Math.max(...pcts) : null;
+}
+
+/** "Kimi 15%" on the pill; "Kimi —" until the local server answers. */
+export function kimiPillLabel(u: KimiPlanUsage | null | undefined, now = Date.now()): string {
+  const pct = kimiDominantPct(u, now);
+  return pct == null ? `Kimi ${PLAN_TEXT.none}` : `Kimi ${Math.round(pct)}%`;
+}
+
+/** The Kimi Code card's subtitle. */
+export function kimiSubtitle(u: KimiPlanUsage | null, now = Date.now()): string {
+  return u ? ageLabel(u.updatedAt, now) : PLAN_TEXT.askingKimi;
+}
+
+export const KIMI_STALE_MS = 60_000;
+export const kimiIsStale = (u: KimiPlanUsage | null, now = Date.now()): boolean =>
+  !u || now - u.updatedAt >= KIMI_STALE_MS;
+
 // ── Shared ────────────────────────────────────────────────────────────────────
 
 /** What to show for a window: 0 once its reset time has passed. */
-export const effectivePct = (w: PlanWindow, now = Date.now()): number => (w.resetsAt <= now ? 0 : w.usedPct);
+export const effectivePct = (w: PlanWindow, now = Date.now()): number =>
+  w.resetsAt != null && w.resetsAt <= now ? 0 : w.usedPct;
 
 /** The higher of the two effective percentages; null when there are no windows. */
 export function dominantPct(u: PlanUsage | null | undefined, now = Date.now()): number | null {
@@ -160,6 +225,7 @@ export function ageLabel(updatedAt: number, now = Date.now()): string {
 
 /** "in 1 h 20" / "in 5 min" for the 5-hour window, "Mon 9:00" for the week. */
 export function resetLabel(w: PlanWindow, weekly: boolean, now = Date.now()): string {
+  if (w.resetsAt == null) return PLAN_TEXT.none;
   const secs = (w.resetsAt - now) / 1000;
   if (secs <= 0) return PLAN_TEXT.resetting;
   if (weekly) {
