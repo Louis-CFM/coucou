@@ -40,6 +40,8 @@ const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+/** Open on hover: how long the pointer rests on the bar before the island opens. */
+const HOVER_INTENT_MS = 400;
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -818,8 +820,11 @@ export class Island {
     // The wake strip is the only thing the OS can hit while the island is hidden.
     this.wakeStrip.addEventListener("mouseenter", () => {
       Sound.resume();
-      if (State.mode === "hidden") this.fsm.mouseEntered();
+      if (State.mode !== "hidden") return;
+      if (this.hoverIntent()) this.scheduleHoverOpen(false);
+      else this.fsm.mouseEntered();
     });
+    this.wakeStrip.addEventListener("mouseleave", () => this.cancelHoverOpen());
 
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
@@ -945,9 +950,11 @@ export class Island {
     this.wasInIsland = inIsland;
     if (inIsland && !wasIn) {
       if (this.fsm.state === "coucou") this.greeting.hover();
-      this.fsm.mouseEntered();
+      if (this.hoverIntent()) this.scheduleHoverOpen(true);
+      else this.fsm.mouseEntered();
     }
     if (!inIsland && wasIn) {
+      this.cancelHoverOpen();
       this.fsm.mouseLeft();
     }
 
@@ -971,6 +978,42 @@ export class Island {
   private canDragOut(): boolean {
     if (State.mode === "hidden" || !this.desktop.canPickUp()) return false;
     return !(State.mode === "expanded" && (State.view === "greeting" || this.uploadActive));
+  }
+
+  /**
+   * Open on hover waits for intent: the island opens only when the pointer rests
+   * on the visible bar, so passing by to click something next to it opens nothing.
+   */
+  private hoverOpenTimer: number | null = null;
+
+  private hoverIntent(): boolean {
+    return State.settings.openOnHover && !this.fsm.pinned &&
+      (this.fsm.state === "hidden" || this.fsm.state === "petit");
+  }
+
+  /** `strict`: the pointer must sit on the bar itself, not in the wider margin. */
+  private scheduleHoverOpen(strict: boolean) {
+    this.cancelHoverOpen();
+    this.hoverOpenTimer = window.setTimeout(() => {
+      this.hoverOpenTimer = null;
+      const r = this.islandRect();
+      const m = 4;
+      const on = strict
+        ? this.wasInIsland &&
+          State.mouse.x >= r.x - m && State.mouse.x <= r.x + r.w + m &&
+          State.mouse.y >= r.y - m && State.mouse.y <= r.y + r.h + m
+        : this.wakeStrip.matches(":hover");
+      if (!on) {
+        if (strict && this.wasInIsland) this.scheduleHoverOpen(true); // still near: look again
+        return;
+      }
+      if (this.hoverIntent()) this.fsm.mouseEntered();
+    }, HOVER_INTENT_MS);
+  }
+
+  private cancelHoverOpen() {
+    if (this.hoverOpenTimer != null) window.clearTimeout(this.hoverOpenTimer);
+    this.hoverOpenTimer = null;
   }
 
   private isBotHit(x: number, y: number): boolean {

@@ -35,7 +35,7 @@ export class IslandStateMachine {
    */
   openOnHover = false;
   /** Grace period after the pointer leaves a hover-opened island, seconds. */
-  hoverCloseDelay = 0.6;
+  hoverCloseDelay = 0.25;
   /** Open because of a hover, until the user clicks inside it. */
   get openedByHover(): boolean {
     return this.byHover;
