@@ -56,7 +56,10 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         .tooltip("Coucou")
         .menu(&menu)
         .on_menu_event(|app: &AppHandle, event| match event.id.as_ref() {
-            "quit" => app.exit(0),
+            "quit" => {
+                crate::log::line("quit: tray menu");
+                app.exit(0);
+            }
             "settings" => crate::show_settings_window(app),
             // The Coucou window: dictation, notes and every setting.
             "open" => crate::show_hub(app, None),

@@ -39,6 +39,7 @@ mod spotify;
 mod tray;
 mod update;
 mod voice;
+mod watchdog;
 #[cfg(windows)]
 mod webview_drop;
 mod whatsapp;
@@ -375,6 +376,7 @@ fn open_file_in_vscode(path: String) -> bool {
 
 #[tauri::command]
 fn quit_app(app: AppHandle) {
+    log::line("quit: asked from the island or Settings");
     app.exit(0);
 }
 
@@ -836,6 +838,16 @@ fn open_settings_window(app: AppHandle, page: Option<String>) {
 }
 
 pub fn run() {
+    // This process may be Coucou's watchdog (watchdog.rs) and nothing else.
+    if watchdog::run_if_asked() {
+        return;
+    }
+    // A panic is written to coucou.log before the default report.
+    let report = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        log::line(format!("panic: {info}"));
+        report(info);
+    }));
     platform::prepare_environment();
     let loaded = settings::load();
     i18n::set_picked(&loaded.language);
@@ -1081,6 +1093,8 @@ pub fn run() {
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
+            // Restarts Coucou if it dies, and logs how it ended.
+            watchdog::spawn();
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             phone_link::start_if_enabled(&handle);
@@ -1108,6 +1122,9 @@ pub fn run() {
         .run(|app, event| {
             // Withdraw the phone link's announcement on the local network before the process ends.
             if let tauri::RunEvent::Exit = event {
+                // A clean exit says so; a crash or a kill leaves no such line
+                // (the watchdog then logs its exit code).
+                log::line("--- Coucou exiting ---");
                 phone_link::stop_on_exit(app);
                 notes::shutdown(app);
                 // GOWA started by Coucou stops with it; the conversations were only in memory.
