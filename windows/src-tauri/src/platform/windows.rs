@@ -307,6 +307,17 @@ fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
 /// so its windows are left alone.
 ///
 /// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
+pub fn is_cursor_over_own_popup(win: &WebviewWindow, cx: f64, cy: f64) -> bool {
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::UI::WindowsAndMessaging::{GetAncestor, WindowFromPoint, GA_ROOT, GA_ROOTOWNER};
+
+    win.hwnd().is_ok_and(|hwnd| unsafe {
+        let hit = WindowFromPoint(POINT { x: cx as i32, y: cy as i32 });
+        GetAncestor(hit, GA_ROOT).0 != hwnd.0 as *mut _
+            && GetAncestor(hit, GA_ROOTOWNER).0 == hwnd.0 as *mut _
+    })
+}
+
 pub fn unblock_webview_drops(app: &AppHandle) {
     let Some(win) = app.get_webview_window("settings") else { return };
     let Some(hwnd) = hwnd_of(&win) else { return };
