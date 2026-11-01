@@ -560,6 +560,23 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// The status line only fires while a Claude Code session runs in a terminal, so the gauge
+    /// froze for Claude desktop app / claude.ai use. Fill the gap from the account, at most once a minute.
+    private static var lastClaudeAttempt: Date = .distantPast
+    private static var claudeFetchInFlight = false
+
+    func refreshClaudePlanUsage() {
+        if let u = claudePlanUsage, Date().timeIntervalSince(u.updatedAt) < 60 { return }
+        guard !Self.claudeFetchInFlight, Date().timeIntervalSince(Self.lastClaudeAttempt) > 60 else { return }
+        Self.claudeFetchInFlight = true
+        Self.lastClaudeAttempt = Date()
+        Task {
+            if let u = await ClaudePlanFetch.fetch(),
+               u.updatedAt > (claudePlanUsage?.updatedAt ?? .distantPast) { claudePlanUsage = u }
+            Self.claudeFetchInFlight = false
+        }
+    }
+
     func refreshPlanRelayState() {
         planRelayInstalled = HookServer.statusLineInstalled()
     }
