@@ -108,6 +108,10 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// How long the compact island stays on screen after the pointer leaves (seconds). Defaults to 60.
+    pub compact_hide_delay: f64,
+    /// Mochi's eyes follow the mouse pointer. On by default.
+    pub eyes_follow_pointer: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -178,6 +182,8 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            compact_hide_delay: 60.0,
+            eyes_follow_pointer: true,
         }
     }
 }
@@ -478,7 +484,9 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "showClock": true
+  "showClock": true,
+  "compactHideDelay": 5.0,
+  "eyesFollowPointer": false
 }"##;
 
     fn custom() -> Value {
@@ -1000,6 +1008,8 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "compactHideDelay",
+                "eyesFollowPointer",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
@@ -1059,5 +1069,14 @@ mod tests {
         let loaded = load_from(&file);
         assert!(loaded.sound_volume >= 0.0);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+    #[test]
+    fn a_file_from_before_compact_delay_and_eyes_keeps_defaults() {
+        let mut obj = custom().as_object().unwrap().clone();
+        obj.remove("compactHideDelay");
+        obj.remove("eyesFollowPointer");
+        let s: Settings = serde_json::from_value(Value::Object(obj)).unwrap();
+        assert_eq!(s.compact_hide_delay, 60.0);
+        assert_eq!(s.eyes_follow_pointer, true);
     }
 }
