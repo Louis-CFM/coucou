@@ -81,6 +81,16 @@ test("a session names the pill after its folder and reveals the island", () => {
   assert.deepEqual(asked, ["reveal"]);
 });
 
+test("a prompt sent while the finished card shows takes the card back to the overview", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "/p/proj" });
+  State.setFocus(CLAUDE);
+  State.mode = "expanded";
+  State.view = "finished";
+  asked = [];
+  hook({ hook_event_name: "UserPromptSubmit", cwd: "/p/proj", prompt: "one more thing" });
+  assert.ok(asked.includes("setView:overview"));
+});
+
 test("known project folders get their display name, and no folder is a Session", () => {
   hook({ hook_event_name: "SessionStart", cwd: "/home/me/notch-buddy" });
   assert.equal(task().name, "Notch Buddy");
