@@ -9,6 +9,7 @@
 //   * anyone who is not on the local network (private, loopback, link-local);
 //   * a first message that is not a valid `hello` within a few seconds;
 //   * a wrong token or protocol version (after a short pause, so guessing is slow);
+//   * a hello that arrives after the link was turned off, even with the right token;
 //   * a line over 64 KiB, or silence for 20 minutes (the phone pings every 20 s while it is awake, and checks in every few minutes while it sleeps);
 //   * more than a handful of connections at once, and more than two silent ones from one address: see
 //     admission.rs (strangers share a small pool, a phone that authenticated before keeps its place, and the
@@ -17,7 +18,7 @@
 // applies the request still pending.
 
 use std::net::IpAddr;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -110,11 +111,14 @@ pub struct Shared {
     pub chat: Option<Arc<ChatLink>>,
     pub features: Arc<dyn Features>,
     admission: Arc<Admission>,
+    /// Set when the link is turned off: a connection that was still before its hello is refused even with the
+    /// right token (the token is kept: an empty one would match an empty hello).
+    closed: AtomicBool,
 }
 
 impl Shared {
     pub fn with_features(hub: Arc<Hub>, token: String, name: String, chat: Option<Arc<ChatLink>>, features: Arc<dyn Features>) -> Arc<Shared> {
-        Arc::new(Shared { hub, token: Mutex::new(token), name, clock: now_ms, chat, features, admission: Admission::new() })
+        Arc::new(Shared { hub, token: Mutex::new(token), name, clock: now_ms, chat, features, admission: Admission::new(), closed: AtomicBool::new(false) })
     }
 }
 
@@ -151,6 +155,8 @@ pub struct Handle {
 impl Handle {
     pub fn stop(self) {
         self.accept.abort();
+        // Before the kick: a connection that subscribes after it then sees the flag (read_loop).
+        self.shared.closed.store(true, Ordering::SeqCst);
         self.shared.hub.kick_all("closed", "the phone link was turned off");
         if let Some(chat) = &self.shared.chat {
             chat.shutdown();
@@ -269,6 +275,11 @@ where
         let _ = tx.send(Out::Close { code: "auth", message: "bad token or version" }).await;
         return;
     }
+    // The link was turned off while this phone was between its TLS handshake and its hello.
+    if shared.closed.load(Ordering::SeqCst) {
+        let _ = tx.send(Out::Close { code: "closed", message: "the phone link was turned off" }).await;
+        return;
+    }
     // A valid hello: from here on this connection no longer counts against the unauthenticated limits, and the
     // address is remembered so a flood from elsewhere cannot keep this phone out.
     if let Some(t) = &ticket {
@@ -322,6 +333,13 @@ where
     }
     let _ = say(welcome).await;
     let (id, evicted) = shared.hub.subscribe_with(tx.clone(), (shared.clock)(), crate::phone_link::hub::Caps { details, answers, prefs, diffs, usage, recap, relay, services });
+    // Turned off after the check above: stop() sets the flag before its kick, so a kick that missed this
+    // connection is seen here, and no line of this phone is ever handled after the link is off.
+    if shared.closed.load(Ordering::SeqCst) {
+        shared.hub.unsubscribe(id);
+        let _ = tx.send(Out::Close { code: "closed", message: "the phone link was turned off" }).await;
+        return;
+    }
 
     // 2. the conversation
     loop {

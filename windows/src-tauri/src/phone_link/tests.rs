@@ -482,6 +482,22 @@ fn turning_it_off_closes_the_phones_and_stops_listening() {
     });
 }
 
+#[test]
+fn a_hello_that_arrives_after_the_link_was_turned_off_is_refused() {
+    block_on(async {
+        let mut rig = Rig::start().await;
+        rig.approval("req-1", "ls", 0);
+        // Connected, but not yet said hello, when the user turns the link off.
+        let mut c = Client::connect(rig.port, &rig.fingerprint).await.unwrap();
+        rig.handle.take().unwrap().stop();
+        c.send(json!({ "type": "hello", "v": 1, "token": TOKEN, "device": "late" })).await;
+        let first = c.recv().await;
+        assert!(first.as_ref().is_none_or(|m| m["type"] != "welcome"), "{first:?}");
+        assert!(c.closed().await);
+        assert_eq!(rig.hub.clients(), 0);
+    });
+}
+
 /// True when this machine lets us use 127.0.0.2 and 127.0.0.3 as other devices (Linux and Windows do; some systems do not).
 fn loopback_aliases() -> bool {
     ["127.0.0.2", "127.0.0.3"].iter().all(|a| std::net::TcpListener::bind((*a, 0)).is_ok())

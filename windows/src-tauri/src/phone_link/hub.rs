@@ -22,6 +22,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::mpsc;
 
+use super::chat::cut;
+
 /// The desktop dismisses a request after this long (the phone offers it for 120 s).
 pub const APPROVAL_TTL_MS: u64 = 115_000;
 
@@ -31,17 +33,18 @@ const MAX_TEXT_CHARS: usize = 200;
 /// Details (cap `details`): at most this many steps per session, each cut at MAX_TEXT_CHARS.
 pub const MAX_STEPS: usize = 20;
 const MAX_PROJECT_CHARS: usize = 64;
-/// A `sessions` line with details stays under this, so it never reaches the 64 KiB limit of a line
-/// (16 sessions of 20 steps of 200 characters would be 64 KB of text alone).
-pub const DETAILS_LINE_BUDGET: usize = 56 * 1024;
+/// A `sessions` line with details or files, and each part of a diff, stays under this (counted in bytes as
+/// sent), so it never reaches the 64 KiB limit of a line (16 sessions of 20 steps of 200 characters would be
+/// 64 KB of text alone, and a non-Latin character takes 2 to 4 bytes).
+pub const LINE_BUDGET: usize = 56 * 1024;
 
 /// File changes (cap `diffs`): the list of files of a session, and a file's lines on request.
 pub const MAX_FILES: usize = 20;
 const MAX_FILE_NAME_CHARS: usize = 80;
-/// One file's diff: at most this many lines, each cut at MAX_DIFF_LINE_CHARS, sent in parts of PART_LINES so
-/// no line of the link nears the 64 KiB limit.
+/// One file's diff: at most this many lines, each cut at MAX_DIFF_LINE_BYTES, sent in parts of PART_LINES
+/// that each stay under LINE_BUDGET.
 pub const MAX_DIFF_LINES: usize = 200;
-const MAX_DIFF_LINE_CHARS: usize = 400;
+const MAX_DIFF_LINE_BYTES: usize = 400;
 const PART_LINES: usize = 100;
 /// A phone may ask for this many diffs in 10 seconds.
 const DIFF_ASKS_PER_10S: usize = 20;
@@ -715,10 +718,12 @@ impl Hub {
         told
     }
 
-    /// Unpaired or switched off: every connection is told and closed.
+    /// Unpaired or switched off: every connection is told and closed. Marked too, so a phone whose queue is full
+    /// (the Close does not fit) or that stopped reading (the Close is never written) cannot go on sending.
     pub fn kick_all(&self, code: &'static str, message: &'static str) {
         let subs = std::mem::take(&mut self.inner.lock().unwrap().subs);
         for s in subs {
+            s.evicted.store(true, Ordering::SeqCst);
             let _ = s.tx.try_send(Out::Close { code, message });
         }
     }
@@ -859,29 +864,44 @@ impl Hub {
         let mut inner = self.inner.lock().unwrap();
         let Some(sub) = inner.subs.iter().find(|s| s.id == sub_id && s.diffs) else { return };
         let truncated = diff.lines.len() > MAX_DIFF_LINES;
-        let rows: Vec<serde_json::Value> = diff
-            .lines
-            .iter()
-            .take(MAX_DIFF_LINES)
-            .map(|(k, text)| {
-                let kind = match k.as_str() {
-                    "+" | "-" | "@" => k.as_str(),
-                    _ => " ",
-                };
-                json!([kind, clip(text, MAX_DIFF_LINE_CHARS)])
-            })
-            .collect();
-        let parts: Vec<&[serde_json::Value]> = if rows.is_empty() { vec![&[][..]] } else { rows.chunks(PART_LINES).collect() };
-        let total = parts.len();
         let name = clean_files(&[FileIn { name: diff.name.clone(), ..FileIn::default() }]).first().map(|f| f.name.clone()).unwrap_or_default();
+        // Text that JSON escapes heavily (quotes, backslashes, control characters) grows when sent: the texts are
+        // cut shorter until every part fits.
+        let mut max = MAX_DIFF_LINE_BYTES;
+        let lines = loop {
+            let rows: Vec<serde_json::Value> = diff
+                .lines
+                .iter()
+                .take(MAX_DIFF_LINES)
+                .map(|(k, text)| {
+                    let kind = match k.as_str() {
+                        "+" | "-" | "@" => k.as_str(),
+                        _ => " ",
+                    };
+                    json!([kind, cut(text, max)])
+                })
+                .collect();
+            let parts: Vec<&[serde_json::Value]> = if rows.is_empty() { vec![&[][..]] } else { rows.chunks(PART_LINES).collect() };
+            let total = parts.len();
+            let lines: Vec<String> = parts
+                .iter()
+                .enumerate()
+                .map(|(i, part)| {
+                    json!({
+                        "type": "diff", "pillId": clip(&diff.pill_id, 64), "fileId": diff.file_id, "name": name,
+                        "added": diff.added, "removed": diff.removed, "tooLarge": diff.too_large, "gone": diff.gone,
+                        "truncated": truncated, "part": i, "parts": total, "lines": part,
+                    })
+                    .to_string()
+                })
+                .collect();
+            if max == 0 || lines.iter().all(|l| l.len() <= LINE_BUDGET) {
+                break lines;
+            }
+            max /= 2;
+        };
         let mut ok = true;
-        for (i, part) in parts.iter().enumerate() {
-            let line = json!({
-                "type": "diff", "pillId": clip(&diff.pill_id, 64), "fileId": diff.file_id, "name": name,
-                "added": diff.added, "removed": diff.removed, "tooLarge": diff.too_large, "gone": diff.gone,
-                "truncated": truncated, "part": i, "parts": total, "lines": part,
-            })
-            .to_string();
+        for line in lines {
             ok &= sub.tx.try_send(Out::Line(line.into())).is_ok();
         }
         if !ok {
@@ -1068,9 +1088,9 @@ fn sessions_line(sessions: &[Session]) -> String {
 
 /// The sessions with their details, for a phone that has the capability. Same fields as the v1 line plus
 /// `steps`, `finalLine`, `project` and `color` where there is something to say. Steps are dropped from the
-/// oldest first (and then from all sessions) until the line fits.
+/// oldest first (and then from all sessions), then files the same way, until the line fits.
 fn detailed_line(sessions: &[Session], details: bool, diffs: bool) -> String {
-    let mut keep = MAX_STEPS;
+    let (mut keep, mut keep_files) = (MAX_STEPS, MAX_FILES);
     loop {
         let list: Vec<serde_json::Value> = sessions
             .iter()
@@ -1091,17 +1111,22 @@ fn detailed_line(sessions: &[Session], details: bool, diffs: bool) -> String {
                         v["color"] = json!(c);
                     }
                 }
-                if diffs && !s.files.is_empty() {
-                    v["files"] = json!(s.files.iter().map(file_json).collect::<Vec<_>>());
+                let files = &s.files[s.files.len().saturating_sub(keep_files)..];
+                if diffs && !files.is_empty() {
+                    v["files"] = json!(files.iter().map(file_json).collect::<Vec<_>>());
                 }
                 v
             })
             .collect();
         let line = json!({ "type": "sessions", "sessions": list }).to_string();
-        if line.len() <= DETAILS_LINE_BUDGET || keep == 0 {
+        if line.len() <= LINE_BUDGET || (keep == 0 && keep_files == 0) {
             return line;
         }
-        keep /= 2;
+        if keep > 0 {
+            keep /= 2;
+        } else {
+            keep_files /= 2;
+        }
     }
 }
 
@@ -1405,7 +1430,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(8);
         hub.subscribe(tx, 1_001, true);
         let Out::Line(line) = rx.try_recv().unwrap() else { panic!() };
-        assert!(line.len() <= DETAILS_LINE_BUDGET, "{} bytes", line.len());
+        assert!(line.len() <= LINE_BUDGET, "{} bytes", line.len());
         assert!(line.len() < 64 * 1024);
         let v: serde_json::Value = serde_json::from_str(&line).unwrap();
         let list = v["sessions"].as_array().unwrap();
@@ -1416,6 +1441,30 @@ mod tests {
         assert!(steps.last().unwrap().as_str().unwrap().starts_with("29: "));
         // and the short fields are all still there
         assert_eq!(list[15]["project"], "coucou");
+    }
+
+    #[test]
+    fn sixteen_sessions_with_everything_at_the_limits_in_any_script_still_fit_in_one_line() {
+        for ch in ["ж", "漢", "😀"] {
+            let long = ch.repeat(500);
+            let full = |i: usize| SessionIn {
+                pill_id: format!("agent_{i}"),
+                agent: long.clone(),
+                status_text: long.clone(),
+                steps: vec![long.clone(); 30],
+                final_line: Some(long.clone()),
+                project: Some(long.clone()),
+                files: (0..30).map(|n| file(n, &long)).collect(),
+                ..session("working")
+            };
+            let (hub, _) = hub();
+            hub.publish((0..MAX_SESSIONS).map(full).collect(), None, 1_000);
+            let (_, mut rx) = sub_with(&hub, Caps { details: true, diffs: true, ..Caps::default() });
+            let Out::Line(line) = rx.try_recv().unwrap() else { panic!() };
+            assert!(line.len() <= LINE_BUDGET && line.len() < 64 * 1024, "{ch}: {} bytes", line.len());
+            let v: serde_json::Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(v["sessions"].as_array().unwrap().len(), MAX_SESSIONS);
+        }
     }
 
     #[test]
@@ -1665,6 +1714,16 @@ mod tests {
             }
         }
         assert!(saw);
+    }
+
+    #[test]
+    fn kicking_marks_even_a_phone_whose_queue_is_full() {
+        let (hub, _) = hub();
+        let (tx, _rx) = mpsc::channel(1); // the first sessions line fills it: the Close does not fit
+        let (_, evicted) = hub.subscribe(tx, 0, false);
+        hub.kick_all("auth", "unpaired");
+        // server.rs stops reading a marked connection, so it can no longer decide, answer or chat.
+        assert!(evicted.load(Ordering::SeqCst));
     }
 
     #[test]
@@ -1924,6 +1983,26 @@ mod tests {
         assert_eq!(parts[0]["lines"][0][1].as_str().unwrap().chars().count(), 400);
         assert_eq!(parts[0]["lines"][1][0], " ", "an unknown kind is a context line");
         assert!(parts.iter().all(|p| p.to_string().len() < 60 * 1024));
+    }
+
+    #[test]
+    fn a_full_diff_in_any_script_or_full_of_escapes_stays_under_the_line_limit() {
+        for text in ["ж".repeat(1000), "漢".repeat(1000), "😀".repeat(1000), "\\\"".repeat(500), "\t\u{1}".repeat(500)] {
+            let (hub, _) = hub();
+            let (id, mut rx) = sub_with(&hub, Caps { diffs: true, ..Caps::default() });
+            drain(&mut rx);
+            hub.send_diff(id, diff_in(vec![("+".to_string(), text.clone()); MAX_DIFF_LINES]));
+            let mut parts = 0;
+            while let Ok(Out::Line(line)) = rx.try_recv() {
+                assert!(line.len() <= LINE_BUDGET && line.len() < 64 * 1024, "{:?}: {} bytes", text.chars().next(), line.len());
+                let v: serde_json::Value = serde_json::from_str(&line).unwrap();
+                let rows = v["lines"].as_array().unwrap();
+                assert_eq!(rows.len(), 100);
+                assert!(rows.iter().all(|r| { let t = r[1].as_str().unwrap(); !t.is_empty() && text.starts_with(t) }));
+                parts += 1;
+            }
+            assert_eq!(parts, 2, "the phone was dropped instead of sent the diff");
+        }
     }
 
     #[test]
