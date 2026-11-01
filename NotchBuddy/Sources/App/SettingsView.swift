@@ -385,7 +385,7 @@ struct SettingsView: View {
                         Text("Saved screen (not connected)").tag(state.islandDisplay)
                     }
                 }
-                .frame(maxWidth: 360)
+                .frame(maxWidth: 360, alignment: .leading)
                 Text("On a screen without a notch, Mochi sits in a small bar at the top. Follow the mouse moves it to your cursor's screen while it is closed.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
