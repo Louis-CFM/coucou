@@ -1081,6 +1081,19 @@ pub fn run() {
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
+            // Release the cached speech model after five minutes without use.
+            // Wake listening and active dictation/recording keep it resident.
+            let idle = handle.clone();
+            std::thread::Builder::new()
+                .name("coucou-speech-idle".into())
+                .spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_secs(60));
+                    let busy = voice::is_listening() || flow::pill::dictating(&idle) || notes::is_recording(&idle);
+                    if speech::unload_if_idle(busy) {
+                        log::line("speech: Parakeet cache freed after idle timeout");
+                    }
+                })
+                .ok();
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             phone_link::start_if_enabled(&handle);
