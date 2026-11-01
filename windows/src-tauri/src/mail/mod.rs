@@ -499,6 +499,9 @@ pub struct PlanNote {
 #[serde(rename_all = "camelCase")]
 pub struct PlanRun {
     phase: Phase,
+    /// The Run whose countdown is the current one; any other countdown stops.
+    #[serde(skip)]
+    countdown: u64,
     summary: String,
     sorts: Vec<SortStep>,
     replies: Vec<(Message, String)>,
@@ -514,6 +517,7 @@ impl PlanRun {
     fn new(summary: String) -> PlanRun {
         PlanRun {
             phase: Phase::Preparing,
+            countdown: 0,
             summary,
             sorts: Vec::new(),
             replies: Vec::new(),
@@ -531,6 +535,35 @@ impl PlanRun {
             + self.replies.len()
             + self.saves.len()
             + self.mails.iter().filter(|m| m.problem.is_none()).count()
+    }
+
+    /// Run on a Ready or Cancelled plan starts countdown `token`. Checked and set under
+    /// one `rt()` lock, so Run -> Cancel -> Run never leaves two countdowns alive.
+    fn start_countdown(&mut self, token: u64) -> bool {
+        if !matches!(self.phase, Phase::Ready | Phase::Cancelled) {
+            return false;
+        }
+        self.phase = Phase::Countdown { seconds: 5 };
+        self.countdown = token;
+        true
+    }
+
+    /// Moves countdown `token` on to `next`; false once it was cancelled or replaced.
+    fn advance_countdown(&mut self, token: u64, next: Phase) -> bool {
+        if self.countdown != token || !matches!(self.phase, Phase::Countdown { .. }) {
+            return false;
+        }
+        self.phase = next;
+        true
+    }
+
+    /// Cancel stops a countdown at once; later steps are stopped by `cancelled`.
+    fn cancel_countdown(&mut self) -> bool {
+        let counting = matches!(self.phase, Phase::Countdown { .. });
+        if counting {
+            self.phase = Phase::Cancelled;
+        }
+        counting
     }
 }
 
@@ -746,25 +779,27 @@ pub async fn mail_plan_test(app: AppHandle, id: String) -> Result<(), String> {
 /// Run: 5 seconds to change one's mind, then every step in order.
 #[tauri::command]
 pub async fn mail_plan_start(app: AppHandle, id: String) -> Result<(), String> {
+    let token = COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
     let run = {
         let mut r = rt();
+        let run = r.plans.get_mut(&id).ok_or("no plan")?;
+        if !run.start_countdown(token) {
+            return Ok(());
+        }
+        let run = run.clone();
         r.cancelled.remove(&id);
-        r.plans.get(&id).cloned().ok_or("no plan")?
+        run
     };
-    if !matches!(run.phase, Phase::Ready | Phase::Cancelled) {
-        return Ok(());
-    }
     tauri::async_runtime::spawn(async move {
+        let advance = |next: Phase| rt().plans.get_mut(&id).is_some_and(|run| run.advance_countdown(token, next));
         for s in (1..=5).rev() {
-            if rt().cancelled.contains(&id) {
-                set_phase(&app, &id, Phase::Cancelled);
+            if !advance(Phase::Countdown { seconds: s }) {
                 return;
             }
-            set_phase(&app, &id, Phase::Countdown { seconds: s });
+            emit_plan(&app, &id);
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
-        if rt().cancelled.contains(&id) {
-            set_phase(&app, &id, Phase::Cancelled);
+        if !advance(Phase::Running { done: 0, total: run.count() }) {
             return;
         }
         execute(&app, &id, run).await;
@@ -777,10 +812,10 @@ pub fn mail_plan_cancel(app: AppHandle, id: String) {
     let countdown = {
         let mut r = rt();
         r.cancelled.insert(id.clone());
-        matches!(r.plans.get(&id).map(|p| &p.phase), Some(Phase::Countdown { .. }))
+        r.plans.get_mut(&id).is_some_and(PlanRun::cancel_countdown)
     };
     if countdown {
-        set_phase(&app, &id, Phase::Cancelled);
+        emit_plan(&app, &id);
     }
 }
 
@@ -838,5 +873,29 @@ async fn execute(app: &AppHandle, id: &str, run: PlanRun) {
     set_phase(app, id, Phase::Done { ok, failed });
     if pill_on(app) {
         emit_card(app, true);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn run_cancel_run_leaves_one_countdown_alive() {
+        let mut run = PlanRun::new("plan".into());
+        run.phase = Phase::Ready;
+        assert!(run.start_countdown(1));
+        assert!(!run.start_countdown(2), "a second Run during the countdown starts nothing");
+        assert!(run.advance_countdown(1, Phase::Countdown { seconds: 4 }));
+        assert!(run.cancel_countdown());
+        assert!(matches!(run.phase, Phase::Cancelled));
+        assert!(!run.advance_countdown(1, Phase::Countdown { seconds: 3 }));
+        assert!(run.start_countdown(3));
+        // The first countdown wakes up inside the second one: it must stop, not send.
+        assert!(!run.advance_countdown(1, Phase::Running { done: 0, total: 1 }));
+        assert!(matches!(run.phase, Phase::Countdown { seconds: 5 }));
+        assert!(run.advance_countdown(3, Phase::Running { done: 0, total: 1 }));
+        assert!(!run.start_countdown(4), "Run while running starts nothing");
+        assert!(!run.cancel_countdown(), "Cancel while running leaves the phase to `cancelled`");
     }
 }
