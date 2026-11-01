@@ -1,168 +1,199 @@
-// WhatsApp (experimental) on the page: what src-tauri/src/whatsapp reports, and the pure rules the
-// card and Settings follow — ports of WhatsAppModels.swift (initials, previews) and
-// WhatsAppViews.swift (status labels, the time since). Rust only ever sends codes; the words are
-// chosen here, in the user's language. Nothing of a message is stored by the page either.
+// The WhatsApp pill on the page: what src-tauri/src/whatsapp reports, and the
+// small pure rules the card and Settings share — ports of WhatsAppModels.swift
+// (WAJID, WAMessage.previewKey) and the helpers of WhatsAppViews.swift.
+// Experimental, as on the Mac: off until turned on in Settings.
 
 import { N_, t } from "../i18n/i18n";
 
 export const WHATSAPP_ID = "integration_whatsapp";
-/** WhatsApp's own green: the pill keeps it whatever, like the brand. */
+/** whatsAppAccent: WhatsApp's own green, whatever the pill colours. */
 export const WHATSAPP_GREEN = "#25D366";
 
-export type WaMedia =
-  | { kind: "none" | "image" | "video" | "sticker" | "location" | "contact" | "other" }
-  | { kind: "audio" | "voice"; seconds: number | null }
-  | { kind: "document"; name: string | null };
+export type WhatsAppMedia =
+  | { kind: "none" }
+  | { kind: "image" }
+  | { kind: "video" }
+  | { kind: "audio"; seconds: number | null }
+  | { kind: "voice"; seconds: number | null }
+  | { kind: "document"; name: string | null }
+  | { kind: "sticker" }
+  | { kind: "location" }
+  | { kind: "contact" }
+  | { kind: "other" };
 
-export interface WaMessage {
+export interface WhatsAppMessage {
   id: string;
   chat: string;
   sender: string;
   senderName: string;
   text: string;
-  media: WaMedia;
-  /** Unix ms. */
+  media: WhatsAppMedia;
+  /** Unix seconds. */
   date: number;
   fromMe: boolean;
   mentionsMe: boolean;
 }
 
-export interface WaConversation {
+export interface WhatsAppConversation {
   id: string;
   name: string;
   isGroup: boolean;
-  /** Oldest first. */
-  messages: WaMessage[];
+  /** Newest last, ten at most. */
+  messages: WhatsAppMessage[];
   unread: number;
   lastActivity: number;
 }
 
-export type WaLink =
-  | { state: "off" | "badUrl" | "connecting" | "needsQr" | "connected" | "unreachable" | "unauthorized" }
-  | { state: "failed"; detail: string };
+export type WhatsAppGateway = "gowa" | "openwa";
 
-export type WaSendError =
-  | { code: "tooLong" | "tooFast" | "unreachable" | "unauthorized" | "needsQr" }
-  | { code: "refused"; detail: string };
-
-/** IslandView in src-tauri/src/whatsapp/mod.rs. */
-export interface WaIslandView {
-  on: boolean;
-  link: WaLink;
-  /** Newest first, filters applied. */
-  conversations: WaConversation[];
-  unread: number;
-  sending: boolean;
-  sendError: WaSendError | null;
-  /** The gateway failed twice in a row: the pill's red dot. */
-  down: boolean;
-}
-
-export const IDLE_WHATSAPP: WaIslandView = {
-  on: false, link: { state: "off" }, conversations: [], unread: 0, sending: false, sendError: null, down: false,
-};
-
-/** The page's copy of what Rust keeps. */
-export const WhatsApp = {
-  view: { ...IDLE_WHATSAPP } as WaIslandView,
-};
-
-export type WaWebhook =
-  | { state: "off" | "listening" | "registered" }
-  | { state: "refused"; detail: string }
-  | { state: "portBusy"; port: number };
-
-export type WaInstallStep =
-  | { step: "idle" | "checking" | "verifying" | "installing" }
-  | { step: "downloading"; megabytes: number }
-  | { step: "done"; version: string }
-  | { step: "failed"; reason: string };
-
-export interface WaPrefs {
+export interface WhatsAppPrefs {
   enabled: boolean;
-  gateway: "gowa" | "openwa";
+  gateway: WhatsAppGateway;
   port: number;
   markReadOnOpen: boolean;
+  respectFocus: boolean;
   muteGroups: boolean;
   ignored: string[];
-  autoStart: boolean;
-  gowaPath: string;
-  gowaVersion: string | null;
+  autostart: boolean;
+  installedVersion: string | null;
 }
 
-/** SettingsView in src-tauri/src/whatsapp/mod.rs. */
-export interface WaSettingsView {
-  prefs: WaPrefs;
+export type WhatsAppLink =
+  | { state: "off" }
+  | { state: "connecting" }
+  | { state: "needsQr" }
+  | { state: "connected" }
+  | { state: "unreachable" }
+  | { state: "unauthorized" }
+  | { state: "failed"; detail: string };
+
+export type WhatsAppWebhook =
+  | { state: "off" }
+  | { state: "listening" }
+  | { state: "registered" }
+  | { state: "refused"; detail: string }
+  | { state: "portBusy" };
+
+export type WhatsAppInstall =
+  | { step: "idle" }
+  | { step: "checking" }
+  | { step: "downloading"; megabytes: number }
+  | { step: "verifying" }
+  | { step: "installing" }
+  | { step: "done"; version: string }
+  | { step: "failed"; message: string };
+
+export interface WhatsAppState {
+  prefs: WhatsAppPrefs;
   url: string;
-  defaultUrl: string;
   hasCredential: boolean;
-  link: WaLink;
-  webhook: WaWebhook;
+  link: WhatsAppLink;
+  webhook: WhatsAppWebhook;
+  /** The QR to scan, as a data URL. */
   qr: string | null;
   me: string | null;
-  install: WaInstallStep;
+  conversations: WhatsAppConversation[];
+  unread: number;
+  sending: boolean;
+  sendError: string | null;
+  /** The gateway down twice in a row: the pill's small red dot. */
+  down: boolean;
+  install: WhatsAppInstall;
   installed: boolean;
-  gowaDir: string;
-  pillActive: boolean;
-  ignored: { id: string; name: string }[];
+  focusReadable: boolean;
 }
 
-export type WaTestResult =
-  | { result: "needsQr" | "connecting" | "badUrl" | "unreachable" | "unauthorized" }
-  | { result: "connected"; who: string }
-  | { result: "refused"; detail: string };
-
-export const DEFAULT_URLS = { gowa: "http://127.0.0.1:3000", openwa: "http://127.0.0.1:2785" } as const;
 export const DEFAULT_PORT = 47823;
 
-// ── Pure rules ────────────────────────────────────────────────────────────────
+export const IDLE_WHATSAPP: WhatsAppState = {
+  prefs: {
+    enabled: false, gateway: "gowa", port: DEFAULT_PORT, markReadOnOpen: true, respectFocus: true,
+    muteGroups: true, ignored: [], autostart: false, installedVersion: null,
+  },
+  url: "http://127.0.0.1:3000",
+  hasCredential: false,
+  link: { state: "off" },
+  webhook: { state: "off" },
+  qr: null,
+  me: null,
+  conversations: [],
+  unread: 0,
+  sending: false,
+  sendError: null,
+  down: false,
+  install: { step: "idle" },
+  installed: false,
+  focusReadable: true,
+};
 
-/** WAJID.initials: the first letters of the first two words, "#" when there are none. */
+/** What Rust last said, for the island and Settings alike. */
+export const WhatsApp = {
+  state: { ...IDLE_WHATSAPP } as WhatsAppState,
+  /** A conversation the card should open next (a message just came in), or null. */
+  openRequest: null as string | null,
+  /** The card is open on a conversation with something typed in the reply. */
+  drafting: false,
+};
+
+/** The gateways' own default addresses (WAGatewayKind.defaultURL). */
+export function defaultUrl(gateway: WhatsAppGateway): string {
+  return gateway === "gowa" ? "http://127.0.0.1:3000" : "http://127.0.0.1:2785";
+}
+
+// ── WAJID ─────────────────────────────────────────────────────────────────────
+
+/** "33612345678@s.whatsapp.net" → "+33612345678"; anything else, its user part. */
+export function displayNumber(jid: string): string {
+  const user = jid.split("@")[0] ?? jid;
+  const digits = user.split(":")[0] ?? user;
+  return digits !== "" && /^\d+$/.test(digits) ? `+${digits}` : digits;
+}
+
+/** Two letters for the avatar: "Marie Dupont" → "MD", "+33 6…" → "#". */
 export function initials(name: string): string {
-  const words = name.split(/[ -]/).filter((w) => /^\p{L}/u.test(w));
-  const letters = words.slice(0, 2).map((w) => [...w][0].toUpperCase());
-  return letters.length ? letters.join("") : "#";
+  const letters = name
+    .split(/[ -]/)
+    .filter((w) => /^\p{L}/u.test(w))
+    .slice(0, 2)
+    .map((w) => Array.from(w)[0]!.toUpperCase())
+    .join("");
+  return letters || "#";
 }
 
-/** WAJID.duration: 12 → "0:12", 75 → "1:15". */
-export function duration(seconds: number): string {
-  const s = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+/** A phone number ("+33 6 12…") or a full chat id ("…@g.us") typed in Settings. */
+export function chatFromEntry(raw: string): string | null {
+  const entry = raw.trim();
+  if (!entry) return null;
+  const chat = entry.includes("@") ? entry : `${entry.replace(/\D/g, "")}@s.whatsapp.net`;
+  return chat.length > "@s.whatsapp.net".length ? chat : null;
 }
 
-/** The label a media gets (English keys, shown with `t()`). */
-export const MEDIA_LABELS = {
-  image: N_("Photo"),
-  video: N_("Video"),
-  voice: N_("Voice message"),
-  document: N_("Document"),
-  sticker: N_("Sticker"),
-  location: N_("Location"),
-  contact: N_("Contact"),
-  other: N_("Message"),
-} as const;
+// ── Lines ─────────────────────────────────────────────────────────────────────
 
-/** WAMessage.previewKey: the media's label (if any) and the text that goes with it. */
-export function previewParts(m: WaMessage): { label: string | null; value: string } {
-  const media = m.media;
-  switch (media.kind) {
-    case "none": return { label: null, value: m.text };
-    case "image": return { label: MEDIA_LABELS.image, value: m.text };
-    case "video": return { label: MEDIA_LABELS.video, value: m.text };
+function duration(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** WAMessage.previewKey: the media's label (English key, or "") and the text. */
+export function previewKey(m: WhatsAppMessage): [string, string] {
+  switch (m.media.kind) {
+    case "none": return ["", m.text];
+    case "image": return [N_("Photo"), m.text];
+    case "video": return [N_("Video"), m.text];
     case "audio":
-    case "voice": return { label: MEDIA_LABELS.voice, value: media.seconds != null ? duration(media.seconds) : "" };
-    case "document": return { label: MEDIA_LABELS.document, value: media.name ?? m.text };
-    case "sticker": return { label: MEDIA_LABELS.sticker, value: "" };
-    case "location": return { label: MEDIA_LABELS.location, value: "" };
-    case "contact": return { label: MEDIA_LABELS.contact, value: "" };
-    default: return { label: MEDIA_LABELS.other, value: m.text };
+    case "voice": return [N_("Voice message"), m.media.seconds != null ? duration(m.media.seconds) : ""];
+    case "document": return [N_("Document"), m.media.name ?? m.text];
+    case "sticker": return [N_("Sticker"), ""];
+    case "location": return [N_("Location"), ""];
+    case "contact": return [N_("Contact"), ""];
+    default: return [N_("Message"), m.text];
   }
 }
 
-/** waPreview: "Marie: see you", "You: ok", "Photo · look", "Voice message": one line. */
-export function preview(m: WaMessage, isGroup: boolean): string {
-  const { label, value } = previewParts(m);
-  let line = label == null ? value : value ? `${t(label)} · ${value}` : t(label);
+/** "Marie: see you", "You: ok", "Photo · look", "Voice message": one line, media as a label only. */
+export function previewLine(m: WhatsAppMessage, isGroup: boolean): string {
+  const [key, value] = previewKey(m);
+  let line = key ? (value ? `${t(key)} · ${value}` : t(key)) : value;
   line = line.replace(/\n/g, " ");
   if (m.fromMe) return `${t("You")}: ${line}`;
   if (isGroup && m.senderName) return `${m.senderName}: ${line}`;
@@ -170,19 +201,18 @@ export function preview(m: WaMessage, isGroup: boolean): string {
 }
 
 /** waTimeAgo: now, 5m, 3h, 2d. */
-export function timeAgo(ms: number, now = Date.now()): string {
-  const diff = (now - ms) / 1000;
+export function timeAgo(seconds: number, nowMs = Date.now()): string {
+  const diff = nowMs / 1000 - seconds;
   if (diff < 60) return t("now");
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
   return `${Math.floor(diff / 86400)}d`;
 }
 
-/** WhatsAppStatus.label. */
-export function linkLabel(link: WaLink): string {
+/** WhatsAppStatus.label: what the link reads like, in the card and in Settings. */
+export function linkLabel(link: WhatsAppLink): string {
   switch (link.state) {
     case "off": return t("Turned off in Settings");
-    case "badUrl": return t("The gateway URL isn’t valid (http://…)");
     case "connecting": return t("Connecting to the gateway…");
     case "needsQr": return t("Scan the QR code in Settings");
     case "connected": return t("Connected");
@@ -193,7 +223,7 @@ export function linkLabel(link: WaLink): string {
 }
 
 /** WhatsAppStatus.dot. */
-export function linkColor(link: WaLink): string {
+export function linkColor(link: WhatsAppLink): string {
   switch (link.state) {
     case "connected": return "#22C55E";
     case "connecting":
@@ -203,93 +233,17 @@ export function linkColor(link: WaLink): string {
   }
 }
 
-export function sendErrorLabel(e: WaSendError): string {
-  switch (e.code) {
-    case "tooLong": return t("Too long for one message (4,096 characters at most).");
-    case "tooFast": return t("A few replies a minute at most: wait a moment.");
-    case "unreachable": return t("The gateway doesn’t answer: is it running?");
-    case "unauthorized": return t("The gateway refuses the credentials");
-    case "needsQr": return t("Scan the QR code in Settings");
-    case "refused": return e.detail;
-  }
+/** The install is under way: Settings shows its step instead of the button. */
+export function installing(step: WhatsAppInstall): boolean {
+  return step.step === "checking" || step.step === "downloading" || step.step === "verifying" || step.step === "installing";
 }
 
-/** The last ten messages of a conversation, oldest first: what the open card shows. */
-export function lastMessages(c: WaConversation, count = 10): WaMessage[] {
-  return c.messages.slice(-count);
-}
-
-/** Enter sends, Shift+Enter is a new line; IME composition never sends. */
-export function keyAction(e: { key: string; shiftKey: boolean; isComposing?: boolean }): "send" | "newline" | "back" | null {
-  if (e.key === "Escape") return "back";
-  if (e.key !== "Enter" || e.isComposing) return null;
-  return e.shiftKey ? "newline" : "send";
-}
-
-/** Something worth sending: not only spaces and new lines. */
-export function canSend(draft: string, sending: boolean): boolean {
-  return !sending && draft.trim().length > 0;
-}
-
-// ── Settings' words ───────────────────────────────────────────────────────────
-
-/** What a running install says (Settings). */
-export function installStepLabel(s: WaInstallStep): string {
-  switch (s.step) {
+export function installLabel(step: WhatsAppInstall): string {
+  switch (step.step) {
     case "checking": return t("Looking for the latest GOWA…");
-    case "downloading": return t("Downloading ({megabytes} MB)…", { megabytes: s.megabytes });
+    case "downloading": return t("Downloading ({0} MB)…", { 0: step.megabytes });
     case "verifying": return t("Checking the download…");
     case "installing": return t("Installing and starting…");
     default: return "";
   }
-}
-
-/** Why an install stopped (install.rs's reasons). */
-export function installFailure(reason: string): string {
-  switch (reason) {
-    case "noBuild": return t("No GOWA build for this computer was found on GitHub. Try again later, or set your own gateway under Advanced.");
-    case "noChecksum": return t("GOWA's release has no checksum to check the download against: nothing was installed.");
-    case "badChecksum": return t("The download doesn't match the file GOWA published: it was deleted, nothing was installed.");
-    case "unzipFailed": return t("The download couldn't be unzipped. Try again.");
-    default: return t("The download didn't go through. Check your connection and try again.");
-  }
-}
-
-/** Why the last install stopped, in words; null when it didn't. */
-export function installError(s: WaInstallStep): string | null {
-  return s.step === "failed" ? installFailure(s.reason) : null;
-}
-
-export function isInstalling(s: WaInstallStep): boolean {
-  return s.step === "checking" || s.step === "downloading" || s.step === "verifying" || s.step === "installing";
-}
-
-/** Whether messages come at once or every 20 s, and why. */
-export function webhookLine(w: WaWebhook): string {
-  switch (w.state) {
-    case "registered": return t("Live: new messages arrive at once.");
-    case "portBusy": return t("Port {port} is taken: pick another one. Checking every 20 s meanwhile.", { port: w.port });
-    case "refused": return t("The gateway refused Coucou’s address ({detail}). Checking every 20 s instead.", { detail: w.detail });
-    default: return t("Checking for new messages every 20 s.");
-  }
-}
-
-/** "Test connection"'s answer. */
-export function testResultLabel(r: WaTestResult): string {
-  switch (r.result) {
-    case "connected": return t("Connected as {number}.", { number: r.who });
-    case "needsQr": return t("The gateway answers. Scan the QR code below with your phone.");
-    case "connecting": return t("The gateway answers and is connecting to WhatsApp…");
-    case "badUrl": return linkLabel({ state: "badUrl" });
-    case "unreachable": return linkLabel({ state: "unreachable" });
-    case "unauthorized": return linkLabel({ state: "unauthorized" });
-    case "refused": return r.detail;
-  }
-}
-
-/** The status and QR once there is a gateway to talk to: before the install, "the gateway doesn't
- *  answer" would only confuse. */
-export function showsLinkState(v: WaSettingsView): boolean {
-  if (v.prefs.gateway !== "gowa" || v.installed || v.url !== "") return true;
-  return v.link.state === "connected" || v.link.state === "needsQr";
 }

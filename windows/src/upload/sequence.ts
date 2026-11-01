@@ -19,7 +19,7 @@ export const USC = {
   REST_Y: 104,
   D_BOX: 62,
   FOLLOW_MIN: 60, // CARD_X + 50
-  FOLLOW_MAX: 580, // CARD_X + CARD_W - 50
+  FOLLOW_MAX: 440, // short of the Tools tile (TOOLS_ZONE)
   TEXT_X: 196,
   TEXT_Y: 94,
   BAR_X0: 46,

@@ -10,6 +10,7 @@ import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { NO_UPDATE, mayOffer, type UpdateOffer, type UpdateStatus } from "../core/update";
 import { updateWaiting, type Later } from "../whats-new/whats-new";
+import { NEON } from "../core/layout";
 
 /**
  * "Later" for the blue Mochi (whats-new.ts): which version, and when. Rust
@@ -41,6 +42,8 @@ function writeLater(later: Later) {
 /** What the update card needs from the island. */
 export interface UpdateHost {
   alert(view: IslandViewName): void;
+  /** The neon around the island's edge (Island.neon); a host without an edge has none. */
+  neon?(color: string): void;
   collapse(): void;
   emote(name: BotEmoteName): void;
 }
@@ -101,6 +104,7 @@ class UpdateController {
     if (!this.status.latest && offer === "announce") return;
     this.asking = false;
     host.alert("update");
+    host.neon?.(NEON.update);
     if (offer === "announce") {
       void Bridge.updateShown("announce");
       host.emote("surprised");

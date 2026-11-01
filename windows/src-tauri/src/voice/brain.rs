@@ -3,6 +3,10 @@
 // mail app opens with it filled in; the user sends it) and Anthropic's web
 // search. The conversation lives in memory only and is forgotten 90 s after
 // the last turn. Port of ClaudeVoiceBrain.swift.
+//
+// Without a Claude key, Gemini answers with the Google AI key instead: the same
+// tools as function declarations, and the web through a second Gemini call that
+// searches Google (the two kinds of tools don't mix in one request).
 
 use std::time::{Duration, Instant};
 
@@ -10,17 +14,54 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
 
 const FAST_MODEL: &str = "claude-haiku-4-5";
+const GEMINI_MODEL: &str = "gemini-2.5-flash";
+const GOOGLE_KEY: &str = "google-api-key";
 const FORGET_AFTER: Duration = Duration::from_secs(90);
 
 pub struct Brain {
     messages: Vec<Value>,
+    /// Gemini's side of the conversation, in its own shape.
+    contents: Vec<Value>,
     last: Instant,
 }
 
 impl Default for Brain {
     fn default() -> Self {
-        Self { messages: Vec::new(), last: Instant::now() }
+        Self { messages: Vec::new(), contents: Vec::new(), last: Instant::now() }
     }
+}
+
+/// Who answers « OK Coucou »: Claude with its key, else Gemini with the Google AI key.
+pub fn available() -> Option<&'static str> {
+    if crate::secrets::present(crate::claude::KEY) {
+        Some("claude")
+    } else if crate::secrets::present(GOOGLE_KEY) {
+        Some("gemini")
+    } else {
+        None
+    }
+}
+
+/// Claude's tools as Gemini function declarations, with the web as one of them.
+fn gemini_tools() -> Value {
+    let mut decls: Vec<Value> = tools()
+        .into_iter()
+        .filter_map(|t| {
+            let schema = t.get("input_schema")?;
+            let mut decl = json!({ "name": t["name"], "description": t["description"] });
+            // Gemini refuses an object with no properties: such a tool takes none.
+            if schema["properties"].as_object().is_some_and(|p| !p.is_empty()) {
+                decl["parameters"] = schema.clone();
+            }
+            Some(decl)
+        })
+        .collect();
+    decls.push(json!({
+        "name": "web_search",
+        "description": "Search the web with Google for anything current: weather, news, scores, prices, facts you are not sure of.",
+        "parameters": { "type": "object", "properties": { "query": { "type": "string" } }, "required": ["query"] }
+    }));
+    json!([{ "functionDeclarations": decls }])
 }
 
 pub struct Reply {
@@ -106,8 +147,12 @@ impl Brain {
     pub fn respond(&mut self, app: &AppHandle, transcript: &str) -> Option<Reply> {
         if self.last.elapsed() > FORGET_AFTER {
             self.messages.clear();
+            self.contents.clear();
         }
         self.last = Instant::now();
+        if available() == Some("gemini") {
+            return self.respond_gemini(app, transcript);
+        }
         self.messages.push(json!({ "role": "user", "content": transcript }));
         self.trim();
         let pills = super::ask_island(app, "pills", json!({ "action": "list" })).unwrap_or_default();
@@ -167,6 +212,93 @@ impl Brain {
         Some(Reply { text: spoken_text(&spoken), acted })
     }
 
+    /// The same turn with Gemini: function calls run as Claude's tools do.
+    fn respond_gemini(&mut self, app: &AppHandle, transcript: &str) -> Option<Reply> {
+        let key = crate::secrets::get(GOOGLE_KEY)?;
+        let google = crate::openai_compat::provider("google")?;
+        self.contents.push(json!({ "role": "user", "parts": [{ "text": transcript }] }));
+        if self.contents.len() > 24 {
+            let mut cut = self.contents.len() - 24;
+            while cut < self.contents.len() - 1 && self.contents[cut]["parts"][0]["text"].is_null() {
+                cut += 1;
+            }
+            self.contents.drain(..cut);
+        }
+        let pills = super::ask_island(app, "pills", json!({ "action": "list" })).unwrap_or_default();
+        let system = system_prompt(&pills);
+        let Ok(endpoint) = reqwest::Url::parse(&format!(
+            "https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+        )) else {
+            return None;
+        };
+        let mut acted = false;
+        let mut spoken = String::new();
+        for _ in 0..5 {
+            let body = json!({
+                "systemInstruction": { "parts": [{ "text": system }] },
+                "contents": self.contents,
+                "tools": gemini_tools(),
+                "generationConfig": { "maxOutputTokens": 1024 },
+            });
+            let turn = tauri::async_runtime::block_on(crate::openai_compat::post_json(
+                google,
+                &endpoint,
+                crate::openai_compat::Auth::GoogApiKey(&key),
+                &body,
+            ));
+            let turn = match turn {
+                Ok(t) => t,
+                Err(err) => {
+                    crate::log::line(format!("voice: Gemini turn failed: {err}"));
+                    if self.contents.last().is_some_and(|c| c["role"] == "user" && c["parts"][0]["text"].is_string()) {
+                        self.contents.pop();
+                    }
+                    return acted.then(|| Reply { text: String::new(), acted });
+                }
+            };
+            let parts = turn.pointer("/candidates/0/content/parts").and_then(Value::as_array).cloned().unwrap_or_default();
+            // Gemini's own parts go back as they came (its thought signatures with them).
+            self.contents.push(json!({ "role": "model", "parts": parts }));
+            let text = parts
+                .iter()
+                .filter(|p| p["thought"] != true)
+                .filter_map(|p| p["text"].as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+            if !text.trim().is_empty() {
+                spoken = text;
+            }
+            let calls: Vec<&Value> = parts.iter().filter_map(|p| p.get("functionCall")).collect();
+            if calls.is_empty() {
+                break;
+            }
+            let mut responses = Vec::new();
+            for call in calls {
+                let name = call["name"].as_str().unwrap_or("");
+                let args = call.get("args").cloned().unwrap_or_else(|| json!({}));
+                let result = if name == "web_search" {
+                    let query = json!({ "role": "user", "content": args["query"].as_str().unwrap_or("") });
+                    tauri::async_runtime::block_on(crate::gemini::reply(google, GEMINI_MODEL, &key, &[], &query))
+                        .unwrap_or_else(|err| err)
+                } else {
+                    let (result, did) = super::run_tool(app, name, &args);
+                    acted |= did;
+                    result
+                };
+                responses.push(json!({ "functionResponse": { "name": name, "response": { "content": result } } }));
+            }
+            self.contents.push(json!({ "role": "user", "parts": responses }));
+            spoken.clear();
+        }
+        // Never a history ending on a call with no answer after it.
+        if self.contents.last().is_some_and(|c| {
+            c["role"] == "model" && c["parts"].as_array().is_some_and(|p| p.iter().any(|p| p.get("functionCall").is_some()))
+        }) {
+            self.contents.pop();
+        }
+        Some(Reply { text: spoken_text(&spoken), acted })
+    }
+
     /// Keeps the last exchanges, never cutting between a tool call and its result.
     fn trim(&mut self) {
         if self.messages.len() <= 24 {
@@ -216,6 +348,19 @@ mod tests {
     fn markdown_and_citations_are_not_read_aloud() {
         assert_eq!(spoken_text("**Done** — Stripe [1] is in the island."), "Done — Stripe is in the island.");
         assert_eq!(spoken_text("  Il fait  20 °C à Bordeaux. "), "Il fait 20 °C à Bordeaux.");
+    }
+
+    #[test]
+    fn gemini_gets_every_tool_and_the_web() {
+        let decls = gemini_tools()[0]["functionDeclarations"].as_array().unwrap().clone();
+        let names: Vec<&str> = decls.iter().filter_map(|d| d["name"].as_str()).collect();
+        assert_eq!(names, ["pills", "music", "service_info", "open_app", "prepare_email", "web_search"]);
+        // No object without properties: Gemini refuses those.
+        for d in &decls {
+            if let Some(p) = d.get("parameters") {
+                assert!(!p["properties"].as_object().unwrap().is_empty(), "{d}");
+            }
+        }
     }
 
     #[test]

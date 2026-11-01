@@ -2,6 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
+import { t, tl } from "../i18n/i18n";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
@@ -13,6 +14,7 @@ import {
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
+import { WHATSAPP_ID } from "../core/whatsapp";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -20,16 +22,17 @@ import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { dominantPct, planColor } from "../core/plan";
-import { tl } from "../i18n/i18n";
 import { claudeCompactPillVisible, closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
-import { h } from "../views/dom";
+import { h, svg } from "../views/dom";
+import { inToolsZone } from "../core/layout";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { restoreAlertFocus } from "./hooks";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { describeVitals, moodOf, vitalsDot, type VitalsReport } from "../core/vitals";
 import { Updates } from "./update";
 import { UPDATE_BLUE, showsUpdateHint } from "../whats-new/whats-new";
 
@@ -57,6 +60,13 @@ export class Island {
   private root: HTMLElement;
   private islandEl!: HTMLElement;
   private clipEl!: HTMLElement;
+  /** The Tools tile shown while a file is dragged over the island (TOOLS_ZONE). */
+  private toolsZone = h("div", { id: "tools-zone" },
+    svg("M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 3.5v5M12 15.5v5M3.5 12h5M15.5 12h5", 22, { stroke: 1.7 }),
+    h("span", { text: tl("Convert & tools") }),
+  );
+  /** The neon that runs around the edge when a notification comes (neon()). */
+  private neonEl = h("div", { id: "neon" }, h("div", { class: "ring" }));
   private contentEl!: HTMLElement;
   private viewsEl!: HTMLElement;
   private botCanvas!: HTMLCanvasElement;
@@ -144,6 +154,9 @@ export class Island {
       this.onGreetingDone?.();
     };
     State.subscribe(() => {
+      this.syncVitalsReader();
+      this.showVitalsLine();
+      this.syncCaptureCard();
       this.dirty = true;
       this.ensureRunning();
     });
@@ -181,6 +194,8 @@ export class Island {
       setView: (v) => this.setView(v),
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
+      minimize: () => this.minimize(),
+      capture: (what) => this.captureAction(what),
       foldApproval: () => this.foldApproval(),
       setFocus: (id) => {
         State.setFocus(id);
@@ -216,6 +231,7 @@ export class Island {
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === "integration_gitea") void Bridge.openGitea();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
+        else if (task.id === WHATSAPP_ID) void Bridge.whatsappOpenApp();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -225,7 +241,7 @@ export class Island {
         const req = State.pendingApproval;
         void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
         if (!req) return;
-        Sound.play(d === "deny" ? "blip" : "approve");
+        Sound.play(d === "deny" || d === "plan_change" ? "blip" : "approve");
         void Bridge.approvalDecision(req.requestId, d);
         this.closeApproval();
       },
@@ -262,6 +278,7 @@ export class Island {
         State.notify();
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
+      setPinned: (on) => this.setPinned(on),
       blip: () => Sound.play("blip"),
       chooseOutfit: (selection) => {
         if (parseOutfit(State.settings.mochiOutfit) === selection) return;
@@ -355,6 +372,8 @@ export class Island {
       this.compactPlan,
       this.clockEl,
       this.countdown,
+      this.toolsZone,
+      this.neonEl,
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -363,7 +382,8 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.vitalsLine = h("div", { id: "vitals-line" });
+    this.root.append(this.wakeStrip, this.islandEl, this.vitalsLine);
     this.applyGeometry();
   }
 
@@ -424,6 +444,8 @@ export class Island {
     }
     if (mode !== "expanded") {
       closePlanCard();
+      // Another pill's alert borrowed the focus: the pill you had comes back.
+      restoreAlertFocus();
       this.engine.resetMorph();
       // Nothing can be seen of the sequence once the island is shut, and leaving
       // it running would keep the frame loop awake — the island must cost
@@ -498,6 +520,141 @@ export class Island {
     this.fsm.forcePetit();
   }
 
+  /**
+   * The Minimize button: the island leaves the screen entirely, and work events
+   * stop bringing it back until the pointer reaches the top edge (or an alert
+   * opens it). A card waiting for an answer is not answered: it is still there
+   * when the island comes back.
+   */
+  minimize() {
+    this.fsm.minimize();
+  }
+
+  // ── Screen capture for Claude (ScreenCapture.swift, src-tauri/src/capture.rs) ──
+
+  /** The shortcut was pressed: the island gets out of the picture. */
+  onCaptureBegin() {
+    Sound.play("tick");
+    if (State.mode === "expanded") this.collapse();
+  }
+
+  /** The capture lands on the island: Mochi swallows it. */
+  onCaptureReady(capture: { path: string; dataUrl: string }) {
+    State.capture = capture;
+    this.alert("capture");
+    Sound.play("gulp");
+    window.setTimeout(() => {
+      this.engine.gulp();
+      this.ensureRunning();
+    }, 250);
+  }
+
+  /** A dictation took the capture with its words. */
+  onCaptureUsed() {
+    State.capture = null;
+    if (State.mode === "expanded" && State.view === "capture") this.collapse();
+    State.notify();
+  }
+
+  private captureOnIsland = false;
+
+  /** Rust lets a dictation take the capture only while its card is up. */
+  private syncCaptureCard() {
+    const on = State.mode === "expanded" && State.view === "capture" && State.capture != null;
+    if (on === this.captureOnIsland) return;
+    this.captureOnIsland = on;
+    void Bridge.captureOnIsland(on);
+  }
+
+  private captureAction(what: "paste" | "copy" | "annotate" | "ask") {
+    const capture = State.capture;
+    if (!capture) return;
+    switch (what) {
+      case "paste":
+        this.collapse();
+        void Bridge.capturePaste().then((ok) => {
+          State.capture = null;
+          if (ok) Sound.play("send");
+          else {
+            State.noteMessage = t("The capture is on the clipboard: press Ctrl+V where you want it.");
+            this.alert("note");
+          }
+        });
+        break;
+      case "copy":
+        void Bridge.captureCopy().then(() => {
+          State.capture = null;
+          Sound.play("pop");
+          this.collapse();
+        });
+        break;
+      case "annotate":
+        void Bridge.captureAnnotate();
+        break;
+      case "ask": {
+        // The island's chat, with the capture attached (askClaude).
+        const name = t("Screenshot");
+        State.droppedFile = { name, path: capture.path };
+        State.promptContext = { kind: "file", name, path: capture.path };
+        State.chatHistory = [];
+        void Bridge.chatReset();
+        State.capture = null;
+        void Bridge.captureDismiss();
+        this.setView("prompt");
+        break;
+      }
+    }
+  }
+
+  // ── Mochi feels the computer (core/vitals.ts, src-tauri/src/vitals.rs) ─────
+
+  private vitalsLine!: HTMLElement;
+  private vitals: VitalsReport | null = null;
+  private vitalsReading = false;
+  private overMochi = false;
+
+  /** Reads the computer only while Mochi is on screen and the setting is on. */
+  private syncVitalsReader() {
+    const want = State.settings.mochiFeelsComputer !== false &&
+      (State.mode !== "hidden" || State.mochiOnDesktop);
+    if (want === this.vitalsReading) return;
+    this.vitalsReading = want;
+    void Bridge.vitalsSetActive(want);
+  }
+
+  /** A reading from Rust: Mochi's mood, and the line that explains it. */
+  setVitals(report: VitalsReport | null) {
+    this.vitals = report;
+    this.engine.moodTarget = moodOf(report);
+    if (report?.woke) {
+      // Plugged in while tired: he wakes up.
+      this.engine.triggerEmote("happy");
+      Sound.play("pop");
+    }
+    this.showVitalsLine();
+    this.ensureRunning();
+  }
+
+  private showVitalsLine() {
+    const el = this.vitalsLine;
+    if (!el) return;
+    // On Mochi, or the island open on its home view: the computer's numbers are
+    // there to read even with Mochi out on the desktop.
+    const homeOpen = State.mode === "expanded" && State.view === "overview";
+    const text = this.overMochi || homeOpen ? describeVitals(this.vitals) : null;
+    if (!text || !this.vitals) {
+      if (el.classList.contains("on")) el.classList.remove("on");
+      return;
+    }
+    if (el.dataset.text !== text) {
+      el.dataset.text = text;
+      el.replaceChildren(h("i", { style: `background:${vitalsDot(this.vitals)}` }), h("span", { text }));
+    }
+    const top = `${this.height.value + 10}px`;
+    if (el.style.top !== top) el.style.top = top;
+    if (!el.classList.contains("on")) el.classList.add("on");
+  }
+
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
     this.fsm.pinned = State.isPinned;
@@ -520,11 +677,13 @@ export class Island {
   }
 
   reveal() {
+    if (this.browserInFront) return;
     this.fsm.reveal();
   }
 
   /** Music started playing: the compact island, without the peek sound (musicReveal). */
   revealSilently() {
+    if (this.browserInFront) return;
     this.silentReveal = true;
     this.fsm.reveal();
     this.silentReveal = false;
@@ -575,6 +734,25 @@ export class Island {
     this.ensureRunning();
   }
 
+  /**
+   * A notification came: a neon light runs twice around the island's edge in its
+   * colour (NEON), then fades. Off in Settings, nothing; the hidden island
+   * neither, as a ring around its 6 px strip would only flash at the top of
+   * the screen. Asked for before the alert that opens the island (a finish,
+   * an error), it waits for that: the island is looked at once it is up.
+   */
+  neon(color: string) {
+    if (State.settings.neonNotifications === false) return;
+    window.setTimeout(() => {
+      if (State.mode === "hidden") return;
+      const el = this.neonEl;
+      el.style.setProperty("--neon", color);
+      el.classList.remove("run");
+      void el.offsetWidth;
+      el.classList.add("run");
+    }, 0);
+  }
+
   /** Ctrl+P: keep the open island from folding away, or let it fold again. */
   setPinned(on: boolean) {
     State.isPinned = on;
@@ -623,6 +801,7 @@ export class Island {
       case "over": {
         if (State.fileDragOver) return;
         State.fileDragOver = true;
+        this.toolsZone.classList.add("on");
         this.engine.animateMorph(1);
         // enterZone must run before the island expands, so the sequence is
         // already active by the time the view becomes `upload`.
@@ -633,6 +812,7 @@ export class Island {
       case "leave": {
         if (!State.fileDragOver) return;
         State.fileDragOver = false;
+        this.toolsZone.classList.remove("on", "over");
         this.engine.animateMorph(0);
         // The island deliberately stays open: the drag session is still alive.
         UploadSeq.exitZone();
@@ -641,7 +821,17 @@ export class Island {
       }
       case "drop": {
         State.fileDragOver = false;
+        this.toolsZone.classList.remove("on", "over");
         const path = e.paths?.[0];
+        // On the Tools tile: the wheel opens around the pointer, nothing is eaten.
+        if (path && inToolsZone(State.mouseInIsland.x, State.mouseInIsland.y)) {
+          this.engine.animateMorph(0);
+          UploadSeq.deactivate();
+          void Bridge.wheelOpen(e.paths ?? [path]);
+          this.setView(State.defaultView());
+          this.collapse();
+          return;
+        }
         if (!path) {
           this.engine.animateMorph(0);
           this.setView(State.defaultView());
@@ -678,7 +868,7 @@ export class Island {
     this.setView("uploading");
     this.ensureRunning();
 
-    void Bridge.ingestFile(path)
+    State.droppedFileReady = Bridge.ingestFile(path)
       .then((file) => {
         // Cancelled (or replaced by another drop) while the copy was running.
         if (State.droppedFile?.path !== path) return;
@@ -734,7 +924,7 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, State.tallOverview);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -816,10 +1006,7 @@ export class Island {
 
   private wireInput() {
     // The wake strip is the only thing the OS can hit while the island is hidden.
-    this.wakeStrip.addEventListener("mouseenter", () => {
-      Sound.resume();
-      if (State.mode === "hidden") this.fsm.mouseEntered();
-    });
+    this.wakeStrip.addEventListener("mouseenter", () => this.wakeFromEdge());
 
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
@@ -894,6 +1081,41 @@ export class Island {
   }
 
   /**
+   * The pointer reached the wake strip at the top of the screen: from the
+   * strip's own `mouseenter`, or from Rust's `wake-hover` when the webview
+   * missed it. Both may fire for one push; only the first does anything.
+   * A file carried up from below (`dragging`) wakes it in front of a browser
+   * too: the browser rule is for its tab strip, and the drop needs the island.
+   */
+  wakeFromEdge(dragging = false) {
+    if (this.browserInFront && !dragging) return;
+    Sound.resume();
+    if (State.mode === "hidden") this.fsm.mouseEntered();
+  }
+
+  /**
+   * A web browser is the app in front (Windows only). The top of the screen is
+   * its tab strip there, so the island keeps out of the way: the pointer at the
+   * top edge does not wake it, routine activity does not reveal it, and a
+   * compact island still showing hides. Alerts (a permission request, a
+   * question) open it as usual.
+   */
+  private browserInFront = false;
+
+  /** A browser is the app in front (its tab strip is where the island opens). */
+  get browserFront(): boolean {
+    return this.browserInFront;
+  }
+
+  setBrowserForeground(on: boolean) {
+    const was = this.browserInFront;
+    this.browserInFront = on;
+    if (on && !was && this.fsm.state === "petit" && !this.fsm.pinned && !this.wasInIsland) {
+      this.fsm.forceHidden();
+    }
+  }
+
+  /**
    * Takes the cursor from the page's own mouse events instead of Rust's poll.
    * Used where the OS has no global cursor position (Wayland): the events only
    * fire while the pointer is over the island, so leaving the window is
@@ -933,6 +1155,9 @@ export class Island {
     if (UploadSeq.isActive && !UploadSeq.dropped) {
       UploadSeq.updateCursor(State.mouseInIsland.x, State.mouseInIsland.y);
     }
+    if (State.fileDragOver) {
+      this.toolsZone.classList.toggle("over", inToolsZone(State.mouseInIsland.x, State.mouseInIsland.y));
+    }
 
     const inIsland =
       x >= rect.x - HIT_MARGIN && x <= rect.x + rect.w + HIT_MARGIN &&
@@ -956,6 +1181,9 @@ export class Island {
     if (overBot && !this.botHovering) this.botHoverIn(x, y);
     if (!overBot && this.botHovering) this.cancelBotHover();
     this.botHovering = overBot;
+    // How the computer is doing, under the island while the pointer is on Mochi.
+    this.overMochi = State.mode !== "hidden" && State.stateOverride == null && this.isBotHit(x, y);
+    this.showVitalsLine();
     if (this.botHovering) {
       const d = Math.hypot(x - this.botHoverStart.x, y - this.botHoverStart.y);
       if (d > 40) {
@@ -1040,7 +1268,7 @@ export class Island {
   }
 
   private frame = (nowMs: number) => {
-    const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
+    const dt = Math.min(0.05, Math.max(0, (nowMs - this.lastFrame) / 1000));
     this.lastFrame = nowMs;
 
     this.width.step(dt, nowMs);
@@ -1110,7 +1338,7 @@ export class Island {
   };
 
   private updateBotTargets() {
-    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
+    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress, State.tallOverview);
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
     this.botSize.target = p.diameter / 0.6;
@@ -1244,6 +1472,8 @@ export class Island {
 
   // ── DOM sync ────────────────────────────────────────────────────────────────
 
+  private shownTall: "work" | "whatsapp" | null = null;
+
   private syncDom() {
     const expanded = State.mode === "expanded";
     const greetingActive = expanded && State.view === "greeting";
@@ -1262,6 +1492,15 @@ export class Island {
     // A wardrobe try-on never outlives the wardrobe.
     if (State.wardrobePreview && !(expanded && State.view === "wardrobe")) State.wardrobePreview = null;
 
+    // An agent starting or stopping work, or the WhatsApp pill picked: the
+    // overview grows tall or back.
+    const tall = State.tallOverview;
+    if (tall !== this.shownTall) {
+      const shrinking = this.shownTall != null && tall == null;
+      this.shownTall = tall;
+      if (expanded) this.animateGeometry(shrinking);
+    }
+
     this.header.sync();
     for (const [name, view] of this.views) {
       const on = name === State.view;
@@ -1269,14 +1508,16 @@ export class Island {
       if (on) view.sync();
     }
 
-    // The chat is the only view with a text field, so it is the only time the
-    // island is allowed to take keyboard focus.
+    // The chat and the email form are the views with text fields, so they are
+    // the only times the island is allowed to take keyboard focus.
     if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView === "prompt";
+      const typing = (v: string | null) => v === "prompt" || v === "mail";
+      const wasChat = typing(this.lastSyncedView);
       this.lastSyncedView = State.view;
-      if (State.view === "prompt") {
+      if (typing(State.view)) {
+        const view = State.view;
         void Bridge.focusWindow(true);
-        window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
+        window.setTimeout(() => this.views.get(view)?.focus?.(), 120);
       } else if (wasChat) {
         void Bridge.focusWindow(false);
       }

@@ -15,6 +15,9 @@ import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
+import { recordTestRun } from "./tests";
+import { decideLoop, observeLoop, type LoopDecision } from "./loop";
+import { NEON } from "../core/layout";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -132,6 +135,17 @@ interface HookPayload {
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
   term_editor?: string;
+  /** The relay's terminal context: VS Code's process, Windows Terminal's session. */
+  vscode_pid?: string;
+  wt_session?: string;
+  /** The end of a test command's output, kept by the relay (core/tests.ts). */
+  coucou_test_output?: string;
+  coucou_test_failed?: boolean;
+  coucou_test_stopped?: boolean;
+  /** The fix loop sent this Stop back (./loop.ts). */
+  coucou_sent_back?: boolean;
+  /** The relay waits for the fix loop's word on this one (pipe.rs). */
+  coucou_loop_id?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
   /** SubagentStart / SubagentStop: "Explore", "general-purpose"…; "" for Claude Code's own helpers. */
@@ -227,7 +241,43 @@ const APPROVAL_FIELDS = [
   "prompt", // Task
 ] as const;
 
+/** A plan's first line without its Markdown heading marks: the plan card's line (Mac planTitle). */
+export function planTitle(plan: unknown): string {
+  const first = typeof plan === "string" ? plan.split("\n").find((l) => l.trim()) : undefined;
+  const title = first ? first.replace(/^[#\s]+/, "").trim() : "";
+  return title || "Plan";
+}
+
+// ── A finish or an error: who is told ─────────────────────────────────────────
+
+/** Terminals and editors a Claude Code session may run in. */
+const TERMINALS = new Set([
+  "windowsterminal.exe", "wt.exe", "powershell.exe", "pwsh.exe", "cmd.exe", "conhost.exe",
+  "code.exe", "cursor.exe", "windsurf.exe", "wezterm-gui.exe", "alacritty.exe", "warp.exe",
+  "tabby.exe", "hyper.exe", "mintty.exe", "antigravity.exe",
+]);
+
+/** The programs a pill's session shows itself in, as far as Windows can tell. */
+export function hostExes(pillId: string, payload: { vscode_pid?: string; wt_session?: string; term_editor?: string }): string[] {
+  if (pillId === "agent_claude-desktop") return ["claude.exe"];
+  if (pillId === "agent_cursor" || payload.term_editor === "cursor") return ["cursor.exe"];
+  if (pillId === "agent_antigravity") return ["antigravity.exe"];
+  if (payload.vscode_pid) return ["code.exe"];
+  if (payload.wt_session) return ["windowsterminal.exe"];
+  return [...TERMINALS];
+}
+
+/**
+ * Mac #9e95732: you are looking at the session's own window, so its finish or
+ * error is already in front of you: the pill takes a badge, no sound, no card.
+ */
+export function hostInFront(pillId: string, payload: Parameters<typeof hostExes>[1], front = State.frontExe): boolean {
+  return front != null && hostExes(pillId, payload).includes(front);
+}
+
 function approvalTarget(tool: string, input: Record<string, unknown>): string {
+  // A plan is too long for the card: its title.
+  if (tool === "ExitPlanMode") return planTitle(input.plan);
   for (const field of APPROVAL_FIELDS) {
     const value = input[field];
     if (typeof value === "string" && value.trim()) {
@@ -307,7 +357,7 @@ function recordDiff(agentId: string, payload: HookPayload) {
 export function registerHookHandlers(island: Island) {
   // The last plan numbers seen survive a restart, as on the Mac.
   State.planUsage ??= restorePlanUsage(storedClaudePlanUsage());
-  void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  void onEvent<HookPayload>("hook", (payload) => routeHook(island, payload));
   // The relay stopped waiting without a decision and the terminal has taken
   // over: a card still up for that request would be lying (#857).
   void onEvent<string>("approval-expired", (requestId) => {
@@ -315,6 +365,44 @@ export function registerHookHandlers(island: Island) {
     if (State.pendingApproval?.requestId !== requestId) return;
     dropPendingCard(island);
   });
+}
+
+/** The pill a hook event belongs on: the same routing as handleHook. */
+function pillOf(payload: HookPayload): string {
+  const validAgent = validateAgent(payload.coucou_agent);
+  return validAgent ? `agent_${validAgent}` : payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
+}
+
+/**
+ * Every hook event goes by the fix loop first (./loop.ts). A relay waiting for its
+ * word (coucou_loop_id) always gets one, paused or not; a Stop is decided before
+ * the card hears it, so a session sent back stays at work.
+ */
+function routeHook(island: Island, payload: HookPayload) {
+  if (payload.hook_event_name !== "StatusLine") observeLoop(payload);
+  const id = payload.coucou_loop_id;
+  if (!id) return handleHook(island, payload);
+  if (State.paused) {
+    void Bridge.loopAnswer(id, null);
+    return handleHook(island, payload);
+  }
+  const tell = (d: LoopDecision) => {
+    void Bridge.loopAnswer(id, d.answer);
+    const pill = pillOf(payload);
+    for (const note of d.notes) State.appendStep(pill, note);
+    if (d.alert && State.focusId !== pill) State.setPillBadge(pill, "error");
+  };
+  if (payload.hook_event_name === "Stop") {
+    void decideLoop(payload).then((d) => {
+      if (d.answer) payload.coucou_sent_back = true;
+      handleHook(island, payload);
+      tell(d);
+    });
+    return;
+  }
+  // After the card heard it: a test run's verdict, and its double-check, start there.
+  handleHook(island, payload);
+  void decideLoop(payload).then(tell);
 }
 
 function handleHook(island: Island, payload: HookPayload) {
@@ -439,11 +527,17 @@ function handleHook(island: Island, payload: HookPayload) {
         State.updateTask(agentId, "question");
         State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
         Sound.play("question");
+        island.neon?.(NEON.question);
         surface("overview", true);
       } else {
+        // Already at work (thinking or on an earlier tool): the island it showed may
+        // have hidden since, and stays hidden. Bringing it back on every tool call
+        // flashed it at the top of the screen all through a long request; it comes
+        // back for what needs you: a question, an approval, the finish or an error.
+        const atWork = ["thinking", "working"].includes(State.tasks.find((x) => x.id === agentId)?.state ?? "");
         State.updateTask(agentId, "working");
         State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
-        surface("overview", false);
+        if (!atWork) surface("overview", false);
       }
       break;
     }
@@ -460,12 +554,14 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       State.updateTask(agentId, "working");
       recordDiff(agentId, payload);
+      recordTestRun(agentId, payload);
       break;
 
     case "PostToolUseFailure":
       supersedeStop();
       State.updateTask(agentId, "working");
       State.appendStep(agentId, t("⚠ failed"));
+      recordTestRun(agentId, payload);
       break;
 
     case "Notification": {
@@ -484,6 +580,12 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop": {
+      // The fix loop sent it back (its tests fail): still at work, nothing to celebrate.
+      if (payload.coucou_sent_back === true) {
+        supersedeStop();
+        State.updateTask(agentId, "working");
+        break;
+      }
       State.updateTask(agentId, "finished");
       // Claude Code puts the turn's answer in the Stop payload itself, so there is
       // no transcript to read (the relay does not even forward its path). Other
@@ -495,10 +597,16 @@ function handleHook(island: Island, payload: HookPayload) {
         const t = State.tasks.find((x) => x.id === agentId);
         if (t) t.finalLine = finalText;
       }
-      Sound.play("finish");
+      // In front of the session's own window: only the badge (Mac #9e95732).
+      const quiet = hostInFront(agentId, payload);
+      if (!quiet) {
+        Sound.play("finish");
+        island.neon?.(NEON.finished);
+      }
       // A card waiting for an answer is never covered by another alert.
-      if (showsAlert(agentId, focused)) surface("finished", true);
-      else State.setPillBadge(agentId, "finished");
+      if (!quiet && (focused || !island.browserFront) && showsAlert(agentId, focused)) {
+        surface("finished", true);
+      } else State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(
         agentId,
@@ -529,9 +637,14 @@ function handleHook(island: Island, payload: HookPayload) {
     case "StopFailure":
       supersedeStop();
       State.updateTask(agentId, "error");
-      Sound.play("error");
-      if (showsAlert(agentId, focused)) surface("error", true);
-      else State.setPillBadge(agentId, "error");
+      const quietError = hostInFront(agentId, payload);
+      if (!quietError) {
+        Sound.play("error");
+        island.neon?.(NEON.error);
+      }
+      if (!quietError && (focused || !island.browserFront) && showsAlert(agentId, focused)) {
+        surface("error", true);
+      } else State.setPillBadge(agentId, "error");
       break;
 
     case "SessionEnd":
@@ -626,6 +739,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // Any agent's card (Claude Code, Codex, Copilot CLI, Muse Code) comes up
       // the same way: beginApproval brought its pill to the front.
       island.alert(view);
+      island.neon?.(view === "question" ? NEON.question : NEON.approval);
       break;
     }
 

@@ -76,6 +76,10 @@ export class Spring {
   }
 
   step(dt: number) {
+    // A frame stamped before the last one (a wake from hidden) must not run the
+    // spring backwards: one large negative step sends it off to millions of px.
+    if (!(dt > 0)) return;
+    dt = Math.min(dt, 0.1);
     const steps = Math.max(1, Math.ceil(dt / (1 / 240)));
     const h = dt / steps;
     for (let i = 0; i < steps; i++) {
@@ -85,6 +89,7 @@ export class Spring {
       this.velocity += acc * h;
       this.value += this.velocity * h;
     }
+    if (!Number.isFinite(this.value) || !Number.isFinite(this.velocity)) this.set(this.target);
   }
 }
 

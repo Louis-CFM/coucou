@@ -1,20 +1,19 @@
-// The two local WhatsApp gateways Coucou can talk to (port of WhatsAppProvider.swift). Each call
-// goes to the URL set in Settings (127.0.0.1 by default) and nowhere else: no redirect, no proxy,
-// no cookie, every answer read with a ceiling. Nothing of a message is logged.
+// The two local WhatsApp gateways Coucou can talk to — port of
+// WhatsAppProvider.swift. Each call goes to the URL set in Settings
+// (127.0.0.1 by default) and nowhere else: no redirect is followed, no proxy
+// is used, nothing is cached, and no media is ever fetched.
 
+use std::sync::Mutex;
 use std::time::Duration;
 
 use reqwest::{Method, Url};
 use serde_json::{json, Value};
 
-use super::gateway::{self, gowa, openwa, Kind, Link, Status};
-use super::model::{self, Message};
+use super::gateway::{gowa, openwa, Kind, Link, Status};
+use super::models::Message;
 
-/// Ceiling for one answer of the gateway (a QR PNG is about 2 KB, a page of messages a few).
-const MAX_ANSWER: usize = 2 * 1024 * 1024;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum WaError {
+#[derive(Debug, Clone, PartialEq)]
+pub enum Error {
     /// Nothing answers at that URL.
     Unreachable,
     /// Wrong user:pass (GOWA) or API key (OpenWA).
@@ -25,384 +24,375 @@ pub enum WaError {
     NotLoggedIn,
 }
 
-/// Percent-encodes one path segment (letters, digits and `-._~@` kept).
-pub fn path_component(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for b in s.bytes() {
-        if b.is_ascii_alphanumeric() || b"-._~@".contains(&b) {
-            out.push(b as char);
-        } else {
-            out.push_str(&format!("%{b:02X}"));
-        }
-    }
-    out
-}
-
-/// The gateway's address as typed: http(s), a host, no `user:pass@`, nothing after the path.
-pub fn parse_base(raw: &str) -> Option<Url> {
-    let url = Url::parse(raw.trim()).ok()?;
-    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none_or(str::is_empty) {
-        return None;
-    }
-    if !url.username().is_empty() || url.password().is_some() {
-        return None;
-    }
-    Some(url)
-}
-
-/// `base`'s path + `path`, the query added; None when the result left the gateway.
-pub fn endpoint(base: &Url, path: &str, query: &[(&str, String)]) -> Option<Url> {
-    let mut url = base.clone();
-    let prefix = base.path().trim_matches('/');
-    let full = if prefix.is_empty() { path.to_string() } else { format!("/{prefix}{path}") };
-    url.set_path(&full);
-    url.set_query(None);
-    url.set_fragment(None);
-    if !query.is_empty() {
-        let mut pairs = url.query_pairs_mut();
-        for (k, v) in query {
-            pairs.append_pair(k, v);
-        }
-    }
-    (url.host_str() == base.host_str() && url.port_or_known_default() == base.port_or_known_default()).then_some(url)
-}
-
-/// HTTP to the gateway: never a redirect, never a proxy, nothing kept between calls.
-pub struct Http {
+pub struct Provider {
+    pub kind: Kind,
     base: Url,
-    headers: Vec<(&'static str, String)>,
+    auth: Option<(String, String)>,
     client: reqwest::Client,
+    /// GOWA's device, or OpenWA's session.
+    scope: Mutex<Option<String>>,
 }
 
-impl Http {
-    pub fn new(base: Url, headers: Vec<(&'static str, String)>) -> Result<Http, WaError> {
-        let client = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .no_proxy()
-            .connect_timeout(Duration::from_secs(5))
-            .build()
-            .map_err(|_| WaError::Unreachable)?;
-        Ok(Http { base, headers, client })
-    }
-
-    pub async fn call(&self, method: Method, path: &str, query: &[(&str, String)], body: Option<Value>, timeout: Duration) -> Result<(Vec<u8>, u16), WaError> {
-        let url = endpoint(&self.base, path, query).ok_or(WaError::Unreachable)?;
-        let mut req = self.client.request(method, url.clone()).timeout(timeout).header("Accept", "application/json");
-        for (k, v) in &self.headers {
-            req = req.header(*k, v);
-        }
-        if let Some(body) = body {
-            req = req.header("Content-Type", "application/json").body(body.to_string());
-        }
-        let response = req.send().await.map_err(|_| WaError::Unreachable)?;
-        // Second lock: an answer from anywhere but the gateway is not one.
-        if response.url().host_str() != url.host_str() || response.url().port_or_known_default() != url.port_or_known_default() {
-            return Err(WaError::Unreachable);
-        }
-        let code = response.status().as_u16();
-        let data = crate::net::read_capped(response, MAX_ANSWER).await.map_err(|_| WaError::Unreachable)?;
-        Ok((data, code))
-    }
-
-    async fn get(&self, path: &str, query: &[(&str, String)]) -> Result<(Vec<u8>, u16), WaError> {
-        self.call(Method::GET, path, query, None, Duration::from_secs(10)).await
-    }
-}
-
-fn basic_auth(credential: &str) -> String {
-    format!("Basic {}", gateway::base64(credential.as_bytes()))
-}
-
-/// Either gateway, behind one face.
-pub enum Provider {
-    Gowa { http: Http, device: tokio::sync::Mutex<Option<String>> },
-    Openwa { http: Http, session: tokio::sync::Mutex<Option<String>> },
-}
-
-/// A QR to show: a `data:image/png;base64,…` URL and how long it stays valid.
-pub struct Qr {
-    pub data_url: String,
-    pub seconds: u64,
+/// Percent-encodes one path segment (a JID: "@" and "." stay as they are).
+fn segment(s: &str) -> String {
+    s.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'@' => (b as char).to_string(),
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
 }
 
 impl Provider {
-    pub fn new(kind: Kind, base: Url, credential: Option<String>) -> Result<Provider, WaError> {
-        let credential = credential.filter(|c| !c.is_empty());
-        Ok(match kind {
-            Kind::Gowa => {
-                let headers = credential.filter(|c| c.contains(':')).map(|c| vec![("Authorization", basic_auth(&c))]).unwrap_or_default();
-                Provider::Gowa { http: Http::new(base, headers)?, device: Default::default() }
-            }
-            Kind::Openwa => {
-                let headers = credential.map(|c| vec![("X-API-Key", c)]).unwrap_or_default();
-                Provider::Openwa { http: Http::new(base, headers)?, session: Default::default() }
-            }
-        })
+    /// `credential`: "user:pass" for GOWA's basic auth, the API key for OpenWA.
+    pub fn new(kind: Kind, url: &str, credential: Option<&str>) -> Option<Provider> {
+        let base = Url::parse(url.trim()).ok().filter(|u| u.scheme() == "http" || u.scheme() == "https")?;
+        let auth = credential.filter(|c| !c.is_empty()).and_then(|c| match kind {
+            Kind::Gowa => c.contains(':').then(|| ("Authorization".into(), format!("Basic {}", crate::claude::base64_for(c.as_bytes())))),
+            Kind::Openwa => Some(("X-API-Key".into(), c.to_string())),
+        });
+        let client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .no_proxy()
+            .build()
+            .ok()?;
+        Some(Provider { kind, base, auth, client, scope: Mutex::new(None) })
     }
 
-    // ── GOWA ──
+    async fn call(&self, method: Method, path: &str, query: &[(&str, String)], body: Option<Value>, timeout: u64) -> Result<(Vec<u8>, u16), Error> {
+        let mut url = self.base.clone();
+        let prefix = url.path().trim_end_matches('/').to_string();
+        url.set_path(&format!("{prefix}{path}"));
+        if !query.is_empty() {
+            let mut q = url.query_pairs_mut();
+            for (k, v) in query {
+                q.append_pair(k, v);
+            }
+        }
+        let mut req = self.client.request(method, url.clone()).timeout(Duration::from_secs(timeout)).header("Accept", "application/json");
+        if let Some((name, value)) = &self.auth {
+            req = req.header(name.as_str(), value.as_str());
+        }
+        if let Some(body) = body {
+            req = req.json(&body);
+        }
+        let response = req.send().await.map_err(|_| Error::Unreachable)?;
+        // Second lock: an answer from anywhere but the gateway is not one.
+        if response.url().host() != url.host() || response.url().port_or_known_default() != url.port_or_known_default() {
+            return Err(Error::Unreachable);
+        }
+        let code = response.status().as_u16();
+        let bytes = response.bytes().await.map_err(|_| Error::Unreachable)?;
+        Ok((bytes.to_vec(), code))
+    }
 
-    fn gowa_check(data: &[u8], code: u16) -> Result<(), WaError> {
-        if code == 401 && gowa::error_code(data).as_deref() != Some("AUTHENTICATION_ERROR") {
-            return Err(WaError::Unauthorized);
-        }
-        if code == 401 {
-            return Err(WaError::NotLoggedIn);
-        }
-        if !(200..300).contains(&code) {
-            return Err(WaError::Refused(gowa::error_code(data).unwrap_or_else(|| format!("HTTP {code}"))));
+    fn check(&self, data: &[u8], code: u16) -> Result<(), Error> {
+        match self.kind {
+            Kind::Gowa => {
+                if code == 401 {
+                    return Err(if gowa::error_code(data).as_deref() == Some("AUTHENTICATION_ERROR") {
+                        Error::NotLoggedIn
+                    } else {
+                        Error::Unauthorized
+                    });
+                }
+                if !(200..300).contains(&code) {
+                    return Err(Error::Refused(gowa::error_code(data).unwrap_or_else(|| format!("HTTP {code}"))));
+                }
+            }
+            Kind::Openwa => {
+                if code == 401 || code == 403 {
+                    return Err(Error::Unauthorized);
+                }
+                if !(200..300).contains(&code) {
+                    return Err(Error::Refused(openwa::error_message(data).unwrap_or_else(|| format!("HTTP {code}"))));
+                }
+            }
         }
         Ok(())
     }
 
-    async fn gowa_device(http: &Http, slot: &tokio::sync::Mutex<Option<String>>) -> Result<(String, Status), WaError> {
-        let (data, code) = http.get("/devices", &[]).await?;
-        Self::gowa_check(&data, code)?;
-        if let Some((id, status)) = gowa::device(&data) {
-            *slot.lock().await = Some(id.clone());
-            return Ok((id, status));
+    fn scope(&self) -> Option<String> {
+        self.scope.lock().unwrap().clone()
+    }
+
+    // ── GOWA: one device (the one logged in, else "coucou") ──────────────────
+
+    async fn gowa_device(&self) -> Result<(String, Status), Error> {
+        let (data, code) = self.call(Method::GET, "/devices", &[], None, 10).await?;
+        self.check(&data, code)?;
+        if let Some(found) = gowa::device(&data) {
+            *self.scope.lock().unwrap() = Some(found.0.clone());
+            return Ok(found);
         }
-        let (made, made_code) = http.call(Method::POST, "/devices", &[], Some(json!({"device_id": "coucou"})), Duration::from_secs(10)).await?;
-        Self::gowa_check(&made, made_code)?;
-        *slot.lock().await = Some("coucou".into());
+        let (made, code) = self.call(Method::POST, "/devices", &[], Some(json!({ "device_id": "coucou" })), 10).await?;
+        self.check(&made, code)?;
+        *self.scope.lock().unwrap() = Some("coucou".into());
         Ok(("coucou".into(), Status { link: Link::NeedsQr, me: None }))
     }
 
-    async fn gowa_id(http: &Http, slot: &tokio::sync::Mutex<Option<String>>) -> Result<String, WaError> {
-        if let Some(id) = slot.lock().await.clone() {
-            return Ok(id);
+    async fn gowa_id(&self) -> Result<String, Error> {
+        match self.scope() {
+            Some(id) => Ok(id),
+            None => Ok(self.gowa_device().await?.0),
         }
-        Ok(Self::gowa_device(http, slot).await?.0)
     }
 
-    async fn gowa_scoped(http: &Http, slot: &tokio::sync::Mutex<Option<String>>, method: Method, path: &str, query: &[(&str, String)], body: Option<Value>) -> Result<Vec<u8>, WaError> {
-        let id = Self::gowa_id(http, slot).await?;
-        let mut q: Vec<(&str, String)> = query.to_vec();
-        q.push(("device_id", id));
-        let (data, code) = http.call(method, path, &q, body, Duration::from_secs(10)).await?;
-        Self::gowa_check(&data, code)?;
+    async fn gowa_scoped(&self, method: Method, path: &str, mut query: Vec<(&str, String)>, body: Option<Value>) -> Result<Vec<u8>, Error> {
+        query.push(("device_id", self.gowa_id().await?));
+        let (data, code) = self.call(method, path, &query, body, 10).await?;
+        self.check(&data, code)?;
         Ok(data)
     }
 
-    // ── OpenWA ──
+    // ── OpenWA: one session (the one ready, else "coucou", started) ──────────
 
-    fn openwa_check(data: &[u8], code: u16) -> Result<(), WaError> {
-        if code == 401 || code == 403 {
-            return Err(WaError::Unauthorized);
-        }
-        if !(200..300).contains(&code) {
-            return Err(WaError::Refused(openwa::error_message(data).unwrap_or_else(|| format!("HTTP {code}"))));
-        }
-        Ok(())
-    }
-
-    async fn openwa_start(http: &Http, id: &str, fallback: openwa::Session) -> Result<openwa::Session, WaError> {
-        let (started, code) = http.call(Method::POST, &format!("/api/sessions/{}/start", path_component(id)), &[], None, Duration::from_secs(10)).await?;
-        Self::openwa_check(&started, code)?;
-        Ok(serde_json::from_slice::<Value>(&started).ok().as_ref().and_then(openwa::session).unwrap_or(fallback))
-    }
-
-    async fn openwa_session(http: &Http, slot: &tokio::sync::Mutex<Option<String>>) -> Result<openwa::Session, WaError> {
-        let (data, code) = http.get("/api/sessions", &[]).await?;
-        Self::openwa_check(&data, code)?;
-        let all = openwa::sessions(&data);
-        let known = slot.lock().await.clone();
+    async fn openwa_session(&self) -> Result<(String, String, Option<String>), Error> {
+        let (data, code) = self.call(Method::GET, "/api/sessions", &[], None, 10).await?;
+        self.check(&data, code)?;
+        let list: Vec<Value> = serde_json::from_slice::<Value>(&data).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default();
+        let all: Vec<_> = list.iter().filter_map(openwa::session).collect();
+        let known = self.scope();
+        let named = list.iter().find(|s| s.get("name").and_then(Value::as_str) == Some("coucou")).and_then(openwa::session);
         let pick = all
             .iter()
-            .find(|s| s.status == "ready")
-            .or_else(|| all.iter().find(|s| Some(&s.id) == known.as_ref()))
-            .or_else(|| all.iter().find(|s| s.name == "coucou"))
-            .or(all.first())
-            .cloned();
-        if let Some(s) = pick {
-            *slot.lock().await = Some(s.id.clone());
-            if openwa::needs_start(&s.status) {
-                return Self::openwa_start(http, &s.id.clone(), s).await;
+            .find(|s| s.1 == "ready")
+            .cloned()
+            .or_else(|| all.iter().find(|s| Some(&s.0) == known.as_ref()).cloned())
+            .or(named)
+            .or_else(|| all.first().cloned());
+        let mut session = match pick {
+            Some(s) => s,
+            None => {
+                let (made, code) = self.call(Method::POST, "/api/sessions", &[], Some(json!({ "name": "coucou" })), 10).await?;
+                self.check(&made, code)?;
+                let v: Value = serde_json::from_slice(&made).map_err(|_| Error::Refused("session".into()))?;
+                let mut s = openwa::session(&v).ok_or_else(|| Error::Refused("session".into()))?;
+                s.1 = "created".into();
+                s
             }
-            return Ok(s);
+        };
+        *self.scope.lock().unwrap() = Some(session.0.clone());
+        if openwa::needs_start(&session.1) {
+            let (started, code) = self.call(Method::POST, &format!("/api/sessions/{}/start", session.0), &[], None, 10).await?;
+            self.check(&started, code)?;
+            if let Some(s) = serde_json::from_slice::<Value>(&started).ok().as_ref().and_then(openwa::session) {
+                session = s;
+            }
         }
-        let (made, made_code) = http.call(Method::POST, "/api/sessions", &[], Some(json!({"name": "coucou"})), Duration::from_secs(10)).await?;
-        Self::openwa_check(&made, made_code)?;
-        let s = serde_json::from_slice::<Value>(&made)
-            .ok()
-            .as_ref()
-            .and_then(openwa::session)
-            .ok_or_else(|| WaError::Refused("session".into()))?;
-        *slot.lock().await = Some(s.id.clone());
-        Self::openwa_start(http, &s.id.clone(), s).await
+        Ok(session)
     }
 
-    async fn openwa_id(http: &Http, slot: &tokio::sync::Mutex<Option<String>>) -> Result<String, WaError> {
-        if let Some(id) = slot.lock().await.clone() {
-            return Ok(id);
+    async fn openwa_id(&self) -> Result<String, Error> {
+        match self.scope() {
+            Some(id) => Ok(id),
+            None => Ok(self.openwa_session().await?.0),
         }
-        Ok(Self::openwa_session(http, slot).await?.id)
     }
 
-    async fn openwa_scoped(http: &Http, slot: &tokio::sync::Mutex<Option<String>>, method: Method, path: &str, query: &[(&str, String)], body: Option<Value>) -> Result<Vec<u8>, WaError> {
-        let id = Self::openwa_id(http, slot).await?;
-        let (data, code) = http.call(method, &format!("/api/sessions/{}{path}", path_component(&id)), query, body, Duration::from_secs(10)).await?;
-        Self::openwa_check(&data, code)?;
+    async fn openwa_scoped(&self, method: Method, path: &str, query: Vec<(&str, String)>, body: Option<Value>) -> Result<Vec<u8>, Error> {
+        let id = self.openwa_id().await?;
+        let (data, code) = self.call(method, &format!("/api/sessions/{id}{path}"), &query, body, 10).await?;
+        self.check(&data, code)?;
         Ok(data)
     }
 
-    // ── The face ──
+    // ── What the controller asks ─────────────────────────────────────────────
 
-    /// The link to WhatsApp (sets up the gateway's device or session the first time).
-    pub async fn status(&self) -> Result<Status, WaError> {
-        match self {
-            Provider::Gowa { http, device } => Ok(Self::gowa_device(http, device).await?.1),
-            Provider::Openwa { http, session } => Ok(openwa::status(&Self::openwa_session(http, session).await?)),
+    /// The link to WhatsApp (sets up the device or session the first time).
+    pub async fn status(&self) -> Result<Status, Error> {
+        match self.kind {
+            Kind::Gowa => Ok(self.gowa_device().await?.1),
+            Kind::Openwa => {
+                let (_, status, phone) = self.openwa_session().await?;
+                Ok(openwa::status(&status, phone))
+            }
         }
     }
 
-    /// The QR to scan; None when there is none to show (already linked, not ready yet).
-    pub async fn qr(&self) -> Result<Option<Qr>, WaError> {
-        match self {
-            Provider::Gowa { http, device } => {
-                let id = Self::gowa_id(http, device).await?;
+    /// The QR to scan (PNG bytes) and how long it stays valid; None when there is
+    /// none to show (already linked, not ready yet).
+    pub async fn qr_code(&self) -> Result<Option<(Vec<u8>, u64)>, Error> {
+        match self.kind {
+            Kind::Gowa => {
+                let id = self.gowa_id().await?;
                 // GOWA answers once WhatsApp has handed it the first code: a few seconds.
-                let (data, code) = http.call(Method::GET, &format!("/devices/{}/login", path_component(&id)), &[], None, Duration::from_secs(45)).await?;
+                let (data, code) = self.call(Method::GET, &format!("/devices/{}/login", segment(&id)), &[], None, 45).await?;
                 if gowa::error_code(&data).as_deref() == Some("ALREADY_LOGGED_IN") {
                     return Ok(None);
                 }
-                Self::gowa_check(&data, code)?;
+                self.check(&data, code)?;
                 let Some((path, seconds)) = gowa::qr_path(&data) else { return Ok(None) };
-                // The PNG is served by the gateway itself: fetched from the configured URL,
-                // whatever host the link names.
-                let (png, png_code) = http.get(&path, &[]).await?;
-                if png_code != 200 || !png.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+                // Served by the gateway itself: fetched from the configured URL, whatever host the link names.
+                let (png, code) = self.call(Method::GET, &path, &[], None, 10).await?;
+                if code != 200 || !png.starts_with(&[0x89, b'P', b'N', b'G']) {
                     return Ok(None);
                 }
                 // qr_duration is half the code's life: asking again sooner restarts the pairing.
-                Ok(Some(Qr { data_url: gateway::png_data_url(&png), seconds: (seconds * 2).saturating_sub(5).max(20) }))
+                Ok(Some((png, (seconds * 2).saturating_sub(5).max(20))))
             }
-            Provider::Openwa { http, session } => {
-                let id = Self::openwa_id(http, session).await?;
-                let (data, code) = http.get(&format!("/api/sessions/{}/qr", path_component(&id)), &[]).await?;
+            Kind::Openwa => {
+                let id = self.openwa_id().await?;
+                let (data, code) = self.call(Method::GET, &format!("/api/sessions/{id}/qr"), &[], None, 10).await?;
                 if code == 400 {
-                    return Ok(None); // not started, already linked, or not ready yet
+                    return Ok(None);
                 }
-                Self::openwa_check(&data, code)?;
-                Ok(openwa::qr_data_url(&data).map(|data_url| Qr { data_url, seconds: 15 }))
+                self.check(&data, code)?;
+                Ok(openwa::qr_png(&data).map(|png| (png, 15)))
             }
         }
     }
 
     /// Tells the gateway to post new messages to Coucou's local webhook, signed with `secret`.
-    pub async fn register_webhook(&self, url: &str, secret: &str) -> Result<(), WaError> {
-        match self {
-            Provider::Gowa { http, device } => {
-                let id = Self::gowa_id(http, device).await?;
-                let body = json!({"webhook_url": url, "webhook_secret": secret, "webhook_events": "message"});
-                let (data, code) = http.call(Method::PATCH, &format!("/devices/{}/webhook", path_component(&id)), &[], Some(body), Duration::from_secs(10)).await?;
-                Self::gowa_check(&data, code)
+    pub async fn register_webhook(&self, url: &str, secret: &str) -> Result<(), Error> {
+        match self.kind {
+            Kind::Gowa => {
+                let id = self.gowa_id().await?;
+                let body = json!({ "webhook_url": url, "webhook_secret": secret, "webhook_events": "message" });
+                let (data, code) = self.call(Method::PATCH, &format!("/devices/{}/webhook", segment(&id)), &[], Some(body), 10).await?;
+                self.check(&data, code)
             }
-            Provider::Openwa { http, session } => {
-                let id = path_component(&Self::openwa_id(http, session).await?);
-                let body = json!({"url": url, "events": ["message.received", "message.sent"], "secret": secret});
-                let (list, list_code) = http.get(&format!("/api/sessions/{id}/webhooks"), &[]).await?;
-                Self::openwa_check(&list, list_code)?;
-                let hooks: Vec<Value> = serde_json::from_slice(&list).unwrap_or_default();
-                let mine = hooks.iter().find(|h| h.get("url").and_then(Value::as_str) == Some(url)).and_then(|h| h.get("id")).and_then(Value::as_str);
+            Kind::Openwa => {
+                let id = self.openwa_id().await?;
+                let body = json!({ "url": url, "events": ["message.received", "message.sent"], "secret": secret });
+                let (list, code) = self.call(Method::GET, &format!("/api/sessions/{id}/webhooks"), &[], None, 10).await?;
+                self.check(&list, code)?;
+                let hooks: Vec<Value> = serde_json::from_slice::<Value>(&list).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default();
+                let mine = hooks.iter().find(|h| h.get("url").and_then(Value::as_str) == Some(url)).and_then(|h| h.get("id")?.as_str().map(String::from));
                 let (data, code) = match mine {
-                    Some(hook) => http.call(Method::PUT, &format!("/api/sessions/{id}/webhooks/{}", path_component(hook)), &[], Some(body), Duration::from_secs(10)).await?,
-                    None => http.call(Method::POST, &format!("/api/sessions/{id}/webhooks"), &[], Some(body), Duration::from_secs(10)).await?,
+                    Some(hook) => self.call(Method::PUT, &format!("/api/sessions/{id}/webhooks/{hook}"), &[], Some(body), 10).await?,
+                    None => self.call(Method::POST, &format!("/api/sessions/{id}/webhooks"), &[], Some(body), 10).await?,
                 };
-                Self::openwa_check(&data, code)
+                self.check(&data, code)
             }
         }
     }
 
-    /// Messages of every chat since `since_ms` (the polling fallback), oldest first.
-    pub async fn recent_messages(&self, since_ms: i64, me: Option<&str>) -> Result<Vec<Message>, WaError> {
-        let mut out = match self {
-            Provider::Gowa { http, device } => {
-                let chats = gowa::chats(&Self::gowa_scoped(http, device, Method::GET, "/chats", &[("limit", "20".into())], None).await?);
+    /// Messages of every chat since `since` (Unix seconds; the polling fallback), oldest first.
+    pub async fn recent_messages(&self, since: f64, me: Option<&str>) -> Result<Vec<Message>, Error> {
+        let mut out = match self.kind {
+            Kind::Gowa => {
+                let chats = gowa::chats(&self.gowa_scoped(Method::GET, "/chats", vec![("limit", "20".into())], None).await?);
                 let mut out = Vec::new();
-                // Only the chats that moved since then (newest first from the gateway).
-                for (jid, name, _) in chats.into_iter().take(8).filter(|c| c.2 > since_ms) {
-                    let path = format!("/chat/{}/messages", path_component(&jid));
-                    let data = Self::gowa_scoped(http, device, Method::GET, &path, &[("limit", "10".into()), ("start_time", gateway::iso_utc(since_ms))], None).await?;
-                    out.extend(gowa::messages(&data, me).into_iter().map(|mut m| {
-                        if m.chat_name.is_none() && !name.is_empty() && model::is_group(&jid) {
+                // Only the chats that moved since `since` (newest first from the gateway).
+                for (jid, name, last) in chats.into_iter().take(8).filter(|c| c.2 > since) {
+                    let _ = last;
+                    let data = self
+                        .gowa_scoped(
+                            Method::GET,
+                            &format!("/chat/{}/messages", segment(&jid)),
+                            vec![("limit", "10".into()), ("start_time", iso(since))],
+                            None,
+                        )
+                        .await?;
+                    for mut m in gowa::messages(&data, me) {
+                        if m.chat_name.is_none() && !name.is_empty() && super::models::is_group(&jid) {
                             m.chat_name = Some(name.clone());
                         }
-                        m
-                    }));
+                        out.push(m);
+                    }
                 }
                 out
             }
-            Provider::Openwa { http, session } => {
-                let q = [("since", since_ms.to_string()), ("limit", "50".into()), ("inlineMedia", "false".into())];
-                openwa::messages(&Self::openwa_scoped(http, session, Method::GET, "/messages", &q, None).await?, me)
+            Kind::Openwa => {
+                let query = vec![
+                    ("since", ((since * 1000.0) as i64).to_string()),
+                    ("limit", "50".into()),
+                    ("inlineMedia", "false".into()),
+                ];
+                openwa::messages(&self.openwa_scoped(Method::GET, "/messages", query, None).await?, me)
             }
         };
-        out.sort_by_key(|m| m.date);
+        out.sort_by(|a, b| a.date.partial_cmp(&b.date).unwrap_or(std::cmp::Ordering::Equal));
         Ok(out)
     }
 
     /// The latest `limit` messages of one chat, oldest first.
-    pub async fn messages(&self, chat: &str, limit: usize, me: Option<&str>) -> Result<Vec<Message>, WaError> {
-        let mut out = match self {
-            Provider::Gowa { http, device } => {
-                let path = format!("/chat/{}/messages", path_component(chat));
-                gowa::messages(&Self::gowa_scoped(http, device, Method::GET, &path, &[("limit", limit.to_string())], None).await?, me)
-            }
-            Provider::Openwa { http, session } => {
-                let q = [("chatId", openwa::chat_id(chat)), ("limit", limit.to_string()), ("inlineMedia", "false".into())];
-                openwa::messages(&Self::openwa_scoped(http, session, Method::GET, "/messages", &q, None).await?, me)
-            }
+    pub async fn messages(&self, chat: &str, limit: u32, me: Option<&str>) -> Result<Vec<Message>, Error> {
+        let mut out = match self.kind {
+            Kind::Gowa => gowa::messages(
+                &self.gowa_scoped(Method::GET, &format!("/chat/{}/messages", segment(chat)), vec![("limit", limit.to_string())], None).await?,
+                me,
+            ),
+            Kind::Openwa => openwa::messages(
+                &self
+                    .openwa_scoped(
+                        Method::GET,
+                        "/messages",
+                        vec![("chatId", openwa::id(chat)), ("limit", limit.to_string()), ("inlineMedia", "false".into())],
+                        None,
+                    )
+                    .await?,
+                me,
+            ),
         };
-        out.sort_by_key(|m| m.date);
+        out.sort_by(|a, b| a.date.partial_cmp(&b.date).unwrap_or(std::cmp::Ordering::Equal));
         Ok(out)
     }
 
     /// Sends a text to an existing chat; the new message's id when the gateway gives it.
-    pub async fn send(&self, text: &str, chat: &str) -> Result<Option<String>, WaError> {
-        match self {
-            Provider::Gowa { http, device } => {
-                let data = Self::gowa_scoped(http, device, Method::POST, "/send/message", &[], Some(json!({"phone": chat, "message": text}))).await?;
-                Ok(gowa::sent_id(&data))
+    pub async fn send(&self, text: &str, chat: &str) -> Result<Option<String>, Error> {
+        match self.kind {
+            Kind::Gowa => {
+                let data = self.gowa_scoped(Method::POST, "/send/message", Vec::new(), Some(json!({ "phone": chat, "message": text }))).await?;
+                Ok(gowa::results(&data).and_then(|r| r.get("message_id")?.as_str().map(String::from)))
             }
-            Provider::Openwa { http, session } => {
-                let data = Self::openwa_scoped(http, session, Method::POST, "/messages/send-text", &[], Some(json!({"chatId": openwa::chat_id(chat), "text": text}))).await?;
-                Ok(serde_json::from_slice::<Value>(&data).ok().and_then(|v| v.get("messageId").and_then(Value::as_str).map(str::to_string)))
+            Kind::Openwa => {
+                let body = json!({ "chatId": openwa::id(chat), "text": text });
+                let data = self.openwa_scoped(Method::POST, "/messages/send-text", Vec::new(), Some(body)).await?;
+                Ok(serde_json::from_slice::<Value>(&data).ok().and_then(|v| v.get("messageId")?.as_str().map(String::from)))
             }
         }
     }
 
     /// Marks the chat read up to `last_incoming` (the newest message received in it).
-    pub async fn mark_read(&self, chat: &str, last_incoming: Option<&str>) -> Result<(), WaError> {
-        match self {
-            Provider::Gowa { http, device } => {
+    pub async fn mark_read(&self, chat: &str, last_incoming: Option<&str>) -> Result<(), Error> {
+        match self.kind {
+            Kind::Gowa => {
                 let Some(id) = last_incoming else { return Ok(()) };
-                let path = format!("/message/{}/read", path_component(id));
-                Self::gowa_scoped(http, device, Method::POST, &path, &[], Some(json!({"phone": chat}))).await.map(|_| ())
+                self.gowa_scoped(Method::POST, &format!("/message/{}/read", segment(id)), Vec::new(), Some(json!({ "phone": chat }))).await?;
+                Ok(())
             }
-            Provider::Openwa { http, session } => {
-                Self::openwa_scoped(http, session, Method::POST, "/chats/read", &[], Some(json!({"chatId": openwa::chat_id(chat)}))).await.map(|_| ())
+            Kind::Openwa => {
+                self.openwa_scoped(Method::POST, "/chats/read", Vec::new(), Some(json!({ "chatId": openwa::id(chat) }))).await?;
+                Ok(())
             }
         }
     }
 
     /// A group's name, when the messages don't carry it.
     pub async fn group_name(&self, chat: &str) -> Option<String> {
-        if !model::is_group(chat) {
+        if !super::models::is_group(chat) {
             return None;
         }
-        match self {
-            Provider::Gowa { http, device } => {
-                let data = Self::gowa_scoped(http, device, Method::GET, "/group/info", &[("group_id", chat.to_string())], None).await.ok()?;
-                gowa::group_name(&data)
+        match self.kind {
+            Kind::Gowa => {
+                let data = self.gowa_scoped(Method::GET, "/group/info", vec![("group_id", chat.into())], None).await.ok()?;
+                gowa::results(&data)?.get("Name")?.as_str().filter(|n| !n.is_empty()).map(String::from)
             }
-            Provider::Openwa { http, session } => {
-                let data = Self::openwa_scoped(http, session, Method::GET, &format!("/groups/{}", path_component(chat)), &[], None).await.ok()?;
-                let v: Value = serde_json::from_slice(&data).ok()?;
-                v.get("name").and_then(Value::as_str).filter(|s| !s.is_empty()).map(str::to_string)
+            Kind::Openwa => {
+                let data = self.openwa_scoped(Method::GET, &format!("/groups/{}", segment(chat)), Vec::new(), None).await.ok()?;
+                serde_json::from_slice::<Value>(&data).ok()?.get("name")?.as_str().filter(|n| !n.is_empty()).map(String::from)
             }
         }
     }
+}
+
+/// Unix seconds → "2026-10-19T12:00:00Z".
+pub fn iso(seconds: f64) -> String {
+    let s = seconds.max(0.0) as i64;
+    let (days, rem) = (s.div_euclid(86_400), s.rem_euclid(86_400));
+    // Civil date from days (Howard Hinnant's algorithm).
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
+    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", rem / 3600, rem % 3600 / 60, rem % 60)
 }
 
 #[cfg(test)]
@@ -410,42 +400,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn addresses_stay_on_the_gateway() {
-        assert_eq!(path_component("1203@g.us"), "1203@g.us");
-        assert_eq!(path_component("a/b?c#d e"), "a%2Fb%3Fc%23d%20e");
-        assert_eq!(path_component("../x"), "..%2Fx");
-        let base = parse_base("http://127.0.0.1:3000").unwrap();
-        assert_eq!(endpoint(&base, "/devices", &[]).unwrap().as_str(), "http://127.0.0.1:3000/devices");
-        let q = endpoint(&base, "/chats", &[("limit", "20".into()), ("device_id", "a&b=c".into())]).unwrap();
-        assert_eq!(q.as_str(), "http://127.0.0.1:3000/chats?limit=20&device_id=a%26b%3Dc");
-        let prefixed = parse_base("http://127.0.0.1:3000/gowa/").unwrap();
-        assert_eq!(endpoint(&prefixed, "/devices", &[]).unwrap().as_str(), "http://127.0.0.1:3000/gowa/devices");
-        assert!(parse_base("ftp://127.0.0.1").is_none());
-        assert!(parse_base("http://user:pass@127.0.0.1:3000").is_none());
-        assert!(parse_base("not a url").is_none());
-        assert_eq!(basic_auth("user:pass"), "Basic dXNlcjpwYXNz");
+    fn times_and_paths() {
+        assert_eq!(iso(1_697_365_800.0), "2023-10-15T10:30:00Z");
+        assert_eq!(super::super::gateway::rfc3339(&iso(1_800_000_000.0)), Some(1_800_000_000.0));
+        assert_eq!(segment("120363@g.us"), "120363@g.us");
+        assert_eq!(segment("a b/c"), "a%20b%2Fc");
     }
 
     #[test]
-    fn credentials_go_where_each_gateway_wants_them() {
-        let base = parse_base("http://127.0.0.1:3000").unwrap();
-        let Provider::Gowa { http, .. } = Provider::new(Kind::Gowa, base.clone(), Some("admin:secret".into())).unwrap() else { panic!() };
-        assert_eq!(http.headers, vec![("Authorization", "Basic YWRtaW46c2VjcmV0".to_string())]);
-        // A GOWA credential without "user:" is not basic auth: nothing is sent.
-        let Provider::Gowa { http, .. } = Provider::new(Kind::Gowa, base.clone(), Some("justakey".into())).unwrap() else { panic!() };
-        assert!(http.headers.is_empty());
-        let Provider::Openwa { http, .. } = Provider::new(Kind::Openwa, base, Some("k-123".into())).unwrap() else { panic!() };
-        assert_eq!(http.headers, vec![("X-API-Key", "k-123".to_string())]);
-    }
-
-    #[test]
-    fn errors_are_read_like_the_mac() {
-        assert_eq!(Provider::gowa_check(br#"{"code":"x"}"#, 401), Err(WaError::Unauthorized));
-        assert_eq!(Provider::gowa_check(br#"{"code":"AUTHENTICATION_ERROR"}"#, 401), Err(WaError::NotLoggedIn));
-        assert_eq!(Provider::gowa_check(br#"{"code":"INVALID_JID"}"#, 400), Err(WaError::Refused("INVALID_JID".into())));
-        assert_eq!(Provider::gowa_check(b"", 500), Err(WaError::Refused("HTTP 500".into())));
-        assert_eq!(Provider::gowa_check(b"", 200), Ok(()));
-        assert_eq!(Provider::openwa_check(b"", 403), Err(WaError::Unauthorized));
-        assert_eq!(Provider::openwa_check(br#"{"message":"Session not found"}"#, 404), Err(WaError::Refused("Session not found".into())));
+    fn only_http_gateways_and_their_credentials() {
+        assert!(Provider::new(Kind::Gowa, "file:///etc", None).is_none());
+        let p = Provider::new(Kind::Gowa, "http://127.0.0.1:3000", Some("user:pass")).unwrap();
+        assert_eq!(p.auth.as_ref().map(|a| a.1.as_str()), Some("Basic dXNlcjpwYXNz"));
+        assert!(Provider::new(Kind::Gowa, "http://127.0.0.1:3000", Some("nocolon")).unwrap().auth.is_none());
+        let o = Provider::new(Kind::Openwa, "http://127.0.0.1:2785", Some("key")).unwrap();
+        assert_eq!(o.auth, Some(("X-API-Key".into(), "key".into())));
     }
 }

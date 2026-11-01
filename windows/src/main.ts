@@ -1,5 +1,6 @@
 // Entry point: boot the bridge, wire the island, start the greeting.
 
+import type { VitalsReport } from "./core/vitals";
 import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
@@ -11,11 +12,13 @@ import { registerIntegrationHandlers, refreshConfigured } from "./island/integra
 import { registerShortcutHandlers } from "./island/shortcuts";
 import { registerVoiceHandlers } from "./island/voice";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
-import { registerWhatsAppHandlers } from "./island/whatsapp";
 import { SPOTIFY_ID } from "./core/spotify";
+import { registerWhatsAppHandlers } from "./island/whatsapp";
+import { startClaudeDesktopPlan } from "./views/usage";
 import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
 import { WhatsNew } from "./whats-new/controller";
+import type { ClipItem } from "./core/clipboard";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
@@ -61,6 +64,25 @@ async function main() {
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
+  // `true`: something dragged up from below, which wakes the island even over a browser.
+  await onEvent<boolean | null>("wake-hover", (carrying) => island.wakeFromEdge(carrying === true));
+  await onEvent<VitalsReport>("vitals", (r) => island.setVitals(r));
+  await onEvent<null>("capture-begin", () => island.onCaptureBegin());
+  await onEvent<{ path: string; dataUrl: string }>("capture-ready", (c) => island.onCaptureReady(c));
+  await onEvent<null>("capture-used", () => island.onCaptureUsed());
+  await onEvent<boolean>("browser-foreground", (on) => island.setBrowserForeground(on));
+  await onEvent<string | null>("front-exe", (exe) => { State.frontExe = exe; });
+  // The notch's Clipboard: what was copied, newest first (clipboard.rs).
+  await onEvent<ClipItem[]>("clipboard", (items) => {
+    State.clipboard = items;
+    State.notify();
+  });
+  void Bridge.clipboardItems().then((items) => {
+    if (items) {
+      State.clipboard = items;
+      State.notify();
+    }
+  });
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {
@@ -162,6 +184,8 @@ async function main() {
   registerVoiceHandlers();
   registerSpotifyHandlers(island);
   registerWhatsAppHandlers(island);
+  // Claude plan usage when Claude Code runs in the Claude desktop app (no status line there).
+  startClaudeDesktopPlan();
   // New versions: Rust offers the card, the island opens it when nothing else waits.
   await Updates.register(island);
   // Rust may have read Spotify before this page listened: ask once.

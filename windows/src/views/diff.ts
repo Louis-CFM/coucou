@@ -55,6 +55,8 @@ export function buildDiffCard(diff: FileDiff, hooks: DiffCardHooks): HTMLElement
         h(
           "div",
           { class: `diff-line ${line.kind}` },
+          // Shown in the tall work card, like an editor's gutter.
+          h("span", { class: "num", text: String(line.newLine > 0 ? line.newLine : line.origLine) }),
           h("span", { class: "sym", text: SYMBOLS[line.kind] }),
           h("span", { class: "txt", text: line.text }),
         ),

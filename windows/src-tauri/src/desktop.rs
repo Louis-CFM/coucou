@@ -207,6 +207,8 @@ struct Carry {
     /// Cursor minus the window's top-left at pick-up, physical (Poll mode).
     grab: (f64, f64),
     from: Source,
+    /// Where he was when the drag began: he goes back there after attaching a window.
+    start: (f64, f64),
 }
 
 #[derive(Default)]
@@ -590,6 +592,49 @@ fn target_spot(app: &AppHandle, d: &Desktop, anywhere: bool) -> Option<(f64, f64
     }
 }
 
+/// Windows: dropped on an app window, he attaches it to the next question and goes
+/// back where he came from (DesktopMochi.handleDragRelease, the Mac's drag-attach);
+/// over the island, home; anywhere else, his new spot.
+async fn finish_drop_at(app: &AppHandle, d: &Desktop, pos: (f64, f64), c: Carry, cursor: (i32, i32)) {
+    let s = side(app, d);
+    let center = (pos.0 + s / 2.0, pos.1 + s / 2.0);
+    let home = island_anchor(app, d)
+        .map(|(cx, top, scale)| logic::home_zone(cx, top, scale).contains(center))
+        .unwrap_or(false);
+    if !home {
+        if let Some((_, app_name, title)) = crate::flow::os::window_at(cursor.0, cursor.1) {
+            crate::log::line("desktop Mochi: dropped on a window, attached".to_string());
+            let _ = app.emit_to(
+                island::WINDOW_LABEL,
+                "attach-window",
+                serde_json::json!({ "appName": app_name, "title": title }),
+            );
+            if c.from == Source::Island {
+                // Out of the island and onto a window: back in the island.
+                {
+                    let mut i = d.inner.lock().unwrap();
+                    i.carry = None;
+                    i.landed = false;
+                }
+                hide(app, d);
+                let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from: c.from, home: true });
+            } else {
+                // From his spot on the desktop: back to it.
+                {
+                    let mut i = d.inner.lock().unwrap();
+                    i.carry = None;
+                    i.landed = true;
+                }
+                refresh(app, d);
+                fly(app, d, c.start, SNAP_MS, logic::ease_out_back).await;
+                remember_spot(app, d, c.start, true);
+            }
+            return;
+        }
+    }
+    finish_drop(app, d, pos, c.from).await;
+}
+
 /// The drop, wherever it came from: home if it is over the island's panel,
 /// otherwise his new spot.
 async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source) {
@@ -648,7 +693,8 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
                     d.inner.lock().unwrap().carry = None;
                     let app2 = app.clone();
                     let d2 = d.clone();
-                    tauri::async_runtime::spawn(async move { finish_drop(&app2, &d2, pos, c.from).await });
+                    let cursor = (cx as i32, cy as i32);
+                    tauri::async_runtime::spawn(async move { finish_drop_at(&app2, &d2, pos, c, cursor).await });
                 }
                 continue;
             }
@@ -704,7 +750,7 @@ pub async fn desktop_mochi_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
     };
     let Some(center) = center else { return false };
     d.flight.fetch_add(1, Ordering::SeqCst);
-    d.inner.lock().unwrap().carry = Some(Carry { grab: (s / 2.0, s / 2.0), from: Source::Island });
+    d.inner.lock().unwrap().carry = Some(Carry { grab: (s / 2.0, s / 2.0), from: Source::Island, start: (0.0, 0.0) });
     show(&app, &d, (center.0 - s / 2.0, center.1 - s / 2.0));
     true
 }
@@ -756,7 +802,7 @@ pub async fn desktop_mochi_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
             let (cx, cy) = platform::cursor_physical()?;
             let origin = win.outer_position().ok()?;
             let grab = (cx - origin.x as f64, cy - origin.y as f64);
-            d.inner.lock().unwrap().carry = Some(Carry { grab, from: Source::Desktop });
+            d.inner.lock().unwrap().carry = Some(Carry { grab, from: Source::Desktop, start: pos });
             refresh(&app, &d);
         }
         DesktopMode::Layer => {

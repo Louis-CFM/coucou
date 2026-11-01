@@ -318,8 +318,8 @@ impl Recap {
             return;
         }
         let word = match decision {
-            "allow" | "always" => "allow",
-            "deny" => "deny",
+            "allow" | "always" | "plan_auto" | "plan_default" => "allow",
+            "deny" | "plan_change" => "deny",
             _ => return,
         };
         self.history.decisions.push(Decision { agent, date: now, decision: word.to_string() });
@@ -585,7 +585,7 @@ fn is_week_key(week: &str) -> bool {
 // ── Saving the shared image ───────────────────────────────────────────────────
 
 /// Standard base64, with or without a `data:…;base64,` prefix.
-fn decode_base64(data: &str) -> Option<Vec<u8>> {
+pub(crate) fn decode_base64(data: &str) -> Option<Vec<u8>> {
     let body = match data.split_once(',') {
         Some((head, rest)) if head.starts_with("data:") => rest,
         _ => data,

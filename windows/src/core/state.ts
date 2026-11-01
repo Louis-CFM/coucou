@@ -9,6 +9,7 @@ import {
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
+import type { ClipItem } from "./clipboard";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
@@ -103,10 +104,23 @@ export interface Settings {
   autoCloseInterval: number;
   /** Hovering the island opens it all the way (off: hovering only peeks). */
   openOnHover: boolean;
-  /** Open the island for a moment when any pill finishes or hits an error. */
-  alertsFromAllPills: boolean;
+  /** Mochi reacts to the computer: CPU, heat, memory, battery (vitals.rs). On by default. */
+  mochiFeelsComputer: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
+  /** The notch's Clipboard tab keeps the last things copied, in memory only. On by default. */
+  clipboardHistory: boolean;
+  /** A neon light runs around the island's edge when a notification comes. On by default. */
+  neonNotifications: boolean;
+  /** Another pill's finish or error opens the island for a moment (Mac #683). */
+  alertsFromAllPills: boolean;
+  /** Double-check unclear test results: Laya here, Jev in the cloud. */
+  testChecker: "off" | "local" | "cloud";
+  layaUrl: string;
+  /** A Laya already on this computer (its folder); empty: Coucou's own copy. */
+  layaDir: string;
+  /** Claude Code is sent back when it finishes with failing tests. */
+  fixFailingTests: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -177,8 +191,15 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   openOnHover: false,
-  alertsFromAllPills: false,
+  mochiFeelsComputer: true,
   showClock: false,
+  clipboardHistory: true,
+  neonNotifications: true,
+  alertsFromAllPills: false,
+  testChecker: "off",
+  layaUrl: "",
+  layaDir: "",
+  fixFailingTests: false,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
@@ -234,6 +255,8 @@ class AppState {
 
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
+  /** Settles once the dropped file's copy is in the inbox (the question waits for it). */
+  droppedFileReady: Promise<void> | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
@@ -268,6 +291,11 @@ class AppState {
    */
   mochiOnDesktop = false;
 
+  /** The screen capture on the island (capture.rs), until it is used or dismissed. */
+  capture: { path: string; dataUrl: string } | null = null;
+  /** The Clipboard tab's items, newest first (clipboard.rs, the "clipboard" event). */
+  clipboard: ClipItem[] = [];
+
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;
 
@@ -289,6 +317,25 @@ class AppState {
   notify() {
     for (const fn of this.listeners) fn();
   }
+
+  /**
+   * The overview grown tall, open on the focused pill: an agent at work (its
+   * steps and the file it changes) or WhatsApp (room for the conversations).
+   */
+  get tallOverview(): "work" | "whatsapp" | null {
+    if (this.mode !== "expanded" || this.view !== "overview") return null;
+    const task = this.focusTask;
+    if (!task) return null;
+    if (task.id === "integration_whatsapp") return "whatsapp";
+    if (task.state !== "working" && task.state !== "thinking" && task.state !== "searching") return null;
+    const category = pillDefinition(task.id)?.category;
+    const agent = (task.source === "agent" && !task.isIntegration) || category === "workspace" ||
+      category === "agent" || (category == null && task.id.startsWith("agent_"));
+    return agent ? "work" : null;
+  }
+
+  /** The program in front, lower-case ("claude.exe"); null when unknown. */
+  frontExe: string | null = null;
 
   get focusTask(): AgentTask | null {
     return this.tasks.find((t) => t.id === this.focusId) ?? this.tasks[0] ?? null;

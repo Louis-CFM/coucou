@@ -12,7 +12,8 @@ import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
 import { readActivity, readPulse, readStats } from "../core/github";
 import { githubDetail, githubPulseCard, type ForgeCardOptions } from "./github";
-import { N_, language, t } from "../i18n/i18n";
+import { buildCalcomCard, readBookings } from "./calcom";
+import { N_, t } from "../i18n/i18n";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
 export function timeAgo(value: unknown): string {
@@ -348,28 +349,7 @@ function notionCard(): HTMLElement {
 // ── Cal.com ───────────────────────────────────────────────────────────────────
 
 function calcomCard(): HTMLElement {
-  const bookings = arr("integration_calcom", "bookings")
-    .slice()
-    .sort((a, b) => new Date(String(a.start)).getTime() - new Date(String(b.start)).getTime());
-  const rows = h("div", { class: "int-rows tight" });
-  if (bookings.length === 0) {
-    rows.append(h("div", { class: "int-empty", text: t("No calls scheduled") }));
-  }
-  for (const b of bookings.slice(0, 3)) {
-    const when = new Date(String(b.start));
-    const day = when.toLocaleDateString(language(), { day: "2-digit", month: "2-digit" });
-    const time = when.toLocaleTimeString(language(), { hour: "2-digit", minute: "2-digit" });
-    rows.append(
-      h(
-        "div",
-        { class: "int-row" },
-        dot("#C9956A", 4),
-        h("span", { class: "int-time", text: `${day} ${time}` }),
-        h("span", { class: "int-name", text: String(b.title ?? t("Meeting")) }),
-      ),
-    );
-  }
-  return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), rows);
+  return buildCalcomCard(readBookings(arr("integration_calcom", "bookings")));
 }
 
 // ── n8n ───────────────────────────────────────────────────────────────────────

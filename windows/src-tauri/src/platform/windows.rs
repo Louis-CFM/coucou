@@ -24,7 +24,8 @@ use ::windows::Win32::System::Ole::RevokeDragDrop;
 use ::windows::Win32::System::Pipes::GetNamedPipeClientProcessId;
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::Threading::{
-    AttachThreadInput, GetCurrentProcess, GetCurrentThreadId, OpenProcessToken,
+    AttachThreadInput, GetCurrentProcess, GetCurrentThreadId, OpenProcess, OpenProcessToken,
+    QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, GetKeyboardLayoutList, MapVirtualKeyExW, ToUnicodeEx, HKL, MAPVK_VK_TO_VSC,
@@ -54,16 +55,42 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 // ── Files ─────────────────────────────────────────────────────────────────────
 
-/// %APPDATA%\Coucou — preferences.
+/// Coucou installed in a folder of its own, other than the usual
+/// %LOCALAPPDATA%\Coucou (D:\Coucou, say): an installed copy, its uninstaller
+/// beside it, or a folder marked with `coucou.portable`. Everything of Coucou's
+/// then lives in that one folder: its data there, its preferences in Settings,
+/// its windows' browser data in WebView (lib.rs).
+pub fn own_folder() -> Option<PathBuf> {
+    static FOLDER: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+    FOLDER
+        .get_or_init(|| {
+            let exe = std::env::current_exe().ok()?;
+            let dir = exe.parent()?.to_path_buf();
+            let marked = dir.join("uninstall.exe").is_file() || dir.join("coucou.portable").is_file();
+            let key = |p: &std::path::Path| p.to_string_lossy().trim_end_matches('\\').to_lowercase();
+            let usual = std::env::var_os("LOCALAPPDATA").map(|b| PathBuf::from(b).join("Coucou"));
+            (marked && usual.is_none_or(|u| key(&u) != key(&dir))).then_some(dir)
+        })
+        .clone()
+}
+
+/// %APPDATA%\Coucou — preferences (Settings in Coucou's own folder, if it has one).
 pub fn config_dir() -> PathBuf {
+    if let Some(dir) = own_folder() {
+        return dir.join("Settings");
+    }
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
     base.join("Coucou")
 }
 
-/// %LOCALAPPDATA%\Coucou — where coucou-hook.exe, the inbox and the log live.
+/// %LOCALAPPDATA%\Coucou — where coucou-hook.exe, the inbox and the log live
+/// (Coucou's own folder, if it has one).
 pub fn local_dir() -> PathBuf {
+    if let Some(dir) = own_folder() {
+        return dir;
+    }
     let base = std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
@@ -115,6 +142,11 @@ pub fn local_time() -> LocalTime {
 /// Spawned helpers must never flash a console window.
 pub fn no_console(cmd: &mut Command) -> &mut Command {
     cmd.creation_flags(CREATE_NO_WINDOW)
+}
+
+/// How long Windows has been running.
+pub fn uptime() -> std::time::Duration {
+    std::time::Duration::from_millis(unsafe { windows::Win32::System::SystemInformation::GetTickCount64() })
 }
 
 pub fn open_url(url: &str) {
@@ -284,6 +316,40 @@ pub fn cursor_physical() -> Option<(f64, f64)> {
 /// drag might be in flight before it reaches the window.
 pub fn left_button_down() -> bool {
     unsafe { (GetAsyncKeyState(VK_LBUTTON.0 as i32) as u16 & 0x8000) != 0 }
+}
+
+/// File name of the program that owns the foreground window, lowercased
+/// ("chrome.exe"). The island never takes the foreground, so this is the app
+/// the user is working in.
+pub fn foreground_exe() -> Option<String> {
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() {
+            return None;
+        }
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid as *mut u32));
+        exe_of_pid(pid)
+    }
+}
+
+/// File name of a process's program, lowercased ("spotify.exe").
+pub fn exe_of_pid(pid: u32) -> Option<String> {
+    if pid == 0 {
+        return None;
+    }
+    unsafe {
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buf = [0u16; 1024];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(buf.as_mut_ptr()), &mut len).is_ok();
+        let _ = CloseHandle(process);
+        if !ok {
+            return None;
+        }
+        let path = String::from_utf16_lossy(&buf[..len as usize]);
+        path.rsplit(['\\', '/']).next().map(str::to_lowercase)
+    }
 }
 
 // ── Island window ─────────────────────────────────────────────────────────────
