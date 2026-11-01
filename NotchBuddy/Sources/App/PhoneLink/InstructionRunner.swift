@@ -156,6 +156,8 @@ final class InstructionRunner {
         } else {
             env["TERM_PROGRAM"] = "vscode"
         }
+        // A `claude -p` run: the hooks skip those unless told it is watched.
+        env["COUCOU_WATCHED"] = "1"
         process.environment = env
         process.standardInput = FileHandle.nullDevice
         // Output goes to a file (a pipe could fill up and stall claude); its
