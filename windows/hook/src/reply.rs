@@ -133,7 +133,7 @@ mod tests {
     use super::*;
 
     const AGENTS: &[&str] = &[
-        "", "gemini", "antigravity", "cursor", "codex", "copilot", "muse", "opencode", "amp",
+        "", "gemini", "antigravity", "cursor", "codex", "kimi", "copilot", "muse", "opencode", "amp",
         "hermes", "claude-desktop", "my-tool",
     ];
     const EVENTS: &[&str] = &[

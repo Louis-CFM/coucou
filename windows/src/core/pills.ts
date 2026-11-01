@@ -82,6 +82,8 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   { id: "agent_codex", name: "Codex", color: "#2DD4BF", category: "workspace",
     subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   // ── Agents ─────────────────────────────────────────────────────────────────
+  { id: "agent_kimi", name: "Kimi Code", color: "#3B82F6", category: "agent",
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_gemini", name: "Gemini CLI", color: "#8AB4F8", category: "agent",
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_copilot", name: "Copilot CLI", color: "#818CF8", category: "agent",
@@ -191,6 +193,7 @@ export function sessionSubtitle(id: string): string {
     case "integration_claude": return "Claude Code";
     case "agent_cursor": return "Cursor";
     case "agent_codex": return "Codex";
+    case "agent_kimi": return "Kimi Code";
     case "agent_hermes": return "Hermes";
     case "agent_claude-desktop": return "Claude Desktop";
     default: return N_("Agent");

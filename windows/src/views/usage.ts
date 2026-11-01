@@ -1,7 +1,5 @@
-// Plan usage in the island: the Claude and Codex pills in the header and the
-// card behind each. Same behaviour as ClaudePlanHeaderPill, ClaudePlanCardView
-// and CodexPlanCardView on the Mac; the numbers and labels come from
-// core/plan.ts.
+// Plan usage in the island: the Claude, Codex and Kimi Code pills in the header
+// and the card behind each. The numbers and labels come from core/plan.ts.
 //
 // The pills sit in the header's right side, before the gear, on the overview
 // only, Claude first. Clicking one puts its card in place of the overview's
@@ -12,8 +10,9 @@
 import { Bridge } from "../core/bridge";
 import {
   PLAN_TEXT, claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct,
-  effectivePct, parseCodexPlan, pillLabel, planColor, resetLabel,
-  type CodexPlanUsage, type PlanUsage, type PlanWindow,
+  effectivePct, kimiDominantPct, kimiIsStale, kimiPillLabel, kimiSubtitle, parseCodexPlan,
+  parseKimiPlan, pillLabel, planColor, resetLabel,
+  type CodexPlanUsage, type KimiPlanUsage, type PlanKind, type PlanUsage, type PlanWindow,
 } from "../core/plan";
 import { State } from "../core/state";
 import { clear, dot, h, svg } from "./dom";
@@ -37,20 +36,29 @@ export function codexPillVisible(): boolean {
   return State.view === "overview" && State.settings.showCodexPlanInNotch;
 }
 
-/** A plan card is open and either of its pills (header or compact) is enabled. */
+/** The Kimi Code pill is in the header: overview, turned on. */
+export function kimiPillVisible(): boolean {
+  return State.view === "overview" && State.settings.showKimiPlanInNotch;
+}
+
+/** A plan card is open and its pill (header or compact) is enabled. */
 export function planCardOpen(): boolean {
   if (!State.showingPlanDetail) return false;
-  if (State.planDetailIsCodex) return codexPillVisible();
+  if (State.planDetailKind === "codex") return codexPillVisible();
+  if (State.planDetailKind === "kimi") return kimiPillVisible();
   const s = State.settings;
   return State.view === "overview" && (s.showPlanInNotch || s.showPlanInCompactIsland) && s.planRelayInstalled;
 }
 
 const claudeColor = (now = Date.now()) => planColor(dominantPct(State.planUsage, now));
 const codexColor = (now = Date.now()) => planColor(dominantPct(State.codexPlanUsage, now));
+const kimiColor = (now = Date.now()) => planColor(kimiDominantPct(State.kimiPlanUsage, now));
 
 /** The colour of the open card's plan, which Mochi wears while it is open. */
 export function openPlanColor(): string {
-  return State.planDetailIsCodex ? codexColor() : claudeColor();
+  if (State.planDetailKind === "codex") return codexColor();
+  if (State.planDetailKind === "kimi") return kimiColor();
+  return claudeColor();
 }
 
 /** Closes the plan card (view, mode or focus changed). */
@@ -113,6 +121,27 @@ export function refreshCodexPlanUsage(): void {
     });
 }
 
+// ── Kimi Code numbers ─────────────────────────────────────────────────────────
+
+let kimiInFlight = false;
+
+/** Asks Kimi Code's local server when its pill shows or is clicked. */
+export function refreshKimiPlanUsage(): void {
+  if (kimiInFlight || State.paused || !kimiIsStale(State.kimiPlanUsage)) return;
+  kimiInFlight = true;
+  void Bridge.kimiPlanUsage()
+    .then((result) => {
+      const usage = parseKimiPlan(result);
+      if (usage) {
+        State.kimiPlanUsage = usage;
+        State.notify();
+      }
+    })
+    .finally(() => {
+      kimiInFlight = false;
+    });
+}
+
 // ── Pill ──────────────────────────────────────────────────────────────────────
 
 export interface PlanPill {
@@ -121,31 +150,33 @@ export interface PlanPill {
 }
 
 /** One pill: colour dot and label, lit while hovered or while its card is open. */
-export function buildPlanPill(codex: boolean): PlanPill {
+export function buildPlanPill(kind: PlanKind): PlanPill {
   const label = h("span", { class: "plan-pill-label" });
   const dotEl = h("i", { class: "plan-pill-dot" });
-  const isOpen = () => State.showingPlanDetail && State.planDetailIsCodex === codex;
+  const isOpen = () => State.showingPlanDetail && State.planDetailKind === kind;
+  const title = kind === "codex" ? tl("Codex plan usage")
+    : kind === "kimi" ? tl("Kimi Code plan usage") : tl("Claude plan usage");
   const el = h("button", {
     class: "plan-pill",
-    title: codex ? tl("Codex plan usage") : tl("Claude plan usage"),
+    title,
     onclick: () => {
       const open = isOpen();
-      State.planDetailIsCodex = codex;
+      State.planDetailKind = kind;
       State.showingPlanDetail = !open;
-      if (codex) refreshCodexPlanUsage();
+      if (kind === "codex") refreshCodexPlanUsage();
+      if (kind === "kimi") refreshKimiPlanUsage();
       State.notify();
     },
   }, dotEl, label);
   return {
     el,
     sync() {
-      const color = codex ? codexColor() : claudeColor();
+      const color = kind === "codex" ? codexColor() : kind === "kimi" ? kimiColor() : claudeColor();
       el.style.setProperty("--plan", color);
       el.classList.toggle("active", isOpen());
       dotEl.style.background = color;
-      label.textContent = codex
-        ? pillLabel("Codex", State.codexPlanUsage)
-        : pillLabel("Claude", State.planUsage);
+      label.textContent = kind === "codex" ? pillLabel("Codex", State.codexPlanUsage)
+        : kind === "kimi" ? kimiPillLabel(State.kimiPlanUsage) : pillLabel("Claude", State.planUsage);
     },
   };
 }
@@ -186,13 +217,14 @@ export class PlanCard {
 
   /** Re-renders when the numbers change, or every 30 s for the countdowns. */
   sync(now = Date.now()) {
-    const codex = State.planDetailIsCodex;
-    const u = codex ? State.codexPlanUsage : State.planUsage;
-    const key = `${language()}|${codex}|${JSON.stringify(u)}|${Math.floor(now / 30_000)}`;
+    const kind = State.planDetailKind;
+    const u = kind === "codex" ? State.codexPlanUsage : kind === "kimi" ? State.kimiPlanUsage : State.planUsage;
+    const key = `${language()}|${kind}|${JSON.stringify(u)}|${Math.floor(now / 30_000)}`;
     if (key === this.key) return;
     this.key = key;
     clear(this.el);
-    if (codex) this.drawCodex(State.codexPlanUsage, now);
+    if (kind === "codex") this.drawCodex(State.codexPlanUsage, now);
+    else if (kind === "kimi") this.drawKimi(State.kimiPlanUsage, now);
     else this.drawClaude(State.planUsage, now);
   }
 
@@ -218,5 +250,15 @@ export class PlanCard {
       ),
     );
     this.el.append(head(codexColor(now), PLAN_TEXT.codexTitle, codexSubtitle(u, now)), rows);
+  }
+
+  private drawKimi(u: KimiPlanUsage | null, now: number) {
+    const rows = h("div", { class: "plan-rows" });
+    if (u?.fiveHour) rows.append(gaugeRow(PLAN_TEXT.fiveHours, u.fiveHour, false, now));
+    if (u?.sevenDay) rows.append(gaugeRow(PLAN_TEXT.week, u.sevenDay, true, now));
+    if (u?.monthTotal) rows.append(gaugeRow(PLAN_TEXT.monthTotal, u.monthTotal, true, now));
+    if (u?.monthCode) rows.append(gaugeRow(PLAN_TEXT.monthCode, u.monthCode, true, now));
+    if (!u) rows.append(gaugeRow(PLAN_TEXT.fiveHours, undefined, false, now));
+    this.el.append(head(kimiColor(now), PLAN_TEXT.kimiTitle, kimiSubtitle(u, now)), rows);
   }
 }

@@ -304,6 +304,8 @@ export const Bridge = {
    * is missing, not signed in or slow (15 s).
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
+  /** Kimi Code's quota, from its local `kimi web` server API. */
+  kimiPlanUsage: () => call<unknown>("kimi_plan_usage"),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),

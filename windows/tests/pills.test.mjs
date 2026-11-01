@@ -15,15 +15,17 @@ installFakeDom();
 
 // ── The catalog itself ────────────────────────────────────────────────────────
 
-test("the catalog holds the Mac's pills with the Claude Code label for Windows and Linux", () => {
-  // Copied from NotchBuddy/Sources/CoucouKit/PillCatalog.swift: an ID is a
-  // contract value, and a colour or subtitle that drifts is a visible bug.
-  // Windows and Linux name the Claude Code integration after the agent.
+test("the catalog holds the Mac's pills and the Windows and Linux agents", () => {
+  // The Mac's catalog is in NotchBuddy/Sources/CoucouKit/PillCatalog.swift: an ID
+  // is a contract value, and a colour or subtitle that drifts is a visible bug.
+  // Windows and Linux name the Claude Code integration after the agent and also
+  // support Kimi Code.
   const mac = [
     ["integration_claude", "Claude Code", "#F5F6F8", "workspace", "Integration"],
     ["agent_cursor", "Cursor", "#C0C4CC", "workspace", "Integration"],
     ["agent_antigravity", "Antigravity", "#E879F9", "workspace", "Integration"],
     ["agent_codex", "Codex", "#2DD4BF", "workspace", "Integration"],
+    ["agent_kimi", "Kimi Code", "#3B82F6", "agent", "Agent"],
     ["agent_gemini", "Gemini CLI", "#8AB4F8", "agent", "Agent"],
     ["agent_copilot", "Copilot CLI", "#818CF8", "agent", "Agent"],
     ["agent_muse", "Muse Code", "#38BDF8", "agent", "Agent"],

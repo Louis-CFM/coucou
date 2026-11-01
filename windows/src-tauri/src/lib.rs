@@ -17,6 +17,7 @@ mod i18n;
 mod identity;
 mod integrations;
 mod island;
+mod kimi_plan;
 mod local_chat;
 mod log;
 mod mail;
@@ -492,6 +493,12 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
     tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
 }
 
+/// Kimi Code plan usage, asked of Kimi's own local server when its pill shows.
+#[tauri::command]
+async fn kimi_plan_usage() -> Option<serde_json::Value> {
+    tauri::async_runtime::spawn_blocking(kimi_plan::read).await.ok().flatten()
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     recap::record_decision(&app, &request_id, &decision);
@@ -910,6 +917,7 @@ pub fn run() {
             status_line_preview,
             status_line_apply,
             codex_plan_usage,
+            kimi_plan_usage,
             approval_decision,
             approval_answer,
             approval_ack,
