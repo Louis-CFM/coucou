@@ -11,6 +11,7 @@ import { Bridge, emitToWindow, onEvent, type DesktopMode } from "../core/bridge"
 import type { BotEmoteName } from "../core/layout";
 import { Sound } from "../core/sound";
 import { BotEngine } from "../mochi/engine";
+import { outfitChange } from "../mochi/wardrobe";
 import {
   DESKTOP_EVENTS, DOUBLE_CLICK_MS, DRAG_THRESHOLD, PANEL_SIZE, agentActive, gaze, isOverBody,
   layerDragTopLeft, lookOrigin, pointerDistance, shouldSleep, windowDragTopLeft,
@@ -198,7 +199,9 @@ class DesktopMochi {
     const ctx = this.canvas.getContext("2d");
     if (!ctx) return;
     const engine = this.engine;
-    engine.setOutfit(this.snap.outfit, true);
+    // The headphones go on and off at once, after the dance (outfitChange).
+    const change = outfitChange(engine.outfit, this.snap.outfit, engine.dancingLevel);
+    engine.setOutfit(change.outfit, change.animated);
     if (!this.asleep) {
       // Windows: the global cursor. Linux: only while the pointer is over him.
       const fresh = this.mode === "poll" || now - this.lastPointer < 1500;
