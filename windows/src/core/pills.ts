@@ -138,6 +138,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // The focus timer (src/core/focus.ts): a pomodoro in the island, nothing to set up.
+  { id: "integration_focus", name: "Focus timer", color: "#FB7185", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
   // Mail: classic Outlook on Windows, driven on this computer through its COM objects
   // (src-tauri/src/mail). The new Outlook has none, and Linux has no Outlook.
   { id: "integration_mail", name: "Mail", color: "#2F8CFF", category: "service",
