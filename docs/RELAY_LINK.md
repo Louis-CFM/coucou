@@ -103,6 +103,8 @@ ver (1 byte = 1) ‖ type (1 byte) ‖ counter (8 bytes, big endian) ‖ body
 ### Handshake
 
 1. The phone connects and, on every (re)connection and whenever it hears `{"peer":"online"}` without an open session, sends `init`.
+   A `{"peer":"online"}` or `{"peer":"offline"}` during an open session ends that session (the computer left, or joined again
+   on a new socket that has no session), and the phone reconnects and starts again from this step.
 2. The computer checks the MAC with `K_auth`, creates a fresh `N_pc`, derives the session keys and answers `accept`.
    Only the newest `init` is answered; a computer that gets a new `init` drops its previous session.
 3. The phone checks that the `accept` MAC covers **its current** `N_phone` (so a recorded `accept` is useless), derives the same

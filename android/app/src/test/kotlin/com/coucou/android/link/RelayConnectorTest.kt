@@ -334,6 +334,16 @@ class RelayConnectorTest {
         s.close()
     }
 
+    @Test fun theComputerJoiningAgainEndsTheStream() {
+        val f = Fake()
+        val s = connectorFor(f).connect(2_000)
+        f.awaitSession()
+        s.soTimeout = 2_000 // a stream that stays open fails the test instead of hanging it
+        f.sendText("""{"peer":"online"}""")
+        assertEquals(null, readLine(s))
+        s.close()
+    }
+
     @Test fun aCloseFromTheRelayEndsTheStream() {
         val f = Fake()
         val s = connectorFor(f).connect(2_000)

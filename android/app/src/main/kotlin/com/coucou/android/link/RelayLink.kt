@@ -201,7 +201,8 @@ class RelayStreamSocket(
             while (!closed) {
                 when (val m = ws.receive()) {
                     is WsMessage.Binary -> incoming.put(session.open(m.data) + NEWLINE)
-                    is WsMessage.Text -> if (RelayHints.parse(m.text) == RelayHints.Hint.OFFLINE) break // the computer left: the conversation is over
+                    // The computer left, or joined again on a new socket that has no session: either way this conversation is over.
+                    is WsMessage.Text -> if (RelayHints.parse(m.text) != RelayHints.Hint.OTHER) break
                     is WsMessage.Closed -> break
                 }
             }
