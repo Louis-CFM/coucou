@@ -120,6 +120,9 @@ enum ChatProvider: String, CaseIterable, Codable {
     case deepseek  = "deepseek"
     case qwen      = "qwen"
     case moonshot  = "moonshot"
+    // Answered only through the user's own subscription (CLIRelay.swift, GitHub build)
+    case cursor    = "cursor"
+    case copilot   = "copilot"
 
     var displayName: String {
         switch self {
@@ -131,6 +134,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "DeepSeek"
         case .qwen:      "Qwen"
         case .moonshot:  "Moonshot"
+        case .cursor:    "Cursor"
+        case .copilot:   "GitHub Copilot"
         }
     }
 
@@ -144,6 +149,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "#5B8FF9"
         case .qwen:      "#FF6A00"
         case .moonshot:  "#7C5CFC"
+        case .cursor:    "#A1A1AA"
+        case .copilot:   "#8B5CF6"
         }
     }
 
@@ -157,6 +164,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "deepseek-chat"
         case .qwen:      "qwen-max"
         case .moonshot:  "moonshot-v1-32k"
+        case .cursor:    ""
+        case .copilot:   ""
         }
     }
 
@@ -170,6 +179,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "deepseek-api-key"
         case .qwen:      "qwen-api-key"
         case .moonshot:  "moonshot-api-key"
+        case .cursor:    ""
+        case .copilot:   ""
         }
     }
 
@@ -187,6 +198,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "ai_deepseek"
         case .qwen:      "ai_qwen"
         case .moonshot:  "ai_moonshot"
+        case .cursor:    "ai_cursor"
+        case .copilot:   "ai_copilot"
         }
     }
 
@@ -200,6 +213,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case "ai_deepseek":  self = .deepseek
         case "ai_qwen":      self = .qwen
         case "ai_moonshot":  self = .moonshot
+        case "ai_cursor":    self = .cursor
+        case "ai_copilot":   self = .copilot
         default:             return nil
         }
     }

@@ -1,9 +1,9 @@
-#if !APPSTORE
 import AVFoundation
 import Carbon
 import Speech
 
-/// Speech to text for the notch chat (GitHub build), on-device when the Mac supports it.
+/// Speech to text for the notch chat, on-device when the Mac supports it (both builds: the
+/// App Store one has the microphone entitlement and the usage strings for it).
 ///
 /// Apple's recognizer only understands one language per request, so "Automatic" (the default)
 /// listens with up to three recognizers at once — the user's languages (macOS languages,
@@ -307,4 +307,3 @@ extension Notification.Name {
     static let dictationDidStart = Notification.Name("notchBuddy.dictationDidStart")
     static let dictationDidEnd   = Notification.Name("notchBuddy.dictationDidEnd")
 }
-#endif

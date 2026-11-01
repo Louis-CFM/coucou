@@ -22,10 +22,6 @@ use crate::chat::{self, ChatContext, ModelInfo};
 use crate::i18n::{t, tf};
 use crate::{platform, settings};
 
-/// The chat's provider id while the relay answers: its turns are plain text,
-/// so they never mix with the API's content blocks.
-pub const PROVIDER: &str = "claude-code";
-
 /// The models offered in the picker without a key. Claude Code takes these ids
 /// as they are, and so does the API once a key is added.
 const MODELS: [(&str, &str); 3] = [

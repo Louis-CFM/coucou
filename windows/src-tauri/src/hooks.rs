@@ -246,13 +246,22 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 //
 // Claude Code runs one `statusLine` command and hands it the plan limits. Coucou
 // puts its relay there; a status line the user already had is kept in
-// statusline-previous.json beside the relay, and the relay still runs it, so it
-// keeps working. Installing and removing it is separate from the hooks, and
-// goes through the same hardened writer (config_file.rs): strict read, diff,
-// fingerprint, dated backup, then the write.
+// statusline-previous.json in local_dir() (outside bin/, surviving uninstaller),
+// and the relay still runs it, so it keeps working. Installing and removing it
+// is separate from the hooks, and goes through the same hardened writer
+// (config_file.rs): strict read, diff, fingerprint, dated backup, then the write.
 
 /// Where the user's own status line waits while the relay stands in for it.
 pub fn status_line_previous_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(root) = tests::test_root() {
+        return root.join("data").join("statusline-previous.json");
+    }
+    settings::local_dir().join("statusline-previous.json")
+}
+
+/// Where releases up to 0.5.7 kept it: in bin/, which the uninstaller wipes.
+fn legacy_status_line_previous_path() -> PathBuf {
     #[cfg(test)]
     if let Some(root) = tests::test_root() {
         return root.join("data").join("bin").join("statusline-previous.json");
@@ -261,8 +270,18 @@ pub fn status_line_previous_path() -> PathBuf {
 }
 
 fn read_status_line_previous() -> Option<Value> {
-    let bytes = std::fs::read(status_line_previous_path()).ok()?;
+    let bytes = std::fs::read(status_line_previous_path())
+        .or_else(|_| std::fs::read(legacy_status_line_previous_path()))
+        .ok()?;
     serde_json::from_slice::<Value>(&bytes).ok().filter(Value::is_object)
+}
+
+/// Moves a saved status line out of bin/ (#855), so an install made before
+/// the move is protected too. Never replaces a copy already at `new`.
+fn migrate_status_line_previous(legacy: &Path, new: &Path) {
+    if legacy.is_file() && !new.exists() && std::fs::rename(legacy, new).is_ok() {
+        crate::log::line("moved statusline-previous.json out of bin/");
+    }
 }
 
 /// True when the `statusLine` in settings.json is Coucou's relay.
@@ -337,10 +356,12 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
         // Back in settings.json: the saved copy has done its job.
         Ok(_) if !install => {
             let _ = std::fs::remove_file(status_line_previous_path());
+            let _ = std::fs::remove_file(legacy_status_line_previous_path());
         }
         // Nothing was written: do not leave a stale copy behind.
         Err(_) if saved => {
             let _ = std::fs::remove_file(status_line_previous_path());
+            let _ = std::fs::remove_file(legacy_status_line_previous_path());
         }
         _ => {}
     }
@@ -360,13 +381,17 @@ pub fn uninstall_all() -> Result<bool, String> {
     if !installed && !relay_installed {
         return Ok(false);
     }
-    // Never discard a user's saved status line just because it cannot be read.
-    let previous_bytes = if relay_installed {
-        config_file::read(&status_line_previous_path())?
+    // Prefer the copy outside bin/, as the relay does, but support old installs
+    // that have not yet migrated. Read both strictly before changing anything.
+    let saved = if relay_installed {
+        [status_line_previous_path(), legacy_status_line_previous_path()]
+            .into_iter()
+            .map(|path| config_file::read(&path).map(|bytes| (path, bytes)))
+            .collect::<Result<Vec<_>, _>>()?
     } else {
-        None
+        Vec::new()
     };
-    let previous = previous_bytes.as_deref()
+    let previous = saved.iter().find_map(|(_, bytes)| bytes.as_deref())
         .map(|bytes| config_file::parse_json(Some(bytes), "statusline-previous.json"))
         .transpose()?;
     let mut expected = config_file::fingerprint(&bytes);
@@ -377,13 +402,14 @@ pub fn uninstall_all() -> Result<bool, String> {
             Ok(Some(status_line_settings(&cleaned, false, previous.as_ref())?))
         }),
     }];
-    if relay_installed {
-        // Check and back up both snapshots before changing either file.
+    for (path, bytes) in saved {
+        // Check and back up every snapshot before changing any file. Remove both
+        // copies so the stale legacy one cannot become the fallback later.
         expected.push(':');
-        expected.push_str(&previous_bytes.as_deref()
+        expected.push_str(&bytes.as_deref()
             .map(config_file::fingerprint).unwrap_or_else(|| "none".into()));
         edits.push(FileEdit {
-            path: status_line_previous_path(),
+            path,
             edit: config_file::text_edit("statusline-previous.json".into(), |_| Ok(None)),
         });
     }
@@ -417,6 +443,7 @@ pub fn ensure_hook_exe(app: &AppHandle) {
     {
         return;
     }
+    migrate_status_line_previous(&legacy_status_line_previous_path(), &status_line_previous_path());
 
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Ok(p) = app.path().resolve(platform::HOOK_EXE, tauri::path::BaseDirectory::Resource) {
@@ -522,12 +549,13 @@ mod tests {
 
     #[test]
     fn filesystem_paths_are_thread_local_and_restored_after_a_panic() {
-        let outside = (settings_path(), status_line_previous_path());
+        let outside = (settings_path(), status_line_previous_path(), legacy_status_line_previous_path());
         let paths = TestPaths::new();
         let root = paths.0.clone();
         assert!(settings_path().starts_with(&root));
         assert!(status_line_previous_path().starts_with(&root));
-        let other_thread = std::thread::spawn(|| (settings_path(), status_line_previous_path()))
+        assert!(legacy_status_line_previous_path().starts_with(&root));
+        let other_thread = std::thread::spawn(|| (settings_path(), status_line_previous_path(), legacy_status_line_previous_path()))
             .join().unwrap();
         assert_eq!(other_thread, outside);
 
@@ -536,8 +564,88 @@ mod tests {
             panic!("exercise test-path cleanup during unwinding");
         });
         assert!(result.is_err());
-        assert_eq!((settings_path(), status_line_previous_path()), outside);
+        assert_eq!((settings_path(), status_line_previous_path(), legacy_status_line_previous_path()), outside);
         assert!(!root.exists());
+    }
+
+    #[test]
+    fn a_saved_status_line_moves_out_of_bin_without_replacing_a_newer_one() {
+        let dir = std::env::temp_dir().join(format!("coucou-statusline-migrate-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("bin")).unwrap();
+        let (legacy, new) = (dir.join("bin").join("statusline-previous.json"), dir.join("statusline-previous.json"));
+        std::fs::write(&legacy, b"{\"command\":\"old\"}").unwrap();
+        migrate_status_line_previous(&legacy, &new);
+        assert!(!legacy.exists());
+        assert_eq!(std::fs::read(&new).unwrap(), b"{\"command\":\"old\"}");
+        // A copy already outside bin/ wins: the legacy one is left alone.
+        std::fs::write(&legacy, b"{\"command\":\"stale\"}").unwrap();
+        migrate_status_line_previous(&legacy, &new);
+        assert_eq!(std::fs::read(&new).unwrap(), b"{\"command\":\"old\"}");
+        assert!(legacy.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn uninstall_restores_a_legacy_status_line_and_clears_both_copies() {
+        let _paths = TestPaths::new();
+        let path = settings_path();
+        let new = status_line_previous_path();
+        let legacy = legacy_status_line_previous_path();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        let current = status_line_settings(&json!({ "model": "keep" }), true, None).unwrap();
+        let old = json!({ "type": "command", "command": "old-line", "padding": 2 });
+        std::fs::write(&path, config_file::pretty(&current)).unwrap();
+        std::fs::write(&legacy, config_file::pretty(&old)).unwrap();
+        assert!(!new.exists());
+        assert!(uninstall_all().unwrap());
+        let cleaned: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(cleaned["statusLine"], old);
+        assert_eq!(cleaned["model"], "keep");
+        assert!(!legacy.exists());
+
+        // The newer copy takes precedence, and the stale one must not survive
+        // to be picked up by the relay on a later install.
+        let newer = json!({ "type": "command", "command": "new-line", "padding": 4 });
+        std::fs::write(&path, config_file::pretty(&current)).unwrap();
+        std::fs::write(&legacy, config_file::pretty(&old)).unwrap();
+        std::fs::write(&new, config_file::pretty(&newer)).unwrap();
+        assert!(uninstall_all().unwrap());
+        let cleaned: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(cleaned["statusLine"], newer);
+        assert_eq!(cleaned["model"], "keep");
+        assert!(!new.exists());
+        assert!(!legacy.exists());
+        assert!(!uninstall_all().unwrap());
+    }
+
+    #[test]
+    fn uninstall_refuses_an_unreadable_or_corrupt_legacy_backup() {
+        let _paths = TestPaths::new();
+        let path = settings_path();
+        let new = status_line_previous_path();
+        let legacy = legacy_status_line_previous_path();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        let current = status_line_settings(&json!({ "model": "keep" }), true, None).unwrap();
+        let original = config_file::pretty(&current);
+        std::fs::write(&path, &original).unwrap();
+        std::fs::write(&legacy, b"{ broken backup").unwrap();
+        assert!(uninstall_all().is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        assert_eq!(std::fs::read(&legacy).unwrap(), b"{ broken backup");
+
+        // A valid new copy does not make a read failure in the legacy location
+        // safe to ignore: cleanup must preserve all files on a preflight error.
+        std::fs::remove_file(&legacy).unwrap();
+        std::fs::create_dir(&legacy).unwrap();
+        let saved = config_file::pretty(&json!({ "type": "command", "command": "new-line" }));
+        std::fs::write(&new, &saved).unwrap();
+        assert!(uninstall_all().is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        assert_eq!(std::fs::read_to_string(&new).unwrap(), saved);
+        assert!(legacy.is_dir());
     }
 
     #[test]
@@ -657,6 +765,7 @@ mod tests {
         let saved = status_line_previous_path();
         assert!(path.starts_with(tmp), "the test must not touch the real home");
         assert!(saved.starts_with(tmp), "the test must not touch the real local data");
+        assert!(legacy_status_line_previous_path().starts_with(tmp), "the test must not touch legacy local data");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
 
         // A real-shaped file, written the way PowerShell 5 would: UTF-8 with BOM.

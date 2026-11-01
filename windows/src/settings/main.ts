@@ -4,7 +4,7 @@
 // island's settings are drawn here, one Notch page at a time.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport, type SubscriptionStatus } from "../core/bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
@@ -20,6 +20,7 @@ import {
 import { h, clear } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
+import { claudeModelControl } from "./claude-models";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
@@ -251,6 +252,7 @@ const PLAN_SETTINGS_TEXT = {
   get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
   get claudeCli() { return t("The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app."); },
   get showClaude() { return t("Show in notch"); },
+  get showClaudeCompact() { return t("Show in compact island"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
 };
@@ -268,7 +270,10 @@ function planSection(status: HookStatus): HTMLElement {
     if (fresh) Object.assign(status, fresh);
     settings.planRelayInstalled = status.planRelayInstalled;
     // Cancelled or failed: a switch that was waiting for the install falls back.
-    if (!status.planRelayInstalled) settings.showPlanInNotch = false;
+    if (!status.planRelayInstalled) {
+      settings.showPlanInNotch = false;
+      settings.showPlanInCompactIsland = false;
+    }
     redraw();
   };
 
@@ -290,6 +295,21 @@ function planSection(status: HookStatus): HTMLElement {
         });
       }
     });
+    const swCompact = toggle(settings.showPlanInCompactIsland, (on) => {
+      if (!on) {
+        settings.showPlanInCompactIsland = false;
+        void save();
+      } else if (status.planRelayInstalled) {
+        settings.showPlanInCompactIsland = true;
+        void save();
+      } else {
+        void reviewChange(body, STATUS_LINE_CHANGE, true, () => void rebuild(), () => {
+          settings.planRelayInstalled = true;
+          settings.showPlanInCompactIsland = true;
+          void save().then(rebuild);
+        });
+      }
+    });
     body.append(
       h("div", {
         class: "hint",
@@ -297,6 +317,7 @@ function planSection(status: HookStatus): HTMLElement {
       }),
       h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
+      h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaudeCompact }), swCompact),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),
         statusDot(status.planRelayInstalled),
@@ -329,18 +350,76 @@ function planSection(status: HookStatus): HTMLElement {
   return section;
 }
 
+// ── Your AI subscriptions ─────────────────────────────────────────────────────
+
+/** The plan people know, by provider. */
+const SUBSCRIPTION_NAMES: Record<string, string> = {
+  anthropic: "Claude", google: "Google Gemini", openai: "ChatGPT", cursor: "Cursor", copilot: "GitHub Copilot",
+};
+
+/**
+ * One switch per provider (cli_relay.rs): on, the chat goes through its
+ * official terminal tool, signed in with the user's own account; off, through
+ * its API key. Says whether the tool is installed and how to sign in.
+ */
+function subscriptionsSection(): HTMLElement {
+  const list = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const draw = (rows: SubscriptionStatus[]) => {
+    clear(list);
+    for (const row of rows) {
+      const p = providerDef(row.provider);
+      const sw = toggle(row.on, (on) => {
+        void Bridge.subscriptionSet(row.provider, on).then((next) => {
+          if (next) draw(next);
+        });
+      });
+      const lines: HTMLElement[] = [];
+      if (row.installed) {
+        lines.push(h("div", { class: "hint", style: "color:#22c55e", text: t("{tool} found ✓", { tool: row.tool }) }));
+        lines.push(h("div", {
+          class: "hint",
+          text: t("Not signed in yet? Run this once in a terminal: {command}", { command: row.signIn }),
+        }));
+      } else {
+        lines.push(h("div", { class: "row" },
+          h("span", { class: "hint", text: t("{tool} not found.", { tool: row.tool }) }),
+          h("button", { text: t("Install it"), onclick: () => void Bridge.openUrl(row.installUrl) }),
+        ));
+      }
+      if (!row.subscriptionOnly && !row.on) {
+        lines.push(h("div", { class: "hint", text: t("Off: the chat uses your API key below.") }));
+      }
+      list.append(h("div", {},
+        h("div", { class: "row" },
+          h("i", { class: "dot", style: `background:${p.accent}` }),
+          h("label", { text: SUBSCRIPTION_NAMES[row.provider] ?? p.name }),
+          sw,
+        ),
+        ...lines,
+      ));
+    }
+  };
+  void Bridge.subscriptionStatus().then((rows) => draw(rows ?? []));
+  return h(
+    "section",
+    {},
+    h("h2", { text: t("Your AI subscriptions") }),
+    h("div", {
+      class: "hint",
+      text: t("Chat on the plan you already pay for. Coucou asks your AI's official terminal tool, signed in with your own account: it never sees your password or your key."),
+    }),
+    list,
+  );
+}
+
 // ── Claude API section ────────────────────────────────────────────────────────
 
-const MODELS: [string, string][] = [
-  ["claude-opus-5", "Claude Opus 5"],
-  ["claude-sonnet-5", "Claude Sonnet 5"],
-  ["claude-haiku-4-5", "Claude Haiku 4.5"],
-];
-
-/** The state line under Claude: the key, else Claude Code standing in for it, else what is missing. */
+/** The state line under Claude: the key, else Claude Code (switched on above), else what is missing. */
 function apiState(hasKey: boolean, relay: boolean): string {
   if (hasKey) return t("Key saved in the {store}.", { store: KEY_STORE });
-  return relay ? t("No key: your Claude Code answers instead, with your account.") : t("No key yet — the chat needs one.");
+  return relay
+    ? t("No key: the chat can go through your Claude subscription above.")
+    : t("No key yet — the chat needs one.");
 }
 
 function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
@@ -366,6 +445,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     state.textContent = apiState(present, ready && !present);
     field.placeholder = present ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
+    void model.reload(present);
   }
 
   saveBtn.addEventListener("click", async () => {
@@ -393,16 +473,11 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     }
   });
 
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
-  model.addEventListener("change", () => {
-    settings.model = model.value;
-    void save();
+  const model = claudeModelControl(() => settings.model, async (value) => {
+    await Bridge.saveSettings({ ...settings, model: value });
+    settings.model = value;
   });
+  void model.reload(hasKey);
 
   clearBtn.style.display = hasKey ? "" : "none";
 
@@ -412,7 +487,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
     h("div", { class: "row" }, h("label", { text: t("API key") }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
+    model.element,
     feedback,
   );
 }
@@ -1000,6 +1075,11 @@ function generalSection(): HTMLElement {
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
     h("div", { class: "row" },
+      h("label", { text: t("Open for every pill’s alerts") }),
+      toggle(settings.alertsFromAllPills, (v) => { settings.alertsFromAllPills = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("When a pill other than the one shown finishes or hits an error, the notch shows it for a moment, then the pill you had comes back.") }),
+    h("div", { class: "row" },
       h("label", { text: t("Show clock in the island") }),
       toggle(settings.showClock, (v) => { settings.showClock = v; void save(); }),
     ),
@@ -1407,7 +1487,7 @@ async function render() {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    chat: () => [subscriptionsSection(), apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
     integrations: () => [integrationsSection(present), ...whatsappSections()],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],

@@ -87,7 +87,13 @@ pub fn payload(map: &serde_json::Map<String, serde_json::Value>) -> Option<Strin
 
 /// The command of the status line the user had before the relay took its place.
 fn previous_command() -> Option<String> {
-    let path = std::env::current_exe().ok()?.with_file_name(PREVIOUS_FILE);
+    let exe = std::env::current_exe().ok()?;
+    let path = exe
+        .parent()
+        .and_then(|p| p.parent())
+        .map(|p| p.join(PREVIOUS_FILE))
+        .filter(|p| p.is_file())
+        .unwrap_or_else(|| exe.with_file_name(PREVIOUS_FILE));
     let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
     saved.get("command")?.as_str().filter(|c| !c.trim().is_empty()).map(str::to_string)
 }
