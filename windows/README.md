@@ -609,6 +609,13 @@ own window.
   its `spotify:` link, and without Spotify **Get Spotify** opens its download
   page. Windows gives no Spotify link for the track, so an ad is told apart by
   having a title and no artist or album.
+- **Now Playing** (Settings → Integrations, Windows only) is the same pill and
+  card for any app in the system media controls: YouTube in a browser, Apple
+  Music, Media Player… When several play, it follows the one Windows calls
+  current; while the Spotify pill is on, Spotify stays on its own pill. Only the
+  controls the app takes are shown, and there is no volume slider (it would be
+  the whole browser's). Clicking the cover brings the app forward — a browser's
+  window titled after the song when there is one.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
