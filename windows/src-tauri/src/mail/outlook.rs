@@ -53,9 +53,19 @@ pub struct Listing {
     pub messages: Vec<Message>,
 }
 
-/// A string inside PowerShell single quotes (nothing is expanded there; ' is doubled).
+/// A string inside PowerShell single quotes (nothing is expanded there). PowerShell
+/// also ends such a string at ‘ ’ ‚ ‛, so each of them is doubled, like '.
 pub fn ps(s: &str) -> String {
-    format!("'{}'", s.replace('\'', "''"))
+    let mut quoted = String::with_capacity(s.len() + 2);
+    quoted.push('\'');
+    for c in s.chars() {
+        if matches!(c, '\'' | '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{201B}') {
+            quoted.push(c);
+        }
+        quoted.push(c);
+    }
+    quoted.push('\'');
+    quoted
 }
 
 /// Attaches to the running Outlook, or prints {"error":"notRunning"} and stops. JSON goes
@@ -114,6 +124,7 @@ foreach ($b in (Coucou-Inboxes)) {{
 }
 
 /// A DASL text test: `field LIKE '%value%'` (' doubled, % removed from the value).
+/// Only ASCII ' ends a DASL string; the whole filter then goes through `ps`.
 fn like(field: &str, value: &str) -> String {
     let v = value.replace('%', "").replace('\'', "''");
     format!("\"{field}\" LIKE '%{v}%'")
@@ -412,6 +423,35 @@ mod tests {
     fn quotes_never_break_out() {
         assert_eq!(ps("it's"), "'it''s'");
         assert_eq!(ps("$env:x `n"), "'$env:x `n'", "single quotes expand nothing");
+        for q in ['\u{2018}', '\u{2019}', '\u{201A}', '\u{201B}'] {
+            assert_eq!(ps(&format!("l{q}offre")), format!("'l{q}{q}offre'"), "PowerShell reads {q} as a single quote");
+        }
+    }
+
+    /// What Windows PowerShell prints for `Write-Output <ps(value)>`, run the way `run` runs a script.
+    #[cfg(windows)]
+    fn echoed_by_powershell(value: &str) -> String {
+        let path = unique_script_path();
+        let _guard = TempScript(path.clone());
+        let script = format!("\u{feff}[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\nWrite-Output {}\n", ps(value));
+        std::fs::write(&path, script).unwrap();
+        let out = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"])
+            .arg(&path)
+            .output()
+            .unwrap();
+        String::from_utf8(out.stdout).unwrap().trim_end().to_string()
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn powershell_reads_every_quoted_value_back_exactly() {
+        let attachment = "Plan d\u{2019}\u{e9}tage \u{2018}x\u{201A}y\u{201B}'; Write-Output INJECTED; \u{2019}.pdf";
+        assert_eq!(echoed_by_powershell(attachment), attachment);
+        // A search keeps one typographic apostrophe in the DASL filter Outlook receives.
+        let search = dasl(&Query::parse("aujourd\u{2019}hui"), Filter::All).unwrap();
+        assert!(search.contains("'%aujourd\u{2019}hui%'"));
+        assert_eq!(echoed_by_powershell(&search), search);
     }
 
     #[test]
