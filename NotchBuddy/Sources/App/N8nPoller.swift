@@ -11,30 +11,6 @@ final class N8nPoller: @unchecked Sendable {
     private var lastExecutionId: String = ""
     private var isFirstLoad: Bool = true
 
-    // ISO8601DateFormatter is thread-safe; only read after creation.
-    nonisolated(unsafe) private static let isoFormatterFractional: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    // ISO8601DateFormatter is thread-safe; only read after creation.
-    nonisolated(unsafe) private static let isoFormatterStandard: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime]
-        return f
-    }()
-
-    static func parseExecutionDate(from json: [String: Any]) -> Date {
-        let dateString = (json["stoppedAt"] as? String) ?? (json["startedAt"] as? String)
-        if let dateString {
-            if let date = isoFormatterFractional.date(from: dateString) ?? isoFormatterStandard.date(from: dateString) {
-                return date
-            }
-        }
-        return Date()
-    }
-
     private init() {}
 
     func start() {
@@ -102,10 +78,9 @@ final class N8nPoller: @unchecked Sendable {
                 return
             }
 
-            let terminal = ["success", "error", "crashed", "canceled", "failed"]
             let terminalItems = items.filter { item in
                 let status = item["status"] as? String ?? ""
-                return terminal.contains(status)
+                return n8nTerminalStatuses.contains(status)
             }
 
             guard let newest = terminalItems.first else {
@@ -146,7 +121,7 @@ final class N8nPoller: @unchecked Sendable {
             self.lastExecutionId = newestId
             let status = newestExec["status"] as? String ?? ""
             let success = status == "success"
-            let newestDate = Self.parseExecutionDate(from: newestExec)
+            let newestDate = n8nExecutionDate(from: newestExec)
             self.n8nLog("New execution id=\(newestId) status=\(status)")
 
             // Process intermediate completed executions into history (oldest to newest)
@@ -157,7 +132,7 @@ final class N8nPoller: @unchecked Sendable {
                     for item in intermediate {
                         let name = self.extractWorkflowName(from: item)
                         let ok = (item["status"] as? String ?? "") == "success"
-                        let date = Self.parseExecutionDate(from: item)
+                        let date = n8nExecutionDate(from: item)
                         if state.n8nWorkflowFilter.isEmpty || state.n8nWorkflowFilter.contains(name) {
                             state.n8nRuns = Array(([N8nRun(workflow: name, detail: nil, success: ok, date: date)]
                                                    + state.n8nRuns).prefix(10))
@@ -202,7 +177,7 @@ final class N8nPoller: @unchecked Sendable {
             }
             let name = self.extractWorkflowName(from: json)
             let detail = self.parseDetail(from: json, success: success)
-            let date = Self.parseExecutionDate(from: json)
+            let date = n8nExecutionDate(from: json)
             let executionDate = (json["stoppedAt"] != nil || json["startedAt"] != nil) ? date : fallbackDate
             self.n8nLog("Parsed: \(name)")
             self.dispatch(success: success, name: name, detail: detail, date: executionDate)
