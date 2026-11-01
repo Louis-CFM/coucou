@@ -276,6 +276,19 @@ class RelayConnectorTest {
         assertTrue(s.isClosed)
     }
 
+    @Test fun aQuietStretchAfterTheHandshakeDoesNotEndTheStream() {
+        val f = Fake()
+        val s = connectorFor(f, resendMs = 150).connect(2_000)
+        try {
+            f.awaitSession()
+            Thread.sleep(400) // longer than the handshake waited for each answer
+            f.sendLine("{\"type\":\"welcome\"}")
+            assertEquals("{\"type\":\"welcome\"}", readLine(s))
+        } finally {
+            s.close()
+        }
+    }
+
     @Test fun aLineOverTheLimitCannotBeSent() {
         val f = Fake()
         val s = connectorFor(f).connect(2_000)
