@@ -4059,7 +4059,10 @@ struct TickerView: View {
                 rowB = steps[min(idx, steps.count - 1)]
             }
         }
-        .onChange(of: task?.steps.count) { _, _ in
+        // Watch the steps themselves, not their count: appendStep keeps at most
+        // 20, so once full the count and stepIndex stop changing while new
+        // steps keep arriving.
+        .onChange(of: task?.steps) { _, _ in
             guard let task, !task.steps.isEmpty, !isTransitioning else { return }
             let newIdx = task.stepIndex
             if displayIndex < 0 {
@@ -4068,7 +4071,7 @@ struct TickerView: View {
                 rowB = steps[min(newIdx, steps.count - 1)]
                 return
             }
-            guard newIdx != displayIndex else { return }
+            guard newIdx != displayIndex || steps[min(newIdx, steps.count - 1)] != rowB else { return }
             tickerAnimate(to: newIdx)
         }
     }
