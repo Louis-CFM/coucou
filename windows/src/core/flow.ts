@@ -38,6 +38,8 @@ export interface FlowPrefs {
   voice: boolean;
   voiceOutput: VoiceOutput;
   voiceGender: "female" | "male";
+  voicestudioUrl: string;
+  voicestudioVoice: string;
 }
 
 export type ModelState =
@@ -180,7 +182,7 @@ export interface VoiceView {
   answer: string;
 }
 
-export type VoiceOutput = "system" | "elevenlabs" | "off";
+export type VoiceOutput = "system" | "elevenlabs" | "voicestudio" | "off";
 
 export const FlowBridge = {
   status: () => call<FlowStatus>("flow_status"),

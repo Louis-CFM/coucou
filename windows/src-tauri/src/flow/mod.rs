@@ -505,6 +505,12 @@ pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
             crate::voice::sync(&app);
         }
     }
+    if prefs.voice
+        && prefs.voice_output == "voicestudio"
+        && (before.voice_output != prefs.voice_output || before.voicestudio_url != prefs.voicestudio_url || before.voicestudio_voice != prefs.voicestudio_voice)
+    {
+        crate::voice::warm_up(&app);
+    }
     let _ = app.emit("flow-prefs", &prefs);
 }
 
