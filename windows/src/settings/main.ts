@@ -1062,6 +1062,19 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const hideAfter = h("input", {
+    type: "number", min: "1", max: "600", step: "1",
+    value: String(Math.round(settings.absenceInterval)),
+    style: "width:72px",
+  }) as HTMLInputElement;
+  hideAfter.addEventListener("change", () => {
+    const val = Number(hideAfter.value);
+    const clamped = Number.isFinite(val) ? Math.max(1, Math.min(600, Math.round(val))) : Math.round(settings.absenceInterval);
+    settings.absenceInterval = clamped;
+    hideAfter.value = String(clamped);
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -1100,9 +1113,13 @@ function generalSection(): HTMLElement {
     if (document.activeElement !== autoClose) {
       autoClose.value = String(Math.round(settings.autoCloseInterval));
     }
+    if (document.activeElement !== hideAfter) {
+      hideAfter.value = String(Math.round(settings.absenceInterval));
+    }
   };
   volume.addEventListener("blur", () => generalSync?.());
   autoClose.addEventListener("blur", () => generalSync?.());
+  hideAfter.addEventListener("blur", () => generalSync?.());
 
   return h(
     "section",
@@ -1140,6 +1157,16 @@ function generalSection(): HTMLElement {
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
+    h("div", { class: "row" },
+      h("label", { text: t("Hide after") }),
+      hideAfter,
+      h("span", { class: "hint", text: t("seconds after you leave the island") }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Eyes follow the pointer") }),
+      toggle(settings.eyesFollowPointer !== false, (v) => { settings.eyesFollowPointer = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("Mochi's eyes track the cursor across the screen. When off, Mochi looks straight ahead.") }),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,

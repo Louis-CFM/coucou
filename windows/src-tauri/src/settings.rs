@@ -108,18 +108,14 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
-    /// What the closed island shows at the top of the screen, where the Mac
-    /// has its notch: "mochi" (the Mac's island on a screen without a notch),
-    /// "time", "datetime", "claude" (the plan's usage), "music" (what plays),
-    /// "empty" (the black shape alone) or "hidden" (nothing; the top edge of
-    /// the screen wakes it). Kept as it comes, like `mochi_outfit`: the island
-    /// reads what it doesn't know as "mochi".
     pub closed_island: String,
     /// Settings → Agents → Antigravity → Approve commands from the notch: a shell command
     /// none of Antigravity's rules covers waits for Allow / Deny on the island
     /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
     /// what a webview sends back is ignored. The Mac's key is the same.
     pub agy_approvals_enabled: bool,
+    /// Mochi's eyes follow the mouse pointer. On by default.
+    pub eyes_follow_pointer: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -192,6 +188,7 @@ impl Default for Settings {
             show_clock: false,
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
+            eyes_follow_pointer: true,
         }
     }
 }
@@ -494,7 +491,8 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
   "closedIsland": "music",
-  "agyApprovalsEnabled": true
+  "agyApprovalsEnabled": true,
+  "eyesFollowPointer": false
 }"##;
 
     fn custom() -> Value {
@@ -1018,6 +1016,7 @@ mod tests {
                 "showClock",
                 "closedIsland",
                 "agyApprovalsEnabled",
+                "eyesFollowPointer",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
@@ -1077,5 +1076,12 @@ mod tests {
         let loaded = load_from(&file);
         assert!(loaded.sound_volume >= 0.0);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+    #[test]
+    fn eyes_follow_pointer_defaults_when_missing() {
+        let mut obj = custom().as_object().unwrap().clone();
+        obj.remove("eyesFollowPointer");
+        let s: Settings = serde_json::from_value(Value::Object(obj)).unwrap();
+        assert_eq!(s.eyes_follow_pointer, true);
     }
 }

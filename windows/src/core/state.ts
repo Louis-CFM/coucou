@@ -110,6 +110,8 @@ export interface Settings {
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
   closedIsland: string;
   absenceInterval: number;
+  /** Whether Mochi's eyes track the pointer across the screen (default true). */
+  eyesFollowPointer: boolean;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
   /** The always-on workspace pill: VS Code, Cursor, Codex or Antigravity. */
@@ -183,6 +185,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showClock: false,
   closedIsland: "mochi",
   absenceInterval: 180,
+  eyesFollowPointer: true,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   ],
