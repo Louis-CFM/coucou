@@ -18,6 +18,7 @@ import { N_, t } from "../i18n/i18n";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
+const VSCODE_ID = "agent_vscode";
 
 /** Most requests waiting at once, the one on the card included (Mac ApprovalQueue.maxPending). */
 const MAX_PENDING = 5;
@@ -343,7 +344,11 @@ function handleHook(island: Island, payload: HookPayload) {
   // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's
   // when it runs in Cursor's terminal (Mac #120), VS Code's otherwise.
   const validAgent = validateAgent(payload.coucou_agent);
-  const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
+  let workspaceId = payload.term_editor === "cursor"
+    ? CURSOR_ID
+    : payload.term_editor === "vscode"
+      ? VSCODE_ID
+      : (State.settings.mainPill === VSCODE_ID ? VSCODE_ID : CLAUDE_ID);
   const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
   const isExternalAgent = validAgent !== null;
   const sessionId = payload.session_id ?? "";

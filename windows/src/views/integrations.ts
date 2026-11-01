@@ -89,7 +89,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const status = idleStatus(task.id, info, State.settings.model);
 
   const actions = h("div", { class: "int-actions" });
-  if (task.id === "integration_claude") {
+  if (task.id === "integration_claude" || task.id === "agent_vscode") {
     actions.append(
       h("button", {
         class: "link-btn",
