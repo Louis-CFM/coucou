@@ -350,6 +350,10 @@ struct OverviewView: View {
             #if !APPSTORE
             SpotifyController.shared.openSpotify()
             #endif
+        case "integration_yandex_music":
+            #if !APPSTORE
+            YandexMusicController.shared.openYandexMusic()
+            #endif
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -2165,6 +2169,15 @@ struct IntegrationCardView: View {
         #endif
     }
 
+    // Yandex Music: its own card for every state (playing, idle, not installed, Now Playing unavailable)
+    private var isYandexMusic: Bool {
+        #if !APPSTORE
+        return task.id == "integration_yandex_music"
+        #else
+        return false
+        #endif
+    }
+
     private var statusDot: Color {
         #if !APPSTORE
         if task.id == "integration_music" {
@@ -2326,6 +2339,11 @@ struct IntegrationCardView: View {
         } else if isSpotify {
             #if !APPSTORE
             SpotifyCardView()
+                .transition(.opacity)
+            #endif
+        } else if isYandexMusic {
+            #if !APPSTORE
+            YandexMusicCardView()
                 .transition(.opacity)
             #endif
         } else if agentSessionActive {
@@ -4273,6 +4291,13 @@ struct AgentPillsView: View {
             }
         } else if task.id == "integration_spotify" {
             SpotifyPill(task: task, swapping: $swapping) {
+                swapping = true
+                state.setFocus(task.id)
+                SoundEngine.shared.play("blip")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+            }
+        } else if task.id == "integration_yandex_music" {
+            YandexMusicPill(task: task, swapping: $swapping) {
                 swapping = true
                 state.setFocus(task.id)
                 SoundEngine.shared.play("blip")

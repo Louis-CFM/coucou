@@ -8,6 +8,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
+import type { YandexMusicState } from "./yandex-music";
 import type { UpdateStatus } from "./update";
 import type { WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
 
@@ -477,6 +478,16 @@ export const Bridge = {
   whatsappTest: () => call<WaTestResult>("whatsapp_test"),
   /** "Install WhatsApp" / "Update": GOWA from its GitHub releases, on this click only. */
   whatsappInstall: () => call<void>("whatsapp_install"),
+  // ── Yandex Music (src-tauri/src/yandex_music.rs) ──────────────────────────
+  /** Reads the player again (the card came on screen) and reports it. */
+  yandexMusicRefresh: () => call<YandexMusicState | null>("yandex_music_refresh"),
+  /** True when Yandex Music took it. `value`: seconds for seek, 0…100 for volume. */
+  yandexMusicControl: (action: YandexMusicAction, value?: number) =>
+    call<boolean>("yandex_music_control", { action, value: value ?? null }),
+  /** Brings Yandex Music forward or starts it; without it, its download page. */
+  yandexMusicOpen: () => call<boolean>("yandex_music_open"),
+  /** Whether there is a Yandex Music to launch (Settings). */
+  yandexMusicInstalled: () => call<boolean>("yandex_music_installed"),
 
   // ── New versions (src-tauri/src/update.rs) ────────────────────────────────
   updateStatus: () => call<UpdateStatus>("update_status"),
@@ -499,6 +510,8 @@ export const Bridge = {
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
+
+export type YandexMusicAction = "playPause" | "next" | "previous" | "seek" | "volume";
 
 export type ShortcutStatus =
   | "active" | "off" | "inUse" | "duplicate" | "invalid"

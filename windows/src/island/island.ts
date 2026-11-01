@@ -13,6 +13,7 @@ import {
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
+import { YANDEX_MUSIC_ID, yandexIslandDances } from "../core/yandex-music";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -216,6 +217,7 @@ export class Island {
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === "integration_gitea") void Bridge.openGitea();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
+        else if (task.id === YANDEX_MUSIC_ID) void Bridge.yandexMusicOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -1194,13 +1196,21 @@ export class Island {
     this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
-    this.engine.setDancing(islandDances({
-      music: State.spotifyPlaying,
-      state: State.effectiveState,
-      mode: State.mode,
-      view: State.view,
-      focusId: State.focusTask?.id,
-    }));
+    this.engine.setDancing(
+      islandDances({
+        music: State.spotifyPlaying,
+        state: State.effectiveState,
+        mode: State.mode,
+        view: State.view,
+        focusId: State.focusTask?.id,
+      }) || yandexIslandDances({
+        music: State.yandexMusicPlaying,
+        state: State.effectiveState,
+        mode: State.mode,
+        view: State.view,
+        focusId: State.focusTask?.id,
+      }),
+    );
 
     this.engine.update(dt);
     // Cleared in device pixels, the whole canvas. At a fractional scale (150 %)
