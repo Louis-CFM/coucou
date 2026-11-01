@@ -875,6 +875,12 @@ export class Island {
       if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
 
+    // A click in the open island takes the keyboard, so Escape reaches it
+    // (on a Wayland layer surface it only gets the keyboard when asked).
+    window.addEventListener("mousedown", () => {
+      if (State.mode === "expanded") this.takeKeyboard();
+    });
+
     // Only keys typed into the island itself land here, never Escape typed in
     // a terminal — so it may fold a waiting card away, as Escape in the notch
     // does on macOS.
