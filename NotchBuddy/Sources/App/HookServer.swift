@@ -448,6 +448,9 @@ final class HookServer: @unchecked Sendable {
         removeQuestion(id: entry.id, answer: #"{"permissionDecision":"ask"}"#)
     }
 
+    /// The events that mean an agent is working with you (MachineVitals' work streak).
+    private static let workEvents: Set<String> = ["UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop"]
+
     /// Returns the tool_input serialized as sorted-keys JSON, "" if absent or empty.
     /// Same computation used in processPermissionRequest and processEvent to match PostToolUse.
     private static func approvalInputKey(_ input: [String: Any]) -> String {
@@ -705,6 +708,7 @@ final class HookServer: @unchecked Sendable {
         // the session it shows, its steps and state; a session waiting for you keeps that state.
         let key = recapSessionId
         let now = Date()
+        if Self.workEvents.contains(name) { MachineVitals.shared.agentWorked() }
         func note(_ change: (inout BoardSession) -> Void = { _ in }) {
             record(pill: agentId, session: key, raw: sessionId, title: projectName, change)
         }
