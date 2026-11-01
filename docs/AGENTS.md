@@ -225,6 +225,20 @@ Every event is fire-and-forget: if the app is closed or unreachable, nothing is 
 | `post_llm_call` | `Stop` |
 | `pre_approval_request` | `PreToolUse` (observer only, shows "⏳ Approval pending in Hermes") |
 
+### Pi and Oh My Pi
+
+The repository includes separate, typed extensions for [Pi](https://pi.dev)
+(`earendil-works/pi`, verified at 1.3.0) and
+[Oh My Pi](https://github.com/can1357/oh-my-pi) (verified at 18.12.5).
+They use each harness's official extension lifecycle and Coucou's installed relay
+to show sessions, tool names, and final outcomes on the automatic `pi` and
+`oh-my-pi` pills. Permissions and questions stay in the harness. No prompt, tool
+content, or assistant text is forwarded.
+
+See [setup, configuration examples, event mappings, and compatibility](../integrations/README.md).
+Enable the extensions with an explicit path or the harness's settings; this
+integration does not write settings or add a native installer.
+
 ### Any other tool
 
 Follow the generic pattern: call `nb-hook --agent <your-name> <EventName>` (macOS),
