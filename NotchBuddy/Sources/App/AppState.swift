@@ -126,7 +126,33 @@ final class AppState: ObservableObject {
     @Published var chatMailMode = false
 
     @Published var chatProvider: ChatProvider = .anthropic {
-        didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
+        didSet {
+            UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider")
+            #if !APPSTORE
+            if oldValue != chatProvider { ClaudeVoiceBrain.shared.reset() }
+            #endif
+            if oldValue != chatProvider, oldValue == .codex || chatProvider == .codex {
+                #if !APPSTORE
+                CodexChatService.shared.reset()
+                #endif
+                chatHistory = []
+                ClaudeService.shared.clearConversation()
+            }
+        }
+    }
+    @Published var codexChatBusy: Bool = false
+    @Published var codexProjectPath: String = ""
+    @Published var codexCanWrite: Bool = false {
+        didSet { if oldValue != codexCanWrite { resetIdleCodexChat() } }
+    }
+    @Published var codexSearchMode: String = "cached" {
+        didSet { if oldValue != codexSearchMode { resetIdleCodexChat() } }
+    }
+    @Published var codexModel: String = "" {
+        didSet {
+            UserDefaults.standard.set(codexModel, forKey: "codexModel")
+            if oldValue != codexModel { resetIdleCodexChat() }
+        }
     }
     @Published var googleChatModel: String = ChatProvider.google.defaultModel {
         didSet { UserDefaults.standard.set(googleChatModel, forKey: "googleChatModel") }
@@ -156,6 +182,23 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
     }
 
+    #if !APPSTORE
+    func selectCodexProject(_ path: String) {
+        guard !codexChatBusy, let valid = try? CodexChatService.validatedProject(path), codexProjectPath != valid else { return }
+        CodexChatService.shared.reset()
+        chatHistory = []
+        codexProjectPath = valid
+    }
+    #endif
+
+    private func resetIdleCodexChat() {
+        #if !APPSTORE
+        guard !codexChatBusy else { return }
+        CodexChatService.shared.reset()
+        if chatProvider == .codex { chatHistory = [] }
+        #endif
+    }
+
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
@@ -172,6 +215,19 @@ final class AppState: ObservableObject {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
         #if !APPSTORE
+        if provider == .codex {
+            loadingProviderModels.insert(provider)
+            providerModelFetchError.removeValue(forKey: provider)
+            Task {
+                defer { loadingProviderModels.remove(provider) }
+                do {
+                    let models = try await CodexChatService.shared.models()
+                    fetchedProviderModels[provider] = models
+                    if !models.contains(where: { $0.id == codexModel }) { codexModel = models.first?.id ?? "" }
+                } catch { providerModelFetchError[provider] = error.localizedDescription }
+            }
+            return
+        }
         // Through the subscription: Claude Code takes the model aliases; the other tools
         // use the model chosen in them.
         if usesSubscription(provider) {
@@ -237,8 +293,7 @@ final class AppState: ObservableObject {
             case .deepseek:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.deepseek.com/v1", apiKey: apiKey)
             case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
             case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
-            case .ollama, .lmstudio: models = []  // handled above
-            case .cursor, .copilot:  models = []  // subscription only, handled above
+            case .codex, .ollama, .lmstudio, .cursor, .copilot: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -270,7 +325,7 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == moonshotChatModel }) {
                         moonshotChatModel = models.first!.id
                     }
-                case .ollama, .lmstudio, .cursor, .copilot: break
+                case .codex, .ollama, .lmstudio, .cursor, .copilot: break
                 }
             }
         }
@@ -287,6 +342,7 @@ final class AppState: ObservableObject {
         case .anthropic: return claudeModel
         case .google:    return googleChatModel
         case .openai:    return openAIChatModel
+        case .codex:     return codexModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
         case .deepseek:  return deepseekChatModel
@@ -482,10 +538,75 @@ final class AppState: ObservableObject {
         return d.id
     }
 
+    #if !APPSTORE
+    @Published var codexTurnPlan: CodexTurnPlan? = nil
+    private var codexDiffTurn = ""
+    private var codexDiffIDs: Set<Int> = []
+    private var codexDiffPill = ""
+
+    /// Replace only this native turn's entries; hooks and other turns retain their own IDs.
+    @discardableResult
+    func replaceCodexSessionDiffs(_ diffs: [FileDiff], threadId: String, turnId: String,
+                                 moves: [String: String]) -> Bool {
+        guard let index = tasks.firstIndex(where: {
+            $0.pill == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId && $0.codexTurnId == turnId
+        }) else { return false }
+        let identity = "\(threadId)/\(turnId)"
+        if codexDiffTurn != identity { codexDiffTurn = identity; codexDiffIDs = []; codexDiffPill = "" }
+        let pill = tasks[index].id
+        moveCodexSessionDiffs(to: pill, threadId: threadId, turnId: turnId)
+        let old = sessionDiffs[pill] ?? []
+        let owned = old.filter { codexDiffIDs.contains($0.id) }
+        let replacedIDs = codexDiffIDs
+        var next: [FileDiff] = []
+        for var diff in diffs.prefix(50) {
+            if let previous = owned.first(where: { $0.path == diff.path || moves[$0.path] == diff.path }) {
+                diff.id = previous.id
+            } else {
+                diff.id = nextDiffId; nextDiffId += 1
+            }
+            next.append(diff)
+        }
+        codexDiffIDs = Set(next.map(\.id))
+        sessionDiffs[pill] = Array((old.filter { !replacedIDs.contains($0.id) } + next).suffix(50))
+        let retained = tasks[index].steps.filter { step in
+            step.parseDiffStep().map { !replacedIDs.contains($0.diffId) } ?? true
+        }
+        tasks[index].steps = Array((retained + next.map {
+            String.makeDiffStep(filename: $0.name, added: $0.added, removed: $0.removed, diffId: $0.id)
+        }).suffix(20))
+        tasks[index].stepIndex = max(0, tasks[index].steps.count - 1)
+        resetSessionDiffTimer(for: pill)
+        return true
+    }
+
+    /// A waiting native session can move between the client pill and its own row.
+    func moveCodexSessionDiffs(to pill: String, threadId: String, turnId: String) {
+        guard codexDiffTurn == "\(threadId)/\(turnId)", codexDiffPill != pill,
+              tasks.contains(where: { $0.id == pill && $0.pill == "agent_codex" && $0.codexManaged
+                  && $0.codexThreadId == threadId && $0.codexTurnId == turnId }) else { return }
+        let previousPill = codexDiffPill
+        codexDiffPill = pill
+        guard !previousPill.isEmpty else { return }
+        let owned = (sessionDiffs[previousPill] ?? []).filter { codexDiffIDs.contains($0.id) }
+        sessionDiffs[previousPill]?.removeAll { codexDiffIDs.contains($0.id) }
+        let existing = sessionDiffs[pill] ?? []
+        sessionDiffs[pill] = Array((existing.filter { !codexDiffIDs.contains($0.id) } + owned).suffix(50))
+        if let index = tasks.firstIndex(where: { $0.id == previousPill }) {
+            tasks[index].steps.removeAll { $0.parseDiffStep().map { codexDiffIDs.contains($0.diffId) } ?? false }
+            tasks[index].stepIndex = max(0, tasks[index].steps.count - 1)
+        }
+        resetSessionDiffTimer(for: pill)
+    }
+    #endif
+
     func clearSessionDiffs(for pillId: String) {
         sessionDiffTimers[pillId]?.cancel()
         sessionDiffTimers.removeValue(forKey: pillId)
         sessionDiffs.removeValue(forKey: pillId)
+        #if !APPSTORE
+        if pillId == codexDiffPill { codexDiffIDs = []; codexDiffTurn = ""; codexDiffPill = "" }
+        #endif
         // nextDiffId intentionally NOT reset — ids remain unique across sessions
     }
 
@@ -534,32 +655,29 @@ final class AppState: ObservableObject {
     // Cached relay-installed state — updated at launch, after install/uninstall, on Settings open
     @Published var planRelayInstalled: Bool = false
     // Transient — reset when island closes or view changes
+    @Published var planDetailIsCodex: Bool = false
     @Published var showingPlanDetail: Bool = false
 
     // Codex plan gauge (from `codex app-server`) — fetched when the pill shows
     @Published var showCodexPlanInNotch: Bool = false {
         didSet { UserDefaults.standard.set(showCodexPlanInNotch, forKey: "showCodexPlanInNotch") }
     }
-    @Published var codexPlanUsage: CodexPlanUsage? = nil
-    // Which card showingPlanDetail opens
-    @Published var planDetailIsCodex: Bool = false
-
-    /// Rate-limited on the attempt, not only on success: without Codex installed or
-    /// signed in, every appearance of the pill used to spawn `codex app-server` again.
+    var codexPlanUsage: CodexPlanUsage? { CodexAgentsInfo.shared.currentPlanUsage }
     private static var lastCodexAttempt: Date = .distantPast
-    private static var codexFetchInFlight = false
-
-    func refreshCodexPlanUsage() {
-        if let u = codexPlanUsage, Date().timeIntervalSince(u.updatedAt) < 60 { return }
-        guard !Self.codexFetchInFlight, Date().timeIntervalSince(Self.lastCodexAttempt) > 60 else { return }
-        Self.codexFetchInFlight = true
-        Self.lastCodexAttempt = Date()
-        Task {
-            if let u = await CodexPlanGauge.fetch() { codexPlanUsage = u }
-            Self.codexFetchInFlight = false
-        }
+    var codexDisplayTask: AgentTask? {
+        if let task = focusTask, task.pill == "agent_codex" { return task }
+        return tasks.first { $0.id == "agent_codex" }
     }
 
+    func refreshCodexPlanUsage() {
+        if let usage = codexPlanUsage, Date().timeIntervalSince(usage.updatedAt) < 60 { return }
+        guard Date().timeIntervalSince(Self.lastCodexAttempt) > 60 else { return }
+        Self.lastCodexAttempt = Date()
+        Task {
+            let task = codexDisplayTask
+            await CodexAgentsInfo.shared.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath, cwd: task?.sessionCwd)
+        }
+    }
     func refreshPlanRelayState() {
         planRelayInstalled = HookServer.statusLineInstalled()
     }
@@ -577,6 +695,10 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        #if APPSTORE
+        if chatProvider == .codex { chatProvider = .openai }
+        #endif
+        codexModel = ud.string(forKey: "codexModel") ?? ""
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
@@ -861,13 +983,13 @@ struct VercelDeployment: Identifiable {
     let branch: String?
 
     var isSuccess: Bool { state == "READY" }
-    var statusLabel: String { isSuccess ? "Ready" : (state == "CANCELED" ? "Canceled" : "Error") }
+    var statusLabel: String { isSuccess ? String(localized: "Ready") : (state == "CANCELED" ? String(localized: "Canceled") : String(localized: "Error")) }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
+        if diff < 60    { return String(localized: "plan.just-now") }
+        if diff < 3600  { return String(format: String(localized: "time.minutes %lld"), Int(diff/60)) }
+        if diff < 86400 { return String(format: String(localized: "time.hours %lld"), Int(diff/3600)) }
+        return String(format: String(localized: "time.days %lld"), Int(diff/86400))
     }
 }
 
@@ -896,10 +1018,10 @@ struct ResendEmail: Identifiable {
     }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
+        if diff < 60    { return String(localized: "plan.just-now") }
+        if diff < 3600  { return String(format: String(localized: "time.minutes %lld"), Int(diff/60)) }
+        if diff < 86400 { return String(format: String(localized: "time.hours %lld"), Int(diff/3600)) }
+        return String(format: String(localized: "time.days %lld"), Int(diff/86400))
     }
     var isDelivered: Bool { lastEvent == "delivered" }
 }
@@ -925,10 +1047,10 @@ struct StripePayment: Identifiable, Equatable {
     var isSuccess: Bool { status == "succeeded" }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
+        if diff < 60    { return String(localized: "plan.just-now") }
+        if diff < 3600  { return String(format: String(localized: "time.minutes %lld"), Int(diff/60)) }
+        if diff < 86400 { return String(format: String(localized: "time.hours %lld"), Int(diff/3600)) }
+        return String(format: String(localized: "time.days %lld"), Int(diff/86400))
     }
 }
 
@@ -972,10 +1094,10 @@ struct NotionPage: Identifiable {
 
     var timeAgo: String {
         let diff = Date().timeIntervalSince(lastEditedAt)
-        if diff < 60 { return "now" }
-        if diff < 3600 { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
+        if diff < 60 { return String(localized: "time.now") }
+        if diff < 3600 { return String(format: String(localized: "time.minutes %lld"), Int(diff/60)) }
+        if diff < 86400 { return String(format: String(localized: "time.hours %lld"), Int(diff/3600)) }
+        return String(format: String(localized: "time.days %lld"), Int(diff/86400))
     }
 }
 

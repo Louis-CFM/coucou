@@ -33,7 +33,7 @@ struct TurnShareCard: View {
                     .frame(width: 64, height: 64)
                     .background(Color.mochiTile(hex: color), in: RoundedRectangle(cornerRadius: 16))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(turn.project.isEmpty ? "Claude Code" : turn.project)
+                    Text(turn.project.isEmpty ? (PillCatalog.definition(for: turn.pillId)?.name ?? "Agent") : turn.project)
                         .font(.title3.weight(.bold))
                     if let ended = turn.endedAt {
                         Text("Done in \(Self.duration(ended.timeIntervalSince(turn.startedAt)))")

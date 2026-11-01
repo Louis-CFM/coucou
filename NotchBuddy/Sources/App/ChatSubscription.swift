@@ -15,7 +15,7 @@ extension ChatProvider {
         case .openai:    [.codex]
         case .cursor:    [.cursor]
         case .copilot:   [.copilot]
-        case .ollama, .lmstudio, .deepseek, .qwen, .moonshot: []
+        case .codex, .ollama, .lmstudio, .deepseek, .qwen, .moonshot: []
         }
     }
 

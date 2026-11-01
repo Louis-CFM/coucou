@@ -1,0 +1,361 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Coucou 原生 Codex：功能路由與桌面互動邊界",
+    "locale": "zh-TW",
+    "output": "docs/architecture/codex-parity.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Louis-CFM/coucou.git",
+      "revision": "421d0480a7e211b1828b16b5f23e1c67497144bb",
+      "link_mode": "web"
+    }
+  },
+  "components": [
+    {
+      "id": "utilities",
+      "type": "frontend",
+      "label": "Flow／Notes／Voice",
+      "sublabel": "已實作 Codex 路由",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Sources/App/FlowCleanup.swift",
+          "line": 15,
+          "end_line": 32
+        },
+        {
+          "path": "NotchBuddy/Sources/App/NoteTaker.swift",
+          "line": 479,
+          "end_line": 501
+        },
+        {
+          "path": "NotchBuddy/Sources/App/Voice/ClaudeVoiceBrain.swift",
+          "line": 26,
+          "end_line": 37
+        }
+      ],
+      "tag": "保留原文與人工編輯"
+    },
+    {
+      "id": "text-service",
+      "type": "backend",
+      "label": "隔離文字服務",
+      "sublabel": "CodexTextService",
+      "pos": [
+        40,
+        240
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Sources/App/CodexTextService.swift",
+          "line": 55,
+          "end_line": 71
+        },
+        {
+          "path": "NotchBuddy/Sources/App/CodexTextService.swift",
+          "line": 161,
+          "end_line": 188
+        },
+        {
+          "path": "NotchBuddy/Sources/App/CodexTextService.swift",
+          "line": 382,
+          "end_line": 405
+        }
+      ],
+      "tag": "需明確啟用"
+    },
+    {
+      "id": "project-chat",
+      "type": "frontend",
+      "label": "Codex 專案聊天",
+      "sublabel": "既有原生對話",
+      "pos": [
+        380,
+        40
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Sources/App/CodexChatService.swift",
+          "line": 218,
+          "end_line": 246
+        },
+        {
+          "path": "NotchBuddy/Sources/App/CodexChatService.swift",
+          "line": 282,
+          "end_line": 298
+        },
+        {
+          "path": "NotchBuddy/Sources/App/ClaudeService.swift",
+          "line": 342,
+          "end_line": 364
+        }
+      ]
+    },
+    {
+      "id": "rpc",
+      "type": "backend",
+      "label": "CodexConnection",
+      "sublabel": "專案與文字各自連線",
+      "pos": [
+        380,
+        240
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Sources/App/CodexConnection.swift",
+          "line": 56,
+          "end_line": 74
+        },
+        {
+          "path": "NotchBuddy/Sources/App/CodexConnection.swift",
+          "line": 157,
+          "end_line": 175
+        }
+      ]
+    },
+    {
+      "id": "process",
+      "type": "external",
+      "label": "Codex app-server",
+      "sublabel": "專案／文字各自程序",
+      "pos": [
+        720,
+        240
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Sources/App/CodexConnection.swift",
+          "line": 157,
+          "end_line": 175
+        },
+        {
+          "path": "NotchBuddy/Sources/App/CodexTextService.swift",
+          "line": 382,
+          "end_line": 405
+        }
+      ]
+    },
+    {
+      "id": "events",
+      "type": "backend",
+      "label": "事件與提問佇列",
+      "sublabel": "原始請求與工作階段身分",
+      "pos": [
+        380,
+        440
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Sources/App/CodexEventAdapter.swift",
+          "line": 68,
+          "end_line": 87
+        },
+        {
+          "path": "NotchBuddy/Sources/App/CodexEventAdapter.swift",
+          "line": 155,
+          "end_line": 162
+        },
+        {
+          "path": "NotchBuddy/Sources/App/HookServer.swift",
+          "line": 1353,
+          "end_line": 1388
+        }
+      ]
+    },
+    {
+      "id": "desktop",
+      "type": "external",
+      "label": "Codex Desktop",
+      "sublabel": "既有 hooks／明確插件",
+      "pos": [
+        40,
+        440
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Resources/CodexDesktopPlugin/README.md",
+          "line": 86,
+          "end_line": 101
+        }
+      ],
+      "tag": "無任意提問接管"
+    },
+    {
+      "id": "mac",
+      "type": "frontend",
+      "label": "Mac 問答／差異",
+      "sublabel": "計畫／依工作階段呈現差異",
+      "pos": [
+        720,
+        440
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Sources/App/IslandViewContent.swift",
+          "line": 183,
+          "end_line": 213
+        },
+        {
+          "path": "NotchBuddy/Sources/App/AppState.swift",
+          "line": 549,
+          "end_line": 585
+        },
+        {
+          "path": "NotchBuddy/Sources/App/CodexEventAdapter.swift",
+          "line": 172,
+          "end_line": 181
+        }
+      ]
+    },
+    {
+      "id": "phone",
+      "type": "frontend",
+      "label": "iPhone 近期回合",
+      "sublabel": "快照搬移仍核對原回合",
+      "pos": [
+        380,
+        640
+      ],
+      "size": [
+        180,
+        68
+      ],
+      "sources": [
+        {
+          "path": "NotchBuddy/Sources/App/PhoneLink/TurnRecorder.swift",
+          "line": 134,
+          "end_line": 159
+        },
+        {
+          "path": "NotchBuddy/Sources/CoucouKit/TurnSnapshot.swift",
+          "line": 8,
+          "end_line": 24
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "flow-text",
+      "from": "utilities",
+      "to": "text-service",
+      "label": "啟用後",
+      "variant": "security"
+    },
+    {
+      "id": "utility-rpc",
+      "from": "text-service",
+      "to": "rpc",
+      "label": "隔離文字連線"
+    },
+    {
+      "id": "chat-rpc",
+      "from": "project-chat",
+      "to": "rpc",
+      "label": "專案對話"
+    },
+    {
+      "id": "rpc-child",
+      "from": "rpc",
+      "to": "process",
+      "label": "stdio 請求"
+    },
+    {
+      "id": "child-rpc",
+      "from": "process",
+      "to": "rpc",
+      "label": "回應／通知"
+    },
+    {
+      "id": "rpc-events",
+      "from": "rpc",
+      "to": "events",
+      "label": "專案事件／請求"
+    },
+    {
+      "id": "desktop-events",
+      "from": "desktop",
+      "to": "events",
+      "label": "hooks／插件"
+    },
+    {
+      "id": "events-mac",
+      "from": "events",
+      "to": "mac",
+      "label": "身分驗證後",
+      "variant": "security"
+    },
+    {
+      "id": "events-phone",
+      "from": "events",
+      "to": "phone",
+      "label": "PHONE_LINK",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "已實作與驗證",
+      "items": [
+        "G1–G5 與原生 Mail 路由已實作；郵件動作仍需按下執行。",
+        "假服務回歸與 Xcode 建置通過；不代表真實帳號、語音或裝置已驗收。"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "隔離與授權",
+      "items": [
+        "背景文字需明確啟用；專用 HOME 與鑰匙圈項目不含原生 refresh token。",
+        "每次請求分開 process／thread／工作目錄，停用本機工具、hooks、plugins、skills 與 MCP。",
+        "閒置／退出嘗試清空 access 資料；鑰匙圈鎖定時可能延後清理。"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "桌面與歷史邊界",
+      "items": [
+        "自有對話依 thread／turn／request 回覆；外部 Desktop 用既有權限 hooks 或明確問題插件。",
+        "不能接管任意外部內建提問；修改差異保留既有有上限的歷史。",
+        "此圖涵蓋原生 Codex；OpenAI 訂閱 CLI 使用獨立對話生命週期。"
+      ]
+    }
+  ]
+}

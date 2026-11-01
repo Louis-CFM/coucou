@@ -119,11 +119,11 @@ struct ReviewSheet: View {
                             .padding(40)
                     } else {
                         VStack(spacing: 8) {
-                            Text(expired ? "This request expired." : "Already answered on your Mac.")
+                            Text(expired ? "This request expired." : "This request is no longer active.")
                                 .font(.headline)
                             Text(expired
-                                 ? "Your Mac waits 2 minutes for an answer, then the agent asks again in its own window."
-                                 : "It was answered there (in the terminal or VS Code), or the command went ahead.")
+                                 ? "Your Mac waits 2 minutes for an answer. Check the agent on your Mac to continue."
+                                 : "It was answered on your Mac, or the request is no longer active.")
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)

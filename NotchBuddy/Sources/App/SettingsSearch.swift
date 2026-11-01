@@ -126,6 +126,7 @@ final class SettingsSearch: ObservableObject {
             e("agents.hermes", .agents, "plugin.hermes.title", ["plugin.hermes.approvals"]),
             e("agents.plan", .agents, "plan.title", ["plan.show-in-notch", "Show Codex plan in the notch"]),
             e("chat.subscriptions", .chat, "chat.subscriptions.title", ["chat.subscriptions.use"]),
+            e("chat.codex", .chat, "codex.chat.title", ["codex.chat.sign-in", "codex.chat.choose-project", "codex.chat.allow-writes", "codex.text.enable"]),
             e("chat.anthropic", .chat, "chat.anthropic-api.title", ["chat.model", "Anthropic", "Claude"]),
             e("chat.others", .chat, "chat.other-providers.title", ["Google AI", "OpenAI", "DeepSeek", "Gemini"]),
             e("chat.local", .chat, "chat.local.title", ["Ollama", "LM Studio"]),

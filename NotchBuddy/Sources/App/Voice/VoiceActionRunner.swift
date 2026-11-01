@@ -126,7 +126,8 @@ final class VoiceActionRunner {
 
     func run(_ intent: VoiceIntent,
              availablePills: [PillDefinition] = [],
-             rawTranscript: String = "") async -> VoiceActionResult {
+             rawTranscript: String = "", isCurrent: () -> Bool = { true }) async -> VoiceActionResult {
+        guard isCurrent() else { return fail("voice.unknown") }
         switch intent {
 
         // ── Music ─────────────────────────────────────────────────────────────
@@ -200,8 +201,10 @@ final class VoiceActionRunner {
             if !music.isMusicRunning && !music.isSpotifyRunning {
                 await music.launchAndPlay()
             }
+            guard isCurrent() else { return fail("voice.unknown") }
             let found = await music.playSearch(name)
             if found { return ok("voice.music-playing") }
+            guard isCurrent() else { return fail("voice.unknown") }
             // Not in library — open Apple Music search
             music.openSearch(name)
             let fmt = Self.localizedString("voice.music-search-opened", locale: commandLocale)
@@ -215,6 +218,7 @@ final class VoiceActionRunner {
             if !music.isMusicRunning && !music.isSpotifyRunning {
                 await music.launchAndPlay()
             }
+            guard isCurrent() else { return fail("voice.unknown") }
             let found = await music.playPlaylist(name)
             if found { return ok("voice.music-playing") }
             let fmt = Self.localizedString("voice.music-artist-err", locale: commandLocale)

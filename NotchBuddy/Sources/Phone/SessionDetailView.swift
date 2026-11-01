@@ -7,7 +7,13 @@ struct SessionDetailView: View {
     let sessionId: String
 
     private var session: SessionItem? { link.sessions.first { $0.id == sessionId } }
-    private var turn: TurnSnapshot? { link.turns[sessionId] }
+    private var turn: TurnSnapshot? {
+        guard let turn = link.turns[sessionId] else { return nil }
+        guard turn.threadId != nil else { return turn }
+        guard let session, SessionInstructionIdentity.make(pillId: session.id, sessionId: turn.sessionId,
+            threadId: turn.threadId, cwd: session.cwd, turnId: turn.turnId) == session.instructionTargetIdentity else { return nil }
+        return turn
+    }
     private var pastTurns: [TurnSnapshot] { link.archive.past[sessionId] ?? [] }
     @State private var shareImage: UIImage?
 
@@ -83,7 +89,8 @@ struct SessionDetailView: View {
         // The composer stays at the bottom, like a chat.
         .safeAreaInset(edge: .bottom) {
             // A session's own pill ("integration_claude#2") takes instructions like its client's.
-            if let session, ["integration_claude", "agent_cursor"].contains(PillCatalog.basePillId(session.id)) {
+            if let session, !session.instructionTargetIdentity.isEmpty, !session.id.contains("#q"),
+               ["integration_claude", "agent_cursor", "agent_codex"].contains(PillCatalog.basePillId(session.id)) {
                 InstructionComposer(link: link, session: session)
             }
         }
@@ -96,7 +103,7 @@ struct SessionDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await link.refresh() }
         .toolbar {
-            // The last turn as a picture, to show what Claude did.
+            // The last turn as a picture, to show what the agent did.
             if let shareImage {
                 ToolbarItem(placement: .topBarTrailing) {
                     ShareLink(item: Image(uiImage: shareImage),
