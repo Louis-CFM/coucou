@@ -73,6 +73,9 @@ pub struct Settings {
     /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
     /// code this build doesn't know reads as "".
     pub language: String,
+    /// Synced lyrics on the music cards, looked up on LRCLIB (lyrics.rs).
+    /// Off by default: no request goes out until the user turns it on.
+    pub lyrics_enabled: bool,
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
@@ -165,6 +168,7 @@ impl Default for Settings {
             mochi_outfit: "auto".into(),
             pill_colors: BTreeMap::new(),
             language: String::new(),
+            lyrics_enabled: false,
             desktop_mochi: DesktopMochiPref::default(),
             phone_link: false,
             phone_chat: false,
@@ -466,6 +470,7 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
+  "lyricsEnabled": true,
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
   "phoneLink": true,
   "phoneChat": true,
@@ -987,6 +992,7 @@ mod tests {
                 "mochiOutfit",
                 "pillColors",
                 "language",
+                "lyricsEnabled",
                 "desktopMochi",
                 "phoneLink",
                 "phoneChat",

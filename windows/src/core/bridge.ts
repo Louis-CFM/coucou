@@ -455,6 +455,19 @@ export const Bridge = {
   /** Whether there is a Spotify to launch (Settings). */
   spotifyInstalled: () => call<boolean>("spotify_installed"),
 
+  // ── Now Playing: any app's media session (src-tauri/src/spotify.rs, Windows) ──
+  nowPlayingRefresh: () => call<SpotifyState | null>("nowplaying_refresh"),
+  /** Spotify's actions but `volume`, which Now Playing has none of. */
+  nowPlayingControl: (action: SpotifyAction, value?: number) =>
+    call<boolean>("nowplaying_control", { action, value: value ?? null }),
+  /** Brings the app that plays forward. */
+  nowPlayingOpen: () => call<boolean>("nowplaying_open"),
+
+  // ── Lyrics (src-tauri/src/lyrics.rs) ──────────────────────────────────────
+  /** A track's LRC text from LRCLIB (null when none); `retry` when LRCLIB could not be reached. */
+  lyricsGet: (key: string, title: string, artist: string, album: string, duration: number) =>
+    call<{ lrc: string | null; retry: boolean }>("lyrics_get", { key, title, artist, album, duration }),
+
   // ── WhatsApp (src-tauri/src/whatsapp) ─────────────────────────────────────
   /** The island's copy, asked once at start (then the "whatsapp" event). Island only. */
   whatsappIsland: () => call<WaIslandView>("whatsapp_island"),

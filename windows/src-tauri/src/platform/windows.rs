@@ -516,6 +516,22 @@ pub fn focus_session_window(owners: &[u32], folder: &str) -> bool {
     owners.first().is_some_and(|pid| focus_process_window(*pid, folder))
 }
 
+/// Brings forward a running app's window, by executable name: the one whose title
+/// holds `hint` if there is one (a browser's window is titled after its tab, so the
+/// song's title finds the window that plays it), else its first window.
+pub fn focus_app_window(exe: &str, hint: &str) -> bool {
+    let pids: Vec<u32> = process_table()
+        .into_iter()
+        .filter(|(_, p)| p.exe.eq_ignore_ascii_case(exe))
+        .map(|(pid, _)| pid)
+        .collect();
+    let windows: Vec<(isize, u32, String)> =
+        top_windows().into_iter().filter(|(_, owner, _)| pids.contains(owner)).collect();
+    let hint = hint.trim().to_lowercase();
+    let titled = (!hint.is_empty()).then(|| windows.iter().find(|(_, _, title)| title.to_lowercase().contains(&hint)));
+    titled.flatten().or(windows.first()).is_some_and(|(hwnd, _, _)| bring_forward(*hwnd))
+}
+
 /// Brings forward the window of a running app, by executable name.
 fn focus_app(exe: &str) -> bool {
     let pids: Vec<u32> = process_table()
