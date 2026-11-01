@@ -112,6 +112,25 @@ export function restoreAlertFocus(): void {
 /** Events after which a pending permission request of the same session is moot. */
 const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
 
+/**
+ * A prompt as the session's step line. Claude Code also submits text the
+ * user never typed (a background task's `<task-notification>`, system
+ * reminders, slash-command echoes): those show as their summary or command,
+ * or not at all, never as raw tags.
+ */
+export function promptStep(raw: string): string | null {
+  const tag = (name: string) => raw.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1]?.trim();
+  if (raw.includes("<task-notification>")) return tag("summary") ?? null;
+  const command = tag("command-name");
+  if (command) return command;
+  const text = raw
+    .replace(/<(system-reminder|local-command-\w+)>[\s\S]*?<\/\1>/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? text.slice(0, 60) : null;
+}
+
 interface HookPayload {
   hook_event_name?: string;
   request_id?: string;
@@ -423,8 +442,8 @@ function handleHook(island: Island, payload: HookPayload) {
       clearFinalLine(agentId);
       State.updateTask(agentId, "thinking");
       // The field is `prompt`; reading `message` meant this step was always blank.
-      const asked = payload.prompt ?? payload.message;
-      if (asked) State.appendStep(agentId, asked.slice(0, 60));
+      const asked = promptStep(payload.prompt ?? payload.message ?? "");
+      if (asked) State.appendStep(agentId, asked);
       surface("overview", false);
       break;
     }
