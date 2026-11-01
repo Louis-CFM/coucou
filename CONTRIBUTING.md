@@ -52,5 +52,6 @@ both Mac targets or checking the language and layout in the app.
 
 ## Pull requests
 
+- Before you start, search the [open pull requests](https://github.com/Louis-CFM/coucou/pulls) for the same fix or feature. If one is already pending, review it or build on it rather than opening a second one. If yours really differs, link the other one and say how.
 - One topic per PR, with a short GIF or screenshot for anything visual.
 - Build must pass with no new warnings.
