@@ -130,7 +130,7 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 **Fil (TickerView)** — les étapes de modification affichent le nom du fichier, `+N` en vert `#22C55E` et `−M` en rouge `#F4505E`, petits et monospacés.
 
 **Carte diff** — un clic sur une étape de modification ouvre la carte diff dans la vue principale :
-- En-tête : nom du fichier + bilan + bouton ↗ (ouvre dans VS Code via `code -g fichier:ligne`, sinon `NSWorkspace`)
+- En-tête : nom du fichier + bilan + bouton ↗ (ouvre dans VS Code via `code -g fichier:ligne`, sinon montre le fichier dans le Finder sans l'ouvrir)
 - Lignes en monospace 10,5 pt, fond vert ou rouge à 12 %, symbole +/− en marge, 3 lignes de contexte
 - Défilement vertical ; Échap ou clic sur l'en-tête pour revenir au fil
 
