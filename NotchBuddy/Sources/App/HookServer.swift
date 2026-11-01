@@ -1233,22 +1233,26 @@ final class HookServer: @unchecked Sendable {
             bundleId.lowercased().contains("vscode"))
         #if !APPSTORE
         let isCodexRequest = rawAgent == "codex"
+        let isOpenCodeRequest = rawAgent == "opencode"
         #else
         let isCodexRequest = false
+        let isOpenCodeRequest = false
         #endif
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
+        } else if isOpenCodeRequest {
+            pillId = "agent_opencode"
         } else if isCursorEditor {
             pillId = "agent_cursor"
         } else {
             pillId = "integration_claude"
         }
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
-        let terminalHost = isCursorEditor || isVSCodeEditor ? nil
+        let terminalHost = isCursorEditor || isVSCodeEditor || isOpenCodeRequest ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
+        guard isCodexRequest || isOpenCodeRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -2647,6 +2651,7 @@ const EVENT_MAP = {
   'session.error': 'StopFailure',
   'session.deleted': 'SessionEnd',
   'permission.asked': 'PermissionRequest',
+  'question.asked': 'ask_user_question',
 };
 
 function forward(hook_event_name, payload) {
@@ -2654,16 +2659,123 @@ function forward(hook_event_name, payload) {
                   { stdio: ['pipe', 'ignore', 'ignore'], detached: true });
   p.on('error', () => {});
   p.stdin.on('error', () => {});
-  p.stdin.write(JSON.stringify({ hook_event_name, ...payload }) + '\\n');
+  p.stdin.write(JSON.stringify({ hook_event_name, ...payload }) + '\n');
   p.stdin.end();
   p.unref();
 }
 
-export const CoucouPlugin = async (_ctx) => ({
+// Coucou's --ask mode (nb-hook.py) holds the Unix socket open and BLOCKS on
+// s.recv until Mochi sends the answer (or 125 s timeout). We translate the
+// answer from Coucou's {questionText: label} shape to OpenCode's ordered
+// [[label]] and POST it back via the plugin's in-process HeyApi client
+// (client._client). We do NOT use client.question because OpenCode's
+// plugin-runtime client does not expose the question getter, and we do NOT
+// use raw fetch to serverUrl because the TUI default (--port 0) does not
+// bind a TCP socket.
+async function replyToOpencode(client, requestId, answers) {
+  const res = await client._client.post({
+    url: '/question/' + encodeURIComponent(requestId) + '/reply',
+    body: { answers },
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+  });
+  if (res && res.status && res.status >= 400) throw new Error('reply HTTP ' + res.status);
+}
+
+async function rejectOpencodeQuestion(client, requestId) {
+  const res = await client._client.post({
+    url: '/question/' + encodeURIComponent(requestId) + '/reject',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+  });
+  if (res && res.status && res.status >= 400) throw new Error('reject HTTP ' + res.status);
+}
+
+function forwardAskBlocking(client, requestId, originalQuestions, payload) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    let stdout = '';
+    const p = spawn('/bin/sh', [HOOK, '--ask', '--agent', 'opencode'],
+                    { stdio: ['pipe', 'pipe', 'pipe'] });
+    p.on('error', () => finish());
+    p.on('exit', async () => {
+      const line = stdout.split('\n').map((l) => l.trim()).find((l) => l.startsWith('{'));
+      if (!line) {
+        try { await rejectOpencodeQuestion(client, requestId); } catch {}
+        finish();
+        return;
+      }
+      let resp;
+      try { resp = JSON.parse(line); } catch {
+        try { await rejectOpencodeQuestion(client, requestId); } catch {}
+        finish();
+        return;
+      }
+      const coucouAnswers = resp && resp.hookSpecificOutput && resp.hookSpecificOutput.updatedInput
+        ? resp.hookSpecificOutput.updatedInput.answers : null;
+      if (!coucouAnswers || typeof coucouAnswers !== 'object') {
+        try { await rejectOpencodeQuestion(client, requestId); } catch {}
+        finish();
+        return;
+      }
+      // Map by question text → ordered array of label arrays (OpenCode's format).
+      const answers = originalQuestions.map((q) => {
+        const sel = coucouAnswers[q.question];
+        if (Array.isArray(sel)) return sel;
+        if (typeof sel === 'string') return [sel];
+        return [];
+      });
+      try { await replyToOpencode(client, requestId, answers); } catch {}
+      finish();
+    });
+    p.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+    p.stdin.on('error', finish);
+    p.stdin.write(JSON.stringify(payload) + '\n');
+    p.stdin.end();
+    setTimeout(finish, 130000); // slightly above the python relay's 125 s timeout
+  });
+}
+
+export const CoucouPlugin = async ({ client }) => ({
   event: async ({ event }) => {
     const hook_event_name = EVENT_MAP[event.type];
     if (!hook_event_name) return;
     const props = event.properties || {};
+
+    // OpenCode question.asked → reuse Coucou's existing AskUserQuestion flow.
+    // We transform OpenCode's QuestionInfo (multiple) into Coucou's
+    // AskQuestionItem (multiSelect) and tag the payload with
+    // coucou_kind: "ask_user_question". HookServer.handleClient dispatches that
+    // into processQuestionRequest. We then wait for the user to click an
+    // answer in Mochi, translate the answer to OpenCode's format, and POST it
+    // back via client._client.
+    if (event.type === 'question.asked') {
+      const opencodeQuestions = Array.isArray(props.questions) ? props.questions : [];
+      const requestId = typeof props.id === 'string' ? props.id : '';
+      const toolInput = {
+        questions: opencodeQuestions.map((q) => ({
+          question: typeof q.question === 'string' ? q.question : '',
+          header: typeof q.header === 'string' ? q.header.slice(0, 12) : '',
+          options: Array.isArray(q.options)
+            ? q.options
+                .filter((o) => o && typeof o.label === 'string' && o.label.length > 0)
+                .map((o) => ({
+                  label: o.label,
+                  description: typeof o.description === 'string' ? o.description : '',
+                }))
+            : [],
+          multiSelect: q.multiple === true,
+        })),
+      };
+      await forwardAskBlocking(client, requestId, opencodeQuestions, {
+        session_id: event.sessionID || props.sessionID || '',
+        cwd: event.cwd || props.cwd || '',
+        tool_name: 'AskUserQuestion',
+        tool_input: toolInput,
+        coucou_kind: 'ask_user_question',
+      });
+      return;
+    }
+
     const payload = {
       session_id: event.sessionID || event.session_id || props.sessionID || props.session_id || '',
       cwd: event.cwd || event.directory || props.cwd || props.directory || '',
