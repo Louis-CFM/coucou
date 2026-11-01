@@ -1032,6 +1032,17 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const compactHide = h("input", {
+    type: "number", min: "5", max: "300", step: "1",
+    value: String(Math.round(settings.compactHideDelay ?? 60)),
+    style: "width:72px",
+  }) as HTMLInputElement;
+  compactHide.addEventListener("change", () => {
+    settings.compactHideDelay = Math.max(5, Math.min(300, Number(compactHide.value) || 60));
+    compactHide.value = String(settings.compactHideDelay);
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -1089,6 +1100,16 @@ function generalSection(): HTMLElement {
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
+    h("div", { class: "row" },
+      h("label", { text: t("Hide compact island") }),
+      compactHide,
+      h("span", { class: "hint", text: t("seconds after you leave the island") }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Eyes follow the pointer") }),
+      toggle(settings.eyesFollowPointer !== false, (v) => { settings.eyesFollowPointer = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("Mochi's eyes track the cursor across the screen. When off, Mochi looks straight ahead.") }),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,

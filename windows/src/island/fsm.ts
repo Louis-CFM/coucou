@@ -21,8 +21,18 @@ export class IslandStateMachine {
     this.homeDelay = seconds;
     if (this.state === "home" && this.homeCollapse != null) this.scheduleHomeCollapse();
   }
-  /** petit → hidden delay, seconds. */
-  petitToHiddenDelay = 60;
+  /**
+   * petit → hidden delay, seconds: changing it while a countdown runs
+   * starts that countdown again with the new delay.
+   */
+  get petitToHiddenDelay(): number {
+    return this.petitDelay;
+  }
+  set petitToHiddenDelay(seconds: number) {
+    if (!Number.isFinite(seconds) || seconds < 0 || seconds === this.petitDelay) return;
+    this.petitDelay = seconds;
+    if (this.state === "petit" && this.petitHide != null) this.schedulePetitHide();
+  }
   /** coucou → petit once the greeting animation ends (no hover). */
   greetAutoCollapseDelay = 0.6;
   /** coucou → petit while the mouse hovers the greeting. */
@@ -49,6 +59,7 @@ export class IslandStateMachine {
   homeCollapseDueAt: number | null = null;
 
   private homeDelay = 15;
+  private petitDelay = 60;
   private byHover = false;
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;

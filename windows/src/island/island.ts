@@ -371,6 +371,7 @@ export class Island {
 
   private wireFsm() {
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.petitToHiddenDelay = State.settings.compactHideDelay ?? 60;
     this.fsm.openOnHover = State.settings.openOnHover;
     this.fsm.onTransition = (from, to) => {
       // The greeting is over, however it ended: back to his desktop spot.
@@ -1172,8 +1173,9 @@ export class Island {
           ? hexToRGB(focus.color)
           : null;
     this.engine.particleOverhang = BOT_OVERHANG;
-    this.engine.lookX = this.lookX();
-    this.engine.lookY = this.lookY();
+    const eyesFollow = State.settings.eyesFollowPointer !== false;
+    this.engine.lookX = eyesFollow ? this.lookX() : 0;
+    this.engine.lookY = eyesFollow ? this.lookY() : 0;
     if (this.engine.morph > 0.3) {
       this.engine.slotHTarget = State.fileDragOver ? 0.2 : 0;
     } else {
@@ -1334,6 +1336,7 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.petitToHiddenDelay = State.settings.compactHideDelay ?? 60;
     this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
     // ponytail: one timer for the life of the window; a minute is the clock's finest tick.

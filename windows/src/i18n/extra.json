@@ -7353,6 +7353,51 @@
       "tr": "Kompakt adada göster",
       "ko": "컴팩트 아일랜드에 표시",
       "ja": "コンパクトアイランドに表示"
+    },
+    "Hide compact island": {
+      "zh-Hans": "隐藏紧凑岛",
+      "hi": "कॉम्पैक्ट आइलैंड छिपाएं",
+      "es": "Ocultar la isla compacta",
+      "ar": "إخفاء الجزيرة المصغّرة",
+      "fr": "Masquer l'île compacte",
+      "bn": "কম্প্যাক্ট আইল্যান্ড লুকান",
+      "pt-BR": "Ocultar a ilha compacta",
+      "ru": "Скрывать компактный остров",
+      "id": "Sembunyikan pulau ringkas",
+      "de": "Kompakte Insel ausblenden",
+      "tr": "Kompakt adayı gizle",
+      "ko": "컴팩트 아일랜드 숨기기",
+      "ja": "コンパクトアイランドを非表示"
+    },
+    "Eyes follow the pointer": {
+      "zh-Hans": "眼睛跟随光标",
+      "hi": "आंखें कर्सर का पीछा करती हैं",
+      "es": "Los ojos siguen el cursor",
+      "ar": "العيون تتبع المؤشر",
+      "fr": "Les yeux suivent le curseur",
+      "bn": "চোখ কার্সার অনুসরণ করে",
+      "pt-BR": "Os olhos seguem o cursor",
+      "ru": "Глаза следят за курсором",
+      "id": "Mata mengikuti kursor",
+      "de": "Augen folgen dem Mauszeiger",
+      "tr": "Gözler imleci takip etsin",
+      "ko": "마우스 커서를 따라 시선 이동",
+      "ja": "視線でカーソルを追う"
+    },
+    "Mochi's eyes track the cursor across the screen. When off, Mochi looks straight ahead.": {
+      "zh-Hans": "Mochi 的眼睛在屏幕上跟随光标。关闭时，Mochi 直视前方。",
+      "hi": "Mochi की आंखें स्क्रीन पर कर्सर का पीछा करती हैं। बंद होने पर, Mochi सीधा देखता है।",
+      "es": "Los ojos de Mochi siguen el cursor por la pantalla. Si se desactiva, Mochi mira hacia adelante.",
+      "ar": "تتبع عيون Mochi المؤشر عبر الشاشة. عند إيقاف التشغيل، ينظر Mochi للأمام مباشرة.",
+      "fr": "Les yeux de Mochi suivent le curseur sur l'écran. Désactivé, Mochi regarde droit devant lui.",
+      "bn": "Mochi-র চোখ স্ক্রিনে কার্সার অনুসরণ করে। বন্ধ থাকলে Mochi সোজা সামনের দিকে তাকায়।",
+      "pt-BR": "Os olhos do Mochi seguem o cursor pela tela. Quando desativado, o Mochi olha para frente.",
+      "ru": "Глаза Mochi следят за курсором по экрану. В выключенном состоянии Mochi смотрит прямо перед собой.",
+      "id": "Mata Mochi melacak kursor di layar. Saat dimatikan, Mochi menatap lurus ke depan.",
+      "de": "Mochis Augen folgen dem Mauszeiger auf dem Bildschirm. Wenn ausgeschaltet, schaut Mochi geradeaus.",
+      "tr": "Mochi'nin gözleri ekrandaki imleci takip eder. Kapatıldığında Mochi düz bakar.",
+      "ko": "Mochi의 시선이 화면 속 커서를 따라갑니다. 끄면 Mochi가 정면을 바라봅니다.",
+      "ja": "Mochi の目が画面上のカーソルを追いかけます。オフにすると、Mochi はまっすぐ前を見ます。"
     }
   }
 }
