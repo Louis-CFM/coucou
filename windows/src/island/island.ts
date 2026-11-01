@@ -127,6 +127,7 @@ export class Island {
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
+  private dragLeaveTimer: number | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -618,6 +619,10 @@ export class Island {
   private onDragDrop(e: { type: string; paths?: string[] }) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
     if (State.paused) return;
+    if (this.dragLeaveTimer != null && e.type !== "leave") {
+      window.clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
     switch (e.type) {
       case "enter":
       case "over": {
@@ -634,9 +639,21 @@ export class Island {
         if (!State.fileDragOver) return;
         State.fileDragOver = false;
         this.engine.animateMorph(0);
-        // The island deliberately stays open: the drag session is still alive.
+        // The island stays open briefly for recovery, but auto-exits upload mode
+        // if the drop occurred outside or the drag was aborted.
         UploadSeq.exitZone();
         State.notify();
+        if (this.dragLeaveTimer != null) window.clearTimeout(this.dragLeaveTimer);
+        this.dragLeaveTimer = window.setTimeout(() => {
+          this.dragLeaveTimer = null;
+          if (!State.fileDragOver && State.view === "upload") {
+            this.engine.animateMorph(0);
+            this.setView(State.defaultView());
+            if (!this.wasInIsland) {
+              this.fsm.mouseLeft();
+            }
+          }
+        }, 800);
         break;
       }
       case "drop": {
