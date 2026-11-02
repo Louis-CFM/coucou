@@ -272,7 +272,15 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
 
   drawList();
   drawDetail();
-  const unlisten = await onEvent<string>("notes-changed", () => void reload());
+  // A live line, rename or summary sends that note, patched in place instead of
+  // reloading every call's transcript. An id or a new status reloads everything.
+  const unlisten = await onEvent<string | Note>("notes-changed", (changed) => {
+    const i = typeof changed === "string" ? -1 : state.notes.findIndex((n) => n.id === changed.id);
+    if (typeof changed === "string" || i < 0 || state.notes[i].status !== changed.status) return void reload();
+    state.notes[i] = changed;
+    drawList();
+    drawDetail();
+  });
   // The recording's clock in the list.
   const timer = window.setInterval(() => {
     if (!state.recording) return;

@@ -182,15 +182,18 @@ impl NoteTaker {
     }
 
     /// Writes a change onto the note as it is now (it may have been renamed meanwhile).
+    /// The page gets the changed note itself: a live line must not make it
+    /// reload every call's transcript. Other `notes-changed` events carry an id.
     fn change(&self, app: &AppHandle, id: &str, f: impl FnOnce(&mut Note)) -> Option<Note> {
         let updated = {
             let mut notes = self.notes.lock().unwrap();
             let note = notes.iter_mut().find(|n| n.id == id)?;
             f(note);
+            // Under the lock, so the page receives the notes in change order.
+            let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &*note);
             note.clone()
         };
         self.save(&updated);
-        let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &updated.id);
         Some(updated)
     }
 }
@@ -722,7 +725,11 @@ pub async fn notes_delete(app: AppHandle, id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn notes_summarize(app: AppHandle, id: String) {
-    std::thread::spawn(move || summarize(&app, &id));
+    std::thread::spawn(move || {
+        summarize(&app, &id);
+        // The page re-reads `working` (summary busy) only on an id.
+        let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &id);
+    });
 }
 
 #[tauri::command]

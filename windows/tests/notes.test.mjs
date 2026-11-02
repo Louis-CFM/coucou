@@ -104,3 +104,17 @@ test("a title being typed during a recording survives live transcript lines", as
   assert.deepEqual(sent("notes_rename"), [{ id: "synthetic", title: "Weekly sync" }]);
   assert.match(detail.textContent, /Next line/);
 });
+
+test("a live line patches its note in place without reloading every call", async t => {
+  const fixture = await readyPage(t, true);
+  const reloads = sent("notes_state").length;
+  const note = structuredClone(fixture.state.notes[0]);
+  note.lines.push({ start: 3, speaker: "others", text: "Patched line" });
+  emit("notes-changed", note);
+  await flush();
+  assert.equal(sent("notes_state").length, reloads);
+  assert.match(fixture.detail().textContent, /Patched line/);
+  emit("notes-changed", { ...note, status: "processing" });
+  await flush();
+  assert.equal(sent("notes_state").length, reloads + 1, "a new status re-reads recording and working");
+});
