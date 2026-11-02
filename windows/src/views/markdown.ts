@@ -212,7 +212,7 @@ async function writeClipboard(text: string) {
 }
 
 /** Puts the code on the clipboard; the check mark shows for a moment. */
-function copyButton(text: string): HTMLElement {
+export function copyButton(text: string): HTMLElement {
   const btn = h("button", { class: "md-copy", title: t(STRINGS.copy), "aria-label": t(STRINGS.copy) }, svg(ICONS.copy, 11));
   btn.addEventListener("click", async (e) => {
     e.stopPropagation();
