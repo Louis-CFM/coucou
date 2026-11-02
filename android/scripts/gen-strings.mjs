@@ -34,6 +34,7 @@ export const LANGUAGES = [
   { tag: "tr", qualifier: "tr", name: "Türkçe", plural: ["one", "other"] },
   { tag: "de", qualifier: "de", name: "Deutsch", plural: ["one", "other"] },
   { tag: "ja", qualifier: "ja", name: "日本語", plural: ["other"] },
+  { tag: "ko", qualifier: "ko", name: "한국어", plural: ["other"] },
 ];
 const ENGLISH_PLURAL = ["one", "other"];
 
