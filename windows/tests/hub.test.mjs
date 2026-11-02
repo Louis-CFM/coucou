@@ -133,3 +133,34 @@ test("the sidebar uses the selected language on its first render", async () => {
     off();
   }
 });
+
+test("a page overtaken by a newer click still cleans up, and does not take the newer page's cleanup", async () => {
+  const root = dom.root();
+  const left = [];
+  let finishSlow;
+  const slow = new Promise((resolve) => (finishSlow = resolve));
+  await startHub(root, {
+    version: "test",
+    flowPages: {
+      // Pages set onLeave once their listeners exist, after their awaits.
+      notes: async (container, ctx) => {
+        await slow;
+        ctx.onLeave = () => left.push("notes");
+      },
+      insights: (container, ctx) => {
+        ctx.onLeave = () => left.push("insights");
+      },
+    },
+    renderNotch: async () => {},
+  });
+  const button = (id) => root.find(".hub-item")[FLOW_PAGES.findIndex((page) => page.id === id)];
+  button("notes").fire("click");
+  button("insights").fire("click");
+  await settle();
+  finishSlow();
+  await settle();
+  assert.deepEqual(left, ["notes"], "the discarded page leaves at once");
+  button("dictation").fire("click");
+  await settle();
+  assert.deepEqual(left, ["notes", "insights"], "the page on screen leaves when another is opened");
+});

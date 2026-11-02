@@ -156,10 +156,19 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     }
   }
 
+  /** The context of the last render started; its page's onLeave runs at the next show(). */
+  let shownCtx: HubContext | null = null;
+
   async function show(page: PageId, targetAnchor?: string) {
     const def = ALL.find((p) => p.id === page) ?? FLOW_PAGES[0];
-    ctx.onLeave?.();
-    ctx.onLeave = undefined;
+    if (shownCtx) {
+      shownCtx.onLeave?.();
+      shownCtx.onLeave = undefined;
+    }
+    // Each render sets onLeave on its own context: one overtaken by a newer
+    // click (a double click in the sidebar) still cleans up after itself.
+    const pageCtx: HubContext = Object.create(ctx);
+    shownCtx = pageCtx;
     current = def.id;
     activeAnchor = targetAnchor ?? null;
     for (const [id, el] of items) el.classList.toggle("on", id === current);
@@ -168,14 +177,17 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     const page_ = h("div", { class: "hub-page" });
     const renderer = opts.flowPages[def.id];
     if (renderer) {
-      await renderer(page_, ctx);
+      await renderer(page_, pageCtx);
     } else {
       page_.append(hero(def.id, def.title(), def.subtitle?.() ?? null));
       const container = h("div", { id: "settings-root" });
       page_.append(container);
       await opts.renderNotch(def.id, container);
     }
-    if (token !== rendering) return;
+    if (token !== rendering) {
+      pageCtx.onLeave?.();
+      return;
+    }
     clear(scroll);
     scroll.append(page_);
     if (targetAnchor) {
