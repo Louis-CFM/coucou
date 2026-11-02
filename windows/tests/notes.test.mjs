@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
 import ts from "typescript";
 import { installFakeDom } from "./fakedom.mjs";
-import { calls, internals, sent } from "./tauri.mjs";
+import { calls, emit, internals, sent } from "./tauri.mjs";
 
 const { root } = installFakeDom();
 // The page imports the real animated hero, whose parameter property needs a
@@ -35,17 +35,17 @@ const { notesPage } = await import("../src/hub/pages/notes.ts");
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 const originalInvoke = internals.invoke;
 
-/** The page with one saved call, selected. */
-async function readyPage(t) {
+/** The page with one call, selected: saved, or still recording. */
+async function readyPage(t, recording = false) {
   calls.length = 0;
   t.mock.method(globalThis, "setInterval", () => 1);
   t.mock.method(globalThis, "clearInterval", () => {});
   const note = {
     id: "synthetic", title: "Synthetic call", start: Date.now() - 10_000, end: Date.now(),
-    status: "ready", speakers: [], lines: [{ start: 0, speaker: "me", text: "Test" }],
+    status: recording ? "recording" : "ready", speakers: [], lines: [{ start: 0, speaker: "me", text: "Test" }],
     summary: "", keyPoints: [], todos: [],
   };
-  const state = { notes: [note], recording: null, working: [] };
+  const state = { notes: [note], recording: recording ? note.id : null, working: [] };
   t.mock.method(internals, "invoke", async (cmd, args) => {
     const fallback = await originalInvoke(cmd, args);
     if (cmd === "notes_state") return structuredClone(state);
@@ -85,4 +85,22 @@ test("Escape keeps the old title even though removing the editor blurs it", asyn
   await flush();
   assert.equal(sent("notes_rename").length, 0);
   assert.equal(detail.find("h2")[0].textContent, "Synthetic call");
+});
+
+test("a title being typed during a recording survives live transcript lines", async t => {
+  const fixture = await readyPage(t, true);
+  const detail = fixture.detail();
+  detail.find("h2")[0].fire("click");
+  const input = detail.find("input")[0];
+  input.value = "Weekly sync";
+  fixture.state.notes[0].lines.push({ start: 2, speaker: "others", text: "Next line" });
+  emit("notes-changed", "synthetic");
+  await flush();
+  assert.equal(detail.find("input")[0], input);
+  assert.equal(input.value, "Weekly sync");
+  press(input, "Enter");
+  input.fire("blur");
+  await flush();
+  assert.deepEqual(sent("notes_rename"), [{ id: "synthetic", title: "Weekly sync" }]);
+  assert.match(detail.textContent, /Next line/);
 });

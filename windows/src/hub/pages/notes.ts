@@ -22,6 +22,7 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
   let selected: string | null = state.recording ?? state.notes[0]?.id ?? null;
   let tab: "summary" | "transcript" = "summary";
   let startError = "";
+  let editing = false;
 
   page.append(ctx.hero("notes", t("Notetaker"), t("Your calls transcribed person by person, with a summary and the to-dos. No bot in the meeting."), [], true));
   if (ctx.status.models.parakeet.state !== "ready") {
@@ -102,7 +103,30 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
     listEl.append(h("div", { style: "flex:1" }), h("div", { class: "hub-note", style: "padding:10px;border-radius:10px;background:rgba(255,255,255,0.04)", text: t("Everything stays on this computer. Tell the people in the call that you are recording.") }));
   }
 
+  /** Swaps `target` for `input` until Enter, blur or `finish(false)`. Live
+   *  redraws wait meanwhile, so what is typed is not wiped. */
+  function openEditor(target: HTMLElement, input: HTMLInputElement, save: () => Promise<unknown>) {
+    let open = true;
+    editing = true;
+    const finish = async (commit: boolean) => {
+      if (!open) return;
+      open = editing = false;
+      // Removing the input blurs it, and that blur must not save (again).
+      input.removeEventListener("blur", blur);
+      if (commit) await save();
+      await reload();
+    };
+    const blur = () => void finish(true);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") void finish(true); });
+    input.addEventListener("blur", blur);
+    target.replaceWith(input);
+    input.focus();
+    input.select();
+    return finish;
+  }
+
   function drawDetail() {
+    if (editing) return;
     clear(detail);
     const note = state.notes.find((n) => n.id === selected);
     if (!note) {
@@ -114,19 +138,8 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
     title.addEventListener("click", () => {
       const input = h("input", { class: "hub-input", style: "font:700 20px var(--font);width:100%" }) as HTMLInputElement;
       input.value = note.title;
-      const done = () => void FlowBridge.renameNote(note.id, input.value);
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") done();
-        if (e.key === "Escape") {
-          // Removing the input blurs it, and that blur must not rename.
-          input.removeEventListener("blur", done);
-          drawDetail();
-        }
-      });
-      input.addEventListener("blur", done);
-      title.replaceWith(input);
-      input.focus();
-      input.select();
+      const finish = openEditor(title, input, () => FlowBridge.renameNote(note.id, input.value));
+      input.addEventListener("keydown", (e) => { if (e.key === "Escape") void finish(false); });
     });
     const when = new Date(note.start).toLocaleString(lang(), { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
     const copied = h("span", { class: "hub-note" });
@@ -181,12 +194,7 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
         chip.addEventListener("click", () => {
           const input = h("input", { class: "hub-input", placeholder: t("Name"), style: "width:150px" }) as HTMLInputElement;
           input.value = s.name;
-          const done = () => void FlowBridge.renameSpeaker(note.id, s.id, input.value);
-          input.addEventListener("keydown", (e) => e.key === "Enter" && done());
-          input.addEventListener("blur", done);
-          chip.replaceWith(input);
-          input.focus();
-          input.select();
+          openEditor(chip, input, () => FlowBridge.renameSpeaker(note.id, s.id, input.value));
         });
         people.append(chip);
       }
