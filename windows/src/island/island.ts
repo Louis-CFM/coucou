@@ -124,6 +124,9 @@ export class Island {
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
 
+  /** The launch greeting has started: settings applied before it reveal nothing. */
+  private launched = false;
+
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
@@ -404,6 +407,7 @@ export class Island {
   }
 
   launch() {
+    this.launched = true;
     this.fsm.launch();
   }
 
@@ -1335,6 +1339,12 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    // Always show the island, just turned on: a hidden island comes back now
+    // (not while paused, which hides it on purpose).
+    const keep = State.settings.alwaysShowIsland;
+    const turnedOn = keep && !this.fsm.alwaysVisible;
+    this.fsm.alwaysVisible = keep;
+    if (turnedOn && this.launched && !State.paused) this.reveal();
     State.notify();
     // ponytail: one timer for the life of the window; a minute is the clock's finest tick.
     this.clockTimer ??= window.setInterval(() => this.updateClock(), 10_000);

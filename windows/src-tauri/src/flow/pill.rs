@@ -37,7 +37,8 @@ pub struct PillState {
     /// When the call being recorded started (ms since 1970), or none.
     pub note_started_at: Option<u64>,
     pub announcement: Option<Announcement>,
-    /// Dictation is on (the resting pill shows).
+    /// The resting pill shows: dictation is on and the pill isn't turned off
+    /// in Flow → Settings.
     pub enabled: bool,
     /// « OK Coucou » is talking with you.
     pub voice: Option<crate::voice::VoiceView>,
