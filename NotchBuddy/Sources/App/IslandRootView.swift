@@ -401,9 +401,21 @@ struct BotPlacement: View {
     var shift: CGSize = .zero
     /// How he springs between his places (in a corner: no bounce, he goes straight there).
     var damping: Double = 0.72
+    #if !APPSTORE
+    /// The volume / brightness level, for his place on the level card's track.
+    @ObservedObject private var systemLevel = SystemHUDController.shared.model
+    #endif
+
+    /// How far along a track he is: the upload's progress, or the level on the level card.
+    private var trackProgress: Double {
+        #if !APPSTORE
+        if state.view == .level { return systemLevel.level }
+        #endif
+        return state.uploadProgress
+    }
 
     var body: some View {
-        let (rawCx, rawCy, diameter, rawOpacity) = botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: state.uploadProgress, hasNotch: state.hasNotch)
+        let (rawCx, rawCy, diameter, rawOpacity) = botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: trackProgress, hasNotch: state.hasNotch)
         let cx = rawCx - shift.width, cy = rawCy - shift.height
         // Swapping places in a corner: CornerArcView draws him on his way.
         let opacity = state.cornerSwapping ? 0 : rawOpacity
@@ -532,6 +544,12 @@ func botPosition(mode: IslandMode, view: IslandView, islandW: CGFloat, islandH: 
             let cx = 36 + CGFloat(uploadProgress) * 526
             return (cx, layout.botY ?? 103, diameter, 1)
         }
+        // Volume / brightness: the same ride along a track, at the level (BotPlacement passes
+        // the level as `uploadProgress` for this view).
+        if view == .level {
+            let cx = SystemLevelLayout.trackLeft + CGFloat(min(max(uploadProgress, 0), 1)) * SystemLevelLayout.trackWidth
+            return (cx, layout.botY ?? 87, diameter, 1)
+        }
         let cx = layout.botX
         let cy: CGFloat
         if let fixedY = layout.botY {
@@ -653,12 +671,16 @@ struct IslandContentView: View {
                     let anim: Animation = active
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)
+                    // The content's fixed height: 98 pt, more on home with a mail open, less for
+                    // the volume / brightness card.
+                    let fixedHeight: CGFloat = v == .overview ? 98 + (placement.isCorner ? 0 : mailExtra)
+                        : v == .level ? SystemLevelLayout.cardHeight : 98
                     IslandViewContent(view: v, state: state)
                         // Views behind the active one stay mounted (for the cross-fade)
                         // but stop their endless animations: nobody sees them.
                         .environment(\.islandViewActive, active)
                         .frame(maxWidth: .infinity)
-                        .frame(height: isTall ? nil : (v == .overview ? 98 + (placement.isCorner ? 0 : mailExtra) : 98),
+                        .frame(height: isTall ? nil : fixedHeight,
                                alignment: v == .overview ? .top : .center)
                         .frame(minHeight: (isTall && !active) ? 0 : nil, maxHeight: isTall ? .infinity : nil)
                         .opacity(active ? 1 : 0)
@@ -718,6 +740,8 @@ struct IslandHeader: View {
             // Right: plan pill (GitHub build, home view only) + action icons
             HStack(spacing: 8) {
                 #if !APPSTORE
+                // A volume or brightness key on a view the level card can't replace.
+                SystemLevelHeaderPill()
                 // Claude and Codex both on: only Claude here (two pills and the icons do not
                 // clear the notch); Codex is a row in the Claude plan card.
                 if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {

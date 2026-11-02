@@ -200,6 +200,9 @@ struct SettingsView: View {
                         SettingsSidebarRow(title: "Voice",        icon: "mic.fill",                          color: "#F97316").tag("voice")
                         #endif
                         SettingsSidebarRow(title: "Shortcuts",    icon: "keyboard.fill",                     color: "#6366F1").tag("shortcuts")
+                        #if !APPSTORE
+                        SettingsSidebarRow(title: "system-hud.page", icon: "sun.max.fill",                   color: "#F7B32B").tag("systemhud")
+                        #endif
                     }
                     .listStyle(.sidebar)
                     .scrollContentBackground(.hidden)
@@ -277,6 +280,7 @@ struct SettingsView: View {
         case "integrations": return String(localized: "Integrations")
         case "voice":        return String(localized: "Voice")
         case "shortcuts":    return String(localized: "Shortcuts")
+        case "systemhud":    return String(localized: "system-hud.page")
         default:             return String(localized: "General")
         }
     }
@@ -291,6 +295,9 @@ struct SettingsView: View {
         case "voice":        voiceSection
         #endif
         case "shortcuts":    ShortcutsSettingsView()
+        #if !APPSTORE
+        case "systemhud":    SystemHUDSettingsSection()
+        #endif
         default:             generalSection
         }
     }
