@@ -2,8 +2,8 @@
 import AVFoundation
 import QuartzCore
 
-/// The sound of a volume key: one of Coucou's own sounds ("pop" by default, or "tick"),
-/// higher as the volume rises.
+/// The sound of a volume key: one of Coucou's own sounds ("pop" by default, "tick" or
+/// "blip"), higher as the volume rises.
 ///
 /// Swallowing the key also swallowed the "pop" macOS plays when the volume changes (System
 /// Settings → Sound → Play feedback when volume is changed), so this gives it back, in
@@ -22,6 +22,7 @@ final class SystemHUDSound {
         /// The nearest to macOS's own volume pop.
         case pop
         case tick
+        case blip
         var id: String { rawValue }
         var title: String { rawValue.capitalized }
     }
