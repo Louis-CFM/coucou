@@ -195,17 +195,35 @@ impl NoteTaker {
     }
 }
 
-pub fn setup(app: &AppHandle) {
+fn load(folder: &std::path::Path) -> Vec<Note> {
     let mut notes: Vec<Note> = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(folder()) {
+    if let Ok(entries) = std::fs::read_dir(folder) {
         for entry in entries.flatten() {
             if let Ok(text) = std::fs::read_to_string(entry.path().join("note.json")) {
                 if let Ok(note) = serde_json::from_str::<Note>(&text) {
+                    if note.status == Status::Ready { remove_audio(&entry.path()); }
                     notes.push(note);
                 }
             }
         }
     }
+    notes
+}
+
+/// Only once the Ready transcript is saved; launch repeats it for audio left
+/// by a failed removal or a crash right after the save.
+fn remove_audio(dir: &std::path::Path) {
+    for name in ["mic.wav", "system.wav"] {
+        if let Err(error) = std::fs::remove_file(dir.join(name)) {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                crate::log::line(format!("notes: could not remove {name}: {error}"));
+            }
+        }
+    }
+}
+
+pub fn setup(app: &AppHandle) {
+    let mut notes = load(&folder());
     notes.sort_by(|a, b| b.start.cmp(&a.start));
     // A call left recording or being written when Coucou last quit: written now.
     let unfinished: Vec<String> = notes
@@ -484,8 +502,7 @@ fn transcript(app: &AppHandle, taker: &Arc<NoteTaker>, id: &str) -> Result<(), S
         n.status = Status::Ready;
         n.error = None;
     });
-    let _ = std::fs::remove_file(&mic_path);
-    let _ = std::fs::remove_file(&system_path);
+    remove_audio(&dir);
     crate::log::line(format!("notes: transcript of {count} lines"));
     Ok(())
 }
@@ -731,4 +748,29 @@ pub fn notes_export(taker: State<Arc<NoteTaker>>, id: String) -> Result<String, 
     std::fs::write(&path, markdown(&note)).map_err(|e| e.to_string())?;
     crate::platform::reveal_folder(&dir.to_string_lossy());
     Ok(path.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn launch_removes_audio_left_behind_a_saved_transcript_only() {
+        let root = std::env::temp_dir().join(format!("coucou-notes-{}", crate::flow::text::new_id()));
+        for status in ["ready", "processing", "failed"] {
+            let dir = root.join(status);
+            std::fs::create_dir_all(&dir).unwrap();
+            let note = serde_json::json!({"id": status, "title": status, "start": 0, "status": status});
+            std::fs::write(dir.join("note.json"), note.to_string()).unwrap();
+            for name in ["mic.wav", "system.wav"] { std::fs::write(dir.join(name), b"audio").unwrap(); }
+        }
+        assert_eq!(load(&root).len(), 3);
+        for name in ["mic.wav", "system.wav"] {
+            assert!(!root.join("ready").join(name).exists());
+            // Not yet transcribed, or kept for Retry.
+            assert!(root.join("processing").join(name).exists());
+            assert!(root.join("failed").join(name).exists());
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }
