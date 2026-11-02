@@ -1891,25 +1891,29 @@ input[type="range"]::-webkit-slider-thumb {
   padding-top: 8px;
 }
 
-/* Crypto: one line per coin; the coins scroll between the header and the actions. */
-.int-card.crypto-card {
+/* Crypto and Portfolio: one line per row; the rows scroll between the lines above them and the actions. */
+.int-card.crypto-card,
+.int-card.portfolio-card {
   height: 100%;
   box-sizing: border-box;
   padding-bottom: 8px;
 }
 
-.crypto-rows {
+.crypto-rows,
+.portfolio-rows {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
 }
 
-.crypto-rows::-webkit-scrollbar {
+.crypto-rows::-webkit-scrollbar,
+.portfolio-rows::-webkit-scrollbar {
   display: none;
 }
 
-.crypto-row {
+.crypto-row,
+.portfolio-row {
   gap: 6px;
   flex: 0 0 auto;
 }
@@ -1918,11 +1922,17 @@ input[type="range"]::-webkit-slider-thumb {
   min-width: 30px;
 }
 
-.crypto-row > :not(.int-name):not(.crypto-error) {
+.portfolio-row .int-name {
+  min-width: 36px;
+}
+
+.crypto-row > :not(.int-name):not(.crypto-error),
+.portfolio-row > :not(.int-name):not(.portfolio-error) {
   flex: 0 0 auto;
 }
 
-.crypto-price {
+.crypto-price,
+.portfolio-value {
   margin-left: auto;
   font: 500 11px var(--font);
   color: #c5c8cd;
@@ -1930,19 +1940,36 @@ input[type="range"]::-webkit-slider-thumb {
   white-space: nowrap;
 }
 
-.crypto-change {
+.crypto-change,
+.portfolio-change {
   font: 500 10px var(--font);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.crypto-error {
+.portfolio-amount {
+  font: 400 10px var(--font);
+  color: #8e939c;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.crypto-error,
+.portfolio-error {
   min-width: 0;
   font: 400 10px var(--font);
   color: #f4505e;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.portfolio-status {
+  flex-wrap: wrap;
+}
+
+.portfolio-status:empty {
+  display: none;
 }
 
 /* ── Plan usage: the pills in the header and the card behind them ────────────

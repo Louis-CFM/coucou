@@ -39,3 +39,36 @@ test("the detail view names incomplete totals and shows the failing source", () 
   assert.match(card.textContent, /Binance/);
   assert.doesNotMatch(card.textContent, /NaN|undefined|Infinity/);
 });
+
+test("each account and asset stays one line in a list that scrolls between the total and the actions", () => {
+  const data = { totalUsd: 100, complete: false, unpriced: 1, failed: 1, accounts: [
+    { id: "binance", label: "binance", network: "binance", holdings: [
+      { symbol: "BTC", amount: 1, priceUsd: 100, change: 2, history: [90, 100] },
+      { symbol: "XYZ", amount: 5, priceUsd: null },
+    ] },
+    { id: "bad", label: "USB wallet", network: "Ethereum", error: "HTTP 503", holdings: [] },
+  ] };
+  for (const detail of [false, true]) {
+    const card = portfolioCard(data, detail, () => {}, () => {});
+    const rows = card.querySelector(".portfolio-rows");
+    assert.ok(rows, "the rows have their own scrolling list");
+    assert.equal(rows.getAttribute("style"), null, "the card bounds the list, not an inline height");
+    const summary = card.children.find((el) => el.classList.contains("int-status") && /Partial total/.test(el.textContent));
+    assert.ok(summary, "the partial total stays outside the list");
+    assert.equal(card.querySelector(".int-actions").parentNode, card, "Details, Refresh and Settings… stay outside the list");
+    const status = rows.children.at(-1);
+    assert.ok(status.classList.contains("int-status"));
+    assert.match(status.textContent, /Unpriced assets: 1/);
+    assert.match(status.textContent, /Failed accounts: 1/);
+    const lines = rows.children.slice(0, -1);
+    assert.ok(lines.every((row) => row.classList.contains("portfolio-row")), "an account's error is on its row, not a line of its own");
+    const failed = lines.find((row) => row.querySelector(".portfolio-error"));
+    assert.equal(failed.querySelector(".portfolio-error").textContent, "HTTP 503");
+    assert.equal(failed.querySelector(".portfolio-error").getAttribute("title"), "HTTP 503");
+    assert.equal(failed.children.at(-1).classList.contains("portfolio-value"), true);
+    const holdings = lines.filter((row) => row.querySelector(".portfolio-amount"));
+    assert.equal(holdings.length, detail ? 2 : 0);
+    for (const row of holdings) assert.equal(row.children.at(-1).tagName, "SVG", "the sparkline sits at the end of the row");
+    if (detail) assert.equal(holdings[1].querySelector(".portfolio-value").textContent, "—", "an unpriced asset stays unknown");
+  }
+});
