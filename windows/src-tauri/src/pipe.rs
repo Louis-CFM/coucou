@@ -69,6 +69,43 @@ pub fn pipe_name() -> String {
     format!(r"\\.\pipe\coucou-{key}")
 }
 
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_long_answer_reaches_the_relay_whole() {
+        use std::io::Read;
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
+            let name = format!(r"\\.\pipe\coucou-test-{}-long-answer", std::process::id());
+            let mut server = ServerOptions::new().first_pipe_instance(true).create(&name).unwrap();
+            // A plain blocking handle, as coucou-hook opens it.
+            let mut relay = std::fs::OpenOptions::new().read(true).write(true).open(&name).unwrap();
+            server.connect().await.unwrap();
+            // An answer to a question, several times longer than one of the relay's 1 KiB reads.
+            let line = format!("{}\n", json!({ "answers": { "Which one?": "é".repeat(3000) } }));
+            server.write_all(line.as_bytes()).await.unwrap();
+            server.flush().await.unwrap();
+            server.finish();
+            drop(server);
+            // The relay reads only now, 1 KiB at a time, after we are done with the pipe.
+            let got = tokio::task::spawn_blocking(move || {
+                let (mut got, mut chunk) = (Vec::new(), [0u8; 1024]);
+                while let Ok(n @ 1..) = relay.read(&mut chunk) {
+                    got.extend_from_slice(&chunk[..n]);
+                    if got.contains(&b'\n') {
+                        break;
+                    }
+                }
+                got
+            })
+            .await
+            .unwrap();
+            assert_eq!(String::from_utf8_lossy(&got), line);
+        });
+    }
+}
+
 #[cfg(windows)]
 pub fn start(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -155,9 +192,11 @@ pub fn start(app: AppHandle) {
     });
 }
 
-/// One accepted relay connection, whatever carries it.
+/// One accepted relay connection, whatever carries it. Dropping it closes it and the relay still reads up to our
+/// newline; on Windows that is why the pipe is never disconnected (DisconnectNamedPipe throws away what the relay
+/// has not read yet, and it reads 1 KiB at a time). Each connection has its own pipe instance, so none is reused.
 trait Relay: AsyncRead + AsyncWrite + Unpin {
-    /// Ends the conversation once everything has been written.
+    /// Called once everything has been written. Nothing to do on either platform: the drop that follows closes it.
     fn finish(&mut self) {}
     /// The relay process on the other end, where the OS says.
     fn client_pid(&self) -> Option<u32> {
@@ -167,16 +206,12 @@ trait Relay: AsyncRead + AsyncWrite + Unpin {
 
 #[cfg(windows)]
 impl Relay for NamedPipeServer {
-    fn finish(&mut self) {
-        let _ = self.disconnect();
-    }
     fn client_pid(&self) -> Option<u32> {
         use std::os::windows::io::AsRawHandle;
         crate::platform::pipe_client_pid(self.as_raw_handle())
     }
 }
 
-/// Dropping the stream closes it; the relay reads up to our newline first.
 #[cfg(target_os = "linux")]
 impl Relay for tokio::net::UnixStream {
     /// SO_PEERCRED: the process that connected, as the kernel saw it.
