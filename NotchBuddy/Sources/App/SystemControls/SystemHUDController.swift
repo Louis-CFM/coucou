@@ -9,7 +9,7 @@ final class SystemHUDModel: ObservableObject {
     @Published var level: Double = 0
     @Published var muted = false
     /// The capsule under the island: shown instead of the card while the island is open on
-    /// something that must not be replaced (an approval, a question, the chat…).
+    /// one of the few views a switch would break (an upload, the voice, the chat…).
     @Published var lineVisible = false
 }
 
@@ -20,9 +20,10 @@ final class SystemHUDModel: ObservableObject {
 /// press here: the change is applied, then shown, and the macOS HUD never appears unless
 /// Coucou can't apply the change. Where it shows depends on the island:
 /// - hidden or compact: it opens silently on the card, and goes back 1.6 s after the last press;
-/// - open on home: the card takes home's place for that time, then home comes back;
-/// - open on anything else (an approval, a question, the chat, a mail…): that stays as it
-///   is; Mochi reacts and the value shows in the capsule under the island.
+/// - open: the card takes the view's place for that time (home, a Claude session, an
+///   approval — Claude waits for minutes — a question…), then that view comes back;
+/// - open on one of the few views a switch breaks (`keptViews`): that stays as it is; Mochi
+///   reacts and the value shows in the capsule under the island.
 @MainActor
 final class SystemHUDController {
     static let shared = SystemHUDController()
@@ -47,15 +48,20 @@ final class SystemHUDController {
     private enum Presentation {
         /// The island was hidden or compact: it opened on the card and goes back to that mode.
         case opened(from: IslandMode)
-        /// The island was open on home: the card took its place, and home comes back.
+        /// The island was open: the card took the view's place, and the view comes back.
         case swapped(from: IslandView)
-        /// The island was open on something that stays: only the capsule shows.
+        /// The island was open on a view that must stay: only the capsule shows.
         case line
     }
     private var presentation: Presentation?
 
-    /// Open views the card may stand in for a moment: home. Anything else stays on screen.
-    private static let replaceableViews: Set<IslandView> = [.overview, .empty]
+    /// Open views the card never stands in for, because leaving them breaks something:
+    /// an upload in progress is cancelled (IslandContainer ends the upload sequence on any
+    /// other view), the voice stops listening, the greeting is cut, and the chat or a mail
+    /// being written loses its text field's focus.
+    private static let keptViews: Set<IslandView> = [
+        .upload, .uploading, .choose, .listening, .voiceResult, .greeting, .prompt, .mail,
+    ]
     private var hideTask: Task<Void, Never>?
     private var trustTask: Task<Void, Never>?
 
@@ -179,7 +185,7 @@ final class SystemHUDController {
                     island.fsm.openedExternally()
                     island.expand(to: .level)
                 }
-            } else if Self.replaceableViews.contains(app.view) {
+            } else if !Self.keptViews.contains(app.view) {
                 presentation = .swapped(from: app.view)
                 app.view = .level
             } else {
@@ -216,7 +222,11 @@ final class SystemHUDController {
         case .line:
             return
         case .swapped(let view):
-            app.view = view
+            // Back where it was, unless that is gone meanwhile (an approval or a question
+            // answered from the terminal): then wherever the island would open now.
+            let gone = (view == .approval && app.pendingApproval == nil)
+                || (view == .question && app.pendingQuestion == nil)
+            app.view = gone ? island.defaultView() : view
         case .opened(let before):
             // The pointer on it: the card gives way to home, and the island folds as usual.
             if pointerOnIsland() {
