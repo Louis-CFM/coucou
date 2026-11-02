@@ -97,22 +97,7 @@ enum SystemHUDLogic {
         return (next, next > 0 ? false : muted)
     }
 
-    /// The SF Symbol the HUD shows for a level.
-    static func symbol(for target: SystemHUDTarget, level: Double, muted: Bool) -> String {
-        switch target {
-        case .volume:
-            if muted || level <= 0 { return "speaker.slash.fill" }
-            if level < 1.0 / 3 { return "speaker.wave.1.fill" }
-            if level < 2.0 / 3 { return "speaker.wave.2.fill" }
-            return "speaker.wave.3.fill"
-        case .display:
-            return level < 0.5 ? "sun.min.fill" : "sun.max.fill"
-        case .keyboard:
-            return level < 0.5 ? "light.min" : "light.max"
-        }
-    }
-
-    /// The level as the HUD writes it: whole percent, 0 when muted.
+    /// The level as the line under the island writes it: whole percent, 0 when muted.
     static func percent(level: Double, muted: Bool) -> Int {
         muted ? 0 : Int((min(max(level, 0), 1) * 100).rounded())
     }

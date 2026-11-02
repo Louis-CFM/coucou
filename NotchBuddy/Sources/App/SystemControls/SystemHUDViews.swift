@@ -2,109 +2,62 @@
 import AppKit
 import SwiftUI
 
-/// The volume / brightness HUD: the compact island's shape (the notch plus its wings),
-/// one strip taller. Mochi sits in the left wing where he rests in the compact island,
-/// the percentage in the right wing, and the icon and the bar under the notch.
-struct SystemHUDView: View {
-    @ObservedObject var model: SystemHUDModel
-
-    private static let text = Color(hex: "#F5F6F8")
-
-    var body: some View {
-        let width = model.width
-        let height = model.height
-        let notchHeight = model.notchHeight
-
-        ZStack(alignment: .topLeading) {
-            IslandShape(width: width, height: height,
-                        cornerRadius: IslandConst.roundedCorner, topRadius: 0)
-                .fill(Color.black)
-
-            SystemHUDMochi(model: model)
-                .frame(width: 20, height: 20)
-                .position(x: 40, y: notchHeight / 2)
-
-            Text(verbatim: "\(SystemHUDLogic.percent(level: model.level, muted: model.muted))%")
-                .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                .foregroundColor(Self.text)
-                .position(x: width - 40, y: notchHeight / 2)
-
-            HStack(spacing: 10) {
-                Image(systemName: SystemHUDLogic.symbol(for: model.target, level: model.level, muted: model.muted))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Self.text)
-                    .frame(width: 18)
-                    .contentTransition(.symbolEffect(.replace))
-                SystemHUDBar(level: model.muted ? 0 : model.level)
-            }
-            .padding(.horizontal, 20)
-            .frame(width: width, height: SystemHUDController.stripHeight)
-            .offset(y: notchHeight)
-        }
-        .frame(width: width, height: height, alignment: .topLeading)
-        // Grows out of the notch, like the island opening.
-        .scaleEffect(x: model.visible ? 1 : 0.85, y: model.visible ? 1 : 0.5, anchor: .top)
-        .opacity(model.visible ? 1 : 0)
-        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: model.visible)
-    }
-}
-
-/// The level bar: a thin capsule, white on a faint track.
-struct SystemHUDBar: View {
-    let level: Double
+/// Under the island, while a volume or brightness key is pressed: the same capsule as the
+/// line that tells how the Mac is doing (VitalsHoverLine), a coloured dot and a short text.
+struct SystemLevelLine: View {
+    let islandW: CGFloat
+    let islandH: CGFloat
+    @ObservedObject private var model = SystemHUDController.shared.model
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.white.opacity(0.15))
-                Capsule()
-                    .fill(Color(hex: "#F5F6F8"))
-                    .frame(width: max(0, geo.size.width * min(max(level, 0), 1)))
+        ZStack {
+            if model.visible {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(dotColor)
+                        .frame(width: 6, height: 6)
+                    Text(verbatim: text)
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundColor(Color(hex: "#E1E3E6"))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .contentTransition(.numericText())
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.black.opacity(0.92)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                .transition(.opacity.combined(with: .offset(y: -4)))
             }
         }
-        .frame(height: 6)
-        .animation(.spring(response: 0.25, dampingFraction: 0.9), value: level)
-    }
-}
-
-/// Mochi in the HUD: animated only while the HUD shows, his eyes following the level.
-struct SystemHUDMochi: View {
-    @ObservedObject var model: SystemHUDModel
-    @StateObject private var engine = SystemHUDMochi.makeEngine()
-
-    private static func makeEngine() -> BotEngine {
-        let engine = BotEngine()
-        engine.isMini = true
-        return engine
+        .animation(.easeOut(duration: 0.18), value: model.visible)
+        .animation(.easeOut(duration: 0.15), value: model.level)
+        .position(x: islandW / 2, y: islandH + 18)
+        .allowsHitTesting(false)
     }
 
-    var body: some View {
-        TimelineView(.animation(paused: !model.visible)) { timeline in
-            let frame = timeline.date   // see BotCanvasView: redraw on every tick
-            Canvas { context, size in
-                _ = frame
-                MochiFrameClock.advance(engine)
-                engine.draw(context: context, size: size)
-            }
+    private var text: String {
+        if model.target == .volume && model.muted {
+            return String(localized: "system-hud.line.muted")
         }
-        .onAppear {
-            engine.setState(.idle, force: true)
-            apply(model.mood)
+        let name: String
+        switch model.target {
+        case .volume:   name = String(localized: "system-hud.line.volume")
+        case .display:  name = String(localized: "system-hud.line.display")
+        case .keyboard: name = String(localized: "system-hud.line.keyboard")
         }
-        .onChange(of: model.mood) { _, mood in apply(mood) }
+        let percent = Double(SystemHUDLogic.percent(level: model.level, muted: false)) / 100
+        return "\(name) \(percent.formatted(.percent.precision(.fractionLength(0))))"
     }
 
-    private func apply(_ mood: SystemHUDMood) {
-        let eye: EyeShape?
-        switch mood {
-        case .normal: eye = nil
-        case .max:    eye = .star
-        case .min:    eye = .tired
-        case .muted:  eye = .closed
+    /// The vitals line's palette: one colour per kind of key, grey when muted.
+    private var dotColor: Color {
+        if model.target == .volume && model.muted { return Color(hex: "#8E939C") }
+        switch model.target {
+        case .volume:   return Color(hex: "#3B9EFF")
+        case .display:  return Color(hex: "#F5A524")
+        case .keyboard: return Color(hex: "#A78BFA")
         }
-        engine.permanentEye = eye
-        engine.eyeOverride = eye
-        engine.eyeOverrideUntil = eye == nil ? 0 : .greatestFiniteMagnitude
     }
 }
 

@@ -17,7 +17,6 @@ enum SystemHUDLogicTests {
         testSteppedFine()
         testSteppedBadInput()
         testVolumeStepUnmutes()
-        testSymbols()
         testPercent()
         testMood()
         print("SystemHUDLogic: all cases passed")
@@ -143,18 +142,6 @@ enum SystemHUDLogicTests {
         precondition(zero.level == 0 && zero.muted)
         let zeroOpen = SystemHUDLogic.volumeStep(level: 1.0 / 16, muted: false, direction: -1, fine: false)
         precondition(zeroOpen.level == 0 && !zeroOpen.muted)
-    }
-
-    static func testSymbols() {
-        precondition(SystemHUDLogic.symbol(for: .volume, level: 0.8, muted: true) == "speaker.slash.fill")
-        precondition(SystemHUDLogic.symbol(for: .volume, level: 0, muted: false) == "speaker.slash.fill")
-        precondition(SystemHUDLogic.symbol(for: .volume, level: 0.2, muted: false) == "speaker.wave.1.fill")
-        precondition(SystemHUDLogic.symbol(for: .volume, level: 0.5, muted: false) == "speaker.wave.2.fill")
-        precondition(SystemHUDLogic.symbol(for: .volume, level: 1, muted: false) == "speaker.wave.3.fill")
-        precondition(SystemHUDLogic.symbol(for: .display, level: 0.2, muted: false) == "sun.min.fill")
-        precondition(SystemHUDLogic.symbol(for: .display, level: 0.9, muted: false) == "sun.max.fill")
-        precondition(SystemHUDLogic.symbol(for: .keyboard, level: 0.2, muted: false) == "light.min")
-        precondition(SystemHUDLogic.symbol(for: .keyboard, level: 0.9, muted: false) == "light.max")
     }
 
     static func testPercent() {

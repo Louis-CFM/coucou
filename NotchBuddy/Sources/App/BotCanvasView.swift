@@ -191,6 +191,13 @@ struct BotCanvasView: View {
         .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
             engine.greet()
         }
+        #if !APPSTORE
+        .onReceive(NotificationCenter.default.publisher(for: .botSystemLevel)) { notif in
+            if let reaction = notif.object as? SystemHUDReaction {
+                engine.reactToSystemLevel(reaction)
+            }
+        }
+        #endif
         .onAppear {
             engine.setState(state.effectiveState, force: true)
             let isWardrobe = state.mode == .expanded && state.view == .wardrobe

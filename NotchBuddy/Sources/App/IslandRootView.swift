@@ -195,6 +195,11 @@ struct IslandContainer: View {
             // Under the island while the pointer is on Mochi: how the Mac is doing.
             VitalsHoverLine(islandW: islandWidth, islandH: islandHeight)
 
+            #if !APPSTORE
+            // Under the island too, while a volume or brightness key is pressed.
+            SystemLevelLine(islandW: islandWidth, islandH: islandHeight)
+            #endif
+
             if demoEngine.isActive {
                 Text(verbatim: "DEMO")
                     .font(.system(size: 8, weight: .bold, design: .monospaced))
