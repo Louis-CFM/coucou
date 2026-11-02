@@ -193,6 +193,7 @@ struct SystemHUDSettingsSection: View {
     @State private var trusted = AXIsProcessTrusted()
     @State private var volume = SystemHUDController.isEnabled(.volume)
     @State private var sound = SystemHUDSound.isEnabled
+    @State private var soundChoice = SystemHUDSound.choice
     @State private var display = SystemHUDController.isEnabled(.display)
     @State private var keyboard = SystemHUDController.isEnabled(.keyboard)
 
@@ -226,6 +227,17 @@ struct SystemHUDSettingsSection: View {
                         .onChange(of: sound) { _, v in SystemHUDSound.setEnabled(v) }
                         .disabled(!volume)
                         .padding(.leading, 20)
+                    // Picking one plays it, to compare them by ear.
+                    Picker(String(localized: "Sound"), selection: $soundChoice) {
+                        ForEach(SystemHUDSound.Choice.allCases) { choice in
+                            Text(verbatim: choice.title).tag(choice)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                    .onChange(of: soundChoice) { _, v in SystemHUDSound.shared.choose(v) }
+                    .disabled(!volume || !sound)
+                    .padding(.leading, 20)
                     Toggle(String(localized: "system-hud.display"), isOn: $display)
                         .onChange(of: display) { _, v in SystemHUDController.setEnabled(v, for: .display) }
                     Toggle(String(localized: "system-hud.keyboard"), isOn: $keyboard)
