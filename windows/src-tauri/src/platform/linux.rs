@@ -443,6 +443,12 @@ fn layer_shell_wanted() -> bool {
 /// True once the island window is a layer-shell surface.
 static LAYER_SURFACE: AtomicBool = AtomicBool::new(false);
 
+/// Whether the island is a layer-shell surface. The compositor already puts
+/// those below any bar that reserves space, so nothing has to move it down.
+pub fn is_layer_surface() -> bool {
+    LAYER_SURFACE.load(Ordering::Relaxed)
+}
+
 /// The input region last asked for, re-applied whenever the window is mapped:
 /// GTK resets it to the whole window on map. Until the page reports the island
 /// shape it is empty, so nothing takes the mouse.
