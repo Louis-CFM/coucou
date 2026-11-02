@@ -88,7 +88,7 @@ export async function mailOverviewPage(page: HTMLElement, ctx: HubContext) {
     view.sent.forEach((e, i) => {
       if (i > 0) list.append(divider());
       list.append(h("div", { class: "hub-list-row mail-journal" },
-        h("b", { text: e.to.join(", ") }),
+        h("b", { text: e.to.join(", ") + (e.cc.length > 0 ? ` · Cc ${e.cc.join(", ")}` : "") }),
         h("span", { class: "grow mail-dim", text: e.subject }),
         e.attachments.length > 0 ? h("span", { class: "mail-dim", text: `📎 ${e.attachments.join(", ")}` }) : h("span"),
         h("span", { class: "mail-dim", text: time(e.date, true) }),

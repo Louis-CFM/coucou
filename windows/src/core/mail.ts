@@ -74,6 +74,7 @@ export interface SentEntry {
   id: string;
   date: number;
   to: string[];
+  cc: string[];
   subject: string;
   attachments: string[];
 }

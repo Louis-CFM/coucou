@@ -74,15 +74,19 @@ function draw(el: HTMLElement, id: string, summary: string) {
     for (const m of run.mails) {
       const r = h("div", { class: m.problem ? "plan-row bad" : "plan-row" },
         h("span", { class: "plan-to", text: m.to.join(", ") }),
-        h("span", { class: "plan-subject", text: m.subject }),
+        h("span", { class: "plan-subject", text: m.subject, title: m.body }),
       );
       if (m.problem) {
         r.append(h("span", { class: "plan-problem", text: m.problem === "noPage" ? t("no page found") : t("invalid address") }));
       } else if (m.attachments.length > 0) {
-        const extra = m.attachments.length > 1 ? ` +${m.attachments.length - 1}` : "";
-        r.append(h("span", { class: "plan-file", text: `📎 ${fileName(m.attachments[0])}${extra}` }));
+        r.append(h("span", { class: "plan-file", text: `📎 ${fileName(m.attachments[0])}`, title: m.attachments[0] }));
       }
       rows.append(r);
+      // The rest of what Run sends, one line each under the subject: every Cc, every other file.
+      const more = [...m.cc.map((a) => [`Cc ${a}`, a]), ...(m.problem ? [] : m.attachments.slice(1)).map((p) => [`📎 ${fileName(p)}`, p])];
+      for (const [text, title] of more) {
+        rows.append(h("div", { class: "plan-row" }, h("span", { class: "plan-to" }), h("span", { class: "plan-subject", text, title })));
+      }
     }
     el.append(rows);
   }

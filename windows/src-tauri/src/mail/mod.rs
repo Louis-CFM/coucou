@@ -856,6 +856,7 @@ async fn execute(app: &AppHandle, id: &str, run: PlanRun) {
                 id: new_id(),
                 date: now_ms(),
                 to: mail.to.clone(),
+                cc: mail.cc.clone(),
                 subject: mail.subject.clone(),
                 attachments: mail
                     .attachments
