@@ -46,13 +46,22 @@ export function modelsControl(ctx: HubContext, onReady?: () => void): HTMLElemen
     }
   };
   draw(ctx.status.models);
+  // A control drawn again (another page, a language change) leaves this one
+  // behind: it stops listening once it is off screen. A fresh one is not on
+  // screen yet either while its page is still being built, hence the delay.
+  // shortcut: assumes a page shows its controls within 5 s of building them.
+  const born = performance.now();
+  let off: (() => void) | null = null;
   void onEvent<ModelsStatus>("speech-models", (models) => {
-    if (!el.isConnected) return;
+    if (!el.isConnected) {
+      if (performance.now() - born > 5000) off?.();
+      return;
+    }
     const wasReady = ctx.status.models.parakeet.state === "ready";
     ctx.status.models = models;
     draw(models);
     if (!wasReady && models.parakeet.state === "ready") onReady?.();
-  });
+  }).then((unlisten) => (off = unlisten));
   return el;
 }
 
