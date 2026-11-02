@@ -22,6 +22,7 @@ object Languages {
         Language("id", "Bahasa Indonesia"),
         Language("ar", "العربية"),
         Language("tr", "Türkçe"),
+        Language("ja", "日本語"),
     )
 
     /** The tag of the language that [tag] (as Android reports it, e.g. "zh-Hans-CN" or "pt-PT") stands for in the app; [SYSTEM] if there is none. */
