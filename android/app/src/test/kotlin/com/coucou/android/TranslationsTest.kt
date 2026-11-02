@@ -20,6 +20,7 @@ class TranslationsTest {
         "zh-Hans" to listOf("other"), "hi" to listOf("one", "other"), "bn" to listOf("one", "other"),
         "ru" to listOf("one", "few", "many", "other"), "id" to listOf("other"), "ar" to listOf("zero", "one", "two", "few", "many", "other"),
         "tr" to listOf("one", "other"),
+        "th" to listOf("other"),
     )
 
     @Test fun thereIsAtLeastOneLanguage() = assertTrue(files.isNotEmpty())
