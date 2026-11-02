@@ -1954,6 +1954,10 @@ struct SettingsView: View {
             // Nothing was written: show the file as it is now, to review again.
             if previewHooks(install: hookPendingInstall) {
                 statusMessage = "❌ \(ClaudeSettingsFile.Failure.changed(name).localizedDescription)"
+            } else {
+                // The file can't be previewed any more: don't leave the old preview up.
+                showDiff = false
+                pendingHookJSON = ""
             }
         } catch {
             statusMessage = "❌ Write error: \(error.localizedDescription)"
