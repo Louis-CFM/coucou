@@ -44,6 +44,12 @@ const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// see for nearly two minutes.
 const ACK_TIMEOUT: Duration = Duration::from_millis(800);
 const MAX_PAYLOAD: usize = 1 << 20;
+/// coucou-hook writes its line as soon as it connects. A client that connects
+/// and says nothing would otherwise hold its task forever.
+const FIRST_LINE_TIMEOUT: Duration = Duration::from_secs(5);
+/// Between attempts at a pipe instance Windows refused.
+#[cfg(windows)]
+const CREATE_RETRY: Duration = Duration::from_secs(2);
 
 /// What the island can say about a permission request.
 pub enum Reply {
@@ -104,6 +110,37 @@ mod tests {
             assert_eq!(String::from_utf8_lossy(&got), line);
         });
     }
+
+    #[test]
+    fn only_our_own_account_may_open_the_pipe() {
+        use std::os::windows::io::AsRawHandle;
+        use windows::Win32::Foundation::{LocalFree, HANDLE, HLOCAL};
+        use windows::Win32::Security::Authorization::{
+            ConvertSecurityDescriptorToStringSecurityDescriptorW, GetSecurityInfo, SDDL_REVISION_1, SE_KERNEL_OBJECT,
+        };
+        use windows::Win32::Security::{DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR};
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
+            let name = format!(r"\\.\pipe\coucou-test-{}-dacl", std::process::id());
+            let server = create(&name, true).unwrap();
+            let dacl = unsafe {
+                let mut descriptor = PSECURITY_DESCRIPTOR::default();
+                let handle = HANDLE(server.as_raw_handle());
+                assert!(GetSecurityInfo(handle, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, None, None, None, None, Some(&mut descriptor)).is_ok());
+                let mut text = windows::core::PWSTR::null();
+                ConvertSecurityDescriptorToStringSecurityDescriptorW(descriptor, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &mut text, None)
+                    .unwrap();
+                let dacl = text.to_string().unwrap();
+                let _ = LocalFree(Some(HLOCAL(text.0 as *mut _)));
+                let _ = LocalFree(Some(HLOCAL(descriptor.0)));
+                dacl
+            };
+            // One entry, ours: the default DACL would also let Everyone (WD) and Anonymous (AN) read.
+            let sid = crate::platform::current_user_sid().unwrap();
+            assert!(dacl.starts_with("D:P") && dacl.matches('(').count() == 1 && dacl.ends_with(&format!(";;;{sid})")), "{dacl}");
+            // And we still get in, the way coucou-hook opens it.
+            std::fs::OpenOptions::new().read(true).write(true).open(&name).expect("our own account connects");
+        });
+    }
 }
 
 #[cfg(windows)]
@@ -111,36 +148,71 @@ pub fn start(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let name = pipe_name();
         // first_pipe_instance also means we refuse to join a pipe somebody else
-        // already owns under our name, rather than serving on top of it.
-        let mut server = match ServerOptions::new().first_pipe_instance(true).create(&name) {
-            Ok(s) => s,
-            Err(err) => {
-                log::line(format!("cannot open the relay pipe: {err}"));
-                return;
-            }
-        };
+        // already owns under our name, rather than serving on top of it. We keep
+        // trying, so the relay comes up once they are gone.
+        let mut server = instance(&name, true).await;
         loop {
             if server.connect().await.is_err() {
                 // A failed instance never connects again (#853): listen on a fresh one.
-                if let Ok(fresh) = ServerOptions::new().create(&name) {
-                    server = fresh;
-                }
+                server = instance(&name, false).await;
                 tokio::time::sleep(Duration::from_millis(200)).await;
                 continue;
             }
-            // Hand the connected instance to a task and listen on a fresh one.
-            let next = match ServerOptions::new().create(&name) {
-                Ok(s) => s,
-                Err(err) => {
-                    log::line(format!("cannot reopen the relay pipe: {err}"));
-                    return;
-                }
-            };
+            // Hand the connected instance to a task and listen on a fresh one,
+            // made first so the pipe never goes away in between.
+            let next = instance(&name, false).await;
             let connected = std::mem::replace(&mut server, next);
             let app = app.clone();
             tauri::async_runtime::spawn(async move { handle(app, connected).await });
         }
     });
+}
+
+/// A pipe instance, retried until Windows gives one: giving up would leave the
+/// hooks dead until Coucou restarts. Logged once, not on every attempt.
+#[cfg(windows)]
+async fn instance(name: &str, first: bool) -> NamedPipeServer {
+    let mut logged = false;
+    loop {
+        match create(name, first) {
+            Ok(server) => return server,
+            Err(err) if !logged => {
+                log::line(format!("cannot open the relay pipe, retrying: {err}"));
+                logged = true;
+            }
+            Err(_) => {}
+        }
+        tokio::time::sleep(CREATE_RETRY).await;
+    }
+}
+
+/// One instance that only our own account can open. Without a security
+/// descriptor the pipe gets the default one, which lets Everyone and Anonymous
+/// read: enough to connect, hold an instance and read our replies.
+#[cfg(windows)]
+fn create(name: &str, first: bool) -> std::io::Result<NamedPipeServer> {
+    use windows::core::HSTRING;
+    use windows::Win32::Foundation::{LocalFree, HLOCAL};
+    use windows::Win32::Security::Authorization::{ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1};
+    use windows::Win32::Security::{PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES};
+
+    let sid = crate::platform::current_user_sid().ok_or_else(|| std::io::Error::other("cannot read our own SID"))?;
+    // A protected DACL with one entry: full access for our SID, nothing inherited.
+    let sddl = HSTRING::from(format!("D:P(A;;GA;;;{sid})"));
+    let mut descriptor = PSECURITY_DESCRIPTOR::default();
+    unsafe {
+        ConvertStringSecurityDescriptorToSecurityDescriptorW(&sddl, SDDL_REVISION_1, &mut descriptor, None)?;
+        let mut attributes = SECURITY_ATTRIBUTES {
+            nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: descriptor.0,
+            bInheritHandle: false.into(),
+        };
+        let server = ServerOptions::new()
+            .first_pipe_instance(first)
+            .create_with_security_attributes_raw(name, (&mut attributes as *mut SECURITY_ATTRIBUTES).cast());
+        let _ = LocalFree(Some(HLOCAL(descriptor.0)));
+        server
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -221,21 +293,30 @@ impl Relay for tokio::net::UnixStream {
     }
 }
 
-async fn handle(app: AppHandle, mut pipe: impl Relay) {
-    let mut buf = Vec::new();
-    let mut chunk = [0u8; 4096];
-    loop {
-        match pipe.read(&mut chunk).await {
-            Ok(0) => break,
-            Ok(n) => {
-                buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') || buf.len() > MAX_PAYLOAD {
-                    break;
+/// What the relay sent, up to its first newline (or `MAX_PAYLOAD`), if it sent it within `limit`.
+async fn first_line(pipe: &mut (impl AsyncRead + Unpin), limit: Duration) -> Option<Vec<u8>> {
+    let read = async {
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 4096];
+        loop {
+            match pipe.read(&mut chunk).await {
+                Ok(0) => break,
+                Ok(n) => {
+                    buf.extend_from_slice(&chunk[..n]);
+                    if buf.contains(&b'\n') || buf.len() > MAX_PAYLOAD {
+                        break;
+                    }
                 }
+                Err(_) => return None,
             }
-            Err(_) => return,
         }
-    }
+        Some(buf)
+    };
+    tokio::time::timeout(limit, read).await.ok().flatten()
+}
+
+async fn handle(app: AppHandle, mut pipe: impl Relay) {
+    let Some(buf) = first_line(&mut pipe, FIRST_LINE_TIMEOUT).await else { return };
     let line = match buf.iter().position(|b| *b == b'\n') {
         Some(i) => &buf[..i],
         None => &buf[..],
@@ -425,6 +506,20 @@ mod wait_tests {
             tx.try_send(Reply::Ack).unwrap();
             tx.try_send(Reply::Decision("allow".into())).unwrap();
             assert_eq!(wait_for_decision("test-ack", &mut rx).await.as_deref(), Some("allow"));
+        });
+    }
+
+    #[test]
+    fn a_client_that_connects_and_says_nothing_is_dropped_at_the_deadline() {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
+            let (mut ours, _silent) = tokio::io::duplex(64);
+            let started = std::time::Instant::now();
+            assert_eq!(first_line(&mut ours, Duration::from_millis(50)).await, None);
+            assert!(started.elapsed() < Duration::from_secs(5));
+
+            let (mut ours, mut relay) = tokio::io::duplex(64);
+            relay.write_all(b"{\"a\":1}\n").await.unwrap();
+            assert_eq!(first_line(&mut ours, Duration::from_secs(5)).await.as_deref(), Some(&b"{\"a\":1}\n"[..]));
         });
     }
 }
