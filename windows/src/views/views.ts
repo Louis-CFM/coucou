@@ -45,7 +45,8 @@ export interface ViewActions {
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
   openUrl(url: string): void;
-  decide(d: "allow" | "deny"): void;
+  /** Answers the permission card drawn for `requestId` (null: none was drawn). */
+  decide(d: "allow" | "deny", requestId: string | null): void;
   /** Answers the question Claude Code asked: question text → chosen label. */
   answer(answers: Record<string, string | string[]>): void;
   /** Hands the pending request back to the terminal. */
@@ -546,12 +547,13 @@ function buildApproval(actions: ViewActions): ViewHost {
   let rowKey = "";
   // The card pops up under a cursor that was busy with something else: a click
   // meant for the window underneath must not land on Allow. Clicks in the first
-  // moments after a new request appears are ignored.
+  // moments after a new request appears are ignored. The click answers the
+  // request drawn, never one that replaced it before the next sync.
   let shownFor: string | null = null;
   let shownAt = 0;
   const guarded = (d: "allow" | "deny") => () => {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
-    actions.decide(d);
+    actions.decide(d, shownFor);
   };
   return {
     el,
