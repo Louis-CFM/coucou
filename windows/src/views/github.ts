@@ -24,9 +24,18 @@ export interface ForgeCardOptions {
   provider?: "github" | "gitlab" | "gitea";
   refreshId?: string;
   profileUrl?: string;
+  /** A row of the forge's own under the three, and the detail it opens (GitLab's Inbox). */
+  extra?: ForgeExtraRow;
+}
+export interface ForgeExtraRow {
+  icon: SVGSVGElement;
+  color: string;
+  label: string;
+  value: string;
+  detail(onBack: () => void): HTMLElement;
 }
 /** Each provider keeps its selected list across re-renders. */
-const openSections = new Map<string, GitHubSection>();
+const openSections = new Map<string, GitHubSection | "extra">();
 
 function open(url: string, forge: ForgeCardOptions) {
   if (forge.provider === "gitlab") { void Bridge.openGitLabUrl(url); return; }
@@ -64,7 +73,7 @@ export function githubPulseCard(
   options: ForgeCardOptions = { title: "GitHub", color: GITHUB_RED },
 ): HTMLElement {
   const forge = options;
-  const show = (section: GitHubSection) => {
+  const show = (section: GitHubSection | "extra") => {
     openSections.set(forge.provider ?? "github", section);
     if (forge.refreshId) void Bridge.refreshIntegration(forge.refreshId); else void Bridge.githubRefresh(section === "activity" ? "activity" : "pulse");
     openDetail();
@@ -97,13 +106,16 @@ export function githubPulseCard(
         String(reviews), () => show("toReview")),
       statButton(svg(main.failing ? ICONS.octagonX : ICONS.seal, 10, { evenOdd: true }), main.color,
         GH_STRINGS.mainCI, main.value, () => show("mainCI")),
+      ...(forge.extra
+        ? [statButton(forge.extra.icon, forge.extra.color, forge.extra.label, forge.extra.value, () => show("extra"))]
+        : []),
     ),
   );
 }
 
 // ── Detail: lists ─────────────────────────────────────────────────────────────
 
-function backButton(title: string, onBack: () => void): HTMLElement {
+export function backButton(title: string, onBack: () => void): HTMLElement {
   return h(
     "button",
     { class: "gh-back", onclick: onBack },
@@ -245,6 +257,7 @@ export function githubDetail(
 ): HTMLElement {
   const forge = options;
   const openSection = openSections.get(forge.provider ?? "github") ?? "myPRs";
+  if (openSection === "extra") return forge.extra ? forge.extra.detail(onBack) : listDetail("myPRs", pulse, onBack, forge);
   return openSection === "activity"
     ? activityDetail(activity, stats, pulse.login, onBack, forge)
     : listDetail(openSection, pulse, onBack, forge);

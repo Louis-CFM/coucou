@@ -6,13 +6,14 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
+import { OVERVIEW_TALL_H } from "../core/layout";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
 import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
 import { readActivity, readPulse, readStats } from "../core/github";
-import { githubDetail, githubPulseCard, type ForgeCardOptions } from "./github";
-import { N_, language, t } from "../i18n/i18n";
+import { backButton, githubDetail, githubPulseCard, type ForgeCardOptions } from "./github";
+import { N_, language, t, tn } from "../i18n/i18n";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
 export function timeAgo(value: unknown): string {
@@ -114,6 +115,24 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         style: `color:${task.color}d9`,
         text: t("Open {name}", { name: "n8n" }),
         onclick: () => void Bridge.openN8n(),
+      }),
+    );
+  } else if (task.id === "integration_gitlab") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: t("Open {name}", { name: "GitLab" }),
+        onclick: () => void Bridge.openGitlab(),
+      }),
+    );
+  } else if (task.id === "integration_youtrack") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: t("Open {name}", { name: "YouTrack" }),
+        onclick: () => void Bridge.openYoutrack(),
       }),
     );
   } else if (OPEN_URLS[task.id]) {
@@ -286,6 +305,229 @@ function giteaCard(): HTMLElement {
       statRow(ICONS.stack, "#6B7079", t("Repositories"), String(d.totalRepos ?? 0))));
 }
 
+// ── Scrolling cards ───────────────────────────────────────────────────────────
+
+/** Where each scrolling card was left, so a refresh doesn't throw the reader back up. */
+const scrollTops = new Map<string, number>();
+/** The news each card was last built on: fresh news brings it back to the top. */
+const freshKeys = new Map<string, string>();
+
+/**
+ * The card is rebuilt whenever its data changes: `rows` gets back the reader's
+ * place, unless there is news to see, which sits at the top.
+ */
+function keepScroll(rows: HTMLElement, id: string) {
+  const freshKey = JSON.stringify(get(id).fresh ?? []);
+  if (freshKey !== freshKeys.get(id)) {
+    freshKeys.set(id, freshKey);
+    if (arr(id, "fresh").length > 0) scrollTops.set(id, 0);
+  }
+  rows.addEventListener("scroll", () => scrollTops.set(id, rows.scrollTop));
+  requestAnimationFrame(() => {
+    rows.scrollTop = scrollTops.get(id) ?? 0;
+  });
+}
+
+/** One clickable row of a list card. */
+function linkRow(accent: string, highlight: boolean, url: unknown, tip: string, ...cells: Node[]): HTMLElement {
+  const row = listRow(accent, highlight, ...cells);
+  row.title = tip;
+  if (typeof url === "string" && url) {
+    row.style.cursor = "pointer";
+    row.addEventListener("click", () => void Bridge.openUrl(url));
+  }
+  return row;
+}
+
+// ── News ──────────────────────────────────────────────────────────────────────
+
+/** The news unfolded on a card, kept while the card is rebuilt. */
+const unfolded = new Set<string>();
+
+/** News stays highlighted this long; older news stays listed, plain. */
+const NEWS_HIGHLIGHT_MS = 30 * 60 * 1000;
+
+/**
+ * One piece of news, highlighted in `accent` while it is recent. A click
+ * unfolds what changed under it — or, when nothing is attached, its whole
+ * label, which the row cuts — and the ↗ opens its page.
+ */
+function newsRow(n: Record<string, unknown>, accent: string): HTMLElement[] {
+  const label = String(n.label ?? "");
+  const recent = Date.now() - Number(n.at ?? 0) < NEWS_HIGHLIGHT_MS;
+  const url = typeof n.url === "string" ? n.url : "";
+  const changes = Array.isArray(n.changes) ? (n.changes as { text?: string; by?: string }[]) : [];
+
+  const key = `${label}@${String(n.at ?? "")}`;
+  const open = h("button", {
+    class: "icon-btn int-open",
+    title: t("Open"),
+    onclick: (e: Event) => {
+      e.stopPropagation();
+      if (url) void Bridge.openUrl(url);
+    },
+  }, svg(ICONS.arrowUpRight, 8));
+  const row = listRow(accent, recent,
+    h("span", { class: "int-chevron" }, svg(ICONS.chevronRight, 7, { stroke: 2.6 })),
+    h("span", { class: "int-name", text: label }),
+    h("span", { class: "int-ago", text: timeAgo(n.at) }),
+    open,
+  );
+  row.title = changes.length > 0
+    ? `${label}\n${tn("{count} detail — click to show", "{count} details — click to show", changes.length)}`
+    : label;
+  row.style.cursor = "pointer";
+  const detail = h("div", { class: "int-changes" },
+    ...(changes.length > 0
+      ? changes.map((c) => h("div", {
+        class: "int-change",
+        title: c.by ? `${c.text ?? ""} — ${c.by}` : (c.text ?? ""),
+        text: c.text ?? "",
+      }))
+      : [h("div", { class: "int-change whole", text: label })]),
+  );
+  const show = (on: boolean) => {
+    detail.hidden = !on;
+    row.classList.toggle("open", on);
+    if (on) unfolded.add(key);
+    else unfolded.delete(key);
+  };
+  show(unfolded.has(key));
+  row.addEventListener("click", () => show(detail.hidden));
+  return [row, detail];
+}
+
+// ── GitLab ────────────────────────────────────────────────────────────────────
+
+/**
+ * The Inbox under the pulse's three rows: the last ten pieces of news
+ * (highlighted for half an hour), then the pending to-dos not already told,
+ * then the open MRs the user is involved in. Rows a scroll away past the card.
+ */
+function gitlabInbox(onBack: () => void): HTMLElement {
+  const d = get("integration_gitlab");
+  const count = Number(d.todoCount ?? 0);
+  const extra = h(
+    "button",
+    {
+      class: "int-total int-review",
+      title: t("Your GitLab To-Do list"),
+      onclick: () => void Bridge.openGitlab("/dashboard/todos"),
+    },
+    h("span", {
+      style: count > 0 ? "color:#FC6D26" : "color:var(--dim-3)",
+      text: t("{count} to do", { count: `${count}${d.todosCapped ? "+" : ""}` }),
+    }),
+  );
+
+  const rows = h("div", { class: "int-rows scroll" });
+  let shown = 0;
+  const toldTodos = new Set<number>();
+  const toldMrs = new Set<number>();
+
+  for (const n of arr("integration_gitlab", "news")) {
+    if (typeof n.todoId === "number") toldTodos.add(n.todoId);
+    if (typeof n.mrId === "number") toldMrs.add(n.mrId);
+    rows.append(...newsRow(n, n.success === false ? "#F4505E" : "#22C55E"));
+    shown++;
+  }
+  for (const t of arr("integration_gitlab", "todos")) {
+    if (toldTodos.has(Number(t.id))) continue;
+    // Its MR is not listed again below: the to-do says more.
+    if (typeof t.mrId === "number") toldMrs.add(t.mrId);
+    const tip = [t.kind, t.project, t.author].filter(Boolean).join(" · ");
+    rows.append(linkRow(t.bad ? "#F4505E" : "#FC6D26", false, t.url, tip,
+      h("span", { class: "int-name", style: "flex:0 1 auto", text: String(t.title ?? "") }),
+      h("span", { class: "int-sub", style: "flex:0 3 auto", text: String(t.kind ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(t.createdAt) }),
+    ));
+    shown++;
+  }
+  for (const mr of arr("integration_gitlab", "mergeRequests")) {
+    if (toldMrs.has(Number(mr.id))) continue;
+    // Yours, Assigned, Review: English keys from the poller, shown in the interface language.
+    const roles = Array.isArray(mr.roles) ? mr.roles.map((r: unknown) => t(String(r))) : [];
+    const tip = [mr.project, mr.author ? t("by {name}", { name: String(mr.author) }) : "", roles.join(", "), mr.draft ? t("Draft") : ""]
+      .filter(Boolean).join(" · ");
+    rows.append(linkRow(mr.draft ? "#6B7079" : "#FC6D26", false, mr.url, tip,
+      h("span", { class: "int-name", style: "flex:0 1 auto", text: String(mr.title ?? "") }),
+      // What the user is on it as — the first role only, the tooltip has them
+      // all: the title is what you scan for.
+      h("span", { class: "int-sub", style: "flex:0 0 auto", text: roles[0] ?? "" }),
+      h("span", { class: "int-ago", text: timeAgo(mr.updatedAt) }),
+    ));
+    shown++;
+  }
+  if (shown === 0) rows.append(h("div", { class: "int-empty", text: t("Nothing new on GitLab") }));
+  keepScroll(rows, "integration_gitlab");
+  return h("div", { class: "int-card" },
+    h("div", { class: "gh-detail-head" }, backButton(t("Inbox"), onBack), h("span", { style: "margin-left:auto" }, extra)),
+    rows);
+}
+
+/** GitLab's Inbox row on the pulse card: the pending to-dos, orange while there are some. */
+function gitlabInboxRow(): ForgeCardOptions["extra"] {
+  const d = get("integration_gitlab");
+  const count = Number(d.todoCount ?? 0);
+  return {
+    icon: svg(ICONS.check, 10, { stroke: 2.4 }),
+    color: count > 0 ? "#FC6D26" : "#6B7079",
+    label: t("Inbox"),
+    value: `${count}${d.todosCapped ? "+" : ""}`,
+    detail: gitlabInbox,
+  };
+}
+
+// ── YouTrack ──────────────────────────────────────────────────────────────────
+
+/**
+ * The followed saved search, five rows on screen and the rest a scroll away: the
+ * last ten pieces of news (highlighted for half an hour), then the search's
+ * issues, most recently updated first, without those already told.
+ */
+function youtrackCard(): HTMLElement {
+  const d = get("integration_youtrack");
+  const count = Number(d.count ?? 0);
+  const query = String(d.query ?? "");
+  const extra = h(
+    "button",
+    {
+      class: "int-total int-review",
+      title: t("Open the search in YouTrack"),
+      onclick: () => void Bridge.openYoutrack(`/issues?q=${encodeURIComponent(query)}`),
+    },
+    h("span", {
+      style: count > 0 ? "color:#FF318C" : "color:var(--dim-3)",
+      text: d.capped ? t("{count}+ issues", { count }) : tn("{count} issue", "{count} issues", count),
+    }),
+  );
+
+  const rows = h("div", { class: "int-rows scroll" });
+  let shown = 0;
+  const told = new Set<string>();
+
+  for (const n of arr("integration_youtrack", "news")) {
+    told.add(String(n.issue ?? ""));
+    rows.append(...newsRow(n, "#22C55E"));
+    shown++;
+  }
+  for (const i of arr("integration_youtrack", "issues")) {
+    if (told.has(String(i.id))) continue;
+    const tip = [i.id, i.by ? t("updated by {name}", { name: String(i.by) }) : ""].filter(Boolean).join(" · ");
+    rows.append(linkRow(i.resolved ? "#6B7079" : "#FF318C", false, i.url, tip,
+      h("span", { class: "int-name", style: "flex:0 1 auto", text: String(i.summary ?? "") }),
+      // An id is short and useless cut: the summary gives way instead.
+      h("span", { class: "int-sub", style: "flex:0 0 auto", text: String(i.id ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(i.updated) }),
+    ));
+    shown++;
+  }
+  if (shown === 0) rows.append(h("div", { class: "int-empty", text: t("Nothing in this search") }));
+  keepScroll(rows, "integration_youtrack");
+  const kind = String(d.queryName ?? "") || t("Saved search");
+  return h("div", { class: "int-card youtrack" }, header("#FF318C", "YouTrack", kind, extra), rows);
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -431,6 +673,20 @@ function n8nDetail(task: AgentTask, onBack: () => void): HTMLElement {
 
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
+/** The overview's height for the pills whose card is taller than three rows. */
+const TALL_CARDS: Record<string, number> = {
+  integration_gitlab: OVERVIEW_TALL_H.fourRows,
+  integration_youtrack: OVERVIEW_TALL_H.fiveRows,
+};
+
+/** The overview's height for this pill's card, when it is taller than three rows. */
+export function tallOverviewHeight(task: AgentTask | null): number | null {
+  if (task == null || !(task.id in TALL_CARDS) || !hasIntegrationData(task.id)) return null;
+  // GitLab's fourth row comes with the pulse.
+  if (task.id === "integration_gitlab" && readPulse(get(task.id)) == null) return null;
+  return TALL_CARDS[task.id];
+}
+
 export interface IntegrationCardHooks {
   detailOpen: boolean;
   openDetail(): void;
@@ -457,6 +713,8 @@ export function hasIntegrationData(id: string): boolean {
     case "integration_notion":
       return arr(id, "pages").length > 0;
     case "integration_calcom":
+      return info.loaded;
+    case "integration_youtrack":
       return info.loaded;
     default:
       return false;
@@ -487,7 +745,7 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
   }
   if (task.id === "integration_gitlab") {
     const d = get(task.id); const pulse = readPulse(d);
-    if (pulse) { const options: ForgeCardOptions = { title: "GitLab", color: "#FC6D26", provider: "gitlab", refreshId: "integration_gitlab", profileUrl: typeof d.profileUrl === "string" ? d.profileUrl : undefined };
+    if (pulse) { const options: ForgeCardOptions = { title: "GitLab", color: "#FC6D26", provider: "gitlab", refreshId: "integration_gitlab", profileUrl: typeof d.profileUrl === "string" ? d.profileUrl : undefined, extra: gitlabInboxRow() };
       return hooks.detailOpen ? githubDetail(pulse, readStats(d), readActivity(d), hooks.closeDetail, options) : githubPulseCard(pulse, readStats(d), readActivity(d), hooks.openDetail, options); }
   }
   if (task.id === "integration_gitea") {
@@ -512,6 +770,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_youtrack":
+      return youtrackCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

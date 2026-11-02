@@ -5,6 +5,7 @@
 import { onEvent, Bridge, type IntegrationUpdate } from "../core/bridge";
 import { gitHubAlert, type GitHubEvent } from "../core/github";
 import { availablePills } from "../core/pills";
+import { NEWS_VIEWS } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import type { Island } from "./island";
@@ -112,9 +113,14 @@ function handle(island: Island, update: IntegrationUpdate) {
         task.pillBadge = event.success ? "finished" : "error";
       }
       Sound.play(event.success ? "finish" : "error");
-      // Same as the Swift pollers: show the compact island so the badge is seen,
-      // but never steal the screen for a successful deploy.
-      island.reveal();
+      // GitLab's and YouTrack's news open their own card, like Claude Code's
+      // "finished" — unless an alert is waiting for an answer: an approval must
+      // not be pushed away. The others, as the Swift pollers do, only show the
+      // compact island so the badge is seen, never stealing the screen for a
+      // successful deploy.
+      const newsView = NEWS_VIEWS[update.id];
+      if (newsView && !State.isPinned) island.alert(newsView);
+      else island.reveal();
 
       const existing = clearTimers.get(update.id);
       if (existing != null) window.clearTimeout(existing);
