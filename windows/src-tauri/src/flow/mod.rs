@@ -289,6 +289,10 @@ fn run(app: AppHandle, flow: Arc<Flow>, rx: mpsc::Receiver<(KeyEvent, Instant)>)
         if let Some(l) = &listening {
             let levels = l.take.lock().unwrap().meter.levels;
             let _ = app.emit_to(pill::LABEL, "pill-bands", levels);
+            // The Coucou window's bands breathe with the voice while it is on screen.
+            if crate::hub_is_shown() {
+                let _ = app.emit_to(crate::HUB_LABEL, "flow-bands", levels);
+            }
         }
     }
     pill::update(&app, |s| s.phase = "idle".into());

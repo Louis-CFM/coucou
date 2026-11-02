@@ -42,6 +42,8 @@ async function main() {
   }
 
   const island = new Island(root);
+  // The dev previews (dev/*.html) drive the island from the console.
+  if (import.meta.env.DEV) Object.assign(window, { __island: island, __state: State });
 
   const boot = await Bridge.boot();
   if (boot) {

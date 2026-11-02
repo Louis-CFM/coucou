@@ -8,7 +8,7 @@ import { h, clear } from "../views/dom";
 import { t, onLanguageChange } from "../i18n/i18n";
 import { onEvent } from "../core/bridge";
 import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus } from "../core/flow";
-import { hero, liveMochi, setWindowShown } from "./hero";
+import { hero, liveMochi, setVoiceLevel, setWindowShown } from "./hero";
 import { icon, keyLabel } from "./ui";
 import { searchSettings, type SettingsSearchHit } from "./search";
 
@@ -97,6 +97,8 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   // The window is created hidden and only shown and hidden afterwards: its
   // canvases animate only while it is on screen (#792).
   await onEvent<boolean>("hub-visible", setWindowShown);
+  // While you dictate: the loudest of the pill's bands.
+  await onEvent<number[]>("flow-bands", (bands) => setVoiceLevel(Math.max(0, ...bands)));
   const shown = await FlowBridge.hubShown();
   if (shown !== null) setWindowShown(shown);
   let current: PageId = "dictation";
