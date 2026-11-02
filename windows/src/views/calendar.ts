@@ -29,7 +29,8 @@ export function calendarDetail(data: Record<string, unknown>, close: () => void,
     const backButton = h("button", { class: "link-btn cal-back", text: t("Back"), onclick: back });
     const title = selectedBooking?.title || (selectedDay ? dateText(selectedDay) : month.toLocaleDateString(language(), { month: "long", year: "numeric" }));
     root.append(h("div", { class: "int-head" }, backButton, h("b", { text: title, style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" })));
-    const body = h("div", { class: "int-detail-body", style: "max-height:220px;overflow:auto" });
+    // The only part that scrolls: the head, the month's navigation and the Open action always fit the card.
+    const body = h("div", { class: "int-detail-body cal-body" });
     if (selectedBooking) {
       const booking = selectedBooking;
       body.append(h("div", { class: "int-status", text: dateText(booking.start) }),
@@ -48,14 +49,15 @@ export function calendarDetail(data: Record<string, unknown>, close: () => void,
       const next = h("button", { class: "link-btn cal-next", text: t("Next"), onclick: () => { month = new Date(month.getFullYear(), month.getMonth() + 1, 1); render(); } });
       previous.disabled = monthIndex(month) <= monthIndex(from);
       next.disabled = monthIndex(month) >= monthIndex(until);
-      body.append(h("div", { class: "int-actions", style: "justify-content:space-between" }, previous,
-        h("button", { class: "link-btn", text: t("Today"), onclick: () => { month = new Date(from.getFullYear(), from.getMonth(), 1); render(); } }), next));
-      const grid = h("div", { class: "cal-grid", style: "display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px" });
-      for (let day = 0; day < 7; day++) grid.append(h("span", { style: "text-align:center;opacity:.65;font-size:10px", text: new Date(2024, 0, 1 + day).toLocaleDateString(language(), { weekday: "short" }) }));
+      const weekdays = h("div", { class: "cal-weekdays" });
+      for (let day = 0; day < 7; day++) weekdays.append(h("span", { text: new Date(2024, 0, 1 + day).toLocaleDateString(language(), { weekday: "short" }) }));
+      root.append(h("div", { class: "int-actions cal-nav", style: "justify-content:space-between" }, previous,
+        h("button", { class: "link-btn", text: t("Today"), onclick: () => { month = new Date(from.getFullYear(), from.getMonth(), 1); render(); } }), next), weekdays);
+      const grid = h("div", { class: "cal-grid" });
       for (const date of monthDays(month)) {
         const key = dayKey(date), count = onDay(date).length;
         const button = h("button", { class: "link-btn cal-day", "data-day": key, "aria-label": `${dateText(date)} · ${count}`,
-          style: `min-height:22px;border-radius:5px;${count ? "background:#C9956A25;color:#C9956A" : ""}`,
+          style: count ? "background:#C9956A25;color:#C9956A" : undefined,
           text: `${date.getDate()}${count ? " •" : ""}`, onclick: () => { selectedDay = date; render(); } });
         button.disabled = date.getMonth() !== month.getMonth() || key < firstDay || key > lastDay;
         grid.append(button);
