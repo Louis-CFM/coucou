@@ -334,11 +334,12 @@ fn gitea_activity(heatmap: &[Value], fetched_at: u64) -> GitHubActivity {
     for day in start..=today {
         let (y, m, d, weekday) = civil_day(day);
         if weekday == 0 || weeks.is_empty() { weeks.push(Vec::new()); }
-        let count = heatmap.iter().find_map(|entry| {
+        // Gitea groups the heatmap in 15-minute buckets: a day is the sum of its buckets.
+        let count: i64 = heatmap.iter().filter_map(|entry| {
             let ts = entry.get("timestamp")?.as_i64()?;
             let entry_day = if ts > 10_000_000_000 { ts / 86_400_000 } else { ts / 86_400 };
             (entry_day == day).then(|| entry.get("contributions").and_then(Value::as_i64).unwrap_or(0).max(0))
-        }).unwrap_or(0);
+        }).sum();
         weeks.last_mut().unwrap().push(ContributionDay {
             date: format!("{y:04}-{m:02}-{d:02}"), count, weekday,
             level: if count == 0 { 0 } else if count == 1 { 1 } else if count < 4 { 2 } else if count < 8 { 3 } else { 4 },
@@ -450,11 +451,16 @@ async fn poll_gitlab(app: AppHandle) {
     let today = (now_ms() / 86_400_000) as i64;
     let (year, month, day, _) = civil_day(today - 364);
     let after = format!("{year:04}-{month:02}-{day:02}");
+    // The user's own events (scope=all would add every member's events in their projects), newest first.
+    let mut complete = false;
     for page in 1..=10 {
-        let batch = list(format!("{base}/api/v4/events?scope=all&after={after}&per_page=100&page={page}")).await;
-        let done = batch.len() < 100;
+        let batch = list(format!("{base}/api/v4/events?after={after}&per_page=100&page={page}")).await;
+        complete = batch.len() < 100;
         events.extend(batch);
-        if done { break; }
+        if complete { break; }
+    }
+    if !complete {
+        log::line("[gitlab] activity: 1,000 events read, older days of the year are missing from the calendar");
     }
     let to_pr = |v: &Value| -> Option<GitHubPr> { let repo = v.get("references")?.get("full")?.as_str()?.split('!').next()?.to_string(); let n = v.get("iid")?.as_i64()?; Some(GitHubPr { id: format!("{repo}#{n}"), title: v.get("title")?.as_str()?.to_string(), url: v.get("web_url")?.as_str()?.to_string(), repo, number: n, is_draft: v.get("draft").and_then(Value::as_bool).unwrap_or(false), ci: gitlab_ci(v.get("head_pipeline").and_then(|p| p.get("status")).and_then(Value::as_str)), review: ReviewState::Unknown, head_sha: v.get("sha").and_then(Value::as_str).map(str::to_string) }) };
     let mut main_ci = Vec::new();
@@ -1400,8 +1406,12 @@ mod tests {
         let activity = gitea_activity(&[
             json!({ "timestamp": (today - 300) * 86_400, "contributions": 5 }),
             json!({ "timestamp": today * 86_400_000, "contributions": 2 }),
+            // Same day, later 15-minute buckets.
+            json!({ "timestamp": (today - 300) * 86_400 + 9 * 3_600, "contributions": 3 }),
+            json!({ "timestamp": (today - 300) * 86_400 + 14 * 3_600, "contributions": 2 }),
         ], today as u64 * 86_400_000);
-        assert_eq!(activity.total, 7);
+        assert_eq!(activity.total, 12);
+        assert_eq!(activity.weeks.iter().flatten().map(|d| d.count).max(), Some(10));
         assert!(activity.weeks.iter().flatten().count() >= 365);
         for week in &activity.weeks {
             assert_eq!(week[0].weekday, 0);
