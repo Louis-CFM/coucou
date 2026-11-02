@@ -2,7 +2,7 @@
 import AVFoundation
 import QuartzCore
 
-/// The sound of a volume key: Coucou's "blip", higher as the volume rises.
+/// The sound of a volume key: Coucou's "pop", higher as the volume rises.
 ///
 /// Swallowing the key also swallowed the "pop" macOS plays when the volume changes (System
 /// Settings → Sound → Play feedback when volume is changed), so this gives it back, in
@@ -15,12 +15,9 @@ import QuartzCore
 @MainActor
 final class SystemHUDSound {
     static let shared = SystemHUDSound()
-    static let soundName = "blip"
+    /// Coucou's "pop", the nearest to macOS's own volume pop ("tick" is the other candidate).
+    static let soundName = "pop"
     static let enabledKey = "systemHUD.sound"
-    /// Coucou's sounds play very low (SoundEngine.volume, 0.12 by default): they sit in the
-    /// background. This one is feedback, like macOS's pop, and it plays at the volume just
-    /// chosen: five times louder, still following Coucou's Volume slider in proportion.
-    private static let gain: Float = 5
     /// Held down, a key repeats quickly: at most one sound this often.
     private static let minInterval: CFTimeInterval = 0.07
 
@@ -40,7 +37,7 @@ final class SystemHUDSound {
 
     private init() {}
 
-    /// After a volume step: the blip at the new volume, its pitch from the level.
+    /// After a volume step: the pop at the new volume, its pitch from the level.
     func playVolumeStep(level: Double, muted: Bool) {
         guard Self.isEnabled, AppState.shared.soundEnabled, !muted, level > 0 else { return }
         let now = CACurrentMediaTime()
@@ -51,11 +48,11 @@ final class SystemHUDSound {
         guard let player = pool.first(where: { !$0.isPlaying }) ?? pool.first else { return }
         player.currentTime = 0
         player.rate = Float(SystemHUDLogic.soundRate(level: level))
-        player.volume = min(1, SoundEngine.shared.volume * Self.gain)
+        player.volume = SoundEngine.shared.volume
         player.play()
     }
 
-    /// The user's own blip from the custom sounds folder if there is one, like every other
+    /// The user's own pop from the custom sounds folder if there is one, like every other
     /// Coucou sound, else the built-in one. Loaded at the first press only.
     private func load() {
         let url = SoundEngine.customURL(for: Self.soundName)
