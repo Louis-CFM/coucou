@@ -304,18 +304,24 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
         }
     }
 
-    match tokio::time::timeout(DECISION_TIMEOUT, rx.recv()).await {
-        Ok(Some(Reply::Decision(d))) => {
-            log::line(format!("hook id={id} answered {}", loggable(&d)));
-            Some(d)
-        }
-        Ok(Some(Reply::Decline)) => {
-            log::line(format!("hook id={id} released without a decision"));
-            None
-        }
-        _ => {
-            log::line(format!("hook id={id} timed out — terminal takes over"));
-            None
+    let deadline = tokio::time::Instant::now() + DECISION_TIMEOUT;
+    loop {
+        match tokio::time::timeout_at(deadline, rx.recv()).await {
+            // The island acks again when the same request reaches it twice; the card is still up.
+            Ok(Some(Reply::Ack)) => continue,
+            Ok(Some(Reply::Decision(d))) => {
+                log::line(format!("hook id={id} answered {}", loggable(&d)));
+                return Some(d);
+            }
+            Ok(Some(Reply::Decline)) => {
+                log::line(format!("hook id={id} released without a decision"));
+                return None;
+            }
+            Ok(None) => return None,
+            Err(_) => {
+                log::line(format!("hook id={id} timed out — terminal takes over"));
+                return None;
+            }
         }
     }
 }
@@ -369,4 +375,21 @@ pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<Stri
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();
     send(app, request_id, Reply::Decision(line), false);
+}
+
+#[cfg(test)]
+mod wait_tests {
+    use super::*;
+
+    #[test]
+    fn a_repeated_ack_keeps_the_card_waiting_for_its_click() {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
+            let (tx, mut rx) = mpsc::channel::<Reply>(4);
+            // The island acks the same request twice (hooks.ts re-acks a duplicate), then the human clicks.
+            tx.try_send(Reply::Ack).unwrap();
+            tx.try_send(Reply::Ack).unwrap();
+            tx.try_send(Reply::Decision("allow".into())).unwrap();
+            assert_eq!(wait_for_decision("test-ack", &mut rx).await.as_deref(), Some("allow"));
+        });
+    }
 }
