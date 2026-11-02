@@ -106,6 +106,8 @@ enum FileDropHandler {
             // Copy failed: the drop keeps pointing at the original file, as before.
             guard let dest = landed else { return }
             await MainActor.run {
+                // A newer drop or capture replaced this one meanwhile, or it was cleared: keep that.
+                guard state.droppedFile?.url == url else { return }
                 state.droppedFile = DroppedFile(url: dest, name: name)
                 state.promptContext = .file(name: name, fileURL: dest)
             }
