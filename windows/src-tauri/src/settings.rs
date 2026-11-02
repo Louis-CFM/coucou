@@ -108,6 +108,11 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// The main Mochi's name: the chat's persona. Empty = "Mochi".
+    pub mochi_name: String,
+    /// Names of the coloured Mochis, by pill id. Missing or empty = the
+    /// default pun name (src/core/state.ts DEFAULT_MOCHI_NAMES).
+    pub mochi_names: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -178,6 +183,8 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            mochi_name: String::new(),
+            mochi_names: BTreeMap::new(),
         }
     }
 }
@@ -478,7 +485,9 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "showClock": true
+  "showClock": true,
+  "mochiName": "Momo",
+  "mochiNames": { "integration_github": "Gus" }
 }"##;
 
     fn custom() -> Value {
@@ -1000,6 +1009,8 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "mochiName",
+                "mochiNames",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

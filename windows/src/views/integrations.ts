@@ -150,7 +150,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     { class: "int-card" },
     header(
       task.color,
-      task.id === "integration_claude" ? def!.name : task.name,
+      State.pillLabel(task),
       t(def?.subtitle ?? N_("Integration")),
     ),
     h("div", { class: "int-status" }, dot(status.color, 5), h("span", { text: status.label })),
