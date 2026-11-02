@@ -21,6 +21,7 @@ class TranslationsTest {
         "ru" to listOf("one", "few", "many", "other"), "id" to listOf("other"), "ar" to listOf("zero", "one", "two", "few", "many", "other"),
         "tr" to listOf("one", "other"),
         "de" to listOf("one", "other"),
+        "ja" to listOf("other"),
     )
 
     @Test fun thereIsAtLeastOneLanguage() = assertTrue(files.isNotEmpty())
