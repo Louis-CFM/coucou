@@ -177,7 +177,9 @@ exits cleanly if the app is closed, slow or crashed — **a Claude Code session 
 never blocked or slowed down by Coucou.** If nobody answers a permission request
 in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
-It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
+It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash. In a
+terminal run as administrator, a Coucou started normally shows the session but never
+answers for it: Claude Code asks in that terminal.
 
 ### Plan usage
 

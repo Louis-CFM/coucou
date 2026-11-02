@@ -12,7 +12,7 @@ use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use crate::CONNECT_TIMEOUT;
+use crate::{Trust, CONNECT_TIMEOUT};
 
 /// `$XDG_RUNTIME_DIR/coucou.sock`, or `/run/user/<uid>/coucou.sock` when the
 /// variable is missing (a hook started from a stripped-down environment). The
@@ -39,13 +39,14 @@ fn is_private_dir(dir: &Path) -> bool {
 /// Opens the socket. Retries only while the app's backlog is full: any other
 /// error — no socket, nobody listening — means there is nothing to talk to, and
 /// waiting would only delay Claude Code.
-pub fn connect() -> Option<UnixStream> {
+pub fn connect() -> Option<(UnixStream, Trust)> {
     let path = socket_path()?;
     let deadline = Instant::now() + CONNECT_TIMEOUT;
     loop {
         match try_connect(&path) {
-            // Somebody else's server on our socket gets nothing from us.
-            Ok(stream) => return server_is_same_user(&stream).then_some(stream),
+            // Somebody else's server on our socket gets nothing from us; our own
+            // user's is trusted fully, there are no integrity levels here.
+            Ok(stream) => return server_is_same_user(&stream).then_some((stream, Trust::Full)),
             Err(err) => {
                 if err.raw_os_error() != Some(libc::EAGAIN) || Instant::now() >= deadline {
                     return None;

@@ -51,7 +51,7 @@ pub fn run() -> ! {
         .map(|line| {
             let (tx, rx) = mpsc::channel();
             std::thread::spawn(move || {
-                let _ = tx.send(talk(&line, false));
+                let _ = tx.send(talk(line, false));
             });
             rx
         });

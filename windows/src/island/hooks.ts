@@ -128,6 +128,8 @@ interface HookPayload {
   coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Set by the relay: Claude Code runs as administrator and Coucou may only show it (hook/src/win.rs). */
+  coucou_elevated?: boolean;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
@@ -562,8 +564,9 @@ function handleHook(island: Island, payload: HookPayload) {
     case "PermissionRequest": {
       // Only Claude Code and the agents the relay can answer for (Codex, Copilot
       // CLI, Muse Code — same as the Mac) get a card. Anyone else's request is
-      // declined at once, so the agent asks in its own terminal.
-      if (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!)) {
+      // declined at once, so the agent asks in its own terminal; so is a session
+      // running as administrator, which Coucou may show but never answer for.
+      if (payload.coucou_elevated || (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!))) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }

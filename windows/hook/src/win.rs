@@ -4,8 +4,9 @@
 //! Named pipes live in a machine-wide namespace, so `\\.\pipe\coucou-<name>` can
 //! be created by *any* process that gets there first. Two defences, both cheap:
 //! the pipe name carries our SID, and once connected we check the server process
-//! really is us (our account, outside any AppContainer, at our integrity level or
-//! above) before sending anything.
+//! really is us (our account, outside any AppContainer, at Medium integrity or
+//! above) before sending anything. Below our own level (Claude Code started as
+//! administrator, Coucou not) it may show the session, never answer for it.
 
 use std::time::{Duration, Instant};
 
@@ -21,11 +22,14 @@ use windows::Win32::System::Threading::{
     GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_QUERY_LIMITED_INFORMATION,
 };
 
-use crate::CONNECT_TIMEOUT;
+use crate::{Trust, CONNECT_TIMEOUT};
 
 /// `ERROR_PIPE_BUSY` — every instance is serving someone else right now. This is
 /// the one error worth retrying: the server exists and a slot will free up.
 const ERROR_PIPE_BUSY: i32 = 231;
+
+/// `SECURITY_MANDATORY_MEDIUM_RID`: where a normally started Coucou runs.
+const MEDIUM_INTEGRITY: u32 = 0x2000;
 
 /// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if
@@ -36,9 +40,10 @@ fn pipe_path() -> String {
     format!(r"\\.\pipe\coucou-{key}")
 }
 
-/// Opens the pipe. Retries only while the server is busy: any other error means
-/// there is nothing to talk to, and waiting would only delay Claude Code.
-pub fn connect() -> Option<std::fs::File> {
+/// Opens the pipe, with how far its server may be trusted. Retries only while
+/// the server is busy: any other error means there is nothing to talk to, and
+/// waiting would only delay Claude Code.
+pub fn connect() -> Option<(std::fs::File, Trust)> {
     use std::os::windows::io::AsRawHandle;
     let path = pipe_path();
     let deadline = Instant::now() + CONNECT_TIMEOUT;
@@ -47,7 +52,7 @@ pub fn connect() -> Option<std::fs::File> {
             Ok(file) => {
                 let handle = HANDLE(file.as_raw_handle());
                 // Somebody else's server on our pipe name gets nothing from us.
-                return pipe_server_is_us(handle).then_some(file);
+                return pipe_server_trust(handle).map(|trust| (file, trust));
             }
             Err(err) => {
                 if err.raw_os_error() != Some(ERROR_PIPE_BUSY) || Instant::now() >= deadline {
@@ -73,33 +78,38 @@ struct Identity {
     app_container: bool,
 }
 
-/// True when the process serving `handle` is us (see `may_serve`).
+/// How far the process serving `handle` may be trusted (see `trust`); None when
+/// it is not us.
 ///
 /// A failure to answer is treated as "not ours": refusing to talk to a pipe we
 /// cannot vouch for costs one hook event, while trusting it could hand another
 /// process the contents of every tool call and let it answer them.
-pub fn pipe_server_is_us(handle: HANDLE) -> bool {
-    let Some(mine) = (unsafe { identity(GetCurrentProcess()) }) else { return false };
+pub fn pipe_server_trust(handle: HANDLE) -> Option<Trust> {
+    let mine = unsafe { identity(GetCurrentProcess()) }?;
     unsafe {
         let mut pid = 0u32;
         if GetNamedPipeServerProcessId(handle, &mut pid).is_err() || pid == 0 {
-            return false;
+            return None;
         }
-        let Ok(process) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
-            return false;
-        };
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
         let theirs = identity(process);
         let _ = CloseHandle(process);
-        theirs.is_some_and(|theirs| may_serve(&mine, &theirs))
+        trust(&mine, &theirs?)
     }
 }
 
 /// Our account is not enough: a Low-integrity or AppContainer process of that
 /// account (a browser renderer, say) could create the pipe before Coucou does
 /// and answer "allow" to every tool call. So: our account, outside any
-/// AppContainer, at our integrity level or above.
-fn may_serve(mine: &Identity, theirs: &Identity) -> bool {
-    theirs.sid == mine.sid && !theirs.app_container && theirs.integrity >= mine.integrity
+/// AppContainer, at Medium integrity or above. At our level or above it may
+/// answer; between Medium and our level it may only show the session
+/// (`Display`): a Medium process of our account can already read an elevated
+/// session's transcript in the user's profile, but it never answers for it.
+fn trust(mine: &Identity, theirs: &Identity) -> Option<Trust> {
+    if theirs.sid != mine.sid || theirs.app_container || theirs.integrity < MEDIUM_INTEGRITY {
+        return None;
+    }
+    Some(if theirs.integrity >= mine.integrity { Trust::Full } else { Trust::Display })
 }
 
 /// The identity behind a process handle. `process` is borrowed, never closed.
@@ -147,14 +157,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_our_own_unsandboxed_process_at_our_level_or_above_may_serve_the_pipe() {
-        let me = Identity { sid: "S-1-5-21-1".into(), integrity: 0x2000, app_container: false };
-        let them = |sid: &str, integrity: u32, app_container: bool| Identity { sid: sid.into(), integrity, app_container };
-        assert!(may_serve(&me, &them("S-1-5-21-1", 0x2000, false)), "Coucou as we are");
-        assert!(may_serve(&me, &them("S-1-5-21-1", 0x3000, false)), "an elevated Coucou");
-        assert!(!may_serve(&me, &them("S-1-5-21-2", 0x2000, false)), "another account");
-        assert!(!may_serve(&me, &them("S-1-5-21-1", 0x1000, false)), "our account at Low integrity");
-        assert!(!may_serve(&me, &them("S-1-5-21-1", 0x2000, true)), "our account inside an AppContainer");
+    fn our_own_unsandboxed_process_is_trusted_fully_at_our_level_and_for_display_from_medium_up() {
+        let id = |sid: &str, integrity: u32, app_container: bool| Identity { sid: sid.into(), integrity, app_container };
+        let (medium, high) = (id("S-1-5-21-1", 0x2000, false), id("S-1-5-21-1", 0x3000, false));
+        let cases = [
+            (&high, id("S-1-5-21-1", 0x2000, false), Some(Trust::Display), "Claude Code as administrator, Coucou started normally"),
+            (&medium, id("S-1-5-21-1", 0x2000, false), Some(Trust::Full), "Coucou as we are"),
+            (&high, id("S-1-5-21-1", 0x3000, false), Some(Trust::Full), "both as administrator"),
+            (&medium, id("S-1-5-21-1", 0x3000, false), Some(Trust::Full), "an elevated Coucou"),
+            (&medium, id("S-1-5-21-1", 0x1000, false), None, "our account at Low integrity"),
+            (&high, id("S-1-5-21-1", 0x1000, false), None, "our account at Low integrity, we elevated"),
+            (&medium, id("S-1-5-21-1", 0x2000, true), None, "our account inside an AppContainer"),
+            (&high, id("S-1-5-21-1", 0x2000, true), None, "our account inside an AppContainer, we elevated"),
+            (&medium, id("S-1-5-21-2", 0x2000, false), None, "another account"),
+            (&high, id("S-1-5-21-2", 0x2000, false), None, "another account, we elevated"),
+        ];
+        for (mine, theirs, want, why) in cases {
+            assert_eq!(trust(mine, &theirs), want, "{why}");
+        }
     }
 
     #[test]
@@ -162,6 +182,6 @@ mod tests {
         let me = unsafe { identity(GetCurrentProcess()) }.expect("our own token is readable");
         assert!(me.sid.starts_with("S-1-5-"), "{}", me.sid);
         assert!(me.integrity >= 0x1000 && !me.app_container, "{me:?}");
-        assert!(may_serve(&me, &me));
+        assert_eq!(trust(&me, &me), Some(Trust::Full));
     }
 }

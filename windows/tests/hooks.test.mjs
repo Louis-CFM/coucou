@@ -876,3 +876,12 @@ test("Antigravity questions without usable text still alert with a translated la
   assert.equal(asked.length, 5);
   assert.ok(asked.every((request) => request === "alert:overview"));
 });
+
+test("an administrator session never gets a permission card", () => {
+  // A request that reaches Coucou anyway goes straight back to the terminal.
+  hook({ hook_event_name: "PermissionRequest", request_id: "r-adm", session_id: "adm", coucou_elevated: true, tool_name: "Bash", tool_input: { command: "ls" } });
+  assert.deepEqual(sent("approval_decline"), [{ requestId: "r-adm" }]);
+  assert.deepEqual(sent("approval_ack"), []);
+  assert.equal(State.pendingApproval, null);
+  assert.ok(!asked.includes("alert:approval"), asked.join());
+});
