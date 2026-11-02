@@ -5,10 +5,11 @@ import SwiftUI
 
 // A regular Claude Desktop chat (not a Code session) runs no hook, so Coucou never hears that a
 // reply is done (#686). This watcher fills the gap, experimental and off by default: when you
-// leave the Claude app while it is still writing (its "Stop response" button is on screen),
+// leave the Claude app while it is still writing (its "Stop response" button is in its
+// accessibility tree — whether or not you see one on screen),
 // the Claude Desktop pill shows Claude at work ("Claude is writing…"), and Coucou looks once a
 // second, through the Accessibility API, for that button to go away. Then Mochi jumps and the
-// pill says the reply is ready. Leaving right after sending, before the button shows, Coucou
+// pill says the reply is ready. Leaving right after sending, before the button appears, Coucou
 // keeps looking for it for a few seconds instead of giving up. Nothing runs while Claude is in
 // front, while it isn't writing, or when the setting is off; no text of the chat is read, only
 // whether the stop button is there.
@@ -72,7 +73,7 @@ final class ClaudeDesktopChatWatcher {
             return
         }
         // Not writing yet, or not writing at all: look again for a few seconds (#686 missed
-        // a reply when Claude was left right after sending, before its stop button showed).
+        // a reply when Claude was left right after sending, before its stop button appeared).
         attempts = 0
         let t = Timer(timeInterval: 0.5, repeats: true) { _ in
             MainActor.assumeIsolated {
@@ -210,12 +211,13 @@ final class ClaudeDesktopChatWatcher {
 
     // MARK: - The stop button
 
-    /// Claude is writing while its stop button is on screen.
+    /// Claude is writing while its stop button is in the app's accessibility tree (what the
+    /// Accessibility API sees, which need not be a button you see on screen).
     nonisolated static func isWriting(_ app: AXUIElement) -> Bool {
         stopButtonLabel(app) != nil
     }
 
-    /// The label of the stop button on screen, nil when there is none. Breadth-first through
+    /// The label of the stop button in the accessibility tree, nil when there is none. Breadth-first through
     /// the windows, capped, reading only roles and button labels (the label goes to the log,
     /// to tell which button was taken for the stop button; nothing of the chat is read).
     nonisolated static func stopButtonLabel(_ app: AXUIElement) -> String? {
