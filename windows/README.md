@@ -191,7 +191,7 @@ reset times. Both are off by default; turn them on in **Settings… → Plan usa
   `%USERPROFILE%\.claude\settings.json`, takes a dated backup and writes only
   after your click, with the same writer as the hooks: the status line becomes `coucou-hook --statusline`, which
   passes only the limits on (300 ms at most) and runs the status line you had
-  before — kept in `statusline-previous.json` next to the relay — with the same
+  before — kept in `statusline-previous.json` outside `bin` in Coucou's data folder — with the same
   input, printing what it prints. On Windows that one runs through Git Bash, as
   Claude Code runs it (`CLAUDE_CODE_GIT_BASH_PATH`, then the Git for Windows that
   `git.exe` on `PATH` belongs to, then the usual install folders); it gets 10 s
@@ -319,6 +319,27 @@ someone requests your review. Pull requests are checked every 5 minutes, every
 minute while a CI is running, and as soon as you open the card on data older
 than a minute; contributions every 30 minutes. Nothing is fetched while the pill
 is off or Coucou is paused.
+
+## Mail (classic Outlook, Windows)
+
+Turn the **Mail** pill on in Notch → Active pills. Coucou reads the Outlook already open on
+your PC — the classic Outlook of Microsoft 365, through its own COM objects — with no sign-in,
+no app to register at Microsoft and no admin consent. It never starts Outlook, and a closed
+Outlook costs nothing. The new Outlook for Windows has no COM objects, so it is not reached
+this way. Linux has no Outlook: the pill is Windows only.
+
+| What you do | What happens |
+|---|---|
+| Open the Mail pill | Your newest messages, unread ones tinted, a ⚑ on the flagged ones. The magnifier searches every inbox: free words, `from:anne`, `subject:"May quote"`. Filters: All, Unread, Important, Today |
+| Click a message | Its sender, subject and the start of its text. **Open in Outlook**, **Reply** (Outlook's own window: nothing is sent from Coucou), **Mark as read**, **Important**, **Junk**, and in ⋯ **Always important (VIP)** or **Always ignore this sender** |
+| Coucou → Mail → Overview | **Sort new messages automatically** (off by default): only what arrives after you turn it on, each message once. VIPs are flagged, banned words send to Junk, then the first rule that matches acts. A journal of every action, each with **Undo** |
+| Coucou → Mail → Rules, Banned words, VIP | "If the sender / domain / subject / text / account contains … then Junk / important / read / move to a folder". Banned words are whole words: "sale" does not catch "Salesforce". A VIP is an address or a whole domain (`@client.com`) |
+| Turn on **Mail** next to the model in the chat | The AI gets your 40 newest messages (text and attachments for the newest and for the ones you name) and may answer with a plan: sort, reply drafts, sends, a mail merge that gives each recipient their page of a PDF, saving attachments. The plan shows as a card: the mails to send, the ones that can't be sent in red, **Send me a test**, and **Run**, which waits 5 seconds (Cancel) before anything happens |
+
+Coucou never deletes a message, and never sends one without your click on Run. Your mail
+goes only to the chat's AI you picked (your key or your subscription), and only while the
+chat's Mail switch is on. On some company PCs, Outlook may ask whether to let a program use
+it: that is Outlook's own security prompt, set by your IT department.
 
 ## WhatsApp (experimental)
 
@@ -502,7 +523,7 @@ Linux.
 | Gemini CLI | `.gemini\settings.json` | asked in Gemini CLI |
 | Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity |
 | Cursor Agent | `.cursor\hooks.json` — Claude Code in Cursor's terminal also goes on the Cursor pill, through the Claude Code hooks | asked in Cursor |
-| Claude Desktop (Windows) | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
+| Claude Desktop | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
 | OpenCode | plugin `.config\opencode\plugins\coucou.js` | asked in OpenCode |
 | Amp | plugin `.config\amp\plugins\coucou.ts` | asked in Amp |
 | Hermes Agent | plugin `.hermes\plugins\coucou\` — then `hermes plugins enable coucou` once | asked in Hermes |
@@ -799,4 +820,5 @@ What changes on Linux:
     app's native window forward (an XWayland one, such as VS Code's by default,
     still can be). There, and for a session under tmux, screen or ssh, whose
     terminal is no ancestor, the folder opens in VS Code as before.
-- No **Claude Desktop** pill: the Claude app has no Linux build.
+- The **Claude Desktop** pill opens Anthropic's Linux app (its `.deb`): through
+  its `claude-desktop.desktop` entry, else its binary, else the `claude://` link.

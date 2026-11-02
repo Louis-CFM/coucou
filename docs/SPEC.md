@@ -301,6 +301,16 @@ Chaque jalon se termine par build + capture + comparaison aux références + com
 - Hidden = 0 % CPU ; compact < 3 % ; mémoire < 100 Mo.
 - La démo (⌃⌥⌘D) se filme d'une traite sans intervention.
 
+## 12 bis. Coucou dans un coin de l'écran
+
+Version GitHub : l'île peut vivre au notch (par défaut) ou dans un des quatre coins de son écran (`AppState.islandPlacement`, clé `islandPlacement` : `notch`, `topLeft`, `topRight`, `bottomLeft`, `bottomRight`).
+
+- **Où** : coins du haut juste sous la barre des menus, coins du bas juste au-dessus du Dock (`screen.visibleFrame`), à 10 pt des bords. La géométrie est dans `IslandPlacement` (pure, testée par `scripts/test-island-placement.sh`) : origine du panneau, rectangle de l'île dans le panneau, coin visé par un lâcher.
+- **Forme** : au repos, une tuile carrée aux coins arrondis (60 pt, rayon 18), Mochi seul dedans, fin liseré et ombre. Au survol, les autres pills sortent une à une en petites tuiles (40 pt) le long du bord de l'écran. Ouverte, l'île grandit depuis son coin (640 × 260 pt, 320 quand la carte Mail lit un mail) : Mochi dans le coin, les Mochis des autres pills sur un quart de cercle autour de lui (rayon 150 pt), avec leur nom ; un clic sur l'un les fait se croiser et échanger leurs places, son cercle s'efface puis se redessine depuis le haut. La carte prend le reste de la largeur. Mochi est dessiné dans une boîte fixe, alignée sur le coin du panneau (`CornerBot`), pour ne pas trembler pendant que l'île grandit.
+- **Aimant** : pendant qu'on glisse Mochi, il est attiré de plus en plus vers le coin visé, et la tuile d'arrivée s'affiche (petit son).
+- **Choisir** : Réglages → Général → Affichage → Position, ou glisser Mochi et le lâcher à moins de 180 pt d'un coin de l'écran (ou en haut au centre pour revenir au notch). Son `pop`, émote `happy`.
+- **Suivent l'île** : le suivi des yeux, Mochi sur le bureau (départ et retour), les sous-titres de la voix (sous l'île en haut, au-dessus en bas), la zone de survol et les clics.
+
 ## 13. Mochi sur le bureau
 
 Mochi peut quitter l'island et vivre comme une icône flottante sur le bureau. Il conserve tout son comportement (tenue, émotes, suivi des yeux, danse) et réagit aux alertes.

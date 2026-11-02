@@ -130,8 +130,10 @@ enum PillCatalog {
               category: .service,   subtitle: String(localized: "Integration"),  source: .n8n, githubOnly: true),
         .init(id: "integration_crypto",    name: "Crypto",      color: "#F7931A",
               category: .service,   subtitle: String(localized: "Integration"),  source: .n8n),
+        // GitHub build only, as intended when it was added (exchange API keys: not worth an
+        // App Review question for the store build).
         .init(id: "integration_portfolio", name: "Portfolio",   color: "#FFD700",
-              category: .service,   subtitle: String(localized: "Integration"),  source: .n8n),
+              category: .service,   subtitle: String(localized: "Integration"),  source: .n8n, githubOnly: true),
     ]
 
     /// Pills available in the current build target.

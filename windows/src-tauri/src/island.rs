@@ -329,6 +329,17 @@ mod zoom_tests {
         assert_eq!(calculate_zoom_correction(1.0, f64::NAN, 1.0), None);
         assert_eq!(calculate_zoom_correction(1.0, 1.0, f64::INFINITY), None);
     }
+
+    #[test]
+    fn a_top_taskbar_moves_the_island_down_and_nothing_else_does() {
+        // Taskbar at the bottom (or none): the work area starts at the top.
+        assert_eq!(top_inset_from(0, 0), 0);
+        // A 48 px taskbar at the top of a display placed at y = -1080.
+        assert_eq!(top_inset_from(-1080, -1032), 48);
+        // Nonsense from the system never pushes the island off the display.
+        assert_eq!(top_inset_from(0, -20), 0);
+        assert_eq!(top_inset_from(0, 900), 0);
+    }
 }
 
 
@@ -351,6 +362,23 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
 }
 
 /// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
+/// Windows: how far a taskbar docked at the top of this display (or another
+/// app bar there) pushes the island down, read from the display's work area,
+/// so the island sits under it (#956). An auto-hidden taskbar takes no work
+/// area and moves nothing. Linux anchors the island to the screen edge: 0.
+fn top_inset(m: &tauri::Monitor) -> i32 {
+    if cfg!(windows) {
+        top_inset_from(m.position().y, m.work_area().position.y)
+    } else {
+        0
+    }
+}
+
+fn top_inset_from(monitor_y: i32, work_y: i32) -> i32 {
+    let inset = work_y - monitor_y;
+    if (0..200).contains(&inset) { inset } else { 0 }
+}
+
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
@@ -363,7 +391,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let y = mp.y + top_inset(&m);
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -404,7 +432,7 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
     let m = target_monitor(app, &pref)?;
     let p = m.position();
     let size = m.size();
-    Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits()))
+    Some((p.x, p.y + top_inset(&m), size.width, size.height, m.scale_factor().to_bits()))
 }
 
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is

@@ -19,11 +19,14 @@ import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from ".
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
-import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
+import { dominantPct, planColor } from "../core/plan";
+import { tl } from "../i18n/i18n";
+import { claudeCompactPillVisible, closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
+import { restoreAlertFocus } from "./hooks";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
@@ -63,6 +66,9 @@ export class Island {
   private clockEl!: HTMLElement;
   private clockTimer?: number;
   private countdown!: HTMLElement;
+  private compactPlan!: HTMLElement;
+  private compactPlanDot!: HTMLElement;
+  private compactPlanLabel!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -146,6 +152,12 @@ export class Island {
   /** The request has its answer: the card goes and the session carries on. */
   private closeApproval() {
     State.endApproval();
+    if (State.pendingApproval) {
+      const view = State.pendingApproval.questions ? "question" : "approval";
+      this.setView(view);
+      Sound.play(view);
+      return;
+    }
     this.fsm.pinned = false;
     this.setView(State.defaultView());
   }
@@ -288,6 +300,25 @@ export class Island {
     this.miniGrid = h("div", { id: "mini-grid" });
     this.clockEl = h("div", { id: "island-clock" });
     this.countdown = h("div", { id: "countdown" });
+    this.compactPlanDot = h("i", { class: "compact-plan-dot" });
+    this.compactPlanLabel = h("span", { class: "compact-plan-label" });
+    this.compactPlan = h(
+      "button",
+      {
+        id: "compact-plan",
+        title: tl("Claude plan usage"),
+        onmousedown: (e) => {
+          e.stopPropagation();
+        },
+        onclick: (e) => {
+          e.stopPropagation();
+          const me = e as MouseEvent;
+          if (me.button === 0) this.openClaudePlan();
+        },
+      },
+      this.compactPlanDot,
+      this.compactPlanLabel,
+    );
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -321,6 +352,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.compactPlan,
       this.clockEl,
       this.countdown,
     );
@@ -387,6 +419,8 @@ export class Island {
       // A folded card is still waiting: it keeps the island pinned.
       if (!State.pendingApproval) State.isPinned = false;
       void Bridge.focusWindow(false);
+      // Another pill's alert borrowed the front: the pill you had comes back (Mac).
+      restoreAlertFocus();
     }
     if (mode !== "expanded") {
       closePlanCard();
@@ -409,6 +443,18 @@ export class Island {
   /** Navigating out of the drop flow ends the sequence, as on macOS. */
   private stopSequenceIfLeaving(view: IslandViewName) {
     if (UploadSeq.isActive && !UPLOAD_VIEWS.has(view)) UploadSeq.deactivate();
+  }
+
+  /** Click on compact plan gauge: opens the Claude plan card on the overview. */
+  openClaudePlan() {
+    Sound.resume();
+    State.lastActivity = performance.now();
+    this.fsm.userInteracted();
+    State.planDetailIsCodex = false;
+    State.showingPlanDetail = true;
+    this.fsm.forceHome();
+    this.expand("overview");
+    State.notify();
   }
 
   expand(view: IslandViewName) {
@@ -1250,6 +1296,19 @@ export class Island {
         }
         pruneMiniBots();
       }
+    }
+
+    // Compact Claude plan indicator
+    const showPlan = claudeCompactPillVisible();
+    this.compactPlan.style.opacity = showPlan ? "1" : "0";
+    this.compactPlan.style.pointerEvents = showPlan ? "auto" : "none";
+    if (showPlan) {
+      const others = State.otherTasks.slice(0, 4);
+      this.compactPlan.style.right = others.length > 0 ? "58px" : "20px";
+      const pct = dominantPct(State.planUsage);
+      const color = planColor(pct);
+      this.compactPlan.style.setProperty("--plan", color);
+      this.compactPlanLabel.textContent = pct != null ? `${Math.round(pct)}%` : "—";
     }
 
     this.updateClock();

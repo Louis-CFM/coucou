@@ -242,19 +242,34 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 //
 // Claude Code runs one `statusLine` command and hands it the plan limits. Coucou
 // puts its relay there; a status line the user already had is kept in
-// statusline-previous.json beside the relay, and the relay still runs it, so it
-// keeps working. Installing and removing it is separate from the hooks, and
-// goes through the same hardened writer (config_file.rs): strict read, diff,
-// fingerprint, dated backup, then the write.
+// statusline-previous.json in local_dir() (outside bin/, surviving uninstaller),
+// and the relay still runs it, so it keeps working. Installing and removing it
+// is separate from the hooks, and goes through the same hardened writer
+// (config_file.rs): strict read, diff, fingerprint, dated backup, then the write.
 
 /// Where the user's own status line waits while the relay stands in for it.
 pub fn status_line_previous_path() -> PathBuf {
+    settings::local_dir().join("statusline-previous.json")
+}
+
+/// Where releases up to 0.5.7 kept it: in bin/, which the uninstaller wipes.
+fn legacy_status_line_previous_path() -> PathBuf {
     settings::hook_exe_path().with_file_name("statusline-previous.json")
 }
 
 fn read_status_line_previous() -> Option<Value> {
-    let bytes = std::fs::read(status_line_previous_path()).ok()?;
+    let bytes = std::fs::read(status_line_previous_path())
+        .or_else(|_| std::fs::read(legacy_status_line_previous_path()))
+        .ok()?;
     serde_json::from_slice::<Value>(&bytes).ok().filter(Value::is_object)
+}
+
+/// Moves a saved status line out of bin/ (#855), so an install made before
+/// the move is protected too. Never replaces a copy already at `new`.
+fn migrate_status_line_previous(legacy: &Path, new: &Path) {
+    if legacy.is_file() && !new.exists() && std::fs::rename(legacy, new).is_ok() {
+        crate::log::line("moved statusline-previous.json out of bin/");
+    }
 }
 
 /// True when the `statusLine` in settings.json is Coucou's relay.
@@ -329,10 +344,12 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
         // Back in settings.json: the saved copy has done its job.
         Ok(_) if !install => {
             let _ = std::fs::remove_file(status_line_previous_path());
+            let _ = std::fs::remove_file(legacy_status_line_previous_path());
         }
         // Nothing was written: do not leave a stale copy behind.
         Err(_) if saved => {
             let _ = std::fs::remove_file(status_line_previous_path());
+            let _ = std::fs::remove_file(legacy_status_line_previous_path());
         }
         _ => {}
     }
@@ -366,6 +383,7 @@ pub fn ensure_hook_exe(app: &AppHandle) {
     {
         return;
     }
+    migrate_status_line_previous(&legacy_status_line_previous_path(), &status_line_previous_path());
 
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Ok(p) = app.path().resolve(platform::HOOK_EXE, tauri::path::BaseDirectory::Resource) {
@@ -435,6 +453,24 @@ fn install_relay(src: &Path, dest: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_saved_status_line_moves_out_of_bin_without_replacing_a_newer_one() {
+        let dir = std::env::temp_dir().join(format!("coucou-statusline-migrate-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("bin")).unwrap();
+        let (legacy, new) = (dir.join("bin").join("statusline-previous.json"), dir.join("statusline-previous.json"));
+        std::fs::write(&legacy, b"{\"command\":\"old\"}").unwrap();
+        migrate_status_line_previous(&legacy, &new);
+        assert!(!legacy.exists());
+        assert_eq!(std::fs::read(&new).unwrap(), b"{\"command\":\"old\"}");
+        // A copy already outside bin/ wins: the legacy one is left alone.
+        std::fs::write(&legacy, b"{\"command\":\"stale\"}").unwrap();
+        migrate_status_line_previous(&legacy, &new);
+        assert_eq!(std::fs::read(&new).unwrap(), b"{\"command\":\"old\"}");
+        assert!(legacy.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn the_hooks_leave_the_status_line_alone() {

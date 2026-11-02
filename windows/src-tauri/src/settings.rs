@@ -19,6 +19,7 @@ pub struct Settings {
     /// Hovering the island opens it all the way, and it folds again shortly
     /// after the pointer leaves (the Mac's "Open on hover"). Off by default.
     pub open_on_hover: bool,
+    pub alerts_from_all_pills: bool,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
@@ -32,6 +33,8 @@ pub struct Settings {
     /// Show the Claude plan pill (5 h and weekly limits) in the island's header.
     /// Off until the user turns it on, so the header stays as it shipped.
     pub show_plan_in_notch: bool,
+    /// Show the Claude plan percentage in the compact island next to the agent dots.
+    pub show_plan_in_compact_island: bool,
     /// Coucou's status line relay is the one in Claude Code's settings.json.
     /// Like `hooks_installed`, the real state wins at launch over what was stored.
     pub plan_relay_installed: bool,
@@ -135,6 +138,7 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             open_on_hover: false,
+            alerts_from_all_pills: false,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -148,6 +152,7 @@ impl Default for Settings {
             hooks_installed: false,
             model: default_model(),
             show_plan_in_notch: false,
+            show_plan_in_compact_island: false,
             plan_relay_installed: false,
             show_codex_plan_in_notch: false,
             chat_provider: crate::chat::ANTHROPIC.into(),
@@ -439,6 +444,7 @@ mod tests {
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
   "openOnHover": true,
+  "alertsFromAllPills": true,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
@@ -447,6 +453,7 @@ mod tests {
   "hooksInstalled": true,
   "model": "some-model",
   "showPlanInNotch": true,
+  "showPlanInCompactIsland": true,
   "planRelayInstalled": true,
   "showCodexPlanInNotch": true,
   "chatProvider": "ollama",
@@ -958,6 +965,7 @@ mod tests {
                 "soundVolume",
                 "autoCloseInterval",
                 "openOnHover",
+                "alertsFromAllPills",
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",
@@ -966,6 +974,7 @@ mod tests {
                 "hooksInstalled",
                 "model",
                 "showPlanInNotch",
+                "showPlanInCompactIsland",
                 "planRelayInstalled",
                 "showCodexPlanInNotch",
                 "chatProvider",

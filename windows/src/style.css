@@ -176,6 +176,46 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
+/* Compact Claude plan gauge, next to the agent dots in the compact island. */
+#compact-plan {
+  --plan: #6b7079;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--plan) 14%, transparent);
+  border-radius: 999px;
+  background: #0e0f11;
+  color: var(--dim-3);
+  font: 600 10px var(--font);
+  font-variant-numeric: tabular-nums;
+  line-height: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.25s ease-in-out, right 0.2s ease, background 0.18s, border-color 0.18s, color 0.18s;
+  user-select: none;
+  z-index: 2;
+}
+
+#compact-plan:hover {
+  background: color-mix(in srgb, var(--plan) 18%, transparent);
+  border-color: color-mix(in srgb, var(--plan) 55%, transparent);
+  color: color-mix(in srgb, var(--plan) 70%, white);
+}
+
+#compact-plan .compact-plan-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--plan);
+  flex-shrink: 0;
+}
+
 /* Date and time in the middle of the compact island, between Mochi and the grid. */
 #island-clock {
   position: absolute;
@@ -3025,4 +3065,465 @@ html[data-dir="rtl"] #views :is(.np-title, .np-sub) {
 html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-item, .reply .md-quote, .chat-input) {
   unicode-bidi: plaintext;
   text-align: start;
+}
+
+/* ── Mail (classic Outlook) — MailViews.swift ─────────────────────────────── */
+.mail-card {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.mail-list,
+.mail-detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.mail-card.detail-open .mail-list,
+.mail-card:not(.detail-open) .mail-detail {
+  display: none;
+}
+
+.mail-head {
+  padding-right: 36px;
+}
+
+.mail-unread {
+  font: 600 10px var(--font);
+  color: #2f8cff;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(47, 140, 255, 0.14);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.mail-spacer {
+  flex: 1 1 0;
+}
+
+.mail-icon {
+  border: 0;
+  background: transparent;
+  color: #8e939c;
+  width: 18px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
+.mail-icon:hover {
+  color: var(--ink);
+}
+
+.mail-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: 400 11px var(--font);
+  color: #e8e9ec;
+}
+
+.mail-filters {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-top: 4px;
+  /* One line whatever the language: a longer set scrolls sideways, never wraps. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mail-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.mail-chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: transparent;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  font: 400 9.5px var(--font);
+  color: #6b7079;
+  cursor: default;
+}
+
+.mail-chip:hover {
+  color: #b0b5be;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mail-chip.on {
+  font-weight: 600;
+  color: #e8e9ec;
+  background: rgba(47, 140, 255, 0.22);
+}
+
+/* A search in progress, in the header: the filters keep their line. */
+.mail-spinner {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(142, 147, 156, 0.35);
+  border-top-color: #8e939c;
+  animation: mail-spin 0.8s linear infinite;
+}
+
+@keyframes mail-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mail-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 12px 6px 0;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: none;
+}
+
+.mail-row {
+  border: 0;
+  background: transparent;
+  text-align: start;
+  width: 100%;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
+.mail-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mail-row.unread {
+  background: rgba(47, 140, 255, 0.08);
+}
+
+.mail-row.unread:hover {
+  background: rgba(47, 140, 255, 0.14);
+}
+
+.mail-row.unread .mail-name {
+  font-weight: 600;
+  color: #e8e9ec;
+}
+
+.mail-row.unread .mail-subject {
+  color: #8e939c;
+}
+
+.mail-name {
+  max-width: 82px;
+  flex: 0 1 auto;
+}
+
+.mail-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid #4d5159;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+}
+
+.mail-dot.on {
+  border: 0;
+  background: #2f8cff;
+}
+
+.mail-flag {
+  font-size: 8px;
+  color: #f5a524;
+  flex: 0 0 auto;
+}
+
+.mail-empty {
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+  padding: 8px 0 0 8px;
+}
+
+.mail-more {
+  color: rgba(47, 140, 255, 0.9);
+  align-self: flex-start;
+  padding: 3px 8px;
+}
+
+.mail-detail {
+  gap: 4px;
+  padding-right: 12px;
+}
+
+.mail-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding-right: 24px;
+  margin-left: -6px;
+}
+
+.mail-back {
+  width: 20px;
+  height: 20px;
+}
+
+.mail-from {
+  font: 600 11px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.mail-detail-subject {
+  font: 500 11px var(--font);
+  color: #c5c8cd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mail-detail-text {
+  font: 400 10.5px var(--font);
+  color: #9398a1;
+  height: 28px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  user-select: text;
+  scrollbar-width: none;
+}
+
+.mail-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mail-actions .link-btn {
+  padding: 0;
+  color: #c5c8cd;
+}
+
+.mail-actions .link-btn.accent {
+  color: rgba(47, 140, 255, 0.9);
+}
+
+.mail-actions .link-btn.amber {
+  color: rgba(245, 165, 36, 0.9);
+}
+
+.mail-actions .link-btn.dim {
+  color: #8e939c;
+}
+
+.mail-dots-wrap {
+  position: relative;
+}
+
+.mail-more-menu {
+  display: none;
+  position: absolute;
+  bottom: 18px;
+  right: 0;
+  flex-direction: column;
+  background: #1d1f23;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+.mail-more-menu.on {
+  display: flex;
+}
+
+.mail-more-menu button {
+  border: 0;
+  background: transparent;
+  text-align: start;
+  font: 400 11px var(--font);
+  color: #e8e9ec;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: default;
+}
+
+.mail-more-menu button:hover {
+  background: rgba(47, 140, 255, 0.3);
+}
+
+/* The chat's Mail switch and a plan's card (MailAgentViews.swift). */
+.model-row {
+  gap: 6px;
+}
+
+.mail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  font: 500 10.5px var(--font);
+  color: #7b8089;
+  cursor: default;
+}
+
+.mail-toggle.on {
+  background: rgba(47, 140, 255, 0.85);
+  color: #fff;
+}
+
+.plan-card {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(47, 140, 255, 0.08);
+  border: 1px solid rgba(47, 140, 255, 0.25);
+}
+
+.plan-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11.5px var(--font);
+  color: #f1f2f4;
+}
+
+.plan-icon {
+  font-style: normal;
+  color: #2f8cff;
+}
+
+.plan-line {
+  display: flex;
+  gap: 5px;
+  font: 400 10.5px var(--font);
+  color: #c5c8cd;
+}
+
+.plan-arrow {
+  color: #2f8cff;
+}
+
+.plan-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 90px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.plan-row {
+  display: flex;
+  gap: 6px;
+  font: 400 10px var(--font);
+  min-width: 0;
+}
+
+.plan-to {
+  width: 150px;
+  flex: 0 0 auto;
+  color: #c5c8cd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-row.bad .plan-to,
+.plan-problem {
+  color: #f4505e;
+}
+
+.plan-subject {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #8e939c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-file {
+  max-width: 150px;
+  color: #8e939c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-note {
+  font: 400 10px var(--font);
+  color: #f5a524;
+}
+
+.plan-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.plan-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font: 600 10.5px var(--font);
+  color: #c5c8cd;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: default;
+}
+
+.plan-btn.primary {
+  color: #fff;
+  background: #2f8cff;
+}
+
+.plan-status {
+  font: 400 10.5px var(--font);
+  color: #8e939c;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-status.ok {
+  color: #34d399;
+}
+
+.plan-status.amber {
+  color: #f5a524;
+  font-weight: 600;
+}
+
+.plan-bar {
+  width: 140px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.plan-bar i {
+  display: block;
+  height: 100%;
 }
