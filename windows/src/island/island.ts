@@ -75,6 +75,11 @@ export class Island {
   private closedKey = "";
   /** Width of the closed island for what it shows now. */
   private closedW = 120;
+  /** Mochi's little life in the closed island: where he looks, and until when
+   *  the loop runs for what he is doing (a blink, a glance). */
+  private closedLook = { x: 0, y: 0 };
+  private closedAwakeUntil = 0;
+  private closedLife: number | null = null;
   /** The size the window was last folded to, so a new one is only sent on a change. */
   private collapsedTo = { w: 0, h: 0 };
   private countdown!: HTMLElement;
@@ -449,6 +454,7 @@ export class Island {
     // Folding all the way: the closed island's width for what it will show.
     if (mode === "hidden") this.updateClosed();
     else this.closedEl.classList.remove("on");
+    this.scheduleClosedLife();
     this.updateWindowCollapsed();
     this.animateGeometry(modeOrder(mode) < modeOrder(prev));
     State.notify();
@@ -841,6 +847,39 @@ export class Island {
     }
   }
 
+  /**
+   * Mochi in the closed island now and then blinks or glances around, as he
+   * does on a Mac without a notch: a few frames every few seconds, the loop
+   * asleep in between. Nothing runs for the other closed islands.
+   */
+  private scheduleClosedLife() {
+    if (this.closedLife != null) window.clearTimeout(this.closedLife);
+    this.closedLife = null;
+    if (State.mode !== "hidden" || closedIsland(State.settings.closedIsland) !== "mochi") {
+      this.closedLook = { x: 0, y: 0 };
+      return;
+    }
+    this.closedLife = window.setTimeout(() => {
+      this.closedLife = null;
+      if (State.mode !== "hidden" || State.paused) return this.scheduleClosedLife();
+      if (Math.random() < 0.55) {
+        this.engine.blink();
+      } else {
+        this.closedLook = { x: (Math.random() * 2 - 1) * 0.8, y: (Math.random() * 2 - 1) * 0.3 };
+      }
+      this.closedAwakeUntil = performance.now() + 700;
+      this.ensureRunning();
+      this.scheduleClosedLife();
+    }, 2500 + Math.random() * 3500);
+  }
+
+  /** The pointer is on the folded window (Rust's `closed-hover`): the island wakes. */
+  wakeFromClosed() {
+    if (State.mode !== "hidden") return;
+    Sound.resume();
+    this.fsm.mouseEntered();
+  }
+
   /** Tells Rust the folded window's size: the closed island's, or none (the strip). */
   private sendCollapsedSize(force = false) {
     const size = this.closedShows ? { w: this.closedW, h: CLOSED_H } : { w: 0, h: 0 };
@@ -1178,7 +1217,8 @@ export class Island {
     const botMoving = !this.botCx.settled || !this.botCy.settled || !this.botSize.settled;
     // Closed, only the folding — and Mochi reaching his place in the closed island.
     const busy = State.mode === "hidden"
-      ? settling || (botMoving && closedIsland(State.settings.closedIsland) === "mochi")
+      ? settling || (closedIsland(State.settings.closedIsland) === "mochi" &&
+        (botMoving || nowMs < this.closedAwakeUntil))
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
         greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
@@ -1304,12 +1344,15 @@ export class Island {
 
   /** BotCanvasView.lookX / lookY — tanh of the distance to the bot. */
   private lookX(): number {
+    // In the closed island the cursor isn't followed: he looks around by himself.
+    if (State.mode === "hidden") return this.closedLook.x;
     const rect = this.islandRect();
     const botScreenX = rect.x + this.botCx.value;
     return Math.tanh((State.mouse.x - botScreenX) / 260);
   }
 
   private lookY(): number {
+    if (State.mode === "hidden") return this.closedLook.y;
     return -Math.tanh((State.mouse.y - this.botCy.value) / 200);
   }
 
@@ -1425,6 +1468,7 @@ export class Island {
       this.animateGeometry(true);
       if (this.collapsed) this.sendCollapsedSize();
     }
+    this.scheduleClosedLife();
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;

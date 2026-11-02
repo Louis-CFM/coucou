@@ -7488,6 +7488,36 @@
       "tr": "Çalan şarkı",
       "ko": "재생 중인 음악",
       "ja": "再生中の曲"
+    },
+    "Nobody has spoken for 15 minutes: Coucou stopped recording the call.": {
+      "zh-Hans": "已有 15 分钟没人说话：Coucou 已停止录制通话。",
+      "hi": "15 मिनट से कोई नहीं बोला: Coucou ने कॉल की रिकॉर्डिंग रोक दी।",
+      "es": "Nadie ha hablado en 15 minutos: Coucou dejó de grabar la llamada.",
+      "ar": "لم يتحدث أحد منذ 15 دقيقة: أوقف Coucou تسجيل المكالمة.",
+      "fr": "Personne n'a parlé depuis 15 minutes : Coucou a arrêté d'enregistrer l'appel.",
+      "bn": "১৫ মিনিট ধরে কেউ কথা বলেনি: Coucou কলের রেকর্ডিং বন্ধ করেছে।",
+      "pt-BR": "Ninguém fala há 15 minutos: o Coucou parou de gravar a chamada.",
+      "ru": "Уже 15 минут никто не говорит: Coucou остановил запись звонка.",
+      "id": "Tidak ada yang bicara selama 15 menit: Coucou berhenti merekam panggilan.",
+      "de": "Seit 15 Minuten hat niemand gesprochen: Coucou hat die Aufnahme des Anrufs beendet.",
+      "tr": "15 dakikadır kimse konuşmadı: Coucou aramayı kaydetmeyi durdurdu.",
+      "ko": "15분 동안 아무도 말하지 않아 Coucou가 통화 녹음을 멈췄습니다.",
+      "ja": "15 分間だれも話していないため、Coucou は通話の録音を止めました。"
+    },
+    "The call has been recorded for 4 hours: Coucou stopped recording it.": {
+      "zh-Hans": "通话已录制 4 小时：Coucou 已停止录制。",
+      "hi": "कॉल 4 घंटे से रिकॉर्ड हो रही थी: Coucou ने रिकॉर्डिंग रोक दी।",
+      "es": "La llamada lleva 4 horas grabándose: Coucou dejó de grabarla.",
+      "ar": "استمر تسجيل المكالمة 4 ساعات: أوقف Coucou التسجيل.",
+      "fr": "L'appel est enregistré depuis 4 heures : Coucou a arrêté l'enregistrement.",
+      "bn": "কলটি ৪ ঘণ্টা ধরে রেকর্ড হচ্ছিল: Coucou রেকর্ডিং বন্ধ করেছে।",
+      "pt-BR": "A chamada está sendo gravada há 4 horas: o Coucou parou de gravá-la.",
+      "ru": "Звонок записывается уже 4 часа: Coucou остановил запись.",
+      "id": "Panggilan sudah direkam selama 4 jam: Coucou berhenti merekamnya.",
+      "de": "Der Anruf wurde 4 Stunden lang aufgenommen: Coucou hat die Aufnahme beendet.",
+      "tr": "Arama 4 saattir kaydediliyor: Coucou kaydı durdurdu.",
+      "ko": "통화를 4시간 동안 녹음해 Coucou가 녹음을 멈췄습니다.",
+      "ja": "通話を 4 時間録音したため、Coucou は録音を止めました。"
     }
   }
 }

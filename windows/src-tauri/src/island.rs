@@ -114,6 +114,16 @@ impl PollGate {
         }
     }
 
+    /// Waits until the gate opens or `timeout` passes; true when it is open.
+    pub(crate) fn wait_active_for(&self, timeout: Duration) -> bool {
+        let guard = self.active.lock().unwrap();
+        if *guard {
+            return true;
+        }
+        let (guard, _) = self.cv.wait_timeout(guard, timeout).unwrap();
+        *guard
+    }
+
     pub(crate) fn is_active(&self) -> bool {
         *self.active.lock().unwrap()
     }
@@ -491,13 +501,26 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // find no cursor costs CPU for nothing.
         let (period, screen_every) = if platform::CURSOR_POLL { (16, 30) } else { (500, 1) };
         loop {
-            gate.wait_until_active();
+            // Parked. Folded on Windows, a glance at the cursor four times a
+            // second: on the closed island, it is told to wake up, whether or
+            // not the webview delivers the pointer to such a small window.
+            loop {
+                if gate.wait_active_for(Duration::from_millis(250)) {
+                    break;
+                }
+                if platform::CURSOR_POLL && gate.collapsed.load(Ordering::Relaxed) {
+                    wake_if_hovered(&app, &gate);
+                }
+            }
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
             // The cursor was far at the last tick, and the page has been told.
             let mut far = false;
             while gate.is_active() {
                 std::thread::sleep(Duration::from_millis(if far { FAR_PERIOD_MS } else { period }));
+                if !gate.is_active() {
+                    break;
+                }
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
@@ -565,6 +588,14 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
                 let accept = on_island || dragging;
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
+                    // Under the gate's lock, and only while it is open: a tick
+                    // still running as the island folds must not make the
+                    // closed island click-through after set_collapsed made it
+                    // take the mouse — nothing would ever wake it again.
+                    let active = gate.active.lock().unwrap();
+                    if !*active {
+                        break;
+                    }
                     gate.ignoring.store(!accept, Ordering::Relaxed);
                     let _ = win.set_ignore_cursor_events(!accept);
                 }
@@ -579,6 +610,20 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             }
         }
     });
+}
+
+/// The cursor is on the folded window: it takes the mouse, and the page hears
+/// `closed-hover` (it opens the compact island).
+fn wake_if_hovered(app: &AppHandle, gate: &PollGate) {
+    let Some(win) = window(app) else { return };
+    let (Ok(origin), Ok(size), Some((cx, cy))) = (win.outer_position(), win.inner_size(), cursor_physical()) else { return };
+    let x = cx - origin.x as f64;
+    let y = cy - origin.y as f64;
+    if x >= 0.0 && y >= 0.0 && x <= size.width as f64 && y <= size.height as f64 + 2.0 {
+        gate.ignoring.store(false, Ordering::Relaxed);
+        let _ = win.set_ignore_cursor_events(false);
+        let _ = win.emit("closed-hover", ());
+    }
 }
 
 /// Re-applies click-through after the window or the island changed shape.

@@ -172,6 +172,11 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool, width: 
     // An older page sends no size: the wake strip, as before.
     let size = island::clamp_collapsed((width.unwrap_or(island::STRIP_W), height.unwrap_or(island::STRIP_H)));
     *shared.gate.collapsed_size.lock().unwrap() = size;
+    // The poll stops first: a tick of it after this could make the closed
+    // island click-through again (see spawn_cursor_poll).
+    if collapsed {
+        shared.gate.set_active(false);
+    }
     island::apply_geometry(&app, &pref, collapsed.then_some(size));
     // The closed island must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
