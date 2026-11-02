@@ -43,7 +43,8 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_notion", "Notion", "#8C8C8C", "service", "Integration"],
     ["integration_calcom", "Cal.com", "#C9956A", "service", "Integration"],
     ["integration_stripe", "Stripe", "#0570DE", "service", "Integration"],
-    ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
+    // Windows' Music pill (music.rs) on the Mac's Apple Music id.
+    ["integration_music", "Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
     ["integration_mail", "Mail", "#2F8CFF", "service", "Integration"],
     ["integration_whatsapp", "WhatsApp", "#25D366", "service", "Integration"],
@@ -95,13 +96,12 @@ test("IDs are unique", () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test("this build leaves out what only macOS has", () => {
+test("this build leaves out what only macOS has, and Music on Linux", () => {
   const windows = availablePills("windows").map((p) => p.id);
   const linux = availablePills("linux").map((p) => p.id);
-  for (const id of ["integration_music"]) {
-    assert.ok(!windows.includes(id), id);
-    assert.ok(!linux.includes(id), id);
-  }
+  // The Music pill reads the Windows media controls: Windows only.
+  assert.ok(windows.includes("integration_music"));
+  assert.ok(!linux.includes("integration_music"));
   // Their plugins are written from Settings → Agents, and the chat talks to
   // every provider (port/chat-providers), on both systems.
   for (const id of ["agent_opencode", "agent_amp", "agent_hermes", "ai_google", "ai_openai", "ai_ollama", "ai_lmstudio"]) {
@@ -116,7 +116,7 @@ test("this build leaves out what only macOS has", () => {
   // Spotify: MPRIS on Linux, the system media controls on Windows.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(windows.includes("integration_spotify"));
-  assert.deepEqual(linux, windows.filter((id) => id !== "integration_mail"));
+  assert.deepEqual(linux, windows.filter((id) => id !== "integration_mail" && id !== "integration_music"));
 });
 
 test("Spotify: a service on both systems with nothing to set up", () => {
