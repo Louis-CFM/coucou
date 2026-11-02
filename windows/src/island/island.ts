@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, NOTCH_H, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
@@ -16,7 +16,7 @@ import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
-import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
+import { MAIN_MOCHI, SeasonCache, lookOf, mochiKey, setLook } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { dominantPct, planColor } from "../core/plan";
@@ -264,8 +264,10 @@ export class Island {
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
       blip: () => Sound.play("blip"),
       chooseOutfit: (selection) => {
-        if (parseOutfit(State.settings.mochiOutfit) === selection) return;
-        State.settings.mochiOutfit = selection;
+        // The wardrobe dresses the focused Mochi (or all of them, in "all" mode).
+        const who = State.focusMochi;
+        if (lookOf(State.settings, who).outfit === selection) return;
+        setLook(State.settings, who, { outfit: selection });
         void Bridge.saveSettings(State.settings);
         Sound.play("pop");
         this.engine.triggerEmote("proud");
@@ -290,6 +292,20 @@ export class Island {
           this.fsm.pinned = State.isPinned || State.pendingApproval != null;
           if (!this.fsm.pinned && !this.wasInIsland && this.fsm.state === "home") this.fsm.mouseLeft();
         }
+      },
+      chooseShape: (id) => {
+        const who = State.focusMochi;
+        if (lookOf(State.settings, who).shape === id) return;
+        setLook(State.settings, who, { shape: id });
+        void Bridge.saveSettings(State.settings);
+        Sound.play("pop");
+        this.engine.squash();
+        State.notify();
+      },
+      wardrobeFor: (id) => {
+        // Right-click on a pill's Mochi: it comes up in the island, in its wardrobe.
+        State.setFocus(id);
+        this.toggleWardrobe();
       },
     };
 
@@ -544,6 +560,11 @@ export class Island {
    * wardrobe from any state, or goes back if it is already open.
    */
   wardrobeFromDesktop() {
+    // The desktop Mochi's own wardrobe: the main one's, or the dragged-out one's.
+    const who = this.desktop.who;
+    if (!(State.mode === "expanded" && State.view === "wardrobe")) {
+      State.setFocus(who === MAIN_MOCHI ? State.mainPillId : who);
+    }
     this.wardrobeAnywhere();
   }
 
@@ -1077,7 +1098,11 @@ export class Island {
     }
 
     const uploadActive = this.uploadActive;
-    if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    if (uploadActive) {
+      // The focused Mochi eats the file in its own shape.
+      this.uploadCanvas.shape = this.engine.shape;
+      this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    }
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
 
@@ -1183,15 +1208,15 @@ export class Island {
         this.engine.slotHVel = 0;
       }
     }
-    // Only the main Mochi is dressed — the one of the main tool's pill (Settings →
-    // Active pills): a focused integration pill shows its own colours, unless
-    // the wardrobe is open (BotCanvasView.showOutfit, macOS).
-    // In the wardrobe the hovered outfit swaps in at once, without the drop-in.
+    // The island's Mochi wears the focused Mochi's look (wardrobe.ts lookOf).
+    // The Mac (BotCanvasView.showOutfit) undresses him in the open island
+    // whenever a pill other than the main one is focused; here each Mochi has
+    // an outfit of its own, so he stays dressed, open or closed. In the
+    // wardrobe the hovered outfit swaps in at once, without the drop-in.
     const inWardrobe = State.mode === "expanded" && State.view === "wardrobe";
-    const mainFocused = State.focusId == null || State.focusId === State.mainPillId;
-    const showOutfit = mainFocused || State.mode !== "expanded" || inWardrobe;
-    const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
-    this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
+    const look = lookOf(State.settings, State.focusMochi);
+    this.engine.setOutfit(State.wardrobePreview ?? this.seasons.get(look.outfit), !inWardrobe);
+    this.engine.shape = look.shape;
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
     this.engine.setDancing(islandDances({
@@ -1291,9 +1316,13 @@ export class Island {
       if (this.miniGrid.dataset.key !== key) {
         this.miniGrid.dataset.key = key;
         this.miniGrid.replaceChildren();
-        for (const t of others) {
-          this.miniGrid.append(createMiniBot(t, 13));
-        }
+        // The grid hangs from the screen's top edge: a hat may only reach up
+        // to it (cells 13 px + 3 px gap, from the grid's top at NOTCH_H / 2 - 14.5,
+        // see applyGeometry).
+        others.forEach((t, i) => {
+          const slotCenterY = NOTCH_H / 2 - 14.5 + Math.floor(i / 2) * 16 + 6.5;
+          this.miniGrid.append(createMiniBot(t, 13, undefined, slotCenterY));
+        });
         pruneMiniBots();
       }
     }
@@ -1313,7 +1342,11 @@ export class Island {
 
     this.updateClock();
 
-    syncMiniBotStates(State.tasks);
+    // Each pill's Mochi wears its own look.
+    syncMiniBotStates(State.tasks, (task) => {
+      const look = lookOf(State.settings, mochiKey(task, State.mainPillId));
+      return { outfit: this.seasons.get(look.outfit), shape: look.shape };
+    });
     this.engine.setState(State.effectiveState);
   }
 
