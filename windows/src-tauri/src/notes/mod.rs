@@ -666,10 +666,15 @@ pub fn notes_rename(app: AppHandle, taker: State<Arc<NoteTaker>>, id: String, ti
     if title.is_empty() {
         return;
     }
-    taker.change(&app, &id, |n| {
-        n.title = title;
-        n.title_edited = true;
-    });
+    taker.change(&app, &id, |n| apply_title(n, title));
+}
+
+/// Only a different title is yours: the summary keeps it over its own.
+fn apply_title(note: &mut Note, title: String) {
+    if note.title != title {
+        note.title = title;
+        note.title_edited = true;
+    }
 }
 
 #[tauri::command]
@@ -758,6 +763,16 @@ pub fn notes_export(taker: State<Arc<NoteTaker>>, id: String) -> Result<String, 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_unchanged_title_does_not_keep_the_summary_from_naming_the_call() {
+        let mut note: Note = serde_json::from_value(serde_json::json!({"id": "test", "title": "Call · 10-14 22:31", "start": 0, "status": "ready"})).unwrap();
+        apply_title(&mut note, "Call · 10-14 22:31".into());
+        assert!(!note.title_edited);
+        apply_title(&mut note, "Weekly sync".into());
+        assert_eq!(note.title, "Weekly sync");
+        assert!(note.title_edited);
+    }
 
     #[test]
     fn launch_removes_audio_left_behind_a_saved_transcript_only() {

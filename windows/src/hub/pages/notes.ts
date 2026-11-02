@@ -117,7 +117,11 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
       const done = () => void FlowBridge.renameNote(note.id, input.value);
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") done();
-        if (e.key === "Escape") drawDetail();
+        if (e.key === "Escape") {
+          // Removing the input blurs it, and that blur must not rename.
+          input.removeEventListener("blur", done);
+          drawDetail();
+        }
       });
       input.addEventListener("blur", done);
       title.replaceWith(input);
