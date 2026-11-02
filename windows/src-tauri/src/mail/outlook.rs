@@ -206,18 +206,19 @@ $st = $ns.GetStoreFromID({s})
     ))
 }
 
-/// Puts back a message the journal shows as sorted (by the EntryID it had afterwards).
+/// Puts back a message the journal shows as sorted (by the EntryID it had afterwards);
+/// prints {"entryId": its id afterwards}, new when it moved back to the Inbox.
 pub fn undo_script(entry_id: &str, store_id: &str, action: &Action) -> String {
     let body = match action {
-        Action::Junk | Action::Move(_) => "$null = $i.Move($st.GetDefaultFolder(6))",
-        Action::Important => "$i.ClearTaskFlag(); $i.Save()",
-        Action::MarkRead => "$i.UnRead = $true; $i.Save()",
+        Action::Junk | Action::Move(_) => "$m = $i.Move($st.GetDefaultFolder(6)); $new = $m.EntryID",
+        Action::Important => "$i.ClearTaskFlag(); $i.Save(); $new = $i.EntryID",
+        Action::MarkRead => "$i.UnRead = $true; $i.Save(); $new = $i.EntryID",
     };
     script(&format!(
         r#"$i = Coucou-Item {e} {s}
 $st = $ns.GetStoreFromID({s})
 {body}
-Write-Output '{{"ok":true}}'"#,
+[pscustomobject]@{{ entryId = $new }} | ConvertTo-Json -Compress"#,
         e = ps(entry_id),
         s = ps(store_id)
     ))
@@ -494,6 +495,11 @@ mod tests {
         }
         assert!(undo_script("E", "S", &Action::Junk).contains("Move($st.GetDefaultFolder(6))"));
         assert!(undo_script("E", "S", &Action::Important).contains("ClearTaskFlag()"));
+        // Undo reports the EntryID the message has back in the Inbox, so the next poll can skip it.
+        assert!(undo_script("E", "S", &Action::Move("X".into())).contains("$m = $i.Move($st.GetDefaultFolder(6)); $new = $m.EntryID"));
+        for a in [Action::Junk, Action::Important, Action::MarkRead, Action::Move("X".into())] {
+            assert!(undo_script("E", "S", &a).contains("[pscustomobject]@{ entryId = $new } | ConvertTo-Json -Compress"));
+        }
     }
 
     #[test]

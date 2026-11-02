@@ -391,9 +391,12 @@ pub fn mail_journal_clear() {
 #[tauri::command]
 pub async fn mail_undo(app: AppHandle, id: String) -> Result<(), String> {
     let entry = rt().store.journal.iter().find(|e| e.id == id && !e.undone).cloned().ok_or("not found")?;
-    outlook::run(outlook::undo_script(&entry.entry_id, &entry.store_id, &entry.action), TIMEOUT)
+    let v = outlook::run(outlook::undo_script(&entry.entry_id, &entry.store_id, &entry.action), TIMEOUT)
         .await
         .map_err(|e| e.to_string())?;
+    // Back in the Inbox under a new EntryID: seen already, so the next poll does not sort it again.
+    let after = v.get("entryId").and_then(Value::as_str).unwrap_or(&entry.entry_id);
+    rt().store.mark_seen(&[format!("{}/{after}", entry.store_id)]);
     rt().store.mark_undone(&id);
     poll(&app).await;
     Ok(())
