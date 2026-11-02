@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Coucou - chat moods preview</title>
+    <style>
+      html, body { overflow: auto !important; height: auto !important; }
+      body { margin: 0; padding: 16px; background: #1b1b1f; font: 12px system-ui; color: #ddd; }
+      #moods { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+      button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid #444; background: #2a2a30; color: #eee; cursor: pointer; }
+      button:hover { background: #3a3a44; }
+      #stage { display: flex; align-items: flex-end; gap: 24px; }
+      figure { margin: 0; text-align: center; }
+      canvas { display: block; background: #000; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <div id="moods"></div>
+    <div id="stage"></div>
+    <script type="module" src="./emotes-preview.ts"></script>
+  </body>
+</html>
