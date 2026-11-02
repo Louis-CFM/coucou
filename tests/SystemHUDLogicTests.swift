@@ -152,9 +152,14 @@ enum SystemHUDLogicTests {
     }
 
     static func testMood() {
+        precondition(SystemHUDLogic.mood(level: 0, muted: false) == .empty)
+        precondition(SystemHUDLogic.mood(level: 1.0 / 16, muted: false) == .low)
+        precondition(SystemHUDLogic.mood(level: 0.3, muted: false) == .low)
         precondition(SystemHUDLogic.mood(level: 0.5, muted: false) == .normal)
+        precondition(SystemHUDLogic.mood(level: 0.7, muted: false) == .high)
+        precondition(SystemHUDLogic.mood(level: 15.0 / 16, muted: false) == .high)
         precondition(SystemHUDLogic.mood(level: 1, muted: false) == .max)
-        precondition(SystemHUDLogic.mood(level: 0, muted: false) == .min)
         precondition(SystemHUDLogic.mood(level: 1, muted: true) == .muted)
+        precondition(SystemHUDLogic.mood(level: .nan, muted: false) == .empty)
     }
 }

@@ -2,61 +2,105 @@
 import AppKit
 import SwiftUI
 
-/// Under the island, while a volume or brightness key is pressed: the same capsule as the
-/// line that tells how the Mac is doing (VitalsHoverLine), a coloured dot and a short text.
-struct SystemLevelLine: View {
-    let islandW: CGFloat
-    let islandH: CGFloat
+/// The volume / brightness card (IslandView.level): the upload card's look, a track in the
+/// key's colour, and the island's own Mochi riding it at the level (BotPlacement puts him
+/// there, like during an upload). The name of the level on the left, its value on the right.
+struct SystemLevelCard: View {
     @ObservedObject private var model = SystemHUDController.shared.model
 
+    // Content coordinates (the island's content has 10 pt of padding on each side and starts
+    // under the 42 pt header): the track sits where SystemLevelLayout puts Mochi.
+    private let trackLeft = SystemLevelLayout.trackLeft - 10
+    private let trackWidth = SystemLevelLayout.trackWidth
+    private let trackTop: CGFloat = 42
+
+    /// Mochi's spring (BotPlacement), so the fill and Mochi move together.
+    private static let spring = Animation.spring(response: 0.5, dampingFraction: 0.72)
+
     var body: some View {
-        ZStack {
-            if model.visible {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(dotColor)
-                        .frame(width: 6, height: 6)
-                    Text(verbatim: text)
-                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                        .foregroundColor(Color(hex: "#E1E3E6"))
-                        .lineLimit(1)
-                        .fixedSize()
-                        .contentTransition(.numericText())
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(Color.black.opacity(0.92)))
-                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
-                .transition(.opacity.combined(with: .offset(y: -4)))
+        let colors = palette
+        let level = CGFloat(min(max(model.level, 0), 1))
+        let fillWidth = trackWidth * level
+
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(hex: "#141518"))
+
+            // The key's colour washing up from the bottom, brighter with the level.
+            RoundedRectangle(cornerRadius: 20)
+                .fill(RadialGradient(
+                    colors: [colors.bright.opacity(0.08 + 0.14 * level), Color.clear],
+                    center: UnitPoint(x: 0.5, y: 1.4),
+                    startRadius: 0,
+                    endRadius: 260
+                ))
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color.white.opacity(0.09))
+                .frame(width: trackWidth, height: 6)
+                .offset(x: trackLeft, y: trackTop)
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(LinearGradient(colors: [colors.deep, colors.bright],
+                                     startPoint: .leading, endPoint: .trailing))
+                .frame(width: fillWidth, height: 6)
+                .offset(x: trackLeft, y: trackTop)
+
+            // The glow trailing behind Mochi, as during an upload.
+            if level > 0.01 {
+                Ellipse()
+                    .fill(colors.glow.opacity(0.45))
+                    .frame(width: 28, height: 12)
+                    .blur(radius: 5)
+                    .offset(x: trackLeft + fillWidth - 14, y: trackTop - 3)
             }
+
+            HStack(spacing: 0) {
+                Text(verbatim: title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundColor(Color(hex: "#A9ADB5"))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Text(verbatim: value)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundColor(Color(hex: "#A9ADB5"))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            .frame(width: trackWidth)
+            .offset(x: trackLeft, y: trackTop - 28)
+
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.035), lineWidth: 1)
         }
-        .animation(.easeOut(duration: 0.18), value: model.visible)
-        .animation(.easeOut(duration: 0.15), value: model.level)
-        .position(x: islandW / 2, y: islandH + 18)
-        .allowsHitTesting(false)
+        .animation(Self.spring, value: model.level)
+        .animation(.easeInOut(duration: 0.25), value: model.muted)
+        .animation(.easeInOut(duration: 0.25), value: model.target)
     }
 
-    private var text: String {
-        if model.target == .volume && model.muted {
-            return String(localized: "system-hud.line.muted")
-        }
-        let name: String
+    private var title: String {
         switch model.target {
-        case .volume:   name = String(localized: "system-hud.line.volume")
-        case .display:  name = String(localized: "system-hud.line.display")
-        case .keyboard: name = String(localized: "system-hud.line.keyboard")
+        case .volume:   return String(localized: "system-hud.line.volume")
+        case .display:  return String(localized: "system-hud.line.display")
+        case .keyboard: return String(localized: "system-hud.line.keyboard")
         }
+    }
+
+    private var value: String {
+        if model.target == .volume && model.muted { return String(localized: "system-hud.line.muted") }
         let percent = Double(SystemHUDLogic.percent(level: model.level, muted: false)) / 100
-        return "\(name) \(percent.formatted(.percent.precision(.fractionLength(0))))"
+        return percent.formatted(.percent.precision(.fractionLength(0)))
     }
 
-    /// The vitals line's palette: one colour per kind of key, grey when muted.
-    private var dotColor: Color {
-        if model.target == .volume && model.muted { return Color(hex: "#8E939C") }
+    /// One colour per kind of key (the vitals line's palette), grey when muted.
+    private var palette: (deep: Color, bright: Color, glow: Color) {
+        if model.target == .volume && model.muted {
+            return (Color(hex: "#4B5058"), Color(hex: "#8E939C"), Color(hex: "#B5B9C0"))
+        }
         switch model.target {
-        case .volume:   return Color(hex: "#3B9EFF")
-        case .display:  return Color(hex: "#F5A524")
-        case .keyboard: return Color(hex: "#A78BFA")
+        case .volume:   return (Color(hex: "#1F6FD1"), Color(hex: "#3B9EFF"), Color(hex: "#8CC4FF"))
+        case .display:  return (Color(hex: "#D98A12"), Color(hex: "#F5A524"), Color(hex: "#FCD34D"))
+        case .keyboard: return (Color(hex: "#7C5CFF"), Color(hex: "#A78BFA"), Color(hex: "#C4B5FD"))
         }
     }
 }

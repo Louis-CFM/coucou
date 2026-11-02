@@ -1,30 +1,28 @@
 #if !APPSTORE
 import AppKit
-import Combine
 import SwiftUI
 
-/// What the line under the island shows. Read by SystemLevelLine.
+/// What the level card shows. Read by SystemLevelCard and BotPlacement (Mochi's place).
 @MainActor
 final class SystemHUDModel: ObservableObject {
     @Published var target: SystemHUDTarget = .volume
     @Published var level: Double = 0
     @Published var muted = false
-    @Published var visible = false
 }
 
-/// Volume and brightness keys, shown the way Coucou shows everything: by Mochi.
+/// Volume and brightness keys, shown the way Coucou shows an upload: the island opens on a
+/// low card (IslandView.level) and Mochi rides its track at the level, with the level's face.
 ///
 /// Off by default (Settings → Volume & brightness). When on, the media key tap hands each
-/// press here: the change is applied, the island comes out in its compact form if it was
-/// hidden, Mochi hops or squashes with the level, and the vitals-style capsule under the
-/// island says the value. Nothing new is drawn. A press is left to macOS (its own HUD)
-/// whenever Coucou can't apply it, or while the island is open, so an approval or a card
-/// is never disturbed.
+/// press here: the change is applied, then shown. The island opens silently from where it
+/// was (hidden or compact) and goes back there 1.6 s after the last press. A press is left
+/// to macOS (its own HUD) whenever Coucou can't apply it, or while the island is open on
+/// anything else, so an approval, a question or a card is never disturbed.
 @MainActor
 final class SystemHUDController {
     static let shared = SystemHUDController()
     static let enabledKey = "systemHUDEnabled"
-    /// How long Mochi and the line stay after the last press.
+    /// How long the card stays after the last press.
     static let showDuration: Duration = .milliseconds(1600)
 
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
@@ -39,24 +37,12 @@ final class SystemHUDController {
     }
 
     let model = SystemHUDModel()
-    /// True while the island is out only because of a key: it goes back to hidden after.
-    private var raisedIsland = false
+    /// Where the island was before the card opened (hidden or compact): where it goes back.
+    private var modeBefore: IslandMode?
     private var hideTask: Task<Void, Never>?
     private var trustTask: Task<Void, Never>?
-    private var modeWatch: AnyCancellable?
 
-    private init() {
-        // An approval, a question or a card opening the island: the line goes at once, and
-        // the island is no longer ours to fold.
-        modeWatch = AppState.shared.$mode
-            .filter { $0 == .expanded }
-            .sink { [weak self] _ in
-                MainActor.assumeIsolated {
-                    self?.raisedIsland = false
-                    self?.hideNow()
-                }
-            }
-    }
+    private init() {}
 
     /// At launch: starts the tap if the setting is on. Never prompts.
     func startIfEnabled() {
@@ -88,7 +74,7 @@ final class SystemHUDController {
         trustTask = nil
         MediaKeyTap.shared.stop()
         MediaKeyTap.shared.onAction = nil
-        hideNow()
+        finish()
     }
 
     /// Checks every 2 s for up to 2 minutes, then gives up until the next launch or toggle.
@@ -111,8 +97,10 @@ final class SystemHUDController {
 
     /// Applies the action; false leaves the key to macOS.
     func perform(_ action: SystemHUDAction) -> Bool {
-        // The island is open (an approval, a question, a card): macOS shows its own HUD.
-        guard AppState.shared.mode != .expanded, Self.isEnabled(action.target) else { return false }
+        // The island is open on something else (an approval, a question, a card): macOS
+        // shows its own HUD. Open on the level card: it simply follows.
+        let app = AppState.shared
+        guard app.mode != .expanded || app.view == .level, Self.isEnabled(action.target) else { return false }
         switch action {
         case .toggleMute:
             guard let device = SystemVolume.defaultOutputDevice(),
@@ -146,7 +134,7 @@ final class SystemHUDController {
         return true
     }
 
-    /// Settings → Show a preview: Mochi and the line at the current volume, changing nothing.
+    /// Settings → Show a preview: the card at the current volume, changing nothing.
     func preview() {
         let device = SystemVolume.defaultOutputDevice()
         let level = device.flatMap { SystemVolume.volume(of: $0) } ?? 0.5
@@ -154,7 +142,7 @@ final class SystemHUDController {
         show(.volume, level: level, muted: muted, direction: 1)
     }
 
-    // MARK: - Showing it in the island
+    // MARK: - The level card
 
     private var island: IslandWindowController? {
         (NSApp.delegate as? AppDelegate)?.islandController
@@ -164,14 +152,16 @@ final class SystemHUDController {
         model.target = target
         model.level = level
         model.muted = muted
-        model.visible = true
 
-        // Hidden island: out in its compact form, silently, the way music playing brings it out.
-        if let island, island.fsm.state == .hidden {
-            island.silentNextReveal = true
-            island.fsm.reveal()
-            island.silentNextReveal = false
-            raisedIsland = true
+        let app = AppState.shared
+        if let island, app.mode != .expanded {
+            // Open on the card, from wherever the island was, without the open/close sounds
+            // a volume key would otherwise make every time.
+            modeBefore = app.mode
+            silently {
+                island.fsm.openedExternally()
+                island.expand(to: .level)
+            }
         }
         NotificationCenter.default.post(
             name: .botSystemLevel,
@@ -186,29 +176,45 @@ final class SystemHUDController {
         }
     }
 
-    /// After the last press: the line goes, and an island the keys brought out goes back
-    /// to hidden, unless something else now uses it (the pointer on it, an alert, a hover).
+    /// After the last press: the island goes back to where it was. Not if something else
+    /// took it meanwhile (an approval or a question replaced the card): then it is theirs.
+    /// The pointer on it: the card gives way to home, and the island folds as usual.
     private func finish() {
-        hideNow()
-        guard raisedIsland else { return }
-        raisedIsland = false
-        let app = AppState.shared
-        guard let island, island.fsm.state == .petit, app.mode == .compact,
-              app.pendingApproval == nil, app.pendingQuestion == nil,
-              !pointerOnIsland() else { return }
-        island.fsm.hiddenExternally()
-        island.setMode(.hidden)
-    }
-
-    private func hideNow() {
         hideTask?.cancel()
         hideTask = nil
-        model.visible = false
+        guard let before = modeBefore else { return }
+        modeBefore = nil
+        let app = AppState.shared
+        guard let island, app.mode == .expanded, app.view == .level else { return }
+
+        if pointerOnIsland() {
+            app.view = island.defaultView()
+            return
+        }
+        silently {
+            // home → petit: the island state machine folds it to compact (its own path)…
+            island.fsm.collapse()
+            // …and back to hidden if it was hidden.
+            if before == .hidden {
+                island.fsm.hiddenExternally()
+                island.setMode(.hidden)
+            }
+        }
+        // The card leaves the view only once folded, so the open island never resizes to it.
+        app.view = island.defaultView()
+    }
+
+    /// Runs island changes without the open / close / peek sounds.
+    private func silently(_ change: () -> Void) {
+        let sounds = SoundEngine.shared.enabled
+        SoundEngine.shared.enabled = false
+        change()
+        SoundEngine.shared.enabled = sounds
     }
 
     private func pointerOnIsland() -> Bool {
         let app = AppState.shared
-        let (w, h) = islandSize(mode: .compact, view: app.view, nw: app.notchWidth, nh: app.notchHeight)
+        let (w, h) = islandSize(mode: app.mode, view: app.view, nw: app.notchWidth, nh: app.notchHeight)
         return IslandWindowController.islandScreenRect(size: CGSize(width: w, height: h))
             .contains(NSEvent.mouseLocation)
     }

@@ -97,21 +97,25 @@ enum SystemHUDLogic {
         return (next, next > 0 ? false : muted)
     }
 
-    /// The level as the line under the island writes it: whole percent, 0 when muted.
+    /// The level as the card writes it: whole percent, 0 when muted.
     static func percent(level: Double, muted: Bool) -> Int {
         muted ? 0 : Int((min(max(level, 0), 1) * 100).rounded())
     }
 
-    /// How Mochi looks at the level: eyes shut when muted, starry at the top, tired at the bottom.
+    /// How Mochi looks at the level, in five bands plus mute: asleep at 0, tired up to 30 %,
+    /// himself in the middle, happy from 70 %, starry at 100 %, eyes shut when muted.
     static func mood(level: Double, muted: Bool) -> SystemHUDMood {
         if muted { return .muted }
-        if level >= 1 { return .max }
-        if level <= 0 { return .min }
+        let value = level.isFinite ? level : 0
+        if value <= 0 { return .empty }
+        if value >= 1 { return .max }
+        if value <= 0.3 { return .low }
+        if value >= 0.7 { return .high }
         return .normal
     }
 }
 
 enum SystemHUDMood: Equatable, Sendable {
-    case normal, max, min, muted
+    case empty, low, normal, high, max, muted
 }
 #endif
