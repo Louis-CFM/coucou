@@ -684,6 +684,14 @@ struct IslandHeader: View {
     /// close cross is not shown.
     private var heldOpen: Bool { state.pendingApproval != nil || state.voiceMailDraft != nil }
 
+    #if !APPSTORE
+    /// Claude and Codex plan pills both on: Codex sits left of the notch, Claude right of it
+    /// (two pills and the icons do not clear the notch on one side).
+    private var bothPlans: Bool {
+        state.view == .overview && state.showPlanInNotch && state.planRelayInstalled && state.showCodexPlanInNotch
+    }
+    #endif
+
     var body: some View {
         HStack(spacing: 0) {
             // Left: tab capsules
@@ -697,6 +705,11 @@ struct IslandHeader: View {
                     #endif
                 })
                 TabButton(icon: "plus", view: .upload, state: state)
+                #if !APPSTORE
+                if bothPlans {
+                    ClaudePlanHeaderPill(state: state, codex: true)
+                }
+                #endif
             }
             .padding(.leading, 14)
 
@@ -705,8 +718,6 @@ struct IslandHeader: View {
             // Right: plan pill (GitHub build, home view only) + action icons
             HStack(spacing: 8) {
                 #if !APPSTORE
-                // Claude and Codex both on: only Claude here (two pills and the icons do not
-                // clear the notch); Codex is a row in the Claude plan card.
                 if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
                     ClaudePlanHeaderPill(state: state)
                 } else if state.view == .overview && state.showCodexPlanInNotch {
