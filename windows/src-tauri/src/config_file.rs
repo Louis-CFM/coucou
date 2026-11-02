@@ -12,6 +12,7 @@
 //     keeping its permissions, and through a symlink to the file it points at.
 //
 // Nothing here decides *what* to change: callers hand in an `Edit` per file.
+// `replace` (beside, synced, renamed) is also how Coucou's own stores write.
 
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -224,7 +225,9 @@ pub fn apply(edits: &[FileEdit], expected: &str) -> Result<Vec<PathBuf>, String>
 
     for (file, current, after) in planned {
         match after {
-            Some(text) => replace(&file.path, text.as_bytes())
+            // A dotfiles setup often makes a config a symlink: write to the file it
+            // points at, so the link survives the rename.
+            Some(text) => replace(&resolve_link(&file.path), text.as_bytes())
                 .map_err(|e| {
                     tf("Write to {path} failed: {error}", &[("path", &file.path.display().to_string()), ("error", &e.to_string())])
                 })?,
@@ -287,7 +290,8 @@ fn back_up(path: &Path, bytes: &[u8]) -> std::io::Result<PathBuf> {
     Err(std::io::Error::new(ErrorKind::AlreadyExists, "too many backups this second"))
 }
 
-fn write_whole(file: &mut std::fs::File, bytes: &[u8]) -> std::io::Result<()> {
+/// Writes `bytes` to `file` and waits until they are on the disk.
+pub(crate) fn write_whole(file: &mut std::fs::File, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     file.write_all(bytes)?;
     file.sync_all()
@@ -331,17 +335,13 @@ fn resolve_link(path: &Path) -> std::path::PathBuf {
     }
 }
 
-/// Replaces `path` with `bytes`: written beside it and renamed over it, so a
-/// crash or a full disk leaves the original intact rather than half a file.
+/// Replaces `path` with `bytes`: written beside it, synced and renamed over it,
+/// so a crash or a full disk leaves the original intact rather than half a file.
+/// The temporary file never stays behind.
 pub(crate) fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
-    // A dotfiles setup often makes a config a symlink: write to the file it
-    // points at, so the link survives the rename.
-    let resolved = resolve_link(path);
-    let path = resolved.as_path();
-
     let name = path.file_name().unwrap_or_default().to_string_lossy();
     let temp = path.with_file_name(format!("{name}.coucou-{}", std::process::id()));
     let result = write_like(&temp, path, bytes).and_then(|()| std::fs::rename(&temp, path));

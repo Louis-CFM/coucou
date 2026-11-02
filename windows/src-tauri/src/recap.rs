@@ -436,22 +436,7 @@ fn write_history(path: &Path, history: &History) -> std::io::Result<()> {
     }
     let json = serde_json::to_vec(history)
         .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    let written = options
-        .open(&temp)
-        .and_then(|mut file| {
-            file.write_all(&json)?;
-            file.sync_all()
-        })
-        .and_then(|()| std::fs::rename(&temp, path));
-    if written.is_err() {
-        let _ = std::fs::remove_file(&temp);
-    }
-    written
+    crate::config_file::replace(path, &json)
 }
 
 /// One line in coucou.log. Tests must never write to the real one.

@@ -137,13 +137,9 @@ impl Store {
 
     fn write<T: Serialize>(&self, name: &str, value: &T) {
         let Some(dir) = &self.dir else { return };
-        let result = std::fs::create_dir_all(dir)
-            .and_then(|_| serde_json::to_vec_pretty(value).map_err(std::io::Error::other))
-            .and_then(|bytes| {
-                let tmp = dir.join(format!("{name}.tmp"));
-                std::fs::write(&tmp, bytes)?;
-                std::fs::rename(&tmp, dir.join(name))
-            });
+        let result = serde_json::to_vec_pretty(value)
+            .map_err(std::io::Error::other)
+            .and_then(|bytes| crate::config_file::replace(&dir.join(name), &bytes));
         if let Err(e) = result {
             crate::log::line(format!("[mail] could not save {name}: {e}"));
         }

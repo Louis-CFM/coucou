@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use super::logic::FlowKey;
 use super::text::{self, new_id, Day, Replacement, Snippet};
+use crate::settings;
 
 /// One dictation, kept for the history.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -169,12 +170,37 @@ pub struct Store {
     /// When the history is not kept, the last dictation still waits here
     /// (memory only) for "paste again".
     last_unkept: Option<String>,
+    /// prefs.json is there but did not load: `prefs` holds the defaults, not the
+    /// user's keep-days, so nothing is pruned until the preferences are saved.
+    prefs_unloaded: bool,
     folder: PathBuf,
 }
 
+/// What `name` holds; `Ok(None)` when it is not there. A file that is there but
+/// cannot be read or used is an `Err`, and it is kept the way settings.json is:
+/// copied aside, or protected so the next write does not replace it.
+fn try_load<T: DeserializeOwned>(folder: &std::path::Path, name: &str) -> Result<Option<T>, ()> {
+    let path = folder.join(name);
+    let bytes = match std::fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(err) => {
+            settings::note(format!("flow: can't read {name}: {err}"));
+            settings::protect(&path);
+            return Err(());
+        }
+    };
+    serde_json::from_slice(&bytes).map(Some).map_err(|err| match settings::set_aside(&path, "corrupt", &bytes) {
+        Ok(copy) => settings::note(format!("flow: {name} is not usable ({err}) — kept as {}", copy.display())),
+        Err(copy_err) => {
+            settings::note(format!("flow: {name} is not usable ({err}) and could not be copied: {copy_err}"));
+            settings::protect(&path);
+        }
+    })
+}
+
 fn load<T: DeserializeOwned>(folder: &std::path::Path, name: &str) -> Option<T> {
-    let text = std::fs::read_to_string(folder.join(name)).ok()?;
-    serde_json::from_str(&text).ok()
+    try_load(folder, name).ok().flatten()
 }
 
 pub fn now_ms() -> u64 {
@@ -199,13 +225,15 @@ impl Store {
     }
 
     pub fn load_from(folder: PathBuf) -> Store {
+        let prefs = try_load(&folder, "prefs.json");
         let mut store = Store {
             history: load(&folder, "history.json").unwrap_or_default(),
             stats: load(&folder, "stats.json").unwrap_or_default(),
             words: load(&folder, "words.json").unwrap_or_default(),
             snippets: load(&folder, "snippets.json").unwrap_or_default(),
             app_styles: load(&folder, "styles.json").unwrap_or_else(default_app_styles),
-            prefs: load(&folder, "prefs.json").unwrap_or_default(),
+            prefs_unloaded: prefs.is_err(),
+            prefs: prefs.ok().flatten().unwrap_or_default(),
             last_unkept: None,
             folder,
         };
@@ -215,10 +243,11 @@ impl Store {
 
     fn write<T: Serialize>(&self, value: &T, name: &str) -> std::io::Result<()> {
         crate::platform::ensure_private_dir(&self.folder)?;
+        let path = self.folder.join(name);
+        // A file that is there but never loaded is copied aside first, or kept.
+        settings::keep_what_was_not_loaded(&path)?;
         let text = serde_json::to_string_pretty(value).map_err(std::io::Error::other)?;
-        let tmp = self.folder.join(format!("{name}.tmp"));
-        std::fs::write(&tmp, text)?;
-        std::fs::rename(&tmp, self.folder.join(name))
+        crate::config_file::replace(&path, text.as_bytes())
     }
 
     fn save<T: Serialize>(&self, value: &T, name: &str) {
@@ -227,8 +256,11 @@ impl Store {
         }
     }
 
-    pub fn save_prefs(&self) {
-        self.save(&self.prefs, "prefs.json");
+    pub fn save_prefs(&mut self) {
+        match self.write(&self.prefs, "prefs.json") {
+            Ok(()) => self.prefs_unloaded = false,
+            Err(err) => crate::log::line(format!("flow: could not save prefs.json: {err}")),
+        }
     }
     pub fn set_words(&mut self, words: Words) -> Result<(), String> {
         self.write(&words, "words.json").map_err(|e| format!("Could not save dictionary: {e}"))?;
@@ -319,6 +351,9 @@ impl Store {
     }
 
     pub fn prune(&mut self, now: u64) {
+        if self.prefs_unloaded {
+            return;
+        }
         let before = self.history.len();
         if self.prefs.keep_days == 0 {
             self.history.clear();
@@ -360,6 +395,11 @@ mod tests {
         (Store::load_from(dir.clone()), dir)
     }
 
+    /// The file a write of `name` goes through before it is renamed into place.
+    fn staging(dir: &std::path::Path, name: &str) -> PathBuf {
+        dir.join(format!("{name}.coucou-{}", std::process::id()))
+    }
+
     #[test]
     fn dictionary_edits_are_durable_and_failed_writes_keep_the_live_and_saved_words() {
         let (mut store, path) = temp_store();
@@ -369,12 +409,12 @@ mod tests {
         store.set_words(words.clone()).unwrap();
         assert_eq!(Store::load_from(path.clone()).words, words);
         let before = std::fs::read(path.join("words.json")).unwrap();
-        std::fs::create_dir(path.join("words.json.tmp")).unwrap();
+        std::fs::create_dir(staging(&path, "words.json")).unwrap();
         assert!(store.set_words(Words::default()).is_err());
         assert_eq!(store.words, words);
         assert_eq!(std::fs::read(path.join("words.json")).unwrap(), before);
         assert_eq!(store.prepare("coucou cloud code").text, "Coucou Claude Code");
-        std::fs::remove_dir(path.join("words.json.tmp")).unwrap();
+        std::fs::remove_dir(staging(&path, "words.json")).unwrap();
         store.set_words(Words::default()).unwrap();
         assert_eq!(Store::load_from(path.clone()).words, Words::default());
         std::fs::remove_file(path.join("words.json")).unwrap();
@@ -388,12 +428,12 @@ mod tests {
         store.set_snippets(snippets.clone()).unwrap();
         assert_eq!(Store::load_from(path.clone()).snippets, snippets);
         let before = std::fs::read(path.join("snippets.json")).unwrap();
-        std::fs::create_dir(path.join("snippets.json.tmp")).unwrap();
+        std::fs::create_dir(staging(&path, "snippets.json")).unwrap();
         assert!(store.set_snippets(vec![]).is_err());
         assert_eq!(store.snippets, snippets);
         assert_eq!(std::fs::read(path.join("snippets.json")).unwrap(), before);
         assert_eq!(store.prepare("signature").snippets.values().next().unwrap(), "Hello world");
-        std::fs::remove_dir(path.join("snippets.json.tmp")).unwrap();
+        std::fs::remove_dir(staging(&path, "snippets.json")).unwrap();
         store.set_snippets(vec![]).unwrap();
         assert!(Store::load_from(path.clone()).snippets.is_empty());
         std::fs::remove_file(path.join("snippets.json")).unwrap();
@@ -407,12 +447,12 @@ mod tests {
         store.set_styles(styles.clone()).unwrap();
         assert_eq!(Store::load_from(path.clone()).app_styles, styles);
         let before = std::fs::read(path.join("styles.json")).unwrap();
-        std::fs::create_dir(path.join("styles.json.tmp")).unwrap();
+        std::fs::create_dir(staging(&path, "styles.json")).unwrap();
         assert!(store.set_styles(vec![]).is_err());
         assert_eq!(store.app_styles, styles);
         assert_eq!(std::fs::read(path.join("styles.json")).unwrap(), before);
         assert_eq!(store.style_for(Some("mail")), Style::Polished);
-        std::fs::remove_dir(path.join("styles.json.tmp")).unwrap();
+        std::fs::remove_dir(staging(&path, "styles.json")).unwrap();
         store.set_styles(vec![]).unwrap();
         assert!(Store::load_from(path.clone()).app_styles.is_empty());
         std::fs::remove_file(path.join("styles.json")).unwrap();
@@ -443,7 +483,7 @@ mod tests {
         assert!(again.app_styles.is_empty());
         for name in ["words", "snippets", "styles"] {
             std::fs::remove_file(path.join(format!("{name}.json"))).unwrap();
-            std::fs::remove_file(path.join(format!("{name}.json.tmp"))).unwrap();
+            assert!(!staging(&path, &format!("{name}.json")).exists(), "a failed replacement leaves no temporary file");
         }
         std::fs::remove_dir(path).unwrap();
     }
@@ -453,12 +493,12 @@ mod tests {
         let (mut store, path) = temp_store();
         let entry = store.record("saved dictation", None, 1.0, today(), now_ms()).unwrap();
         let before = std::fs::read(path.join("history.json")).unwrap();
-        std::fs::create_dir(path.join("history.json.tmp")).unwrap();
+        std::fs::create_dir(staging(&path, "history.json")).unwrap();
         assert!(store.delete(&entry.id).is_err());
         assert_eq!(store.history.len(), 1);
         assert_eq!(store.history[0].id, entry.id);
         assert_eq!(std::fs::read(path.join("history.json")).unwrap(), before);
-        std::fs::remove_dir(path.join("history.json.tmp")).unwrap();
+        std::fs::remove_dir(staging(&path, "history.json")).unwrap();
         store.delete(&entry.id).unwrap();
         assert!(store.history.is_empty());
         assert!(Store::load_from(path.clone()).history.is_empty());
@@ -472,7 +512,7 @@ mod tests {
         let (mut store, path) = temp_store();
         store.record("saved dictation", None, 1.0, today(), now_ms()).unwrap();
         store.last_unkept = Some("memory dictation".into());
-        std::fs::create_dir(path.join("history.json.tmp")).unwrap();
+        std::fs::create_dir(staging(&path, "history.json")).unwrap();
         assert!(store.clear_everything().is_err());
         assert_eq!(store.history.len(), 1);
         assert_eq!(store.last_unkept.as_deref(), Some("memory dictation"));
@@ -480,7 +520,7 @@ mod tests {
         let again = Store::load_from(path.clone());
         assert_eq!(again.history.len(), 1);
         assert_eq!(again.totals(None).0, 2);
-        std::fs::remove_dir(path.join("history.json.tmp")).unwrap();
+        std::fs::remove_dir(staging(&path, "history.json")).unwrap();
         store.clear_history().unwrap();
         assert!(store.history.is_empty());
         assert!(store.last_unkept.is_none());
@@ -493,7 +533,7 @@ mod tests {
     fn a_failed_statistics_erase_keeps_live_and_saved_counts_and_can_be_retried() {
         let (mut store, path) = temp_store();
         store.record("saved dictation", None, 1.0, today(), now_ms()).unwrap();
-        std::fs::create_dir(path.join("stats.json.tmp")).unwrap();
+        std::fs::create_dir(staging(&path, "stats.json")).unwrap();
         assert!(store.clear_everything().unwrap_err().contains("History erased; could not erase statistics"));
         // History is already durably erased; the statistics remain until their write succeeds.
         assert!(store.history.is_empty());
@@ -501,7 +541,7 @@ mod tests {
         let again = Store::load_from(path.clone());
         assert!(again.history.is_empty());
         assert_eq!(again.totals(None).0, 2);
-        std::fs::remove_dir(path.join("stats.json.tmp")).unwrap();
+        std::fs::remove_dir(staging(&path, "stats.json")).unwrap();
         store.clear_everything().unwrap();
         assert_eq!(store.totals(None).0, 0);
         assert_eq!(Store::load_from(path.clone()).totals(None).0, 0);
@@ -586,6 +626,45 @@ mod tests {
             assert_eq!(serde_json::to_string(&edge).unwrap(), s);
             assert_eq!(serde_json::from_str::<Edge>(s).unwrap(), edge);
         }
+    }
+
+    #[test]
+    fn a_file_that_does_not_load_is_copied_aside_before_it_is_written_over() {
+        let dir = std::env::temp_dir().join(format!("coucou-flow-{}-{}", std::process::id(), new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let original = br#"{"words":["Coucou"],"replacements":[{"id":"one","from":"cloud code""#;
+        std::fs::write(dir.join("words.json"), original).unwrap();
+        let mut store = Store::load_from(dir.clone());
+        assert!(store.words.words.is_empty());
+        store.set_words(Words { words: vec!["new".into()], replacements: vec![] }).unwrap();
+        let copies: Vec<_> = std::fs::read_dir(&dir).unwrap().filter_map(Result::ok)
+            .filter(|e| e.file_name().to_string_lossy().starts_with("words.json.corrupt-"))
+            .map(|e| std::fs::read(e.path()).unwrap()).collect();
+        assert_eq!(copies, [original.to_vec()], "the words that did not load are kept beside the new file");
+        assert_eq!(Store::load_from(dir.clone()).words.words, ["new"]);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn prefs_that_do_not_load_never_prune_the_history_with_default_keep_days() {
+        let dir = std::env::temp_dir().join(format!("coucou-flow-{}-{}", std::process::id(), new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // A year-old dictation, kept because the user chose to keep everything.
+        let old = Entry { id: "old".into(), date: now_ms() - 365 * 86_400_000, text: "old".into(), app: None, words: 1, seconds: 1.0 };
+        let history = serde_json::to_vec(&vec![old]).unwrap();
+        std::fs::write(dir.join("history.json"), &history).unwrap();
+        std::fs::write(dir.join("prefs.json"), br#"{"keepDays":-1,"cleanupEngine":"a-newer-build"#).unwrap();
+        let mut store = Store::load_from(dir.clone());
+        assert_eq!(store.history.len(), 1);
+        assert_eq!(std::fs::read(dir.join("history.json")).unwrap(), history);
+        store.record("a new dictation", None, 1.0, today(), now_ms()).unwrap();
+        assert_eq!(store.history.len(), 2, "a dictation does not prune with the defaults either");
+        // Saved preferences are the user's again, and they decide.
+        store.prefs.keep_days = 30;
+        store.save_prefs();
+        store.prune(now_ms());
+        assert_eq!(store.history.len(), 1);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
