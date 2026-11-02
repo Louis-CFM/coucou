@@ -11,7 +11,7 @@ import { desktopDances } from "../core/spotify";
 import {
   DESKTOP_EVENTS, DesktopMochiController, alertActive, type DesktopSnapshot,
 } from "../mochi/desktop-logic";
-import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
+import { MAIN_MOCHI, SeasonCache, lookOf } from "../mochi/wardrobe";
 
 /** Label of the desktop Mochi's window (desktop.rs LABEL). */
 const WINDOW = "mochi";
@@ -32,6 +32,9 @@ export class DesktopLink {
 
   /** The pointer is dragging Mochi out of the island. */
   carrying = false;
+  /** Whose Mochi is out (wardrobe.ts mochiKey): the one dragged out of the
+   *  island wears its own look there; otherwise the main one. */
+  who = MAIN_MOCHI;
 
   private seasons = new SeasonCache();
   private pushed = "";
@@ -43,7 +46,12 @@ export class DesktopLink {
     this.host = host;
     this.controller = new DesktopMochiController({
       flyOut: async (anywhere) => (await Bridge.desktopFlyOut(anywhere)) ?? false,
-      flyHome: async (forget) => (await Bridge.desktopFlyHome(forget)) ?? true,
+      flyHome: async (forget) => {
+        const ok = (await Bridge.desktopFlyHome(forget)) ?? true;
+        // Home for good: the next one out is the main Mochi again.
+        if (forget) this.who = MAIN_MOCHI;
+        return ok;
+      },
       setAway: (away) => {
         State.mochiOnDesktop = away;
         State.notify();
@@ -110,11 +118,13 @@ export class DesktopLink {
   /** (x, y): the pointer, island-window coordinates. */
   pickUp(x: number, y: number) {
     this.carrying = true;
+    this.who = State.focusMochi;
     State.mochiOnDesktop = true;
     State.notify();
     void Bridge.desktopPickUp(x, y).then((ok) => {
       if (ok) return;
       this.carrying = false;
+      this.who = MAIN_MOCHI;
       State.mochiOnDesktop = false;
       State.notify();
     });
@@ -146,6 +156,7 @@ export class DesktopLink {
       this.carrying = false;
       if (home) {
         // Dropped back on the island: he is simply there again.
+        this.who = MAIN_MOCHI;
         State.mochiOnDesktop = false;
         State.notify();
       } else {
@@ -165,9 +176,13 @@ export class DesktopLink {
   }
 
   private push() {
+    // His own look (or every Mochi's, in "all" mode): the main Mochi's, or the
+    // one dragged out of the island.
+    const look = lookOf(State.settings, this.who);
     const snapshot: DesktopSnapshot = {
       state: State.effectiveState,
-      outfit: State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit)),
+      // A wardrobe try-on shows here only when it is his wardrobe.
+      outfit: (State.focusMochi === this.who ? State.wardrobePreview : null) ?? this.seasons.get(look.outfit),
       soundEnabled: State.settings.soundEnabled,
       soundVolume: State.settings.soundVolume,
       paused: State.paused,

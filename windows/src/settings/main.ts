@@ -27,6 +27,7 @@ import { whatsappSection } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { updateRows, updatesListener } from "./updates";
 import { colorDot } from "./colors";
+import { extrasSettingsChanged, mochiSection, type ExtrasContext } from "./extras";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -48,6 +49,12 @@ let hub: { redraw(): void; current(): PageId } | null = null;
 async function save() {
   await Bridge.saveSettings(settings);
 }
+
+/** How extras.ts reads and saves the settings, which are replaced on every outside save. */
+const extras: ExtrasContext = {
+  settings: () => settings,
+  save: () => void save(),
+};
 
 /** A colour was picked for a pill's Mochi (see ./colors.ts): the island follows. */
 function pickColor(next: Record<string, string>) {
@@ -1430,6 +1437,7 @@ async function main() {
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
     for (const redraw of declaredViews) redraw();
+    extrasSettingsChanged();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
     applyLanguage();
@@ -1484,7 +1492,7 @@ async function render() {
   shortcutsListener = null;
   clear(root);
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
-    general: () => [generalSection()],
+    general: () => [generalSection(), mochiSection(extras)],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
     chat: () => [subscriptionsSection(), apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
