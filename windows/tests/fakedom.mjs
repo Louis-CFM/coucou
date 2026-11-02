@@ -98,6 +98,15 @@ class FakeElement {
     for (const node of added) node.parentNode = this;
     this.childNodes.unshift(...added);
   }
+
+  insertBefore(node, ref) {
+    node.parentNode?.removeChild(node);
+    node.parentNode = this;
+    const at = ref ? this.childNodes.indexOf(ref) : -1;
+    if (at < 0) this.childNodes.push(node);
+    else this.childNodes.splice(at, 0, node);
+    return node;
+  }
   replaceChildren(...nodes) {
     // As in a real DOM, the old children no longer have a parent.
     for (const old of this.childNodes) old.parentNode = null;
