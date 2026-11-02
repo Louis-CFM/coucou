@@ -20,6 +20,7 @@ mod island;
 mod local_chat;
 mod log;
 mod mail;
+mod media;
 mod net;
 mod notes;
 mod openai_compat;
@@ -579,6 +580,13 @@ fn local_set_key(url: String, key: String) -> Result<(), String> {
     local_chat::set_custom_key(&url, &key)
 }
 
+/// The credential name of an endpoint's key (one per provider host), for
+/// Settings -> Media and voice models.
+#[tauri::command]
+fn endpoint_key(endpoint: String) -> String {
+    secrets::endpoint_key(&endpoint)
+}
+
 #[tauri::command]
 fn chat_reset(chat: State<Chat>) {
     chat.reset();
@@ -921,6 +929,7 @@ pub fn run() {
             local_connect,
             local_set_key,
             chat_reset,
+            endpoint_key,
             ingest_file,
             secret_present,
             claude_ready,
@@ -1045,6 +1054,9 @@ pub fn run() {
             update::update_dismiss,
             update::update_install,
             update::update_open_page,
+            media::guess_model_output,
+            media::media_bytes,
+            media::media_download,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
