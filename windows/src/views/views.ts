@@ -147,7 +147,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
-      tabHome.classList.toggle("on", v === "overview" || v === "empty");
+      tabHome.classList.toggle("on", v === "overview" || v === "empty" || v === "diff");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
@@ -179,7 +179,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 
-function buildOverview(actions: ViewActions): ViewHost {
+function buildOverview(actions: ViewActions): { overview: ViewHost; diff: ViewHost } {
   /** The diff open in the left card (a FileDiff id), as activeDiffId on macOS. */
   let activeDiffId: number | null = null;
   const closeDiff = () => {
@@ -232,9 +232,11 @@ function buildOverview(actions: ViewActions): ViewHost {
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
 
-  // Leaving the overview or folding the island closes the diff, as on macOS.
+  // Leaving the overview or folding the island closes the diff, as on macOS. Its
+  // full-size view keeps it, so Back finds the small card still open.
   State.subscribe(() => {
-    if (activeDiffId != null && (State.view !== "overview" || State.mode !== "expanded")) {
+    const shown = State.view === "overview" || State.view === "diff";
+    if (activeDiffId != null && (!shown || State.mode !== "expanded")) {
       activeDiffId = null;
     }
   });
@@ -280,7 +282,7 @@ function buildOverview(actions: ViewActions): ViewHost {
     }, 30_000);
   }
 
-  return {
+  const overview: ViewHost = {
     el,
     tick(nowMs: number) {
       if (mode !== "ticker") return false;
@@ -351,6 +353,10 @@ function buildOverview(actions: ViewActions): ViewHost {
               closeDiff();
             },
             open: (path) => void Bridge.openFileInVSCode(path),
+            expand: () => {
+              actions.blip();
+              actions.setView("diff");
+            },
           }));
         }
       } else if (task && sessionActive) {
@@ -444,6 +450,35 @@ function buildOverview(actions: ViewActions): ViewHost {
       spotifyPill?.sync();
     },
   };
+
+  // The same diff full size, the island's "diff" view: it reads activeDiffId too.
+  const fullCard = card(null);
+  let fullId: number | null = null;
+  const diffView: ViewHost = {
+    el: h("div", { class: "view diff-view" }, fullCard),
+    sync() {
+      const task = State.focusTask;
+      const shown = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
+      if (!shown) {
+        // Dropped (cap, expiry, session end): it closes like the small card.
+        // Folded, it waits: setView would open the island again.
+        if (State.mode === "expanded") actions.setView(State.defaultView());
+        return;
+      }
+      if (shown.id === fullId) return;
+      fullId = shown.id;
+      clear(fullCard);
+      fullCard.append(buildDiffCard(shown, {
+        dismiss: () => {
+          actions.blip();
+          actions.setView("overview");
+        },
+        open: (path) => void Bridge.openFileInVSCode(path),
+      }));
+    },
+  };
+
+  return { overview, diff: diffView };
 }
 
 /**
@@ -843,7 +878,9 @@ export function buildViews(
   onChatHeightChange: () => void,
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
-  map.set("overview", buildOverview(actions));
+  const { overview, diff } = buildOverview(actions);
+  map.set("overview", overview);
+  map.set("diff", diff);
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
   map.set("question", buildQuestion(actions));

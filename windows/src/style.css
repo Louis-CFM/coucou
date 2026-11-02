@@ -689,6 +689,31 @@ body {
   color: var(--red);
 }
 
+/* A click in the small card's lines opens them full size. */
+.overview .diff-lines {
+  cursor: pointer;
+}
+
+/* The same card full size (the "diff" view): line numbers, a ⋯ row between
+   hunks, long lines wrapped instead of cut. */
+.diff-view .diff-line .num {
+  flex: 0 0 4ch; /* edit-relative numbers: 4 digits at most (DIFF_MAX_LINES) */
+  margin-right: 6px;
+  text-align: right;
+  color: #454850;
+  user-select: none;
+}
+
+.diff-view .diff-gap {
+  justify-content: center;
+  color: #454850;
+}
+
+.diff-view .diff-line .txt {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* Shimmer sweep, 2.2 s — same as TickerShimmerText / ShimmeringText */
 .shimmer {
   background: linear-gradient(
