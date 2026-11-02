@@ -96,6 +96,20 @@ body.hub-window {
   padding: 0;
 }
 
+/* The window's text fields (settings.css, input[type="text"]) weigh more than
+   one class and drew a second box inside this one: the field is the box. */
+.hub-search .hub-search-input,
+.hub-search .hub-search-input:focus {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+}
+
 .hub-search-input::placeholder {
   color: var(--hub-muted);
 }
