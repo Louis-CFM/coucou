@@ -108,6 +108,9 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// "provider/model" of chat models that refused an image: next time the
+    /// island asks before sending one.
+    pub text_only_models: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -178,6 +181,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            text_only_models: Vec::new(),
         }
     }
 }
@@ -478,7 +482,8 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "showClock": true
+  "showClock": true,
+  "textOnlyModels": ["custom/llama-3.3"]
 }"##;
 
     fn custom() -> Value {
@@ -1000,6 +1005,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "textOnlyModels",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
