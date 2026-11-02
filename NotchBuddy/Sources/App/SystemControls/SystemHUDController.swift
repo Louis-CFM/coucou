@@ -2,14 +2,14 @@
 import AppKit
 import SwiftUI
 
-/// What the level card shows. Read by SystemLevelCard, SystemLevelLine and BotPlacement.
+/// What the level card shows. Read by SystemLevelCard, SystemLevelHeaderPill and BotPlacement.
 @MainActor
 final class SystemHUDModel: ObservableObject {
     @Published var target: SystemHUDTarget = .volume
     @Published var level: Double = 0
     @Published var muted = false
-    /// The capsule under the island: shown instead of the card while the island is open on
-    /// one of the few views a switch would break (an upload, the voice, the chat…).
+    /// The header pill: shown instead of the card while the island is open on one of the
+    /// few views a switch would break (an upload, the voice, the chat…).
     @Published var lineVisible = false
 }
 
@@ -23,7 +23,7 @@ final class SystemHUDModel: ObservableObject {
 /// - open: the card takes the view's place for that time (home, a Claude session, an
 ///   approval — Claude waits for minutes — a question…), then that view comes back;
 /// - open on one of the few views a switch breaks (`keptViews`): that stays as it is; Mochi
-///   reacts and the value shows in the capsule under the island.
+///   reacts and the value shows in a pill in the island's header (SystemLevelHeaderPill).
 @MainActor
 final class SystemHUDController {
     static let shared = SystemHUDController()
@@ -50,7 +50,7 @@ final class SystemHUDController {
         case opened(from: IslandMode)
         /// The island was open: the card took the view's place, and the view comes back.
         case swapped(from: IslandView)
-        /// The island was open on a view that must stay: only the capsule shows.
+        /// The island was open on a view that must stay: only the header pill shows.
         case line
     }
     private var presentation: Presentation?

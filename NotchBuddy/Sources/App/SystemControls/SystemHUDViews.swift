@@ -78,18 +78,30 @@ struct SystemLevelCard: View {
         .animation(.easeInOut(duration: 0.25), value: model.target)
     }
 
-    private var title: String {
-        switch model.target {
+    private var title: String { Self.title(for: model.target) }
+    private var value: String { Self.value(level: model.level, muted: model.muted, target: model.target) }
+
+    static func title(for target: SystemHUDTarget) -> String {
+        switch target {
         case .volume:   return String(localized: "system-hud.line.volume")
         case .display:  return String(localized: "system-hud.line.display")
         case .keyboard: return String(localized: "system-hud.line.keyboard")
         }
     }
 
-    private var value: String {
-        if model.target == .volume && model.muted { return String(localized: "system-hud.line.muted") }
-        let percent = Double(SystemHUDLogic.percent(level: model.level, muted: false)) / 100
+    static func value(level: Double, muted: Bool, target: SystemHUDTarget) -> String {
+        if target == .volume && muted { return String(localized: "system-hud.line.muted") }
+        let percent = Double(SystemHUDLogic.percent(level: level, muted: false)) / 100
         return percent.formatted(.percent.precision(.fractionLength(0)))
+    }
+
+    /// The key's colour (bright tone of the card's palette).
+    static func color(for target: SystemHUDTarget) -> Color {
+        switch target {
+        case .volume:   return Color(hex: "#3B9EFF")
+        case .display:  return Color(hex: "#F5A524")
+        case .keyboard: return Color(hex: "#A78BFA")
+        }
     }
 
     /// One colour per kind of key (the vitals line's palette), grey when muted.
@@ -97,71 +109,62 @@ struct SystemLevelCard: View {
         if model.target == .volume && model.muted {
             return (Color(hex: "#4B5058"), Color(hex: "#8E939C"), Color(hex: "#B5B9C0"))
         }
+        let bright = Self.color(for: model.target)
         switch model.target {
-        case .volume:   return (Color(hex: "#1F6FD1"), Color(hex: "#3B9EFF"), Color(hex: "#8CC4FF"))
-        case .display:  return (Color(hex: "#D98A12"), Color(hex: "#F5A524"), Color(hex: "#FCD34D"))
-        case .keyboard: return (Color(hex: "#7C5CFF"), Color(hex: "#A78BFA"), Color(hex: "#C4B5FD"))
+        case .volume:   return (Color(hex: "#1F6FD1"), bright, Color(hex: "#8CC4FF"))
+        case .display:  return (Color(hex: "#D98A12"), bright, Color(hex: "#FCD34D"))
+        case .keyboard: return (Color(hex: "#7C5CFF"), bright, Color(hex: "#C4B5FD"))
         }
     }
 }
 
-/// Under the island, when a volume or brightness key is pressed while the island is open on
-/// something that stays (an approval, a question, the chat…): the same capsule as the line
-/// that tells how the Mac is doing (VitalsHoverLine), a coloured dot and the value.
-struct SystemLevelLine: View {
-    let islandW: CGFloat
-    let islandH: CGFloat
+/// In the island's header, when a volume or brightness key is pressed while the island is
+/// open on a view the level card can't replace (the chat, a mail, the voice, an upload): the
+/// header pill Coucou uses for the Claude plan (ClaudePlanHeaderPill, in its active look),
+/// with the key's colour, its name, a small track and the value.
+struct SystemLevelHeaderPill: View {
     @ObservedObject private var model = SystemHUDController.shared.model
 
     var body: some View {
         ZStack {
             if model.lineVisible {
-                HStack(spacing: 6) {
+                let color = model.target == .volume && model.muted
+                    ? Color(hex: "#8E939C") : SystemLevelCard.color(for: model.target)
+                HStack(spacing: 5) {
                     Circle()
-                        .fill(dotColor)
+                        .fill(color)
                         .frame(width: 6, height: 6)
-                    Text(verbatim: text)
-                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                        .foregroundColor(Color(hex: "#E1E3E6"))
+                    Text(verbatim: SystemLevelCard.title(for: model.target))
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(color.lighter(by: 0.3))
+                        .lineLimit(1)
+                        .fixedSize()
+                    // The card's track, small.
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.12))
+                        Capsule()
+                            .fill(color)
+                            .frame(width: 36 * CGFloat(model.muted ? 0 : min(max(model.level, 0), 1)))
+                    }
+                    .frame(width: 36, height: 4)
+                    Text(verbatim: SystemLevelCard.value(level: model.level, muted: model.muted,
+                                                         target: model.target))
+                        .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                        .foregroundColor(color.lighter(by: 0.3))
                         .lineLimit(1)
                         .fixedSize()
                         .contentTransition(.numericText())
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(Color.black.opacity(0.92)))
-                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
-                .transition(.opacity.combined(with: .offset(y: -4)))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(color.opacity(0.18)))
+                .overlay(Capsule().stroke(color.opacity(0.55), lineWidth: 1))
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
-        .animation(.easeOut(duration: 0.18), value: model.lineVisible)
-        .animation(.easeOut(duration: 0.15), value: model.level)
-        .position(x: islandW / 2, y: islandH + 18)
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: model.lineVisible)
+        .animation(.spring(response: 0.5, dampingFraction: 0.72), value: model.level)
         .allowsHitTesting(false)
-    }
-
-    private var text: String {
-        if model.target == .volume && model.muted {
-            return String(localized: "system-hud.line.muted")
-        }
-        let name: String
-        switch model.target {
-        case .volume:   name = String(localized: "system-hud.line.volume")
-        case .display:  name = String(localized: "system-hud.line.display")
-        case .keyboard: name = String(localized: "system-hud.line.keyboard")
-        }
-        let percent = Double(SystemHUDLogic.percent(level: model.level, muted: false)) / 100
-        return "\(name) \(percent.formatted(.percent.precision(.fractionLength(0))))"
-    }
-
-    /// The vitals line's palette: one colour per kind of key, grey when muted.
-    private var dotColor: Color {
-        if model.target == .volume && model.muted { return Color(hex: "#8E939C") }
-        switch model.target {
-        case .volume:   return Color(hex: "#3B9EFF")
-        case .display:  return Color(hex: "#F5A524")
-        case .keyboard: return Color(hex: "#A78BFA")
-        }
     }
 }
 
