@@ -16,7 +16,8 @@ enum ClaudeHookRemovalTests {
                       expectEmpty: Bool = false) {
         var ok = expectEmpty ? groups.isEmpty : true
         if !expectEmpty {
-            let data = (try? JSONSerialization.data(withJSONObject: groups, options: [.sortedKeys])) ?? Data()
+            // Foundation writes "/" as "\/" by default, which would hide every path needle.
+            let data = (try? JSONSerialization.data(withJSONObject: groups, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()
             let json = String(data: data, encoding: .utf8) ?? ""
             for needle in contains where !json.contains(needle) { ok = false }
             for needle in notContains where json.contains(needle) { ok = false }
