@@ -33,7 +33,8 @@ function noteText(n: PlanRun["notes"][number]): string {
 
 /** The card of the chat message `id`, whose answer is `text`. */
 export function mailPlanCard(id: string, summary: string, text: string): HTMLElement {
-  const el = h("div", { class: "plan-card" });
+  // Its own class: .plan-card and its parts are the Claude plan card's (views/usage.ts).
+  const el = h("div", { class: "mail-plan" });
   const redraw = () => draw(el, id, summary);
   if (!cards.has(id)) cards.set(id, new Set());
   cards.get(id)!.add(redraw);

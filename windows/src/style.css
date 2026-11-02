@@ -3432,7 +3432,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   color: #fff;
 }
 
-.plan-card {
+.mail-plan {
   margin-top: 6px;
   display: flex;
   flex-direction: column;
@@ -3443,7 +3443,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   border: 1px solid rgba(47, 140, 255, 0.25);
 }
 
-.plan-title {
+.mail-plan .plan-title {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3451,23 +3451,23 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   color: #f1f2f4;
 }
 
-.plan-icon {
+.mail-plan .plan-icon {
   font-style: normal;
   color: #2f8cff;
 }
 
-.plan-line {
+.mail-plan .plan-line {
   display: flex;
   gap: 5px;
   font: 400 10.5px var(--font);
   color: #c5c8cd;
 }
 
-.plan-arrow {
+.mail-plan .plan-arrow {
   color: #2f8cff;
 }
 
-.plan-rows {
+.mail-plan .plan-rows {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -3476,14 +3476,14 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   scrollbar-width: none;
 }
 
-.plan-row {
+.mail-plan .plan-row {
   display: flex;
   gap: 6px;
   font: 400 10px var(--font);
   min-width: 0;
 }
 
-.plan-to {
+.mail-plan .plan-to {
   width: 150px;
   flex: 0 0 auto;
   color: #c5c8cd;
@@ -3492,12 +3492,12 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   text-overflow: ellipsis;
 }
 
-.plan-row.bad .plan-to,
-.plan-problem {
+.mail-plan .plan-row.bad .plan-to,
+.mail-plan .plan-problem {
   color: #f4505e;
 }
 
-.plan-subject {
+.mail-plan .plan-subject {
   flex: 1 1 auto;
   min-width: 0;
   color: #8e939c;
@@ -3506,7 +3506,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   text-overflow: ellipsis;
 }
 
-.plan-file {
+.mail-plan .plan-file {
   max-width: 150px;
   color: #8e939c;
   white-space: nowrap;
@@ -3514,19 +3514,19 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   text-overflow: ellipsis;
 }
 
-.plan-note {
+.mail-plan .plan-note {
   font: 400 10px var(--font);
   color: #f5a524;
 }
 
-.plan-controls {
+.mail-plan .plan-controls {
   display: flex;
   align-items: center;
   gap: 10px;
   padding-top: 2px;
 }
 
-.plan-btn {
+.mail-plan .plan-btn {
   border: 0;
   border-radius: 999px;
   padding: 4px 9px;
@@ -3536,27 +3536,27 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   cursor: default;
 }
 
-.plan-btn.primary {
+.mail-plan .plan-btn.primary {
   color: #fff;
   background: #2f8cff;
 }
 
-.plan-status {
+.mail-plan .plan-status {
   font: 400 10.5px var(--font);
   color: #8e939c;
   font-variant-numeric: tabular-nums;
 }
 
-.plan-status.ok {
+.mail-plan .plan-status.ok {
   color: #34d399;
 }
 
-.plan-status.amber {
+.mail-plan .plan-status.amber {
   color: #f5a524;
   font-weight: 600;
 }
 
-.plan-bar {
+.mail-plan .plan-bar {
   width: 140px;
   height: 4px;
   border-radius: 2px;
@@ -3564,7 +3564,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   overflow: hidden;
 }
 
-.plan-bar i {
+.mail-plan .plan-bar i {
   display: block;
   height: 100%;
 }
