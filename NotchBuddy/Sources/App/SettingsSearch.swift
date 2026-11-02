@@ -104,7 +104,6 @@ final class SettingsSearch: ObservableObject {
                                                      "island.position", "island.position.top-left", "island.position.top-right",
                                                      "island.position.bottom-left", "island.position.bottom-right"]),
             e("general.vitals", .general, "vitals.title", ["vitals.toggle"]),
-            e("general.system-hud", .general, "system-hud.title", ["system-hud.toggle"]),
             e("general.hotkey", .general, "Hotkey", ["Show island with shortcut", "Shortcut"]),
             e("general.startup", .general, "Startup", ["Launch at Mac startup"]),
             e("general.update", .general, "update.settings.title"),
@@ -140,6 +139,8 @@ final class SettingsSearch: ObservableObject {
             e("voice.history", .voice, "voice.history-title"),
             e("shortcuts.global", .shortcuts, "shortcut.group.global"),
             e("shortcuts.island", .shortcuts, "shortcut.group.island"),
+            e("systemhud.main", .systemHUD, "system-hud.title", ["system-hud.toggle", "system-hud.page"]),
+            e("systemhud.keys", .systemHUD, "system-hud.keys", ["system-hud.volume", "system-hud.display", "system-hud.keyboard"]),
             // Mail
             e("mail.autosort", .mailOverview, "hub.mail.autosort", ["hub.mail.journal", "hub.mail.sent", "hub.mail.undo"]),
             e("mail.rules", .mailRules, "hub.mail.rules", ["hub.mail.field.sender", "hub.mail.field.subject", "hub.mail.do.junk"]),

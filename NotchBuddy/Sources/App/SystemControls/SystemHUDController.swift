@@ -36,6 +36,15 @@ final class SystemHUDController {
 
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
 
+    /// Each kind of key can be left to macOS on its own (all on by default).
+    static func isEnabled(_ target: SystemHUDTarget) -> Bool {
+        UserDefaults.standard.object(forKey: "systemHUD.\(target.rawValue)") as? Bool ?? true
+    }
+
+    static func setEnabled(_ on: Bool, for target: SystemHUDTarget) {
+        UserDefaults.standard.set(on, forKey: "systemHUD.\(target.rawValue)")
+    }
+
     let model = SystemHUDModel()
     private var panel: NSPanel?
     private var hideTask: Task<Void, Never>?
@@ -105,7 +114,7 @@ final class SystemHUDController {
     /// Applies the action; false leaves the key to macOS.
     func perform(_ action: SystemHUDAction) -> Bool {
         // The island is open (an approval, a question, a card): macOS shows its own HUD.
-        guard AppState.shared.mode != .expanded else { return false }
+        guard AppState.shared.mode != .expanded, Self.isEnabled(action.target) else { return false }
         switch action {
         case .toggleMute:
             guard let device = SystemVolume.defaultOutputDevice(),
@@ -137,6 +146,14 @@ final class SystemHUDController {
             show(.keyboard, level: next, muted: false)
         }
         return true
+    }
+
+    /// Settings → Show a preview: the HUD at the current volume, without changing anything.
+    func preview() {
+        let device = SystemVolume.defaultOutputDevice()
+        let level = device.flatMap { SystemVolume.volume(of: $0) } ?? 0.5
+        let muted = device.flatMap { SystemVolume.isMuted($0) } ?? false
+        show(.volume, level: level, muted: muted)
     }
 
     // MARK: - The panel

@@ -1,4 +1,5 @@
 #if !APPSTORE
+import AppKit
 import SwiftUI
 
 /// The volume / brightness HUD: the compact island's shape (the notch plus its wings),
@@ -107,33 +108,82 @@ struct SystemHUDMochi: View {
     }
 }
 
-/// Settings → General → Volume and brightness keys.
+/// Settings → Volume & brightness: its own page in the Coucou window.
 struct SystemHUDSettingsSection: View {
     @State private var on = SystemHUDController.isEnabled
     @State private var trusted = AXIsProcessTrusted()
+    @State private var volume = SystemHUDController.isEnabled(.volume)
+    @State private var display = SystemHUDController.isEnabled(.display)
+    @State private var keyboard = SystemHUDController.isEnabled(.keyboard)
 
     var body: some View {
-        GroupBox(String(localized: "system-hud.title")) {
-            VStack(alignment: .leading, spacing: 10) {
-                Toggle(String(localized: "system-hud.toggle"), isOn: $on)
-                    .onChange(of: on) { _, value in
-                        SystemHUDController.shared.setEnabled(value)
-                        trusted = AXIsProcessTrusted()
-                    }
-                Text(String(localized: "system-hud.about"))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                if on && !trusted {
-                    Text(String(localized: "system-hud.needs-accessibility"))
+        Group {
+            GroupBox(String(localized: "system-hud.title")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle(String(localized: "system-hud.toggle"), isOn: $on)
+                        .onChange(of: on) { _, value in
+                            SystemHUDController.shared.setEnabled(value)
+                            trusted = AXIsProcessTrusted()
+                        }
+                    Text(String(localized: "system-hud.about"))
                         .font(.system(size: 11))
-                        .foregroundColor(.orange)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if on { accessibilityRow }
+                    Button(String(localized: "system-hud.preview")) {
+                        SystemHUDController.shared.preview()
+                    }
+                }
+                .padding(6)
+            }
+                .settingsAnchor("systemhud.main")
+
+            GroupBox(String(localized: "system-hud.keys")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle(String(localized: "system-hud.volume"), isOn: $volume)
+                        .onChange(of: volume) { _, v in SystemHUDController.setEnabled(v, for: .volume) }
+                    Toggle(String(localized: "system-hud.display"), isOn: $display)
+                        .onChange(of: display) { _, v in SystemHUDController.setEnabled(v, for: .display) }
+                    Toggle(String(localized: "system-hud.keyboard"), isOn: $keyboard)
+                        .onChange(of: keyboard) { _, v in SystemHUDController.setEnabled(v, for: .keyboard) }
+                    Text(String(localized: "system-hud.keys.footer"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                .padding(6)
+                .disabled(!on)
             }
-            .padding(6)
+                .settingsAnchor("systemhud.keys")
+        }
+        // While the page shows and Accessibility is missing, notice the moment it is given.
+        .task(id: on) {
+            while on && !trusted && !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                trusted = AXIsProcessTrusted()
+            }
         }
         .onAppear { trusted = AXIsProcessTrusted() }
+    }
+
+    @ViewBuilder private var accessibilityRow: some View {
+        if trusted {
+            Label(String(localized: "system-hud.accessibility-ok"), systemImage: "checkmark.circle.fill")
+                .font(.system(size: 11))
+                .foregroundColor(.green)
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(String(localized: "system-hud.needs-accessibility"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(String(localized: "system-hud.open-accessibility")) {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+        }
     }
 }
 #endif
