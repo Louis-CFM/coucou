@@ -281,9 +281,11 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
     drawList();
     drawDetail();
   });
-  // The recording's clock in the list.
+  // The recording's clock in the list, only while the Coucou window is on screen.
+  let visible = (await FlowBridge.hubShown()) !== false;
+  const unlistenVisibility = await onEvent<boolean>("hub-visible", (shown) => { visible = shown; });
   const timer = window.setInterval(() => {
-    if (!state.recording) return;
+    if (!visible || !state.recording) return;
     const b = listEl.querySelector<HTMLElement>("[data-ticking]");
     if (!b) return;
     const next = recordButton();
@@ -292,6 +294,7 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
   }, 1000);
   ctx.onLeave = () => {
     unlisten();
+    unlistenVisibility();
     window.clearInterval(timer);
   };
 }

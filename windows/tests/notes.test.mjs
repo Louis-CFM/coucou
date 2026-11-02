@@ -30,6 +30,11 @@ Object.getPrototypeOf(root()).replaceWith = function (node) {
 Object.getPrototypeOf(root()).removeEventListener = function (type, fn) {
   this.listeners.set(type, (this.listeners.get(type) ?? []).filter(listener => listener !== fn));
 };
+// The recording clock finds its button by attribute.
+const classSelector = Object.getPrototypeOf(root()).querySelector;
+Object.getPrototypeOf(root()).querySelector = function (selector) {
+  return selector === "[data-ticking]" ? [...this.walk()].find(e => e.dataset.ticking) ?? null : classSelector.call(this, selector);
+};
 const press = (input, key) => { for (const fn of input.listeners.get("keydown") ?? []) fn({ key }); };
 const { notesPage } = await import("../src/hub/pages/notes.ts");
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -38,7 +43,8 @@ const originalInvoke = internals.invoke;
 /** The page with one call, selected: saved, or still recording. */
 async function readyPage(t, recording = false) {
   calls.length = 0;
-  t.mock.method(globalThis, "setInterval", () => 1);
+  let tick;
+  t.mock.method(globalThis, "setInterval", fn => { tick = fn; return 1; });
   t.mock.method(globalThis, "clearInterval", () => {});
   const note = {
     id: "synthetic", title: "Synthetic call", start: Date.now() - 10_000, end: Date.now(),
@@ -55,7 +61,7 @@ async function readyPage(t, recording = false) {
   const ctx = { hero: () => root(), status: { models: { parakeet: { state: "ready" } } } };
   await notesPage(page, ctx);
   t.after(() => ctx.onLeave());
-  return { page, state, detail: () => page.querySelector(".hub-note-detail") };
+  return { page, state, tick: () => tick(), detail: () => page.querySelector(".hub-note-detail") };
 }
 
 test("a failed delete keeps the call listed with the reason beside the confirmation", async t => {
@@ -117,4 +123,17 @@ test("a live line patches its note in place without reloading every call", async
   emit("notes-changed", { ...note, status: "processing" });
   await flush();
   assert.equal(sent("notes_state").length, reloads + 1, "a new status re-reads recording and working");
+});
+
+test("the recording clock stops redrawing while the Coucou window is hidden", async t => {
+  const fixture = await readyPage(t, true);
+  const list = fixture.page.querySelector(".hub-notes-list");
+  const clock = list.children[0];
+  emit("hub-visible", false);
+  fixture.tick();
+  assert.equal(list.children[0], clock);
+  emit("hub-visible", true);
+  fixture.tick();
+  assert.notEqual(list.children[0], clock);
+  assert.match(list.children[0].textContent, /Stop/);
 });
