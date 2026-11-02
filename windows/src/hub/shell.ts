@@ -7,7 +7,7 @@ import "./hub.css";
 import { h, clear } from "../views/dom";
 import { t, onLanguageChange } from "../i18n/i18n";
 import { onEvent } from "../core/bridge";
-import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus } from "../core/flow";
+import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus, flowKeyId } from "../core/flow";
 import { hero, liveMochi, setVoiceLevel, setWindowShown } from "./hero";
 import { icon, keyLabel } from "./ui";
 import { searchSettings, type SettingsSearchHit } from "./search";
@@ -81,7 +81,7 @@ export interface HubOptions {
 
 const DEFAULT_STATUS: FlowStatus = {
   prefs: {
-    enabled: false, key: "right_ctrl", edge: "bottom", mic: "", keepDays: 30, cleanup: false,
+    enabled: false, key: "right_ctrl", keyCombo: [], edge: "bottom", mic: "", keepDays: 30, cleanup: false,
     defaultStyle: "natural", summaryEngine: "claude", openAtLaunch: true, voice: false, voiceOutput: "system", voiceGender: "female",
   },
   models: { parakeet: { state: "missing" }, downloadMb: 700 },
@@ -147,7 +147,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       text = t("Use the pill's microphone to dictate");
     } else {
       color = "#34d399";
-      text = t("Ready · hold {0}", { 0: keyLabel(status.keys === "wayland" ? "wayland" : status.prefs.key, status.platform) });
+      text = t("Ready · hold {0}", { 0: keyLabel(status.keys === "wayland" ? "wayland" : flowKeyId(status.prefs), status.platform) });
     }
     statusLine.append(h("i", { class: "dot", style: `background:${color}` }), h("span", { text }));
   }

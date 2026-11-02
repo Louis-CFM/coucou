@@ -122,7 +122,7 @@ pub fn setup(app: &AppHandle) {
     let prefs = flow.store.lock().unwrap().prefs.clone();
     pill::update(app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
-        s.key = key_id(prefs.key);
+        s.key = key_id(prefs.key, &prefs.key_combo);
     });
     if prefs.enabled {
         enable(app, &flow);
@@ -130,11 +130,14 @@ pub fn setup(app: &AppHandle) {
     crate::voice::sync(app);
 }
 
-/// The key as the pages write it ("right_ctrl"…), or "wayland" where the
-/// desktop holds the shortcut.
-fn key_id(key: logic::FlowKey) -> String {
+/// The key as the pages write it ("right_ctrl"…, "custom:AltLeft+ShiftLeft+KeyF"
+/// for a shortcut of one's own), or "wayland" where the desktop holds it.
+fn key_id(key: logic::FlowKey, combo: &[String]) -> String {
     if os::keys_supported() == Err("wayland") {
         return "wayland".into();
+    }
+    if key == logic::FlowKey::Custom {
+        return format!("custom:{}", key.codes(combo).join("+"));
     }
     serde_json::to_value(key).ok().and_then(|v| v.as_str().map(String::from)).unwrap_or_default()
 }
@@ -147,7 +150,7 @@ fn enable(app: &AppHandle, flow: &Arc<Flow>) {
     let prefs = flow.store.lock().unwrap().prefs.clone();
     let (tx, rx) = mpsc::channel::<(KeyEvent, Instant)>();
     let listener: Option<Box<dyn std::any::Any + Send>> = match os::keys_supported() {
-        Ok(()) => match os::listen(prefs.key, tx.clone()) {
+        Ok(()) => match os::listen(&prefs.key.codes(&prefs.key_combo), tx.clone()) {
             Ok(l) => Some(Box::new(l)),
             Err(err) => {
                 crate::log::line(format!("flow: the key can't be watched: {err}"));
@@ -171,7 +174,7 @@ fn enable(app: &AppHandle, flow: &Arc<Flow>) {
     drop(running);
     speech::preload();
     pill::update(app, |s| s.enabled = true);
-    crate::log::line(format!("flow dictation on ({})", prefs.key.label()));
+    crate::log::line(format!("flow dictation on ({})", prefs.key.label(&prefs.key_combo)));
 }
 
 fn disable(app: &AppHandle, flow: &Arc<Flow>) {
@@ -387,7 +390,7 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let (prepared, style, cleanup, words, key) = {
         let store = flow.store.lock().unwrap();
         let app_id = front.map(|(id, _)| id.as_str());
-        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key)
+        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key.codes(&store.prefs.key_combo))
     };
     let mut written = prepared.text.clone();
     if cleanup && style != store::Style::Verbatim && cleanup::has_key() {
@@ -400,7 +403,7 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let final_text = text::finish(&written, &prepared.snippets);
     crate::log::line(format!("flow: {} words in {:?}", text::word_count(&final_text), started.elapsed()));
 
-    os::wait_key_released(key);
+    os::wait_key_released(&key);
     let terminal = front.is_some_and(|(id, _)| is_terminal(id));
     let outcome = paste::paste(&final_text, terminal);
     let entry = {
@@ -493,9 +496,9 @@ pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
     };
     pill::update(&app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
-        s.key = key_id(prefs.key);
+        s.key = key_id(prefs.key, &prefs.key_combo);
     });
-    let restart = before.key != prefs.key;
+    let restart = before.key != prefs.key || before.key_combo != prefs.key_combo;
     if before.enabled && (!prefs.enabled || restart) {
         disable(&app, &flow);
     }

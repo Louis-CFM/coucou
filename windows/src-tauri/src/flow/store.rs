@@ -91,6 +91,9 @@ pub struct Prefs {
     /// Hold a key to dictate anywhere. Off until the user turns it on.
     pub enabled: bool,
     pub key: FlowKey,
+    /// The keys of a shortcut of the user's own, when `key` is `Custom`: their
+    /// KeyboardEvent.code names ("AltLeft", "ShiftLeft", "KeyF").
+    pub key_combo: Vec<String>,
     pub edge: Edge,
     /// The microphone by name; empty is the system's default.
     pub mic: String,
@@ -116,6 +119,7 @@ impl Default for Prefs {
         Self {
             enabled: false,
             key: FlowKey::default(),
+            key_combo: Vec::new(),
             edge: Edge::Bottom,
             mic: String::new(),
             keep_days: 30,
