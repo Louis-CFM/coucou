@@ -97,7 +97,8 @@ final class ClaudeDesktopChatWatcher {
     /// Claude is writing: the pill says so, and Coucou waits for the stop button to go.
     private func watchReply(pid: pid_t) {
         polls = 0
-        appendAppLog("nb.log", "[ClaudeDesktop] reply in progress, watching")
+        let label = Self.stopButtonLabel(AXUIElementCreateApplication(pid)) ?? "?"
+        appendAppLog("nb.log", "[ClaudeDesktop] reply in progress (button: \(escapedForLog(label))), watching")
         showWriting()
         let t = Timer(timeInterval: 1, repeats: true) { _ in
             MainActor.assumeIsolated { ClaudeDesktopChatWatcher.shared.poll(pid: pid) }
@@ -110,9 +111,17 @@ final class ClaudeDesktopChatWatcher {
     private func poll(pid: pid_t) {
         polls += 1
         guard Self.enabled, polls < maxPolls,
-              NSRunningApplication(processIdentifier: pid)?.isTerminated == false else { stopPolling(); return }
+              NSRunningApplication(processIdentifier: pid)?.isTerminated == false else {
+            appendAppLog("nb.log", "[ClaudeDesktop] stopped watching (setting off, Claude quit, or \(polls) s)")
+            stopPolling()
+            return
+        }
         let app = AXUIElementCreateApplication(pid)
-        guard !Self.isWriting(app) else { return }
+        if let label = Self.stopButtonLabel(app) {
+            // Once a minute: still the same button?
+            if polls % 60 == 0 { appendAppLog("nb.log", "[ClaudeDesktop] still writing after \(polls) s (button: \(escapedForLog(label)))") }
+            return
+        }
         timer?.invalidate()
         timer = nil
         replyFinished()
@@ -124,6 +133,7 @@ final class ClaudeDesktopChatWatcher {
         timer?.invalidate()
         timer = nil
         guard showingWriting else { return }
+        appendAppLog("nb.log", "[ClaudeDesktop] stopped watching, pill back to rest")
         showingWriting = false
         settlePill(after: 0)
     }
@@ -197,23 +207,31 @@ final class ClaudeDesktopChatWatcher {
 
     // MARK: - The stop button
 
-    /// Claude is writing while its stop button is on screen. Breadth-first through the windows,
-    /// capped, reading only roles and button labels.
+    /// Claude is writing while its stop button is on screen.
     nonisolated static func isWriting(_ app: AXUIElement) -> Bool {
+        stopButtonLabel(app) != nil
+    }
+
+    /// The label of the stop button on screen, nil when there is none. Breadth-first through
+    /// the windows, capped, reading only roles and button labels (the label goes to the log,
+    /// to tell which button was taken for the stop button; nothing of the chat is read).
+    nonisolated static func stopButtonLabel(_ app: AXUIElement) -> String? {
         var queue: [AXUIElement] = children(of: app, attribute: kAXWindowsAttribute)
         var visited = 0
         while !queue.isEmpty, visited < 6_000 {
             let element = queue.removeFirst()
             visited += 1
-            if string(element, kAXRoleAttribute) == (kAXButtonRole as String),
-               ClaudeDesktopChat.isStopLabel([string(element, kAXDescriptionAttribute),
-                                              string(element, kAXTitleAttribute),
-                                              string(element, kAXHelpAttribute)]) {
-                return true
+            if string(element, kAXRoleAttribute) == (kAXButtonRole as String) {
+                let labels = [string(element, kAXDescriptionAttribute),
+                              string(element, kAXTitleAttribute),
+                              string(element, kAXHelpAttribute)]
+                if ClaudeDesktopChat.isStopLabel(labels) {
+                    return labels.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " | ")
+                }
             }
             queue.append(contentsOf: children(of: element, attribute: kAXChildrenAttribute))
         }
-        return false
+        return nil
     }
 
     nonisolated private static func children(of element: AXUIElement, attribute: String) -> [AXUIElement] {
