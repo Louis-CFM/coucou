@@ -105,6 +105,66 @@ struct SystemLevelCard: View {
     }
 }
 
+/// Under the island, when a volume or brightness key is pressed while the island is open on
+/// something that stays (an approval, a question, the chat…): the same capsule as the line
+/// that tells how the Mac is doing (VitalsHoverLine), a coloured dot and the value.
+struct SystemLevelLine: View {
+    let islandW: CGFloat
+    let islandH: CGFloat
+    @ObservedObject private var model = SystemHUDController.shared.model
+
+    var body: some View {
+        ZStack {
+            if model.lineVisible {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(dotColor)
+                        .frame(width: 6, height: 6)
+                    Text(verbatim: text)
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundColor(Color(hex: "#E1E3E6"))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .contentTransition(.numericText())
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.black.opacity(0.92)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                .transition(.opacity.combined(with: .offset(y: -4)))
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: model.lineVisible)
+        .animation(.easeOut(duration: 0.15), value: model.level)
+        .position(x: islandW / 2, y: islandH + 18)
+        .allowsHitTesting(false)
+    }
+
+    private var text: String {
+        if model.target == .volume && model.muted {
+            return String(localized: "system-hud.line.muted")
+        }
+        let name: String
+        switch model.target {
+        case .volume:   name = String(localized: "system-hud.line.volume")
+        case .display:  name = String(localized: "system-hud.line.display")
+        case .keyboard: name = String(localized: "system-hud.line.keyboard")
+        }
+        let percent = Double(SystemHUDLogic.percent(level: model.level, muted: false)) / 100
+        return "\(name) \(percent.formatted(.percent.precision(.fractionLength(0))))"
+    }
+
+    /// The vitals line's palette: one colour per kind of key, grey when muted.
+    private var dotColor: Color {
+        if model.target == .volume && model.muted { return Color(hex: "#8E939C") }
+        switch model.target {
+        case .volume:   return Color(hex: "#3B9EFF")
+        case .display:  return Color(hex: "#F5A524")
+        case .keyboard: return Color(hex: "#A78BFA")
+        }
+    }
+}
+
 /// Settings → Volume & brightness: its own page in the Coucou window.
 struct SystemHUDSettingsSection: View {
     @State private var on = SystemHUDController.isEnabled

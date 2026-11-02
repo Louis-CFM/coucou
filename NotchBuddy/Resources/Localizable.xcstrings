@@ -97675,97 +97675,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعرض مفاتيح الصوت والسطوع مستواها في الشق مع موتشي بدلًا من مؤشر macOS. ‏⌥ مع مفاتيح السطوع يغيّر إضاءة لوحة المفاتيح. عندما تكون الجزيرة مفتوحة، يعرض macOS مؤشره."
+            "value" : "تعرض مفاتيح الصوت والسطوع مستواها في الشق مع موتشي بدلًا من مؤشر macOS. ‏⌥ مع مفاتيح السطوع يغيّر إضاءة لوحة المفاتيح. عندما تعرض الجزيرة شيئًا مهمًا (موافقة، الدردشة…) تظهر القيمة أسفلها مباشرة."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ভলিউম ও উজ্জ্বলতার কী macOS-এর ওভারলের বদলে নচে মোচির সাথে মাত্রা দেখায়। উজ্জ্বলতার কীর সাথে ⌥ কীবোর্ডের ব্যাকলাইট বদলায়। আইল্যান্ড খোলা থাকলে macOS নিজেরটা দেখায়।"
+            "value" : "ভলিউম ও উজ্জ্বলতার কী macOS-এর ওভারলের বদলে নচে মোচির সাথে মাত্রা দেখায়। উজ্জ্বলতার কীর সাথে ⌥ কীবোর্ডের ব্যাকলাইট বদলায়। আইল্যান্ড জরুরি কিছু (অনুমোদন, চ্যাট…) দেখালে মানটি ঠিক তার নিচে দেখা যায়।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Lautstärke- und Helligkeitstasten zeigen ihren Pegel mit Mochi in der Notch statt der macOS-Anzeige. ⌥ mit den Helligkeitstasten ändert die Tastaturbeleuchtung. Ist die Insel geöffnet, zeigt macOS seine eigene Anzeige."
+            "value" : "Die Lautstärke- und Helligkeitstasten zeigen ihren Pegel mit Mochi in der Notch statt der macOS-Anzeige. ⌥ mit den Helligkeitstasten ändert die Tastaturbeleuchtung. Zeigt die Insel gerade etwas Wichtiges (eine Freigabe, den Chat …), erscheint der Wert direkt darunter."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The volume and brightness keys show their level in the notch, with Mochi, instead of the macOS overlay. ⌥ with the brightness keys changes the keyboard backlight. While the island is open, macOS shows its own."
+            "value" : "The volume and brightness keys show their level in the notch, with Mochi, instead of the macOS overlay. ⌥ with the brightness keys changes the keyboard backlight. While the island shows something important (an approval, the chat…), the value appears just under it."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las teclas de volumen y brillo muestran su nivel en el notch, con Mochi, en lugar del indicador de macOS. ⌥ con las teclas de brillo cambia la retroiluminación del teclado. Con la isla abierta, macOS muestra el suyo."
+            "value" : "Las teclas de volumen y brillo muestran su nivel en el notch, con Mochi, en lugar del indicador de macOS. ⌥ con las teclas de brillo cambia la retroiluminación del teclado. Si la isla muestra algo importante (una aprobación, el chat…), el valor aparece justo debajo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les touches de volume et de luminosité affichent leur niveau dans l’encoche, avec Mochi, à la place de l’indicateur de macOS. ⌥ avec les touches de luminosité règle le rétroéclairage du clavier. Quand l’île est ouverte, macOS affiche le sien."
+            "value" : "Les touches de volume et de luminosité affichent leur niveau dans l’encoche, avec Mochi, à la place de l’indicateur de macOS. ⌥ avec les touches de luminosité règle le rétroéclairage du clavier. Quand l’île montre quelque chose d’important (une validation, le chat…), la valeur s’affiche juste en dessous."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "वॉल्यूम और ब्राइटनेस कीज़ macOS के ओवरले की जगह नॉच में मोची के साथ स्तर दिखाती हैं। ब्राइटनेस कीज़ के साथ ⌥ कीबोर्ड की बैकलाइट बदलता है। आइलैंड खुला हो तो macOS अपना दिखाता है।"
+            "value" : "वॉल्यूम और ब्राइटनेस कीज़ macOS के ओवरले की जगह नॉच में मोची के साथ स्तर दिखाती हैं। ब्राइटनेस कीज़ के साथ ⌥ कीबोर्ड की बैकलाइट बदलता है। जब आइलैंड कुछ ज़रूरी (मंज़ूरी, चैट…) दिखा रहा हो, तो मान ठीक उसके नीचे दिखता है।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tombol volume dan kecerahan menampilkan levelnya di notch bersama Mochi, menggantikan indikator macOS. ⌥ dengan tombol kecerahan mengubah lampu latar keyboard. Saat pulau terbuka, macOS menampilkan miliknya."
+            "value" : "Tombol volume dan kecerahan menampilkan levelnya di notch bersama Mochi, menggantikan indikator macOS. ⌥ dengan tombol kecerahan mengubah lampu latar keyboard. Saat pulau menampilkan sesuatu yang penting (persetujuan, obrolan…), nilainya muncul tepat di bawahnya."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音量と明るさのキーを押すと、macOS の表示の代わりにノッチで Mochi と一緒にレベルを表示します。⌥ と明るさのキーでキーボードのバックライトを調整します。アイランドが開いているときは macOS が表示します。"
+            "value" : "音量と明るさのキーを押すと、macOS の表示の代わりにノッチで Mochi と一緒にレベルを表示します。⌥ と明るさのキーでキーボードのバックライトを調整します。アイランドが大事なもの（承認やチャットなど）を表示中は、値をそのすぐ下に表示します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "음량 및 밝기 키를 누르면 macOS 표시 대신 노치에서 모찌와 함께 수준을 보여 줘요. ⌥와 밝기 키를 함께 누르면 키보드 백라이트를 조절해요. 아일랜드가 열려 있을 때는 macOS가 표시해요."
+            "value" : "음량 및 밝기 키를 누르면 macOS 표시 대신 노치에서 모찌와 함께 수준을 보여 줘요. ⌥와 밝기 키를 함께 누르면 키보드 백라이트를 조절해요. 아일랜드가 중요한 내용(승인, 채팅 등)을 보여 주는 중이면 값이 바로 아래에 나타나요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As teclas de volume e brilho mostram o nível no notch, com o Mochi, em vez do indicador do macOS. ⌥ com as teclas de brilho muda a luz do teclado. Com a ilha aberta, o macOS mostra o dele."
+            "value" : "As teclas de volume e brilho mostram o nível no notch, com o Mochi, em vez do indicador do macOS. ⌥ com as teclas de brilho muda a luz do teclado. Se a ilha estiver mostrando algo importante (uma aprovação, o chat…), o valor aparece logo abaixo."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Клавиши громкости и яркости показывают уровень в вырезе вместе с Мочи вместо индикатора macOS. ⌥ с клавишами яркости меняет подсветку клавиатуры. Пока остров открыт, macOS показывает свой индикатор."
+            "value" : "Клавиши громкости и яркости показывают уровень в вырезе вместе с Мочи вместо индикатора macOS. ⌥ с клавишами яркости меняет подсветку клавиатуры. Если остров показывает что-то важное (подтверждение, чат…), значение появляется прямо под ним."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ปุ่มระดับเสียงและความสว่างจะแสดงระดับที่รอยบากพร้อม Mochi แทนตัวแสดงของ macOS กด ⌥ กับปุ่มความสว่างเพื่อปรับไฟคีย์บอร์ด ขณะที่เกาะเปิดอยู่ macOS จะแสดงของตัวเอง"
+            "value" : "ปุ่มระดับเสียงและความสว่างจะแสดงระดับที่รอยบากพร้อม Mochi แทนตัวแสดงของ macOS กด ⌥ กับปุ่มความสว่างเพื่อปรับไฟคีย์บอร์ด ขณะที่เกาะแสดงสิ่งสำคัญ (การอนุมัติ แชท…) ค่าจะแสดงอยู่ใต้เกาะ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ses ve parlaklık tuşları, macOS göstergesi yerine düzeyi çentikte Mochi ile gösterir. Parlaklık tuşlarıyla ⌥ klavye aydınlatmasını değiştirir. Ada açıkken macOS kendi göstergesini gösterir."
+            "value" : "Ses ve parlaklık tuşları, macOS göstergesi yerine düzeyi çentikte Mochi ile gösterir. Parlaklık tuşlarıyla ⌥ klavye aydınlatmasını değiştirir. Ada önemli bir şey gösterirken (bir onay, sohbet…) değer hemen altında görünür."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音量和亮度键会在刘海中与 Mochi 一起显示级别，取代 macOS 的提示。按住 ⌥ 再按亮度键可调节键盘背光。岛打开时，由 macOS 显示它自己的提示。"
+            "value" : "音量和亮度键会在刘海中与 Mochi 一起显示级别，取代 macOS 的提示。按住 ⌥ 再按亮度键可调节键盘背光。当岛正在显示重要内容（审批、聊天等）时，数值会显示在它下方。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音量與亮度鍵會在瀏海中與 Mochi 一起顯示級別，取代 macOS 的提示。按住 ⌥ 再按亮度鍵可調整鍵盤背光。島打開時，由 macOS 顯示它自己的提示。"
+            "value" : "音量與亮度鍵會在瀏海中與 Mochi 一起顯示級別，取代 macOS 的提示。按住 ⌥ 再按亮度鍵可調整鍵盤背光。當島正在顯示重要內容（核准、聊天等）時，數值會顯示在它下方。"
           }
         }
       }

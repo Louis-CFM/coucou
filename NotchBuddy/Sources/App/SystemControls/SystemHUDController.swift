@@ -2,22 +2,27 @@
 import AppKit
 import SwiftUI
 
-/// What the level card shows. Read by SystemLevelCard and BotPlacement (Mochi's place).
+/// What the level card shows. Read by SystemLevelCard, SystemLevelLine and BotPlacement.
 @MainActor
 final class SystemHUDModel: ObservableObject {
     @Published var target: SystemHUDTarget = .volume
     @Published var level: Double = 0
     @Published var muted = false
+    /// The capsule under the island: shown instead of the card while the island is open on
+    /// something that must not be replaced (an approval, a question, the chat…).
+    @Published var lineVisible = false
 }
 
 /// Volume and brightness keys, shown the way Coucou shows an upload: the island opens on a
 /// low card (IslandView.level) and Mochi rides its track at the level, with the level's face.
 ///
 /// Off by default (Settings → Volume & brightness). When on, the media key tap hands each
-/// press here: the change is applied, then shown. The island opens silently from where it
-/// was (hidden or compact) and goes back there 1.6 s after the last press. A press is left
-/// to macOS (its own HUD) whenever Coucou can't apply it, or while the island is open on
-/// anything else, so an approval, a question or a card is never disturbed.
+/// press here: the change is applied, then shown, and the macOS HUD never appears unless
+/// Coucou can't apply the change. Where it shows depends on the island:
+/// - hidden or compact: it opens silently on the card, and goes back 1.6 s after the last press;
+/// - open on home: the card takes home's place for that time, then home comes back;
+/// - open on anything else (an approval, a question, the chat, a mail…): that stays as it
+///   is; Mochi reacts and the value shows in the capsule under the island.
 @MainActor
 final class SystemHUDController {
     static let shared = SystemHUDController()
@@ -37,8 +42,20 @@ final class SystemHUDController {
     }
 
     let model = SystemHUDModel()
-    /// Where the island was before the card opened (hidden or compact): where it goes back.
-    private var modeBefore: IslandMode?
+
+    /// How the current press is shown, and so how to put things back afterwards.
+    private enum Presentation {
+        /// The island was hidden or compact: it opened on the card and goes back to that mode.
+        case opened(from: IslandMode)
+        /// The island was open on home: the card took its place, and home comes back.
+        case swapped(from: IslandView)
+        /// The island was open on something that stays: only the capsule shows.
+        case line
+    }
+    private var presentation: Presentation?
+
+    /// Open views the card may stand in for a moment: home. Anything else stays on screen.
+    private static let replaceableViews: Set<IslandView> = [.overview, .empty]
     private var hideTask: Task<Void, Never>?
     private var trustTask: Task<Void, Never>?
 
@@ -100,9 +117,7 @@ final class SystemHUDController {
         // The island is open on something else (an approval, a question, a card): macOS
         // shows its own HUD. Open on the level card: it simply follows.
         // No island to show it in: the key stays with macOS, never applied without feedback.
-        let app = AppState.shared
-        guard island != nil, app.mode != .expanded || app.view == .level,
-              Self.isEnabled(action.target) else { return false }
+        guard island != nil, Self.isEnabled(action.target) else { return false }
         switch action {
         case .toggleMute:
             guard let device = SystemVolume.defaultOutputDevice(),
@@ -155,15 +170,24 @@ final class SystemHUDController {
         model.muted = muted
 
         let app = AppState.shared
-        if let island, app.mode != .expanded {
-            // Open on the card, from wherever the island was, without the open/close sounds
-            // a volume key would otherwise make every time.
-            modeBefore = app.mode
-            silently {
-                island.fsm.openedExternally()
-                island.expand(to: .level)
+        if presentation == nil, let island {
+            if app.mode != .expanded {
+                // Open on the card, from wherever the island was, without the open / close
+                // sounds a volume key would otherwise make every time.
+                presentation = .opened(from: app.mode)
+                silently {
+                    island.fsm.openedExternally()
+                    island.expand(to: .level)
+                }
+            } else if Self.replaceableViews.contains(app.view) {
+                presentation = .swapped(from: app.view)
+                app.view = .level
+            } else {
+                presentation = .line
             }
         }
+        if case .line = presentation { model.lineVisible = true }
+
         NotificationCenter.default.post(
             name: .botSystemLevel,
             object: SystemHUDReaction(direction: direction,
@@ -177,32 +201,40 @@ final class SystemHUDController {
         }
     }
 
-    /// After the last press: the island goes back to where it was. Not if something else
-    /// took it meanwhile (an approval or a question replaced the card): then it is theirs.
-    /// The pointer on it: the card gives way to home, and the island folds as usual.
+    /// After the last press, things go back to how they were. Not if something else took the
+    /// island meanwhile (an approval or a question replaced the card): then it is theirs.
     private func finish() {
         hideTask?.cancel()
         hideTask = nil
-        guard let before = modeBefore else { return }
-        modeBefore = nil
+        model.lineVisible = false
+        guard let shown = presentation else { return }
+        presentation = nil
         let app = AppState.shared
         guard let island, app.mode == .expanded, app.view == .level else { return }
 
-        if pointerOnIsland() {
-            app.view = island.defaultView()
+        switch shown {
+        case .line:
             return
-        }
-        silently {
-            // home → petit: the island state machine folds it to compact (its own path)…
-            island.fsm.collapse()
-            // …and back to hidden if it was hidden.
-            if before == .hidden {
-                island.fsm.hiddenExternally()
-                island.setMode(.hidden)
+        case .swapped(let view):
+            app.view = view
+        case .opened(let before):
+            // The pointer on it: the card gives way to home, and the island folds as usual.
+            if pointerOnIsland() {
+                app.view = island.defaultView()
+                return
             }
+            silently {
+                // home → petit: the island state machine folds it to compact (its own path)…
+                island.fsm.collapse()
+                // …and back to hidden if it was hidden.
+                if before == .hidden {
+                    island.fsm.hiddenExternally()
+                    island.setMode(.hidden)
+                }
+            }
+            // The card leaves the view only once folded, so the open island never resizes to it.
+            app.view = island.defaultView()
         }
-        // The card leaves the view only once folded, so the open island never resizes to it.
-        app.view = island.defaultView()
     }
 
     /// Runs island changes without the open / close / peek sounds.
