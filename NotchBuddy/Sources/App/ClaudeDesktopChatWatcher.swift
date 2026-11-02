@@ -171,8 +171,11 @@ final class ClaudeDesktopChatWatcher {
         if let idx = state.tasks.firstIndex(where: { $0.id == Self.pillId }) {
             if showingWriting { state.tasks[idx].state = .finished }
             state.tasks[idx].pillBadge = .finished
-            state.tasks[idx].steps = [String(localized: "claude-desktop.reply-ready")]
-            state.tasks[idx].stepIndex = 0
+            // Added as the next step, the way a session's steps come: the card's ticker moves
+            // only when the number of steps changes, so replacing "Claude is writing…" in place
+            // left it on screen.
+            state.tasks[idx].steps.append(String(localized: "claude-desktop.reply-ready"))
+            state.tasks[idx].stepIndex = state.tasks[idx].steps.count - 1
         }
         guard showingWriting else { return }
         showingWriting = false
