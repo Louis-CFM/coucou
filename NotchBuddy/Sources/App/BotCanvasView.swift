@@ -15,7 +15,21 @@ struct BotCanvasView: View {
     // One engine per view instance (main bot)
     @StateObject private var engine = BotEngine()
 
+    // Split in two: the canvas and its long chain of reactions is already at the limit
+    // of what the compiler type-checks in reasonable time; one more modifier broke it.
     var body: some View {
+        canvas
+        #if !APPSTORE
+            // A volume or brightness key (SystemHUDController).
+            .onReceive(NotificationCenter.default.publisher(for: .botSystemLevel)) { notif in
+                if let reaction = notif.object as? SystemHUDReaction {
+                    engine.reactToSystemLevel(reaction)
+                }
+            }
+        #endif
+    }
+
+    private var canvas: some View {
         // Display refresh rate — every frame on a 60 Hz screen, every frame on ProMotion.
         // MochiFrameClock.advance accumulates the step debt so Mochi's speed never changes.
         TimelineView(.animation(paused: state.mode == .hidden || paused)) { timeline in
@@ -191,13 +205,6 @@ struct BotCanvasView: View {
         .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
             engine.greet()
         }
-        #if !APPSTORE
-        .onReceive(NotificationCenter.default.publisher(for: .botSystemLevel)) { notif in
-            if let reaction = notif.object as? SystemHUDReaction {
-                engine.reactToSystemLevel(reaction)
-            }
-        }
-        #endif
         .onAppear {
             engine.setState(state.effectiveState, force: true)
             let isWardrobe = state.mode == .expanded && state.view == .wardrobe
