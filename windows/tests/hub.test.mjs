@@ -164,3 +164,17 @@ test("a page overtaken by a newer click still cleans up, and does not take the n
   await settle();
   assert.deepEqual(left, ["notes", "insights"], "the page on screen leaves when another is opened");
 });
+
+test("empty states share one window cursor listener instead of adding one each", async () => {
+  const { emptyState } = await import("../src/hub/hero.ts");
+  const added = [];
+  const stub = window.addEventListener;
+  window.addEventListener = (type) => added.push(type);
+  try {
+    // A search redraws its empty state on every keystroke.
+    for (let i = 0; i < 3; i++) emptyState("Nothing found");
+  } finally {
+    window.addEventListener = stub;
+  }
+  assert.ok(added.filter((type) => type === "pointermove").length <= 1, `${added}`);
+});
