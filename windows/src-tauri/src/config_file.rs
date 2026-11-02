@@ -333,7 +333,7 @@ fn resolve_link(path: &Path) -> std::path::PathBuf {
 
 /// Replaces `path` with `bytes`: written beside it and renamed over it, so a
 /// crash or a full disk leaves the original intact rather than half a file.
-fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(crate) fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
