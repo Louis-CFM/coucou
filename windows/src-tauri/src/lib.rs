@@ -404,14 +404,16 @@ fn hooks_preview(install: bool) -> Result<HookPreview, String> {
     hooks::preview(install)
 }
 
-/// Only ever called from an explicit click in the settings window.
+/// Only ever called from an explicit click in the settings window (the calling window is checked).
 #[tauri::command]
 fn hooks_apply(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     shared: State<Shared>,
     install: bool,
     fingerprint: String,
 ) -> Result<String, String> {
+    phone_link::only_settings(&window)?;
     // The fingerprint comes from the preview the user actually looked at, so a
     // settings.json that changed in between is refused rather than overwritten.
     let backup = hooks::write(install, &fingerprint)?;
@@ -440,10 +442,11 @@ fn agent_hooks_preview(agent: String, install: bool) -> Result<config_file::Plan
     agents::preview(&agent, install)
 }
 
-/// Only ever called from an explicit click in the settings window, with the
-/// fingerprint of the preview the user looked at.
+/// Only ever called from an explicit click in the settings window (the calling
+/// window is checked), with the fingerprint of the preview the user looked at.
 #[tauri::command]
-fn agent_hooks_apply(agent: String, install: bool, fingerprint: String) -> Result<String, String> {
+fn agent_hooks_apply(window: tauri::WebviewWindow, agent: String, install: bool, fingerprint: String) -> Result<String, String> {
+    phone_link::only_settings(&window)?;
     let backups = agents::apply(&agent, install, &fingerprint)?;
     let done = if install { "installed" } else { "removed" };
     log::line(format!("agent hooks {done} for {agent}"));
@@ -459,14 +462,16 @@ fn status_line_preview(install: bool) -> Result<HookPreview, String> {
     hooks::status_line_preview(install)
 }
 
-/// Only ever called from an explicit click in the settings window.
+/// Only ever called from an explicit click in the settings window (the calling window is checked).
 #[tauri::command]
 fn status_line_apply(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     shared: State<Shared>,
     install: bool,
     fingerprint: String,
 ) -> Result<String, String> {
+    phone_link::only_settings(&window)?;
     let backup = hooks::status_line_write(install, &fingerprint)?;
     let updated = {
         let mut current = shared.settings.lock().unwrap();
@@ -1119,6 +1124,18 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{diff_file, is_forge_instance_url};
+
+    /// Reads lib.rs: every page may invoke any command, so the ones that write another program's hooks check that the
+    /// settings window called them.
+    #[test]
+    fn commands_that_write_hooks_check_the_calling_window() {
+        let source = include_str!("lib.rs").replace("\r\n", "\n");
+        for name in ["hooks_apply", "agent_hooks_apply", "status_line_apply"] {
+            let start = source.find(&format!("fn {name}(")).expect("the command exists");
+            let body = &source[start..start + source[start..].find("\n}\n").expect("a command ends")];
+            assert!(body.contains("phone_link::only_settings(&window)?"), "{name} does not check the calling window");
+        }
+    }
 
     #[test]
     fn forge_links_stay_on_the_configured_instance() {

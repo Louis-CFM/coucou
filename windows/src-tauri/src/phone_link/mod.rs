@@ -790,11 +790,12 @@ fn caller_allowed(label: &str, who: Caller) -> bool {
     }
 }
 
-fn only_settings(window: &WebviewWindow) -> Result<(), String> {
+/// Also guards lib.rs's commands that write agent hooks.
+pub(crate) fn only_settings(window: &WebviewWindow) -> Result<(), String> {
     if caller_allowed(window.label(), Caller::Settings) {
         Ok(())
     } else {
-        Err("only the settings window may change what the phone can use".into())
+        Err("only the settings window may change this".into())
     }
 }
 
