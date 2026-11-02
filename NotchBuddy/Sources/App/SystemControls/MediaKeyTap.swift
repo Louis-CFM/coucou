@@ -61,7 +61,27 @@ final class MediaKeyTap {
         appendAppLog(Self.logFile, "tap stopped")
     }
 
-    static let systemDefinedType: UInt32 = 14
+    /// NX_SYSDEFINED: the CGEvent type media keys arrive as.
+    nonisolated static let systemDefinedType: UInt32 = 14
+
+    /// One media key press with its modifiers: plain values, safe to hand to the main actor.
+    struct Input: Sendable {
+        let press: MediaKeyPress
+        let option: Bool
+        let shift: Bool
+    }
+
+    /// Reads a media key press out of a system-defined event; nil for anything else.
+    /// Nonisolated: the CGEvent stays in the callback and only the decoded values
+    /// cross to the main actor, which is what Swift 6's data-race checks ask for.
+    nonisolated static func read(_ event: CGEvent) -> Input? {
+        guard let nsEvent = NSEvent(cgEvent: event),
+              nsEvent.type == .systemDefined,
+              Int(nsEvent.subtype.rawValue) == SystemHUDLogic.auxControlButtonsSubtype,
+              let press = SystemHUDLogic.decode(data1: nsEvent.data1) else { return nil }
+        let flags = nsEvent.modifierFlags
+        return Input(press: press, option: flags.contains(.option), shift: flags.contains(.shift))
+    }
 
     /// macOS turns a tap off when its callback is slow, or on some user input: turn it back on.
     fileprivate func reenable() {
@@ -70,17 +90,12 @@ final class MediaKeyTap {
         appendAppLog(Self.logFile, "tap re-enabled")
     }
 
-    fileprivate func handle(_ event: CGEvent) {
-        guard let nsEvent = NSEvent(cgEvent: event),
-              nsEvent.type == .systemDefined,
-              Int(nsEvent.subtype.rawValue) == SystemHUDLogic.auxControlButtonsSubtype,
-              let press = SystemHUDLogic.decode(data1: nsEvent.data1) else { return }
-        let option = nsEvent.modifierFlags.contains(.option)
-        let shift = nsEvent.modifierFlags.contains(.shift)
-        let action = SystemHUDLogic.action(for: press, option: option, shift: shift)
+    fileprivate func handle(_ input: Input) {
+        let press = input.press
+        let action = SystemHUDLogic.action(for: press, option: input.option, shift: input.shift)
         appendAppLog(Self.logFile,
                      "key \(press.key) down=\(press.isDown) repeat=\(press.isRepeat) "
-                     + "option=\(option) shift=\(shift) → \(action.map { "\($0)" } ?? "macOS")")
+                     + "option=\(input.option) shift=\(input.shift) → \(action.map { "\($0)" } ?? "macOS")")
         if let action { onAction?(action) }
     }
 }
@@ -89,14 +104,12 @@ final class MediaKeyTap {
 /// Spike stage: always hands the event back, so macOS still handles every key.
 private func mediaKeyTapCallback(proxy: CGEventTapProxy, type: CGEventType,
                                  event: CGEvent, userInfo: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
-    MainActor.assumeIsolated {
-        switch type {
-        case .tapDisabledByTimeout, .tapDisabledByUserInput:
-            MediaKeyTap.shared.reenable()
-        default:
-            if type.rawValue == MediaKeyTap.systemDefinedType {
-                MediaKeyTap.shared.handle(event)
-            }
+    switch type {
+    case .tapDisabledByTimeout, .tapDisabledByUserInput:
+        MainActor.assumeIsolated { MediaKeyTap.shared.reenable() }
+    default:
+        if type.rawValue == MediaKeyTap.systemDefinedType, let input = MediaKeyTap.read(event) {
+            MainActor.assumeIsolated { MediaKeyTap.shared.handle(input) }
         }
     }
     return Unmanaged.passUnretained(event)
