@@ -40,11 +40,10 @@ pub fn get(key: &str) -> Option<String> {
 }
 
 pub fn set(key: &str, value: &str) -> Result<(), String> {
-    let entry = entry(key).ok_or_else(|| format!("unknown key {key}"))?;
     if value.is_empty() {
-        let _ = entry.delete_credential();
-        return Ok(());
+        return clear(key);
     }
+    let entry = entry(key).ok_or_else(|| format!("unknown key {key}"))?;
     entry.set_password(value).map_err(|e| e.to_string())
 }
 

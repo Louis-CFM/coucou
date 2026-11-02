@@ -221,10 +221,11 @@ export class Island {
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
       },
-      decide: (d) => {
+      decide: (d, requestId) => {
         const req = State.pendingApproval;
         void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
-        if (!req) return;
+        // A card that changed under the click must not decide a newer request.
+        if (!req || requestId !== req.requestId) return;
         Sound.play(d === "deny" ? "blip" : "approve");
         void Bridge.approvalDecision(req.requestId, d);
         this.closeApproval();

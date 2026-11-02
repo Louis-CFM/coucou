@@ -170,6 +170,26 @@ jobs:
       - name: Conversation context tests
         run: bash scripts/test-conversation-context.sh
 
+      - name: Claude hook removal tests (only Coucou's own entries go)
+        run: bash scripts/test-claude-hook-removal.sh
+
+      - name: Hermes config merge tests (output checked with PyYAML)
+        run: |
+          python3 -m pip install --break-system-packages pyyaml==6.0.3
+          bash scripts/test-hermes-config.sh
+
+      - name: Kraken symbol tests
+        run: bash scripts/test-kraken-symbol.sh
+
+      - name: n8n execution date and status tests
+        run: bash scripts/test-n8n-poller.sh
+
+      - name: Keyboard shortcut tests
+        run: bash scripts/test-shortcuts.sh
+
+      - name: Voice wake window backoff tests
+        run: bash scripts/test-voice-backoff.sh
+
       - name: Build
         run: |
           set -o pipefail

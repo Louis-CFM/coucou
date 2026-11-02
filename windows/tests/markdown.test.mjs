@@ -135,3 +135,15 @@ test("a web link opens through Rust; anything else is plain text", () => {
   assert.deepEqual(sent("open_url"), [{ url: "https://example.com/docs" }]);
   assert.match(root.textContent, /or this\.$/);
 });
+
+test("a middle click on a link also opens it through Rust, a right click does not", () => {
+  const root = dom.root();
+  renderMarkdown(root, "See [the docs](https://example.com/docs).");
+  const [link] = root.find("A");
+  const right = link.fire("auxclick", { button: 2 });
+  assert.equal(right.defaultPrevented, false);
+  assert.deepEqual(sent("open_url"), [], "the context menu is not a way to open the page");
+  const middle = link.fire("auxclick", { button: 1 });
+  assert.equal(middle.defaultPrevented, true, "the webview must not open it itself");
+  assert.deepEqual(sent("open_url"), [{ url: "https://example.com/docs" }]);
+});

@@ -6,7 +6,9 @@
 // 60 s auto-clear, exactly as the Swift handlers do.
 //
 // Nothing is polled until its key exists in the Credential Manager, and no
-// request goes anywhere the user has not configured.
+// request goes anywhere the user has not configured: redirects are not followed
+// (a service address must be the final one, an http address that redirects to
+// https is refused), and every answer is read with a ceiling.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -20,9 +22,13 @@ use tokio::sync::Notify;
 use crate::github::{self, CiState, ContributionDay, GitHubActivity, GitHubPr, GitHubPulse, GitHubRepoCi, ReviewState};
 use crate::island::WINDOW_LABEL;
 use crate::log;
+use crate::net::MAX_BODY;
 use crate::secrets;
 
 const TIMEOUT: Duration = Duration::from_secs(10);
+/// One n8n execution with its data holds every node's items, so it may pass MAX_BODY. Past this ceiling the
+/// URLs without data are tried, which may lack the workflow's name and detail: the run is still announced.
+const N8N_EXECUTION_MAX_BODY: usize = 32 * 1024 * 1024;
 
 /// What the island receives. `event` is only set when something actually changed,
 /// which is what drives the pill badge and the sound.
@@ -47,11 +53,20 @@ fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
+/// No redirects: reqwest drops Authorization on a redirect to another host, but not a key header like
+/// X-N8N-API-KEY.
 fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(TIMEOUT)
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .unwrap_or_default()
+}
+
+/// A JSON answer, read with a ceiling (net.rs) so a misbehaving server cannot make the app hold an unbounded body.
+async fn read_json<T: serde::de::DeserializeOwned>(response: reqwest::Response, limit: usize) -> Result<T, String> {
+    let body = crate::net::read_capped(response, limit).await?;
+    serde_json::from_slice(&body).map_err(|e| e.to_string())
 }
 
 /// Set from the tray's Pause item. While it is on, nothing reaches the network:
@@ -150,11 +165,11 @@ async fn poll_gitea(app: AppHandle) {
             error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Token lacks the needed scope"))), event: None });
         return;
     }
-    let user: Value = response.json().await.unwrap_or(json!({}));
+    let user: Value = read_json(response, MAX_BODY).await.unwrap_or(json!({}));
     let repos_response = http.get(format!("{base}/user/repos?limit=100&sort=updated"))
         .header("Authorization", format!("token {token}")).send().await;
     let repos: Vec<Value> = match repos_response {
-        Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+        Ok(r) if r.status().is_success() => read_json(r, MAX_BODY).await.unwrap_or_default(),
         _ => Vec::new(),
     };
     let stars: i64 = repos.iter().filter_map(|r| r.get("stars_count").and_then(Value::as_i64)).sum();
@@ -169,7 +184,7 @@ async fn poll_gitea(app: AppHandle) {
     } else {
         match http.get(format!("{base}/users/{login}/heatmap"))
             .header("Authorization", format!("token {token}")).send().await {
-            Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+            Ok(r) if r.status().is_success() => read_json(r, MAX_BODY).await.unwrap_or_default(),
             _ => Vec::new(),
         }
     };
@@ -188,7 +203,7 @@ async fn poll_gitea(app: AppHandle) {
 
 async fn gitea_get(http: &reqwest::Client, token: &str, url: String) -> Vec<Value> {
     match http.get(url).header("Authorization", format!("token {token}")).send().await {
-        Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+        Ok(r) if r.status().is_success() => read_json(r, MAX_BODY).await.unwrap_or_default(),
         _ => Vec::new(),
     }
 }
@@ -262,7 +277,7 @@ async fn gitea_actions_ci(
     if !resp.status().is_success() {
         return None;
     }
-    let body: Value = resp.json().await.ok()?;
+    let body: Value = read_json(resp, MAX_BODY).await.ok()?;
     let runs = if let Some(arr) = body.get("workflow_runs").and_then(Value::as_array) {
         arr.as_slice()
     } else if let Some(arr) = body.as_array() {
@@ -319,11 +334,12 @@ fn gitea_activity(heatmap: &[Value], fetched_at: u64) -> GitHubActivity {
     for day in start..=today {
         let (y, m, d, weekday) = civil_day(day);
         if weekday == 0 || weeks.is_empty() { weeks.push(Vec::new()); }
-        let count = heatmap.iter().find_map(|entry| {
+        // Gitea groups the heatmap in 15-minute buckets: a day is the sum of its buckets.
+        let count: i64 = heatmap.iter().filter_map(|entry| {
             let ts = entry.get("timestamp")?.as_i64()?;
             let entry_day = if ts > 10_000_000_000 { ts / 86_400_000 } else { ts / 86_400 };
             (entry_day == day).then(|| entry.get("contributions").and_then(Value::as_i64).unwrap_or(0).max(0))
-        }).unwrap_or(0);
+        }).sum();
         weeks.last_mut().unwrap().push(ContributionDay {
             date: format!("{y:04}-{m:02}-{d:02}"), count, weekday,
             level: if count == 0 { 0 } else if count == 1 { 1 } else if count < 4 { 2 } else if count < 8 { 3 } else { 4 },
@@ -404,7 +420,7 @@ async fn poll_gitlab(app: AppHandle) {
     if !user.status().is_success() {
         emit(&app, IntegrationUpdate { id: "integration_gitlab", data: json!({}), error: Some(status_error(user.status().as_u16(), &crate::i18n::t("Token lacks the needed scope"))), event: None }); return;
     }
-    let user: Value = user.json().await.unwrap_or(json!({}));
+    let user: Value = read_json(user, MAX_BODY).await.unwrap_or(json!({}));
     let login = user.get("username").and_then(Value::as_str).unwrap_or("GitLab").to_string();
     let profile_url = user.get("web_url").and_then(Value::as_str).map(str::to_string);
 
@@ -421,32 +437,37 @@ async fn poll_gitlab(app: AppHandle) {
             ("page", &page.to_string()),
         ])).send().await;
         let batch: Vec<Value> = match response {
-            Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+            Ok(r) if r.status().is_success() => read_json(r, MAX_BODY).await.unwrap_or_default(),
             _ => Vec::new(),
         };
         let done = batch.len() < 100;
         projects.extend(batch);
         if done { break; }
     }
-    let list = |url: String| async { match headers(http.get(url)).send().await { Ok(v) if v.status().is_success() => v.json::<Vec<Value>>().await.unwrap_or_default(), _ => Vec::new() } };
+    let list = |url: String| async { match headers(http.get(url)).send().await { Ok(v) if v.status().is_success() => read_json::<Vec<Value>>(v, MAX_BODY).await.unwrap_or_default(), _ => Vec::new() } };
     let mine = list(format!("{base}/api/v4/merge_requests?scope=created_by_me&state=opened&per_page=20")).await;
     let review = list(format!("{base}/api/v4/merge_requests?scope=reviews_for_me&state=opened&per_page=20")).await;
     let mut events = Vec::new();
     let today = (now_ms() / 86_400_000) as i64;
     let (year, month, day, _) = civil_day(today - 364);
     let after = format!("{year:04}-{month:02}-{day:02}");
+    // The user's own events (scope=all would add every member's events in their projects), newest first.
+    let mut complete = false;
     for page in 1..=10 {
-        let batch = list(format!("{base}/api/v4/events?scope=all&after={after}&per_page=100&page={page}")).await;
-        let done = batch.len() < 100;
+        let batch = list(format!("{base}/api/v4/events?after={after}&per_page=100&page={page}")).await;
+        complete = batch.len() < 100;
         events.extend(batch);
-        if done { break; }
+        if complete { break; }
+    }
+    if !complete {
+        log::line("[gitlab] activity: 1,000 events read, older days of the year are missing from the calendar");
     }
     let to_pr = |v: &Value| -> Option<GitHubPr> { let repo = v.get("references")?.get("full")?.as_str()?.split('!').next()?.to_string(); let n = v.get("iid")?.as_i64()?; Some(GitHubPr { id: format!("{repo}#{n}"), title: v.get("title")?.as_str()?.to_string(), url: v.get("web_url")?.as_str()?.to_string(), repo, number: n, is_draft: v.get("draft").and_then(Value::as_bool).unwrap_or(false), ci: gitlab_ci(v.get("head_pipeline").and_then(|p| p.get("status")).and_then(Value::as_str)), review: ReviewState::Unknown, head_sha: v.get("sha").and_then(Value::as_str).map(str::to_string) }) };
     let mut main_ci = Vec::new();
     for project in projects.iter().take(10) {
         let (Some(id), Some(repo), Some(url)) = (project.get("id").and_then(Value::as_i64), project.get("path_with_namespace").and_then(Value::as_str), project.get("web_url").and_then(Value::as_str)) else { continue };
         let branch = project.get("default_branch").and_then(Value::as_str).unwrap_or("main");
-        let pipelines: Vec<Value> = match http.get(format!("{base}/api/v4/projects/{id}/pipelines")).query(&[("ref", branch), ("per_page", "1")]).header("PRIVATE-TOKEN", &token).send().await { Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(), _ => Vec::new() };
+        let pipelines: Vec<Value> = match http.get(format!("{base}/api/v4/projects/{id}/pipelines")).query(&[("ref", branch), ("per_page", "1")]).header("PRIVATE-TOKEN", &token).send().await { Ok(r) if r.status().is_success() => read_json(r, MAX_BODY).await.unwrap_or_default(), _ => Vec::new() };
         let ci = gitlab_ci(pipelines.first().and_then(|p| p.get("status")).and_then(Value::as_str));
         main_ci.push(GitHubRepoCi { repo: repo.into(), url: url.into(), branch: branch.into(), ci, head_sha: None });
     }
@@ -519,7 +540,7 @@ async fn poll_stripe(app: AppHandle) {
 
     let (amount, currency) = match balance {
         Ok(r) if r.status().is_success() => {
-            let json: Value = r.json().await.unwrap_or(json!({}));
+            let json: Value = read_json(r, MAX_BODY).await.unwrap_or(json!({}));
             parse_stripe_balance(&json)
         }
         Ok(r) => {
@@ -552,7 +573,7 @@ async fn poll_stripe(app: AppHandle) {
     if !response.status().is_success() {
         return;
     }
-    let json: Value = response.json().await.unwrap_or(json!({}));
+    let json: Value = read_json(response, MAX_BODY).await.unwrap_or(json!({}));
     let payments: Vec<Value> = json
         .get("data")
         .and_then(Value::as_array)
@@ -632,7 +653,7 @@ async fn poll_github(app: AppHandle) {
         });
         return;
     }
-    let json: Value = response.json().await.unwrap_or(json!({}));
+    let json: Value = read_json(response, MAX_BODY).await.unwrap_or(json!({}));
     let public = json.get("public_repos").and_then(Value::as_i64).unwrap_or(0);
     let private = json
         .get("owned_private_repos")
@@ -657,7 +678,7 @@ async fn poll_github(app: AppHandle) {
             .await;
         match resp {
             Ok(r) if r.status().is_success() => {
-                let Ok(list) = r.json::<Vec<Value>>().await else { break };
+                let Ok(list) = read_json::<Vec<Value>>(r, MAX_BODY).await else { break };
                 let count = list.len();
                 stars += sum_repo_stars(&list);
                 if count < 100 {
@@ -796,7 +817,7 @@ async fn github_graphql(token: &str, query: &str, what: &str) -> Option<Value> {
         log::line(format!("github {what} HTTP {}", response.status().as_u16()));
         return None;
     }
-    let root: Value = response.json().await.ok()?;
+    let root: Value = read_json(response, MAX_BODY).await.ok()?;
     let errors = github::graphql_error_count(&root);
     if errors > 0 {
         log::line(format!("github {what} GraphQL errors: {errors}"));
@@ -943,7 +964,7 @@ async fn poll_vercel(app: AppHandle) {
         });
         return;
     }
-    let json: Value = response.json().await.unwrap_or(json!({}));
+    let json: Value = read_json(response, MAX_BODY).await.unwrap_or(json!({}));
     let terminal = ["READY", "ERROR", "CANCELED"];
     let deployments: Vec<Value> = json
         .get("deployments")
@@ -1015,7 +1036,7 @@ async fn poll_resend(app: AppHandle) {
         });
         return;
     }
-    let json: Value = response.json().await.unwrap_or(json!({}));
+    let json: Value = read_json(response, MAX_BODY).await.unwrap_or(json!({}));
     let total = json
         .get("total")
         .or_else(|| json.get("count"))
@@ -1077,7 +1098,7 @@ async fn poll_notion(app: AppHandle) {
         });
         return;
     }
-    let json: Value = response.json().await.unwrap_or(json!({}));
+    let json: Value = read_json(response, MAX_BODY).await.unwrap_or(json!({}));
     let pages: Vec<Value> = json
         .get("results")
         .and_then(Value::as_array)
@@ -1231,7 +1252,7 @@ async fn poll_n8n(app: AppHandle) {
             log::line(format!("n8n list HTTP {}", response.status()));
             continue;
         }
-        let Ok(json) = response.json::<Value>().await else { continue };
+        let Ok(json) = read_json::<Value>(response, MAX_BODY).await else { continue };
         items = match &json {
             Value::Object(o) => o.get("data").and_then(Value::as_array).cloned(),
             Value::Array(a) => Some(a.clone()),
@@ -1267,7 +1288,7 @@ async fn poll_n8n(app: AppHandle) {
         if !response.status().is_success() {
             continue;
         }
-        let Ok(json) = response.json::<Value>().await else { continue };
+        let Ok(json) = read_json::<Value>(response, N8N_EXECUTION_MAX_BODY).await else { continue };
         name = json
             .get("workflowData")
             .and_then(|w| w.get("name"))
@@ -1385,8 +1406,12 @@ mod tests {
         let activity = gitea_activity(&[
             json!({ "timestamp": (today - 300) * 86_400, "contributions": 5 }),
             json!({ "timestamp": today * 86_400_000, "contributions": 2 }),
+            // Same day, later 15-minute buckets.
+            json!({ "timestamp": (today - 300) * 86_400 + 9 * 3_600, "contributions": 3 }),
+            json!({ "timestamp": (today - 300) * 86_400 + 14 * 3_600, "contributions": 2 }),
         ], today as u64 * 86_400_000);
-        assert_eq!(activity.total, 7);
+        assert_eq!(activity.total, 12);
+        assert_eq!(activity.weeks.iter().flatten().map(|d| d.count).max(), Some(10));
         assert!(activity.weeks.iter().flatten().count() >= 365);
         for week in &activity.weeks {
             assert_eq!(week[0].weekday, 0);
@@ -1508,5 +1533,19 @@ mod tests {
         assert_eq!(parse_execution_id(&json!({ "id": "abc-123" })), Some("abc-123".to_string()));
         assert_eq!(parse_execution_id(&json!({ "id": 42 })), Some("42".to_string()));
         assert_eq!(parse_execution_id(&json!({ "foo": "bar" })), None);
+    }
+
+    #[test]
+    fn service_requests_do_not_follow_a_redirect_with_their_key() {
+        // reqwest drops Authorization on a redirect to another host, but not a header like X-N8N-API-KEY.
+        let destination = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        destination.set_nonblocking(true).unwrap();
+        let headers = format!("Location: http://{}/stolen\r\nContent-Length: 0\r\n", destination.local_addr().unwrap());
+        let url = crate::net::tests::serve_once("302 Found", &headers, vec![]);
+        let response = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
+            client().get(&url).header("X-N8N-API-KEY", "synthetic-key").send().await.unwrap()
+        });
+        assert!(response.status().is_redirection());
+        assert_eq!(destination.accept().unwrap_err().kind(), std::io::ErrorKind::WouldBlock);
     }
 }

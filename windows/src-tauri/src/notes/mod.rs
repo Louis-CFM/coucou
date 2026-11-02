@@ -182,30 +182,51 @@ impl NoteTaker {
     }
 
     /// Writes a change onto the note as it is now (it may have been renamed meanwhile).
+    /// The page gets the changed note itself: a live line must not make it
+    /// reload every call's transcript. Other `notes-changed` events carry an id.
     fn change(&self, app: &AppHandle, id: &str, f: impl FnOnce(&mut Note)) -> Option<Note> {
         let updated = {
             let mut notes = self.notes.lock().unwrap();
             let note = notes.iter_mut().find(|n| n.id == id)?;
             f(note);
+            // Under the lock, so the page receives the notes in change order.
+            let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &*note);
             note.clone()
         };
         self.save(&updated);
-        let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &updated.id);
         Some(updated)
     }
 }
 
-pub fn setup(app: &AppHandle) {
+fn load(folder: &std::path::Path) -> Vec<Note> {
     let mut notes: Vec<Note> = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(folder()) {
+    if let Ok(entries) = std::fs::read_dir(folder) {
         for entry in entries.flatten() {
             if let Ok(text) = std::fs::read_to_string(entry.path().join("note.json")) {
                 if let Ok(note) = serde_json::from_str::<Note>(&text) {
+                    if note.status == Status::Ready { remove_audio(&entry.path()); }
                     notes.push(note);
                 }
             }
         }
     }
+    notes
+}
+
+/// Only once the Ready transcript is saved; launch repeats it for audio left
+/// by a failed removal or a crash right after the save.
+fn remove_audio(dir: &std::path::Path) {
+    for name in ["mic.wav", "system.wav"] {
+        if let Err(error) = std::fs::remove_file(dir.join(name)) {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                crate::log::line(format!("notes: could not remove {name}: {error}"));
+            }
+        }
+    }
+}
+
+pub fn setup(app: &AppHandle) {
+    let mut notes = load(&folder());
     notes.sort_by(|a, b| b.start.cmp(&a.start));
     // A call left recording or being written when Coucou last quit: written now.
     let unfinished: Vec<String> = notes
@@ -458,13 +479,18 @@ fn transcript(app: &AppHandle, taker: &Arc<NoteTaker>, id: &str) -> Result<(), S
         return Err(t("The recording of this call is gone."));
     }
     let me = t("Me");
-    let (mine, mic_samples) = words_in(&mic_path)?;
+    // One recording in memory at a time: the microphone is read again only for a room.
+    // shortcut: that recording stays whole (4 bytes per sample, about 0.7 GB for 3 h)
+    // because the diarizer takes it at once; streaming needs a windowed diarizer.
+    let mine = words_in(&mic_path)?.0;
     let (theirs, system_samples) = words_in(&system_path)?;
     let built = if theirs.len() >= 5 {
         // A call: you on the microphone, the others on the computer's sound.
         let turns = speech::diarize(&system_samples);
         builder::build(&mine, &theirs, &turns, &me, person_name)
     } else if mine.len() >= 20 {
+        drop(system_samples);
+        let mic_samples = audio::read_wav(&mic_path).map_err(|e| e.to_string())?;
         // People around the computer: one recording, the voices told apart.
         let turns = speech::diarize(&mic_samples);
         let voices: std::collections::HashSet<&str> = turns.iter().map(|t| t.speaker.as_str()).collect();
@@ -484,8 +510,7 @@ fn transcript(app: &AppHandle, taker: &Arc<NoteTaker>, id: &str) -> Result<(), S
         n.status = Status::Ready;
         n.error = None;
     });
-    let _ = std::fs::remove_file(&mic_path);
-    let _ = std::fs::remove_file(&system_path);
+    remove_audio(&dir);
     crate::log::line(format!("notes: transcript of {count} lines"));
     Ok(())
 }
@@ -610,13 +635,18 @@ pub struct NotesState {
     working: Vec<String>,
 }
 
+/// Off the UI thread: the page asks for it on every change, and it copies every call's transcript.
 #[tauri::command]
-pub fn notes_state(taker: State<Arc<NoteTaker>>) -> NotesState {
-    NotesState {
-        notes: taker.notes.lock().unwrap().clone(),
-        recording: taker.recording.lock().unwrap().as_ref().map(|r| r.id.clone()),
-        working: taker.working.lock().unwrap().clone(),
-    }
+pub async fn notes_state(app: AppHandle) -> Result<NotesState, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let taker = app.state::<Arc<NoteTaker>>();
+        let notes = taker.notes.lock().unwrap().clone();
+        let recording = taker.recording.lock().unwrap().as_ref().map(|r| r.id.clone());
+        let working = taker.working.lock().unwrap().clone();
+        NotesState { notes, recording, working }
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -639,10 +669,15 @@ pub fn notes_rename(app: AppHandle, taker: State<Arc<NoteTaker>>, id: String, ti
     if title.is_empty() {
         return;
     }
-    taker.change(&app, &id, |n| {
-        n.title = title;
-        n.title_edited = true;
-    });
+    taker.change(&app, &id, |n| apply_title(n, title));
+}
+
+/// Only a different title is yours: the summary keeps it over its own.
+fn apply_title(note: &mut Note, title: String) {
+    if note.title != title {
+        note.title = title;
+        note.title_edited = true;
+    }
 }
 
 #[tauri::command]
@@ -667,19 +702,34 @@ pub fn notes_toggle_todo(app: AppHandle, taker: State<Arc<NoteTaker>>, id: Strin
     });
 }
 
+/// The note leaves the list only once its folder, audio included, is gone.
 #[tauri::command]
-pub fn notes_delete(app: AppHandle, taker: State<Arc<NoteTaker>>, id: String) {
-    if taker.recording.lock().unwrap().as_ref().is_some_and(|r| r.id == id) {
-        return;
-    }
-    taker.notes.lock().unwrap().retain(|n| n.id != id);
-    let _ = std::fs::remove_dir_all(note_dir(&id));
-    let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &id);
+pub async fn notes_delete(app: AppHandle, id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let taker = app.state::<Arc<NoteTaker>>();
+        if taker.recording.lock().unwrap().as_ref().is_some_and(|r| r.id == id) {
+            return Ok(());
+        }
+        match std::fs::remove_dir_all(note_dir(&id)) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(tf("Could not remove: {error}", &[("error", &error.to_string())])),
+        }
+        taker.notes.lock().unwrap().retain(|n| n.id != id);
+        let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &id);
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
 pub fn notes_summarize(app: AppHandle, id: String) {
-    std::thread::spawn(move || summarize(&app, &id));
+    std::thread::spawn(move || {
+        summarize(&app, &id);
+        // The page re-reads `working` (summary busy) only on an id.
+        let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &id);
+    });
 }
 
 #[tauri::command]
@@ -715,4 +765,39 @@ pub fn notes_export(taker: State<Arc<NoteTaker>>, id: String) -> Result<String, 
     std::fs::write(&path, markdown(&note)).map_err(|e| e.to_string())?;
     crate::platform::reveal_folder(&dir.to_string_lossy());
     Ok(path.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_unchanged_title_does_not_keep_the_summary_from_naming_the_call() {
+        let mut note: Note = serde_json::from_value(serde_json::json!({"id": "test", "title": "Call · 10-14 22:31", "start": 0, "status": "ready"})).unwrap();
+        apply_title(&mut note, "Call · 10-14 22:31".into());
+        assert!(!note.title_edited);
+        apply_title(&mut note, "Weekly sync".into());
+        assert_eq!(note.title, "Weekly sync");
+        assert!(note.title_edited);
+    }
+
+    #[test]
+    fn launch_removes_audio_left_behind_a_saved_transcript_only() {
+        let root = std::env::temp_dir().join(format!("coucou-notes-{}", crate::flow::text::new_id()));
+        for status in ["ready", "processing", "failed"] {
+            let dir = root.join(status);
+            std::fs::create_dir_all(&dir).unwrap();
+            let note = serde_json::json!({"id": status, "title": status, "start": 0, "status": status});
+            std::fs::write(dir.join("note.json"), note.to_string()).unwrap();
+            for name in ["mic.wav", "system.wav"] { std::fs::write(dir.join(name), b"audio").unwrap(); }
+        }
+        assert_eq!(load(&root).len(), 3);
+        for name in ["mic.wav", "system.wav"] {
+            assert!(!root.join("ready").join(name).exists());
+            // Not yet transcribed, or kept for Retry.
+            assert!(root.join("processing").join(name).exists());
+            assert!(root.join("failed").join(name).exists());
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

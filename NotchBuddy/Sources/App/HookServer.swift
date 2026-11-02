@@ -1653,14 +1653,17 @@ final class HookServer: @unchecked Sendable {
     private var _pendingHooksOriginal: Data?
 
     /// Returns preview JSON without writing — call writeClaudeHooks() to confirm.
-    func previewClaudeHooks() throws -> String {
-        let (data, original) = try buildHooksData()
+    /// install false: settings.json without Coucou's hooks.
+    func previewClaudeHooks(install: Bool) throws -> String {
+        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/settings.json")
+        let (data, original) = install ? try buildHooksData() : try withoutClaudeHooksData(at: settingsURL)
         _pendingHooksData = data
         _pendingHooksOriginal = original
-        return String(data: data, encoding: .utf8) ?? ""
+        return ClaudeSettingsFile.previewText(data)
     }
 
-    /// Writes the hooks to disk (call after user confirms preview).
+    /// Writes the previewed settings.json (call after user confirms preview).
     /// Refused if settings.json changed since the preview, or cannot be backed up.
     func writeClaudeHooks() throws {
         guard let data = _pendingHooksData else { return }
@@ -1715,12 +1718,15 @@ final class HookServer: @unchecked Sendable {
         return (data, snapshot.bytes)
     }
 
-    func uninstallClaudeHooks() throws {
-        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
+    /// settings.json without Coucou's hooks, and the bytes it was computed from.
+    private func withoutClaudeHooksData(at settingsURL: URL) throws -> (data: Data, original: Data?) {
         let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
         var settings = snapshot.object
-        guard var hooks = settings["hooks"] as? [String: Any] else { return }
+        guard var hooks = settings["hooks"] as? [String: Any] else {
+            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "No Claude Code hooks to remove."
+            ])
+        }
 
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
@@ -1732,8 +1738,8 @@ final class HookServer: @unchecked Sendable {
             }
         }
         settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        return (data, snapshot.bytes)
     }
 
     // MARK: - Claude plan status line installer
@@ -1869,10 +1875,10 @@ final class HookServer: @unchecked Sendable {
     // MARK: - App Store: hooks via security-scoped bookmark
 
     #if APPSTORE
-    /// Writes nb-hook script and updates settings.json in one shot.
+    /// Writes nb-hook script and the settings.json shown by previewClaudeHooksAppStore(install: true).
     /// claudeURL must be a URL from NSOpenPanel (sandbox access is granted immediately — no security scope needed).
     func installAndWriteClaudeHooksAppStore(claudeURL: URL) throws {
-        let (data, original) = try buildHooksData(claudeURL: claudeURL)
+        guard let data = _pendingHooksData else { return }
 
         // Write nb-hook (shell wrapper) + nb-hook.py (Python relay) into ~/.claude/coucou/
         let coucouDir = claudeURL.appendingPathComponent("coucou")
@@ -1884,37 +1890,34 @@ final class HookServer: @unchecked Sendable {
         try nbHookPythonAppStore.write(to: pyURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: pyURL.path)
 
-        // Write settings.json (with backup)
+        // Write settings.json (with backup), refused if it changed since the preview
         let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: original)
+        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: _pendingHooksOriginal)
+        _pendingHooksData = nil
+        _pendingHooksOriginal = nil
         UserDefaults.standard.set(true, forKey: "coucouHooksInstalled")
         UserDefaults.standard.set(Self.appStoreHookVersion, forKey: Self.appStoreHookVersionKey)
     }
 
     /// The settings.json Coucou would write, to show before writing (CLAUDE.md: never
-    /// write ~/.claude/settings.json without showing the change first).
-    func previewClaudeHooksAppStore(claudeURL: URL) throws -> String {
-        let (data, _) = try buildHooksData(claudeURL: claudeURL)
-        return String(data: data, encoding: .utf8) ?? ""
+    /// write ~/.claude/settings.json without showing the change first). These exact
+    /// bytes are what the install or uninstall below writes.
+    func previewClaudeHooksAppStore(claudeURL: URL, install: Bool) throws -> String {
+        let settingsURL = claudeURL.appendingPathComponent("settings.json")
+        let (data, original) = install ? try buildHooksData(claudeURL: claudeURL)
+                                       : try withoutClaudeHooksData(at: settingsURL)
+        _pendingHooksData = data
+        _pendingHooksOriginal = original
+        return ClaudeSettingsFile.previewText(data)
     }
 
+    /// Writes the settings.json shown by previewClaudeHooksAppStore(install: false).
     func uninstallClaudeHooksAppStore(claudeURL: URL) throws {
+        guard let data = _pendingHooksData else { return }
         let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
-        var settings = snapshot.object
-        guard var hooks = settings["hooks"] as? [String: Any] else { return }
-        for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                // Per-entry removal, like the Gemini path: user hooks that merely
-                // mention "coucou"/"NotchBuddy" are kept, only nb-hook commands go.
-                matchers = removeNbHookEntries(from: matchers)
-                if matchers.isEmpty { hooks.removeValue(forKey: key) }
-                else { hooks[key] = matchers }
-            }
-        }
-        settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
+        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: _pendingHooksOriginal)
+        _pendingHooksData = nil
+        _pendingHooksOriginal = nil
         UserDefaults.standard.set(false, forKey: "coucouHooksInstalled")
     }
 
@@ -1976,28 +1979,6 @@ final class HookServer: @unchecked Sendable {
         #endif
     }
 
-    // MARK: - Removing Coucou's own hook entries (both builds)
-
-    /// Removes entries containing "nb-hook" from a Gemini- or Claude-format groups array
-    /// (matcher + hooks[]), handling the legacy flat format too (command at top level).
-    /// Used by both paths' install/uninstall so only Coucou's own entries are removed;
-    /// whole groups are dropped only when every entry in them was ours.
-    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
-        groups.compactMap { group -> [String: Any]? in
-            // Legacy flat entry — command at group level
-            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
-            // Group format — filter inner hooks
-            if var innerHooks = group["hooks"] as? [[String: Any]] {
-                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
-                if innerHooks.isEmpty { return nil }
-                var updated = group
-                updated["hooks"] = innerHooks
-                return updated
-            }
-            return group
-        }
-    }
-
     // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
 
     #if !APPSTORE
@@ -2043,7 +2024,8 @@ final class HookServer: @unchecked Sendable {
     // MARK: Gemini CLI – preview / write
 
     private var _pendingGeminiData: Data?
-    private var _pendingGeminiFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingGeminiOriginal: Data?
 
     func previewGeminiHooks(install: Bool) throws -> String {
         let url = Self.geminiSettingsURL
@@ -2053,25 +2035,17 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Gemini CLI hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingGeminiFingerprint = sha256Hex(current)
+        _pendingGeminiOriginal = exists ? try Data(contentsOf: url) : nil
         let newData = install ? try buildGeminiHooksData() : try withoutGeminiHooks()
         _pendingGeminiData = newData
         return String(data: newData, encoding: .utf8) ?? ""
     }
 
     func writeGeminiHooks() throws {
-        guard let data = _pendingGeminiData, let fp = _pendingGeminiFingerprint else { return }
-        let url = Self.geminiSettingsURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/settings.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "settings.json")
+        guard let data = _pendingGeminiData else { return }
+        try ClaudeSettingsFile.write(data, to: Self.geminiSettingsURL, expecting: _pendingGeminiOriginal)
         _pendingGeminiData = nil
-        _pendingGeminiFingerprint = nil
+        _pendingGeminiOriginal = nil
     }
 
     private func buildGeminiHooksData() throws -> Data {
@@ -2139,7 +2113,8 @@ final class HookServer: @unchecked Sendable {
     // MARK: Antigravity – preview / write
 
     private var _pendingAgyData: Data?
-    private var _pendingAgyFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingAgyOriginal: Data?
 
     func previewAgyHooks(install: Bool) throws -> String {
         let url = Self.agyHooksURL
@@ -2149,25 +2124,17 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Antigravity hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingAgyFingerprint = sha256Hex(current)
+        _pendingAgyOriginal = exists ? try Data(contentsOf: url) : nil
         let newData = install ? try buildAgyHooksData() : try withoutAgyHooks()
         _pendingAgyData = newData
         return String(data: newData, encoding: .utf8) ?? ""
     }
 
     func writeAgyHooks() throws {
-        guard let data = _pendingAgyData, let fp = _pendingAgyFingerprint else { return }
-        let url = Self.agyHooksURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/config/hooks.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "hooks.json")
+        guard let data = _pendingAgyData else { return }
+        try ClaudeSettingsFile.write(data, to: Self.agyHooksURL, expecting: _pendingAgyOriginal)
         _pendingAgyData = nil
-        _pendingAgyFingerprint = nil
+        _pendingAgyOriginal = nil
     }
 
     private func buildAgyHooksData() throws -> Data {
@@ -2229,26 +2196,6 @@ final class HookServer: @unchecked Sendable {
         return obj
     }
 
-    /// Backs up the existing file (throws on failure), creates parent dirs, then atomically writes.
-    private func writeJSONFile(_ data: Data, to url: URL, suffix: String) throws {
-        let fm = FileManager.default
-        if fm.fileExists(atPath: url.path) {
-            let fmt = DateFormatter()
-            fmt.locale = Locale(identifier: "en_US_POSIX")
-            fmt.dateFormat = "yyyyMMdd-HHmmss"
-            let backupURL = url.deletingLastPathComponent()
-                .appendingPathComponent("\(suffix).bak-\(fmt.string(from: Date()))")
-            do { try fm.copyItem(at: url, to: backupURL) }
-            catch {
-                throw NSError(domain: "Coucou", code: 3, userInfo: [
-                    NSLocalizedDescriptionKey: "Could not back up \(url.lastPathComponent): \(error.localizedDescription)"
-                ])
-            }
-        }
-        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: url, options: .atomic)
-    }
-
     // MARK: - Codex hook installer  (#if !APPSTORE only)
 
     static var codexHooksURL: URL {
@@ -2275,7 +2222,8 @@ final class HookServer: @unchecked Sendable {
     }
 
     private var _pendingCodexData: Data?
-    private var _pendingCodexFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingCodexOriginal: Data?
 
     func previewCodexHooks(install: Bool) throws -> String {
         let url = Self.codexHooksURL
@@ -2285,25 +2233,17 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Codex hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingCodexFingerprint = sha256Hex(current)
+        _pendingCodexOriginal = exists ? try Data(contentsOf: url) : nil
         let newData = install ? try buildCodexHooksData() : try withoutCodexHooks()
         _pendingCodexData = newData
         return String(data: newData, encoding: .utf8) ?? ""
     }
 
     func writeCodexHooks() throws {
-        guard let data = _pendingCodexData, let fp = _pendingCodexFingerprint else { return }
-        let url = Self.codexHooksURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.codex/hooks.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "hooks.json")
+        guard let data = _pendingCodexData else { return }
+        try ClaudeSettingsFile.write(data, to: Self.codexHooksURL, expecting: _pendingCodexOriginal)
         _pendingCodexData = nil
-        _pendingCodexFingerprint = nil
+        _pendingCodexOriginal = nil
     }
 
     private func buildCodexHooksData() throws -> Data {
@@ -2395,7 +2335,8 @@ final class HookServer: @unchecked Sendable {
     }
 
     private var _pendingCopilotData: Data?
-    private var _pendingCopilotFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingCopilotOriginal: Data?
 
     func previewCopilotHooks(install: Bool) throws -> String {
         let url = Self.copilotHooksURL
@@ -2405,8 +2346,7 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Copilot hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingCopilotFingerprint = sha256Hex(current)
+        _pendingCopilotOriginal = exists ? try Data(contentsOf: url) : nil
         if install {
             let newData = try buildCopilotHooksData()
             _pendingCopilotData = newData
@@ -2418,22 +2358,20 @@ final class HookServer: @unchecked Sendable {
     }
 
     func writeCopilotHooks() throws {
-        guard let fp = _pendingCopilotFingerprint else { return }
         let url = Self.copilotHooksURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.copilot/hooks/coucou.json changed since preview. Refresh and try again."
-            ])
-        }
         if let data = _pendingCopilotData {
-            try writeJSONFile(data, to: url, suffix: "coucou.json")
-        } else {
-            // Uninstall: delete the file entirely
+            try ClaudeSettingsFile.write(data, to: url, expecting: _pendingCopilotOriginal)
+        } else if let original = _pendingCopilotOriginal {
+            // Uninstall: delete the file entirely, if it is still the one previewed
+            guard (try? Data(contentsOf: url)) == original else {
+                throw ClaudeSettingsFile.Failure.changed(url.lastPathComponent)
+            }
             try FileManager.default.removeItem(at: url)
+        } else {
+            return
         }
         _pendingCopilotData = nil
-        _pendingCopilotFingerprint = nil
+        _pendingCopilotOriginal = nil
     }
 
     private func buildCopilotHooksData() throws -> Data {
@@ -2521,7 +2459,8 @@ final class HookServer: @unchecked Sendable {
     }
 
     private var _pendingMuseData: Data?
-    private var _pendingMuseFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingMuseOriginal: Data?
 
     func previewMuseHooks(install: Bool) throws -> String {
         let url = Self.museSettingsURL
@@ -2531,25 +2470,17 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Muse Code hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingMuseFingerprint = sha256Hex(current)
+        _pendingMuseOriginal = exists ? try Data(contentsOf: url) : nil
         let newData = install ? try buildMuseHooksData() : try withoutMuseHooks()
         _pendingMuseData = newData
         return String(data: newData, encoding: .utf8) ?? ""
     }
 
     func writeMuseHooks() throws {
-        guard let data = _pendingMuseData, let fp = _pendingMuseFingerprint else { return }
-        let url = Self.museSettingsURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.config/muse/settings.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "settings.json")
+        guard let data = _pendingMuseData else { return }
+        try ClaudeSettingsFile.write(data, to: Self.museSettingsURL, expecting: _pendingMuseOriginal)
         _pendingMuseData = nil
-        _pendingMuseFingerprint = nil
+        _pendingMuseOriginal = nil
     }
 
     private func buildMuseHooksData() throws -> Data {
@@ -3122,193 +3053,6 @@ version: "1.0"
 description: Coucou notch integration — generated by Coucou.app
 """
 
-    /// Merges Coucou keys into a Hermes config.yaml string without touching other settings.
-    ///
-    /// Returns the merged YAML string, or nil if the file uses an unsupported structure
-    /// (flow maps `{…}`, YAML anchors `&`, multi-document `---`) that the line-level
-    /// merger cannot safely handle. Callers should surface an error with the lines
-    /// the user needs to add manually.
-    ///
-    /// Plugin enablement (plugins.enabled) is handled by the `hermes plugins enable/disable`
-    /// CLI after the plugin files are written; this function only manages security.approval.
-    static func mergedHermesConfig(_ base: String, enableApprovals: Bool) -> String? {
-        // Reject structures the simple merger cannot handle safely.
-        // Flow maps, anchors, and multi-document markers require a full YAML parser.
-        let unsafePatterns = ["{", " &", "\n---"]
-        for p in unsafePatterns where base.contains(p) {
-            return nil
-        }
-
-        var lines = base.components(separatedBy: "\n")
-
-        // Detect file indentation: look for the first indented line and count spaces.
-        let indent: Int = {
-            for line in lines {
-                let leading = line.prefix(while: { $0 == " " }).count
-                if leading > 0 && leading <= 8 { return leading }
-            }
-            return 2  // default
-        }()
-        let ind  = String(repeating: " ", count: indent)         // e.g. "  " (2) or "    " (4)
-        let ind2 = String(repeating: " ", count: indent * 2)     // one extra level
-
-        // Returns the index of the first top-level section header line matching `key`.
-        // Top-level = no leading spaces, ends with `:` (optionally with trailing space/comment).
-        func topLevelIndex(key: String) -> Int? {
-            lines.firstIndex { line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                guard !line.hasPrefix(" ") && !line.hasPrefix("\t") else { return false }
-                return t == "\(key):" || t.hasPrefix("\(key):")
-            }
-        }
-
-        // Returns the range of lines that belong to a top-level section (from its header to
-        // just before the next top-level section, or the end of the array).
-        func sectionRange(from sectionIdx: Int) -> Range<Int> {
-            var end = sectionIdx + 1
-            while end < lines.count {
-                let l = lines[end]
-                // A new top-level key: not blank, not a comment, no leading whitespace
-                if !l.isEmpty && !l.hasPrefix("#") && !l.hasPrefix(" ") && !l.hasPrefix("\t") {
-                    break
-                }
-                end += 1
-            }
-            return sectionIdx ..< end
-        }
-
-        // --- security.approval ---
-        let transportLine = "\(ind2)transport: coucou"
-        let fallbackLine  = "\(ind2)transport_fallback: builtin"
-
-        func ensureApprovalTransport() {
-            if let secIdx = topLevelIndex(key: "security") {
-                let secRange = sectionRange(from: secIdx)
-                // Look for approval: within the security section (must be indented)
-                if let approvalIdx = (secRange.lowerBound + 1 ..< secRange.upperBound)
-                    .first(where: { lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("approval:") }) {
-                    // approval: block exists — update or add transport keys within it
-                    let approvalRange = sectionRange(from: approvalIdx)
-                    var hasTransport = false
-                    var hasFallback  = false
-                    for i in (approvalRange.lowerBound + 1 ..< approvalRange.upperBound) {
-                        let t = lines[i].trimmingCharacters(in: .whitespaces)
-                        if t.hasPrefix("transport:") && !t.hasPrefix("transport_fallback") {
-                            lines[i] = transportLine; hasTransport = true
-                        } else if t.hasPrefix("transport_fallback:") {
-                            lines[i] = fallbackLine; hasFallback = true
-                        }
-                    }
-                    let insertAt = approvalRange.lowerBound + 1
-                    if !hasFallback  { lines.insert(fallbackLine,  at: insertAt) }
-                    if !hasTransport { lines.insert(transportLine, at: insertAt) }
-                } else {
-                    // No approval: key — insert right after security:
-                    let insertAt = secIdx + 1
-                    lines.insert("\(ind)approval:", at: insertAt)
-                    lines.insert(transportLine,     at: insertAt + 1)
-                    lines.insert(fallbackLine,      at: insertAt + 2)
-                }
-            } else {
-                // No security: section — append
-                if lines.last != "" { lines.append("") }
-                lines.append("security:")
-                lines.append("\(ind)approval:")
-                lines.append(transportLine)
-                lines.append(fallbackLine)
-            }
-        }
-
-        func removeApprovalTransport() {
-            // Only remove exact Coucou-written transport keys; don't touch unrelated keys.
-            lines.removeAll { line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                return t == "transport: coucou" || t == "transport_fallback: builtin"
-            }
-        }
-
-        // --- plugins.enabled ---
-        // Note: actual plugin enable/disable is done via `hermes plugins enable/disable coucou`
-        // CLI after writing/removing the plugin files. This block ensures the preview
-        // shows the complete intended state of config.yaml.
-        func ensureCoucouPlugin() {
-            // "Already present" = coucou in the plugins.enabled list specifically.
-            // Check by finding plugins: section first, then enabled: sub-key within it.
-            if let pluginsIdx = topLevelIndex(key: "plugins") {
-                let pluginsRange = sectionRange(from: pluginsIdx)
-                // Find enabled: within the plugins section
-                if let enabledIdx = (pluginsRange.lowerBound + 1 ..< pluginsRange.upperBound)
-                    .first(where: { lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("enabled:") }) {
-                    let enabledLine = lines[enabledIdx]
-                    let trimmed = enabledLine.trimmingCharacters(in: .whitespaces)
-                    if trimmed.contains("[") && trimmed.contains("]") {
-                        // Inline list: enabled: [x, y]  or  enabled: []
-                        if trimmed.contains("coucou") { return }   // already present
-                        if trimmed == "enabled: []" || trimmed == "enabled:[]" {
-                            // Empty inline list → expand to block entry
-                            let prefix = enabledLine.prefix(while: { $0 == " " })
-                            lines[enabledIdx] = "\(prefix)enabled:"
-                            lines.insert("\(prefix)\(ind)- coucou", at: enabledIdx + 1)
-                        } else {
-                            lines[enabledIdx] = enabledLine.replacingOccurrences(of: "]", with: ", coucou]")
-                        }
-                    } else {
-                        // Block list — check if coucou is already a child of this enabled:
-                        let enabledRange = sectionRange(from: enabledIdx)
-                        let alreadyPresent = (enabledRange.lowerBound + 1 ..< enabledRange.upperBound)
-                            .contains { lines[$0].trimmingCharacters(in: .whitespaces) == "- coucou" }
-                        if alreadyPresent { return }
-                        // Insert after enabled:
-                        let prefix = enabledLine.prefix(while: { $0 == " " })
-                        lines.insert("\(prefix)\(ind)- coucou", at: enabledIdx + 1)
-                    }
-                } else {
-                    // No enabled: key under plugins: — insert after plugins:
-                    lines.insert("\(ind)enabled:", at: pluginsIdx + 1)
-                    lines.insert("\(ind)\(ind)- coucou", at: pluginsIdx + 2)
-                }
-            } else {
-                // No plugins: section — append
-                if lines.last != "" { lines.append("") }
-                lines.append("plugins:")
-                lines.append("\(ind)enabled:")
-                lines.append("\(ind)\(ind)- coucou")
-            }
-        }
-
-        func removeCoucouPlugin() {
-            // Remove the `- coucou` entry from plugins.enabled only.
-            // If that leaves enabled: with no entries, leave the key in place (don't remove it).
-            guard let pluginsIdx = topLevelIndex(key: "plugins") else { return }
-            let pluginsRange = sectionRange(from: pluginsIdx)
-            guard let enabledIdx = (pluginsRange.lowerBound + 1 ..< pluginsRange.upperBound)
-                .first(where: { lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("enabled:") })
-            else { return }
-            let enabledLine = lines[enabledIdx]
-            let trimmed = enabledLine.trimmingCharacters(in: .whitespaces)
-            if trimmed.contains("[") && trimmed.contains("]") {
-                // Inline list: remove coucou from it
-                let cleaned = trimmed
-                    .replacingOccurrences(of: ", coucou", with: "")
-                    .replacingOccurrences(of: "coucou, ", with: "")
-                    .replacingOccurrences(of: "coucou",   with: "")
-                let prefix = enabledLine.prefix(while: { $0 == " " })
-                lines[enabledIdx] = "\(prefix)\(cleaned)"
-            } else {
-                // Block list: remove the `- coucou` entry
-                let enabledRange = sectionRange(from: enabledIdx)
-                // Collect indices to remove first, then remove in reverse to preserve indices.
-                let toRemove = (enabledRange.lowerBound + 1 ..< enabledRange.upperBound)
-                    .filter { lines[$0].trimmingCharacters(in: .whitespaces) == "- coucou" }
-                for i in toRemove.reversed() { lines.remove(at: i) }
-            }
-        }
-
-        ensureCoucouPlugin()
-        if enableApprovals { ensureApprovalTransport() } else { removeApprovalTransport() }
-        return lines.joined(separator: "\n")
-    }
-
     func previewHermesPlugin(install: Bool) throws -> String {
         if !install {
             guard FileManager.default.fileExists(atPath: Self.hermesInitPyURL.path) else {
@@ -3404,7 +3148,7 @@ description: Coucou notch integration — generated by Coucou.app
         let current = (try? Data(contentsOf: Self.hermesConfigURL)) ?? Data()
         _pendingHermesConfigFingerprint = sha256Hex(current)
         let effectiveApprovals = enableApprovals && supportsTransport
-        guard let merged = Self.mergedHermesConfig(base, enableApprovals: effectiveApprovals) else {
+        guard let merged = mergedHermesConfig(base, enableApprovals: effectiveApprovals) else {
             _pendingHermesConfigContent = nil
             throw NSError(domain: "Coucou", code: 4, userInfo: [
                 NSLocalizedDescriptionKey: "~/.hermes/config.yaml uses an unsupported structure (flow maps, YAML anchors, or multi-document). Edit it manually and add:\n  security:\n    approval:\n      transport: coucou\n      transport_fallback: builtin"

@@ -148,7 +148,8 @@ fn split_chars(text: &str, max: usize) -> Vec<String> {
     out
 }
 
-fn cut(text: &str, max: usize) -> &str {
+/// The first `max` bytes of `text`, on a character boundary.
+pub(super) fn cut(text: &str, max: usize) -> &str {
     if text.len() <= max {
         return text;
     }

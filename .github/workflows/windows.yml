@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 # Publishing is on: Microsoft reviewed the Defender false positive
 # (Trojan:Win32/Wacatac.H!ml) and removed the detection. Before pushing a
@@ -23,12 +23,17 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.pack.outputs.version }}
+      publish: ${{ steps.gate.outputs.publish }}
     defaults:
       run:
         working-directory: windows
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
@@ -112,13 +117,44 @@ jobs:
             windows/target/release/coucou-hook.exe
           retention-days: 3
 
+      - name: Decide whether to publish
+        id: gate
+        shell: pwsh
+        run: |
+          "publish=${{ env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v') }}" >> $env:GITHUB_OUTPUT
+
+      # Everything the publish job attaches, versioned and unversioned names.
+      - uses: actions/upload-artifact@v7
+        if: steps.gate.outputs.publish == 'true'
+        with:
+          name: Coucou-Windows-release
+          path: windows/release/Coucou-Windows*
+          retention-days: 3
+
+  # Only this job holds a write token, and it runs nothing from the repository:
+  # the build job's dependencies and build scripts never see it.
+  publish:
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      # Only for the windows-latest tag below; nothing from the repo is run.
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: Coucou-Windows-release
+          path: release
+
       - name: Publish the release
-        if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $v = "${{ steps.pack.outputs.version }}"
+          $v = "${{ needs.build.outputs.version }}"
           $notes = @"
           Coucou for Windows $v — Mochi at the top of your screen.
 
@@ -138,12 +174,11 @@ jobs:
             --latest=false
 
       - name: Update the rolling windows-latest release
-        if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $v = "${{ steps.pack.outputs.version }}"
+          $v = "${{ needs.build.outputs.version }}"
           $exists = gh release view windows-latest 2>$null
           if ($LASTEXITCODE -eq 0) {
             # The tag has to follow the release, or windows-latest keeps pointing

@@ -38,7 +38,9 @@ export default {
     if (request.method !== "POST" || url.pathname !== "/v1/live-activity") {
       return text(404, "not found");
     }
-    if (Number(request.headers.get("content-length") ?? "0") > 4096) {
+    // No length (a chunked body) or a bad one is refused too: request.json() would read any size.
+    const length = request.headers.get("content-length") ?? "";
+    if (!/^\d+$/.test(length) || Number(length) > 4096) {
       return text(413, "too large");
     }
 

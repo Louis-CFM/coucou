@@ -131,3 +131,23 @@ test("Erase everything retains confirmation on failure and resets it only after 
   assert.equal(f.page.querySelector(".hub-warn").hidden, true);
   assert.deepEqual(sent("flow_clear"), [{ everything: true }, { everything: true }]);
 });
+
+test("a voice-model control stops listening once it is gone, not while its page is being built", async t => {
+  const { modelsControl } = await import("../src/hub/pages/flowsettings.ts");
+  let now = 0;
+  t.mock.method(performance, "now", () => now);
+  calls.length = 0;
+  const control = modelsControl({ status: { models: { parakeet: { state: "missing" } } } });
+  await flush();
+  const unlistened = () => sent("plugin:event|unlisten").length;
+  now = 1000;
+  emit("speech-models", { parakeet: { state: "downloading", fraction: 0.5 } });
+  assert.equal(unlistened(), 0, "a control whose page is still being built keeps listening");
+  control.isConnected = true;
+  emit("speech-models", { parakeet: { state: "downloading", fraction: 0.6 } });
+  assert.match(control.textContent, /60 %/);
+  control.isConnected = false;
+  now = 6000;
+  emit("speech-models", { parakeet: { state: "downloading", fraction: 0.7 } });
+  assert.equal(unlistened(), 1, "a control gone from the screen stops listening");
+});

@@ -53,9 +53,19 @@ pub struct Listing {
     pub messages: Vec<Message>,
 }
 
-/// A string inside PowerShell single quotes (nothing is expanded there; ' is doubled).
+/// A string inside PowerShell single quotes (nothing is expanded there). PowerShell
+/// also ends such a string at ‘ ’ ‚ ‛, so each of them is doubled, like '.
 pub fn ps(s: &str) -> String {
-    format!("'{}'", s.replace('\'', "''"))
+    let mut quoted = String::with_capacity(s.len() + 2);
+    quoted.push('\'');
+    for c in s.chars() {
+        if matches!(c, '\'' | '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{201B}') {
+            quoted.push(c);
+        }
+        quoted.push(c);
+    }
+    quoted.push('\'');
+    quoted
 }
 
 /// Attaches to the running Outlook, or prints {"error":"notRunning"} and stops. JSON goes
@@ -114,6 +124,7 @@ foreach ($b in (Coucou-Inboxes)) {{
 }
 
 /// A DASL text test: `field LIKE '%value%'` (' doubled, % removed from the value).
+/// Only ASCII ' ends a DASL string; the whole filter then goes through `ps`.
 fn like(field: &str, value: &str) -> String {
     let v = value.replace('%', "").replace('\'', "''");
     format!("\"{field}\" LIKE '%{v}%'")
@@ -195,18 +206,19 @@ $st = $ns.GetStoreFromID({s})
     ))
 }
 
-/// Puts back a message the journal shows as sorted (by the EntryID it had afterwards).
+/// Puts back a message the journal shows as sorted (by the EntryID it had afterwards);
+/// prints {"entryId": its id afterwards}, new when it moved back to the Inbox.
 pub fn undo_script(entry_id: &str, store_id: &str, action: &Action) -> String {
     let body = match action {
-        Action::Junk | Action::Move(_) => "$null = $i.Move($st.GetDefaultFolder(6))",
-        Action::Important => "$i.ClearTaskFlag(); $i.Save()",
-        Action::MarkRead => "$i.UnRead = $true; $i.Save()",
+        Action::Junk | Action::Move(_) => "$m = $i.Move($st.GetDefaultFolder(6)); $new = $m.EntryID",
+        Action::Important => "$i.ClearTaskFlag(); $i.Save(); $new = $i.EntryID",
+        Action::MarkRead => "$i.UnRead = $true; $i.Save(); $new = $i.EntryID",
     };
     script(&format!(
         r#"$i = Coucou-Item {e} {s}
 $st = $ns.GetStoreFromID({s})
 {body}
-Write-Output '{{"ok":true}}'"#,
+[pscustomobject]@{{ entryId = $new }} | ConvertTo-Json -Compress"#,
         e = ps(entry_id),
         s = ps(store_id)
     ))
@@ -412,6 +424,35 @@ mod tests {
     fn quotes_never_break_out() {
         assert_eq!(ps("it's"), "'it''s'");
         assert_eq!(ps("$env:x `n"), "'$env:x `n'", "single quotes expand nothing");
+        for q in ['\u{2018}', '\u{2019}', '\u{201A}', '\u{201B}'] {
+            assert_eq!(ps(&format!("l{q}offre")), format!("'l{q}{q}offre'"), "PowerShell reads {q} as a single quote");
+        }
+    }
+
+    /// What Windows PowerShell prints for `Write-Output <ps(value)>`, run the way `run` runs a script.
+    #[cfg(windows)]
+    fn echoed_by_powershell(value: &str) -> String {
+        let path = unique_script_path();
+        let _guard = TempScript(path.clone());
+        let script = format!("\u{feff}[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\nWrite-Output {}\n", ps(value));
+        std::fs::write(&path, script).unwrap();
+        let out = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"])
+            .arg(&path)
+            .output()
+            .unwrap();
+        String::from_utf8(out.stdout).unwrap().trim_end().to_string()
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn powershell_reads_every_quoted_value_back_exactly() {
+        let attachment = "Plan d\u{2019}\u{e9}tage \u{2018}x\u{201A}y\u{201B}'; Write-Output INJECTED; \u{2019}.pdf";
+        assert_eq!(echoed_by_powershell(attachment), attachment);
+        // A search keeps one typographic apostrophe in the DASL filter Outlook receives.
+        let search = dasl(&Query::parse("aujourd\u{2019}hui"), Filter::All).unwrap();
+        assert!(search.contains("'%aujourd\u{2019}hui%'"));
+        assert_eq!(echoed_by_powershell(&search), search);
     }
 
     #[test]
@@ -454,6 +495,11 @@ mod tests {
         }
         assert!(undo_script("E", "S", &Action::Junk).contains("Move($st.GetDefaultFolder(6))"));
         assert!(undo_script("E", "S", &Action::Important).contains("ClearTaskFlag()"));
+        // Undo reports the EntryID the message has back in the Inbox, so the next poll can skip it.
+        assert!(undo_script("E", "S", &Action::Move("X".into())).contains("$m = $i.Move($st.GetDefaultFolder(6)); $new = $m.EntryID"));
+        for a in [Action::Junk, Action::Important, Action::MarkRead, Action::Move("X".into())] {
+            assert!(undo_script("E", "S", &a).contains("[pscustomobject]@{ entryId = $new } | ConvertTo-Json -Compress"));
+        }
     }
 
     #[test]

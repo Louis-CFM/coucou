@@ -482,6 +482,22 @@ fn turning_it_off_closes_the_phones_and_stops_listening() {
     });
 }
 
+#[test]
+fn a_hello_that_arrives_after_the_link_was_turned_off_is_refused() {
+    block_on(async {
+        let mut rig = Rig::start().await;
+        rig.approval("req-1", "ls", 0);
+        // Connected, but not yet said hello, when the user turns the link off.
+        let mut c = Client::connect(rig.port, &rig.fingerprint).await.unwrap();
+        rig.handle.take().unwrap().stop();
+        c.send(json!({ "type": "hello", "v": 1, "token": TOKEN, "device": "late" })).await;
+        let first = c.recv().await;
+        assert!(first.as_ref().is_none_or(|m| m["type"] != "welcome"), "{first:?}");
+        assert!(c.closed().await);
+        assert_eq!(rig.hub.clients(), 0);
+    });
+}
+
 /// True when this machine lets us use 127.0.0.2 and 127.0.0.3 as other devices (Linux and Windows do; some systems do not).
 fn loopback_aliases() -> bool {
     ["127.0.0.2", "127.0.0.3"].iter().all(|a| std::net::TcpListener::bind((*a, 0)).is_ok())
@@ -1954,4 +1970,17 @@ fn every_command_that_changes_something_checks_the_calling_window() {
         );
     }
     assert!(seen >= 25, "the test must see the commands (saw {seen})");
+}
+
+/// Reads mod.rs: the link and relay switches save a copy and make it the live settings only once it is on disk. A save that
+/// was only logged let "off" look done and come back at the next start.
+#[test]
+fn the_link_and_relay_switches_return_a_failed_save() {
+    let source = include_str!("mod.rs").replace("\r\n", "\n");
+    for name in ["phone_link_set_enabled", "phone_relay_set"] {
+        let start = source.find(&format!("pub fn {name}(")).expect("the command exists");
+        let body = &source[start..start + source[start..].find("\n}\n").expect("a command ends")];
+        assert!(body.contains("settings::save(&next)"), "{name} must save a copy");
+        assert!(!body.contains("could not save settings"), "{name} must return the error, not only log it");
+    }
 }

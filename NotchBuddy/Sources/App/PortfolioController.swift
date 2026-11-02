@@ -624,18 +624,9 @@ private enum ExchangeFetcher {
         // Kraken uses X-prefixed names: XXBT = BTC, XETH = ETH, ZUSD = USD, etc.
         return result.compactMap { (rawSym, rawVal) -> PortfolioHolding? in
             guard let val = Double(String(describing: rawVal)), val > 0.000001 else { return nil }
-            let symbol = Self.krakenSymbol(rawSym)
+            let symbol = krakenSymbol(rawSym)
             return PortfolioHolding(symbol: symbol, amount: val, price: 0)
         }
-    }
-
-    private static func krakenSymbol(_ raw: String) -> String {
-        let map: [String: String] = [
-            "XXBT": "BTC", "XXDG": "DOGE", "XETH": "ETH", "XLTC": "LTC", "XXLM": "XLM",
-            "XXMR": "XMR", "XXRP": "XRP", "XZEC": "ZEC", "ZUSD": "USD",
-            "ZEUR": "EUR",  "ZGBP": "GBP", "ZCAD": "CAD", "ZJPY": "JPY",
-        ]
-        return map[raw] ?? (raw.count == 4 && (raw.hasPrefix("X") || raw.hasPrefix("Z")) ? String(raw.dropFirst()) : raw)
     }
 
     // MARK: Coinbase (Advanced Trade, CDP API key)

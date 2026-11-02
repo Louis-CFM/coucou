@@ -470,14 +470,27 @@ fn write_header(out: &mut impl Write, samples: u32) -> std::io::Result<()> {
 }
 
 /// Reads a WAV written by `WavWriter` (or cut short by a crash: the data runs
-/// to the end of the file whatever the header says).
+/// to the end of the file whatever the header says). Decoded as it is read: a
+/// long call never holds its bytes and its samples at once.
 pub fn read_wav(path: &Path) -> std::io::Result<Vec<f32>> {
-    let mut bytes = Vec::new();
-    File::open(path)?.read_to_end(&mut bytes)?;
-    if bytes.len() < 44 || &bytes[0..4] != b"RIFF" {
+    let file = File::open(path)?;
+    let size = file.metadata()?.len() as usize;
+    let mut file = std::io::BufReader::new(file);
+    let mut header = [0u8; 44];
+    if size >= 44 { file.read_exact(&mut header)?; }
+    if size < 44 || &header[0..4] != b"RIFF" {
         return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "not a WAV file"));
     }
-    Ok(bytes[44..].chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0).collect())
+    // Sized up front: growing the vector would briefly need half again as much.
+    let mut samples = Vec::with_capacity((size - 44) / 2);
+    let mut pair = [0u8; 2];
+    loop {
+        match file.read_exact(&mut pair) {
+            Ok(()) => samples.push(i16::from_le_bytes(pair) as f32 / 32768.0),
+            Err(error) if error.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(samples),
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 
@@ -557,5 +570,22 @@ mod tests {
         assert!((back[1] - 0.5).abs() < 1e-3 && (back[2] + 0.5).abs() < 1e-3);
         let bytes = std::fs::read(&path).unwrap();
         assert_eq!(u32::from_le_bytes([bytes[40], bytes[41], bytes[42], bytes[43]]), 8);
+    }
+
+    #[test]
+    fn a_wav_cut_short_by_a_crash_reads_to_the_end_of_the_file() {
+        let path = std::env::temp_dir().join(format!("coucou-wav-crash-{}.wav", std::process::id()));
+        let _cleanup = TempFile(path.clone());
+        let mut w = WavWriter::create(&path).unwrap();
+        w.write(&[0.25; 3]).unwrap();
+        drop(w); // never finished: the header still says no data
+        let mut file = std::fs::OpenOptions::new().append(true).open(&path).unwrap();
+        file.write_all(&[0x7f]).unwrap(); // half a sample
+        drop(file);
+        let back = read_wav(&path).unwrap();
+        assert_eq!(back.len(), 3);
+        assert!(back.iter().all(|s| (s - 0.25).abs() < 1e-3));
+        std::fs::write(&path, b"RIFF").unwrap();
+        assert_eq!(read_wav(&path).unwrap_err().kind(), std::io::ErrorKind::InvalidData);
     }
 }

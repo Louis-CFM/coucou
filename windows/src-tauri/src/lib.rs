@@ -276,7 +276,7 @@ fn open_gitea_url(url: String) {
     }
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
+/// "Open terminal" opens the working folder in VS Code when it is installed,
 /// and falls back to the file manager otherwise.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
@@ -294,14 +294,8 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
-        if let Some(p) = path.as_deref() {
-            cmd.arg(p);
-        }
-        if platform::no_console(&mut cmd).spawn().is_ok() {
-            return true;
-        }
+    if open_with_vscode(path.as_deref().map(std::path::Path::new)) {
+        return true;
     }
     if let Some(p) = path.as_deref() {
         platform::reveal_folder(p);
@@ -339,6 +333,38 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     }
 }
 
+/// VS Code on `path` (none: the editor alone), never through a batch script.
+fn open_with_vscode(path: Option<&std::path::Path>) -> bool {
+    let Some(code) = platform::find_on_path("code").and_then(|code| native_vscode(&code, |p| p.is_file())) else {
+        return false;
+    };
+    let mut cmd = Command::new(code);
+    if let Some(p) = path {
+        cmd.arg(p);
+    }
+    platform::no_console(&mut cmd).spawn().is_ok()
+}
+
+/// `code` as found on PATH, as a program that may be handed an agent-written
+/// path. Windows runs a .cmd through cmd.exe, which reads `&`, `^` and `%` as
+/// syntax: VS Code's own `bin\code.cmd` becomes the `Code.exe` beside it, and
+/// any other batch script is refused.
+fn native_vscode(code: &std::path::Path, exists: impl Fn(&std::path::Path) -> bool) -> Option<std::path::PathBuf> {
+    if !cfg!(windows) {
+        return Some(code.to_path_buf());
+    }
+    let ext = code.extension()?.to_str()?;
+    if ext.eq_ignore_ascii_case("exe") {
+        return Some(code.to_path_buf());
+    }
+    let bin = code.parent()?;
+    let shim = ext.eq_ignore_ascii_case("cmd")
+        && code.file_stem()?.to_str()?.eq_ignore_ascii_case("code")
+        && bin.file_name()?.to_str()?.eq_ignore_ascii_case("bin");
+    let exe = bin.parent()?.join("Code.exe");
+    (shim && exists(&exe)).then_some(exe)
+}
+
 /// The Claude Desktop pill's target: the Claude app (Windows, and Linux with
 /// Anthropic's .deb).
 #[tauri::command]
@@ -354,18 +380,14 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
     (p.is_absolute() && p.is_file()).then_some(p)
 }
 
-/// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
+/// The diff card's ↗: opens the edited file in VS Code when it is installed,
 /// otherwise shows its folder. The file itself is never opened by its type —
 /// xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
-        cmd.arg(file);
-        if platform::no_console(&mut cmd).spawn().is_ok() {
-            return true;
-        }
+    if open_with_vscode(Some(file)) {
+        return true;
     }
     if let Some(folder) = file.parent().filter(|d| d.is_dir()) {
         platform::reveal_folder(&folder.to_string_lossy());
@@ -404,14 +426,16 @@ fn hooks_preview(install: bool) -> Result<HookPreview, String> {
     hooks::preview(install)
 }
 
-/// Only ever called from an explicit click in the settings window.
+/// Only ever called from an explicit click in the settings window (the calling window is checked).
 #[tauri::command]
 fn hooks_apply(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     shared: State<Shared>,
     install: bool,
     fingerprint: String,
 ) -> Result<String, String> {
+    phone_link::only_settings(&window)?;
     // The fingerprint comes from the preview the user actually looked at, so a
     // settings.json that changed in between is refused rather than overwritten.
     let backup = hooks::write(install, &fingerprint)?;
@@ -440,10 +464,11 @@ fn agent_hooks_preview(agent: String, install: bool) -> Result<config_file::Plan
     agents::preview(&agent, install)
 }
 
-/// Only ever called from an explicit click in the settings window, with the
-/// fingerprint of the preview the user looked at.
+/// Only ever called from an explicit click in the settings window (the calling
+/// window is checked), with the fingerprint of the preview the user looked at.
 #[tauri::command]
-fn agent_hooks_apply(agent: String, install: bool, fingerprint: String) -> Result<String, String> {
+fn agent_hooks_apply(window: tauri::WebviewWindow, agent: String, install: bool, fingerprint: String) -> Result<String, String> {
+    phone_link::only_settings(&window)?;
     let backups = agents::apply(&agent, install, &fingerprint)?;
     let done = if install { "installed" } else { "removed" };
     log::line(format!("agent hooks {done} for {agent}"));
@@ -459,14 +484,16 @@ fn status_line_preview(install: bool) -> Result<HookPreview, String> {
     hooks::status_line_preview(install)
 }
 
-/// Only ever called from an explicit click in the settings window.
+/// Only ever called from an explicit click in the settings window (the calling window is checked).
 #[tauri::command]
 fn status_line_apply(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     shared: State<Shared>,
     install: bool,
     fingerprint: String,
 ) -> Result<String, String> {
+    phone_link::only_settings(&window)?;
     let backup = hooks::status_line_write(install, &fingerprint)?;
     let updated = {
         let mut current = shared.settings.lock().unwrap();
@@ -1118,7 +1145,19 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{diff_file, is_forge_instance_url};
+    use super::{diff_file, is_forge_instance_url, native_vscode};
+
+    /// Reads lib.rs: every page may invoke any command, so the ones that write another program's hooks check that the
+    /// settings window called them.
+    #[test]
+    fn commands_that_write_hooks_check_the_calling_window() {
+        let source = include_str!("lib.rs").replace("\r\n", "\n");
+        for name in ["hooks_apply", "agent_hooks_apply", "status_line_apply"] {
+            let start = source.find(&format!("fn {name}(")).expect("the command exists");
+            let body = &source[start..start + source[start..].find("\n}\n").expect("a command ends")];
+            assert!(body.contains("phone_link::only_settings(&window)?"), "{name} does not check the calling window");
+        }
+    }
 
     #[test]
     fn forge_links_stay_on_the_configured_instance() {
@@ -1135,6 +1174,21 @@ mod tests {
             &reqwest::Url::parse("https://evil.example/team/me/project").unwrap(),
             &instance,
         ));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn vs_code_gets_an_agent_written_path_through_code_exe_never_a_batch_script() {
+        use std::path::{Path, PathBuf};
+        let exe = r"C:\Users\u\AppData\Local\Programs\Microsoft VS Code\Code.exe";
+        let installed = |p: &Path| p == Path::new(exe);
+        let shim = Path::new(r"C:\Users\u\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd");
+        assert_eq!(native_vscode(shim, installed), Some(PathBuf::from(exe)));
+        assert_eq!(native_vscode(Path::new(r"C:\tools\code.exe"), installed), Some(PathBuf::from(r"C:\tools\code.exe")));
+        // Cursor's own `code` shim has no Code.exe beside it; other scripts never run.
+        assert_eq!(native_vscode(Path::new(r"C:\Users\u\AppData\Local\Programs\cursor\resources\app\bin\code.cmd"), installed), None);
+        assert_eq!(native_vscode(Path::new(r"C:\tools\code.bat"), installed), None);
+        assert_eq!(native_vscode(Path::new(r"C:\tools\bin\code.cmd"), installed), None);
     }
 
     #[test]

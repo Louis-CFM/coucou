@@ -177,7 +177,9 @@ exits cleanly if the app is closed, slow or crashed — **a Claude Code session 
 never blocked or slowed down by Coucou.** If nobody answers a permission request
 in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
-It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
+It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash. In a
+terminal run as administrator, a Coucou started normally shows the session but never
+answers for it: Claude Code asks in that terminal.
 
 ### Plan usage
 
@@ -332,9 +334,9 @@ this way. Linux has no Outlook: the pill is Windows only.
 |---|---|
 | Open the Mail pill | Your newest messages, unread ones tinted, a ⚑ on the flagged ones. The magnifier searches every inbox: free words, `from:anne`, `subject:"May quote"`. Filters: All, Unread, Important, Today |
 | Click a message | Its sender, subject and the start of its text. **Open in Outlook**, **Reply** (Outlook's own window: nothing is sent from Coucou), **Mark as read**, **Important**, **Junk**, and in ⋯ **Always important (VIP)** or **Always ignore this sender** |
-| Coucou → Mail → Overview | **Sort new messages automatically** (off by default): only what arrives after you turn it on, each message once. VIPs are flagged, banned words send to Junk, then the first rule that matches acts. A journal of every action, each with **Undo** |
+| Coucou → Mail → Overview | **Sort new messages automatically** (off by default): only what arrives after you turn it on, each message once. VIPs are flagged, banned words send to Junk, then the first rule that matches acts. A journal of every action, each with **Undo**; an undone message is not sorted again |
 | Coucou → Mail → Rules, Banned words, VIP | "If the sender / domain / subject / text / account contains … then Junk / important / read / move to a folder". Banned words are whole words: "sale" does not catch "Salesforce". A VIP is an address or a whole domain (`@client.com`) |
-| Turn on **Mail** next to the model in the chat | The AI gets your 40 newest messages (text and attachments for the newest and for the ones you name) and may answer with a plan: sort, reply drafts, sends, a mail merge that gives each recipient their page of a PDF, saving attachments. The plan shows as a card: the mails to send, the ones that can't be sent in red, **Send me a test**, and **Run**, which waits 5 seconds (Cancel) before anything happens |
+| Turn on **Mail** next to the model in the chat | The AI gets your 40 newest messages (text and attachments for the newest and for the ones you name) and may answer with a plan: sort, reply drafts, sends, a mail merge that gives each recipient their page of a PDF, saving attachments. The plan shows as a card: the mails to send with every Cc and attachment (hover a subject for the text), the ones that can't be sent in red, **Send me a test**, and **Run**, which waits 5 seconds (Cancel) before anything happens |
 
 Coucou never deletes a message, and never sends one without your click on Run. Your mail
 goes only to the chat's AI you picked (your key or your subscription), and only while the

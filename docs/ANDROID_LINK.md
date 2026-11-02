@@ -126,7 +126,8 @@ carry these optional fields on each session; any other phone gets the exact v1 f
 | `project` | the **folder name** the session runs in, at most 64 characters. Never a path (only the last segment survives, on both the island and the link) |
 | `color` | the pill's colour as `#RRGGBB`; anything else is dropped |
 
-The whole `sessions` line stays under 56 KiB: when many sessions carry many steps, the oldest steps are dropped until it fits.
+The whole `sessions` line stays under 56 KiB as sent (bytes): when many sessions carry many steps, the oldest steps are dropped
+until it fits, then the oldest files (capability `diffs`).
 A field with nothing to say is left out. Turning the switch on or off disconnects the phones once so they reconnect and are told.
 Not sent, ever: the prompt, command output, Claude's full answer, file contents, full paths.
 
@@ -165,7 +166,8 @@ Any other phone gets the v1 `sessions` line and cannot ask for a diff (its `getD
 **The list.** With `diffs`, a session may carry `files`, at most 20 (the newest), each `{id, name, added, removed}` plus
 `tooLarge: true` (the change is too large to show line by line: counts only) and `isNew: true` (a file that was written whole).
 `name` is the **file name only**: the computer keeps the last segment of the path, cut at 80 characters, and the phone does the
-same again if it is sent more. The line counts toward the 56 KiB budget of a `sessions` line like the details do.
+same again if it is sent more. The list counts toward the 56 KiB budget of a `sessions` line: once the steps are dropped,
+the oldest files go too until the line fits.
 
 **The lines, on request only.**
 
@@ -176,9 +178,11 @@ same again if it is sent more. The line counts toward the 56 KiB budget of a `se
 
 - `lines` are `[kind, text]`: kind `+` (added), `-` (removed), ` ` (context) or `@` (a hunk starts; the text is `@@ <line>`).
   An unknown kind is read as context.
-- At most **200 lines** per file, each cut at **400 characters**, sent in **parts of 100 lines** (`part` from 0 to `parts - 1`, at
-  most 2 parts), so no line of the link nears 64 KiB. `truncated: true` says there were more than 200. A diff the island no
-  longer has is answered with `gone: true` and no lines (one part); a change that was `tooLarge` has no lines either.
+- At most **200 lines** per file, each cut at **400 bytes** of UTF-8 on a character boundary (fewer characters in a script that
+  takes 2 to 4 bytes each), sent in **parts of 100 lines** (`part` from 0 to `parts - 1`, at most 2 parts). Each part stays
+  under 56 KiB as sent: text that JSON escapes heavily (quotes, backslashes, control characters) is cut shorter until it fits.
+  `truncated: true` says there were more than 200. A diff the island no longer has is answered with `gone: true` and no lines
+  (one part); a change that was `tooLarge` has no lines either.
 - The answer goes to the phone that asked, and only if it still has `diffs`. A phone may ask for at most 20 diffs in 10 seconds.
 - The phone holds the lines in memory while its sheet is open and forgets them when it closes; nothing is stored or logged.
 - Deviation from the plan: the plan said "600 lines in total"; the computer keeps 200 lines per file and the 20-in-10-seconds rate
@@ -374,9 +378,10 @@ simply keeps using the saved address.**
 When the user turns on "Away from home Wi-Fi" in Settings > Android phone, the pairing link carries four more fields
 (`relay`, `room`, `key`, `access`) and a phone that sends `caps: ["relay"]` is offered `relay` in `welcome.caps` (re-read for
 every connection). The conversation itself is unchanged and runs inside an end-to-end encrypted channel through the user's own
-relay; the wire is in `docs/RELAY_LINK.md`. When the user replaces the relay's access key, each phone that negotiated `relay`
-is sent `{"type":"relayAccess","access":"<43 base64url characters>"}` and follows the new key. A phone that did not negotiate
-`relay` is never sent it.
+relay; the wire is in `docs/RELAY_LINK.md`. When the user replaces the relay's access key, each phone connected over the LAN
+that negotiated `relay` is sent `{"type":"relayAccess","access":"<43 base64url characters>"}` and follows the new key. A phone
+that did not negotiate `relay` is never sent it; a phone connected only through the relay never receives it (the relay closes
+its socket first) and must scan again.
 
 ## Keeping the link alive while the phone sleeps
 

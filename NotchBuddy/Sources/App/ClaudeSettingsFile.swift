@@ -67,6 +67,26 @@ enum ClaudeSettingsFile {
         return (object, bytes)
     }
 
+    /// The text shown before writing `data` (pretty-printed, sorted keys): the same
+    /// JSON with the values under `env` masked, as they can be API keys. Only the
+    /// preview is masked; `data` is what gets written.
+    static func previewText(_ data: Data) -> String {
+        guard var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let env = object["env"] else {
+            return String(data: data, encoding: .utf8) ?? ""
+        }
+        let mask = "••••••"
+        if let vars = env as? [String: Any] {
+            object["env"] = vars.mapValues { _ in mask }
+        } else {
+            object["env"] = mask
+        }
+        guard let masked = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]) else {
+            return ""
+        }
+        return String(data: masked, encoding: .utf8) ?? ""
+    }
+
     /// Replaces the file with `data`, after a dated backup.
     ///
     /// `original` is what `read` returned when `data` was computed. If the file

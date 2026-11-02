@@ -33,6 +33,9 @@ pub struct SentEntry {
     pub id: String,
     pub date: i64,
     pub to: Vec<String>,
+    /// Absent from entries saved before Cc was recorded.
+    #[serde(default)]
+    pub cc: Vec<String>,
     pub subject: String,
     pub attachments: Vec<String>,
 }
@@ -137,13 +140,9 @@ impl Store {
 
     fn write<T: Serialize>(&self, name: &str, value: &T) {
         let Some(dir) = &self.dir else { return };
-        let result = std::fs::create_dir_all(dir)
-            .and_then(|_| serde_json::to_vec_pretty(value).map_err(std::io::Error::other))
-            .and_then(|bytes| {
-                let tmp = dir.join(format!("{name}.tmp"));
-                std::fs::write(&tmp, bytes)?;
-                std::fs::rename(&tmp, dir.join(name))
-            });
+        let result = serde_json::to_vec_pretty(value)
+            .map_err(std::io::Error::other)
+            .and_then(|bytes| crate::config_file::replace(&dir.join(name), &bytes));
         if let Err(e) = result {
             crate::log::line(format!("[mail] could not save {name}: {e}"));
         }
@@ -176,6 +175,21 @@ mod tests {
         assert!(again.is_seen("a") && !again.is_seen("c"));
         assert_eq!(again.journal.len(), 1);
         assert_eq!(again.settings.banned, vec!["promo"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_sent_history_keeps_cc_and_reads_entries_saved_without_it() {
+        let dir = std::env::temp_dir().join(format!("coucou-mail-sent-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("sent.json"), r#"[{"id":"old","date":1,"to":["a@x.fr"],"subject":"Devis","attachments":[]}]"#).unwrap();
+        let mut s = Store::load(dir.clone());
+        assert_eq!(s.sent.len(), 1, "an entry saved before Cc was recorded still loads");
+        assert!(s.sent[0].cc.is_empty());
+        s.record_sent(SentEntry { id: "new".into(), date: 2, to: vec!["a@x.fr".into()], cc: vec!["b@y.fr".into()],
+            subject: "Devis".into(), attachments: vec!["devis.pdf".into()] });
+        assert_eq!(Store::load(dir.clone()).sent[0].cc, vec!["b@y.fr"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

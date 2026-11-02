@@ -103,6 +103,8 @@ ver (1 byte = 1) ‖ type (1 byte) ‖ counter (8 bytes, big endian) ‖ body
 ### Handshake
 
 1. The phone connects and, on every (re)connection and whenever it hears `{"peer":"online"}` without an open session, sends `init`.
+   A `{"peer":"online"}` or `{"peer":"offline"}` during an open session ends that session (the computer left, or joined again
+   on a new socket that has no session), and the phone reconnects and starts again from this step.
 2. The computer checks the MAC with `K_auth`, creates a fresh `N_pc`, derives the session keys and answers `accept`.
    Only the newest `init` is answered; a computer that gets a new `init` drops its previous session.
 3. The phone checks that the `accept` MAC covers **its current** `N_phone` (so a recorded `accept` is useless), derives the same
@@ -148,16 +150,18 @@ One additive v1 message is defined for rotation (section 7), offered as the capa
 
 | direction | `type` | fields | meaning |
 |---|---|---|---|
-| computer → phone | `relayAccess` | `access` (43 base64url characters) | the new access key, sent inside the authenticated channel (over the LAN or the relay) |
+| computer → phone | `relayAccess` | `access` (43 base64url characters) | the new access key, sent inside the authenticated channel over the LAN |
 
 The phone replaces its stored access key (Keystore-encrypted) and reconnects. A phone that did not negotiate `relay`
-is never sent it.
+is never sent it. Over the relay it never arrives: the computer drops its relay connection to reconnect with the new key,
+and the relay, which already holds that key, closes the old sockets with `1008 access key changed` at their next frame
+(section 3).
 
 ## 7. Rotation and revocation
 
 | what | how | effect |
 |---|---|---|
-| **Access key** | `openssl rand -base64 32 \| tr '+/' '-_' \| tr -d '='` → `npx wrangler secret put ACCESS_KEY`, then paste the same value into the computer's setting | New connections with the old key are refused (`401`); live sockets are closed at their next frame (section 3). The computer sends `relayAccess` to paired phones so they follow without scanning again; a phone that was offline at that time re-scans or is sent it when it next connects over the LAN. |
+| **Access key** | `openssl rand -base64 32 \| tr '+/' '-_' \| tr -d '='` → `npx wrangler secret put ACCESS_KEY`, then paste the same value into the computer's setting | New connections with the old key are refused (`401`); live sockets are closed at their next frame (section 3). The computer sends `relayAccess` to the phones connected over the LAN at that moment, so they follow without scanning again. A phone connected only through the relay, or offline, keeps the old key and is refused (`401`): it re-scans. The key is sent only at the moment it changes, not on a later connection. |
 | **K and the room** (“Pair again”) | the computer makes a new K and room id | The old room stays empty forever; the old phone cannot read or write anything new. A stolen or lost phone is cut off this way. |
 | **A phone leaving** (“Disconnect this computer”) | the phone deletes K, access key and token | The pairing is gone on the phone; the computer can “Pair again”. |
 

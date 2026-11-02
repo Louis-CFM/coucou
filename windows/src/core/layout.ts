@@ -22,6 +22,7 @@ export type IslandViewName =
   | "note"
   | "settings"
   | "greeting"
+  | "diff"
   | "recap"
   | "wardrobe"
   | "update"
@@ -90,6 +91,9 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   note: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "column" },
   settings: { height: 160, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
   greeting: { height: 150, botX: 320, botY: 90, botDiameter: 0, agentMode: "none" },
+  // The overview's diff card full size: Mochi where the overview has him, so the
+  // card keeps its left inset, and 288 tall for the lines (inside the 320 px panel).
+  diff: { height: 288, botX: 68, botY: null, botDiameter: 58, agentMode: "none" },
   // Mac: 160. The extra 24 hold the two lines with top agent, project, busiest
   // day, longest session, permissions and questions, which the Mac card leaves
   // to the shared image.

@@ -306,13 +306,25 @@ pub fn phone_link_set_enabled(
     } else {
         link.stop();
     }
-    let updated = {
+    // Saved before it becomes the live setting: a switch that only changed in memory would flip back at the next start.
+    let saved = {
         let mut current = shared.settings.lock().unwrap();
-        current.phone_link = enabled;
-        if let Err(err) = settings::save(&current) {
-            log::line(format!("could not save settings: {err}"));
+        let mut next = current.clone();
+        next.phone_link = enabled;
+        settings::save(&next).map(|()| {
+            *current = next.clone();
+            next
+        })
+    };
+    let updated = match saved {
+        Ok(updated) => updated,
+        Err(err) => {
+            // The switch shows off again: a link started for it stops. One turned off stays off until Coucou restarts.
+            if enabled {
+                link.stop();
+            }
+            return Err(format!("Could not save settings: {err}"));
         }
-        current.clone()
     };
     let _ = app.emit("settings-changed", updated);
     Ok(status_of(&link, enabled))
@@ -429,14 +441,15 @@ pub fn phone_relay_set(
             return Err("Enter the relay's access key first".into());
         }
     }
+    // Saved before it becomes the live setting: nothing changes when the save fails.
     let updated = {
         let mut current = shared.settings.lock().unwrap();
-        current.phone_relay = enabled;
-        current.phone_relay_url = clean;
-        if let Err(err) = settings::save(&current) {
-            log::line(format!("could not save settings: {err}"));
-        }
-        current.clone()
+        let mut next = current.clone();
+        next.phone_relay = enabled;
+        next.phone_relay_url = clean;
+        settings::save(&next).map_err(|err| format!("Could not save settings: {err}"))?;
+        *current = next.clone();
+        next
     };
     link.sync_relay();
     log::line(format!("phone link: relay {}", if enabled { "on" } else { "off" }));
@@ -467,7 +480,8 @@ pub fn phone_relay_set_access(
         };
         let _ = app.emit("settings-changed", updated);
     }
-    // Phones paired for the relay follow the new key by themselves (LAN or relay); others re-scan.
+    // Phones connected over the LAN that negotiated `relay` follow the new key by themselves. A phone reachable only
+    // through the relay never gets it (the relay closes its socket with 1008 first) and, like an older phone, re-scans.
     if let Some(access) = relay_client::access_key(&*link.store) {
         let told = link.hub.send_relay_access(&access);
         log::line(format!("phone link: relay access key changed, {told} phone(s) told"));
@@ -776,11 +790,12 @@ fn caller_allowed(label: &str, who: Caller) -> bool {
     }
 }
 
-fn only_settings(window: &WebviewWindow) -> Result<(), String> {
+/// Also guards lib.rs's commands that write agent hooks.
+pub(crate) fn only_settings(window: &WebviewWindow) -> Result<(), String> {
     if caller_allowed(window.label(), Caller::Settings) {
         Ok(())
     } else {
-        Err("only the settings window may change what the phone can use".into())
+        Err("only the settings window may change this".into())
     }
 }
 

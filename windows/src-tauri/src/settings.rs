@@ -8,6 +8,8 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
+use crate::config_file::write_whole;
+
 /// A field the file lacks takes its value from `Default`, so a settings.json
 /// written by an older build still loads, whatever has been added since.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,10 +207,10 @@ pub fn save(settings: &Settings) -> std::io::Result<()> {
 /// How many copies `set_aside` can make within one second before it gives up.
 const MAX_COPIES_PER_SECOND: u32 = 100;
 
-/// settings.json files that are there but whose contents never made it into
-/// memory: they could not be read, or could not be used and could not be copied
-/// aside either. What is in memory for them is the defaults, so the next save
-/// must not quietly replace them — see `keep_what_was_not_loaded`.
+/// settings.json (and Flow's files) that are there but whose contents never made
+/// it into memory: they could not be read, or could not be used and could not be
+/// copied aside either. What is in memory for them is the defaults, so the next
+/// save must not quietly replace them — see `keep_what_was_not_loaded`.
 static NOT_LOADED: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
 
 fn not_loaded() -> MutexGuard<'static, Vec<PathBuf>> {
@@ -224,7 +226,7 @@ fn save_lock() -> MutexGuard<'static, ()> {
 }
 
 /// One line in coucou.log. Tests must never write to the real one.
-fn note(message: String) {
+pub(crate) fn note(message: String) {
     #[cfg(not(test))]
     crate::log::line(message);
     #[cfg(test)]
@@ -305,7 +307,7 @@ fn load_from(path: &Path) -> Settings {
 }
 
 /// Marks `path` as holding something the next save must not write over.
-fn protect(path: &Path) {
+pub(crate) fn protect(path: &Path) {
     let mut pending = not_loaded();
     if !pending.iter().any(|p| p == path) {
         pending.push(path.to_path_buf());
@@ -314,7 +316,7 @@ fn protect(path: &Path) {
 
 /// Before the first save over a file `load_from` could not load: copies it
 /// aside if it can be read by now, and refuses the save if it still cannot.
-fn keep_what_was_not_loaded(path: &Path) -> std::io::Result<()> {
+pub(crate) fn keep_what_was_not_loaded(path: &Path) -> std::io::Result<()> {
     let mut pending = not_loaded();
     let Some(index) = pending.iter().position(|p| p == path) else {
         return Ok(());
@@ -341,7 +343,7 @@ fn keep_what_was_not_loaded(path: &Path) -> std::io::Result<()> {
 /// with `.<kind>-YYYYMMDD-HHMMSS` appended. Contents an earlier copy of that
 /// kind already holds are not copied again: a file nobody repairs would
 /// otherwise leave one more copy behind at every launch.
-fn set_aside(path: &Path, kind: &str, bytes: &[u8]) -> std::io::Result<PathBuf> {
+pub(crate) fn set_aside(path: &Path, kind: &str, bytes: &[u8]) -> std::io::Result<PathBuf> {
     if let Some(copy) = same_copy(path, kind, bytes) {
         return Ok(copy);
     }
@@ -399,13 +401,6 @@ fn set_aside_as(
     Err(std::io::Error::new(ErrorKind::AlreadyExists, format!("too many copies named {base}")))
 }
 
-/// Writes `bytes` to `file` and waits until they are on the disk.
-fn write_whole(file: &mut std::fs::File, bytes: &[u8]) -> std::io::Result<()> {
-    use std::io::Write;
-    file.write_all(bytes)?;
-    file.sync_all()
-}
-
 /// `save`, for the file at `path`, whose directory already exists.
 fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
     let _lock = save_lock();
@@ -422,14 +417,7 @@ fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
 
     // Write beside the target and rename over it: a crash, a full disk or a
     // power cut leaves the previous settings.json intact rather than half a file.
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
-    let written = std::fs::File::create(&temp)
-        .and_then(|mut file| write_whole(&mut file, &json))
-        .and_then(|()| std::fs::rename(&temp, path));
-    if written.is_err() {
-        let _ = std::fs::remove_file(&temp);
-    }
-    written
+    crate::config_file::replace(path, &json)
 }
 
 #[cfg(test)]

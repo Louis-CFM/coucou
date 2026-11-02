@@ -15,7 +15,8 @@
 //!   either: we abandon the worker and exit.
 //! * Only `PermissionRequest` waits for an answer, because approving from the
 //!   island is the whole point. No answer means no decision, and the agent asks
-//!   in its terminal exactly as if Coucou were not installed.
+//!   in its terminal exactly as if Coucou were not installed. A Coucou that may
+//!   only show the session (`Trust::Display`) is never sent one.
 //!
 //! Usage: `coucou-hook [--agent <name>] [<EventName>]` (the event name is also
 //! read from the JSON; `--agent` is absent for Claude Code), or
@@ -69,6 +70,18 @@ mod unix;
 #[cfg(target_os = "linux")]
 use unix::connect;
 
+/// How far the process serving the pipe may be trusted, once it is known to be
+/// us (win.rs `trust`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Trust {
+    /// Hears every event and answers permission requests.
+    Full,
+    /// Shows the session, never answers for it: Coucou runs below the session's
+    /// integrity level (Claude Code started as administrator, Coucou not).
+    #[cfg_attr(not(windows), allow(dead_code))]
+    Display,
+}
+
 /// What the command line says: `--agent <name>` and the event name.
 struct Args {
     agent: String,
@@ -117,10 +130,8 @@ fn main() {
         std::process::exit(0);
     };
 
-    // Only an agent whose decisions the island can give waits for one; any other
-    // would be held for nothing, its decision being thrown away (reply.rs).
-    let waits_for_answer = event.name == "PermissionRequest" && reply::takes_decisions(&args.agent);
-    let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
+    let waits = waits_for_answer(&event.name, &args.agent);
+    let budget = if waits { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
 
     // The worker owns every blocking call. If it overruns the budget we simply
     // stop listening and exit: the process dying takes the pipe handle with it.
@@ -129,7 +140,7 @@ fn main() {
     let (tx, rx) = mpsc::channel::<Option<String>>();
     let line = event.line.clone();
     std::thread::spawn(move || {
-        let _ = tx.send(talk(&line, waits_for_answer));
+        let _ = tx.send(talk(line, waits));
     });
 
     let decision = rx.recv_timeout(budget).ok().flatten();
@@ -330,9 +341,32 @@ fn cut(s: &mut String, max: usize) -> bool {
     true
 }
 
+/// Only an agent whose decisions the island can give waits for one; any other
+/// would be held for nothing, its decision being thrown away (reply.rs).
+fn waits_for_answer(event: &str, agent: &str) -> bool {
+    event == "PermissionRequest" && reply::takes_decisions(agent)
+}
+
+/// What to write once we know who serves the pipe, or None to write nothing.
+/// A `Display` server gets every event flagged `coucou_elevated`, except the
+/// ones we would wait on: no answer can come back, so the agent asks in its
+/// terminal at once, as if Coucou were closed.
+fn outgoing(line: String, waits_for_answer: bool, trust: Trust) -> Option<String> {
+    match trust {
+        Trust::Full => Some(line),
+        Trust::Display if waits_for_answer => None,
+        Trust::Display => {
+            let mut payload = serde_json::from_str::<Value>(&line).ok()?;
+            payload.as_object_mut()?.insert("coucou_elevated".into(), Value::Bool(true));
+            Some(format!("{payload}\n"))
+        }
+    }
+}
+
 /// Connect, send, and — for a permission request — wait for the island's word.
-fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
-    let mut pipe = connect()?;
+fn talk(line: String, waits_for_answer: bool) -> Option<String> {
+    let (mut pipe, trust) = connect()?;
+    let payload = outgoing(line, waits_for_answer, trust)?;
 
     if pipe.write_all(payload.as_bytes()).is_err() {
         return None;
@@ -453,6 +487,35 @@ mod tests {
         assert!(v["tool_input"]["questions"][0]["question"].as_str().unwrap().ends_with('…'));
         let (_, ev) = run(r#"{"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"ls"}}"#, "", "");
         assert!(ev.question.is_none());
+    }
+
+    #[test]
+    fn a_display_only_coucou_sees_every_event_flagged_but_never_a_request_it_could_answer() {
+        let (_, pre) = run(r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"s"}"#, "", "");
+        let (_, req) = run(r#"{"hook_event_name":"PermissionRequest","tool_name":"Bash","session_id":"s"}"#, "", "");
+        assert!(!waits_for_answer(&pre.name, ""));
+        assert!(waits_for_answer(&req.name, ""), "Claude Code waits on its permission requests");
+
+        // Display: shown, and flagged so Coucou says where to answer.
+        let sent = outgoing(pre.line.clone(), false, Trust::Display).expect("a display event is sent");
+        assert!(sent.ends_with('\n'));
+        let v: Value = serde_json::from_str(sent.trim_end()).unwrap();
+        assert_eq!(v["coucou_elevated"], true);
+        assert_eq!(v["tool_name"], "Bash");
+        assert_eq!(v["session_id"], "s");
+        // A request Claude Code would wait on is not written at all: no answer
+        // can come back, so it asks in its terminal at once.
+        assert_eq!(outgoing(req.line.clone(), true, Trust::Display), None);
+        assert_eq!(reply::stdout("", "PermissionRequest", None, None), None, "no decision for Claude Code");
+        // An agent that never waits only has its request shown.
+        let (_, gemini) = run(r#"{"hook_event_name":"PermissionRequest","toolCall":{"name":"shell"}}"#, "gemini", "");
+        assert!(!waits_for_answer(&gemini.name, "gemini"));
+        assert!(outgoing(gemini.line.clone(), false, Trust::Display).is_some_and(|l| l.contains(r#""coucou_elevated":true"#)));
+
+        // Full: everything goes as it was built, unflagged.
+        assert_eq!(outgoing(pre.line.clone(), false, Trust::Full), Some(pre.line.clone()));
+        assert_eq!(outgoing(req.line.clone(), true, Trust::Full), Some(req.line.clone()));
+        assert!(!pre.line.contains("coucou_elevated"));
     }
 
     #[test]

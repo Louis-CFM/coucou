@@ -31,6 +31,7 @@ struct SettingsView: View {
     @State private var statusMessage: String = ""
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
+    @State private var hookPendingInstall: Bool = true
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
 
     #if !APPSTORE
@@ -638,9 +639,9 @@ struct SettingsView: View {
                             .foregroundColor(.orange)
                     }
                     #if APPSTORE
-                    Button(String(localized: "hooks.update")) { installHooksAppStore() }
+                    Button(String(localized: "hooks.update")) { changeHooksAppStore(install: true) }
                     #else
-                    Button(String(localized: "hooks.update")) { installHooks() }
+                    Button(String(localized: "hooks.update")) { previewHooks(install: true) }
                     #endif
                 }
                 #if APPSTORE
@@ -648,9 +649,9 @@ struct SettingsView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button(String(localized: "hooks.install")) { installHooksAppStore() }
+                    Button(String(localized: "hooks.install")) { changeHooksAppStore(install: true) }
                         .buttonStyle(.borderedProminent)
-                    Button(String(localized: "hooks.uninstall")) { uninstallHooksAppStore() }
+                    Button(String(localized: "hooks.uninstall")) { changeHooksAppStore(install: false) }
                         .buttonStyle(.bordered)
                 }
                 #else
@@ -658,9 +659,9 @@ struct SettingsView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button(String(localized: "hooks.install")) { installHooks() }
+                    Button(String(localized: "hooks.install")) { previewHooks(install: true) }
                         .buttonStyle(.borderedProminent)
-                    Button(String(localized: "hooks.uninstall")) { uninstallHooks() }
+                    Button(String(localized: "hooks.uninstall")) { previewHooks(install: false) }
                         .buttonStyle(.bordered)
                 }
                 #endif
@@ -1819,30 +1820,55 @@ struct SettingsView: View {
         return url
     }
 
-    private func installHooksAppStore() {
+    private func changeHooksAppStore(install: Bool) {
         guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
-        // Show the settings.json Coucou is about to write, as the GitHub build does.
-        let preview: String
-        do {
-            preview = try HookServer.shared.previewClaudeHooksAppStore(claudeURL: claudeURL)
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
-            return
-        }
-        let alert = NSAlert()
-        alert.messageText = String(localized: "alert.hooks.title")
-        alert.informativeText = String(localized: "alert.hooks.body")
-        alert.accessoryView = Self.hooksPreviewView(preview)
-        alert.addButton(withTitle: String(localized: "alert.hooks.button-install"))
-        alert.addButton(withTitle: String(localized: "Cancel"))
-        alert.alertStyle = .informational
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        do {
-            try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
-            hookNeedsUpdate = false
-            statusMessage = String(localized: "status.hooks-installed-claude")
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
+        // Show the settings.json Coucou is about to write, as the GitHub build does, and
+        // write exactly that. If the file changed meanwhile, nothing is written and the
+        // new version is shown instead.
+        var changedNote = ""
+        while true {
+            let preview: String
+            do {
+                preview = try HookServer.shared.previewClaudeHooksAppStore(claudeURL: claudeURL, install: install)
+            } catch let e as NSError where e.domain == "CoucouNoop" {
+                statusMessage = e.localizedDescription
+                return
+            } catch {
+                statusMessage = "❌ \(error.localizedDescription)"
+                return
+            }
+            let alert = NSAlert()
+            let body: String
+            if install {
+                alert.messageText = String(localized: "alert.hooks.title")
+                body = String(localized: "alert.hooks.body")
+                alert.addButton(withTitle: String(localized: "alert.hooks.button-install"))
+            } else {
+                alert.messageText = String(localized: "hooks.uninstall")
+                body = String(localized: "hooks.review-json")
+                alert.addButton(withTitle: String(localized: "hooks.confirm-write"))
+            }
+            alert.informativeText = changedNote.isEmpty ? body : "\(changedNote)\n\n\(body)"
+            alert.accessoryView = Self.hooksPreviewView(preview)
+            alert.addButton(withTitle: String(localized: "Cancel"))
+            alert.alertStyle = .informational
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            do {
+                if install {
+                    try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
+                    hookNeedsUpdate = false
+                    statusMessage = String(localized: "status.hooks-installed-claude")
+                } else {
+                    try HookServer.shared.uninstallClaudeHooksAppStore(claudeURL: claudeURL)
+                    statusMessage = String(localized: "status.hooks-removed")
+                }
+                return
+            } catch ClaudeSettingsFile.Failure.changed(let name) {
+                changedNote = ClaudeSettingsFile.Failure.changed(name).localizedDescription
+            } catch {
+                statusMessage = "❌ \(error.localizedDescription)"
+                return
+            }
         }
     }
 
@@ -1859,16 +1885,6 @@ struct SettingsView: View {
         text.autoresizingMask = [.width]
         scroll.documentView = text
         return scroll
-    }
-
-    private func uninstallHooksAppStore() {
-        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
-        do {
-            try HookServer.shared.uninstallClaudeHooksAppStore(claudeURL: claudeURL)
-            statusMessage = String(localized: "status.hooks-removed")
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
-        }
     }
     #endif
 
@@ -1908,34 +1924,43 @@ struct SettingsView: View {
         }
     }
 
-    private func installHooks() {
+    /// Shows the settings.json that installing or removing the hooks would write.
+    @discardableResult
+    private func previewHooks(install: Bool) -> Bool {
         do {
-            pendingHookJSON = try HookServer.shared.previewClaudeHooks()
+            pendingHookJSON = try HookServer.shared.previewClaudeHooks(install: install)
+            hookPendingInstall = install
             showDiff = true
             statusMessage = String(localized: "hooks.review-json")
+            return true
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
+        return false
     }
 
     private func confirmInstall() {
         do {
             try HookServer.shared.writeClaudeHooks()
             showDiff = false
-            statusMessage = String(localized: "status.hooks-installed-settings")
+            statusMessage = hookPendingInstall
+                ? String(localized: "status.hooks-installed-settings")
+                : String(localized: "status.hooks-removed")
             pendingHookJSON = ""
-            hookNeedsUpdate = false
+            if hookPendingInstall { hookNeedsUpdate = false }
+        } catch ClaudeSettingsFile.Failure.changed(let name) {
+            // Nothing was written: show the file as it is now, to review again.
+            if previewHooks(install: hookPendingInstall) {
+                statusMessage = "❌ \(ClaudeSettingsFile.Failure.changed(name).localizedDescription)"
+            } else {
+                // The file can't be previewed any more: don't leave the old preview up.
+                showDiff = false
+                pendingHookJSON = ""
+            }
         } catch {
             statusMessage = "❌ Write error: \(error.localizedDescription)"
-        }
-    }
-
-    private func uninstallHooks() {
-        do {
-            try HookServer.shared.uninstallClaudeHooks()
-            statusMessage = String(localized: "status.hooks-removed")
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
         }
     }
 

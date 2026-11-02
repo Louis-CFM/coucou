@@ -932,7 +932,8 @@ struct DiffCardView: View {
             return
         }
         #endif
-        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        // Reveal only: the path comes from the agent, and opening it with its default app could run it.
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 }
 

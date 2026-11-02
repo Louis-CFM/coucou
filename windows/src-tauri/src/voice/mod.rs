@@ -246,7 +246,11 @@ fn speak(app: &AppHandle, text: &str) {
         std::thread::sleep(Duration::from_millis(1500));
         return;
     }
-    let audio = if output == "elevenlabs" { elevenlabs(text, &gender).map(|mp3| base64(&mp3)) } else { None };
+    let audio = if output == "elevenlabs" {
+        crate::secrets::get("elevenlabs-api-key").and_then(|key| elevenlabs(ELEVENLABS, &key, text, &gender)).map(|mp3| base64(&mp3))
+    } else {
+        None
+    };
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
     pending().lock().unwrap().insert(id, tx);
@@ -300,16 +304,26 @@ pub async fn voice_say_native(text: String, lang: Option<String>) -> bool {
     .unwrap_or(false)
 }
 
+const ELEVENLABS: &str = "https://api.elevenlabs.io/v1";
+/// 128 kbit/s MP3 is 16 kB a second: 16 MiB is about 17 minutes, past the longest
+/// spoken answer (2,048 tokens, about 10 minutes of speech).
+const MAX_AUDIO: usize = 16 * 1024 * 1024;
+
 /// ElevenLabs' MP3 for `text`, with the user's key; None and the system voice speaks.
-fn elevenlabs(text: &str, gender: &str) -> Option<Vec<u8>> {
-    let key = crate::secrets::get("elevenlabs-api-key")?;
+/// No redirects: reqwest keeps `xi-api-key` on a redirect to another host.
+fn elevenlabs(api: &str, key: &str, text: &str, gender: &str) -> Option<Vec<u8>> {
     tauri::async_runtime::block_on(async {
-        let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build().ok()?;
-        let voices: Value = client.get("https://api.elevenlabs.io/v1/voices").header("xi-api-key", &key).send().await.ok()?.json().await.ok()?;
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .ok()?;
+        let voices = client.get(format!("{api}/voices")).header("xi-api-key", key).send().await.ok()?;
+        let voices: Value = serde_json::from_slice(&crate::net::read_capped(voices, crate::net::MAX_BODY).await.ok()?).ok()?;
         let voice = pick_voice(voices["voices"].as_array()?, gender)?;
         let response = client
-            .post(format!("https://api.elevenlabs.io/v1/text-to-speech/{voice}?output_format=mp3_44100_128"))
-            .header("xi-api-key", &key)
+            .post(format!("{api}/text-to-speech/{voice}?output_format=mp3_44100_128"))
+            .header("xi-api-key", key)
             .header("accept", "audio/mpeg")
             .json(&json!({ "text": text, "model_id": "eleven_flash_v2_5" }))
             .send()
@@ -319,7 +333,7 @@ fn elevenlabs(text: &str, gender: &str) -> Option<Vec<u8>> {
             crate::log::line(format!("voice: ElevenLabs {}", response.status()));
             return None;
         }
-        Some(response.bytes().await.ok()?.to_vec())
+        crate::net::read_capped(response, MAX_AUDIO).await.ok()
     })
 }
 
@@ -537,6 +551,16 @@ mod tests {
         assert_eq!(pick_voice(&voices, "male").as_deref(), Some("b"));
         assert_eq!(pick_voice(&voices, "female").as_deref(), Some("c"));
         assert_eq!(pick_voice(&[], "female"), None);
+    }
+
+    #[test]
+    fn elevenlabs_never_follows_a_redirect_with_the_key() {
+        let destination = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        destination.set_nonblocking(true).unwrap();
+        let headers = format!("Location: http://{}/v1/voices\r\nContent-Length: 0\r\n", destination.local_addr().unwrap());
+        let api = format!("{}/v1", crate::net::tests::serve_once("302 Found", &headers, vec![]));
+        assert_eq!(elevenlabs(&api, "synthetic-key", "Bonjour", "female"), None);
+        assert_eq!(destination.accept().unwrap_err().kind(), std::io::ErrorKind::WouldBlock);
     }
 }
 

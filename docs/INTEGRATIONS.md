@@ -72,8 +72,8 @@ Demande l'autorisation Automatisation la première fois (normal).
 1. Lire `~/.claude/settings.json` (le créer s'il n'existe pas).
 2. Copier en `~/.claude/settings.json.bak-AAAAMMJJ-HHMM`.
 3. **Fusionner** : ajouter les hooks Notch Buddy sans toucher aux hooks existants. Chemin de `nb-hook` entre guillemets (il contient un espace).
-4. Montrer le diff à Louis, attendre son OK, écrire.
-5. Bouton « Désinstaller les hooks » dans les réglages qui retire uniquement les entrées Notch Buddy.
+4. Montrer le fichier qui sera écrit à Louis (les valeurs sous `env` masquées dans l'aperçu seulement), attendre son OK, écrire exactement ces octets. Si `settings.json` a changé depuis l'aperçu, rien n'est écrit et le nouvel aperçu s'affiche.
+5. Bouton « Désinstaller les hooks » dans les réglages qui retire uniquement les entrées Notch Buddy, avec le même aperçu, la même confirmation et la même vérification avant d'écrire.
 
 ---
 
@@ -130,7 +130,7 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 **Fil (TickerView)** — les étapes de modification affichent le nom du fichier, `+N` en vert `#22C55E` et `−M` en rouge `#F4505E`, petits et monospacés.
 
 **Carte diff** — un clic sur une étape de modification ouvre la carte diff dans la vue principale :
-- En-tête : nom du fichier + bilan + bouton ↗ (ouvre dans VS Code via `code -g fichier:ligne`, sinon `NSWorkspace`)
+- En-tête : nom du fichier + bilan + bouton ↗ (ouvre dans VS Code via `code -g fichier:ligne`, sinon montre le fichier dans le Finder sans l'ouvrir)
 - Lignes en monospace 10,5 pt, fond vert ou rouge à 12 %, symbole +/− en marge, 3 lignes de contexte
 - Défilement vertical ; Échap ou clic sur l'en-tête pour revenir au fil
 

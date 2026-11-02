@@ -340,25 +340,30 @@ export function troupe(canvas: HTMLCanvasElement, cast: MochiSpec[], width: numb
   });
 }
 
+/** Where the cursor last was in the window. One listener feeds every lone
+ *  Mochi: one per Mochi would keep each canvas alive after its page is gone. */
+let cursor: { x: number; y: number } | null = null;
+let followingCursor = false;
+
 /** One Mochi alone (the sidebar's logo, an empty page). */
 export function liveMochi(canvas: HTMLCanvasElement, color = "#F5F6F8", state: BotStateName = "idle") {
   const engine = new BotEngine();
   engine.bodyColor = hexToRGB(color);
   engine.setState(state, true);
   canvas.addEventListener("click", () => engine.slap());
-  let mouse: { x: number; y: number } | null = null;
-  window.addEventListener("pointermove", (e) => {
-    const r = canvas.getBoundingClientRect();
-    mouse = { x: e.clientX - (r.left + r.width / 2), y: e.clientY - (r.top + r.height / 2) };
-  });
+  if (!followingCursor) {
+    followingCursor = true;
+    window.addEventListener("pointermove", (e) => (cursor = { x: e.clientX, y: e.clientY }));
+  }
   add({
     el: canvas,
     draw(dt) {
       const { w, h, ctx } = fit(canvas);
       if (!ctx || w === 0) return;
-      if (mouse) {
-        engine.lookX = Math.max(-1, Math.min(1, mouse.x / 300));
-        engine.lookY = Math.max(-1, Math.min(1, mouse.y / 300));
+      if (cursor) {
+        const r = canvas.getBoundingClientRect();
+        engine.lookX = Math.max(-1, Math.min(1, (cursor.x - (r.left + r.width / 2)) / 300));
+        engine.lookY = Math.max(-1, Math.min(1, (cursor.y - (r.top + r.height / 2)) / 300));
       }
       engine.update(dt);
       ctx.clearRect(0, 0, w, h);

@@ -82,20 +82,7 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "file".into());
 
-    let mut dest = dir.join(&name);
-    if dest.exists() {
-        let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
-        for i in 2..1000 {
-            let candidate = dir.join(format!("{stem} ({i}){ext}"));
-            if !candidate.exists() {
-                dest = candidate;
-                break;
-            }
-        }
-    }
-
-    std::fs::copy(src, &dest).map_err(|e| crate::i18n::tf("Cannot copy: {error}", &[("error", &e.to_string())]))?;
+    let dest = copy_unique(src, &dir, &name).map_err(|e| crate::i18n::tf("Cannot copy: {error}", &[("error", &e.to_string())]))?;
     // CopyFileEx carries the source's timestamps across, so a file last edited
     // three years ago would arrive already older than the sweep window and be
     // deleted on the spot. The inbox ages from when *we* copied it.
@@ -109,6 +96,33 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         path: dest.to_string_lossy().to_string(),
         size: meta.len(),
     })
+}
+
+/// Copies `src` into `dir` as `name`, or `stem (2).ext`… when that is taken.
+/// Each name is claimed with `create_new` before the copy, so an existing file,
+/// or one another drop is copying at the same moment, is never overwritten;
+/// once 999 are taken it gives up.
+fn copy_unique(src: &Path, dir: &Path, name: &str) -> std::io::Result<PathBuf> {
+    let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
+    for i in 1..1000 {
+        let dest = if i == 1 { dir.join(name) } else { dir.join(format!("{stem} ({i}){ext}")) };
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&dest) {
+            // CopyFileEx over our empty claim, not a byte copy: it keeps the source's mark of the web.
+            Ok(_) => {
+                return match std::fs::copy(src, &dest) {
+                    Ok(_) => Ok(dest),
+                    Err(err) => {
+                        let _ = std::fs::remove_file(&dest);
+                        Err(err)
+                    }
+                }
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(err) => return Err(err),
+        }
+    }
+    Err(std::io::ErrorKind::AlreadyExists.into())
 }
 
 /// Drops anything copied here more than a week ago. `ingest` stamps every copy
@@ -175,6 +189,28 @@ mod tests {
 
         let _ = std::fs::remove_file(&first.path);
         let _ = std::fs::remove_file(&second.path);
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn once_every_name_is_taken_the_copy_fails_instead_of_overwriting() {
+        let tmp = std::env::temp_dir().join(format!("coucou-test-{}-full-inbox", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let inbox = tmp.join("inbox");
+        std::fs::create_dir_all(&inbox).unwrap();
+        let source = tmp.join("note.txt");
+        std::fs::write(&source, b"new").unwrap();
+        std::fs::write(inbox.join("note.txt"), b"kept").unwrap();
+        for i in 2..1000 {
+            std::fs::write(inbox.join(format!("note ({i}).txt")), b"kept").unwrap();
+        }
+        assert!(copy_unique(&source, &inbox, "note.txt").is_err());
+        assert_eq!(std::fs::read(inbox.join("note.txt")).unwrap(), b"kept");
+        assert_eq!(std::fs::read(inbox.join("note (999).txt")).unwrap(), b"kept");
+        // With a name free again, the copy goes there.
+        std::fs::remove_file(inbox.join("note (500).txt")).unwrap();
+        assert_eq!(copy_unique(&source, &inbox, "note.txt").unwrap(), inbox.join("note (500).txt"));
+        assert_eq!(std::fs::read(inbox.join("note (500).txt")).unwrap(), b"new");
         let _ = std::fs::remove_dir_all(&tmp);
     }
 }

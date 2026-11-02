@@ -22,6 +22,7 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
   let selected: string | null = state.recording ?? state.notes[0]?.id ?? null;
   let tab: "summary" | "transcript" = "summary";
   let startError = "";
+  let editing = false;
 
   page.append(ctx.hero("notes", t("Notetaker"), t("Your calls transcribed person by person, with a summary and the to-dos. No bot in the meeting."), [], true));
   if (ctx.status.models.parakeet.state !== "ready") {
@@ -102,7 +103,30 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
     listEl.append(h("div", { style: "flex:1" }), h("div", { class: "hub-note", style: "padding:10px;border-radius:10px;background:rgba(255,255,255,0.04)", text: t("Everything stays on this computer. Tell the people in the call that you are recording.") }));
   }
 
+  /** Swaps `target` for `input` until Enter, blur or `finish(false)`. Live
+   *  redraws wait meanwhile, so what is typed is not wiped. */
+  function openEditor(target: HTMLElement, input: HTMLInputElement, save: () => Promise<unknown>) {
+    let open = true;
+    editing = true;
+    const finish = async (commit: boolean) => {
+      if (!open) return;
+      open = editing = false;
+      // Removing the input blurs it, and that blur must not save (again).
+      input.removeEventListener("blur", blur);
+      if (commit) await save();
+      await reload();
+    };
+    const blur = () => void finish(true);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") void finish(true); });
+    input.addEventListener("blur", blur);
+    target.replaceWith(input);
+    input.focus();
+    input.select();
+    return finish;
+  }
+
   function drawDetail() {
+    if (editing) return;
     clear(detail);
     const note = state.notes.find((n) => n.id === selected);
     if (!note) {
@@ -114,15 +138,8 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
     title.addEventListener("click", () => {
       const input = h("input", { class: "hub-input", style: "font:700 20px var(--font);width:100%" }) as HTMLInputElement;
       input.value = note.title;
-      const done = () => void FlowBridge.renameNote(note.id, input.value);
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") done();
-        if (e.key === "Escape") drawDetail();
-      });
-      input.addEventListener("blur", done);
-      title.replaceWith(input);
-      input.focus();
-      input.select();
+      const finish = openEditor(title, input, () => FlowBridge.renameNote(note.id, input.value));
+      input.addEventListener("keydown", (e) => { if (e.key === "Escape") void finish(false); });
     });
     const when = new Date(note.start).toLocaleString(lang(), { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
     const copied = h("span", { class: "hub-note" });
@@ -141,11 +158,22 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
     if (note.status !== "recording") {
       tools.append(iconButton("trash", t("Delete"), () => {
         clear(confirm);
+        // A failed delete keeps the call and says why (a file still open elsewhere).
+        const failure = h("div", { class: "hub-warn" });
+        failure.hidden = true;
+        const remove = async () => {
+          try {
+            await FlowBridge.deleteNote(note.id);
+          } catch (error) {
+            failure.textContent = String(error).replace(/^Error:\s*/, "");
+            failure.hidden = false;
+          }
+        };
         confirm.append(h("div", { class: "hub-warn", style: "display:flex;align-items:center;gap:10px" },
           h("span", { style: "flex:1", text: t("Delete this call and its notes?") }),
-          button(t("Delete"), () => void FlowBridge.deleteNote(note.id), "danger", true),
+          button(t("Delete"), () => void remove(), "danger", true),
           button(t("Cancel"), () => clear(confirm), "", true),
-        ));
+        ), failure);
       }));
     }
     tools.append(copied);
@@ -166,12 +194,7 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
         chip.addEventListener("click", () => {
           const input = h("input", { class: "hub-input", placeholder: t("Name"), style: "width:150px" }) as HTMLInputElement;
           input.value = s.name;
-          const done = () => void FlowBridge.renameSpeaker(note.id, s.id, input.value);
-          input.addEventListener("keydown", (e) => e.key === "Enter" && done());
-          input.addEventListener("blur", done);
-          chip.replaceWith(input);
-          input.focus();
-          input.select();
+          openEditor(chip, input, () => FlowBridge.renameSpeaker(note.id, s.id, input.value));
         });
         people.append(chip);
       }
@@ -249,10 +272,20 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
 
   drawList();
   drawDetail();
-  const unlisten = await onEvent<string>("notes-changed", () => void reload());
-  // The recording's clock in the list.
+  // A live line, rename or summary sends that note, patched in place instead of
+  // reloading every call's transcript. An id or a new status reloads everything.
+  const unlisten = await onEvent<string | Note>("notes-changed", (changed) => {
+    const i = typeof changed === "string" ? -1 : state.notes.findIndex((n) => n.id === changed.id);
+    if (typeof changed === "string" || i < 0 || state.notes[i].status !== changed.status) return void reload();
+    state.notes[i] = changed;
+    drawList();
+    drawDetail();
+  });
+  // The recording's clock in the list, only while the Coucou window is on screen.
+  let visible = (await FlowBridge.hubShown()) !== false;
+  const unlistenVisibility = await onEvent<boolean>("hub-visible", (shown) => { visible = shown; });
   const timer = window.setInterval(() => {
-    if (!state.recording) return;
+    if (!visible || !state.recording) return;
     const b = listEl.querySelector<HTMLElement>("[data-ticking]");
     if (!b) return;
     const next = recordButton();
@@ -261,6 +294,7 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
   }, 1000);
   ctx.onLeave = () => {
     unlisten();
+    unlistenVisibility();
     window.clearInterval(timer);
   };
 }

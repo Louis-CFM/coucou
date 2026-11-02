@@ -179,9 +179,14 @@ function appendInline(into: HTMLElement, nodes: Inline[]) {
         }
         const url = node.url;
         const a = h("a", { class: "md-link", href: url, title: url });
-        a.addEventListener("click", (e) => {
+        const open = (e: MouseEvent) => {
           e.preventDefault();
           void Bridge.openUrl(url);
+        };
+        a.addEventListener("click", open);
+        // A middle click would otherwise let the webview open the page itself.
+        a.addEventListener("auxclick", (e) => {
+          if (e.button === 1) open(e);
         });
         appendInline(a, node.children);
         into.append(a);

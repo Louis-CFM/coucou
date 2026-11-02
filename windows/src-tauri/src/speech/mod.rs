@@ -343,11 +343,8 @@ pub fn transcribe(samples: &[f32]) -> Option<Transcript> {
     let rec = recognizer()?;
     let mut out = Transcript::default();
     for (offset, chunk) in audio::split_for_model(samples, SAMPLE_RATE, MAX_CHUNK_SECONDS) {
-        if chunk.len() < (SAMPLE_RATE as usize) / 4 {
-            continue;
-        }
         let stream = rec.create_stream();
-        stream.accept_waveform(SAMPLE_RATE as i32, chunk);
+        stream.accept_waveform(SAMPLE_RATE as i32, &model_input(chunk));
         rec.decode(&stream);
         let Some(result) = stream.get_result() else { continue };
         let start = offset as f64 / SAMPLE_RATE as f64;
@@ -362,6 +359,17 @@ pub fn transcribe(samples: &[f32]) -> Option<Transcript> {
         out.words.extend(words);
     }
     Some(out)
+}
+
+/// A few samples abort the process inside the model (no feature frame): a short
+/// stretch, such as the tail the quiet-point cut leaves, is padded with silence
+/// to 0.25 s, never dropped.
+fn model_input(chunk: &[f32]) -> std::borrow::Cow<'_, [f32]> {
+    let mut input = std::borrow::Cow::Borrowed(chunk);
+    if chunk.len() < SAMPLE_RATE as usize / 4 {
+        input.to_mut().resize(SAMPLE_RATE as usize / 4, 0.0);
+    }
+    input
 }
 
 /// Parakeet's tokens (" Ne", " vous", " dem", "ande", "z") → words with times.
@@ -422,6 +430,22 @@ pub fn diarize(samples: &[f32]) -> Vec<Turn> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_short_final_stretch_of_speech_is_padded_for_the_model_not_dropped() {
+        let rate = super::SAMPLE_RATE as usize;
+        // The quietest window sits just before the end, so the cut leaves a 0.15 s tail.
+        let mut samples = vec![0.1; rate * 28 + rate / 10];
+        samples[rate * 28 - rate / 10..rate * 28].fill(0.0);
+        let chunks = super::audio::split_for_model(&samples, super::SAMPLE_RATE, super::MAX_CHUNK_SECONDS);
+        let &(offset, tail) = chunks.last().unwrap();
+        assert_eq!(chunks.len(), 2);
+        assert!(tail.len() < rate / 4, "the tail is shorter than 0.25 s");
+        let input = super::model_input(tail);
+        assert_eq!(input.len(), rate / 4);
+        assert_eq!(&input[..tail.len()], &samples[offset..]);
+        assert_eq!(super::model_input(&samples[..rate]).len(), rate, "a longer stretch is given as it is");
+    }
+
     use super::*;
 
     fn toks(list: &[&str]) -> Vec<String> {
