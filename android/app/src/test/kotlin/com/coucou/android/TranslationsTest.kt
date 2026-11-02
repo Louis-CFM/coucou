@@ -23,6 +23,7 @@ class TranslationsTest {
         "de" to listOf("one", "other"),
         "ja" to listOf("other"),
         "ko" to listOf("other"),
+        "zh-Hant" to listOf("other"),
     )
 
     @Test fun thereIsAtLeastOneLanguage() = assertTrue(files.isNotEmpty())
