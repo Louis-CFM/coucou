@@ -72,8 +72,8 @@ Demande l'autorisation Automatisation la première fois (normal).
 1. Lire `~/.claude/settings.json` (le créer s'il n'existe pas).
 2. Copier en `~/.claude/settings.json.bak-AAAAMMJJ-HHMM`.
 3. **Fusionner** : ajouter les hooks Notch Buddy sans toucher aux hooks existants. Chemin de `nb-hook` entre guillemets (il contient un espace).
-4. Montrer le diff à Louis, attendre son OK, écrire.
-5. Bouton « Désinstaller les hooks » dans les réglages qui retire uniquement les entrées Notch Buddy.
+4. Montrer le fichier qui sera écrit à Louis (les valeurs sous `env` masquées dans l'aperçu seulement), attendre son OK, écrire exactement ces octets. Si `settings.json` a changé depuis l'aperçu, rien n'est écrit et le nouvel aperçu s'affiche.
+5. Bouton « Désinstaller les hooks » dans les réglages qui retire uniquement les entrées Notch Buddy, avec le même aperçu, la même confirmation et la même vérification avant d'écrire.
 
 ---
 

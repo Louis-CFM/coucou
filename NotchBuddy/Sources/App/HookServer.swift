@@ -1653,14 +1653,17 @@ final class HookServer: @unchecked Sendable {
     private var _pendingHooksOriginal: Data?
 
     /// Returns preview JSON without writing — call writeClaudeHooks() to confirm.
-    func previewClaudeHooks() throws -> String {
-        let (data, original) = try buildHooksData()
+    /// install false: settings.json without Coucou's hooks.
+    func previewClaudeHooks(install: Bool) throws -> String {
+        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/settings.json")
+        let (data, original) = install ? try buildHooksData() : try withoutClaudeHooksData(at: settingsURL)
         _pendingHooksData = data
         _pendingHooksOriginal = original
-        return String(data: data, encoding: .utf8) ?? ""
+        return ClaudeSettingsFile.previewText(data)
     }
 
-    /// Writes the hooks to disk (call after user confirms preview).
+    /// Writes the previewed settings.json (call after user confirms preview).
     /// Refused if settings.json changed since the preview, or cannot be backed up.
     func writeClaudeHooks() throws {
         guard let data = _pendingHooksData else { return }
@@ -1715,12 +1718,15 @@ final class HookServer: @unchecked Sendable {
         return (data, snapshot.bytes)
     }
 
-    func uninstallClaudeHooks() throws {
-        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
+    /// settings.json without Coucou's hooks, and the bytes it was computed from.
+    private func withoutClaudeHooksData(at settingsURL: URL) throws -> (data: Data, original: Data?) {
         let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
         var settings = snapshot.object
-        guard var hooks = settings["hooks"] as? [String: Any] else { return }
+        guard var hooks = settings["hooks"] as? [String: Any] else {
+            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "No Claude Code hooks to remove."
+            ])
+        }
 
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
@@ -1732,8 +1738,8 @@ final class HookServer: @unchecked Sendable {
             }
         }
         settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        return (data, snapshot.bytes)
     }
 
     // MARK: - Claude plan status line installer
@@ -1869,10 +1875,10 @@ final class HookServer: @unchecked Sendable {
     // MARK: - App Store: hooks via security-scoped bookmark
 
     #if APPSTORE
-    /// Writes nb-hook script and updates settings.json in one shot.
+    /// Writes nb-hook script and the settings.json shown by previewClaudeHooksAppStore(install: true).
     /// claudeURL must be a URL from NSOpenPanel (sandbox access is granted immediately — no security scope needed).
     func installAndWriteClaudeHooksAppStore(claudeURL: URL) throws {
-        let (data, original) = try buildHooksData(claudeURL: claudeURL)
+        guard let data = _pendingHooksData else { return }
 
         // Write nb-hook (shell wrapper) + nb-hook.py (Python relay) into ~/.claude/coucou/
         let coucouDir = claudeURL.appendingPathComponent("coucou")
@@ -1884,37 +1890,34 @@ final class HookServer: @unchecked Sendable {
         try nbHookPythonAppStore.write(to: pyURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: pyURL.path)
 
-        // Write settings.json (with backup)
+        // Write settings.json (with backup), refused if it changed since the preview
         let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: original)
+        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: _pendingHooksOriginal)
+        _pendingHooksData = nil
+        _pendingHooksOriginal = nil
         UserDefaults.standard.set(true, forKey: "coucouHooksInstalled")
         UserDefaults.standard.set(Self.appStoreHookVersion, forKey: Self.appStoreHookVersionKey)
     }
 
     /// The settings.json Coucou would write, to show before writing (CLAUDE.md: never
-    /// write ~/.claude/settings.json without showing the change first).
-    func previewClaudeHooksAppStore(claudeURL: URL) throws -> String {
-        let (data, _) = try buildHooksData(claudeURL: claudeURL)
-        return String(data: data, encoding: .utf8) ?? ""
+    /// write ~/.claude/settings.json without showing the change first). These exact
+    /// bytes are what the install or uninstall below writes.
+    func previewClaudeHooksAppStore(claudeURL: URL, install: Bool) throws -> String {
+        let settingsURL = claudeURL.appendingPathComponent("settings.json")
+        let (data, original) = install ? try buildHooksData(claudeURL: claudeURL)
+                                       : try withoutClaudeHooksData(at: settingsURL)
+        _pendingHooksData = data
+        _pendingHooksOriginal = original
+        return ClaudeSettingsFile.previewText(data)
     }
 
+    /// Writes the settings.json shown by previewClaudeHooksAppStore(install: false).
     func uninstallClaudeHooksAppStore(claudeURL: URL) throws {
+        guard let data = _pendingHooksData else { return }
         let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
-        var settings = snapshot.object
-        guard var hooks = settings["hooks"] as? [String: Any] else { return }
-        for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                // Per-entry removal, like the Gemini path: user hooks that merely
-                // mention "coucou"/"NotchBuddy" are kept, only nb-hook commands go.
-                matchers = removeNbHookEntries(from: matchers)
-                if matchers.isEmpty { hooks.removeValue(forKey: key) }
-                else { hooks[key] = matchers }
-            }
-        }
-        settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
+        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: _pendingHooksOriginal)
+        _pendingHooksData = nil
+        _pendingHooksOriginal = nil
         UserDefaults.standard.set(false, forKey: "coucouHooksInstalled")
     }
 

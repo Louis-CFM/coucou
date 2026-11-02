@@ -152,6 +152,23 @@ enum ClaudeSettingsFileTests {
         precondition(contents(real) == next)
         precondition(contents(linkBackup) == original)
 
+        // The preview hides what `env` holds (API keys), and nothing else.
+        let stopHooks: [String: Any] = ["Stop": [["hooks": [["command": "/x/nb-hook", "type": "command"]]]]]
+        let withEnvObject: [String: Any] = ["env": ["ANTHROPIC_API_KEY": "sk-secret", "DEBUG": "1"],
+                                            "model": "opus", "hooks": stopHooks]
+        let withEnv = try JSONSerialization.data(withJSONObject: withEnvObject, options: [.prettyPrinted, .sortedKeys])
+        let shown = ClaudeSettingsFile.previewText(withEnv)
+        precondition(!shown.contains("sk-secret") && !shown.contains("\"1\""), "env values must not be shown")
+        precondition(shown.contains("ANTHROPIC_API_KEY") && shown.contains("DEBUG"), "env keys stay visible")
+        let shownObject = try JSONSerialization.jsonObject(with: Data(shown.utf8)) as? [String: Any]
+        precondition(shownObject?["model"] as? String == "opus")
+        precondition((shownObject?["hooks"] as? NSDictionary) == (stopHooks as NSDictionary),
+                     "everything outside env is shown as written")
+        let odd = Data(#"{"env":"sk-secret"}"#.utf8)
+        precondition(!ClaudeSettingsFile.previewText(odd).contains("sk-secret"), "an env that is not an object is hidden whole")
+        let noEnv = Data("{\n  \"model\" : \"opus\"\n}".utf8)
+        precondition(ClaudeSettingsFile.previewText(noEnv) == String(decoding: noEnv, as: UTF8.self), "no env: shown as is")
+
         print("Claude settings file: all checks passed")
     }
 }
