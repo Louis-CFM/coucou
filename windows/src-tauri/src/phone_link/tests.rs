@@ -1842,9 +1842,11 @@ fn every_secret_the_phone_link_stores_is_in_the_keystores_key_list() {
         assert!(crate::secrets::INTERNAL_KEYS.contains(&key), "{key} is not in secrets::INTERNAL_KEYS");
     }
     // And nothing in the list is a stray: each one is used by the phone link, or by WhatsApp
-    // (checked in whatsapp/mod.rs).
+    // (checked in whatsapp/mod.rs), or the read-only portfolio.
     let whatsapp = crate::secrets::INTERNAL_KEYS.iter().filter(|k| k.starts_with("whatsapp-")).count();
-    assert_eq!(crate::secrets::INTERNAL_KEYS.len() - whatsapp, 6);
+    let portfolio: Vec<_> = crate::secrets::INTERNAL_KEYS.iter().copied().filter(|k| k.starts_with("portfolio-")).collect();
+    assert_eq!(portfolio, ["portfolio-binance", "portfolio-okx", "portfolio-bybit", "portfolio-kraken", "portfolio-coinbase"]);
+    assert_eq!(crate::secrets::INTERNAL_KEYS.len() - whatsapp - portfolio.len(), 6);
 }
 
 #[test]

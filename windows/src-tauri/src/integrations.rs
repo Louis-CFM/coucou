@@ -43,7 +43,7 @@ pub struct IntegrationEvent {
     pub detail: Option<String>,
 }
 
-fn emit(app: &AppHandle, update: IntegrationUpdate) {
+pub(crate) fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
@@ -73,11 +73,13 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_gitea", 7, 300, poll_gitea);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
+    spawn(app.clone(), "integration_portfolio", 11, crate::markets::portfolio::config().poll_seconds, crate::markets::portfolio::poll);
+    spawn(app.clone(), "integration_crypto", 10, crate::markets::network().poll_seconds, crate::markets::poll);
     spawn(app, "integration_notion", 9, 300, poll_notion);
 }
 
 /// True when the user has this integration switched on in settings.
-fn enabled(app: &AppHandle, id: &str) -> bool {
+pub(crate) fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
             let settings = shared.settings.lock().unwrap();
@@ -94,6 +96,7 @@ where
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(Duration::from_secs(delay_secs)).await;
         let mut ticker = tokio::time::interval(Duration::from_secs(every_secs));
+        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             ticker.tick().await;
             // The ticker keeps its cadence; we just decline to do the work. An
@@ -111,6 +114,8 @@ where
 /// One-shot refresh from the Refresh buttons in the island.
 pub async fn poll_once(app: AppHandle, id: &str) {
     match id {
+        "integration_portfolio" => crate::markets::portfolio::poll(app).await,
+        "integration_crypto" => crate::markets::poll(app).await,
         "integration_stripe" => poll_stripe(app).await,
         "integration_github" => {
             wake_github_pulse();

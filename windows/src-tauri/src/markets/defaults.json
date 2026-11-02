@@ -1,0 +1,11 @@
+{
+  "coinbase": "https://api.exchange.coinbase.com",
+  "okx": "https://www.okx.com",
+  "pollSeconds": 60,
+  "historySeconds": 600,
+  "timeoutSeconds": 15,
+  "requestSpacingMs": 150,
+  "maxResponseBytes": 2097152,
+  "maxCoins": 8,
+  "historyPoints": 24
+}
