@@ -644,28 +644,89 @@ async fn run(app: &AppHandle, release: &Release, kind: InstallKind) -> Result<()
     std::fs::create_dir_all(&dir).map_err(|_| t("The download failed. Try again, or get the new version on GitHub."))?;
     let path = dir.join(&asset.name);
 
-    let got = download(app, asset, &path).await.inspect_err(|_| {
+    download(app, asset, &path).await.inspect_err(|_| {
         let _ = std::fs::remove_dir_all(&dir);
     })?;
     set_phase(app, Phase::Verifying);
+    let (installer, got, real_path) = match pin_installer(&path) {
+        Ok(pinned) => pinned,
+        Err(_) => {
+            let _ = std::fs::remove_dir_all(&dir);
+            return Err(t("The download failed. Try again, or get the new version on GitHub."));
+        }
+    };
     if got != expected {
+        drop(installer);
         let _ = std::fs::remove_dir_all(&dir);
         return Err(t("The download isn't the file GitHub published for this version, so nothing was installed."));
     }
 
     let system_root = std::env::var("SystemRoot").ok();
-    let (program, args) = installer_command(kind, &path, system_root.as_deref())
+    let (program, args) = installer_command(kind, &real_path, system_root.as_deref())
         .ok_or_else(|| t("The download failed. Try again, or get the new version on GitHub."))?;
-    std::process::Command::new(program).args(args).spawn().map_err(|err| {
+    let spawned = std::process::Command::new(program).args(args).spawn();
+    // The installer inherited its own copy of the handle and keeps the file locked while it runs.
+    drop(installer);
+    spawned.map_err(|err| {
         crate::log::line(format!("update: could not start the installer: {err}"));
         t("Windows blocked the installer. Get the new version from its release page instead.")
     })?;
     Ok(())
 }
 
-/// Streams the asset to `path` from GitHub only, hashing as it comes, with the
-/// progress on the card. Returns the SHA-256 of exactly `asset.size` bytes.
-async fn download(app: &AppHandle, asset: &Asset, path: &Path) -> Result<String, String> {
+/// Opens the downloaded installer so that nothing can write, rename or delete it
+/// while the handle is open, and hashes what is on disk through that handle: a
+/// file checked and then swapped before the elevated msiexec opens it would make
+/// the check worthless. Returns the handle (inheritable, so the installer keeps
+/// the lock after Coucou quits), the SHA-256, and the file's real path with every
+/// link resolved, which is what the installer is given: no folder on that path
+/// can be renamed while the file is open.
+fn pin_installer(path: &Path) -> std::io::Result<(std::fs::File, String, PathBuf)> {
+    use std::io::Read;
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    // FILE_SHARE_READ only: msiexec may read it, nobody may write, rename or delete it.
+    #[cfg(windows)]
+    std::os::windows::fs::OpenOptionsExt::share_mode(&mut options, 0x1);
+    let mut file = options.open(path)?;
+    let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
+    let mut buf = vec![0u8; 1 << 16];
+    loop {
+        let n = file.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        hash.update(&buf[..n]);
+    }
+    let digest = hash.finish().as_ref().iter().map(|b| format!("{b:02x}")).collect();
+    #[cfg(windows)]
+    let real = {
+        use std::os::windows::io::AsRawHandle;
+        use windows::Win32::Foundation::{SetHandleInformation, HANDLE, HANDLE_FLAG_INHERIT};
+        use windows::Win32::Storage::FileSystem::{GetFinalPathNameByHandleW, VOLUME_NAME_DOS};
+        let handle = HANDLE(file.as_raw_handle());
+        unsafe { SetHandleInformation(handle, HANDLE_FLAG_INHERIT.0, HANDLE_FLAG_INHERIT) }?;
+        let mut wide = vec![0u16; 1024];
+        let n = unsafe { GetFinalPathNameByHandleW(handle, &mut wide, VOLUME_NAME_DOS) } as usize;
+        if n == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        let full = String::from_utf16(wide.get(..n).ok_or_else(|| std::io::Error::other("installer path too long"))?)
+            .map_err(std::io::Error::other)?;
+        // An ordinary path for msiexec: `\\?\C:\…` → `C:\…`, `\\?\UNC\server\…` → `\\server\…`.
+        PathBuf::from(match full.strip_prefix(r"\\?\") {
+            Some(rest) => rest.strip_prefix(r"UNC\").map_or_else(|| rest.to_string(), |unc| format!(r"\\{unc}")),
+            None => full,
+        })
+    };
+    #[cfg(not(windows))]
+    let real = path.to_path_buf();
+    Ok((file, digest, real))
+}
+
+/// Streams the asset to `path` from GitHub only, exactly `asset.size` bytes,
+/// with the progress on the card. `pin_installer` hashes it afterwards.
+async fn download(app: &AppHandle, asset: &Asset, path: &Path) -> Result<(), String> {
     use std::io::Write;
     let failed = || t("The download failed. Try again, or get the new version on GitHub.");
     if !allowed_url(&asset.url) {
@@ -681,7 +742,6 @@ async fn download(app: &AppHandle, asset: &Asset, path: &Path) -> Result<String,
         return Err(failed());
     }
     let mut out = std::fs::File::create(path).map_err(|_| failed())?;
-    let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
     let mut got: u64 = 0;
     let mut last_emit = std::time::Instant::now();
     while let Some(chunk) = response.chunk().await.map_err(|_| failed())? {
@@ -691,7 +751,6 @@ async fn download(app: &AppHandle, asset: &Asset, path: &Path) -> Result<String,
         }
         // Defender holding or removing the file shows up here.
         out.write_all(&chunk).map_err(|_| t("Windows blocked the installer. Get the new version from its release page instead."))?;
-        hash.update(&chunk);
         if last_emit.elapsed() > Duration::from_millis(250) {
             last_emit = std::time::Instant::now();
             set_phase(app, Phase::Downloading { fraction: got as f64 / asset.size as f64 });
@@ -702,7 +761,7 @@ async fn download(app: &AppHandle, asset: &Asset, path: &Path) -> Result<String,
     if got != asset.size {
         return Err(failed());
     }
-    Ok(hash.finish().as_ref().iter().map(|b| format!("{b:02x}")).collect())
+    Ok(())
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
@@ -1017,5 +1076,41 @@ mod tests {
         }).unwrap()).unwrap();
         assert_eq!(round.snoozed_version.as_deref(), Some("0.6.0"));
         assert_eq!(round.asked_at, Some(7));
+    }
+}
+
+#[cfg(all(test, windows))]
+mod pin_tests {
+    use super::pin_installer;
+
+    #[test]
+    fn the_checked_installer_cannot_change_until_the_installer_that_inherits_it_is_done() {
+        let dir = std::env::temp_dir().join(format!("coucou-update-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("Coucou_9.9.9_x64_en-US.msi");
+        std::fs::write(&path, b"the installer GitHub published").unwrap();
+
+        let (installer, digest, real) = pin_installer(&path).unwrap();
+        let expected: String = ring::digest::digest(&ring::digest::SHA256, b"the installer GitHub published")
+            .as_ref().iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(digest, expected, "the hash is of what is on disk");
+        assert!(!real.to_string_lossy().starts_with(r"\?\") && real.ends_with("Coucou_9.9.9_x64_en-US.msi"), "{real:?}");
+        // Nobody can swap it now...
+        assert!(std::fs::write(&path, b"something else").is_err());
+        assert!(std::fs::rename(&path, dir.join("moved.msi")).is_err());
+        assert!(std::fs::remove_file(&path).is_err());
+        assert!(std::fs::rename(&dir, dir.with_extension("moved")).is_err(), "nor move its folder");
+        // ...but it can still be read, as msiexec does.
+        assert_eq!(std::fs::read(&real).unwrap(), b"the installer GitHub published");
+
+        // A process started now inherits the lock, which outlives our handle.
+        let mut child = std::process::Command::new("ping").args(["-n", "3", "127.0.0.1"])
+            .stdout(std::process::Stdio::null()).spawn().unwrap();
+        drop(installer);
+        assert!(std::fs::remove_file(&path).is_err(), "the child still holds it");
+        child.wait().unwrap();
+        // Not asserted: another test's process, started meanwhile, may have inherited it too.
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
