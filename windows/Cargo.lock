@@ -807,8 +807,10 @@ name = "coucou"
 version = "0.5.8"
 dependencies = [
  "arboard",
+ "base64 0.22.1",
  "cpal",
  "dbus",
+ "dirs 7.0.0",
  "futures-util",
  "gtk",
  "keyring",
@@ -816,6 +818,7 @@ dependencies = [
  "lopdf",
  "mdns-sd",
  "miniz_oxide 0.8.9",
+ "png 0.17.16",
  "qrcode",
  "rcgen",
  "reqwest 0.12.28",

@@ -1,0 +1,54 @@
+/* Full-screen media preview on the roam overlay. */
+.preview {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 7, 9, 0.88);
+  animation: preview-in 0.18s ease-out;
+}
+
+.preview[hidden] {
+  display: none;
+}
+
+.preview-media {
+  max-width: 92vw;
+  max-height: 90vh;
+  border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  animation: preview-pop 0.24s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+
+.preview-close {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f5f6f8;
+  cursor: pointer;
+}
+
+.preview-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes preview-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes preview-pop {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+}
