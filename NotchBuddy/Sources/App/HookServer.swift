@@ -2021,7 +2021,8 @@ final class HookServer: @unchecked Sendable {
     // MARK: Gemini CLI – preview / write
 
     private var _pendingGeminiData: Data?
-    private var _pendingGeminiFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingGeminiOriginal: Data?
 
     func previewGeminiHooks(install: Bool) throws -> String {
         let url = Self.geminiSettingsURL
@@ -2031,25 +2032,17 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Gemini CLI hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingGeminiFingerprint = sha256Hex(current)
+        _pendingGeminiOriginal = exists ? try Data(contentsOf: url) : nil
         let newData = install ? try buildGeminiHooksData() : try withoutGeminiHooks()
         _pendingGeminiData = newData
         return String(data: newData, encoding: .utf8) ?? ""
     }
 
     func writeGeminiHooks() throws {
-        guard let data = _pendingGeminiData, let fp = _pendingGeminiFingerprint else { return }
-        let url = Self.geminiSettingsURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/settings.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "settings.json")
+        guard let data = _pendingGeminiData else { return }
+        try ClaudeSettingsFile.write(data, to: Self.geminiSettingsURL, expecting: _pendingGeminiOriginal)
         _pendingGeminiData = nil
-        _pendingGeminiFingerprint = nil
+        _pendingGeminiOriginal = nil
     }
 
     private func buildGeminiHooksData() throws -> Data {
@@ -2117,7 +2110,8 @@ final class HookServer: @unchecked Sendable {
     // MARK: Antigravity – preview / write
 
     private var _pendingAgyData: Data?
-    private var _pendingAgyFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingAgyOriginal: Data?
 
     func previewAgyHooks(install: Bool) throws -> String {
         let url = Self.agyHooksURL
@@ -2127,25 +2121,17 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Antigravity hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingAgyFingerprint = sha256Hex(current)
+        _pendingAgyOriginal = exists ? try Data(contentsOf: url) : nil
         let newData = install ? try buildAgyHooksData() : try withoutAgyHooks()
         _pendingAgyData = newData
         return String(data: newData, encoding: .utf8) ?? ""
     }
 
     func writeAgyHooks() throws {
-        guard let data = _pendingAgyData, let fp = _pendingAgyFingerprint else { return }
-        let url = Self.agyHooksURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/config/hooks.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "hooks.json")
+        guard let data = _pendingAgyData else { return }
+        try ClaudeSettingsFile.write(data, to: Self.agyHooksURL, expecting: _pendingAgyOriginal)
         _pendingAgyData = nil
-        _pendingAgyFingerprint = nil
+        _pendingAgyOriginal = nil
     }
 
     private func buildAgyHooksData() throws -> Data {
@@ -2207,26 +2193,6 @@ final class HookServer: @unchecked Sendable {
         return obj
     }
 
-    /// Backs up the existing file (throws on failure), creates parent dirs, then atomically writes.
-    private func writeJSONFile(_ data: Data, to url: URL, suffix: String) throws {
-        let fm = FileManager.default
-        if fm.fileExists(atPath: url.path) {
-            let fmt = DateFormatter()
-            fmt.locale = Locale(identifier: "en_US_POSIX")
-            fmt.dateFormat = "yyyyMMdd-HHmmss"
-            let backupURL = url.deletingLastPathComponent()
-                .appendingPathComponent("\(suffix).bak-\(fmt.string(from: Date()))")
-            do { try fm.copyItem(at: url, to: backupURL) }
-            catch {
-                throw NSError(domain: "Coucou", code: 3, userInfo: [
-                    NSLocalizedDescriptionKey: "Could not back up \(url.lastPathComponent): \(error.localizedDescription)"
-                ])
-            }
-        }
-        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: url, options: .atomic)
-    }
-
     // MARK: - Codex hook installer  (#if !APPSTORE only)
 
     static var codexHooksURL: URL {
@@ -2253,7 +2219,8 @@ final class HookServer: @unchecked Sendable {
     }
 
     private var _pendingCodexData: Data?
-    private var _pendingCodexFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingCodexOriginal: Data?
 
     func previewCodexHooks(install: Bool) throws -> String {
         let url = Self.codexHooksURL
@@ -2263,25 +2230,17 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Codex hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingCodexFingerprint = sha256Hex(current)
+        _pendingCodexOriginal = exists ? try Data(contentsOf: url) : nil
         let newData = install ? try buildCodexHooksData() : try withoutCodexHooks()
         _pendingCodexData = newData
         return String(data: newData, encoding: .utf8) ?? ""
     }
 
     func writeCodexHooks() throws {
-        guard let data = _pendingCodexData, let fp = _pendingCodexFingerprint else { return }
-        let url = Self.codexHooksURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.codex/hooks.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "hooks.json")
+        guard let data = _pendingCodexData else { return }
+        try ClaudeSettingsFile.write(data, to: Self.codexHooksURL, expecting: _pendingCodexOriginal)
         _pendingCodexData = nil
-        _pendingCodexFingerprint = nil
+        _pendingCodexOriginal = nil
     }
 
     private func buildCodexHooksData() throws -> Data {
@@ -2373,7 +2332,8 @@ final class HookServer: @unchecked Sendable {
     }
 
     private var _pendingCopilotData: Data?
-    private var _pendingCopilotFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingCopilotOriginal: Data?
 
     func previewCopilotHooks(install: Bool) throws -> String {
         let url = Self.copilotHooksURL
@@ -2383,8 +2343,7 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Copilot hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingCopilotFingerprint = sha256Hex(current)
+        _pendingCopilotOriginal = exists ? try Data(contentsOf: url) : nil
         if install {
             let newData = try buildCopilotHooksData()
             _pendingCopilotData = newData
@@ -2396,22 +2355,20 @@ final class HookServer: @unchecked Sendable {
     }
 
     func writeCopilotHooks() throws {
-        guard let fp = _pendingCopilotFingerprint else { return }
         let url = Self.copilotHooksURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.copilot/hooks/coucou.json changed since preview. Refresh and try again."
-            ])
-        }
         if let data = _pendingCopilotData {
-            try writeJSONFile(data, to: url, suffix: "coucou.json")
-        } else {
-            // Uninstall: delete the file entirely
+            try ClaudeSettingsFile.write(data, to: url, expecting: _pendingCopilotOriginal)
+        } else if let original = _pendingCopilotOriginal {
+            // Uninstall: delete the file entirely, if it is still the one previewed
+            guard (try? Data(contentsOf: url)) == original else {
+                throw ClaudeSettingsFile.Failure.changed(url.lastPathComponent)
+            }
             try FileManager.default.removeItem(at: url)
+        } else {
+            return
         }
         _pendingCopilotData = nil
-        _pendingCopilotFingerprint = nil
+        _pendingCopilotOriginal = nil
     }
 
     private func buildCopilotHooksData() throws -> Data {
@@ -2499,7 +2456,8 @@ final class HookServer: @unchecked Sendable {
     }
 
     private var _pendingMuseData: Data?
-    private var _pendingMuseFingerprint: String?
+    /// The bytes the pending preview was computed from (nil: no file).
+    private var _pendingMuseOriginal: Data?
 
     func previewMuseHooks(install: Bool) throws -> String {
         let url = Self.museSettingsURL
@@ -2509,25 +2467,17 @@ final class HookServer: @unchecked Sendable {
                 NSLocalizedDescriptionKey: "No Muse Code hooks to remove."
             ])
         }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingMuseFingerprint = sha256Hex(current)
+        _pendingMuseOriginal = exists ? try Data(contentsOf: url) : nil
         let newData = install ? try buildMuseHooksData() : try withoutMuseHooks()
         _pendingMuseData = newData
         return String(data: newData, encoding: .utf8) ?? ""
     }
 
     func writeMuseHooks() throws {
-        guard let data = _pendingMuseData, let fp = _pendingMuseFingerprint else { return }
-        let url = Self.museSettingsURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.config/muse/settings.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "settings.json")
+        guard let data = _pendingMuseData else { return }
+        try ClaudeSettingsFile.write(data, to: Self.museSettingsURL, expecting: _pendingMuseOriginal)
         _pendingMuseData = nil
-        _pendingMuseFingerprint = nil
+        _pendingMuseOriginal = nil
     }
 
     private func buildMuseHooksData() throws -> Data {
