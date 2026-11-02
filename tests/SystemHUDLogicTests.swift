@@ -172,6 +172,6 @@ enum SystemHUDLogicTests {
         precondition(approx(SystemHUDLogic.soundRate(level: 3), 1.4))
         precondition(approx(SystemHUDLogic.soundRate(level: .nan), 0.8))
         precondition(SystemHUDLogic.soundRate(level: 0.25) < SystemHUDLogic.soundRate(level: 0.75),
-                     "higher volume, higher blip")
+                     "higher volume, higher pitch")
     }
 }
