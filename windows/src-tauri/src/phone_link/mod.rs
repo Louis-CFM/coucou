@@ -306,13 +306,25 @@ pub fn phone_link_set_enabled(
     } else {
         link.stop();
     }
-    let updated = {
+    // Saved before it becomes the live setting: a switch that only changed in memory would flip back at the next start.
+    let saved = {
         let mut current = shared.settings.lock().unwrap();
-        current.phone_link = enabled;
-        if let Err(err) = settings::save(&current) {
-            log::line(format!("could not save settings: {err}"));
+        let mut next = current.clone();
+        next.phone_link = enabled;
+        settings::save(&next).map(|()| {
+            *current = next.clone();
+            next
+        })
+    };
+    let updated = match saved {
+        Ok(updated) => updated,
+        Err(err) => {
+            // The switch shows off again: a link started for it stops. One turned off stays off until Coucou restarts.
+            if enabled {
+                link.stop();
+            }
+            return Err(format!("Could not save settings: {err}"));
         }
-        current.clone()
     };
     let _ = app.emit("settings-changed", updated);
     Ok(status_of(&link, enabled))
@@ -429,14 +441,15 @@ pub fn phone_relay_set(
             return Err("Enter the relay's access key first".into());
         }
     }
+    // Saved before it becomes the live setting: nothing changes when the save fails.
     let updated = {
         let mut current = shared.settings.lock().unwrap();
-        current.phone_relay = enabled;
-        current.phone_relay_url = clean;
-        if let Err(err) = settings::save(&current) {
-            log::line(format!("could not save settings: {err}"));
-        }
-        current.clone()
+        let mut next = current.clone();
+        next.phone_relay = enabled;
+        next.phone_relay_url = clean;
+        settings::save(&next).map_err(|err| format!("Could not save settings: {err}"))?;
+        *current = next.clone();
+        next
     };
     link.sync_relay();
     log::line(format!("phone link: relay {}", if enabled { "on" } else { "off" }));

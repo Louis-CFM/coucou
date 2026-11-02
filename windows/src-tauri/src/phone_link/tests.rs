@@ -1971,3 +1971,16 @@ fn every_command_that_changes_something_checks_the_calling_window() {
     }
     assert!(seen >= 25, "the test must see the commands (saw {seen})");
 }
+
+/// Reads mod.rs: the link and relay switches save a copy and make it the live settings only once it is on disk. A save that
+/// was only logged let "off" look done and come back at the next start.
+#[test]
+fn the_link_and_relay_switches_return_a_failed_save() {
+    let source = include_str!("mod.rs").replace("\r\n", "\n");
+    for name in ["phone_link_set_enabled", "phone_relay_set"] {
+        let start = source.find(&format!("pub fn {name}(")).expect("the command exists");
+        let body = &source[start..start + source[start..].find("\n}\n").expect("a command ends")];
+        assert!(body.contains("settings::save(&next)"), "{name} must save a copy");
+        assert!(!body.contains("could not save settings"), "{name} must return the error, not only log it");
+    }
+}
