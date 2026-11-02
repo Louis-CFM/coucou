@@ -3,10 +3,10 @@ import AppKit
 
 /// Watches the Mac's media keys (volume, brightness, keyboard backlight) with a CGEvent tap.
 ///
-/// Spike stage: the tap only looks. Every event goes on to macOS untouched, and each
-/// press is written to ~/Library/Logs/NotchBuddy/system-hud.log with the action the HUD
-/// would take. A later stage swallows a press only after Coucou has applied it itself,
-/// so the keys never stop working if Coucou can't.
+/// Each press goes to `onAction`, which applies it and says whether it did. Only then is
+/// the key swallowed (with its repeats and its key-up), so macOS doesn't change the level
+/// a second time nor show its own HUD. Anything `onAction` can't apply goes on to macOS
+/// untouched, so the keys never stop working because of Coucou.
 ///
 /// Needs Accessibility (System Settings → Privacy & Security → Accessibility).
 @MainActor
@@ -14,11 +14,14 @@ final class MediaKeyTap {
     static let shared = MediaKeyTap()
     static let logFile = "system-hud.log"
 
-    /// Called on the main thread for each press the HUD would act on.
-    var onAction: ((SystemHUDAction) -> Void)?
+    /// Applies an action on the main thread; returns true when it did (the key is then
+    /// swallowed). Called from inside the tap: it must stay quick.
+    var onAction: (@MainActor (SystemHUDAction) -> Bool)?
 
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
+    /// Keys whose key-down Coucou took: their repeats and key-up are taken too.
+    private var swallowed: Set<MediaKey> = []
 
     var isRunning: Bool { tap != nil }
 
@@ -58,6 +61,7 @@ final class MediaKeyTap {
         CFMachPortInvalidate(tap)
         self.tap = nil
         self.source = nil
+        swallowed.removeAll()
         appendAppLog(Self.logFile, "tap stopped")
     }
 
@@ -87,21 +91,32 @@ final class MediaKeyTap {
     fileprivate func reenable() {
         guard let tap else { return }
         CGEvent.tapEnable(tap: tap, enable: true)
+        swallowed.removeAll()
         appendAppLog(Self.logFile, "tap re-enabled")
     }
 
-    fileprivate func handle(_ input: Input) {
+    /// Returns true when the event must be swallowed.
+    fileprivate func handle(_ input: Input) -> Bool {
         let press = input.press
         let action = SystemHUDLogic.action(for: press, option: input.option, shift: input.shift)
+        guard let action else {
+            // Key-up, or a repeat that does nothing (mute): follow what the key-down got.
+            if !press.isDown { return swallowed.remove(press.key) != nil }
+            return swallowed.contains(press.key)
+        }
+        let handled = onAction?(action) ?? false
+        if handled { swallowed.insert(press.key) } else { swallowed.remove(press.key) }
+        #if DEBUG
         appendAppLog(Self.logFile,
-                     "key \(press.key) down=\(press.isDown) repeat=\(press.isRepeat) "
-                     + "option=\(input.option) shift=\(input.shift) → \(action.map { "\($0)" } ?? "macOS")")
-        if let action { onAction?(action) }
+                     "key \(press.key) repeat=\(press.isRepeat) option=\(input.option) "
+                     + "shift=\(input.shift) → \(action) handled=\(handled)")
+        #endif
+        return handled
     }
 }
 
 /// The tap's C callback. It runs on the main run loop, where the source was added.
-/// Spike stage: always hands the event back, so macOS still handles every key.
+/// Returns nil to swallow a key Coucou applied; every other event goes on untouched.
 private func mediaKeyTapCallback(proxy: CGEventTapProxy, type: CGEventType,
                                  event: CGEvent, userInfo: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
     switch type {
@@ -109,7 +124,8 @@ private func mediaKeyTapCallback(proxy: CGEventTapProxy, type: CGEventType,
         MainActor.assumeIsolated { MediaKeyTap.shared.reenable() }
     default:
         if type.rawValue == MediaKeyTap.systemDefinedType, let input = MediaKeyTap.read(event) {
-            MainActor.assumeIsolated { MediaKeyTap.shared.handle(input) }
+            let swallow = MainActor.assumeIsolated { MediaKeyTap.shared.handle(input) }
+            if swallow { return nil }
         }
     }
     return Unmanaged.passUnretained(event)

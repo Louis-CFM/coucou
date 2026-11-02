@@ -104,6 +104,7 @@ final class SettingsSearch: ObservableObject {
                                                      "island.position", "island.position.top-left", "island.position.top-right",
                                                      "island.position.bottom-left", "island.position.bottom-right"]),
             e("general.vitals", .general, "vitals.title", ["vitals.toggle"]),
+            e("general.system-hud", .general, "system-hud.title", ["system-hud.toggle"]),
             e("general.hotkey", .general, "Hotkey", ["Show island with shortcut", "Shortcut"]),
             e("general.startup", .general, "Startup", ["Launch at Mac startup"]),
             e("general.update", .general, "update.settings.title"),

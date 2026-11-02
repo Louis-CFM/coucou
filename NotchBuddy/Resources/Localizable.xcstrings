@@ -97466,6 +97466,410 @@
           }
         }
       }
+    },
+    "system-hud.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مفاتيح الصوت والسطوع"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ভলিউম ও উজ্জ্বলতার কী"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lautstärke- und Helligkeitstasten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volume and brightness keys"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teclas de volumen y brillo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touches de volume et de luminosité"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "वॉल्यूम और ब्राइटनेस कीज़"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tombol volume dan kecerahan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量と明るさのキー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음량 및 밝기 키"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teclas de volume e brilho"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиши громкости и яркости"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปุ่มระดับเสียงและความสว่าง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ses ve parlaklık tuşları"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量和亮度键"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量與亮度鍵"
+          }
+        }
+      }
+    },
+    "system-hud.toggle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عرض الصوت والسطوع في الشق"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নচে ভলিউম ও উজ্জ্বলতা দেখান"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lautstärke und Helligkeit in der Notch zeigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show volume and brightness in the notch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar el volumen y el brillo en el notch"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le volume et la luminosité dans l’encoche"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नॉच में वॉल्यूम और ब्राइटनेस दिखाएँ"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tampilkan volume dan kecerahan di notch"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量と明るさをノッチに表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "노치에 음량과 밝기 표시"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar volume e brilho no notch"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать громкость и яркость в вырезе"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แสดงระดับเสียงและความสว่างที่รอยบาก"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ses ve parlaklığı çentikte göster"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在刘海中显示音量和亮度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在瀏海中顯示音量與亮度"
+          }
+        }
+      }
+    },
+    "system-hud.about" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعرض مفاتيح الصوت والسطوع مستواها في الشق مع موتشي بدلًا من مؤشر macOS. ‏⌥ مع مفاتيح السطوع يغيّر إضاءة لوحة المفاتيح. عندما تكون الجزيرة مفتوحة، يعرض macOS مؤشره."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ভলিউম ও উজ্জ্বলতার কী macOS-এর ওভারলের বদলে নচে মোচির সাথে মাত্রা দেখায়। উজ্জ্বলতার কীর সাথে ⌥ কীবোর্ডের ব্যাকলাইট বদলায়। আইল্যান্ড খোলা থাকলে macOS নিজেরটা দেখায়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Lautstärke- und Helligkeitstasten zeigen ihren Pegel mit Mochi in der Notch statt der macOS-Anzeige. ⌥ mit den Helligkeitstasten ändert die Tastaturbeleuchtung. Ist die Insel geöffnet, zeigt macOS seine eigene Anzeige."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The volume and brightness keys show their level in the notch, with Mochi, instead of the macOS overlay. ⌥ with the brightness keys changes the keyboard backlight. While the island is open, macOS shows its own."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las teclas de volumen y brillo muestran su nivel en el notch, con Mochi, en lugar del indicador de macOS. ⌥ con las teclas de brillo cambia la retroiluminación del teclado. Con la isla abierta, macOS muestra el suyo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les touches de volume et de luminosité affichent leur niveau dans l’encoche, avec Mochi, à la place de l’indicateur de macOS. ⌥ avec les touches de luminosité règle le rétroéclairage du clavier. Quand l’île est ouverte, macOS affiche le sien."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "वॉल्यूम और ब्राइटनेस कीज़ macOS के ओवरले की जगह नॉच में मोची के साथ स्तर दिखाती हैं। ब्राइटनेस कीज़ के साथ ⌥ कीबोर्ड की बैकलाइट बदलता है। आइलैंड खुला हो तो macOS अपना दिखाता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tombol volume dan kecerahan menampilkan levelnya di notch bersama Mochi, menggantikan indikator macOS. ⌥ dengan tombol kecerahan mengubah lampu latar keyboard. Saat pulau terbuka, macOS menampilkan miliknya."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量と明るさのキーを押すと、macOS の表示の代わりにノッチで Mochi と一緒にレベルを表示します。⌥ と明るさのキーでキーボードのバックライトを調整します。アイランドが開いているときは macOS が表示します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음량 및 밝기 키를 누르면 macOS 표시 대신 노치에서 모찌와 함께 수준을 보여 줘요. ⌥와 밝기 키를 함께 누르면 키보드 백라이트를 조절해요. 아일랜드가 열려 있을 때는 macOS가 표시해요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As teclas de volume e brilho mostram o nível no notch, com o Mochi, em vez do indicador do macOS. ⌥ com as teclas de brilho muda a luz do teclado. Com a ilha aberta, o macOS mostra o dele."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиши громкости и яркости показывают уровень в вырезе вместе с Мочи вместо индикатора macOS. ⌥ с клавишами яркости меняет подсветку клавиатуры. Пока остров открыт, macOS показывает свой индикатор."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปุ่มระดับเสียงและความสว่างจะแสดงระดับที่รอยบากพร้อม Mochi แทนตัวแสดงของ macOS กด ⌥ กับปุ่มความสว่างเพื่อปรับไฟคีย์บอร์ด ขณะที่เกาะเปิดอยู่ macOS จะแสดงของตัวเอง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ses ve parlaklık tuşları, macOS göstergesi yerine düzeyi çentikte Mochi ile gösterir. Parlaklık tuşlarıyla ⌥ klavye aydınlatmasını değiştirir. Ada açıkken macOS kendi göstergesini gösterir."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量和亮度键会在刘海中与 Mochi 一起显示级别，取代 macOS 的提示。按住 ⌥ 再按亮度键可调节键盘背光。岛打开时，由 macOS 显示它自己的提示。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量與亮度鍵會在瀏海中與 Mochi 一起顯示級別，取代 macOS 的提示。按住 ⌥ 再按亮度鍵可調整鍵盤背光。島打開時，由 macOS 顯示它自己的提示。"
+          }
+        }
+      }
+    },
+    "system-hud.needs-accessibility" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اسمح لـ Coucou في إعدادات النظام ← الخصوصية والأمن ← تسهيلات الاستخدام."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সিস্টেম সেটিংস → গোপনীয়তা ও নিরাপত্তা → অ্যাক্সেসিবিলিটিতে Coucou-কে অনুমতি দিন।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erlaube Coucou in Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Coucou in System Settings → Privacy & Security → Accessibility."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permite Coucou en Ajustes del Sistema → Privacidad y seguridad → Accesibilidad."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorise Coucou dans Réglages Système → Confidentialité et sécurité → Accessibilité."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "सिस्टम सेटिंग्स → गोपनीयता और सुरक्षा → एक्सेसिबिलिटी में Coucou को अनुमति दें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izinkan Coucou di Pengaturan Sistem → Privasi & Keamanan → Aksesibilitas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "システム設定 → プライバシーとセキュリティ → アクセシビリティで Coucou を許可してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용에서 Coucou를 허용해 주세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permita o Coucou em Ajustes do Sistema → Privacidade e Segurança → Acessibilidade."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешите Coucou в Системных настройках → Конфиденциальность и безопасность → Универсальный доступ."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุญาต Coucou ในการตั้งค่าระบบ → ความเป็นส่วนตัวและความปลอดภัย → การช่วยการเข้าถึง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou'ya Sistem Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik'ten izin ver."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“系统设置”→“隐私与安全性”→“辅助功能”中允许 Coucou。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在「系統設定」→「隱私權與安全性」→「輔助使用」中允許 Coucou。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

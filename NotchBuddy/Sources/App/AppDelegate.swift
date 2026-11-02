@@ -59,10 +59,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         debugMenuItem.submenu = debugMenu
         NSApp.mainMenu?.addItem(debugMenuItem)
         #endif
-        #if DEBUG && !APPSTORE
-        // System HUD spike: logs the media keys to ~/Library/Logs/NotchBuddy/system-hud.log.
-        // It only watches; macOS still handles every key.
-        MediaKeyTap.shared.start()
+        #if !APPSTORE
+        // Volume and brightness keys in the notch (Settings → General, off by default).
+        SystemHUDController.shared.startIfEnabled()
         #endif
         #if PHONE_LINK
         CloudProbe.shared.startIfEnabled()

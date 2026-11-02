@@ -90,5 +90,43 @@ enum SystemHUDLogic {
         let index = (current * steps).rounded() + Double(direction.signum())
         return min(max(index / steps, 0), 1)
     }
+
+    /// A volume key, like macOS: one step, and any step that leaves some sound unmutes.
+    static func volumeStep(level: Double, muted: Bool, direction: Int, fine: Bool) -> (level: Double, muted: Bool) {
+        let next = stepped(level, direction: direction, fine: fine)
+        return (next, next > 0 ? false : muted)
+    }
+
+    /// The SF Symbol the HUD shows for a level.
+    static func symbol(for target: SystemHUDTarget, level: Double, muted: Bool) -> String {
+        switch target {
+        case .volume:
+            if muted || level <= 0 { return "speaker.slash.fill" }
+            if level < 1.0 / 3 { return "speaker.wave.1.fill" }
+            if level < 2.0 / 3 { return "speaker.wave.2.fill" }
+            return "speaker.wave.3.fill"
+        case .display:
+            return level < 0.5 ? "sun.min.fill" : "sun.max.fill"
+        case .keyboard:
+            return level < 0.5 ? "light.min" : "light.max"
+        }
+    }
+
+    /// The level as the HUD writes it: whole percent, 0 when muted.
+    static func percent(level: Double, muted: Bool) -> Int {
+        muted ? 0 : Int((min(max(level, 0), 1) * 100).rounded())
+    }
+
+    /// How Mochi looks at the level: eyes shut when muted, starry at the top, tired at the bottom.
+    static func mood(level: Double, muted: Bool) -> SystemHUDMood {
+        if muted { return .muted }
+        if level >= 1 { return .max }
+        if level <= 0 { return .min }
+        return .normal
+    }
+}
+
+enum SystemHUDMood: Equatable, Sendable {
+    case normal, max, min, muted
 }
 #endif

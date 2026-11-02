@@ -428,6 +428,11 @@ struct SettingsView: View {
         }
             .settingsAnchor("general.vitals")
 
+        #if !APPSTORE
+        SystemHUDSettingsSection()
+            .settingsAnchor("general.system-hud")
+        #endif
+
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
