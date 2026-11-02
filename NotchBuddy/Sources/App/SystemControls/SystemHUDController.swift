@@ -99,8 +99,10 @@ final class SystemHUDController {
     func perform(_ action: SystemHUDAction) -> Bool {
         // The island is open on something else (an approval, a question, a card): macOS
         // shows its own HUD. Open on the level card: it simply follows.
+        // No island to show it in: the key stays with macOS, never applied without feedback.
         let app = AppState.shared
-        guard app.mode != .expanded || app.view == .level, Self.isEnabled(action.target) else { return false }
+        guard island != nil, app.mode != .expanded || app.view == .level,
+              Self.isEnabled(action.target) else { return false }
         switch action {
         case .toggleMute:
             guard let device = SystemVolume.defaultOutputDevice(),
@@ -144,9 +146,8 @@ final class SystemHUDController {
 
     // MARK: - The level card
 
-    private var island: IslandWindowController? {
-        (NSApp.delegate as? AppDelegate)?.islandController
-    }
+    /// The island, handed over by AppDelegate at launch.
+    weak var island: IslandWindowController?
 
     private func show(_ target: SystemHUDTarget, level: Double, muted: Bool, direction: Int) {
         model.target = target

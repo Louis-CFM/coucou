@@ -60,7 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu?.addItem(debugMenuItem)
         #endif
         #if !APPSTORE
-        // Volume and brightness keys in the notch (Settings → General, off by default).
+        // Volume and brightness keys in the notch (Settings → Volume & brightness, off by
+        // default). Handed the island here: with @NSApplicationDelegateAdaptor, NSApp.delegate
+        // is SwiftUI's own object, not this AppDelegate, so it can't be looked up from there.
+        SystemHUDController.shared.island = islandController
         SystemHUDController.shared.startIfEnabled()
         #endif
         #if PHONE_LINK
