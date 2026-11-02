@@ -17,6 +17,10 @@ final class SystemHUDSound {
     static let shared = SystemHUDSound()
     static let soundName = "blip"
     static let enabledKey = "systemHUD.sound"
+    /// Coucou's sounds play very low (SoundEngine.volume, 0.12 by default): they sit in the
+    /// background. This one is feedback, like macOS's pop, and it plays at the volume just
+    /// chosen: five times louder, still following Coucou's Volume slider in proportion.
+    private static let gain: Float = 5
     /// Held down, a key repeats quickly: at most one sound this often.
     private static let minInterval: CFTimeInterval = 0.07
 
@@ -47,7 +51,7 @@ final class SystemHUDSound {
         guard let player = pool.first(where: { !$0.isPlaying }) ?? pool.first else { return }
         player.currentTime = 0
         player.rate = Float(SystemHUDLogic.soundRate(level: level))
-        player.volume = SoundEngine.shared.volume
+        player.volume = min(1, SoundEngine.shared.volume * Self.gain)
         player.play()
     }
 
