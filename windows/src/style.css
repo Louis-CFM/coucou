@@ -1891,6 +1891,60 @@ input[type="range"]::-webkit-slider-thumb {
   padding-top: 8px;
 }
 
+/* Crypto: one line per coin; the coins scroll between the header and the actions. */
+.int-card.crypto-card {
+  height: 100%;
+  box-sizing: border-box;
+  padding-bottom: 8px;
+}
+
+.crypto-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.crypto-rows::-webkit-scrollbar {
+  display: none;
+}
+
+.crypto-row {
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.crypto-row .int-name {
+  min-width: 30px;
+}
+
+.crypto-row > :not(.int-name):not(.crypto-error) {
+  flex: 0 0 auto;
+}
+
+.crypto-price {
+  margin-left: auto;
+  font: 500 11px var(--font);
+  color: #c5c8cd;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.crypto-change {
+  font: 500 10px var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.crypto-error {
+  min-width: 0;
+  font: 400 10px var(--font);
+  color: #f4505e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Plan usage: the pills in the header and the card behind them ────────────
    ClaudePlanHeaderPill / ClaudePlanCardView / CodexPlanCardView on the Mac.
    Nothing here applies until a pill is turned on in Settings. */

@@ -36,3 +36,31 @@ test("the card identifies Tether quotes and preserves source failures", () => {
   assert.match(card.textContent, /OKX/);
   assert.doesNotMatch(card.textContent, /NaN|undefined/);
 });
+
+test("each coin stays one line in a list that scrolls above the card's actions", () => {
+  const card = cryptoCard({ quotes: [
+    { symbol: "BTC", currency: "USD", price: 78000, change: 0.6, history: [77000, 78000] },
+    { symbol: "ETH", currency: "USD", price: 2270, change: 0.5, history: [2260, 2270], error: "History: HTTP 503" },
+    { symbol: "ZZZQX", currency: "USD", price: null, error: "HTTP 404" },
+  ] }, () => {});
+  const rows = card.querySelector(".crypto-rows");
+  assert.ok(rows, "the coins have their own scrolling list");
+  assert.equal(card.querySelector(".int-actions").parentNode, card, "Refresh and Settings… stay outside the list");
+  assert.equal(rows.find(".int-actions").length, 0);
+  const coins = rows.children;
+  assert.deepEqual(coins.map((row) => row.querySelector(".int-name").textContent), ["BTC", "ETH", "ZZZQX"]);
+  for (const row of coins) {
+    assert.ok(row.classList.contains("crypto-row"));
+    const kids = row.children;
+    const at = (cls) => kids.findIndex((el) => el.classList.contains(cls));
+    assert.equal(at("int-name"), 0, "the symbol starts the row");
+    assert.ok(at("crypto-price") > 0 && at("crypto-change") === at("crypto-price") + 1, "then the price and the change");
+    assert.equal(kids.at(-1).tagName, "SVG", "the sparkline sits at the end of the row");
+    for (const el of [row, ...row.walk()]) assert.doesNotMatch(el.getAttribute("style") ?? "", /flex-wrap|flex-basis/);
+  }
+  const error = coins[2].querySelector(".crypto-error");
+  assert.equal(error.textContent, "HTTP 404");
+  assert.equal(error.getAttribute("title"), "HTTP 404");
+  assert.equal(coins[1].querySelector(".crypto-change").textContent, "+0.50%", "a history failure keeps the change");
+  assert.equal(coins[1].querySelector(".crypto-error").textContent, "History: HTTP 503");
+});
