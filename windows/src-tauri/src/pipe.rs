@@ -136,10 +136,33 @@ mod tests {
             };
             // One entry, ours: the default DACL would also let Everyone (WD) and Anonymous (AN) read.
             let sid = crate::platform::current_user_sid().unwrap();
-            assert!(dacl.starts_with("D:P") && dacl.matches('(').count() == 1 && dacl.ends_with(&format!(";;;{sid})")), "{dacl}");
+            assert!(dacl.starts_with("D:P") && dacl.matches('(').count() == 1 && dacl.ends_with(')'), "{dacl}");
+            // SDDL writes some accounts as aliases (the built-in Administrator a CI runner
+            // uses is "LA"), so the entry's account is compared as a SID, not as text.
+            let trustee = dacl.trim_end_matches(')').rsplit(';').next().unwrap();
+            assert_eq!(full_sid(trustee), sid, "{dacl}");
+            assert!(full_sid("LA").ends_with("-500"));
             // And we still get in, the way coucou-hook opens it.
             std::fs::OpenOptions::new().read(true).write(true).open(&name).expect("our own account connects");
         });
+    }
+
+    /// An SDDL account ("S-1-5-…" or an alias such as "LA") as its "S-1-5-…" form.
+    fn full_sid(text: &str) -> String {
+        use windows::core::{HSTRING, PWSTR};
+        use windows::Win32::Foundation::{LocalFree, HLOCAL};
+        use windows::Win32::Security::Authorization::{ConvertSidToStringSidW, ConvertStringSidToSidW};
+        use windows::Win32::Security::PSID;
+        unsafe {
+            let mut sid = PSID::default();
+            ConvertStringSidToSidW(&HSTRING::from(text), &mut sid).unwrap();
+            let mut out = PWSTR::null();
+            ConvertSidToStringSidW(sid, &mut out).unwrap();
+            let full = out.to_string().unwrap();
+            let _ = LocalFree(Some(HLOCAL(out.0 as *mut _)));
+            let _ = LocalFree(Some(HLOCAL(sid.0)));
+            full
+        }
     }
 }
 
