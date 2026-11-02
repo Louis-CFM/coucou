@@ -610,13 +610,18 @@ pub struct NotesState {
     working: Vec<String>,
 }
 
+/// Off the UI thread: the page asks for it on every change, and it copies every call's transcript.
 #[tauri::command]
-pub fn notes_state(taker: State<Arc<NoteTaker>>) -> NotesState {
-    NotesState {
-        notes: taker.notes.lock().unwrap().clone(),
-        recording: taker.recording.lock().unwrap().as_ref().map(|r| r.id.clone()),
-        working: taker.working.lock().unwrap().clone(),
-    }
+pub async fn notes_state(app: AppHandle) -> Result<NotesState, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let taker = app.state::<Arc<NoteTaker>>();
+        let notes = taker.notes.lock().unwrap().clone();
+        let recording = taker.recording.lock().unwrap().as_ref().map(|r| r.id.clone());
+        let working = taker.working.lock().unwrap().clone();
+        NotesState { notes, recording, working }
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -667,14 +672,25 @@ pub fn notes_toggle_todo(app: AppHandle, taker: State<Arc<NoteTaker>>, id: Strin
     });
 }
 
+/// The note leaves the list only once its folder, audio included, is gone.
 #[tauri::command]
-pub fn notes_delete(app: AppHandle, taker: State<Arc<NoteTaker>>, id: String) {
-    if taker.recording.lock().unwrap().as_ref().is_some_and(|r| r.id == id) {
-        return;
-    }
-    taker.notes.lock().unwrap().retain(|n| n.id != id);
-    let _ = std::fs::remove_dir_all(note_dir(&id));
-    let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &id);
+pub async fn notes_delete(app: AppHandle, id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let taker = app.state::<Arc<NoteTaker>>();
+        if taker.recording.lock().unwrap().as_ref().is_some_and(|r| r.id == id) {
+            return Ok(());
+        }
+        match std::fs::remove_dir_all(note_dir(&id)) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(tf("Could not remove: {error}", &[("error", &error.to_string())])),
+        }
+        taker.notes.lock().unwrap().retain(|n| n.id != id);
+        let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", &id);
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

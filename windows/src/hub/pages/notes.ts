@@ -141,11 +141,22 @@ export async function notesPage(page: HTMLElement, ctx: HubContext) {
     if (note.status !== "recording") {
       tools.append(iconButton("trash", t("Delete"), () => {
         clear(confirm);
+        // A failed delete keeps the call and says why (a file still open elsewhere).
+        const failure = h("div", { class: "hub-warn" });
+        failure.hidden = true;
+        const remove = async () => {
+          try {
+            await FlowBridge.deleteNote(note.id);
+          } catch (error) {
+            failure.textContent = String(error).replace(/^Error:\s*/, "");
+            failure.hidden = false;
+          }
+        };
         confirm.append(h("div", { class: "hub-warn", style: "display:flex;align-items:center;gap:10px" },
           h("span", { style: "flex:1", text: t("Delete this call and its notes?") }),
-          button(t("Delete"), () => void FlowBridge.deleteNote(note.id), "danger", true),
+          button(t("Delete"), () => void remove(), "danger", true),
           button(t("Cancel"), () => clear(confirm), "", true),
-        ));
+        ), failure);
       }));
     }
     tools.append(copied);
