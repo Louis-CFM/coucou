@@ -140,7 +140,7 @@ final class SettingsSearch: ObservableObject {
             e("shortcuts.global", .shortcuts, "shortcut.group.global"),
             e("shortcuts.island", .shortcuts, "shortcut.group.island"),
             e("systemhud.main", .systemHUD, "system-hud.title", ["system-hud.toggle", "system-hud.page"]),
-            e("systemhud.keys", .systemHUD, "system-hud.keys", ["system-hud.volume", "system-hud.display", "system-hud.keyboard"]),
+            e("systemhud.keys", .systemHUD, "system-hud.keys", ["system-hud.volume", "system-hud.sound", "system-hud.display", "system-hud.keyboard"]),
             // Mail
             e("mail.autosort", .mailOverview, "hub.mail.autosort", ["hub.mail.journal", "hub.mail.sent", "hub.mail.undo"]),
             e("mail.rules", .mailRules, "hub.mail.rules", ["hub.mail.field.sender", "hub.mail.field.subject", "hub.mail.do.junk"]),

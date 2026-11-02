@@ -192,6 +192,7 @@ struct SystemHUDSettingsSection: View {
     @State private var on = SystemHUDController.isEnabled
     @State private var trusted = AXIsProcessTrusted()
     @State private var volume = SystemHUDController.isEnabled(.volume)
+    @State private var sound = SystemHUDSound.isEnabled
     @State private var display = SystemHUDController.isEnabled(.display)
     @State private var keyboard = SystemHUDController.isEnabled(.keyboard)
 
@@ -221,6 +222,10 @@ struct SystemHUDSettingsSection: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Toggle(String(localized: "system-hud.volume"), isOn: $volume)
                         .onChange(of: volume) { _, v in SystemHUDController.setEnabled(v, for: .volume) }
+                    Toggle(String(localized: "system-hud.sound"), isOn: $sound)
+                        .onChange(of: sound) { _, v in SystemHUDSound.setEnabled(v) }
+                        .disabled(!volume)
+                        .padding(.leading, 20)
                     Toggle(String(localized: "system-hud.display"), isOn: $display)
                         .onChange(of: display) { _, v in SystemHUDController.setEnabled(v, for: .display) }
                     Toggle(String(localized: "system-hud.keyboard"), isOn: $keyboard)

@@ -139,6 +139,7 @@ final class SystemHUDController {
             guard SystemVolume.setVolume(next.level, of: device) else { return false }
             if next.muted != muted { _ = SystemVolume.setMuted(next.muted, of: device) }
             show(.volume, level: next.level, muted: next.muted, direction: direction)
+            SystemHUDSound.shared.playVolumeStep(level: next.level, muted: next.muted)
 
         case .step(.display, let direction, let fine):
             let screen = DisplayBrightness.shared

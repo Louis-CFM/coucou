@@ -19,6 +19,7 @@ enum SystemHUDLogicTests {
         testVolumeStepUnmutes()
         testPercent()
         testMood()
+        testSoundRate()
         print("SystemHUDLogic: all cases passed")
     }
 
@@ -161,5 +162,16 @@ enum SystemHUDLogicTests {
         precondition(SystemHUDLogic.mood(level: 1, muted: false) == .max)
         precondition(SystemHUDLogic.mood(level: 1, muted: true) == .muted)
         precondition(SystemHUDLogic.mood(level: .nan, muted: false) == .empty)
+    }
+
+    static func testSoundRate() {
+        precondition(approx(SystemHUDLogic.soundRate(level: 0), 0.8))
+        precondition(approx(SystemHUDLogic.soundRate(level: 0.5), 1.1))
+        precondition(approx(SystemHUDLogic.soundRate(level: 1), 1.4))
+        // Out of range or broken input stays inside AVAudioPlayer's 0.5…2.
+        precondition(approx(SystemHUDLogic.soundRate(level: 3), 1.4))
+        precondition(approx(SystemHUDLogic.soundRate(level: .nan), 0.8))
+        precondition(SystemHUDLogic.soundRate(level: 0.25) < SystemHUDLogic.soundRate(level: 0.75),
+                     "higher volume, higher blip")
     }
 }

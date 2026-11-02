@@ -102,6 +102,14 @@ enum SystemHUDLogic {
         muted ? 0 : Int((min(max(level, 0), 1) * 100).rounded())
     }
 
+    /// The volume blip's playback rate: low at the bottom, high at the top (0.8 at 0, 1.4 at
+    /// 100 %), so the sound says the level. Rate changes pitch and length together; 0.8…1.4
+    /// keeps the blip short and inside AVAudioPlayer's 0.5…2 range.
+    static func soundRate(level: Double) -> Double {
+        let value = level.isFinite ? min(max(level, 0), 1) : 0
+        return 0.8 + 0.6 * value
+    }
+
     /// How Mochi looks at the level, in five bands plus mute: asleep at 0, tired up to 30 %,
     /// himself in the middle, happy from 70 %, starry at 100 %, eyes shut when muted.
     static func mood(level: Double, muted: Bool) -> SystemHUDMood {
