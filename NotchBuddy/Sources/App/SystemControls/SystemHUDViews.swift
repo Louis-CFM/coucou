@@ -121,50 +121,69 @@ struct SystemLevelCard: View {
 /// In the island's header, when a volume or brightness key is pressed while the island is
 /// open on a view the level card can't replace (the chat, a mail, the voice, an upload): the
 /// header pill Coucou uses for the Claude plan (ClaudePlanHeaderPill, in its active look),
-/// with the key's colour, its name, a small track and the value.
+/// with the key's colour, its icon, a small track and the value.
+///
+/// Kept about as wide as the plan pill: the room right of the notch, before the header's
+/// icons, is narrow (Coucou shows a single plan pill there for that reason). A name instead
+/// of the icon, or a longer track, slid its left end under the notch.
 struct SystemLevelHeaderPill: View {
     @ObservedObject private var model = SystemHUDController.shared.model
+
+    private static let trackWidth: CGFloat = 28
 
     var body: some View {
         ZStack {
             if model.lineVisible {
-                let color = model.target == .volume && model.muted
-                    ? Color(hex: "#8E939C") : SystemLevelCard.color(for: model.target)
+                let muted = model.target == .volume && model.muted
+                let color = muted ? Color(hex: "#8E939C") : SystemLevelCard.color(for: model.target)
+                let level = CGFloat(muted ? 0 : min(max(model.level, 0), 1))
                 HStack(spacing: 5) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 6, height: 6)
-                    Text(verbatim: SystemLevelCard.title(for: model.target))
-                        .font(.system(size: 10, weight: .semibold))
+                    Image(systemName: symbol(muted: muted))
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(color.lighter(by: 0.3))
-                        .lineLimit(1)
-                        .fixedSize()
+                        .frame(width: 12)
+                        .contentTransition(.symbolEffect(.replace))
                     // The card's track, small.
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.white.opacity(0.12))
                         Capsule()
                             .fill(color)
-                            .frame(width: 36 * CGFloat(model.muted ? 0 : min(max(model.level, 0), 1)))
+                            .frame(width: Self.trackWidth * level)
                     }
-                    .frame(width: 36, height: 4)
-                    Text(verbatim: SystemLevelCard.value(level: model.level, muted: model.muted,
-                                                         target: model.target))
-                        .font(.system(size: 10, weight: .semibold).monospacedDigit())
-                        .foregroundColor(color.lighter(by: 0.3))
-                        .lineLimit(1)
-                        .fixedSize()
-                        .contentTransition(.numericText())
+                    .frame(width: Self.trackWidth, height: 4)
+                    if !muted {
+                        Text(verbatim: SystemLevelCard.value(level: model.level, muted: false,
+                                                             target: model.target))
+                            .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                            .foregroundColor(color.lighter(by: 0.3))
+                            .lineLimit(1)
+                            .fixedSize()
+                            .contentTransition(.numericText())
+                    }
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Capsule().fill(color.opacity(0.18)))
                 .overlay(Capsule().stroke(color.opacity(0.55), lineWidth: 1))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(SystemLevelCard.title(for: model.target) + " "
+                                    + SystemLevelCard.value(level: model.level, muted: model.muted,
+                                                            target: model.target))
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.82), value: model.lineVisible)
         .animation(.spring(response: 0.5, dampingFraction: 0.72), value: model.level)
         .allowsHitTesting(false)
+    }
+
+    /// The key's icon: the header's own speaker for the volume, the sun, the keyboard light.
+    private func symbol(muted: Bool) -> String {
+        switch model.target {
+        case .volume:   return muted ? "speaker.slash.fill" : "speaker.wave.2.fill"
+        case .display:  return "sun.max.fill"
+        case .keyboard: return "light.max"
+        }
     }
 }
 
