@@ -129,7 +129,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     if screen_changed {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
-        island::apply_geometry(&app, &settings.screen, collapsed);
+        let size = *shared.gate.collapsed_size.lock().unwrap();
+        island::apply_geometry(&app, &settings.screen, collapsed.then_some(size));
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
@@ -165,11 +166,14 @@ fn language_changed(app: &AppHandle) {
 /// Hidden island → shrink the window to the invisible wake strip and park the
 /// cursor poll; anything else → full panel and 60 Hz polling.
 #[tauri::command]
-fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
+fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool, width: Option<f64>, height: Option<f64>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
-    island::apply_geometry(&app, &pref, collapsed);
-    // The wake strip must always take the mouse, and a resize invalidates the flag.
+    // An older page sends no size: the wake strip, as before.
+    let size = island::clamp_collapsed((width.unwrap_or(island::STRIP_W), height.unwrap_or(island::STRIP_H)));
+    *shared.gate.collapsed_size.lock().unwrap() = size;
+    island::apply_geometry(&app, &pref, collapsed.then_some(size));
+    // The closed island must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
@@ -198,7 +202,8 @@ fn focus_window(app: AppHandle, focused: bool) {
 fn reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
-    island::apply_geometry(&app, &pref, collapsed);
+    let size = *shared.gate.collapsed_size.lock().unwrap();
+    island::apply_geometry(&app, &pref, collapsed.then_some(size));
 }
 
 /// The panel is laid out in CSS px against the window's own scale. If the webview
@@ -785,6 +790,11 @@ fn set_hub_shown(win: &tauri::WebviewWindow, shown: bool) {
     }
 }
 
+/// Whether the Coucou window is on screen, for what only it shows.
+pub(crate) fn hub_is_shown() -> bool {
+    HUB_SHOWN.load(Ordering::Relaxed)
+}
+
 /// The page asks once at load, in case it missed the event.
 #[tauri::command]
 fn hub_shown() -> bool {
@@ -809,6 +819,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
             if let Some(win) = handle.get_webview_window(HUB_LABEL) {
                 let _ = win.show();
                 let _ = win.set_focus();
+                set_hub_shown(&win, true);
             }
         });
         return;
@@ -1068,7 +1079,7 @@ pub fn run() {
                 platform::make_non_activating(&win);
                 #[cfg(windows)]
                 webview_drop::install(&handle);
-                island::apply_geometry(&handle, &loaded.screen, false);
+                island::apply_geometry(&handle, &loaded.screen, None);
                 let _ = win.show();
             }
             gate.collapsed.store(false, Ordering::Relaxed);
