@@ -8,7 +8,9 @@ import { N_ } from "../i18n/i18n";
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
   | "ollama" | "lmstudio" | "custom"
-  | "cursor" | "copilot";
+  | "cursor" | "copilot"
+  /** The media models saved in Settings (src-tauri/src/media.rs): "Create". */
+  | "media";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -35,10 +37,17 @@ export const PROVIDERS: readonly ProviderDef[] = [
   // Only through the user's own subscription (cli_relay.rs): no key, no address.
   { id: "cursor", name: "Cursor", accent: "#A1A1AA", key: null, urlField: null, defaultModel: "", prefer: null },
   { id: "copilot", name: "GitHub Copilot", accent: "#8B5CF6", key: null, urlField: null, defaultModel: "", prefer: null },
+  // Images, video, speech and 3D from the models saved in Settings -> Media
+  // and voice models; its "model" is a saved entry's id.
+  { id: "media", name: "Create", accent: "#E879F9", key: null, urlField: null, defaultModel: "", prefer: null },
 ];
 
 /** Answered only through the user's subscription, switched on in Settings → Chat. */
 export const SUBSCRIPTION_ONLY: readonly ProviderId[] = ["cursor", "copilot"];
+/** The saved models the "Create" chip offers (speech-to-text only serves the mic). */
+export function creators(settings: Settings) {
+  return (settings.models ?? []).filter((m) => m.output !== "stt");
+}
 
 /** Credential store entry of the custom server's optional key. */
 export const CUSTOM_SERVER_KEY = "openai-compatible-key";
@@ -70,6 +79,7 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
 export function visibleProviders(settings: Settings, subscribed: ReadonlySet<string> = new Set()): ProviderDef[] {
   return PROVIDERS.filter((p) => {
     if (settings.chatProvider === p.id) return true;
+    if (p.id === "media") return creators(settings).length > 0;
     if (SUBSCRIPTION_ONLY.includes(p.id)) return subscribed.has(p.id) || settings.chatSubscriptions?.[p.id] === true;
     return !p.urlField || settings[p.urlField] !== "";
   });

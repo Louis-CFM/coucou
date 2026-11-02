@@ -57,6 +57,10 @@ miniz_oxide = "0.8"
 # (mail/pdf.rs), as the Mac does with PDFKit; Windows has no PDF library of its own. MIT, pure
 # Rust, default features (clock, rayon) off.
 lopdf = { version = "0.46", default-features = false }
+# Both already in the tree through Tauri: generated media arrives as base64,
+# and Download needs the real Downloads folder (it can be moved on Windows).
+base64 = "0.22"
+dirs = "7"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

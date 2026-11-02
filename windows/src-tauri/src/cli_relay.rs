@@ -523,7 +523,7 @@ pub async fn send(
     // The record keeps the file's name, never its contents: later turns search the web.
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, json!({ "role": "user", "content": plain }), json!({ "role": "assistant", "content": text }), &plain, &text);
-    Ok(ChatReply { text })
+    Ok(ChatReply::text(text))
 }
 
 /// One chat turn as a single prompt for the tools other than Claude Code: the
