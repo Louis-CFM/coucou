@@ -84,7 +84,7 @@ Tick each line and note anything odd. "Expect" is what should happen.
 | 9 | Put the computer to sleep for a minute, wake it | Phone shows the computer offline, then recovers by itself |
 | 10 | Computer: change the relay address to something wrong | Status says the relay cannot be reached; **the agents are never delayed**; at home the direct link still works |
 | 11 | Computer: **Pair again** | The phone is cut off at once and must scan the new code; the old pairing cannot reconnect |
-| 12 | Make a new access key, `npx wrangler secret put ACCESS_KEY`, paste it in the computer's **Relay access key**, Save | New connections with the old key are refused. A phone that is connected **follows the new key by itself** (it is sent inside the encrypted channel); a phone that was offline needs a new scan |
+| 12 | Make a new access key, `npx wrangler secret put ACCESS_KEY`, paste it in the computer's **Relay access key**, Save | New connections with the old key are refused. A phone connected **over the home Wi-Fi** follows the new key by itself (it is sent inside the encrypted channel); a phone connected only through the relay, or offline, needs a new scan |
 | 13 | `npx wrangler tail` while an agent works | Connections only, **no readable content** (there is none to show) |
 | 14 | Phone on mobile data, screen off, not moving, **30 minutes** | Does an approval still arrive? (Doze and the carrier decide; this is the one result I cannot predict) |
 | 15 | Overnight battery: before, `adb shell dumpsys batterystats --reset`; after, `adb shell dumpsys batterystats --charged com.coucou.android` | Note the percentage used and tell me |

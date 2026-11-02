@@ -467,7 +467,8 @@ pub fn phone_relay_set_access(
         };
         let _ = app.emit("settings-changed", updated);
     }
-    // Phones paired for the relay follow the new key by themselves (LAN or relay); others re-scan.
+    // Phones connected over the LAN that negotiated `relay` follow the new key by themselves. A phone reachable only
+    // through the relay never gets it (the relay closes its socket with 1008 first) and, like an older phone, re-scans.
     if let Some(access) = relay_client::access_key(&*link.store) {
         let told = link.hub.send_relay_access(&access);
         log::line(format!("phone link: relay access key changed, {told} phone(s) told"));
