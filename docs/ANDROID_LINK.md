@@ -4,9 +4,9 @@ How *Coucou for Android* talks to a desktop Coucou. The iPhone uses iCloud (Clou
 push, neither of which exists on Android, so the Android app connects to the desktop directly over
 the local network.
 
-Status: the Android client, `android/tools/dev-desktop.mjs` (a stand-in desktop for testing) and the
-real desktop server of the Windows/Linux app (`windows/src-tauri/src/phone_link/`) implement this.
-The Mac app is left to its author.
+Status: the Android client, `android/tools/dev-desktop.mjs` (a stand-in desktop for testing), the
+real desktop server of the Windows/Linux app (`windows/src-tauri/src/phone_link/`) and the Mac app
+(`NotchBuddy/Sources/App/AndroidLink/`) implement this.
 
 ## Transport
 
@@ -351,6 +351,43 @@ simply keeps using the saved address.**
 - New crates: `mdns-sd` (+ `flume`, `if-addrs`, `socket-pktinfo`, `spin`; default features off, so no async runtime or logger) announces the computer on the local network while the link is on (`phone_link/discovery.rs`); `rcgen` (+ `yasna`) makes the certificate once, `qrcode` draws the pairing QR; `rustls`,
   `tokio-rustls` and `ring` were already in the dependency tree (through `reqwest`) and are now named
   directly. Hashing, randomness and the constant-time comparison use `ring`; no other crate.
+
+## Mac implementation notes
+
+The Mac app speaks the same protocol v1 as the Windows/Linux one, in Swift with Network.framework, CryptoKit and Security only
+(`NotchBuddy/Sources/App/AndroidLink/`). The phone cannot tell a Mac from a PC (`welcome.os` is `macos`).
+
+- **Settings → Android phone**: off by default (`androidLinkEnabled`). Turning it on starts a TLS listener and a Bonjour announcement;
+  turning it off, or quitting, stops both. While it is off nothing listens and no timer runs; while it is on the work is event driven
+  (island changes are published after a short debounce, a phone's lines are handled as they arrive), with no polling. Not in the
+  App Store build (the sandbox has no server entitlement); that build keeps the iPhone link only.
+- **Transport**: an `NWListener` on port 47821 (else any free port), IPv4 only, TLS 1.2 or 1.3, with the self-signed certificate
+  (ECDSA P-256, valid 2024 to 2124, common name `Coucou phone link`). Peers that are not on the local network are dropped before any byte
+  is read. At most 8 connections, 10 s to say hello (3 s when the pool is filling up), 20 min idle, 64 KiB lines.
+- **Secrets**: the certificate, its key and the pairing token are generic-password items of the Keychain
+  (`android-link-cert`, `android-link-key`, `android-link-token`), never a file and never UserDefaults. Network.framework needs a
+  `SecIdentity`, so the key and certificate are also added to the Keychain as key and certificate items while the link runs and removed
+  when it stops. Without a Keychain the link does not start. "Pair again" replaces the token and disconnects the phone that had the old one.
+- **Pairing code**: shown only after a click, as on the PC: a QR code (CoreImage) and the `coucou://pair` link with this Mac's LAN address.
+- **Approvals**: the island's pending request is published with its queue id as the request id, so the fingerprint is
+  `sha256(pillId, sessionId, tool, command, requestId)` joined by U+001F and asking for the same command twice gives two fingerprints.
+  A phone's decision is applied only to the request still pending with that fingerprint, once, within 115 s, through
+  `HookServer.sendApprovalDecision`, the same path as a click on the Mac's own card; the Mac's card keeps working all along.
+  `allow` for a command cut to 500 characters is ignored (the request stays pending), `deny` works.
+- **Admission**: the same numbers and rules as `admission.rs` (2 silent connections per address, 4 for strangers together, 8 remembered
+  addresses, shorter waits when filling up), in `AndroidLinkAdmission.swift` with the same tests.
+- **Discovery**: `_coucou._tcp` with TXT `v=1` and `fp=<first 16 hex of the certificate SHA-256>`, nothing else, published by the listener
+  itself, so it is withdrawn with it.
+- **Capabilities the Mac offers**, each only to a phone that asked for it and read again for every connection:
+  `details` ("Show session details on the phone"), `answers` ("Let the phone answer Claude Code's questions") and `usage`
+  ("Show my plan usage on the phone"), all off by default. Changing one of these switches disconnects the phones once so they reconnect
+  and are told. Not offered yet: `chat`, `diffs`, `services`, `recap`, `prefs` and `relay`; a phone that asks for them is simply not
+  offered them and everything else works.
+- **What differs from the PC**: a question is offered only if it fits the limits above, and only the first such question waiting is
+  offered; the others stay on the Mac. Sessions are the island's agent pills (a session popped out of its pill keeps its own pill id,
+  like `integration_claude#2`). No demo data ever leaves the Mac.
+- **Tests**: `scripts/test-android-link.sh` (CI) checks the fingerprint, pairing link, TXT record, local-network, admission, framing,
+  hub and certificate rules against the vectors of the Rust and Kotlin tests.
 
 ## Android notes
 
