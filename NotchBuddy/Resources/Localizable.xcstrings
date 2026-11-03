@@ -99100,7 +99100,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Android-Handy"
+            "value" : "Android-Telefon"
           }
         },
         "en" : {
@@ -99142,13 +99142,13 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Android 폰"
+            "value" : "Android 휴대폰"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Telefone Android"
+            "value" : "Celular Android"
           }
         },
         "ru" : {
@@ -99388,7 +99388,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إظهار رمز الإقران"
+            "value" : "إظهار رمز الاقتران"
           }
         },
         "bn" : {
@@ -99412,25 +99412,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar código de vinculación"
+            "value" : "Mostrar código de emparejamiento"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher le code d'appairage"
+            "value" : "Afficher le code d'association"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पेयरिंग कोड दिखाएं"
+            "value" : "पेयरिंग कोड दिखाएँ"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tampilkan kode pemasangan"
+            "value" : "Tampilkan kode penyandingan"
           }
         },
         "ja" : {
@@ -99654,7 +99654,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Копировать ссылку"
+            "value" : "Скопировать ссылку"
           }
         },
         "th" : {
@@ -99688,7 +99688,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعادة الإقران"
+            "value" : "إعادة الاقتران"
           }
         },
         "bn" : {
@@ -99712,13 +99712,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vincular de nuevo"
+            "value" : "Emparejar de nuevo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appairer à nouveau"
+            "value" : "Associer à nouveau"
           }
         },
         "hi" : {
@@ -99730,13 +99730,13 @@
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pasangkan lagi"
+            "value" : "Sandingkan ulang"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "再ペアリング"
+            "value" : "もう一度ペアリング"
           }
         },
         "ko" : {
@@ -99748,13 +99748,13 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Parear novamente"
+            "value" : "Parear de novo"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выполнить сопряжение заново"
+            "value" : "Сопрячь заново"
           }
         },
         "th" : {
@@ -100288,19 +100288,19 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "عرض تفاصيل الجلسات على الهاتف"
+            "value" : "إظهار تفاصيل الجلسة على الهاتف"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ফোনে সেশনের বিস্তারিত দেখান"
+            "value" : "ফোনে সেশনের বিবরণ দেখান"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sitzungsdetails auf dem Handy anzeigen"
+            "value" : "Sitzungsdetails auf dem Telefon anzeigen"
           }
         },
         "en" : {
@@ -100312,19 +100312,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar los detalles de las sesiones en el teléfono"
+            "value" : "Mostrar los detalles de la sesión en el teléfono"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher les détails des sessions sur le téléphone"
+            "value" : "Afficher les détails de la session sur le téléphone"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "फ़ोन पर सेशन का विवरण दिखाएं"
+            "value" : "फ़ोन पर सत्र का विवरण दिखाएँ"
           }
         },
         "id" : {
@@ -100336,25 +100336,25 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スマートフォンにセッションの詳細を表示"
+            "value" : "セッションの詳細をスマートフォンに表示"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "폰에 세션 상세 정보 표시"
+            "value" : "휴대폰에서 세션 세부 정보 보기"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar detalhes das sessões no telefone"
+            "value" : "Mostrar os detalhes da sessão no celular"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать подробности сессий на телефоне"
+            "value" : "Показывать детали сессии на телефоне"
           }
         },
         "th" : {
@@ -100488,7 +100488,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "السماح للهاتف بالرد على أسئلة Claude Code"
+            "value" : "السماح للهاتف بالإجابة عن أسئلة Claude Code"
           }
         },
         "bn" : {
@@ -100500,7 +100500,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Handy Fragen von Claude Code beantworten lassen"
+            "value" : "Fragen von Claude Code auf dem Telefon beantworten"
           }
         },
         "en" : {
@@ -100512,7 +100512,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Permitir que el teléfono responda a las preguntas de Claude Code"
+            "value" : "Dejar que el teléfono responda a las preguntas de Claude Code"
           }
         },
         "fr" : {
@@ -100524,7 +100524,7 @@
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "फ़ोन को Claude Code के सवालों का जवाब देने दें"
+            "value" : "फ़ोन को Claude Code के सवालों के जवाब देने दें"
           }
         },
         "id" : {
@@ -100536,19 +100536,19 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude Code の質問にスマートフォンから回答する"
+            "value" : "スマートフォンから Claude Code の質問に答える"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "폰에서 Claude Code의 질문에 답하기"
+            "value" : "휴대폰에서 Claude Code 질문에 답하기"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Permitir que o telefone responda às perguntas do Claude Code"
+            "value" : "Deixar o celular responder às perguntas do Claude Code"
           }
         },
         "ru" : {
@@ -100566,7 +100566,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Telefonun Claude Code sorularını yanıtlamasına izin ver"
+            "value" : "Telefon Claude Code'un sorularını yanıtlayabilsin"
           }
         },
         "zh-Hans" : {
@@ -100700,7 +100700,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Meine Plannutzung auf dem Handy anzeigen"
+            "value" : "Meine Plannutzung auf dem Telefon anzeigen"
           }
         },
         "en" : {
@@ -100712,19 +100712,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar el uso de mi plan en el teléfono"
+            "value" : "Mostrar en el teléfono el uso de mi plan"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher l'utilisation de mon forfait sur le téléphone"
+            "value" : "Afficher sur le téléphone l'utilisation de mon forfait"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "फ़ोन पर मेरे प्लान का उपयोग दिखाएं"
+            "value" : "फ़ोन पर मेरे प्लान का उपयोग दिखाएँ"
           }
         },
         "id" : {
@@ -100736,25 +100736,25 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スマートフォンにプランの使用量を表示"
+            "value" : "プランの使用状況をスマートフォンに表示"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "폰에 내 플랜 사용량 표시"
+            "value" : "휴대폰에서 요금제 사용량 보기"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar o uso do meu plano no telefone"
+            "value" : "Mostrar no celular o uso do meu plano"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать расход моего тарифа на телефоне"
+            "value" : "Показывать на телефоне использование моего тарифа"
           }
         },
         "th" : {

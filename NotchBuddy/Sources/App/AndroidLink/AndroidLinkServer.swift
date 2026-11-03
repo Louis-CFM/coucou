@@ -115,6 +115,8 @@ final class AndroidLinkServer: @unchecked Sendable {
         for (k, v) in txt { record[k] = v }
         made.service = NWListener.Service(name: AndroidLinkProtocol.instanceName(name), type: AndroidLinkProtocol.serviceType,
                                           domain: nil, txtRecord: record)
+        // SecIdentity is a CF type without Sendable; it is only read again to retry on another port.
+        let retryIdentity = AndroidLinkUncheckedBox(identity)
         made.stateUpdateHandler = { [weak self, weak made] state in
             guard let self, let made, self.listener === made || self.listener == nil else { return }
             switch state {
@@ -125,7 +127,7 @@ final class AndroidLinkServer: @unchecked Sendable {
                 self.listener = nil
                 // The default port is busy: take any other.
                 if port != nil, case .posix(let code) = error, code == .EADDRINUSE {
-                    self.listen(identity: identity, txt: txt, port: nil)
+                    self.listen(identity: retryIdentity.value, txt: txt, port: nil)
                 } else {
                     self.onState?(.failed(error.localizedDescription))
                 }
@@ -394,4 +396,10 @@ final class AndroidLinkConnection: @unchecked Sendable {
             if close { self.cancel() }
         })
     }
+}
+
+/// Carries a value the compiler cannot prove Sendable into a @Sendable closure.
+private struct AndroidLinkUncheckedBox<T>: @unchecked Sendable {
+    let value: T
+    init(_ value: T) { self.value = value }
 }
