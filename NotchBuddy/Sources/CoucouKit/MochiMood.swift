@@ -210,7 +210,7 @@ extension BotEngine {
          TweenKey(target: 1, duration: 120, ease: Ease.out)]
     }
 
-    private func throwDrop(now: Double) {
+    func throwDrop(now: Double) {
         let side: CGFloat = Bool.random() ? 1 : -1
         // Now and then a small round droplet, mostly a full drop.
         let small = Double.random(in: 0...1) < 0.3

@@ -57,6 +57,7 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .testRun:   TestRunCardView(state: state)
         }
     }
 }
@@ -832,6 +833,44 @@ struct FinishedView: View {
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                     }
+                    SecondaryButton("OK") {
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    }
+                }
+            }
+            .padding(.leading, 116)
+            .padding(.trailing, 16)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+// MARK: - Test run
+
+/// An agent ran the tests: the finished card's template, green when they passed, red when they
+/// failed, with the test command and the runner's verdict.
+struct TestRunCardView: View {
+    @ObservedObject var state: AppState
+
+    private var passed: Bool { state.testRunCard?.outcome != .failed }
+
+    var body: some View {
+        ZStack {
+            CardBackground(wash: passed ? .green : .red)
+            VStack(alignment: .leading, spacing: 5) {
+                AgentWho(task: state.focusTask, label: passed ? "Tests passed" : "Tests failed")
+                Text(state.testRunCard?.line ?? "")
+                    .font(.system(size: 15, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                HStack(spacing: 8) {
+                    #if !APPSTORE
+                    PrimaryButton("Open terminal") {
+                        openSessionApp(state.focusTask)
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    }
+                    #endif
                     SecondaryButton("OK") {
                         NotificationCenter.default.post(name: .islandCollapse, object: nil)
                     }

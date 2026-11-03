@@ -17,6 +17,7 @@ enum IslandView: String, CaseIterable {
     case capture      // a screen capture just taken (⌃⌥X): paste, copy, annotate, ask Claude
     case update       // a new Coucou is out on GitHub: one click to install it (GitHub build)
     case whatsNew     // Coucou just updated itself: what the version brings, then your Coucou so far (GitHub build)
+    case testRun      // an agent ran the tests: passed or failed, like the finished card
 }
 
 // MARK: - Bot State
@@ -32,6 +33,7 @@ enum BotState: String, CaseIterable {
 enum BotEmote: String, CaseIterable {
     case love, surprised, proud, wink, yawn, happy, annoyed
     case listening   // attentive: head tilt + wide-open eyes
+    case sweat       // a start and a few drops of cold sweat (the tests failed)
 }
 
 // MARK: - Voice sub-state
@@ -277,6 +279,8 @@ enum IslandConst {
         .update:       ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
         // After an update: taller, four items then the stats (like mail, it fills the height)
         .whatsNew:     ViewLayout(height: 232, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
+        // Test run: the finished card's layout
+        .testRun:      ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
     ]
 
     // Project colors — keyed by lowercase display name or slug

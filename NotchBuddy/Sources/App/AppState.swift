@@ -17,6 +17,8 @@ final class AppState: ObservableObject {
 
     // Bot state override
     @Published var stateOverride: BotState? = nil
+    /// The last test run an agent made, shown by the test run card (TestRunReaction).
+    @Published var testRunCard: TestRunReaction.Card? = nil
 
     // Real notch dimensions (set by IslandWindowController on launch)
     var notchWidth:  CGFloat = IslandConst.notchWidth
