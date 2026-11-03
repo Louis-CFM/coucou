@@ -47,7 +47,7 @@ use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
@@ -61,6 +61,57 @@ use settings::Settings;
 pub struct Shared {
     pub settings: Mutex<Settings>,
     pub gate: Arc<PollGate>,
+    pub discovery: Mutex<DiscoveryState>,
+}
+
+#[derive(Default)]
+pub struct DiscoveryState {
+    pub seq: u64,
+    pub agents: std::collections::VecDeque<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredPayload {
+    pub seq: u64,
+    pub agents: Vec<String>,
+}
+
+impl Shared {
+    pub fn note_discovered_agent(&self, app: &AppHandle, agent: &str) {
+        let valid = !agent.is_empty()
+            && agent.len() <= 24
+            && agent != "claude"
+            && agent.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_');
+        if !valid {
+            return;
+        }
+
+        let is_custom_or_catalog = {
+            let s = self.settings.lock().unwrap();
+            s.custom_agents.iter().any(|c| c.id == agent)
+        };
+        if is_custom_or_catalog || agents::Agent::from_id(agent).is_some() || agent == "claude-desktop" {
+            return;
+        }
+
+        let payload = {
+            let mut d = self.discovery.lock().unwrap();
+            if let Some(pos) = d.agents.iter().position(|x| x == agent) {
+                d.agents.remove(pos);
+            }
+            d.agents.push_front(agent.to_string());
+            while d.agents.len() > 5 {
+                d.agents.pop_back();
+            }
+            d.seq += 1;
+            DiscoveredPayload {
+                seq: d.seq,
+                agents: d.agents.iter().cloned().collect(),
+            }
+        };
+        let _ = app.emit("agent-discovered", payload);
+    }
 }
 
 #[derive(Serialize)]
@@ -73,6 +124,130 @@ pub struct BootInfo {
     /// False where the OS has no global cursor (Wayland): the page then reports
     /// the cursor from its own mouse events.
     cursor_poll: bool,
+}
+
+#[tauri::command]
+fn custom_agent_save(
+    app: AppHandle,
+    shared: State<Shared>,
+    agent: settings::CustomAgent,
+    pin: bool,
+) -> Result<Settings, String> {
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        let mut candidate = current.clone();
+
+        let id = agent.id.trim().to_ascii_lowercase();
+        let valid = !id.is_empty()
+            && id.len() <= 24
+            && id != "claude"
+            && id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_');
+        if !valid {
+            return Err("invalid agent id".to_string());
+        }
+
+        // Built-in catalog collision check:
+        if agents::Agent::from_id(&id).is_some() || id == "claude-desktop" {
+            return Err("cannot register built-in catalog agent as custom".to_string());
+        }
+
+        let clean_agent = settings::CustomAgent {
+            id: id.clone(),
+            name: agent.name.map(|n| n.trim().chars().take(32).collect::<String>()).filter(|n| !n.is_empty()),
+        };
+
+        if let Some(existing) = candidate.custom_agents.iter_mut().find(|c| c.id == clean_agent.id) {
+            *existing = clean_agent;
+        } else {
+            candidate.custom_agents.push(clean_agent);
+        }
+
+        let pill_id = format!("agent_{id}");
+        if pin && !candidate.active_integrations.contains(&pill_id) {
+            let current_slots = candidate.active_integrations.iter().filter(|x| **x != candidate.main_pill).count();
+            if current_slots < 4 {
+                candidate.active_integrations.push(pill_id.clone());
+            } else {
+                return Err("slots_full".to_string());
+            }
+        } else if !pin {
+            candidate.active_integrations.retain(|x| x != &pill_id);
+        }
+
+        // Write-then-commit:
+        settings::save(&candidate).map_err(|e| format!("disk save failed: {e}"))?;
+        *current = candidate;
+        current.clone()
+    };
+
+    // Remove from in-memory discovery if present:
+    {
+        let mut d = shared.discovery.lock().unwrap();
+        if let Some(pos) = d.agents.iter().position(|x| x == &agent.id) {
+            d.agents.remove(pos);
+            d.seq += 1;
+            let payload = DiscoveredPayload {
+                seq: d.seq,
+                agents: d.agents.iter().cloned().collect(),
+            };
+            let _ = app.emit("agent-discovered", payload);
+        }
+    }
+
+    let _ = app.emit("settings-changed", &updated);
+    Ok(updated)
+}
+
+#[tauri::command]
+fn custom_agent_forget(
+    app: AppHandle,
+    shared: State<Shared>,
+    id: String,
+) -> Result<Settings, String> {
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        let mut candidate = current.clone();
+
+        let clean_id = id.trim().to_ascii_lowercase();
+        let pill_id = format!("agent_{clean_id}");
+
+        candidate.custom_agents.retain(|c| c.id != clean_id);
+        candidate.active_integrations.retain(|p| p != &pill_id);
+        candidate.pill_colors.remove(&pill_id);
+
+        settings::save(&candidate).map_err(|e| format!("disk save failed: {e}"))?;
+        *current = candidate;
+        current.clone()
+    };
+
+    let _ = app.emit("settings-changed", &updated);
+    Ok(updated)
+}
+
+#[tauri::command]
+fn get_discovered_agents(shared: State<Shared>) -> DiscoveredPayload {
+    let d = shared.discovery.lock().unwrap();
+    DiscoveredPayload {
+        seq: d.seq,
+        agents: d.agents.iter().cloned().collect(),
+    }
+}
+
+#[tauri::command]
+fn dismiss_discovered_agent(app: AppHandle, shared: State<Shared>, id: String) -> DiscoveredPayload {
+    let payload = {
+        let mut d = shared.discovery.lock().unwrap();
+        if let Some(pos) = d.agents.iter().position(|x| x == &id) {
+            d.agents.remove(pos);
+        }
+        d.seq += 1;
+        DiscoveredPayload {
+            seq: d.seq,
+            agents: d.agents.iter().cloned().collect(),
+        }
+    };
+    let _ = app.emit("agent-discovered", &payload);
+    payload
 }
 
 #[tauri::command]
@@ -114,6 +289,22 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay = current.phone_relay;
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
+        // Custom agents are managed by their dedicated commands and cannot be wiped by a stale webview snapshot:
+        settings.custom_agents = current.custom_agents.clone();
+        for id in &current.active_integrations {
+            if id.starts_with("agent_") && !settings.active_integrations.contains(id) {
+                if current.custom_agents.iter().any(|c| format!("agent_{}", c.id) == *id) {
+                    settings.active_integrations.push(id.clone());
+                }
+            }
+        }
+        for (k, v) in &current.pill_colors {
+            if k.starts_with("agent_") && !settings.pill_colors.contains_key(k) {
+                if current.custom_agents.iter().any(|c| format!("agent_{}", c.id) == *k) {
+                    settings.pill_colors.insert(k.clone(), v.clone());
+                }
+            }
+        }
         *current = settings;
         (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -861,6 +1052,7 @@ pub fn run() {
         .manage(Shared {
             settings: Mutex::new(loaded.clone()),
             gate: gate.clone(),
+            discovery: Mutex::new(DiscoveryState::default()),
         })
         .manage(Pending::default())
         .manage(Chat::default())
@@ -868,6 +1060,10 @@ pub fn run() {
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
             boot,
+            custom_agent_save,
+            custom_agent_forget,
+            get_discovered_agents,
+            dismiss_discovered_agent,
             mail::mail_refresh,
             mail::mail_more,
             mail::mail_search,

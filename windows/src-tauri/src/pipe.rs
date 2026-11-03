@@ -220,6 +220,12 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
+    if let Some(agent) = payload.get("coucou_agent").and_then(serde_json::Value::as_str) {
+        if let Some(shared) = app.try_state::<crate::Shared>() {
+            shared.note_discovered_agent(&app, agent);
+        }
+    }
+
     if event != "PermissionRequest" {
         // The status line relay calls in with every Claude Code update: not log-worthy.
         if event != "StatusLine" {
