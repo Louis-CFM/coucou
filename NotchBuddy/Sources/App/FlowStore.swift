@@ -98,6 +98,10 @@ final class FlowStore: ObservableObject {
     @Published var translateTo: String = UserDefaults.standard.string(forKey: FlowStore.translateKey) ?? "" {
         didSet { UserDefaults.standard.set(translateTo, forKey: Self.translateKey) }
     }
+    /// The politeness of Korean text when Claude rewrites it.
+    @Published var koreanLevel: KoreanSpeechLevel = KoreanSpeechLevel(rawValue: UserDefaults.standard.string(forKey: FlowStore.koreanLevelKey) ?? "") ?? .keep {
+        didSet { UserDefaults.standard.set(koreanLevel.rawValue, forKey: Self.koreanLevelKey) }
+    }
     /// The style of the apps that have none of their own.
     @Published var defaultStyle: FlowStyle = FlowStyle(rawValue: UserDefaults.standard.string(forKey: FlowStore.defaultStyleKey) ?? "") ?? .natural {
         didSet { UserDefaults.standard.set(defaultStyle.rawValue, forKey: Self.defaultStyleKey) }
@@ -116,6 +120,7 @@ final class FlowStore: ObservableObject {
     static let cleanupKey = "flowCleanup"
     static let promptModeKey = "flowPromptMode"
     static let translateKey = "flowTranslateTo"
+    static let koreanLevelKey = "flowKoreanLevel"
     static let defaultStyleKey = "flowDefaultStyle"
 
     private struct WordsFile: Codable {
