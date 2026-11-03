@@ -18,7 +18,7 @@ import { State } from "../core/state";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
-import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
+import { createMiniBot, pruneMiniBots, setMiniBotsMusic, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
@@ -1320,9 +1320,10 @@ export class Island {
     this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
+    setMiniBotsMusic(State.spotifyPlaying);
     this.engine.setDancing(islandDances({
       music: State.spotifyPlaying,
-      state: State.effectiveState,
+      state: this.engine.state,
       mode: State.mode,
       view: State.view,
       focusId: State.focusTask?.id,
