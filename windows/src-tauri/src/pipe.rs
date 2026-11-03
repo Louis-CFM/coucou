@@ -225,6 +225,12 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
+    if let Some(agent) = payload.get("coucou_agent").and_then(serde_json::Value::as_str) {
+        if let Some(shared) = app.try_state::<crate::Shared>() {
+            shared.note_discovered_agent(&app, agent);
+        }
+    }
+
     // Antigravity's PreToolUse: its relay waits for one line (agy_approvals.rs).
     if event == "PreToolUse" && payload.get("coucou_kind").and_then(Value::as_str) == Some(agy_approvals::KIND) {
         agy_pre_tool(app, pipe, payload).await;
