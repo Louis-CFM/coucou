@@ -526,7 +526,7 @@ enum AndroidLinkTests {
         let u = AndroidUsageIn(claude: AndroidUsagePlanIn(fiveHour: AndroidUsageWindowIn(usedPct: 41.6, resetsAt: 1_900_000_000_000),
                                                          sevenDay: AndroidUsageWindowIn(usedPct: 130, resetsAt: 1_900_500_000_000),
                                                          plan: "max 5x!", updatedAt: 1_899_999_990_000),
-                               codex: AndroidUsagePlanIn(sevenDay: AndroidUsageWindowIn(usedPct: 100, resetsAt: 1_900_500_000_000), resetCredits: 250, plan: "plus"))
+                               codex: AndroidUsagePlanIn(sevenDay: AndroidUsageWindowIn(usedPct: 100, resetsAt: 1_900_500_000_000), plan: "plus", resetCredits: 250))
         hub.publishUsage(u)
         let line = with.last("usage")
         let claude = line?["claude"] as? [String: Any]
