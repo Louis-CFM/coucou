@@ -203,6 +203,7 @@ final class IslandWindowController: NSWindowController {
                 guard let self else { return }
                 if newView == .prompt {
                     self.islandPanel.makeKey()
+                    self.focusChat()
                 }
             }
 
@@ -688,6 +689,14 @@ final class IslandWindowController: NSWindowController {
         }
     }
 
+    /// The chat field takes the typing once the panel is key and the chat is drawn,
+    /// also when the chat was already open (its onAppear doesn't run again).
+    private func focusChat() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            NotificationCenter.default.post(name: .islandFocusChat, object: nil)
+        }
+    }
+
     func handleHotKey(_ action: ShortcutAction) {
         switch action {
         case .toggleIsland:
@@ -702,6 +711,7 @@ final class IslandWindowController: NSWindowController {
         case .openChat:
             islandPanel.makeKey()
             expand(to: .prompt)
+            focusChat()
 
         case .goToAlert:
             if state.pendingApproval != nil {
@@ -2188,6 +2198,7 @@ extension Notification.Name {
     static let islandCollapse      = Notification.Name("notchBuddy.islandCollapse")
     static let voiceShowMailCard   = Notification.Name("notchBuddy.voiceShowMailCard")
     static let islandSendMessage   = Notification.Name("notchBuddy.islandSendMessage")
+    static let islandFocusChat     = Notification.Name("notchBuddy.islandFocusChat")
     static let islandNewConversation = Notification.Name("notchBuddy.islandNewConversation")
     static let islandToggleDiff           = Notification.Name("notchBuddy.islandToggleDiff")
     static let islandActivateCardSelection = Notification.Name("notchBuddy.islandActivateCardSelection")
