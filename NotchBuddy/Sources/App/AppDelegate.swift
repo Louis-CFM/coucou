@@ -64,6 +64,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if PHONE_LINK
         CloudProbe.shared.startIfEnabled()
         #endif
+        #if !APPSTORE
+        // Coucou for Android (off unless the user turned it on in Settings)
+        AndroidLinkService.shared.startIfEnabled()
+        #endif
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

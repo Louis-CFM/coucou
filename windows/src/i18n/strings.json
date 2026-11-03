@@ -92,6 +92,21 @@
    "ko": "5시간",
    "ja": "5 時間"
   },
+  "6 keys at most.": {
+   "zh-Hans": "最多 6 个键。",
+   "hi": "अधिकतम 6 कुंजियाँ।",
+   "es": "6 teclas como máximo.",
+   "ar": "6 مفاتيح كحد أقصى.",
+   "fr": "6 touches maximum.",
+   "bn": "সর্বোচ্চ ৬টি কী।",
+   "pt-BR": "No máximo 6 teclas.",
+   "ru": "Не больше 6 клавиш.",
+   "id": "Maksimal 6 tombol.",
+   "de": "Höchstens 6 Tasten.",
+   "tr": "En fazla 6 tuş.",
+   "ko": "최대 6개 키까지입니다.",
+   "ja": "最大6キーまでです。"
+  },
   "7 days": {
    "zh-Hans": "7 天",
    "hi": "7 दिन",
@@ -422,6 +437,21 @@
    "ko": "먼저 설정 → 채팅에서 Anthropic API 키를 넣어 주세요.",
    "ja": "先に設定 → チャットで Anthropic API キーを追加してください。"
   },
+  "Add ⌃, ⌥, ⌘ or fn, so this key still types.": {
+   "zh-Hans": "请加上 ⌃、⌥、⌘ 或 fn，这个键才能照常打字。",
+   "hi": "⌃, ⌥, ⌘ या fn जोड़ें, ताकि यह कुंजी लिखती रहे।",
+   "es": "Añade ⌃, ⌥, ⌘ o fn para que esta tecla siga escribiendo.",
+   "ar": "أضف ⌃ أو ⌥ أو ⌘ أو fn لكي يبقى هذا المفتاح يكتب.",
+   "fr": "Ajoute ⌃, ⌥, ⌘ ou fn, pour que cette touche écrive encore.",
+   "bn": "⌃, ⌥, ⌘ বা fn যোগ করুন, যাতে এই কীটি লিখতে পারে।",
+   "pt-BR": "Adicione ⌃, ⌥, ⌘ ou fn para que esta tecla continue digitando.",
+   "ru": "Добавьте ⌃, ⌥, ⌘ или fn, чтобы эта клавиша по-прежнему печатала.",
+   "id": "Tambahkan ⌃, ⌥, ⌘, atau fn agar tombol ini tetap bisa mengetik.",
+   "de": "Füge ⌃, ⌥, ⌘ oder fn hinzu, damit diese Taste weiter tippt.",
+   "tr": "Bu tuş yazmaya devam etsin diye ⌃, ⌥, ⌘ veya fn ekle.",
+   "ko": "이 키로 계속 입력할 수 있도록 ⌃, ⌥, ⌘ 또는 fn을 추가하세요.",
+   "ja": "このキーで文字を入力できるよう、⌃・⌥・⌘・fn のいずれかを加えてください。"
+  },
   "Advertisement": {
    "zh-Hans": "广告",
    "hi": "विज्ञापन",
@@ -706,6 +736,21 @@
    "tr": "iPhone'dan gönderilen talimat, sohbette açık olan modeli kullanır. Sistem istemi ve sohbet geçmişi geçerlidir. Coucou çalışmıyorken gönderilen talimatlar sıraya alınır ve bir sonraki açılışta yürütülür.",
    "ko": "iPhone에서 보낸 지시는 채팅에 열려 있는 모델이 처리해요. 시스템 프롬프트와 대화 기록도 그대로 적용돼요. Coucou가 꺼져 있을 때 보낸 지시는 줄 서 있다가 다음 실행 때 처리돼요.",
    "ja": "iPhone から送った指示には、チャットで開いているモデルが使われます。システムプロンプトと会話履歴が適用されます。Coucou が起動していないときに送った指示はキューに入り、次回の起動時に実行されます。"
+  },
+  "Android phone": {
+   "zh-Hans": "Android 手机",
+   "hi": "Android फ़ोन",
+   "es": "Teléfono Android",
+   "ar": "هاتف Android",
+   "fr": "Téléphone Android",
+   "bn": "Android ফোন",
+   "pt-BR": "Celular Android",
+   "ru": "Телефон Android",
+   "id": "Ponsel Android",
+   "de": "Android-Telefon",
+   "tr": "Android telefon",
+   "ko": "Android 휴대폰",
+   "ja": "Android スマートフォン"
   },
   "Annotate": {
    "zh-Hans": "标注",
@@ -1442,6 +1487,21 @@
    "ko": "계획 수정",
    "ja": "プランを変更"
   },
+  "Change shortcut…": {
+   "zh-Hans": "更改快捷键…",
+   "hi": "शॉर्टकट बदलें…",
+   "es": "Cambiar atajo…",
+   "ar": "تغيير الاختصار…",
+   "fr": "Modifier le raccourci…",
+   "bn": "শর্টকাট বদলান…",
+   "pt-BR": "Alterar atalho…",
+   "ru": "Изменить сочетание…",
+   "id": "Ubah pintasan…",
+   "de": "Kurzbefehl ändern …",
+   "tr": "Kısayolu değiştir…",
+   "ko": "단축키 변경…",
+   "ja": "ショートカットを変更…"
+  },
   "Chat": {
    "zh-Hans": "聊天",
    "hi": "चैट",
@@ -1862,6 +1922,21 @@
    "ko": "기록 지우기",
    "ja": "履歴を消去"
   },
+  "Click to record": {
+   "zh-Hans": "点按以录制",
+   "hi": "रिकॉर्ड करने के लिए क्लिक करें",
+   "es": "Haz clic para grabar",
+   "ar": "انقر للتسجيل",
+   "fr": "Clique pour l'enregistrer",
+   "bn": "রেকর্ড করতে ক্লিক করুন",
+   "pt-BR": "Clique para gravar",
+   "ru": "Нажмите, чтобы записать",
+   "id": "Klik untuk merekam",
+   "de": "Zum Aufnehmen klicken",
+   "tr": "Kaydetmek için tıkla",
+   "ko": "클릭해서 기록",
+   "ja": "クリックして記録"
+  },
   "Close": {
    "zh-Hans": "关闭",
    "hi": "बंद करें",
@@ -2177,6 +2252,21 @@
    "ko": "Markdown으로 복사",
    "ja": "Markdown としてコピー"
   },
+  "Copy link": {
+   "zh-Hans": "复制链接",
+   "hi": "लिंक कॉपी करें",
+   "es": "Copiar enlace",
+   "ar": "نسخ الرابط",
+   "fr": "Copier le lien",
+   "bn": "লিংক কপি করুন",
+   "pt-BR": "Copiar link",
+   "ru": "Скопировать ссылку",
+   "id": "Salin tautan",
+   "de": "Link kopieren",
+   "tr": "Bağlantıyı kopyala",
+   "ko": "링크 복사",
+   "ja": "リンクをコピー"
+  },
   "Correct the transcript again": {
    "zh-Hans": "重新校正转录",
    "hi": "ट्रांसक्रिप्ट फिर से सुधारें",
@@ -2462,6 +2552,21 @@
    "ko": "Coucou {0} 나왔어요!",
    "ja": "Coucou {0} が公開されました"
   },
+  "Could not start: {0}": {
+   "zh-Hans": "无法启动:{0}",
+   "hi": "शुरू नहीं हो सका: {0}",
+   "es": "No se pudo iniciar: {0}",
+   "ar": "تعذر البدء: {0}",
+   "fr": "Démarrage impossible : {0}",
+   "bn": "চালু করা যায়নি: {0}",
+   "pt-BR": "Não foi possível iniciar: {0}",
+   "ru": "Не удалось запустить: {0}",
+   "id": "Tidak dapat memulai: {0}",
+   "de": "Start nicht möglich: {0}",
+   "tr": "Başlatılamadı: {0}",
+   "ko": "시작할 수 없음: {0}",
+   "ja": "開始できませんでした: {0}"
+  },
   "Couldn’t reach GitHub": {
    "zh-Hans": "无法连接 GitHub",
    "hi": "GitHub से संपर्क नहीं हो सका",
@@ -2521,6 +2626,36 @@
    "tr": "Para birimi",
    "ko": "표시 통화",
    "ja": "通貨"
+  },
+  "Custom shortcut": {
+   "zh-Hans": "自定快捷键",
+   "hi": "अपना शॉर्टकट",
+   "es": "Atajo personalizado",
+   "ar": "اختصار مخصص",
+   "fr": "Raccourci perso",
+   "bn": "নিজস্ব শর্টকাট",
+   "pt-BR": "Atalho personalizado",
+   "ru": "Своё сочетание клавиш",
+   "id": "Pintasan khusus",
+   "de": "Eigener Kurzbefehl",
+   "tr": "Özel kısayol",
+   "ko": "사용자 지정 단축키",
+   "ja": "カスタムショートカット"
+  },
+  "Custom shortcut…": {
+   "zh-Hans": "自定快捷键…",
+   "hi": "अपना शॉर्टकट…",
+   "es": "Atajo personalizado…",
+   "ar": "اختصار مخصص…",
+   "fr": "Raccourci perso…",
+   "bn": "নিজস্ব শর্টকাট…",
+   "pt-BR": "Atalho personalizado…",
+   "ru": "Своё сочетание…",
+   "id": "Pintasan khusus…",
+   "de": "Eigener Kurzbefehl …",
+   "tr": "Özel kısayol…",
+   "ko": "사용자 지정 단축키…",
+   "ja": "カスタムショートカット…"
   },
   "Custom…": {
    "zh-Hans": "自定义…",
@@ -3197,6 +3332,21 @@
    "ko": "Esc",
    "ja": "Esc"
   },
+  "Esc, Return and Caps Lock can't be part of it.": {
+   "zh-Hans": "Esc、Return 和大写锁定键不能包含在内。",
+   "hi": "Esc, Return और Caps Lock इसका हिस्सा नहीं हो सकते।",
+   "es": "Esc, Intro y Bloq Mayús no pueden formar parte.",
+   "ar": "لا يمكن أن يكون Esc أو Return أو Caps Lock جزءًا منه.",
+   "fr": "Esc, Entrée et Verr. Maj ne peuvent pas en faire partie.",
+   "bn": "Esc, Return এবং Caps Lock এর অংশ হতে পারে না।",
+   "pt-BR": "Esc, Return e Caps Lock não podem fazer parte dele.",
+   "ru": "Esc, Return и Caps Lock не могут входить в сочетание.",
+   "id": "Esc, Return, dan Caps Lock tidak bisa menjadi bagiannya.",
+   "de": "Esc, Return und die Feststelltaste können nicht dazugehören.",
+   "tr": "Esc, Return ve Caps Lock bunun parçası olamaz.",
+   "ko": "Esc, Return, Caps Lock은 포함할 수 없습니다.",
+   "ja": "Esc、Return、Caps Lock は使えません。"
+  },
   "Everything stays on your Mac. Tell the people in the call that you are recording.": {
    "zh-Hans": "一切都留在你的 Mac 上。请告知通话中的人你正在录音。",
    "hi": "सब कुछ आपके Mac पर रहता है। कॉल में लोगों को बताएँ कि आप रिकॉर्ड कर रहे हैं।",
@@ -3782,6 +3932,21 @@
    "ko": "자동 숨기기",
    "ja": "非表示までの時間"
   },
+  "Hide pairing code": {
+   "zh-Hans": "隐藏配对码",
+   "hi": "पेयरिंग कोड छिपाएं",
+   "es": "Ocultar código de vinculación",
+   "ar": "إخفاء رمز الإقران",
+   "fr": "Masquer le code d'appairage",
+   "bn": "পেয়ারিং কোড লুকান",
+   "pt-BR": "Ocultar código de pareamento",
+   "ru": "Скрыть код сопряжения",
+   "id": "Sembunyikan kode pemasangan",
+   "de": "Kopplungscode ausblenden",
+   "tr": "Eşleştirme kodunu gizle",
+   "ko": "페어링 코드 숨기기",
+   "ja": "ペアリングコードを隠す"
+  },
   "Hide project names in shared images": {
    "zh-Hans": "在分享图片中隐藏项目名称",
    "hi": "साझा छवियों में प्रोजेक्ट नाम छुपाएं",
@@ -3827,6 +3992,21 @@
    "ko": "키를 누르고 있으면 어디서나 받아쓰기",
    "ja": "キーを押したままでどこでも口述"
   },
+  "Hold these keys together to dictate, up to 6.": {
+   "zh-Hans": "同时按住这些键即可听写，最多 6 个。",
+   "hi": "डिक्टेट करने के लिए ये कुंजियाँ एक साथ दबाए रखें, अधिकतम 6।",
+   "es": "Mantén estas teclas a la vez para dictar, hasta 6.",
+   "ar": "اضغط مع الاستمرار على هذه المفاتيح معًا للإملاء، حتى 6 مفاتيح.",
+   "fr": "Maintiens ces touches ensemble pour dicter, jusqu'à 6.",
+   "bn": "ডিক্টেট করতে এই কীগুলো একসাথে চেপে ধরুন, সর্বোচ্চ ৬টি।",
+   "pt-BR": "Segure estas teclas juntas para ditar, até 6.",
+   "ru": "Удерживайте эти клавиши вместе, чтобы диктовать, до 6.",
+   "id": "Tahan tombol-tombol ini bersamaan untuk mendikte, hingga 6.",
+   "de": "Halte diese Tasten zusammen gedrückt, um zu diktieren – bis zu 6.",
+   "tr": "Dikte etmek için bu tuşları birlikte basılı tut, en fazla 6.",
+   "ko": "이 키들을 함께 누르고 있으면 받아쓰기합니다. 최대 6개.",
+   "ja": "これらのキーを同時に押し続けると音声入力します（最大6個）。"
+  },
   "Hold to dictate": {
    "zh-Hans": "按住听写",
    "hi": "डिक्टेट करने के लिए दबाए रखें",
@@ -3841,6 +4021,21 @@
    "tr": "Dikte etmek için basılı tut",
    "ko": "누르고 있는 동안 받아쓰기",
    "ja": "押したまま口述"
+  },
+  "Hold your keys together, then let go.": {
+   "zh-Hans": "同时按住你的按键，然后松开。",
+   "hi": "अपनी कुंजियाँ एक साथ दबाए रखें, फिर छोड़ दें।",
+   "es": "Mantén tus teclas a la vez y luego suéltalas.",
+   "ar": "اضغط مع الاستمرار على مفاتيحك معًا، ثم اتركها.",
+   "fr": "Maintiens tes touches ensemble, puis relâche.",
+   "bn": "আপনার কীগুলো একসাথে চেপে ধরুন, তারপর ছেড়ে দিন।",
+   "pt-BR": "Segure suas teclas juntas e depois solte.",
+   "ru": "Удерживайте клавиши вместе, затем отпустите.",
+   "id": "Tahan tombol-tombolmu bersamaan, lalu lepaskan.",
+   "de": "Halte deine Tasten zusammen gedrückt, dann lass los.",
+   "tr": "Tuşlarını birlikte basılı tut, sonra bırak.",
+   "ko": "키들을 함께 누른 다음 떼세요.",
+   "ja": "キーを同時に押し続けてから、離してください。"
   },
   "Hold {0} and talk: the image and your words go in together.": {
    "zh-Hans": "按住 {0} 说话：图片和你的话会一起发出。",
@@ -4607,6 +4802,36 @@
    "ko": "iPhone에서 Claude Code에 지시 보내기 허용",
    "ja": "iPhone から Claude Code に指示を送れるようにする"
   },
+  "Let the phone answer Claude Code's questions": {
+   "zh-Hans": "允许手机回答 Claude Code 的提问",
+   "hi": "फ़ोन को Claude Code के सवालों के जवाब देने दें",
+   "es": "Dejar que el teléfono responda a las preguntas de Claude Code",
+   "ar": "السماح للهاتف بالإجابة عن أسئلة Claude Code",
+   "fr": "Laisser le téléphone répondre aux questions de Claude Code",
+   "bn": "ফোনকে Claude Code-এর প্রশ্নের উত্তর দিতে দিন",
+   "pt-BR": "Deixar o celular responder às perguntas do Claude Code",
+   "ru": "Разрешить телефону отвечать на вопросы Claude Code",
+   "id": "Izinkan ponsel menjawab pertanyaan Claude Code",
+   "de": "Fragen von Claude Code auf dem Telefon beantworten",
+   "tr": "Telefon Claude Code'un sorularını yanıtlayabilsin",
+   "ko": "휴대폰에서 Claude Code 질문에 답하기",
+   "ja": "スマートフォンから Claude Code の質問に答える"
+  },
+  "Lets Coucou for Android, on the same Wi-Fi, see your agent sessions and answer permission requests. Off by default. Coucou listens on your local network only while this is on.": {
+   "zh-Hans": "允许同一 Wi-Fi 下的 Coucou for Android 查看你的智能体会话并回应权限请求。默认关闭。仅在开启时,Coucou 才会监听你的本地网络。",
+   "hi": "उसी Wi-Fi पर Android के लिए Coucou को आपके एजेंट सेशन देखने और अनुमति अनुरोधों का जवाब देने देता है। डिफ़ॉल्ट रूप से बंद। चालू रहने पर ही Coucou आपके लोकल नेटवर्क पर सुनता है।",
+   "es": "Permite que Coucou para Android, en la misma Wi-Fi, vea tus sesiones de agente y responda a las solicitudes de permiso. Desactivado por defecto. Coucou solo escucha en tu red local mientras esto esté activado.",
+   "ar": "يتيح لتطبيق Coucou لنظام Android، على شبكة Wi-Fi نفسها، رؤية جلسات الوكيل والرد على طلبات الإذن. معطّل افتراضيًا. يستمع Coucou إلى شبكتك المحلية فقط أثناء التفعيل.",
+   "fr": "Permet à Coucou pour Android, sur le même Wi-Fi, de voir vos sessions d'agent et de répondre aux demandes d'autorisation. Désactivé par défaut. Coucou n'écoute sur votre réseau local que lorsque c'est activé.",
+   "bn": "একই Wi-Fi-তে থাকা Android-এর জন্য Coucou আপনার এজেন্ট সেশন দেখতে এবং অনুমতির অনুরোধের উত্তর দিতে পারবে। ডিফল্টভাবে বন্ধ। চালু থাকলেই Coucou আপনার লোকাল নেটওয়ার্কে শোনে।",
+   "pt-BR": "Permite que o Coucou para Android, no mesmo Wi-Fi, veja suas sessões de agente e responda a pedidos de permissão. Desativado por padrão. O Coucou só escuta na sua rede local enquanto isto estiver ativado.",
+   "ru": "Позволяет Coucou для Android в той же сети Wi-Fi видеть сессии агентов и отвечать на запросы разрешений. По умолчанию выключено. Coucou слушает вашу локальную сеть только пока это включено.",
+   "id": "Memungkinkan Coucou untuk Android, di Wi-Fi yang sama, melihat sesi agen Anda dan menjawab permintaan izin. Nonaktif secara default. Coucou hanya mendengarkan di jaringan lokal Anda saat ini aktif.",
+   "de": "Lässt Coucou für Android im selben WLAN deine Agentensitzungen sehen und Berechtigungsanfragen beantworten. Standardmäßig aus. Coucou lauscht nur in deinem lokalen Netzwerk, solange dies an ist.",
+   "tr": "Aynı Wi-Fi'deki Android için Coucou'nun aracı oturumlarınızı görmesine ve izin isteklerini yanıtlamasına izin verir. Varsayılan olarak kapalıdır. Coucou yerel ağınızı yalnızca bu açıkken dinler.",
+   "ko": "같은 Wi-Fi의 Android용 Coucou가 에이전트 세션을 보고 권한 요청에 응답할 수 있게 합니다. 기본값은 꺼짐입니다. 켜져 있는 동안에만 Coucou가 로컬 네트워크에서 대기합니다.",
+   "ja": "同じ Wi-Fi 上の Coucou for Android が、エージェントのセッションを表示し、許可リクエストに応答できるようにします。初期状態ではオフです。オンの間だけ、Coucou はローカルネットワークで待ち受けます。"
+  },
   "Lets the AI see your latest messages and prepare actions on them. Nothing happens until you click Run.": {
    "zh-Hans": "让 AI 查看你最近的邮件并准备操作。点击“执行”之前不会发生任何事。",
    "hi": "AI को आपके नए मेल देखने और उन पर कार्रवाइयाँ तैयार करने देता है। चलाएँ पर क्लिक करने तक कुछ नहीं होता।",
@@ -4636,6 +4861,36 @@
    "tr": "Yazılan satırlar",
    "ko": "작성한 줄",
    "ja": "書かれた行数"
+  },
+  "Link with Coucou for Android": {
+   "zh-Hans": "与 Coucou for Android 连接",
+   "hi": "Android के लिए Coucou से जोड़ें",
+   "es": "Vincular con Coucou para Android",
+   "ar": "الربط مع Coucou لنظام Android",
+   "fr": "Lier avec Coucou pour Android",
+   "bn": "Android-এর জন্য Coucou-র সাথে সংযোগ করুন",
+   "pt-BR": "Vincular com o Coucou para Android",
+   "ru": "Связать с Coucou для Android",
+   "id": "Tautkan dengan Coucou untuk Android",
+   "de": "Mit Coucou für Android verbinden",
+   "tr": "Android için Coucou ile bağla",
+   "ko": "Android용 Coucou와 연결",
+   "ja": "Coucou for Android と連携"
+  },
+  "Listening on port {0}": {
+   "zh-Hans": "正在监听端口 {0}",
+   "hi": "पोर्ट {0} पर सुन रहा है",
+   "es": "Escuchando en el puerto {0}",
+   "ar": "الاستماع على المنفذ {0}",
+   "fr": "À l'écoute sur le port {0}",
+   "bn": "পোর্ট {0}-এ শোনা হচ্ছে",
+   "pt-BR": "Escutando na porta {0}",
+   "ru": "Прослушивается порт {0}",
+   "id": "Mendengarkan di port {0}",
+   "de": "Lauscht auf Port {0}",
+   "tr": "{0} numaralı bağlantı noktası dinleniyor",
+   "ko": "포트 {0}에서 대기 중",
+   "ja": "ポート {0} で待ち受け中"
   },
   "Listening…": {
    "zh-Hans": "我在听…",
@@ -5447,6 +5702,21 @@
    "ko": "사운드 음소거/음소거 해제",
    "ja": "サウンドをミュート／解除"
   },
+  "Mute the Mac while you dictate": {
+   "zh-Hans": "听写时将 Mac 静音",
+   "hi": "डिक्टेशन के दौरान Mac म्यूट करें",
+   "es": "Silenciar el Mac mientras dictas",
+   "ar": "كتم صوت الماك أثناء الإملاء",
+   "fr": "Couper le son du Mac pendant la dictée",
+   "bn": "ডিক্টেশনের সময় Mac মিউট করুন",
+   "pt-BR": "Silenciar o Mac enquanto você dita",
+   "ru": "Выключать звук Mac во время диктовки",
+   "id": "Bisukan Mac saat mendikte",
+   "de": "Mac beim Diktieren stummschalten",
+   "tr": "Dikte ederken Mac'in sesini kapat",
+   "ko": "받아쓰는 동안 Mac 음소거",
+   "ja": "音声入力中は Mac を消音"
+  },
   "My PRs": {
    "zh-Hans": "我的 PR",
    "hi": "मेरे PR",
@@ -5822,6 +6092,21 @@
    "ko": "오류 세부 정보가 없네요.",
    "ja": "エラーの詳細はありません。"
   },
+  "No local network address found. Connect this Mac to Wi-Fi.": {
+   "zh-Hans": "未找到本地网络地址。请将这台 Mac 连接到 Wi-Fi。",
+   "hi": "कोई लोकल नेटवर्क पता नहीं मिला। इस Mac को Wi-Fi से जोड़ें।",
+   "es": "No se encontró una dirección de red local. Conecta este Mac a Wi-Fi.",
+   "ar": "لم يُعثر على عنوان شبكة محلية. صِل هذا الـ Mac بشبكة Wi-Fi.",
+   "fr": "Aucune adresse sur le réseau local. Connectez ce Mac au Wi-Fi.",
+   "bn": "কোনো লোকাল নেটওয়ার্ক ঠিকানা পাওয়া যায়নি। এই Mac-কে Wi-Fi-তে সংযুক্ত করুন।",
+   "pt-BR": "Nenhum endereço de rede local encontrado. Conecte este Mac ao Wi-Fi.",
+   "ru": "Адрес в локальной сети не найден. Подключите этот Mac к Wi-Fi.",
+   "id": "Alamat jaringan lokal tidak ditemukan. Hubungkan Mac ini ke Wi-Fi.",
+   "de": "Keine Adresse im lokalen Netzwerk gefunden. Verbinde diesen Mac mit dem WLAN.",
+   "tr": "Yerel ağ adresi bulunamadı. Bu Mac'i Wi-Fi'ye bağlayın.",
+   "ko": "로컬 네트워크 주소를 찾을 수 없습니다. 이 Mac을 Wi-Fi에 연결하세요.",
+   "ja": "ローカルネットワークのアドレスが見つかりません。この Mac を Wi-Fi に接続してください。"
+  },
   "No messages": {
    "zh-Hans": "没有邮件",
    "hi": "कोई संदेश नहीं",
@@ -5971,6 +6256,21 @@
    "tr": "Henüz özet yok.",
    "ko": "아직 요약이 없어요.",
    "ja": "要約はまだありません。"
+  },
+  "No text field here": {
+   "zh-Hans": "这里没有文本框",
+   "hi": "यहाँ कोई टेक्स्ट फ़ील्ड नहीं है",
+   "es": "Aquí no hay campo de texto",
+   "ar": "لا يوجد حقل نص هنا",
+   "fr": "Pas de zone de texte ici",
+   "bn": "এখানে কোনো টেক্সট ফিল্ড নেই",
+   "pt-BR": "Não há campo de texto aqui",
+   "ru": "Здесь нет текстового поля",
+   "id": "Tidak ada kolom teks di sini",
+   "de": "Hier gibt es kein Textfeld",
+   "tr": "Burada metin alanı yok",
+   "ko": "여기에는 텍스트 입력란이 없습니다",
+   "ja": "ここにはテキスト欄がありません"
   },
   "No text field here? Your words are copied: click where you want them and press ⌘V.": {
    "zh-Hans": "这里没有文本框？你的话已拷贝：点按想要的位置并按 ⌘V。",
@@ -7082,6 +7382,36 @@
    "ko": "개요",
    "ja": "概要"
   },
+  "Pair again": {
+   "zh-Hans": "重新配对",
+   "hi": "फिर से पेयर करें",
+   "es": "Emparejar de nuevo",
+   "ar": "إعادة الاقتران",
+   "fr": "Associer à nouveau",
+   "bn": "আবার পেয়ার করুন",
+   "pt-BR": "Parear de novo",
+   "ru": "Сопрячь заново",
+   "id": "Sandingkan ulang",
+   "de": "Erneut koppeln",
+   "tr": "Yeniden eşleştir",
+   "ko": "다시 페어링",
+   "ja": "もう一度ペアリング"
+  },
+  "Pairing again disconnects the phone that was paired.": {
+   "zh-Hans": "重新配对会断开之前已配对的手机。",
+   "hi": "फिर से पेयर करने पर पहले पेयर किया गया फ़ोन डिस्कनेक्ट हो जाता है।",
+   "es": "Vincular de nuevo desconecta el teléfono que estaba vinculado.",
+   "ar": "إعادة الإقران تفصل الهاتف المقترن سابقًا.",
+   "fr": "Appairer à nouveau déconnecte le téléphone qui était appairé.",
+   "bn": "আবার পেয়ার করলে আগে পেয়ার করা ফোনের সংযোগ বিচ্ছিন্ন হবে।",
+   "pt-BR": "Parear novamente desconecta o telefone que estava pareado.",
+   "ru": "При повторном сопряжении ранее подключённый телефон отключается.",
+   "id": "Memasangkan ulang akan memutus ponsel yang sebelumnya terpasang.",
+   "de": "Beim erneuten Koppeln wird das bisher gekoppelte Handy getrennt.",
+   "tr": "Yeniden eşleştirmek, eşleşmiş telefonun bağlantısını keser.",
+   "ko": "다시 페어링하면 이전에 페어링한 폰의 연결이 끊어집니다.",
+   "ja": "再ペアリングすると、以前ペアリングしたスマートフォンは切断されます。"
+  },
   "Parakeet, on your Mac": {
    "zh-Hans": "Parakeet，在你的 Mac 上",
    "hi": "Parakeet, आपके Mac पर",
@@ -7231,6 +7561,21 @@
    "tr": "İzin",
    "ko": "권한",
    "ja": "権限"
+  },
+  "Permission requests can always be answered from the phone. With this on, questions can too. The phone asks for its screen lock first.": {
+   "zh-Hans": "权限请求始终可以在手机上回应。开启后,提问也可以。手机会先要求验证屏幕锁。",
+   "hi": "अनुमति अनुरोधों का जवाब हमेशा फ़ोन से दिया जा सकता है। इसे चालू करने पर सवालों का भी दिया जा सकता है। फ़ोन पहले स्क्रीन लॉक मांगता है।",
+   "es": "Las solicitudes de permiso siempre se pueden responder desde el teléfono. Con esto activado, las preguntas también. El teléfono pide primero su bloqueo de pantalla.",
+   "ar": "يمكن دائمًا الرد على طلبات الإذن من الهاتف. عند التفعيل يمكن الرد على الأسئلة أيضًا. يطلب الهاتف قفل الشاشة أولًا.",
+   "fr": "Les demandes d'autorisation peuvent toujours être traitées depuis le téléphone. Avec cette option, les questions aussi. Le téléphone demande d'abord son verrouillage d'écran.",
+   "bn": "অনুমতির অনুরোধের উত্তর সবসময় ফোন থেকে দেওয়া যায়। এটি চালু করলে প্রশ্নেরও উত্তর দেওয়া যাবে। ফোন আগে স্ক্রিন লক চাইবে।",
+   "pt-BR": "Pedidos de permissão sempre podem ser respondidos pelo telefone. Com isto ativado, as perguntas também. O telefone pede primeiro o bloqueio de tela.",
+   "ru": "На запросы разрешений всегда можно ответить с телефона. Если включить, то и на вопросы. Телефон сначала запросит блокировку экрана.",
+   "id": "Permintaan izin selalu dapat dijawab dari ponsel. Jika ini aktif, pertanyaan juga bisa. Ponsel meminta kunci layarnya terlebih dahulu.",
+   "de": "Berechtigungsanfragen lassen sich immer vom Handy beantworten. Mit dieser Option auch Fragen. Das Handy verlangt zuerst seine Bildschirmsperre.",
+   "tr": "İzin istekleri her zaman telefondan yanıtlanabilir. Bu açıkken sorular da yanıtlanabilir. Telefon önce ekran kilidini ister.",
+   "ko": "권한 요청은 항상 폰에서 응답할 수 있습니다. 이 옵션을 켜면 질문에도 답할 수 있습니다. 폰은 먼저 화면 잠금을 요구합니다.",
+   "ja": "許可リクエストは常にスマートフォンから応答できます。オンにすると質問にも回答できます。スマートフォンは先に画面ロックを求めます。"
   },
   "Permissions": {
    "zh-Hans": "权限",
@@ -8387,6 +8732,21 @@
    "ko": "아이디어를 대충 막 말해도 목표, 맥락, 단계, 제약, 완료 조건이 갖춰진 깔끔한 프롬프트로 붙여넣어져요. Claude Code, Cursor, ChatGPT에 바로 던지면 돼요.",
    "ja": "アイデアを思いつくままに話してください。Claude Code、Cursor、ChatGPT ですぐ使える明確なプロンプト（目的、背景、手順、制約、完了条件）として貼り付けられます。"
   },
+  "Scan this code with Coucou for Android, or paste the link into the app.": {
+   "zh-Hans": "用 Coucou for Android 扫描此码,或将链接粘贴到应用中。",
+   "hi": "इस कोड को Android के लिए Coucou से स्कैन करें, या लिंक को ऐप में पेस्ट करें।",
+   "es": "Escanea este código con Coucou para Android o pega el enlace en la app.",
+   "ar": "امسح هذا الرمز باستخدام Coucou لنظام Android، أو الصق الرابط في التطبيق.",
+   "fr": "Scannez ce code avec Coucou pour Android, ou collez le lien dans l'app.",
+   "bn": "Android-এর জন্য Coucou দিয়ে এই কোডটি স্ক্যান করুন, অথবা লিংকটি অ্যাপে পেস্ট করুন।",
+   "pt-BR": "Escaneie este código com o Coucou para Android ou cole o link no app.",
+   "ru": "Отсканируйте этот код в Coucou для Android или вставьте ссылку в приложение.",
+   "id": "Pindai kode ini dengan Coucou untuk Android, atau tempel tautannya di aplikasi.",
+   "de": "Scanne diesen Code mit Coucou für Android oder füge den Link in die App ein.",
+   "tr": "Bu kodu Android için Coucou ile tarayın veya bağlantıyı uygulamaya yapıştırın.",
+   "ko": "Android용 Coucou로 이 코드를 스캔하거나 링크를 앱에 붙여넣으세요.",
+   "ja": "このコードを Coucou for Android でスキャンするか、リンクをアプリに貼り付けてください。"
+  },
   "Scarf": {
    "zh-Hans": "围巾",
    "hi": "मफ़लर",
@@ -8942,6 +9302,51 @@
    "ko": "내 에이전트 세션을 iPhone에서 보기",
    "ja": "エージェントのセッションを iPhone に表示"
   },
+  "Show my plan usage on the phone": {
+   "zh-Hans": "在手机上显示我的套餐用量",
+   "hi": "फ़ोन पर मेरे प्लान का उपयोग दिखाएँ",
+   "es": "Mostrar en el teléfono el uso de mi plan",
+   "ar": "عرض استهلاك خطتي على الهاتف",
+   "fr": "Afficher sur le téléphone l'utilisation de mon forfait",
+   "bn": "ফোনে আমার প্ল্যানের ব্যবহার দেখান",
+   "pt-BR": "Mostrar no celular o uso do meu plano",
+   "ru": "Показывать на телефоне использование моего тарифа",
+   "id": "Tampilkan penggunaan paket saya di ponsel",
+   "de": "Meine Plannutzung auf dem Telefon anzeigen",
+   "tr": "Plan kullanımımı telefonda göster",
+   "ko": "휴대폰에서 요금제 사용량 보기",
+   "ja": "プランの使用状況をスマートフォンに表示"
+  },
+  "Show pairing code": {
+   "zh-Hans": "显示配对码",
+   "hi": "पेयरिंग कोड दिखाएँ",
+   "es": "Mostrar código de emparejamiento",
+   "ar": "إظهار رمز الاقتران",
+   "fr": "Afficher le code d'association",
+   "bn": "পেয়ারিং কোড দেখান",
+   "pt-BR": "Mostrar código de pareamento",
+   "ru": "Показать код сопряжения",
+   "id": "Tampilkan kode penyandingan",
+   "de": "Kopplungscode anzeigen",
+   "tr": "Eşleştirme kodunu göster",
+   "ko": "페어링 코드 보기",
+   "ja": "ペアリングコードを表示"
+  },
+  "Show session details on the phone": {
+   "zh-Hans": "在手机上显示会话详情",
+   "hi": "फ़ोन पर सत्र का विवरण दिखाएँ",
+   "es": "Mostrar los detalles de la sesión en el teléfono",
+   "ar": "إظهار تفاصيل الجلسة على الهاتف",
+   "fr": "Afficher les détails de la session sur le téléphone",
+   "bn": "ফোনে সেশনের বিবরণ দেখান",
+   "pt-BR": "Mostrar os detalhes da sessão no celular",
+   "ru": "Показывать детали сессии на телефоне",
+   "id": "Tampilkan detail sesi di ponsel",
+   "de": "Sitzungsdetails auf dem Telefon anzeigen",
+   "tr": "Oturum ayrıntılarını telefonda göster",
+   "ko": "휴대폰에서 세션 세부 정보 보기",
+   "ja": "セッションの詳細をスマートフォンに表示"
+  },
   "Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
    "zh-Hans": "在刘海标头中显示你的 Claude 计划用量（5 小时及每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一条状态栏中继。如果你已有状态栏，它将照常运行。仅限 Pro 和 Max 计划。",
    "hi": "नॉच हेडर में आपके Claude प्लान का उपयोग (5 घंटे और साप्ताहिक सीमाएं) दिखाता है। Coucou ~/.claude/settings.json में एक स्टेटस लाइन रिले जोड़ता है। अगर आपके पास पहले से स्टेटस लाइन है, तो वह पहले की तरह काम करती रहेगी। केवल Pro और Max प्लान के लिए।",
@@ -9151,6 +9556,21 @@
    "tr": "İstatistikler",
    "ko": "통계",
    "ja": "統計"
+  },
+  "Steps, last line, project folder name and colour of each session. Never the prompt, the output or full paths.": {
+   "zh-Hans": "每个会话的步骤、最后一行、项目文件夹名称和颜色。绝不发送提示词、输出或完整路径。",
+   "hi": "हर सेशन के चरण, आख़िरी पंक्ति, प्रोजेक्ट फ़ोल्डर का नाम और रंग। प्रॉम्प्ट, आउटपुट या पूरा पाथ कभी नहीं।",
+   "es": "Pasos, última línea, nombre de la carpeta del proyecto y color de cada sesión. Nunca el prompt, la salida ni rutas completas.",
+   "ar": "الخطوات والسطر الأخير واسم مجلد المشروع ولون كل جلسة. لا تُرسل أبدًا الموجّهات أو المخرجات أو المسارات الكاملة.",
+   "fr": "Étapes, dernière ligne, nom du dossier du projet et couleur de chaque session. Jamais le prompt, la sortie ni les chemins complets.",
+   "bn": "প্রতিটি সেশনের ধাপ, শেষ লাইন, প্রজেক্ট ফোল্ডারের নাম ও রং। প্রম্পট, আউটপুট বা সম্পূর্ণ পাথ কখনও নয়।",
+   "pt-BR": "Etapas, última linha, nome da pasta do projeto e cor de cada sessão. Nunca o prompt, a saída ou caminhos completos.",
+   "ru": "Шаги, последняя строка, имя папки проекта и цвет каждой сессии. Никогда не отправляются запрос, вывод и полные пути.",
+   "id": "Langkah, baris terakhir, nama folder proyek, dan warna setiap sesi. Tidak pernah prompt, keluaran, atau path lengkap.",
+   "de": "Schritte, letzte Zeile, Projektordnername und Farbe jeder Sitzung. Nie der Prompt, die Ausgabe oder vollständige Pfade.",
+   "tr": "Her oturumun adımları, son satırı, proje klasörü adı ve rengi. İstem, çıktı veya tam yollar asla gönderilmez.",
+   "ko": "각 세션의 단계, 마지막 줄, 프로젝트 폴더 이름, 색상. 프롬프트, 출력, 전체 경로는 절대 보내지 않습니다.",
+   "ja": "各セッションのステップ、最後の行、プロジェクトのフォルダ名、色。プロンプト、出力、フルパスは送りません。"
   },
   "Stop": {
    "zh-Hans": "停止",
@@ -9527,6 +9947,21 @@
    "ko": "내 키로 굴러가는 노치 채팅 AI예요.",
    "ja": "自分のキーで使う、ノッチのチャットの AI。"
   },
+  "The Claude and Codex usage the island shows.": {
+   "zh-Hans": "灵动岛中显示的 Claude 和 Codex 用量。",
+   "hi": "आइलैंड में दिखने वाला Claude और Codex का उपयोग।",
+   "es": "El uso de Claude y Codex que muestra la isla.",
+   "ar": "استهلاك Claude وCodex الذي تعرضه الجزيرة.",
+   "fr": "L'utilisation de Claude et Codex affichée par l'île.",
+   "bn": "আইল্যান্ডে দেখানো Claude ও Codex-এর ব্যবহার।",
+   "pt-BR": "O uso do Claude e do Codex que a ilha mostra.",
+   "ru": "Расход Claude и Codex, который показывает остров.",
+   "id": "Penggunaan Claude dan Codex yang ditampilkan island.",
+   "de": "Die Nutzung von Claude und Codex, die die Insel zeigt.",
+   "tr": "Adanın gösterdiği Claude ve Codex kullanımı.",
+   "ko": "아일랜드에 표시되는 Claude와 Codex 사용량입니다.",
+   "ja": "アイランドに表示される Claude と Codex の使用量です。"
+  },
   "The Notetaker": {
    "zh-Hans": "会议笔记",
    "hi": "Notetaker",
@@ -9841,6 +10276,21 @@
    "tr": "O zaman",
    "ko": "그러면",
    "ja": "実行"
+  },
+  "This key alone is in every shortcut: add another one.": {
+   "zh-Hans": "这个键单独用于所有快捷键：请再加一个。",
+   "hi": "यह कुंजी अकेले हर शॉर्टकट में आती है: एक और जोड़ें।",
+   "es": "Esta tecla sola está en todos los atajos: añade otra.",
+   "ar": "هذا المفتاح وحده يُستخدم في كل الاختصارات: أضف مفتاحًا آخر.",
+   "fr": "Cette touche seule sert à tous les raccourcis : ajoutes-en une autre.",
+   "bn": "এই কীটি একা সব শর্টকাটে ব্যবহৃত হয়: আরেকটি কী যোগ করুন।",
+   "pt-BR": "Esta tecla sozinha está em todos os atalhos: adicione outra.",
+   "ru": "Эта клавиша есть во всех сочетаниях: добавьте ещё одну.",
+   "id": "Tombol ini sendirian dipakai di semua pintasan: tambahkan satu lagi.",
+   "de": "Diese Taste allein steckt in jedem Kurzbefehl: Füge eine weitere hinzu.",
+   "tr": "Bu tuş tek başına her kısayolda var: bir tane daha ekle.",
+   "ko": "이 키 하나는 모든 단축키에 쓰입니다. 하나 더 추가하세요.",
+   "ja": "このキー単体はあらゆるショートカットで使われます。もう1つ加えてください。"
   },
   "This message has no text.": {
    "zh-Hans": "这封邮件没有正文。",
@@ -10396,6 +10846,21 @@
    "tr": "VIP {0}",
    "ko": "VIP {0}",
    "ja": "VIP {0}"
+  },
+  "Videos, music and calls go quiet while Coucou listens, then the sound comes back.": {
+   "zh-Hans": "Coucou 聆听期间，视频、音乐和通话都会静音，结束后声音恢复。",
+   "hi": "जब तक Coucou सुनता है, वीडियो, संगीत और कॉल चुप रहते हैं, फिर आवाज़ लौट आती है।",
+   "es": "Los vídeos, la música y las llamadas se callan mientras Coucou escucha, y luego vuelve el sonido.",
+   "ar": "تصمت الفيديوهات والموسيقى والمكالمات بينما يستمع Coucou، ثم يعود الصوت.",
+   "fr": "Vidéos, musique et appels se taisent pendant que Coucou écoute, puis le son revient.",
+   "bn": "Coucou শোনার সময় ভিডিও, গান ও কল চুপ থাকে, তারপর শব্দ ফিরে আসে।",
+   "pt-BR": "Vídeos, músicas e chamadas ficam em silêncio enquanto o Coucou escuta, depois o som volta.",
+   "ru": "Видео, музыка и звонки замолкают, пока Coucou слушает, а затем звук возвращается.",
+   "id": "Video, musik, dan panggilan diam selama Coucou mendengarkan, lalu suaranya kembali.",
+   "de": "Videos, Musik und Anrufe verstummen, solange Coucou zuhört, danach ist der Ton wieder da.",
+   "tr": "Coucou dinlerken videolar, müzik ve aramalar susar, sonra ses geri gelir.",
+   "ko": "Coucou가 듣는 동안 동영상, 음악, 통화 소리가 꺼졌다가 다시 돌아옵니다.",
+   "ja": "Coucou が聞いている間は動画・音楽・通話の音が止まり、終わると元に戻ります。"
   },
   "Voice": {
    "zh-Hans": "声音",
@@ -11327,6 +11792,21 @@
    "ko": "내 요금제 · {0}",
    "ja": "あなたのプラン · {0}"
   },
+  "Your shortcut": {
+   "zh-Hans": "你的快捷键",
+   "hi": "आपका शॉर्टकट",
+   "es": "Tu atajo",
+   "ar": "اختصارك",
+   "fr": "Ton raccourci",
+   "bn": "আপনার শর্টকাট",
+   "pt-BR": "Seu atalho",
+   "ru": "Ваше сочетание",
+   "id": "Pintasanmu",
+   "de": "Dein Kurzbefehl",
+   "tr": "Kısayolun",
+   "ko": "내 단축키",
+   "ja": "あなたのショートカット"
+  },
   "Your voice is turned into text by your Mac's speech recognition, on-device when your Mac supports it; Coucou sends it nowhere. After pasting, the clipboard gets back what it held.": {
    "zh-Hans": "你的声音由 Mac 的语音识别转成文字，Mac 支持时在设备上完成；Coucou 不会把它发送到任何地方。粘贴之后，剪贴板会恢复原来的内容。",
    "hi": "आपकी आवाज़ को आपके Mac की वाक् पहचान टेक्स्ट में बदलती है, जब आपका Mac समर्थन करे तो डिवाइस पर ही; Coucou इसे कहीं नहीं भेजता। चिपकाने के बाद क्लिपबोर्ड में पहले वाली चीज़ वापस आ जाती है।",
@@ -12256,6 +12736,21 @@
    "tr": "« OK Coucou » — sesle etkinleştirme ifadesi",
    "ko": "« OK Coucou » — 음성 호출어",
    "ja": "「OK Coucou」— 音声ウェイクワード"
+  },
+  "↩ to save · Esc to cancel": {
+   "zh-Hans": "↩ 保存 · Esc 取消",
+   "hi": "सहेजने के लिए ↩ · रद्द करने के लिए Esc",
+   "es": "↩ para guardar · Esc para cancelar",
+   "ar": "↩ للحفظ · Esc للإلغاء",
+   "fr": "↩ pour valider · Esc pour annuler",
+   "bn": "সংরক্ষণ করতে ↩ · বাতিল করতে Esc",
+   "pt-BR": "↩ para salvar · Esc para cancelar",
+   "ru": "↩ — сохранить · Esc — отмена",
+   "id": "↩ untuk simpan · Esc untuk batal",
+   "de": "↩ zum Sichern · Esc zum Abbrechen",
+   "tr": "Kaydetmek için ↩ · İptal için Esc",
+   "ko": "↩ 저장 · Esc 취소",
+   "ja": "↩ で保存・Esc でキャンセル"
   },
   "✓ Amp plugin installed in ~/.config/amp/plugins/coucou.ts": {
    "zh-Hans": "✓ Amp 插件已安装至 ~/.config/amp/plugins/coucou.ts",

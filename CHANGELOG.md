@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Android phone link (Mac)** — Coucou for Android can now pair with your Mac, the way it already does with Windows and Linux (Settings → Android phone, off by default). Scan the QR code on the same Wi-Fi, see your agent sessions, and allow or deny a permission request from the phone; Allow still needs the phone's fingerprint or screen lock. Optional switches show session details, let the phone answer Claude Code's questions and show your plan usage. Coucou listens on your local network only while the switch is on, the certificate and the pairing code stay in the Keychain, and nothing runs while it is off (GitHub build; not in the App Store build)
+
+## Android 0.4.0 — Unreleased
+
+- **Coucou for Android 0.4.0** — works with a Mac as well as with Windows and Linux: pair it the same way (Settings → Android phone on the Mac, then scan the QR code). The app itself does not change for this; the Mac speaks the same link as the PC. Needs the Mac release that carries the Android phone link
+
 ## Windows and Linux 0.5.9 — November 3, 2026
 
 - **The island never disappears** — once closed, a small island stays at the top of the screen, as on a Mac without a notch: Mochi in it (he blinks and looks around), or the time, the date, your Claude usage or what's playing (Settings → General → Closed island shows). Hovering it brings the compact island, and it always wakes up again
