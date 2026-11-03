@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
   CLOSED_BOT_D, CLOSED_H, closedContent, closedIsland, closedWidth, type ClosedContent,
 } from "../core/closed";
@@ -11,14 +11,14 @@ import {
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
-  type BotEmoteName, type IslandMode, type IslandViewName,
+  type BotEmoteName, type BotStateName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
-import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
+import { createMiniBot, pruneMiniBots, setMiniBotsAsleep, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
@@ -32,7 +32,7 @@ import { refreshHookPills } from "./integrations";
 import { restoreAlertFocus } from "./hooks";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
-import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { DRAG_THRESHOLD, agentActive, sessionStarted } from "../mochi/desktop-logic";
 import { Updates } from "./update";
 import { UPDATE_BLUE, showsUpdateHint } from "../whats-new/whats-new";
 
@@ -151,6 +151,7 @@ export class Island {
       reveal: () => this.reveal(),
       wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
       dizzyFromDesktop: () => this.handleDizzy(),
+      wake: () => this.noteActivity(),
     });
     this.build();
     this.wireFsm();
@@ -163,7 +164,17 @@ export class Island {
     State.subscribe(() => {
       this.dirty = true;
       this.ensureRunning();
+      // A chat message sent or a coding session starting wakes them; the
+      // pointer and keys don't.
+      const before = this.sessions;
+      const asked = this.asked;
+      this.sessions = new Map(State.tasks.map((t) => [t.id, t.state]));
+      this.asked = State.chatHistory.filter((m) => m.role === "user").length;
+      const started = sessionStarted(before, State.tasks);
+      if (started && State.asleep) void Bridge.log("mochi wake: a session started");
+      if (this.asked > asked || started) this.noteActivity();
     });
+    this.noteActivity();
   }
 
   /** The request has its answer: the card goes and the session carries on. */
@@ -956,11 +967,14 @@ export class Island {
         return;
       }
       if (State.mode !== "expanded") {
+        if (State.asleep) this.noteActivity();
         this.fsm.click();
         return;
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
+        // Asleep, a click wakes them all instead of slapping him.
+        if (State.asleep) return this.noteActivity();
         this.engine.slap();
       }
     });
@@ -993,6 +1007,8 @@ export class Island {
       this.botPress = null;
       if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
+    // Sound playing, or the mic or camera in use, keeps them up (awake.rs).
+    void onEvent<boolean>("keep-awake", (on) => { this.keptAwake = on; });
 
     // Only keys typed into the island itself land here, never Escape typed in
     // a terminal — so it may fold a waiting card away, as Escape in the notch
@@ -1070,8 +1086,8 @@ export class Island {
       this.fsm.mouseLeft();
     }
 
-    // Bot hover → love
-    const overBot = State.mode === "expanded" && State.stateOverride == null && this.isBotHit(x, y);
+    // Bot hover → love (not in his sleep)
+    const overBot = State.mode === "expanded" && State.stateOverride == null && !State.asleep && this.isBotHit(x, y);
     if (overBot && !this.botHovering) this.botHoverIn(x, y);
     if (!overBot && this.botHovering) this.cancelBotHover();
     this.botHovering = overBot;
@@ -1320,6 +1336,12 @@ export class Island {
     this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
+    // Music starting wakes them to dance; while it plays they stay up.
+    if (State.spotifyPlaying && !this.musicWas && State.asleep) {
+      void Bridge.log("mochi wake: music started");
+      this.noteActivity();
+    }
+    this.musicWas = State.spotifyPlaying;
     this.engine.setDancing(islandDances({
       music: State.spotifyPlaying,
       state: State.effectiveState,
@@ -1443,7 +1465,49 @@ export class Island {
     this.updateClock();
 
     syncMiniBotStates(State.tasks);
-    this.engine.setState(State.effectiveState);
+    this.engine.setState(State.asleep ? "sleeping" : State.effectiveState);
+  }
+
+  // ── Sleep ───────────────────────────────────────────────────────────────────
+
+  private sleepTimer: number | null = null;
+  /** Music was playing at the last frame, to see it start. */
+  private musicWas = false;
+  /** Sound, a call or the camera is keeping them up (awake.rs "keep-awake"). */
+  private keptAwake = false;
+  /** Each pill's state at the last redraw, to see a session start. */
+  private sessions = new Map<string, BotStateName>();
+  /** Chat messages sent so far (the chat starts over on a new file). */
+  private asked = 0;
+
+  /** A chat message, a session starting or music starting wakes every Mochi and restarts the
+   *  clock: after 30 s plus the island's own close delay, they fall asleep (not while music plays). */
+  private noteActivity = () => {
+    if (this.sleepTimer != null) window.clearTimeout(this.sleepTimer);
+    this.sleepTimer = window.setTimeout(this.fallAsleep, (30 + State.settings.autoCloseInterval) * 1000);
+    this.setAsleep(false);
+  };
+
+  private fallAsleep = () => {
+    this.sleepTimer = null;
+    // A session still at work keeps them up: look again after another spell.
+    // A finished or failed one is done working: it must not.
+    const working = (t: { state: BotStateName }) => agentActive(t.state) && t.state !== "finished" && t.state !== "error";
+    if (State.tasks.some(working)) return this.noteActivity();
+    // Nobody nods off while anything plays (music, a video, a game, a call)
+    // or an app holds the mic or camera: look again later.
+    if (State.spotifyPlaying || this.keptAwake) return this.noteActivity();
+    this.setAsleep(true);
+  };
+
+  /** The island's Mochis, the minis and the desktop one (island/desktop.ts). */
+  private setAsleep(on: boolean) {
+    if (State.asleep === on) return;
+    // Diagnostics (coucou.log): why Mochi sleeps or wakes, with every session's state.
+    void Bridge.log(`mochi ${on ? "asleep" : "awake"}; sessions: ${State.tasks.map((t) => `${t.id.slice(0, 8)}=${t.state}`).join(" ") || "none"}`);
+    State.asleep = on;
+    setMiniBotsAsleep(on);
+    State.notify();
   }
 
   /** The clock sits in the middle of the compact island, where the notch is on a Mac. */
