@@ -2,6 +2,151 @@
   "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 14 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.9",
+      "items": [
+        {
+          "icon": "eye",
+          "title": {
+            "en": "The island stays on screen",
+            "zh-Hans": "灵动岛一直在屏幕上",
+            "hi": "आइलैंड स्क्रीन पर बना रहता है",
+            "es": "La isla se queda en pantalla",
+            "ar": "تبقى الجزيرة على الشاشة",
+            "fr": "L'île reste à l'écran",
+            "bn": "আইল্যান্ড স্ক্রিনে থাকে",
+            "pt-BR": "A ilha fica na tela",
+            "ru": "Остров остаётся на экране",
+            "id": "Pulau tetap di layar",
+            "de": "Die Insel bleibt auf dem Bildschirm",
+            "tr": "Ada ekranda kalır",
+            "ko": "아일랜드가 화면에 남아요",
+            "ja": "アイランドが画面に残る"
+          },
+          "detail": {
+            "en": "Closed, it keeps Mochi or the time at the top of the screen. Hover it to bring Coucou back.",
+            "zh-Hans": "关闭后，屏幕顶部仍显示 Mochi 或时间。将指针移上去即可唤回 Coucou。",
+            "hi": "बंद होने पर ऊपर Mochi या समय दिखता रहता है। Coucou लौटाने के लिए पॉइंटर रखें।",
+            "es": "Cerrada, muestra a Mochi o la hora arriba. Pasa el puntero para recuperar Coucou.",
+            "ar": "عند الإغلاق يبقى Mochi أو الوقت أعلى الشاشة. مرّر المؤشر لإعادة Coucou.",
+            "fr": "Fermée, elle garde Mochi ou l'heure en haut de l'écran. Survolez-la pour retrouver Coucou.",
+            "bn": "বন্ধ হলেও উপরে Mochi বা সময় থাকে। Coucou ফেরাতে পয়েন্টার রাখুন।",
+            "pt-BR": "Fechada, mostra o Mochi ou a hora no topo. Passe o ponteiro para trazer o Coucou.",
+            "ru": "Закрытый, он показывает Mochi или время вверху. Наведите указатель, чтобы вернуть Coucou.",
+            "id": "Saat ditutup, Mochi atau jam tetap di atas. Arahkan penunjuk untuk memunculkan Coucou.",
+            "de": "Geschlossen zeigt sie oben Mochi oder die Uhrzeit. Zeiger darüber holt Coucou zurück.",
+            "tr": "Kapalıyken üstte Mochi ya da saat kalır. Coucou'yu geri getirmek için üzerine gelin.",
+            "ko": "닫혀도 화면 위에 Mochi나 시간이 남아요. 포인터를 올리면 Coucou가 돌아와요.",
+            "ja": "閉じても上部に Mochi か時刻が残ります。ポインタを乗せると Coucou が戻ります。"
+          }
+        },
+        {
+          "icon": "mic",
+          "title": {
+            "en": "Dictation keeps your language",
+            "zh-Hans": "听写保持你的语言",
+            "hi": "डिक्टेशन आपकी भाषा में रहता है",
+            "es": "El dictado mantiene tu idioma",
+            "ar": "الإملاء يحافظ على لغتك",
+            "fr": "La dictée garde votre langue",
+            "bn": "ডিক্টেশন আপনার ভাষায় থাকে",
+            "pt-BR": "O ditado mantém seu idioma",
+            "ru": "Диктовка не меняет язык",
+            "id": "Dikte tetap dalam bahasa Anda",
+            "de": "Diktat bleibt in deiner Sprache",
+            "tr": "Dikte dilinizde kalır",
+            "ko": "받아쓰기가 언어를 유지해요",
+            "ja": "音声入力が言語を保ちます"
+          },
+          "detail": {
+            "en": "It no longer switches to English mid-sentence when you start speaking right away.",
+            "zh-Hans": "立即开口说话时，不会再在句中切换成英语。",
+            "hi": "तुरंत बोलना शुरू करने पर वाक्य के बीच अंग्रेज़ी में नहीं बदलता।",
+            "es": "Ya no cambia al inglés a mitad de frase cuando empiezas a hablar enseguida.",
+            "ar": "لم يعد يتحول إلى الإنجليزية في منتصف الجملة عندما تبدأ الكلام فورًا.",
+            "fr": "Elle ne passe plus à l'anglais en pleine phrase quand vous parlez tout de suite.",
+            "bn": "সঙ্গে সঙ্গে কথা বললে বাক্যের মাঝে আর ইংরেজিতে যায় না।",
+            "pt-BR": "Não muda mais para o inglês no meio da frase quando você fala logo de cara.",
+            "ru": "Больше не переходит на английский посреди фразы, если начать говорить сразу.",
+            "id": "Tak lagi beralih ke bahasa Inggris di tengah kalimat saat Anda langsung bicara.",
+            "de": "Sie wechselt nicht mehr mitten im Satz ins Englische, wenn du sofort sprichst.",
+            "tr": "Hemen konuşmaya başladığınızda cümle ortasında İngilizceye geçmez.",
+            "ko": "바로 말을 시작해도 문장 중간에 영어로 바뀌지 않아요.",
+            "ja": "すぐに話し始めても、文の途中で英語に切り替わりません。"
+          }
+        },
+        {
+          "icon": "keyboard",
+          "title": {
+            "en": "Your own dictation key",
+            "zh-Hans": "自定义听写按键",
+            "hi": "अपनी डिक्टेशन कुंजी",
+            "es": "Tu propia tecla de dictado",
+            "ar": "مفتاح إملاء خاص بك",
+            "fr": "Votre touche de dictée",
+            "bn": "নিজের ডিক্টেশন কী",
+            "pt-BR": "Sua própria tecla de ditado",
+            "ru": "Своя клавиша диктовки",
+            "id": "Tombol dikte sendiri",
+            "de": "Deine eigene Diktiertaste",
+            "tr": "Kendi dikte tuşunuz",
+            "ko": "나만의 받아쓰기 키",
+            "ja": "自分の音声入力キー"
+          },
+          "detail": {
+            "en": "The left keys, or record any shortcut, like Alt + Shift + F.",
+            "zh-Hans": "可用左侧按键，或录制任意快捷键，如 Alt + Shift + F。",
+            "hi": "बाईं कुंजियाँ, या कोई भी शॉर्टकट रिकॉर्ड करें, जैसे Alt + Shift + F।",
+            "es": "Las teclas izquierdas, o graba cualquier atajo, como Alt + Shift + F.",
+            "ar": "المفاتيح اليسرى، أو سجّل أي اختصار مثل Alt + Shift + F.",
+            "fr": "Les touches de gauche, ou enregistrez le raccourci de votre choix, comme Alt + Shift + F.",
+            "bn": "বাম দিকের কী, বা Alt + Shift + F-এর মতো যেকোনো শর্টকাট।",
+            "pt-BR": "As teclas da esquerda, ou grave qualquer atalho, como Alt + Shift + F.",
+            "ru": "Левые клавиши или любое сочетание, например Alt + Shift + F.",
+            "id": "Tombol kiri, atau rekam pintasan apa pun, seperti Alt + Shift + F.",
+            "de": "Die linken Tasten oder ein beliebiges Kürzel wie Alt + Shift + F.",
+            "tr": "Sol tuşlar ya da Alt + Shift + F gibi istediğiniz kısayol.",
+            "ko": "왼쪽 키나 Alt + Shift + F 같은 원하는 단축키를 쓸 수 있어요.",
+            "ja": "左側のキー、または Alt + Shift + F など好きなショートカットを記録できます。"
+          }
+        },
+        {
+          "icon": "bell",
+          "title": {
+            "en": "Silence while you speak",
+            "zh-Hans": "说话时保持安静",
+            "hi": "बोलते समय शांति",
+            "es": "Silencio mientras hablas",
+            "ar": "صمت أثناء حديثك",
+            "fr": "Le silence quand vous parlez",
+            "bn": "কথা বলার সময় নীরবতা",
+            "pt-BR": "Silêncio enquanto você fala",
+            "ru": "Тишина, пока вы говорите",
+            "id": "Hening saat Anda bicara",
+            "de": "Stille, während du sprichst",
+            "tr": "Konuşurken sessizlik",
+            "ko": "말하는 동안 조용히",
+            "ja": "話している間は静かに"
+          },
+          "detail": {
+            "en": "On Windows, videos, music and calls go quiet while Coucou listens, then come back.",
+            "zh-Hans": "在 Windows 上，Coucou 聆听时视频、音乐和通话会静音，之后恢复。",
+            "hi": "Windows पर Coucou के सुनते समय वीडियो, संगीत और कॉल शांत होकर फिर लौट आते हैं।",
+            "es": "En Windows, vídeos, música y llamadas se callan mientras Coucou escucha y luego vuelven.",
+            "ar": "على Windows تصمت الفيديوهات والموسيقى والمكالمات أثناء استماع Coucou ثم تعود.",
+            "fr": "Sur Windows, vidéos, musique et appels se taisent pendant que Coucou écoute, puis reviennent.",
+            "bn": "Windows-এ Coucou শোনার সময় ভিডিও, গান ও কল চুপ থাকে, পরে ফিরে আসে।",
+            "pt-BR": "No Windows, vídeos, música e chamadas silenciam enquanto o Coucou ouve e depois voltam.",
+            "ru": "В Windows видео, музыка и звонки затихают, пока Coucou слушает, а потом возвращаются.",
+            "id": "Di Windows, video, musik, dan panggilan senyap saat Coucou mendengar, lalu kembali.",
+            "de": "Unter Windows verstummen Videos, Musik und Anrufe, während Coucou zuhört.",
+            "tr": "Windows'ta Coucou dinlerken videolar, müzik ve aramalar susar, sonra geri gelir.",
+            "ko": "Windows에서 Coucou가 듣는 동안 영상·음악·통화가 조용해졌다가 돌아와요.",
+            "ja": "Windows では Coucou が聞く間、動画・音楽・通話が静かになり、その後戻ります。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.8",
       "items": [
         {

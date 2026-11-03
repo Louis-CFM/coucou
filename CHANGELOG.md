@@ -1,5 +1,18 @@
 # Changelog
 
+## Windows and Linux 0.5.9 — November 3, 2026
+
+- **The island never disappears** — once closed, a small island stays at the top of the screen, as on a Mac without a notch: Mochi in it (he blinks and looks around), or the time, the date, your Claude usage or what's playing (Settings → General → Closed island shows). Hovering it brings the compact island, and it always wakes up again
+- **✕ folds the open island** — at the top right, as on the Mac, with the Mac's icons in the header; the Claude plan card fills its card again
+- **Dictation keeps your language** — it no longer starts in English and switches mid-sentence when you speak right away
+- **Your own dictation key** — Left Ctrl, Left Alt and Left Shift join the list, or record a shortcut of your own (Alt + Shift + F, F9…). On Windows its letter no longer reaches the app in front, and a held Alt or Win opens no menu
+- **Silence while you speak** *(Windows)* — videos, music and calls go quiet while Coucou listens to you, then come back (Flow → Settings → Microphone)
+- **The Coucou window comes alive on Windows** — the particles and the little Mochis of each page now show, on the deep black, and follow your voice while you dictate; thin scrollbars without arrows, one box for the settings search
+- **A forgotten call stops by itself** — the Notetaker stops recording after 15 minutes with nobody speaking, or after 4 hours
+- **Lighter on the processor** — the island no longer follows a cursor that is far from it, and the closed island polls nothing
+- **Claude API models** — the model picker lists your account's models and keeps your choice (#1000 by @lazarevtill)
+- **Flow keeps your edits** — a dictionary, snippet, style or history change that can't be saved says so and lets you retry (#1003 by @lazarevtill)
+
 ## 0.5.8 — October 31, 2026
 
 Fixes by @Ohualtex.
