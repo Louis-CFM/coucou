@@ -2191,21 +2191,6 @@
       "ko": "질문",
       "ja": "質問"
     },
-    "Ready": {
-      "zh-Hans": "就绪",
-      "hi": "तैयार",
-      "es": "Listo",
-      "ar": "جاهز",
-      "fr": "Prêt",
-      "bn": "প্রস্তুত",
-      "pt-BR": "Pronto",
-      "ru": "Готово",
-      "id": "Siap",
-      "de": "Bereit",
-      "tr": "Hazır",
-      "ko": "준비 완료",
-      "ja": "準備完了"
-    },
     "Reinstall hooks…": {
       "zh-Hans": "重新安装 hooks…",
       "hi": "hooks फिर से इंस्टॉल करें…",

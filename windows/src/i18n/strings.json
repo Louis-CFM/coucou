@@ -2552,6 +2552,36 @@
    "ko": "Coucou {0} 나왔어요!",
    "ja": "Coucou {0} が公開されました"
   },
+  "Coucoudoro · Rest": {
+   "zh-Hans": "Coucoudoro · 休息",
+   "hi": "Coucoudoro · आराम",
+   "es": "Coucoudoro · Descanso",
+   "ar": "Coucoudoro · استراحة",
+   "fr": "Coucoudoro · Repos",
+   "bn": "Coucoudoro · বিশ্রাম",
+   "pt-BR": "Coucoudoro · Descanso",
+   "ru": "Coucoudoro · Отдых",
+   "id": "Coucoudoro · Istirahat",
+   "de": "Coucoudoro · Ruhe",
+   "tr": "Coucoudoro · Dinlenme",
+   "ko": "Coucoudoro · 휴식",
+   "ja": "Coucoudoro · 休憩"
+  },
+  "Coucoudoro · Work": {
+   "zh-Hans": "Coucoudoro · 工作",
+   "hi": "Coucoudoro · काम",
+   "es": "Coucoudoro · Trabajo",
+   "ar": "Coucoudoro · عمل",
+   "fr": "Coucoudoro · Travail",
+   "bn": "Coucoudoro · কাজ",
+   "pt-BR": "Coucoudoro · Trabalho",
+   "ru": "Coucoudoro · Работа",
+   "id": "Coucoudoro · Kerja",
+   "de": "Coucoudoro · Arbeit",
+   "tr": "Coucoudoro · İş",
+   "ko": "Coucoudoro · 작업",
+   "ja": "Coucoudoro · 作業"
+  },
   "Could not start: {0}": {
    "zh-Hans": "无法启动:{0}",
    "hi": "शुरू नहीं हो सका: {0}",
@@ -7982,6 +8012,21 @@
    "ko": "읽기",
    "ja": "読み取り"
   },
+  "Ready": {
+   "zh-Hans": "就绪",
+   "hi": "तैयार",
+   "es": "Listo",
+   "ar": "جاهز",
+   "fr": "Prêt",
+   "bn": "প্রস্তুত",
+   "pt-BR": "Pronto",
+   "ru": "Готово",
+   "id": "Siap",
+   "de": "Bereit",
+   "tr": "Hazır",
+   "ko": "준비됨",
+   "ja": "準備完了"
+  },
   "Ready · hold {0}": {
    "zh-Hans": "就绪 · 按住 {0}",
    "hi": "तैयार · {0} दबाए रखें",
@@ -8402,6 +8447,21 @@
    "ko": "초기화 중…",
    "ja": "リセット中…"
   },
+  "Rest": {
+   "zh-Hans": "休息",
+   "hi": "आराम",
+   "es": "Descanso",
+   "ar": "استراحة",
+   "fr": "Repos",
+   "bn": "বিশ্রাম",
+   "pt-BR": "Descanso",
+   "ru": "Отдых",
+   "id": "Istirahat",
+   "de": "Ruhe",
+   "tr": "Dinlenme",
+   "ko": "휴식",
+   "ja": "休憩"
+  },
   "Restart Coucou": {
    "zh-Hans": "重启 Coucou",
    "hi": "Coucou को पुनः आरंभ करें",
@@ -8431,6 +8491,21 @@
    "tr": "Coucou yeniden başlatılıyor…",
    "ko": "Coucou 재시작 중… 금방 돌아올게요!",
    "ja": "Coucou を再起動中…"
+  },
+  "Resume": {
+   "zh-Hans": "继续",
+   "hi": "जारी",
+   "es": "Seguir",
+   "ar": "استئناف",
+   "fr": "Reprendre",
+   "bn": "চালু",
+   "pt-BR": "Continuar",
+   "ru": "Дальше",
+   "id": "Lanjut",
+   "de": "Weiter",
+   "tr": "Sürdür",
+   "ko": "계속",
+   "ja": "再開"
   },
   "Retry": {
    "zh-Hans": "重试",
@@ -9511,6 +9586,21 @@
    "tr": "Spotify kurulu değil",
    "ko": "Spotify가 설치돼 있지 않아요",
    "ja": "Spotify がインストールされていません"
+  },
+  "Start": {
+   "zh-Hans": "开始",
+   "hi": "शुरू",
+   "es": "Empezar",
+   "ar": "ابدأ",
+   "fr": "Démarrer",
+   "bn": "শুরু",
+   "pt-BR": "Começar",
+   "ru": "Старт",
+   "id": "Mulai",
+   "de": "Start",
+   "tr": "Başlat",
+   "ko": "시작",
+   "ja": "開始"
   },
   "Starting in {0} s": {
    "zh-Hans": "{0} 秒后开始",
@@ -11447,6 +11537,36 @@
    "ko": "하루 단어 수",
    "ja": "1 日あたりの単語数"
   },
+  "Work": {
+   "zh-Hans": "工作",
+   "hi": "काम",
+   "es": "Trabajo",
+   "ar": "عمل",
+   "fr": "Travail",
+   "bn": "কাজ",
+   "pt-BR": "Trabalho",
+   "ru": "Работа",
+   "id": "Kerja",
+   "de": "Arbeit",
+   "tr": "İş",
+   "ko": "작업",
+   "ja": "作業"
+  },
+  "Work, then rest, on repeat, until you stop. Turn the Coucoudoro pill on to use it.": {
+   "zh-Hans": "工作，然后休息，如此反复，直到你停止。打开 Coucoudoro 胶囊即可使用。",
+   "hi": "काम, फिर आराम, और फिर से, जब तक तुम रोक न दो। Coucoudoro गोली चालू करो।",
+   "es": "Trabajo, luego descanso, y otra vez, hasta que pares. Activa la píldora Coucoudoro.",
+   "ar": "عمل، ثم استراحة، ثم من جديد حتى تتوقف. فعّل حبة Coucoudoro.",
+   "fr": "Travail, puis repos, et de nouveau, jusqu’à ce que tu arrêtes. Active la pilule Coucoudoro pour t’en servir.",
+   "bn": "কাজ, তারপর বিশ্রাম, থামানো পর্যন্ত আবার। Coucoudoro পিল চালু করো।",
+   "pt-BR": "Trabalho, depois descanso, de novo, até você parar. Ative a pílula Coucoudoro.",
+   "ru": "Работа, потом отдых, и снова, пока не остановишь. Включи пилюлю Coucoudoro.",
+   "id": "Kerja, lalu istirahat, berulang sampai kamu berhenti. Nyalakan pil Coucoudoro.",
+   "de": "Arbeit, dann Ruhe, und wieder, bis du stoppst. Schalte die Coucoudoro-Pille ein.",
+   "tr": "İş, sonra dinlenme, sen durana kadar. Coucoudoro kapsülünü aç.",
+   "ko": "작업, 그다음 휴식, 멈출 때까지 반복해요. Coucoudoro 모찌를 켜세요.",
+   "ja": "作業、それから休憩、止まるまで繰り返します。Coucoudoro のピルをオンにして使います。"
+  },
   "Workflow stopped.": {
    "zh-Hans": "工作流已停止。",
    "hi": "वर्कफ़्लो रुक गया।",
@@ -12091,6 +12211,21 @@
    "tr": "önemli olarak işaretlendi",
    "ko": "중요로 표시됨",
    "ja": "重要に設定"
+  },
+  "min": {
+   "zh-Hans": "分钟",
+   "hi": "मि",
+   "es": "min",
+   "ar": "د",
+   "fr": "min",
+   "bn": "মি",
+   "pt-BR": "min",
+   "ru": "мин",
+   "id": "mnt",
+   "de": "Min.",
+   "tr": "dk",
+   "ko": "분",
+   "ja": "分"
   },
   "min without movement": {
    "zh-Hans": "分钟无动作",
