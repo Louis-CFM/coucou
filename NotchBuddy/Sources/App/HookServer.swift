@@ -3628,6 +3628,9 @@ def main():
     except Exception:
         if '--statusline' not in sys.argv[1:]:
             return
+    # claude -p, the SDK and scheduled jobs: no one watches them, so they stay off the island.
+    if os.environ.get('CLAUDE_CODE_ENTRYPOINT', '').startswith('sdk-') and os.environ.get('COUCOU_WATCHED') != '1':
+        return
 
     # COUCOU_SOCKET points the relay at another socket, for instance the one an
     # `ssh -R` tunnel forwards from the Mac to a remote machine (docs/REMOTE.md).
@@ -4003,6 +4006,9 @@ def main():
     except Exception:
         if '--statusline' not in sys.argv[1:]:
             return
+    # claude -p, the SDK and scheduled jobs: no one watches them, so they stay off the island.
+    if os.environ.get('CLAUDE_CODE_ENTRYPOINT', '').startswith('sdk-') and os.environ.get('COUCOU_WATCHED') != '1':
+        return
 
     # COUCOU_SOCKET points the relay at another socket, for instance the one an
     # `ssh -R` tunnel forwards from the Mac to a remote machine (docs/REMOTE.md).

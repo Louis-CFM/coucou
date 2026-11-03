@@ -150,6 +150,9 @@ fn print(line: Option<String>) {
 fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str) -> Option<Event> {
     // Some shells hand us a UTF-8 BOM; serde_json would choke on it.
     let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
+    if headless(env) {
+        return None;
+    }
     let mut payload = serde_json::from_slice::<Value>(raw).ok()?;
     let map = payload.as_object_mut()?;
 
@@ -200,6 +203,13 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let mut line = payload.to_string();
     line.push('\n');
     Some(Event { line, name, question })
+}
+
+/// `claude -p`, the SDK and scheduled jobs: no one watches them, so they stay
+/// off the island. Coucou's own runs set COUCOU_WATCHED=1.
+fn headless(env: &dyn Fn(&str) -> Option<String>) -> bool {
+    env("CLAUDE_CODE_ENTRYPOINT").is_some_and(|e| e.starts_with("sdk-"))
+        && env("COUCOU_WATCHED").as_deref() != Some("1")
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -383,6 +393,18 @@ mod tests {
         assert_eq!(agent_tag("gemini", &desktop).as_deref(), Some("gemini"));
         assert_eq!(agent_tag("", &env_of(&[("CLAUDE_CODE_ENTRYPOINT", "cli")])), None);
         assert_eq!(agent_tag("", &env_of(&[])), None);
+    }
+
+    #[test]
+    fn headless_runs_are_not_forwarded_unless_watched() {
+        let raw = br#"{"hook_event_name":"Stop","session_id":"s"}"#;
+        let args = Args { agent: String::new(), event: String::new() };
+        let run = |vars: &'static [(&'static str, &'static str)]| prepare(raw, &args, &env_of(vars), "/p").is_some();
+        assert!(!run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-cli")]));
+        assert!(!run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-py")]));
+        assert!(run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-cli"), ("COUCOU_WATCHED", "1")]));
+        assert!(run(&[("CLAUDE_CODE_ENTRYPOINT", "cli")]));
+        assert!(run(&[]));
     }
 
     #[test]
