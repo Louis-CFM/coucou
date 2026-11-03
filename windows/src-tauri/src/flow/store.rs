@@ -108,6 +108,8 @@ pub struct Prefs {
     pub open_at_launch: bool,
     /// « OK Coucou »: listen for it and answer with Claude (needs the Claude key).
     pub voice: bool,
+    /// The other apps' sound is muted while Coucou listens to you (Windows).
+    pub mute_others: bool,
     /// How Coucou answers out loud: "system", "elevenlabs" or "off".
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
@@ -128,6 +130,7 @@ impl Default for Prefs {
             summary_engine: SummaryEngine::Claude,
             open_at_launch: true,
             voice: false,
+            mute_others: true,
             voice_output: "system".into(),
             voice_gender: "female".into(),
         }

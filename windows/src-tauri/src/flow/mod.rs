@@ -9,6 +9,7 @@
 // and are pasted. The thread sleeps on its channel while nothing happens.
 
 pub mod cleanup;
+pub mod hush;
 pub mod logic;
 pub mod paste;
 pub mod pill;
@@ -116,6 +117,8 @@ fn is_terminal(id: &str) -> bool {
 // ── Setup, on and off ─────────────────────────────────────────────────────────
 
 pub fn setup(app: &AppHandle) {
+    // Sound left muted by a Coucou that quit while listening comes back.
+    hush::setup();
     let flow = Arc::new(Flow { store: Mutex::new(Store::load()), running: Mutex::new(None) });
     app.manage(flow.clone());
     pill::setup(app);
@@ -195,6 +198,8 @@ fn disable(app: &AppHandle, flow: &Arc<Flow>) {
 
 struct Listening {
     capture: audio::Capture,
+    /// The other apps are silent while Coucou listens (hush.rs); dropped with it.
+    _hush: Option<hush::Guard>,
     take: Arc<Mutex<audio::Take>>,
     started: Instant,
     app: Option<(String, String)>,
@@ -331,7 +336,8 @@ fn begin(app: &AppHandle, flow: &Arc<Flow>) -> Option<Listening> {
         Ok(capture) => {
             let app_front = os::foreground_app().filter(|(id, _)| !is_shell(id));
             pill::update(app, |s| s.phase = "listening".into());
-            Some(Listening { capture, take, started: Instant::now(), app: app_front })
+            let quiet = flow.store.lock().unwrap().prefs.mute_others;
+            Some(Listening { capture, _hush: hush::hush(quiet), take, started: Instant::now(), app: app_front })
         }
         Err(err) => {
             crate::log::line(format!("flow: microphone: {err}"));

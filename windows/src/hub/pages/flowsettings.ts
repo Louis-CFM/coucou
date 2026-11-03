@@ -114,7 +114,17 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
   page.append(label(t("Microphone")));
   const mics: [string, string][] = [["", t("System default")], ...status.mics.map((m): [string, string] => [m.name, m.name])];
   if (prefs.mic && !mics.some(([id]) => id === prefs.mic)) mics.push([prefs.mic, prefs.mic]);
-  page.append(anchor("flow.permission", card(row(t("Microphone"), t("The one Coucou listens to for dictation and calls."), select(mics, prefs.mic, (mic) => void ctx.setPrefs((p) => (p.mic = mic)))))));
+  const micCard = card(row(t("Microphone"), t("The one Coucou listens to for dictation and calls."), select(mics, prefs.mic, (mic) => void ctx.setPrefs((p) => (p.mic = mic)))));
+  // Silence while you speak (flow/hush.rs): Windows mutes each app on its own.
+  if (status.platform === "windows") {
+    micCard.append(
+      divider(),
+      row(t("Mute the computer while you speak"),
+        t("Videos, music and calls go quiet while Coucou listens to you, then come back. Coucou's own sounds keep playing."),
+        toggle(prefs.muteOthers, (on) => void ctx.setPrefs((p) => (p.muteOthers = on)))),
+    );
+  }
+  page.append(anchor("flow.permission", micCard));
 
   // ── Recognition ──
   page.append(label(t("Recognition")));

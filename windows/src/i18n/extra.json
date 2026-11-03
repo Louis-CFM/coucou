@@ -7623,6 +7623,36 @@
       "tr": "Boşluk",
       "ko": "스페이스",
       "ja": "スペース"
+    },
+    "Mute the computer while you speak": {
+      "zh-Hans": "说话时将电脑静音",
+      "hi": "बोलते समय कंप्यूटर म्यूट करें",
+      "es": "Silenciar el ordenador mientras hablas",
+      "ar": "كتم صوت الكمبيوتر أثناء تحدثك",
+      "fr": "Couper le son de l'ordinateur quand vous parlez",
+      "bn": "কথা বলার সময় কম্পিউটার মিউট করুন",
+      "pt-BR": "Silenciar o computador enquanto você fala",
+      "ru": "Выключать звук компьютера, пока вы говорите",
+      "id": "Bisukan komputer saat Anda berbicara",
+      "de": "Computer stummschalten, während du sprichst",
+      "tr": "Konuşurken bilgisayarın sesini kapat",
+      "ko": "말하는 동안 컴퓨터 음소거",
+      "ja": "話している間はパソコンの音を消す"
+    },
+    "Videos, music and calls go quiet while Coucou listens to you, then come back. Coucou's own sounds keep playing.": {
+      "zh-Hans": "Coucou 听你说话时，视频、音乐和通话会静音，之后恢复。Coucou 自己的声音照常播放。",
+      "hi": "जब Coucou आपको सुन रहा हो, वीडियो, संगीत और कॉल शांत हो जाते हैं, फिर लौट आते हैं। Coucou की अपनी आवाज़ें चलती रहती हैं।",
+      "es": "Los vídeos, la música y las llamadas se silencian mientras Coucou te escucha y luego vuelven. Los sonidos de Coucou siguen sonando.",
+      "ar": "تصمت مقاطع الفيديو والموسيقى والمكالمات أثناء استماع Coucou إليك، ثم تعود. تستمر أصوات Coucou نفسه.",
+      "fr": "Les vidéos, la musique et les appels se taisent pendant que Coucou vous écoute, puis reviennent. Les sons de Coucou continuent.",
+      "bn": "Coucou আপনার কথা শোনার সময় ভিডিও, গান আর কল চুপ থাকে, তারপর ফিরে আসে। Coucou-এর নিজের শব্দ চলতে থাকে।",
+      "pt-BR": "Vídeos, música e chamadas ficam em silêncio enquanto o Coucou ouve você e depois voltam. Os sons do próprio Coucou continuam.",
+      "ru": "Видео, музыка и звонки затихают, пока Coucou вас слушает, а потом возвращаются. Звуки самого Coucou продолжают играть.",
+      "id": "Video, musik, dan panggilan menjadi senyap saat Coucou mendengarkan Anda, lalu kembali. Suara Coucou sendiri tetap berbunyi.",
+      "de": "Videos, Musik und Anrufe verstummen, während Coucou dir zuhört, und kommen danach zurück. Coucous eigene Töne spielen weiter.",
+      "tr": "Coucou sizi dinlerken videolar, müzik ve aramalar susar, sonra geri gelir. Coucou'nun kendi sesleri çalmaya devam eder.",
+      "ko": "Coucou가 듣는 동안 동영상, 음악, 통화 소리가 꺼졌다가 다시 돌아옵니다. Coucou 자체의 소리는 계속 납니다.",
+      "ja": "Coucou が聞いている間は動画・音楽・通話の音が消え、終わると戻ります。Coucou 自身の音はそのまま鳴ります。"
     }
   }
 }

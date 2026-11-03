@@ -52,6 +52,8 @@ export interface FlowPrefs {
   voice: boolean;
   voiceOutput: VoiceOutput;
   voiceGender: "female" | "male";
+  /** The other apps go quiet while Coucou listens to you (Windows). */
+  muteOthers: boolean;
 }
 
 export type ModelState =
