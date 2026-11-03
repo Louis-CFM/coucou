@@ -144,19 +144,7 @@ struct OverviewView: View {
                     if state.planDetailIsCodex {
                         CodexPlanCardView(usage: state.codexPlanUsage)
                     } else {
-                        // Claude and Codex both on: the header shows only the Claude pill,
-                        // Codex is a third row here that opens its own card.
-                        let bothPlans = state.showPlanInNotch && state.planRelayInstalled
-                            && state.showCodexPlanInNotch
-                        ClaudePlanCardView(usage: state.claudePlanUsage,
-                                           codexRow: bothPlans,
-                                           codexUsage: state.codexPlanUsage,
-                                           onCodex: {
-                                               withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                                                   state.planDetailIsCodex = true
-                                               }
-                                               state.refreshCodexPlanUsage()
-                                           })
+                        ClaudePlanCardView(usage: state.claudePlanUsage)
                     }
                 }
                 .transition(.opacity)
