@@ -728,7 +728,19 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+///
+/// `--renderer-process-limit=1`: the island, settings, desktop Mochi and
+/// dictation windows share one renderer process instead of one each.
+///
+/// `CalculateNativeWinOcclusion` off: Chromium's guess at whether a window is
+/// covered. It marks every window occluded when the display turns off or the
+/// session locks, and only re-checks on a few system events; an occluded page
+/// still runs its scripts and plays sounds but gets no animation frames and
+/// paints nothing. The island sat as its 6 px wake strip through a long idle,
+/// was never re-checked, and a session coming back played Mochi's sound over
+/// an island that never drew (port notes, "Island silent after a long idle").
+/// Coucou shows and hides its windows itself, so the guess has nothing to add.
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --autoplay-policy=no-user-gesture-required --renderer-process-limit=1";
 
 /// In a dev build the pages are served by Vite, so the second window needs the
 /// absolute dev URL; a bundled build resolves it inside the app bundle.
@@ -763,6 +775,7 @@ fn create_settings_window(app: &AppHandle) {
         .build()
     {
         Ok(win) => {
+            platform::set_memory_low(&win, true);
             let this = win.clone();
             win.on_window_event(move |event| match event {
                 // Closing it must only hide it, or it could never be reopened.
@@ -770,6 +783,7 @@ fn create_settings_window(app: &AppHandle) {
                     api.prevent_close();
                     let _ = this.hide();
                     set_hub_shown(&this, false);
+                    platform::set_memory_low(&this, true);
                 }
                 // Minimised (a 0×0 resize on Windows) or back from it.
                 tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true) => {
@@ -829,6 +843,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
         });
         return;
     };
+    platform::set_memory_low(&win, false);
     if let Some(page) = page {
         let _ = win.emit("hub-page", page.to_string());
     }
@@ -1151,6 +1166,18 @@ mod tests {
             &reqwest::Url::parse("https://evil.example/team/me/project").unwrap(),
             &instance,
         ));
+    }
+
+    #[test]
+    fn every_window_asks_for_the_islands_browser_args() {
+        // A mismatch brings the extra windows up blank; occlusion left on lets a
+        // long idle leave the island silent and unpainted.
+        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let island = &conf["app"]["windows"][0];
+        assert_eq!(island["label"], "island");
+        assert_eq!(island["additionalBrowserArgs"], super::BROWSER_ARGS);
+        assert!(super::BROWSER_ARGS.contains("CalculateNativeWinOcclusion"));
+        assert_eq!(super::BROWSER_ARGS.matches("--disable-features=").count(), 1);
     }
 
     #[test]
