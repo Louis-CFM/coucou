@@ -89,7 +89,7 @@ final class SettingsSearch: ObservableObject {
             e("flow.snippets", .snippets, "hub.page.snippets"),
             e("flow.styles", .styles, "hub.page.styles", ["hub.cleanup", "hub.style-default", "hub.style-apps"]),
             e("flow.keys", .settings, "hub.settings.keys",
-              ["flow.enable", "hub.settings.hold", "flow.edge", "hub.settings.handsfree", "hub.settings.paste-again", "hub.settings.cancel"]),
+              ["flow.enable", "hub.settings.hold", "flow.key-custom", "flow.shortcut.title", "flow.edge", "flow.mute-mac", "hub.settings.handsfree", "hub.settings.paste-again", "hub.settings.cancel"]),
             e("flow.ai", .settings, "flow.ai.title", ["flow.prompt-mode", "flow.translate"]),
             e("flow.permission", .settings, "hub.settings.permission", ["flow.accessibility-open"]),
             e("flow.recognition", .settings, "hub.settings.recognition", ["Dictation language"]),

@@ -10,6 +10,8 @@ struct HubSettingsPage: View {
     @State private var confirmClear = false
     @State private var showInDock = FlowHubController.showInDock
     @State private var openAtLaunch = FlowHubController.openAtLaunch
+    @AppStorage("flowMuteMac") private var muteMac = true   // SystemMute.enabledKey
+    @State private var editingShortcut = false
 
     var body: some View {
         HubPageScaffold(title: String(localized: "hub.page.settings")) {
@@ -20,13 +22,21 @@ struct HubSettingsPage: View {
                     Toggle("", isOn: $flow.isEnabled).toggleStyle(.switch).labelsHidden()
                 }
                 HubDivider()
-                HubRow(title: String(localized: "hub.settings.hold"),
-                       detail: flow.key == .fn ? String(localized: "flow.fn-help") : nil) {
-                    Picker("", selection: $flow.key) {
-                        ForEach(FlowKey.allCases) { Text(verbatim: $0.label).tag($0) }
+                VStack(alignment: .leading, spacing: 0) {
+                    HubRow(title: String(localized: "hub.settings.hold"),
+                           detail: flow.key == .fn ? String(localized: "flow.fn-help") : nil) {
+                        FlowKeyPicker(editing: $editingShortcut)
                     }
-                    .labelsHidden()
-                    .fixedSize()
+                    // Unfolds under "Hold to dictate" to record a shortcut, folds back once saved.
+                    FlowCollapsible(isOpen: editingShortcut) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HubDivider()
+                            FlowShortcutEditor(active: editingShortcut) { _ in
+                                withAnimation(FlowMotion.fold) { editingShortcut = false }
+                            }
+                        }
+                        .padding(.top, 12)
+                    }
                 }
                 HubDivider()
                 HubRow(title: String(localized: "flow.edge")) {
@@ -36,6 +46,10 @@ struct HubSettingsPage: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .fixedSize()
+                }
+                HubDivider()
+                HubRow(title: String(localized: "flow.mute-mac"), detail: String(localized: "flow.mute-mac-detail")) {
+                    Toggle("", isOn: $muteMac).toggleStyle(.switch).labelsHidden()
                 }
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.handsfree"),
@@ -194,6 +208,179 @@ struct HubSettingsPage: View {
 }
 
 /// A key drawn like a keycap.
+/// The motion of the sections that unfold: smooth, no bounce.
+enum FlowMotion {
+    static var fold: Animation { .smooth(duration: 0.34) }
+}
+
+/// Unfolds and folds its content smoothly: its real height is measured, then the height is what
+/// moves (the rows below follow), with a fade. Its content stays laid out while folded.
+struct FlowCollapsible<Content: View>: View {
+    let isOpen: Bool
+    @ViewBuilder var content: () -> Content
+    @State private var height: CGFloat = 0
+
+    var body: some View {
+        content()
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { new in
+                // Open, a change inside (a message appears) moves the height smoothly too.
+                if isOpen, height > 0 { withAnimation(.smooth(duration: 0.22)) { height = new } } else { height = new }
+            }
+            .frame(height: isOpen ? height : 0, alignment: .top)
+            .clipped()
+            .opacity(isOpen ? 1 : 0)
+            .allowsHitTesting(isOpen)
+            .accessibilityHidden(!isOpen)
+    }
+}
+
+/// "Hold to dictate": the four keys, your shortcut once saved (in place of "Custom shortcut"),
+/// and an entry to record a new one, which unfolds the editor below.
+struct FlowKeyPicker: View {
+    @ObservedObject private var flow = FlowDictation.shared
+    @Binding var editing: Bool
+
+    private enum Choice: Hashable { case key(FlowKey), record }
+
+    var body: some View {
+        Picker("", selection: Binding<Choice>(
+            get: { .key(flow.key) },
+            set: { choice in
+                withAnimation(FlowMotion.fold) {
+                    switch choice {
+                    case .key(let key):
+                        editing = false
+                        flow.key = key
+                    case .record:
+                        editing = true
+                    }
+                }
+            })) {
+            ForEach(FlowKey.presets) { Text(verbatim: $0.label).tag(Choice.key($0)) }
+            if flow.key == .custom || !flow.shortcutOrder.isEmpty {
+                Text(verbatim: flow.shortcutOrder.isEmpty ? String(localized: "flow.key-custom")
+                                                          : FlowShortcut.compact(flow.shortcutOrder))
+                    .tag(Choice.key(.custom))
+            }
+            Divider()
+            Text(verbatim: flow.shortcutOrder.isEmpty ? String(localized: "flow.key-custom-new")
+                                                      : String(localized: "flow.key-custom-change"))
+                .tag(Choice.record)
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
+}
+
+/// Records a custom shortcut: hold the keys together, let go, ↩ saves (Esc cancels). The keys show
+/// as key caps in the order they were pressed. Listening starts when the section unfolds.
+struct FlowShortcutEditor: View {
+    let active: Bool
+    let onFinish: (Bool) -> Void
+    @StateObject private var recording = FlowShortcutRecording()
+    @State private var pulse = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("flow.shortcut.title").font(.system(size: 13.5, weight: .medium))
+                    Text("flow.shortcut.detail")
+                        .font(.system(size: 12))
+                        .foregroundColor(HubTheme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                // A click always (re)starts the recording, it never stops it.
+                Button { recording.start() } label: { field }
+                    .buttonStyle(.plain)
+            }
+            hint
+        }
+        .onAppear {
+            recording.onFinish = onFinish
+            if active { recording.start() }
+        }
+        .onChange(of: active) { _, on in
+            recording.onFinish = onFinish
+            if on { recording.start() } else { recording.stop() }
+        }
+        .onDisappear { recording.stop() }
+        .onChange(of: recording.isRecording) { _, on in
+            pulse = false
+            if on { withAnimation(.easeInOut(duration: 0.75).repeatForever(autoreverses: true)) { pulse = true } }
+        }
+    }
+
+    private var field: some View {
+        HStack(spacing: 6) {
+            if recording.keys.isEmpty {
+                Text(recording.isRecording ? String(localized: "flow.shortcut.listening")
+                                           : String(localized: "flow.shortcut.empty"))
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundColor(recording.isRecording ? HubTheme.accent : HubTheme.secondary)
+                    .lineLimit(1)
+                    .transition(.opacity)
+            } else {
+                ForEach(recording.keys, id: \.self) { code in
+                    HubKeyCap(text: FlowShortcut.capName(code))
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+            }
+            // Listening: a dot that breathes. Once the keys are in, only they show (↩ is said below).
+            if !recording.canSave {
+                Image(systemName: recording.isRecording ? "record.circle" : "keyboard")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(recording.isRecording ? HubTheme.accent : HubTheme.secondary)
+                    .opacity(recording.isRecording && pulse ? 0.3 : 1)
+                    .padding(.leading, 2)
+                    .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 8)
+        .frame(minWidth: 190, minHeight: 38)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(HubTheme.field))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .strokeBorder(recording.isRecording ? HubTheme.accent.opacity(pulse && !recording.canSave ? 0.5 : 1) : HubTheme.line,
+                          lineWidth: recording.isRecording ? 1.5 : 1))
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .animation(.smooth(duration: 0.22), value: recording.keys)
+        .animation(.smooth(duration: 0.2), value: recording.canSave)
+        .fixedSize()
+    }
+
+    /// One line under the field: how to record, how to save, or what is wrong.
+    private var hint: some View {
+        Group {
+            if let problem = recording.problem {
+                Label(message(problem), systemImage: "exclamationmark.triangle.fill")
+                    .foregroundColor(HubTheme.red)
+            } else if recording.canSave {
+                Text("flow.shortcut.confirm")
+                    .foregroundColor(HubTheme.accent)
+            } else {
+                Text("flow.shortcut.recording")
+                    .foregroundColor(HubTheme.secondary)
+            }
+        }
+        .font(.system(size: 12, weight: .medium))
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .animation(.smooth(duration: 0.2), value: recording.problem)
+        .animation(.smooth(duration: 0.2), value: recording.canSave)
+    }
+
+    private func message(_ problem: FlowShortcutRules.Problem) -> String {
+        switch problem {
+        case .needsModifier: return String(localized: "flow.shortcut.needs-modifier")
+        case .tooCommon:     return String(localized: "flow.shortcut.too-common")
+        case .forbiddenKey:  return String(localized: "flow.shortcut.forbidden")
+        case .tooMany:       return String(localized: "flow.shortcut.too-many")
+        }
+    }
+}
+
 struct HubKeyCap: View {
     let text: String
 
