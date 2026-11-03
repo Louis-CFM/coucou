@@ -15,9 +15,10 @@ import type { UpdateStatus } from "../core/update";
 import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
-  sanitizeDeclared, toggleDeclared, type PillDefinition,
+  sanitizeDeclared, toPillId, toggleDeclared, type PillDefinition,
 } from "../core/pills";
-import { h, clear } from "../views/dom";
+import { h, clear, svg } from "../views/dom";
+import { ICONS } from "../views/icons";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { claudeModelControl } from "./claude-models";
@@ -38,6 +39,8 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
   : "Secret Service (GNOME Keyring, KWallet)";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
+let discoveredList: string[] = [];
+let discoveredSeq = 0;
 let version = "";
 
 const windowRoot = document.getElementById("hub")!;
@@ -559,6 +562,116 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
       if (pills.length === 0) continue;
       groups.append(h("div", { class: "pill-group" }, h("h3", { text: t(cat.title) }), ...pills.map(row)));
     }
+
+    // Custom agents
+    const customList = settings.customAgents ?? [];
+    const customRows: HTMLElement[] = [];
+    for (const ca of customList) {
+      const pillId = toPillId(ca.id);
+      const on = settings.activeIntegrations.includes(pillId);
+      const full = !on && settings.activeIntegrations.length >= MAX_ACTIVE;
+      const el = h("div", { class: full ? "pill-row full" : "pill-row" },
+        colorDot({ id: pillId, name: ca.name || ca.id, color: "#818CF8" }, "width:10px;height:10px", () => settings.pillColors, pickColor),
+        h("span", { class: "name", text: ca.name ? `${ca.name} (${ca.id})` : ca.id }),
+      );
+      const delBtn = h("button", {
+        class: "icon-btn",
+        style: "margin-left:auto;width:18px;height:18px;opacity:0.6;background:transparent;cursor:pointer;",
+        title: t("Forget agent"),
+        onclick: async () => {
+          await Bridge.customAgentForget(ca.id);
+        },
+      }, svg(ICONS.xmark, 10));
+      const sw = h("button", { class: on ? "switch on" : "switch" }) as HTMLButtonElement;
+      sw.disabled = full;
+      sw.addEventListener("click", async () => {
+        if (!on && settings.activeIntegrations.length >= MAX_ACTIVE) return;
+        await Bridge.customAgentSave(ca, !on);
+      });
+      el.append(delBtn, sw);
+      customRows.push(el);
+    }
+
+    const unaddedDiscovered = discoveredList.filter((id) =>
+      !customList.some((c) => c.id === id) &&
+      !availablePills().some((p) => p.id === toPillId(id))
+    );
+
+    const discHint = h("div", { class: "hint", style: "margin-top:6px;font-size:11.5px;", text: t("Recently seen agents:") });
+    const discChips = h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;" });
+    for (const id of unaddedDiscovered) {
+      const chip = h("div", {
+        style: "display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.06);border:1px solid var(--hairline);border-radius:12px;padding:2px 8px;font-size:11.5px;",
+      },
+        h("span", { text: id }),
+        h("button", {
+          class: "link-btn",
+          style: "color:var(--accent, #60a5fa);font-size:11px;cursor:pointer;",
+          text: t("+ Add"),
+          onclick: async () => {
+            const canPin = settings.activeIntegrations.length < MAX_ACTIVE;
+            await Bridge.customAgentSave({ id, name: undefined }, canPin);
+          },
+        }),
+        h("button", {
+          class: "icon-btn",
+          style: "width:14px;height:14px;opacity:0.5;background:transparent;cursor:pointer;",
+          title: t("Dismiss"),
+          onclick: async () => {
+            const res = await Bridge.dismissDiscoveredAgent(id);
+            if (res && res.seq >= discoveredSeq) {
+              discoveredList = res.agents;
+              discoveredSeq = res.seq;
+              draw();
+            }
+          },
+        }, svg(ICONS.xmark, 8)),
+      );
+      discChips.append(chip);
+    }
+
+    const formRow = h("div", { style: "display:flex;gap:8px;align-items:center;margin-top:8px;" });
+    const idInput = h("input", {
+      type: "text",
+      placeholder: "agent_id",
+      style: "flex:1;min-width:0;max-width:140px;font-size:12px;padding:4px 8px;",
+    }) as HTMLInputElement;
+    const nameInput = h("input", {
+      type: "text",
+      placeholder: t("Display name"),
+      style: "flex:1;min-width:0;max-width:140px;font-size:12px;padding:4px 8px;",
+    }) as HTMLInputElement;
+    const addBtn = h("button", {
+      class: "btn small",
+      style: "padding:4px 10px;font-size:12px;",
+      text: t("+ Add agent"),
+      onclick: async () => {
+        const id = idInput.value.trim().toLowerCase();
+        if (!id || id.length > 24 || id === "claude" || !/^[a-z0-9_-]+$/.test(id)) {
+          idInput.style.borderColor = "var(--red, #f43f5e)";
+          return;
+        }
+        idInput.style.borderColor = "";
+        const name = nameInput.value.trim() || undefined;
+        const canPin = settings.activeIntegrations.length < MAX_ACTIVE;
+        try {
+          await Bridge.customAgentSave({ id, name }, canPin);
+          idInput.value = "";
+          nameInput.value = "";
+        } catch (err) {
+          console.error("customAgentSave failed", err);
+        }
+      },
+    });
+    formRow.append(idInput, nameInput, addBtn);
+
+    const customGroup = h("div", { class: "pill-group" },
+      h("h3", { text: t("Custom agents") }),
+      ...(customRows.length > 0 ? customRows : [h("div", { class: "hint", text: t("No custom agents registered yet.") })]),
+      ...(unaddedDiscovered.length > 0 ? [discHint, discChips] : []),
+      formRow,
+    );
+    groups.append(customGroup);
   }
   declaredViews.push(draw);
   draw();
@@ -1425,6 +1538,20 @@ async function main() {
 
   void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => shortcutsListener?.report(fresh));
   void onEvent<UpdateStatus>("update-status", (fresh) => updatesListener?.(fresh));
+  void onEvent<{ agents: string[]; seq: number }>("agent-discovered", (payload) => {
+    if (payload.seq >= discoveredSeq) {
+      discoveredSeq = payload.seq;
+      discoveredList = payload.agents;
+      for (const redraw of declaredViews) redraw();
+    }
+  });
+  void Bridge.getDiscoveredAgents().then((d) => {
+    if (d && d.seq >= discoveredSeq) {
+      discoveredSeq = d.seq;
+      discoveredList = d.agents;
+      for (const redraw of declaredViews) redraw();
+    }
+  });
   void onEvent<Settings>("settings-changed", (s) => {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
