@@ -3,8 +3,8 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 import {
-  DEFAULT_MAIN_PILL, HOST_OS, availablePills, orderPills, pillDefinition, sanitizeDeclared,
-  toggleDeclared, type HostOs, type PillDefinition,
+  DEFAULT_MAIN_PILL, HOST_OS, availablePills, orderPills, pillDefinition, resolvePill,
+  sanitizeDeclared, toggleDeclared, type CustomAgent, type HostOs, type PillDefinition,
 } from "./pills";
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
@@ -138,6 +138,8 @@ export interface Settings {
   customUrl: string;
   /** Global shortcuts the user changed, by action id (see core/shortcuts.ts). */
   shortcuts: Bindings;
+  /** Custom agents declared or discovered: id and optional custom display name. */
+  customAgents?: CustomAgent[];
   /**
    * Mochi's outfit: "auto" (dresses for the season), "none" or an outfit id.
    * Same raw values as the Mac's "mochiOutfit"; read it through parseOutfit.
@@ -202,6 +204,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  customAgents: [],
 };
 
 type Listener = () => void;
@@ -432,7 +435,7 @@ class AppState {
     const d = sanitizeDeclared(this.settings, this.os);
     this.settings.mainPill = d.mainPill;
     this.settings.activeIntegrations = d.activeIntegrations;
-    for (const def of availablePills(this.os)) {
+    for (const def of availablePills(this.os, this.settings.customAgents)) {
       const shouldLoad = def.id === d.mainPill || d.activeIntegrations.includes(def.id);
       const idx = this.tasks.findIndex((t) => t.id === def.id);
       if (shouldLoad && idx < 0) this.tasks.push(taskFor(def, this.settings.pillColors));
@@ -441,7 +444,7 @@ class AppState {
     }
     // A colour picked in Settings reaches the pills that are already up.
     for (const t of this.tasks) {
-      const def = pillDefinition(t.id);
+      const def = resolvePill(t.id, this.settings.customAgents);
       if (def) t.color = pillColor(def.id, def.color, this.settings.pillColors);
     }
     this.tasks = orderPills(this.tasks, d.mainPill);
@@ -464,7 +467,7 @@ class AppState {
       delete t.stepSeq;
       t.pillBadge = null;
       t.finalLine = null;
-      const def = pillDefinition(id);
+      const def = resolvePill(id, this.settings.customAgents);
       if (def) t.name = def.name;
       this.clearSessionDiffs(id);
       this.notify();
@@ -483,11 +486,13 @@ class AppState {
    */
   upsertExternalAgent(id: string, name: string, color: string) {
     if (this.tasks.some((t) => t.id === id)) return;
-    const def = pillDefinition(id);
+    const def = resolvePill(id, this.settings.customAgents);
+    const displayName = def?.name ?? name;
+    const resolvedColor = def ? pillColor(def.id, def.color, this.settings.pillColors) : color;
     this.insertAfterMain({
-      id, name, color: def ? pillColor(def.id, def.color, this.settings.pillColors) : color,
+      id, name: displayName, color: resolvedColor,
       state: "idle", stepIndex: 0, steps: [],
-      source: "agent", isIntegration: false,
+      source: "agent", isIntegration: this.isKept(id),
     });
   }
 

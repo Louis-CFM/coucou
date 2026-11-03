@@ -6,6 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
+import type { CustomAgent } from "./pills";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { UpdateStatus } from "./update";
@@ -209,6 +210,14 @@ export const Bridge = {
   setSystemLanguages: (languages: string[]) => call<void>("set_system_languages", { languages }),
 
   saveSettings: (settings: Settings) => call<void>("save_settings", { settings }),
+  customAgentSave: (agent: CustomAgent, pin: boolean) =>
+    callOrThrow<Settings>("custom_agent_save", { agent, pin }),
+  customAgentForget: (id: string) =>
+    callOrThrow<Settings>("custom_agent_forget", { id }),
+  getDiscoveredAgents: () =>
+    call<{ agents: string[]; seq: number }>("get_discovered_agents"),
+  dismissDiscoveredAgent: (id: string) =>
+    call<{ agents: string[]; seq: number }>("dismiss_discovered_agent", { id }),
 
   /** Shrink the window down to the invisible wake strip (hidden) or back to full. */
   setCollapsed: (collapsed: boolean) => call<void>("set_collapsed", { collapsed }),

@@ -30,7 +30,7 @@ export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "claude-desk
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
 export function validateAgent(raw: string | undefined): string | null {
   if (!raw || raw.length > 24 || raw === "claude") return null;
-  if (!/^[a-z0-9-]+$/.test(raw)) return null;
+  if (!/^[a-z0-9_-]+$/.test(raw)) return null;
   return raw;
 }
 
