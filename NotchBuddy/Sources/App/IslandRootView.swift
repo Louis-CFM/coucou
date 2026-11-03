@@ -819,7 +819,7 @@ struct ClaudePlanHeaderPill: View {
                 state.planDetailIsCodex = codex
                 state.showingPlanDetail = !open
             }
-            if codex { state.refreshCodexPlanUsage() }
+            if codex { state.refreshCodexPlanUsage() } else { state.refreshClaudePlanUsage() }
         }) {
             HStack(spacing: 4) {
                 Circle()
@@ -850,7 +850,7 @@ struct ClaudePlanHeaderPill: View {
         .onHover { h in
             withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = h }
         }
-        .onAppear { if codex { state.refreshCodexPlanUsage() } }
+        .onAppear { if codex { state.refreshCodexPlanUsage() } else { state.refreshClaudePlanUsage() } }
     }
 }
 #endif

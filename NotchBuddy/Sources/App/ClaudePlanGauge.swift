@@ -47,6 +47,49 @@ enum ClaudePlanGauge {
         return PlanWindow(usedPct: pct, resetsAt: Date(timeIntervalSince1970: rawEpoch))
     }
 
+    /// Parses the account usage endpoint (`/api/oauth/usage`), the source behind Claude Code's
+    /// `/usage`. It counts everything on the account: Claude Code, the Claude desktop app and
+    /// claude.ai. Shape: `{"five_hour": {"utilization": 12.0, "resets_at": "2026-…Z"}, "seven_day": …}`.
+    static func parseAccountUsage(_ json: [String: Any], now: Date = Date()) -> PlanUsage? {
+        let fh = parseAccountWindow(json["five_hour"])
+        let sd = parseAccountWindow(json["seven_day"])
+        guard fh != nil || sd != nil else { return nil }
+        return PlanUsage(fiveHour: fh, sevenDay: sd, updatedAt: now)
+    }
+
+    private static func parseAccountWindow(_ raw: Any?) -> PlanWindow? {
+        guard let d = raw as? [String: Any] else { return nil }
+        let rawPct: Double
+        if let v = d["utilization"] as? Double { rawPct = v }
+        else if let v = d["utilization"] as? Int { rawPct = Double(v) }
+        else { return nil }
+        guard rawPct >= 0, rawPct <= 200 else { return nil }
+        guard let s = d["resets_at"] as? String, let date = parseISODate(s) else { return nil }
+        return PlanWindow(usedPct: min(100, rawPct), resetsAt: date)
+    }
+
+    /// ISO 8601 with or without fractional seconds. The API sends microseconds
+    /// ("…05:00:00.358469+00:00"), which ISO8601DateFormatter does not always accept, so the
+    /// fraction is dropped (sub-second precision does not matter for a reset time).
+    static func parseISODate(_ s: String) -> Date? {
+        let trimmed = s.replacingOccurrences(of: #"\.\d+"#, with: "", options: .regularExpression)
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime]
+        return fmt.date(from: trimmed)
+    }
+
+    /// Reads the OAuth access token from Claude Code's credentials JSON
+    /// (`{"claudeAiOauth": {"accessToken": …, "expiresAt": <ms>}}`). nil if missing or expired:
+    /// Coucou never refreshes the token itself, that would sign Claude Code out.
+    static func accessToken(fromCredentials data: Data, now: Date = Date()) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let oauth = obj["claudeAiOauth"] as? [String: Any],
+              let token = oauth["accessToken"] as? String, !token.isEmpty else { return nil }
+        if let ms = (oauth["expiresAt"] as? Double) ?? (oauth["expiresAt"] as? Int).map(Double.init),
+           Date(timeIntervalSince1970: ms / 1000) <= now { return nil }
+        return token
+    }
+
     /// Effective % for display: 0 if the reset time is in the past.
     static func effectivePct(_ w: PlanWindow) -> Double {
         w.resetsAt <= Date() ? 0 : w.usedPct
