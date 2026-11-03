@@ -34,7 +34,8 @@ mod reply;
 
 /// Budget for getting a pipe connection. Beyond this the agent wins, always.
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
-/// Whole-run budget for an event nobody waits on: connect and write, no more.
+/// Whole-run budget for an event nobody waits on: connect, write, and stay until
+/// Coucou hangs up (milliseconds), no more.
 const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
@@ -340,6 +341,13 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
     let _ = pipe.flush();
 
     if !waits_for_answer {
+        // Stay on the line until Coucou hangs up, which it does as soon as the
+        // event is handled. Coucou finds the window a session runs in by
+        // walking up from the process on this end (session_window.rs): exiting
+        // right after the write left it nothing to walk from, so "Open
+        // terminal" fell back to the folder. Still bounded by the budget.
+        let mut chunk = [0u8; 64];
+        while matches!(pipe.read(&mut chunk), Ok(n) if n > 0) {}
         return None;
     }
 
