@@ -12,7 +12,7 @@ import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
-import { pillDefinition, sessionSubtitle } from "../core/pills";
+import { MAX_DECLARED, fromPillId, pillDefinition, sessionSubtitle } from "../core/pills";
 import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
@@ -213,7 +213,48 @@ function buildOverview(actions: ViewActions): ViewHost {
     { class: "icon-btn jump", title: tl("Open"), onclick: () => actions.openTarget() },
     svg(ICONS.arrowUpRight, 12),
   );
-  const left = card(null, leftBody, jump);
+  const pinBtn = h(
+    "button",
+    { class: "icon-btn pin-btn", title: t("Pin to island"), onclick: () => void togglePin() },
+    svg(ICONS.pin, 9),
+  );
+  const left = card(null, leftBody, pinBtn, jump);
+
+  async function togglePin() {
+    const task = State.focusTask;
+    if (!task || !task.id.startsWith("agent_")) return;
+    const isPinned = State.isKept(task.id);
+    const rawId = fromPillId(task.id);
+    if (isPinned) {
+      const custom = State.settings.customAgents?.find((c) => c.id === rawId);
+      if (custom) {
+        await Bridge.customAgentSave({ id: rawId, name: custom.name }, false);
+      } else {
+        State.toggleIntegration(task.id);
+        void Bridge.saveSettings(State.settings);
+      }
+    } else {
+      const slots = State.settings.activeIntegrations.filter((id) => id !== State.mainPillId).length;
+      if (slots >= MAX_DECLARED) {
+        const custom = State.settings.customAgents?.find((c) => c.id === rawId);
+        if (!custom) {
+          await Bridge.customAgentSave({ id: rawId, name: task.name }, false);
+        }
+        actions.openSettingsWindow();
+        return;
+      }
+      const custom = State.settings.customAgents?.find((c) => c.id === rawId);
+      if (custom) {
+        await Bridge.customAgentSave({ id: rawId, name: custom.name }, true);
+      } else if (pillDefinition(task.id)) {
+        State.toggleIntegration(task.id);
+        void Bridge.saveSettings(State.settings);
+      } else {
+        await Bridge.customAgentSave({ id: rawId, name: task.name }, true);
+      }
+    }
+    State.loadIntegrationTasks();
+  }
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
   // Opened from a plan pill in the header: stands in for the left card.
@@ -430,6 +471,15 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
+      const isAgent = task && task.id.startsWith("agent_");
+      pinBtn.style.display = isAgent && !detailOpen && mode !== "plan" && mode !== "diff" ? "" : "none";
+      if (isAgent) {
+        const isPinned = State.isKept(task.id);
+        pinBtn.classList.toggle("pinned", isPinned);
+        clear(pinBtn);
+        pinBtn.append(svg(isPinned ? ICONS.pinFill : ICONS.pin, 9));
+        pinBtn.title = isPinned ? t("Unpin from island") : t("Pin to island");
+      }
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];
