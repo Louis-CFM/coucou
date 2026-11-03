@@ -577,6 +577,11 @@ struct SettingsView: View {
         }
             .settingsAnchor("general.iphone")
         #endif
+
+        #if !APPSTORE
+        AndroidLinkSettingsBox()
+            .settingsAnchor("general.android")
+        #endif
     }
 
     private func refreshConnectedScreens() {

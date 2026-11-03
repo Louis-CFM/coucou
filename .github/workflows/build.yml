@@ -140,6 +140,9 @@ jobs:
       - name: Test ask question
         run: bash scripts/test-ask-question.sh
 
+      - name: Test the Android link (pairing, framing, admission, approvals, certificate)
+        run: bash scripts/test-android-link.sh
+
       - name: Diff engine tests
         run: bash scripts/test-diff-engine.sh
 

@@ -4264,21 +4264,6 @@
       "ko": "네트워크가 바뀌어도 휴대폰이 이 컴퓨터를 알아서 다시 찾아요. 이 스위치가 켜져 있을 때만 로컬 네트워크에 알려요. 일부 핫스폿이나 게스트 네트워크에선 막힐 수 있어요.",
       "ja": "ネットワークが変わっても、スマートフォンはこのパソコンを自動で見つけ直します。このスイッチがオンの間だけ、ローカルネットワークに告知されます。一部のホットスポットやゲストネットワークではブロックされます。"
     },
-    "Let the phone answer Claude Code's questions": {
-      "zh-Hans": "允许手机回答 Claude Code 的提问",
-      "hi": "फ़ोन को Claude Code के सवालों के जवाब देने दें",
-      "es": "Dejar que el teléfono responda a las preguntas de Claude Code",
-      "ar": "السماح للهاتف بالإجابة عن أسئلة Claude Code",
-      "fr": "Laisser le téléphone répondre aux questions de Claude Code",
-      "bn": "ফোনকে Claude Code-এর প্রশ্নের উত্তর দিতে দিন",
-      "pt-BR": "Deixar o celular responder às perguntas do Claude Code",
-      "ru": "Разрешить телефону отвечать на вопросы Claude Code",
-      "id": "Izinkan ponsel menjawab pertanyaan Claude Code",
-      "de": "Fragen von Claude Code auf dem Telefon beantworten",
-      "tr": "Telefon Claude Code'un sorularını yanıtlayabilsin",
-      "ko": "휴대폰에서 Claude Code 질문에 답하기",
-      "ja": "スマートフォンから Claude Code の質問に答える"
-    },
     "The phone shows each question with its options. Every answer is confirmed with the phone's fingerprint or screen lock.": {
       "zh-Hans": "手机会显示每个问题及其选项。每个回答都需要用手机的指纹或锁屏来确认。",
       "hi": "फ़ोन हर सवाल को उसके विकल्पों के साथ दिखाता है। हर जवाब की पुष्टि फ़ोन के फ़िंगरप्रिंट या स्क्रीन लॉक से होती है।",
@@ -4293,21 +4278,6 @@
       "tr": "Telefon her soruyu seçenekleriyle gösterir. Her yanıt telefonun parmak izi veya ekran kilidiyle doğrulanır.",
       "ko": "휴대폰에 질문과 선택지가 떠요. 답할 때마다 휴대폰 지문이나 화면 잠금으로 확인해요.",
       "ja": "スマートフォンに質問と選択肢が表示されます。回答はすべてスマートフォンの指紋認証または画面ロックで確認されます。"
-    },
-    "Android phone": {
-      "zh-Hans": "Android 手机",
-      "hi": "Android फ़ोन",
-      "es": "Teléfono Android",
-      "ar": "هاتف Android",
-      "fr": "Téléphone Android",
-      "bn": "Android ফোন",
-      "pt-BR": "Celular Android",
-      "ru": "Телефон Android",
-      "id": "Ponsel Android",
-      "de": "Android-Telefon",
-      "tr": "Android telefon",
-      "ko": "Android 휴대폰",
-      "ja": "Android スマートフォン"
     },
     "Send your agents' sessions to Coucou for Android and answer permission requests from the phone. Off by default; it only listens on your local network.": {
       "zh-Hans": "把你的智能体会话发送到 Coucou for Android，并在手机上回应权限请求。默认关闭；仅在本地网络中监听。",
@@ -4369,21 +4339,6 @@
       "ko": "켜지 못했어요: {error}",
       "ja": "オンにできませんでした：{error}"
     },
-    "Show pairing code": {
-      "zh-Hans": "显示配对码",
-      "hi": "पेयरिंग कोड दिखाएँ",
-      "es": "Mostrar código de emparejamiento",
-      "ar": "إظهار رمز الاقتران",
-      "fr": "Afficher le code d'association",
-      "bn": "পেয়ারিং কোড দেখান",
-      "pt-BR": "Mostrar código de pareamento",
-      "ru": "Показать код сопряжения",
-      "id": "Tampilkan kode penyandingan",
-      "de": "Kopplungscode anzeigen",
-      "tr": "Eşleştirme kodunu göster",
-      "ko": "페어링 코드 보기",
-      "ja": "ペアリングコードを表示"
-    },
     "Phones connected: {count}": {
       "zh-Hans": "已连接的手机：{count}",
       "hi": "जुड़े फ़ोन: {count}",
@@ -4413,36 +4368,6 @@
       "tr": "Android için Coucou'da bu kodu kamerayla tara veya bağlantıyı yapıştır.",
       "ko": "Android용 Coucou에서 카메라로 이 코드를 스캔하거나 링크를 붙여넣어 주세요.",
       "ja": "Android 版 Coucou で、このコードをカメラで読み取るかリンクを貼り付けてください。"
-    },
-    "Copy link": {
-      "zh-Hans": "复制链接",
-      "hi": "लिंक कॉपी करें",
-      "es": "Copiar enlace",
-      "ar": "نسخ الرابط",
-      "fr": "Copier le lien",
-      "bn": "লিংক কপি করুন",
-      "pt-BR": "Copiar link",
-      "ru": "Скопировать ссылку",
-      "id": "Salin tautan",
-      "de": "Link kopieren",
-      "tr": "Bağlantıyı kopyala",
-      "ko": "링크 복사",
-      "ja": "リンクをコピー"
-    },
-    "Pair again": {
-      "zh-Hans": "重新配对",
-      "hi": "फिर से पेयर करें",
-      "es": "Emparejar de nuevo",
-      "ar": "إعادة الاقتران",
-      "fr": "Associer à nouveau",
-      "bn": "আবার পেয়ার করুন",
-      "pt-BR": "Parear de novo",
-      "ru": "Сопрячь заново",
-      "id": "Sandingkan ulang",
-      "de": "Erneut koppeln",
-      "tr": "Yeniden eşleştir",
-      "ko": "다시 페어링",
-      "ja": "もう一度ペアリング"
     },
     "The phone that was paired is disconnected and needs the new code.": {
       "zh-Hans": "已配对的手机会断开连接，并需要新的配对码。",
@@ -4579,21 +4504,6 @@
       "ko": "준비된 제공업체가 없어요. 먼저 API 키를 넣거나 로컬 모델을 연결해 주세요.",
       "ja": "使えるプロバイダがありません：先に API キーを追加するか、ローカルモデルに接続してください。"
     },
-    "Show session details on the phone": {
-      "zh-Hans": "在手机上显示会话详情",
-      "hi": "फ़ोन पर सत्र का विवरण दिखाएँ",
-      "es": "Mostrar los detalles de la sesión en el teléfono",
-      "ar": "إظهار تفاصيل الجلسة على الهاتف",
-      "fr": "Afficher les détails de la session sur le téléphone",
-      "bn": "ফোনে সেশনের বিবরণ দেখান",
-      "pt-BR": "Mostrar os detalhes da sessão no celular",
-      "ru": "Показывать детали сессии на телефоне",
-      "id": "Tampilkan detail sesi di ponsel",
-      "de": "Sitzungsdetails auf dem Telefon anzeigen",
-      "tr": "Oturum ayrıntılarını telefonda göster",
-      "ko": "휴대폰에서 세션 세부 정보 보기",
-      "ja": "セッションの詳細をスマートフォンに表示"
-    },
     "Sends the last steps (as shown on the island, so they can include commands), the final line, the project's folder name and the colour. Never a path.": {
       "zh-Hans": "发送最近的步骤（与灵动岛上显示的一致，可能包含命令）、最后一行、项目文件夹名称和颜色。绝不发送路径。",
       "hi": "आख़िरी चरण (जैसे आइलैंड पर दिखते हैं, इसलिए उनमें कमांड हो सकते हैं), आख़िरी पंक्ति, प्रोजेक्ट के फ़ोल्डर का नाम और रंग भेजता है। कभी कोई पाथ नहीं।",
@@ -4638,21 +4548,6 @@
       "tr": "Telefon, her ajanın değiştirdiği dosyaları listeler ve birine dokunduğunda değişiklikleri gösterir (en fazla 200 satır, uzun satırlar kısaltılır). Dosya adları ve satırlar yalnızca eşleştirilmiş telefonuna, sertifikası sabitlenmiş şifreli bağlantı üzerinden ve yalnızca telefon istediğinde gönderilir.",
       "ko": "휴대폰에 에이전트별로 바뀐 파일 목록이 뜨고, 하나를 누르면 뭐가 바뀌었는지 보여 줘요(최대 200줄, 긴 줄은 잘려요). 파일 이름과 내용은 고정된 암호화 연결로, 페어링한 휴대폰이 요청할 때만 가요.",
       "ja": "スマートフォンに各エージェントが変更したファイルが一覧表示され、タップすると変更内容が表示されます（最大 200 行、長い行は省略）。ファイル名と行は、ペアリング済みのスマートフォンにだけ、固定された暗号化接続で、要求されたときだけ送られます。"
-    },
-    "Show my plan usage on the phone": {
-      "zh-Hans": "在手机上显示我的套餐用量",
-      "hi": "फ़ोन पर मेरे प्लान का उपयोग दिखाएँ",
-      "es": "Mostrar en el teléfono el uso de mi plan",
-      "ar": "عرض استهلاك خطتي على الهاتف",
-      "fr": "Afficher sur le téléphone l'utilisation de mon forfait",
-      "bn": "ফোনে আমার প্ল্যানের ব্যবহার দেখান",
-      "pt-BR": "Mostrar no celular o uso do meu plano",
-      "ru": "Показывать на телефоне использование моего тарифа",
-      "id": "Tampilkan penggunaan paket saya di ponsel",
-      "de": "Meine Plannutzung auf dem Telefon anzeigen",
-      "tr": "Plan kullanımımı telefonda göster",
-      "ko": "휴대폰에서 요금제 사용량 보기",
-      "ja": "プランの使用状況をスマートフォンに表示"
     },
     "The phone shows how much of your Claude and Codex plans is used and when they reset: the same percentages as the pills here, nothing else.": {
       "zh-Hans": "手机会显示您的 Claude 和 Codex 套餐已用多少以及何时重置：与这里的药丸显示的百分比相同，不包含其他内容。",
@@ -7548,21 +7443,6 @@
       "tr": "Kendi kısayolunuz…",
       "ko": "나만의 단축키…",
       "ja": "自分のショートカット…"
-    },
-    "Your shortcut": {
-      "zh-Hans": "你的快捷键",
-      "hi": "आपका शॉर्टकट",
-      "es": "Tu atajo",
-      "ar": "اختصارك",
-      "fr": "Votre raccourci",
-      "bn": "আপনার শর্টকাট",
-      "pt-BR": "Seu atalho",
-      "ru": "Ваше сочетание",
-      "id": "Pintasan Anda",
-      "de": "Dein Tastenkürzel",
-      "tr": "Kısayolunuz",
-      "ko": "내 단축키",
-      "ja": "あなたのショートカット"
     },
     "Hold the keys together to dictate. Its letter no longer reaches the app in front while you hold them.": {
       "zh-Hans": "同时按住这些键即可听写。按住期间，其中的字母键不会传给前台应用。",
