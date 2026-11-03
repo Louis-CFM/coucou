@@ -25,12 +25,27 @@ enum LocalChat {
 
     // MARK: URL normalisation
 
-    /// Removes trailing slashes and common documentation sub-paths (/api, /v1).
+    /// Removes trailing slashes and common documentation sub-paths (/api, /v1),
+    /// and prepends http:// if no scheme is specified.
     static func normaliseURL(_ raw: String) -> String {
         var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        while s.hasSuffix("/") { s = String(s.dropLast()) }
-        for suffix in ["/api", "/v1"] {
-            if s.hasSuffix(suffix) { s = String(s.dropLast(suffix.count)) }
+        guard !s.isEmpty else { return s }
+        if !s.contains("://") {
+            s = "http://" + s
+        }
+        var changed = true
+        while changed {
+            changed = false
+            while s.hasSuffix("/") {
+                s = String(s.dropLast())
+                changed = true
+            }
+            for suffix in ["/api", "/v1"] {
+                if s.hasSuffix(suffix) {
+                    s = String(s.dropLast(suffix.count))
+                    changed = true
+                }
+            }
         }
         return s
     }
