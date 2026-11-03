@@ -91,6 +91,9 @@ pub struct Prefs {
     /// Hold a key to dictate anywhere. Off until the user turns it on.
     pub enabled: bool,
     pub key: FlowKey,
+    /// The keys of a shortcut of the user's own, when `key` is `Custom`: their
+    /// KeyboardEvent.code names ("AltLeft", "ShiftLeft", "KeyF").
+    pub key_combo: Vec<String>,
     pub edge: Edge,
     /// The microphone by name; empty is the system's default.
     pub mic: String,
@@ -105,6 +108,8 @@ pub struct Prefs {
     pub open_at_launch: bool,
     /// « OK Coucou »: listen for it and answer with Claude (needs the Claude key).
     pub voice: bool,
+    /// The other apps' sound is muted while Coucou listens to you (Windows).
+    pub mute_others: bool,
     /// How Coucou answers out loud: "system", "elevenlabs" or "off".
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
@@ -116,6 +121,7 @@ impl Default for Prefs {
         Self {
             enabled: false,
             key: FlowKey::default(),
+            key_combo: Vec::new(),
             edge: Edge::Bottom,
             mic: String::new(),
             keep_days: 30,
@@ -124,6 +130,7 @@ impl Default for Prefs {
             summary_engine: SummaryEngine::Claude,
             open_at_launch: true,
             voice: false,
+            mute_others: true,
             voice_output: "system".into(),
             voice_gender: "female".into(),
         }

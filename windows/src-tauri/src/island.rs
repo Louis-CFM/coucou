@@ -17,11 +17,25 @@ use crate::platform::{self, cursor_physical, left_button_down};
 /// Logical size of the full window — the largest island view, like the macOS panel.
 pub const PANEL_W: f64 = 720.0;
 pub const PANEL_H: f64 = 320.0;
-/// Logical size of the invisible strip that wakes the island when it is hidden.
+/// Logical size of the invisible strip that wakes the island when it is hidden
+/// and the closed island is set to show nothing.
 pub const STRIP_W: f64 = 240.0;
 pub const STRIP_H: f64 = 6.0;
 
 pub const WINDOW_LABEL: &str = "island";
+
+/// Around the window, how far the cursor is still worth telling the page
+/// about (Mochi's eyes follow it), in logical px. Past it the page hears once
+/// that the cursor left, then nothing until it comes back: a cursor working in
+/// another app costs neither messages nor island frames.
+const NEAR_ZONE: f64 = 420.0;
+/// The poll's period while the cursor is far from the island, in ms.
+const FAR_PERIOD_MS: u64 = 50;
+
+/// Whether a cursor at window-logical (x, y) is near a window of `size`.
+fn is_near(x: f64, y: f64, size: (f64, f64)) -> bool {
+    x >= -NEAR_ZONE && x <= size.0 + NEAR_ZONE && y >= -NEAR_ZONE && y <= size.1 + NEAR_ZONE
+}
 
 /// Margin around the island that still counts as "on the island", in logical px.
 /// Wider than the macOS 6 pt because a click must never be swallowed.
@@ -58,6 +72,9 @@ pub struct PollGate {
     active: Mutex<bool>,
     cv: Condvar,
     pub collapsed: AtomicBool,
+    /// The window's logical size while collapsed: the closed island the page
+    /// draws, or the wake strip.
+    pub collapsed_size: Mutex<(f64, f64)>,
     pub rect: Mutex<IslandRect>,
     /// Mirrors the window flag so we only call into the OS when it changes.
     ignoring: AtomicBool,
@@ -69,6 +86,7 @@ impl PollGate {
             active: Mutex::new(false),
             cv: Condvar::new(),
             collapsed: AtomicBool::new(true),
+            collapsed_size: Mutex::new((STRIP_W, STRIP_H)),
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
         }
@@ -94,6 +112,16 @@ impl PollGate {
         while !*guard {
             guard = self.cv.wait(guard).unwrap();
         }
+    }
+
+    /// Waits until the gate opens or `timeout` passes; true when it is open.
+    pub(crate) fn wait_active_for(&self, timeout: Duration) -> bool {
+        let guard = self.active.lock().unwrap();
+        if *guard {
+            return true;
+        }
+        let (guard, _) = self.cv.wait_timeout(guard, timeout).unwrap();
+        *guard
     }
 
     pub(crate) fn is_active(&self) -> bool {
@@ -323,6 +351,23 @@ mod zoom_tests {
     }
 
     #[test]
+    fn only_a_cursor_near_the_island_is_followed() {
+        let size = (PANEL_W, PANEL_H);
+        assert!(is_near(360.0, 10.0, size));
+        assert!(is_near(-400.0, PANEL_H + 400.0, size));
+        assert!(!is_near(-500.0, 10.0, size));
+        assert!(!is_near(360.0, PANEL_H + 900.0, size));
+    }
+
+    #[test]
+    fn a_closed_island_stays_inside_the_panel() {
+        assert_eq!(clamp_collapsed((160.0, 26.0)), (160.0, 26.0));
+        assert_eq!(clamp_collapsed((5000.0, 900.0)), (PANEL_W, PANEL_H));
+        assert_eq!(clamp_collapsed((0.0, -3.0)), (1.0, 1.0));
+        assert_eq!(clamp_collapsed((f64::NAN, 26.0)), (PANEL_W, 26.0));
+    }
+
+    #[test]
     fn zoom_correction_handles_invalid_inputs() {
         assert_eq!(calculate_zoom_correction(1.0, 0.0, 1.0), None);
         assert_eq!(calculate_zoom_correction(1.0, 1.0, -1.0), None);
@@ -361,7 +406,8 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     }
 }
 
-/// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
+/// Places and sizes the window: the full panel, or `collapsed` to the size the
+/// closed island needs (the wake strip when it shows nothing).
 /// Windows: how far a taskbar docked at the top of this display (or another
 /// app bar there) pushes the island down, read from the display's work area,
 /// so the island sits under it (#956). An auto-hidden taskbar takes no work
@@ -379,7 +425,7 @@ fn top_inset_from(monitor_y: i32, work_y: i32) -> i32 {
     if (0..200).contains(&inset) { inset } else { 0 }
 }
 
-pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
+pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: Option<(f64, f64)>) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
 
@@ -387,7 +433,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let mp = *m.position();
     let ms = *m.size();
 
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
+    let (lw, lh) = collapsed.map(clamp_collapsed).unwrap_or((PANEL_W, PANEL_H));
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
@@ -422,6 +468,13 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     }
 }
 
+/// A closed island never grows past the panel, and never shrinks below one
+/// pixel (a zero-sized window can't be placed).
+pub fn clamp_collapsed((w, h): (f64, f64)) -> (f64, f64) {
+    let ok = |v: f64, max: f64| if v.is_finite() { v.clamp(1.0, max) } else { max };
+    (ok(w, PANEL_W), ok(h, PANEL_H))
+}
+
 /// Position, size and scale of the monitor the island lives on. Any change here
 /// means the island has to be placed again.
 fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
@@ -448,11 +501,26 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // find no cursor costs CPU for nothing.
         let (period, screen_every) = if platform::CURSOR_POLL { (16, 30) } else { (500, 1) };
         loop {
-            gate.wait_until_active();
+            // Parked. Folded on Windows, a glance at the cursor four times a
+            // second: on the closed island, it is told to wake up, whether or
+            // not the webview delivers the pointer to such a small window.
+            loop {
+                if gate.wait_active_for(Duration::from_millis(250)) {
+                    break;
+                }
+                if platform::CURSOR_POLL && gate.collapsed.load(Ordering::Relaxed) {
+                    wake_if_hovered(&app, &gate);
+                }
+            }
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
+            // The cursor was far at the last tick, and the page has been told.
+            let mut far = false;
             while gate.is_active() {
-                std::thread::sleep(Duration::from_millis(period));
+                std::thread::sleep(Duration::from_millis(if far { FAR_PERIOD_MS } else { period }));
+                if !gate.is_active() {
+                    break;
+                }
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
@@ -520,14 +588,42 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
                 let accept = on_island || dragging;
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
+                    // Under the gate's lock, and only while it is open: a tick
+                    // still running as the island folds must not make the
+                    // closed island click-through after set_collapsed made it
+                    // take the mouse — nothing would ever wake it again.
+                    let active = gate.active.lock().unwrap();
+                    if !*active {
+                        break;
+                    }
                     gate.ignoring.store(!accept, Ordering::Relaxed);
                     let _ = win.set_ignore_cursor_events(!accept);
                 }
 
+                // Far from the island: the page hears it once, then nothing.
+                let near = dragging || is_near(x, y, size);
+                if !near && far {
+                    continue;
+                }
+                far = !near;
                 let _ = win.emit("cursor", CursorPayload { x, y });
             }
         }
     });
+}
+
+/// The cursor is on the folded window: it takes the mouse, and the page hears
+/// `closed-hover` (it opens the compact island).
+fn wake_if_hovered(app: &AppHandle, gate: &PollGate) {
+    let Some(win) = window(app) else { return };
+    let (Ok(origin), Ok(size), Some((cx, cy))) = (win.outer_position(), win.inner_size(), cursor_physical()) else { return };
+    let x = cx - origin.x as f64;
+    let y = cy - origin.y as f64;
+    if x >= 0.0 && y >= 0.0 && x <= size.width as f64 && y <= size.height as f64 + 2.0 {
+        gate.ignoring.store(false, Ordering::Relaxed);
+        let _ = win.set_ignore_cursor_events(false);
+        let _ = win.emit("closed-hover", ());
+    }
 }
 
 /// Re-applies click-through after the window or the island changed shape.
@@ -543,10 +639,11 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     }
     let Some(win) = window(app) else { return };
     let region = if gate.collapsed.load(Ordering::Relaxed) {
-        // The wake strip itself, never "the whole window": if the window ever
-        // fails to shrink to the strip, the rest of it must not swallow clicks
-        // meant for whatever sits under the top of the screen.
-        Some((0.0, 0.0, STRIP_W, STRIP_H))
+        // The closed island (or the wake strip) itself, never "the whole
+        // window": if the window ever fails to shrink, the rest of it must not
+        // swallow clicks meant for whatever sits under the top of the screen.
+        let (w, h) = clamp_collapsed(*gate.collapsed_size.lock().unwrap());
+        Some((0.0, 0.0, w, h))
     } else {
         let r = *gate.rect.lock().unwrap();
         if r.w <= 0.0 {
