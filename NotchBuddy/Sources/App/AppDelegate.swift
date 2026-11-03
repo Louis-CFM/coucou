@@ -18,6 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         #if !APPSTORE
         NoteTaker.shared.shutdown()
+        // A dictation still listening never leaves the Mac muted.
+        SystemMute.shared.releaseNow()
         // The GOWA gateway Coucou started never outlives it.
         WhatsAppGOWAProcess.shared.stopNow()
         #endif

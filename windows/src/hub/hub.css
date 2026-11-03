@@ -96,6 +96,20 @@ body.hub-window {
   padding: 0;
 }
 
+/* The window's text fields (settings.css, input[type="text"]) weigh more than
+   one class and drew a second box inside this one: the field is the box. */
+.hub-search .hub-search-input,
+.hub-search .hub-search-input:focus {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+}
+
 .hub-search-input::placeholder {
   color: var(--hub-muted);
 }
@@ -327,6 +341,16 @@ body.hub-window {
 }
 
 /* ── Hero band ────────────────────────────────────────────────────────────── */
+
+/* The band's black and its colour, painted by the page too: the canvas draws
+   the same over it, with the particles, once its frames run. */
+.hub-hero,
+.hub-glow {
+  background:
+    radial-gradient(ellipse 60% 90% at 92% -15%, var(--hero-glow, transparent), transparent 70%),
+    linear-gradient(to bottom left, var(--hero-tint, transparent), transparent 65%),
+    #020203;
+}
 
 .hub-hero {
   position: relative;
@@ -1121,4 +1145,32 @@ button.hub-icon svg {
 .mail-if {
   width: 44px;
   flex: 0 0 auto;
+}
+
+/* Scrollbars as on the Mac: a thin rounded thumb that floats on the page, no
+   arrows and no track. (Chromium ignores these once scrollbar-width or
+   scrollbar-color is set on the element, so those stay unset.) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  min-height: 36px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
 }

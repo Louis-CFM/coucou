@@ -11,6 +11,7 @@ import {
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { closedIsland } from "../core/closed";
 import type { UpdateStatus } from "../core/update";
 import { SOUND_NAMES } from "../core/sound";
 import {
@@ -20,6 +21,7 @@ import {
 import { h, clear } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
+import { claudeModelControl } from "./claude-models";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
@@ -413,12 +415,6 @@ function subscriptionsSection(): HTMLElement {
 
 // ── Claude API section ────────────────────────────────────────────────────────
 
-const MODELS: [string, string][] = [
-  ["claude-opus-5", "Claude Opus 5"],
-  ["claude-sonnet-5", "Claude Sonnet 5"],
-  ["claude-haiku-4-5", "Claude Haiku 4.5"],
-];
-
 /** The state line under Claude: the key, else Claude Code (switched on above), else what is missing. */
 function apiState(hasKey: boolean, relay: boolean): string {
   if (hasKey) return t("Key saved in the {store}.", { store: KEY_STORE });
@@ -450,6 +446,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     state.textContent = apiState(present, ready && !present);
     field.placeholder = present ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
+    void model.reload(present);
   }
 
   saveBtn.addEventListener("click", async () => {
@@ -477,16 +474,11 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     }
   });
 
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
-  model.addEventListener("change", () => {
-    settings.model = model.value;
-    void save();
+  const model = claudeModelControl(() => settings.model, async (value) => {
+    await Bridge.saveSettings({ ...settings, model: value });
+    settings.model = value;
   });
+  void model.reload(hasKey);
 
   clearBtn.style.display = hasKey ? "" : "none";
 
@@ -496,7 +488,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
     h("div", { class: "row" }, h("label", { text: t("API key") }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
+    model.element,
     feedback,
   );
 }
@@ -1041,6 +1033,23 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // The closed island (core/closed.ts): what stays at the top of the screen.
+  const closed = h("select", {}) as HTMLSelectElement;
+  closed.append(
+    h("option", { value: "mochi", text: t("Mochi, as on a Mac without a notch") }),
+    h("option", { value: "time", text: t("The time") }),
+    h("option", { value: "datetime", text: t("The date and the time") }),
+    h("option", { value: "claude", text: t("Claude usage") }),
+    h("option", { value: "music", text: t("What's playing") }),
+    h("option", { value: "empty", text: t("Nothing, just the island") }),
+    h("option", { value: "hidden", text: t("Hide the island") }),
+  );
+  closed.value = closedIsland(settings.closedIsland);
+  closed.addEventListener("change", () => {
+    settings.closedIsland = closed.value;
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -1093,6 +1102,11 @@ function generalSection(): HTMLElement {
       toggle(settings.showClock, (v) => { settings.showClock = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("The date and the time in the middle of the island when it is compact.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Closed island shows") }),
+      closed,
+    ),
+    h("div", { class: "hint", text: t("A PC has no notch: once closed, a small island stays at the top of the screen. Hover it to bring Coucou back. Hidden, move the pointer to the very top of the screen.") }),
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
