@@ -172,6 +172,8 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** Custom editor executable to open projects (e.g. "cursor", "zed", "code"). */
+  editor?: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -205,6 +207,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  editor: null,
 };
 
 type Listener = () => void;
