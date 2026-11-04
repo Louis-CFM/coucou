@@ -36,7 +36,7 @@ def arguments(value):
 
 
 def main():
-    catalog = json.loads(CATALOG.read_text(), object_pairs_hook=unique_keys)
+    catalog = json.loads(CATALOG.read_text(encoding="utf-8"), object_pairs_hook=unique_keys)
     errors = []
     if catalog["sourceLanguage"] != "en":
         errors.append("Expected English source language")
@@ -53,7 +53,7 @@ def main():
                 errors.append(f"{key!r} {path}: incomplete translation")
             if arguments(unit["value"]) != arguments(target.get("value", "")):
                 errors.append(f"{key!r} {path}: format arguments differ")
-    project = (ROOT / "NotchBuddy/project.yml").read_text().split("\ntargets:\n", 1)[1]
+    project = (ROOT / "NotchBuddy/project.yml").read_text(encoding="utf-8").split("\ntargets:\n", 1)[1]
     for name in ("NotchBuddy", "CoucouAppStore"):
         target = re.search(rf"^  {name}:\n(.*?)(?=^  \w+:|\Z)", project, re.M | re.S)
         if not target or not re.search(r"^          - zh-Hant$", target[1], re.M):
@@ -61,7 +61,7 @@ def main():
     for path in (ROOT / "NotchBuddy/Sources").rglob("*.swift"):
         if any(part in {"Phone", "Widgets", "NotificationContent"} for part in path.parts):
             continue
-        for literal in re.findall(r'(?:String\(localized:\s*|(?:Text|Button|Toggle|SecureField|TextField|Picker|Label|GroupBox|help|accessibilityLabel|navigationTitle)\(\s*)"((?:\\.|[^"\\])*)"', path.read_text()):
+        for literal in re.findall(r'(?:String\(localized:\s*|(?:Text|Button|Toggle|SecureField|TextField|Picker|Label|GroupBox|help|accessibilityLabel|navigationTitle)\(\s*)"((?:\\.|[^"\\])*)"', path.read_text(encoding="utf-8")):
             if "\\(" in literal:  # Xcode generates interpolation keys; format arguments are checked above.
                 continue
             literal = re.sub(r"\\u\{([0-9a-fA-F]+)\}", lambda match: json.dumps(chr(int(match[1], 16)))[1:-1], literal)
