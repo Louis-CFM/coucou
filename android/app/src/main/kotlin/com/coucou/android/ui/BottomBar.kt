@@ -23,10 +23,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.coucou.android.R
 import com.coucou.android.core.BarFit
 import com.coucou.android.core.IconKind
+import com.coucou.android.core.Spacing
+import com.coucou.android.core.SpokenLabels
 import com.coucou.android.core.Tab
 import com.coucou.android.core.TypeScale
 import com.coucou.android.mochi.BotState
@@ -52,6 +56,7 @@ private fun Tab.label() = when (this) {
 @Composable
 fun BottomBar(tabs: List<Tab>, selected: Tab?, onSelect: (Tab) -> Unit, alert: Boolean, modifier: Modifier = Modifier) {
     val t = tokens()
+    val homeAlert = stringResource(R.string.tab_home_alert)
     Row(
         // At least 64 dp, taller when the font is large, so labels are never cut.
         modifier.fillMaxWidth().padding(horizontal = 24.dp).height(IntrinsicSize.Min).heightIn(min = 64.dp)
@@ -60,14 +65,16 @@ fun BottomBar(tabs: List<Tab>, selected: Tab?, onSelect: (Tab) -> Unit, alert: B
     ) {
         for (tab in tabs) {
             val on = tab == selected
+            val label = stringResource(tab.label())
             Box(
-                Modifier.weight(1f).fillMaxHeight().clip(CircleShape).background(if (on) t.panel2.c() else Color.Transparent)
-                    .selectable(selected = on, role = Role.Tab, onClick = { onSelect(tab) }),
+                Modifier.weight(1f).fillMaxHeight().heightIn(min = Spacing.MIN_TOUCH.dp).clip(CircleShape).background(if (on) t.panel2.c() else Color.Transparent)
+                    .selectable(selected = on, role = Role.Tab, onClick = { onSelect(tab) })
+                    .semantics { contentDescription = SpokenLabels.tab(label, alert && tab == Tab.HOME, homeAlert) },
                 contentAlignment = Alignment.Center,
             ) {
                 Column(Modifier.padding(horizontal = BarFit.ITEM_SIDE_PADDING_DP.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     CoucouIcon(tab.icon(), tint = if (on) t.text.c() else t.textDim.c(), size = 22.dp)
-                    Text(stringResource(tab.label()), style = TypeScale.LABEL.style(if (on) t.text.c() else t.textDim.c()), maxLines = 1, softWrap = false)
+                    Text(label, style = TypeScale.LABEL.style(if (on) t.text.c() else t.textDim.c()), maxLines = 1, softWrap = false)
                 }
                 if (alert && tab == Tab.HOME) {
                     val amber = MochiConst.STATES[BotState.APPROVAL]?.color?.let(::rgbColor) ?: Color(0xFFF5A524)

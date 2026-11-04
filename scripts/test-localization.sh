@@ -155,7 +155,8 @@ print("shipped keys the card relies on")
 for key, langs in SHIPPED_PINS.items():
     entry = strings.get(key, {})
     have = sorted(entry.get("localizations", {}).keys())
-    check(have == sorted(langs), "%r keeps its languages (%s)" % (key, ", ".join(langs) if len(langs) < 3 else "all 10"))
+    # Upstream keeps adding languages (16 now): a shipped key must keep at least the ones it shipped with.
+    check(set(langs) <= set(have), "%r keeps its languages (%s)" % (key, ", ".join(langs) if len(langs) < 3 else "all 10"))
 check(strings.get("Session", {}).get("extractionState") == "manual", "'Session' keeps extractionState manual")
 check(strings["Session"]["localizations"]["pt-BR"]["stringUnit"]["value"] == "Sessão", "'Session' still reads 'Sessão' in pt-BR")
 for scope in ("once", "session", "always"):

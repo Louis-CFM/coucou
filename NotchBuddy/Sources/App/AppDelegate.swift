@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @MainActor
@@ -6,10 +7,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
     private var demoMenuItem: NSMenuItem?
+    #if !APPSTORE
+    /// "Update Coucou to 0.6.0…", shown only when a new version is out.
+    private var updateMenuItem: NSMenuItem?
+    private var updateMenuSeparator: NSMenuItem?
+    /// The menu bar Mochi turns blue while a new version waits (MacUpdater.hintActive).
+    private var updateHintWatch: AnyCancellable?
+    #endif
 
     func applicationWillTerminate(_ notification: Notification) {
         #if !APPSTORE
         NoteTaker.shared.shutdown()
+        // A dictation still listening never leaves the Mac muted.
+        SystemMute.shared.releaseNow()
         // The GOWA gateway Coucou started never outlives it.
         WhatsAppGOWAProcess.shared.stopNow()
         #endif
@@ -21,6 +31,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
         signal(SIGPIPE, SIG_IGN)
+        #if !APPSTORE
+        // Before anything writes its settings: did Coucou just update itself? (What's new, once.)
+        WhatsNewCenter.shared.noteLaunch()
+        #endif
         // Warm up Keychain cache on main thread BEFORE any poller or view touches it
         _ = KeychainStore.shared
         _ = AppLanguage.launched
@@ -54,6 +68,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         #if PHONE_LINK
         CloudProbe.shared.startIfEnabled()
+        #endif
+        #if !APPSTORE
+        // Coucou for Android (off unless the user turned it on in Settings)
+        AndroidLinkService.shared.startIfEnabled()
         #endif
     }
 
@@ -113,6 +131,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.delegate = self
+        #if !APPSTORE
+        // A new version: the first line of the menu, shown only when one is out.
+        let updateItem = NSMenuItem(title: "", action: #selector(openUpdate), keyEquivalent: "")
+        updateItem.image = NSImage(systemSymbolName: "arrow.down.circle.fill", accessibilityDescription: nil)
+        updateItem.isHidden = true
+        updateMenuItem = updateItem
+        menu.addItem(updateItem)
+        let updateSeparator = NSMenuItem.separator()
+        updateSeparator.isHidden = true
+        updateMenuSeparator = updateSeparator
+        menu.addItem(updateSeparator)
+        #endif
         let demoItem = NSMenuItem(title: NSLocalizedString("Demo mode", comment: ""), action: #selector(toggleDemoMode), keyEquivalent: "")
         demoMenuItem = demoItem
         menu.addItem(demoItem)
@@ -128,7 +158,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: NSLocalizedString("Quit", comment: ""), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         statusItem?.menu = menu
+
+        #if !APPSTORE
+        updateHintWatch = MacUpdater.shared.$hintActive
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] on in
+                MainActor.assumeIsolated { self?.setMenuBarUpdateHint(on) }
+            }
+        #endif
     }
+
+    #if !APPSTORE
+    /// Blue Mochi in the menu bar while a new Coucou waits, like the one in the notch; the usual
+    /// template icon (black or white with the menu bar) otherwise.
+    private func setMenuBarUpdateHint(_ on: Bool) {
+        guard let button = statusItem?.button else { return }
+        let size = NSSize(width: 24, height: 18)
+        guard on, let base = NSImage(named: "MenuBarIcon"),
+              let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2),
+                                         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else {
+            let icon = NSImage(named: "MenuBarIcon") ?? NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Coucou")
+            icon?.size = size
+            icon?.isTemplate = true
+            icon?.accessibilityDescription = "Coucou"
+            button.image = icon
+            return
+        }
+        rep.size = size
+        let rect = NSRect(origin: .zero, size: size)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        base.draw(in: rect)
+        NSColor(srgbRed: 0.231, green: 0.510, blue: 0.965, alpha: 1).set()   // #3B82F6, Mochi's update blue
+        rect.fill(using: .sourceAtop)
+        NSGraphicsContext.restoreGraphicsState()
+        let blue = NSImage(size: size)
+        blue.addRepresentation(rep)
+        blue.isTemplate = false
+        blue.accessibilityDescription = "Coucou"
+        button.image = blue
+    }
+    #endif
 
     // MARK: - Actions
 
@@ -150,6 +222,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     #if !APPSTORE
+    @objc private func openUpdate() {
+        MacUpdater.shared.show()
+    }
+
     @objc private func openFlowHub() {
         if AppState.shared.mode == .expanded { islandController?.collapse() }
         FlowHubController.shared.show(.dictation)
@@ -304,6 +380,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = SpotifyController.shared
         MailController.shared.start()
         WhatsAppController.shared.start()
+        MacUpdater.shared.start()
+        ClaudeDesktopChatWatcher.shared.start()
         #endif
         CryptoController.shared.start()
         PortfolioController.shared.start()
@@ -317,5 +395,15 @@ extension AppDelegate: NSMenuDelegate {
         demoMenuItem?.title = DemoEngine.shared.isActive
             ? NSLocalizedString("demo.stop", comment: "")
             : NSLocalizedString("Demo mode", comment: "")
+        #if !APPSTORE
+        if let r = MacUpdater.shared.latest, MacUpdate.isNewer(r.version, than: MacUpdater.currentVersion) {
+            updateMenuItem?.title = String(format: String(localized: "update.menu %@"), r.version)
+            updateMenuItem?.isHidden = false
+            updateMenuSeparator?.isHidden = false
+        } else {
+            updateMenuItem?.isHidden = true
+            updateMenuSeparator?.isHidden = true
+        }
+        #endif
     }
 }

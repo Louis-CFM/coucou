@@ -143,7 +143,7 @@ class WidgetButtonsTest {
         for (id in listOf("big_bubble")) assertFalse(id, bigLayout.contains(id) || bigSource.contains(id))
         assertFalse(bigSource.contains(".bubble"))
         // And so are its sentences ("Claude Code is waiting for you").
-        assertFalse(strings.values.any { it.contains("is waiting for you") || it.startsWith("Claude Code is ") })
+        assertFalse(strings.values.any { Regex("is waiting for you\\b").containsMatchIn(it) || it.startsWith("Claude Code is ") })
     }
 
     @Test fun theTopIsMochiOnTheLeftAndThePlanUsageOnTheRight() {

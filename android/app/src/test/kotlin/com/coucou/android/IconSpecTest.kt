@@ -41,4 +41,11 @@ class IconSpecTest {
     @Test fun strokeIsTheSameAsThePc() {
         assertEquals(1.9, IconSpec.STROKE, 0.0)
     }
+
+    @Test fun onlyTheIconsThatPointAlongTheReadingDirectionAreMirroredForArabic() {
+        val mirrored = com.coucou.android.core.IconKind.values().filter { com.coucou.android.core.IconSpec.mirrorsInRtl(it) }
+        org.junit.Assert.assertEquals(listOf(com.coucou.android.core.IconKind.BACK, com.coucou.android.core.IconKind.SEND, com.coucou.android.core.IconKind.CHEVRON), mirrored)
+        // A chevron turned to point down is not mirrored by its caller.
+        org.junit.Assert.assertTrue(java.io.File("src/main/kotlin/com/coucou/android/ui/ChatScreen.kt").readText().contains("rotate(90f), mirror = false"))
+    }
 }

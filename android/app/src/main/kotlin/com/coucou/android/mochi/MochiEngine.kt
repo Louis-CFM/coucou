@@ -392,10 +392,16 @@ class MochiEngine(
     /** Wearing something visible: the body then turns as one piece when it rolls. */
     val rigidRoll: Boolean get() = !isMini && outfit != Outfit.NONE && outfitPresence > 0.05
 
+    /**
+     * Reduce motion (Settings): no idle animation at all, so nothing moves until the state changes: no breathing, bouncing or scanning,
+     * no random blinks, no floating particles and no wandering of the small bots. A change of state still plays, once.
+     */
+    @Volatile var reduceMotion: Boolean = false
+
     /** True while anything is still moving, so the host can stop its frame loop. */
     val busy: Boolean
         get() = tweens.isNotEmpty() || scheduled.isNotEmpty() || _particles.isNotEmpty() ||
-            cfg.bounces || cfg.scans || cfg.breathes || cfg.zz || cfg.sweat || isMini ||
+            (!reduceMotion && (cfg.bounces || cfg.scans || cfg.breathes || cfg.zz || cfg.sweat || isMini)) ||
             abs(tgYaw - yaw) > 0.002 || abs(tgPitch - pitch) > 0.002 || abs(tgTilt - tilt) > 0.002 ||
             abs(tgSy - sy) > 0.002 || abs(tgSx - sx) > 0.002 || abs(tgEs - es) > 0.002 ||
             slotH > 0.001 || abs(slotHVel) > 0.001 ||
@@ -446,7 +452,7 @@ class MochiEngine(
             ty = ty * 0.35 + lx * 0.55
             tp = tp * 0.3 + ly * 0.5
         }
-        if (cfg.scans) {
+        if (cfg.scans && !reduceMotion) {
             ty = sin(t * 2.6) * 0.6
             tp = -0.06
         }
@@ -454,7 +460,7 @@ class MochiEngine(
         if (state == BotState.DIZZY) ty = sin(t * 9) * 0.25
 
         // Mini bots never follow the pointer; they wander.
-        if (isMini && cfg.look == null && !cfg.scans && state != BotState.SLEEPING && state != BotState.DIZZY) {
+        if (isMini && !reduceMotion && cfg.look == null && !cfg.scans && state != BotState.SLEEPING && state != BotState.DIZZY) {
             if (n > miniLookNextTime) {
                 miniLookX = -0.88 + random.nextDouble() * 1.76
                 miniLookY = -0.55 + random.nextDouble() * 1.0
@@ -473,15 +479,15 @@ class MochiEngine(
             tgTilt = -0.06 + sin(2 * PI * 1.2 * wt) * 0.07
         }
 
-        val bounce = if (cfg.bounces) -abs(sin(t * 5.2)) * 0.07 else 0.0
+        val bounce = if (cfg.bounces && !reduceMotion) -abs(sin(t * 5.2)) * 0.07 else 0.0
         val kGen = 1 - 0.0008.pow(dt)
         if (Prop.OY !in locks) oy += (bounce - oy) * kGen
 
-        if (cfg.breathes) {
+        if (cfg.breathes && !reduceMotion) {
             val amp = if (isMini) 0.07 else 0.035
             tgSy = 1 + sin(t * 1.8) * amp
             tgSx = 1 - sin(t * 1.8) * amp * 0.57
-        } else if (isMini) {
+        } else if (isMini && !reduceMotion) {
             tgSy = 1 + sin(t * 2.2) * 0.04
             tgSx = 1 - sin(t * 2.2) * 0.02
         } else {
@@ -489,7 +495,7 @@ class MochiEngine(
             tgSx = 1.0
         }
 
-        if (isMini && n > miniNextBehavior) doMiniBehaviorLoop()
+        if (isMini && !reduceMotion && n > miniNextBehavior) doMiniBehaviorLoop()
 
         val kLook = 1 - 0.0025.pow(dt)
         if (Prop.YAW !in locks) yaw += (tgYaw - yaw) * kLook
@@ -502,7 +508,7 @@ class MochiEngine(
         col = col.mix(colT, 1 - 0.002.pow(dt))
 
         if (n > nextBlink) {
-            if (state != BotState.SLEEPING && state != BotState.DIZZY) {
+            if (!reduceMotion && state != BotState.SLEEPING && state != BotState.DIZZY) {
                 blink()
                 if (random.nextDouble() < 0.22) after(230.0) { blink() }
             }
@@ -516,8 +522,8 @@ class MochiEngine(
 
         if (n - lastAmbient > 1.3) {
             lastAmbient = n
-            if (cfg.zz) emit(ParticleType.Z, 1)
-            if (!isMini && cfg.sweat && random.nextDouble() < 0.5) emit(ParticleType.SWEAT, 1)
+            if (!reduceMotion && cfg.zz) emit(ParticleType.Z, 1)
+            if (!reduceMotion && !isMini && cfg.sweat && random.nextDouble() < 0.5) emit(ParticleType.SWEAT, 1)
         }
 
         _particles.forEach { it.age += dt }

@@ -7,6 +7,9 @@ import com.coucou.android.link.Route
 enum class RelayLineKind { NO_RELAY_IN_PAIRING, SWITCHED_OFF, DIRECT, VIA_RELAY, WAITING, ACCESS_REFUSED, ROOM_TAKEN, RATE_LIMITED, UNREACHABLE, COMPUTER_AWAY }
 
 object RelayStatus {
+    /** The card is shown only when this pairing carries a relay: no computer build offers the setting yet, so a hint to turn it on would point at nothing (issue #629). */
+    fun sectionVisible(paired: Boolean, hasRelay: Boolean): Boolean = paired && hasRelay
+
     fun kind(hasRelay: Boolean, useRelay: Boolean, connected: Boolean, route: Route?, issue: RelayIssue): RelayLineKind = when {
         !hasRelay -> RelayLineKind.NO_RELAY_IN_PAIRING
         !useRelay -> RelayLineKind.SWITCHED_OFF

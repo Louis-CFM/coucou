@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Coucou — hub preview</title></head>
+  <body class="settings-window hub-window" style="background: #000; color: #f5f6f8; margin:0">
+    <div id="hub"></div>
+    <script>window.__answers = { hub_shown: true };</script>
+    <script type="module">
+      import "./tauri-mock.ts";
+      const page = new URLSearchParams(location.search).get("page");
+      await import("/src/settings/main.ts");
+      if (page) setTimeout(() => window.__emit("hub-page", page), 300);
+    </script>
+  </body>
+</html>

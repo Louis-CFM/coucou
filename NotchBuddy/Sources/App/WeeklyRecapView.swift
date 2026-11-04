@@ -196,6 +196,13 @@ private struct RecapSharePanelView: View {
 // MARK: - Share image (1080×1920)
 
 struct RecapShareImageView: View {
+    /// Where people can find Coucou, printed under the shared image.
+    #if APPSTORE
+    static let footer = "Coucou · louis-cfm.github.io/coucou"
+    #else
+    static let footer = "Coucou · github.com/Louis-CFM/coucou"
+    #endif
+
     let summary: WeeklySummary
     let hideProjects: Bool
 
@@ -302,7 +309,7 @@ struct RecapShareImageView: View {
 
                 Spacer()
 
-                Text("Coucou · github.com/Louis-CFM/coucou")
+                Text(Self.footer)
                     .font(.system(size: 20, weight: .medium, design: .monospaced))
                     .foregroundColor(Color(hex: "#8E939C").opacity(0.6))
                     .padding(.bottom, 60)

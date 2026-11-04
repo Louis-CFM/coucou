@@ -185,12 +185,32 @@ struct AgentTurnBlock: View, Equatable {
                 }
             }
         case .card(let id, let text, let open):
-            ChatMarkdownView(markdown: text, style: .card(verdict: hasWork(before: index, in: items)), streaming: open)
-                .equatable()
-                .transformEnvironment(\.chatMedia) {
-                    $0.scope = "\(messageID?.uuidString ?? "")-\(id)"
-                    $0.colorHex = speaker.colorHex
+            if text.contains("```coucou-mail") {
+                // A mail plan (MailPlan.swift) is not shown as raw JSON: its prose is the card, the plan a card of its own.
+                let parsed = MailPlanParser.extract(text)
+                VStack(alignment: .leading, spacing: 6) {
+                    if !parsed.prose.isEmpty {
+                        ChatMarkdownView(markdown: parsed.prose, style: .card(verdict: hasWork(before: index, in: items)), streaming: open)
+                            .equatable()
+                    }
+                    #if !APPSTORE
+                    if let plan = parsed.plan, let messageID {
+                        MailPlanCard(plan: plan, messageId: messageID)
+                    } else if let error = parsed.error {
+                        Text(String(format: String(localized: "mail.plan.error %@"), error))
+                            .font(.system(size: 10.5))
+                            .foregroundColor(Color(hex: "#F5A524"))
+                    }
+                    #endif
                 }
+            } else {
+                ChatMarkdownView(markdown: text, style: .card(verdict: hasWork(before: index, in: items)), streaming: open)
+                    .equatable()
+                    .transformEnvironment(\.chatMedia) {
+                        $0.scope = "\(messageID?.uuidString ?? "")-\(id)"
+                        $0.colorHex = speaker.colorHex
+                    }
+            }
         case .note(_, let text):
             Text(verbatim: text)
                 .font(.system(size: 11))

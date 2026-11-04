@@ -76,7 +76,18 @@ final class VoiceAudio: @unchecked Sendable {
         guard !tapInstalled else { return }
 
         let input = engine.inputNode
-        let fmt   = input.outputFormat(forBus: 0)
+
+        // No input device (e.g. Mac mini with no mic): the hardware format is
+        // 0 ch / 0 Hz and installTap would raise an uncatchable NSException.
+        // Bail out and let the caller show the unavailable state.
+        let hwFmt = input.inputFormat(forBus: 0)
+        guard hwFmt.channelCount > 0, hwFmt.sampleRate > 0 else {
+            appendAppLog("nb.log", "[Voice] no audio input device — pipeline skipped")
+            throw NSError(domain: "VoiceAudio", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "No audio input device"])
+        }
+
+        let fmt = input.outputFormat(forBus: 0)
 
         // Build a stateful mono 16 kHz Float32 converter for the recognizer.
         let target = AVAudioFormat(commonFormat: .pcmFormatFloat32,

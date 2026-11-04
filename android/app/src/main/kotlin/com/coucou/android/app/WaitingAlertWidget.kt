@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.coucou.android.R
 import com.coucou.android.core.WidgetContent
+import com.coucou.android.core.WidgetSpoken
 
 /**
  * The Waiting Alert widget: calm when nothing waits for you; a bright orange "N waiting", an orange border and an anxious
@@ -22,7 +23,7 @@ class WaitingAlertWidget : AppWidgetProvider() {
             val v = RemoteViews(context.packageName, R.layout.widget_alert)
             WidgetHub.paint(v, R.id.alert_root, R.id.alert_tint, c.look)
             v.setImageViewBitmap(R.id.alert_face, MochiBitmap.of(c.mood, WidgetHub.px(context, 84), glow = true, tone = c.look))
-            v.setContentDescription(R.id.alert_face, context.getString(R.string.widget_mochi_description, c.mood.key))
+            v.setContentDescription(R.id.alert_face, context.getString(R.string.widget_mochi_description, WidgetSpoken.mood(c.mood)))
             v.setViewVisibility(R.id.alert_offline, if (c.connected) View.GONE else View.VISIBLE)
             val waiting = c.waiting > 0
             v.setViewVisibility(R.id.alert_count, if (waiting) View.VISIBLE else View.GONE)
@@ -30,6 +31,7 @@ class WaitingAlertWidget : AppWidgetProvider() {
             v.setTextViewText(if (waiting) R.id.alert_count else R.id.alert_calm, c.alertLine)
             v.setTextViewText(R.id.alert_sub, c.alertSub)
             if (waiting) v.setContentDescription(R.id.alert_count, context.getString(R.string.widget_badge_description, c.waiting))
+            v.setContentDescription(R.id.alert_root, WidgetSpoken.alert(c))
             v.setOnClickPendingIntent(R.id.alert_root, WidgetHub.openApp(context, WidgetHub.CODE_ALERT))
             return v
         }

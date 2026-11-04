@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon: Chat, Recent decisions, Pair again. Each one starts LaunchActivity (ours, not exported; the launcher starts
+     it for us) with the key of one screen of the closed LaunchScreen list. The main screen still reads no extras, and none of them
+     carries a session, a fingerprint or an Allow: they only open a screen. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="chat"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_chat"
+        android:shortcutShortLabel="@string/shortcut_chat_short"
+        android:shortcutLongLabel="@string/shortcut_chat_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.coucou.android"
+            android:targetClass="com.coucou.android.app.LaunchActivity">
+            <extra android:name="screen" android:value="chat" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="recent"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_recent"
+        android:shortcutShortLabel="@string/shortcut_recent_short"
+        android:shortcutLongLabel="@string/shortcut_recent_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.coucou.android"
+            android:targetClass="com.coucou.android.app.LaunchActivity">
+            <extra android:name="screen" android:value="recent" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="pair"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_pair"
+        android:shortcutShortLabel="@string/shortcut_pair_short"
+        android:shortcutLongLabel="@string/shortcut_pair_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.coucou.android"
+            android:targetClass="com.coucou.android.app.LaunchActivity">
+            <extra android:name="screen" android:value="pair" />
+        </intent>
+    </shortcut>
+</shortcuts>

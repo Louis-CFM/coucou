@@ -24,7 +24,7 @@ const SOURCE = resolve(here, "../../NotchBuddy/Resources/Localizable.xcstrings")
 const OUTPUT = resolve(here, "../src/i18n/strings.json");
 
 /** The languages Coucou ships, in the Mac's picker order. English is the source. */
-export const LANGUAGES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"];
+export const LANGUAGES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko", "ja"];
 
 /**
  * Names for the placeholders of the Mac strings the Windows code uses, by Mac
@@ -33,6 +33,9 @@ export const LANGUAGES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR"
 const RENAMES = {
   "Auto-close · %llds": ["seconds"],
   "Chat with %@": ["name"],
+  "chat.subscriptions.default-model": ["tool"],
+  "chat.subscriptions.found": ["tool"],
+  "chat.subscriptions.missing": ["tool"],
   "Claude is reading %@…": ["name"],
   "Connected · %@": ["detail"],
   "Key configured · %@": ["model"],

@@ -51,6 +51,13 @@ struct BotCanvasView: View {
                         ? cgColorFromHex(state.focusTask!.color)
                         : nil
                 }
+                // A new Coucou waits and Mochi has nothing else to say: he turns blue, with an arrow.
+                let updateHint = MacUpdater.shared.hintActive
+                    && (state.effectiveState == .idle || state.effectiveState == .sleeping)
+                    && state.pendingApproval == nil && state.pendingQuestion == nil
+                    && !state.showingPlanDetail
+                if updateHint { engine.bodyColor = BotEngine.updateBlue }
+                engine.setUpdateHint(updateHint)
                 #else
                 engine.bodyColor = (state.focusTask?.isIntegration == true)
                     ? cgColorFromHex(state.focusTask!.color)
@@ -203,7 +210,6 @@ struct BotCanvasView: View {
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
-        let screen = IslandWindowController.islandScreen().frame
         let desktopTop = IslandWindowController.desktopTop
         // The pointer read now, not from the island poll (which slows down far from it).
         let mouse = DesktopSpace.topDown(NSEvent.mouseLocation, desktopTop: desktopTop)
@@ -211,8 +217,10 @@ struct BotCanvasView: View {
             let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
                                                     islandW: islandW, islandH: islandH,
                                                     uploadProgress: state.uploadProgress)
-            return DesktopSpace.topDown(CGPoint(x: screen.midX - islandW / 2 + botCx,
-                                                y: screen.maxY - botCy),
+            // Where the island really is: the notch, or its corner.
+            let island = IslandWindowController.islandScreenRect(size: CGSize(width: islandW, height: islandH))
+            return DesktopSpace.topDown(CGPoint(x: island.minX + botCx,
+                                                y: island.maxY - botCy),
                                         desktopTop: desktopTop)
         }
         let botX = botPoint(islandH: islandH)

@@ -130,7 +130,17 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
     let mut mode = Mode::Wake;
     let mut brain = brain::Brain::default();
     let mut hide_at: Option<Instant> = None;
+    // Silence for the question that follows « OK Coucou » (flow/hush.rs).
+    let mut hush: Option<crate::flow::hush::Guard> = None;
+    let quiet = || crate::flow::get(&app).is_some_and(|f| f.store.lock().unwrap().prefs.mute_others);
     while !stop.load(Ordering::Relaxed) {
+        // Listening for a question or an answer: the other apps are quiet.
+        let asking = matches!(mode, Mode::Command { .. } | Mode::FollowUp { .. });
+        if asking && hush.is_none() {
+            hush = crate::flow::hush::hush(quiet());
+        } else if !asking {
+            hush = None;
+        }
         let chunk = match rx.recv_timeout(Duration::from_millis(300)) {
             Ok(c) => Some(c),
             Err(mpsc::RecvTimeoutError::Timeout) => None,
@@ -508,7 +518,9 @@ fn find_app(wanted: &str) -> Option<(String, Box<dyn FnOnce()>)> {
     }
     let (_, label, id) = best?;
     Some((label, Box::new(move || {
-        let _ = std::process::Command::new("gtk-launch").arg(&id).spawn();
+        let mut cmd = std::process::Command::new("gtk-launch");
+        cmd.arg(&id);
+        let _ = crate::platform::no_console(&mut cmd).spawn();
     })))
 }
 

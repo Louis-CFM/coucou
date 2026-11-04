@@ -63,7 +63,7 @@ fun CoucouSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifi
                 .background(if (checked) t.online.c() else t.panel2.c())
                 .border(1.dp, if (checked) Color.Transparent else t.line.c(), CircleShape),
         ) {
-            Box(Modifier.offset(x = 3.dp + knobX, y = 3.dp).size(KNOB).clip(CircleShape).background(Color.White))
+            Box(Modifier.offset(x = 3.dp + knobX, y = 3.dp).size(KNOB).clip(CircleShape).background(if (checked || t.isDark) Color.White else Color(t.textDim)))
         }
     }
 }

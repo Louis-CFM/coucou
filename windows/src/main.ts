@@ -11,8 +11,11 @@ import { registerIntegrationHandlers, refreshConfigured } from "./island/integra
 import { registerShortcutHandlers } from "./island/shortcuts";
 import { registerVoiceHandlers } from "./island/voice";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
+import { registerWhatsAppHandlers } from "./island/whatsapp";
 import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
+import { Updates } from "./island/update";
+import { WhatsNew } from "./whats-new/controller";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
@@ -39,6 +42,8 @@ async function main() {
   }
 
   const island = new Island(root);
+  // The dev previews (dev/*.html) drive the island from the console.
+  if (import.meta.env.DEV) Object.assign(window, { __island: island, __state: State });
 
   const boot = await Bridge.boot();
   if (boot) {
@@ -58,6 +63,7 @@ async function main() {
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
+  await onEvent<null>("closed-hover", () => island.wakeFromClosed());
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {
@@ -84,6 +90,11 @@ async function main() {
         setPaused(false);
         island.alert("wardrobe");
         break;
+      // "Update Coucou to X…", only in the menu while a new version is out.
+      case "update":
+        setPaused(false);
+        Updates.show();
+        break;
       case "pause":
         setPaused(!State.paused);
         if (State.paused) island.fsm.forceHidden();
@@ -100,10 +111,22 @@ async function main() {
   await onEvent<null>("screen-changed", async () => {
     await checkZoom();
     void Bridge.reposition();
+    island.ensureRunning();
   });
 
-  const mediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-  mediaQuery.addEventListener?.("change", () => void checkZoom());
+  // A query only matches the ratio it was made for: once it changes, watch the
+  // new one, or the next monitor's scale goes unnoticed and the zoom stays wrong.
+  // One frame redraws Mochi at the new ratio, even while the loop is idle.
+  const watchRatio = () => {
+    window
+      .matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      .addEventListener?.("change", () => {
+        watchRatio();
+        void checkZoom();
+        island.ensureRunning();
+      }, { once: true });
+  };
+  watchRatio();
 
   window.addEventListener(
     "wheel",
@@ -141,6 +164,9 @@ async function main() {
   registerShortcutHandlers(island, () => setPaused(false));
   registerVoiceHandlers();
   registerSpotifyHandlers(island);
+  registerWhatsAppHandlers(island);
+  // New versions: Rust offers the card, the island opens it when nothing else waits.
+  await Updates.register(island);
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));
@@ -148,7 +174,14 @@ async function main() {
 
   // Monday recap: app start (greeting over), an agent starting work, waking up.
   const checkRecap = () => void Recap.check(island);
-  island.onGreetingDone = checkRecap;
+  // What's new, once after an update: when the greeting is over, or a few
+  // seconds in when there is no greeting (the card waits for a quiet island).
+  const whatsNew = () => void WhatsNew.launch(island);
+  island.onGreetingDone = () => {
+    checkRecap();
+    whatsNew();
+  };
+  window.setTimeout(whatsNew, 8000);
   island.onWake = checkRecap;
   await onEvent<null>("recap-check", checkRecap);
 

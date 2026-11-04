@@ -15,7 +15,8 @@ struct ClaudeHost: Equatable {
     static let terminalCardsKey = "terminalCardsEnabled"
     static var terminalCardsEnabled: Bool { UserDefaults.standard.bool(forKey: terminalCardsKey) }
 
-    /// Terminals accepted for Claude Code sessions. Keyed by bundle id; the second
+    /// Terminals (and agent apps like Conductor) accepted for Claude Code sessions.
+    /// Keyed by bundle id; the second
     /// table maps TERM_PROGRAM for hooks that run without __CFBundleIdentifier.
     private static let terminals: [String: String] = [
         "dev.warp.Warp-Stable":       "Warp",
@@ -30,6 +31,7 @@ struct ClaudeHost: Equatable {
         "dev.zed.Zed":                "Zed",
         "com.cmuxterm.app":           "cmux",    // sets TERM_PROGRAM=ghostty: the bundle id decides
         "com.stablyai.orca":          "Orca",
+        "com.conductor.app":          "Conductor", // runs Claude Code with no TERM_PROGRAM
     ]
     private static let termPrograms: [String: String] = [
         "warpterminal":   "dev.warp.Warp-Stable",

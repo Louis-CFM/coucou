@@ -134,14 +134,17 @@ targets:
         type: folder
       - path: Resources/Localizable.xcstrings
         buildPhase: resources
+      # What's new after an update, once in the notch (WhatsNewViews.swift; GitHub build)
+      - path: Resources/whats-new.json
+        buildPhase: resources
     info:
       path: Resources/Info.plist
       properties:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "18"
-        CFBundleShortVersionString: "0.5.1"
+        CFBundleVersion: "25"
+        CFBundleShortVersionString: "0.5.8"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -159,13 +162,19 @@ targets:
           - en
           - ar
           - bn
+          - de
           - es
           - fr
           - hi
           - id
+          - ja
+          - ko
           - pt-BR
           - ru
+          - th
+          - tr
           - zh-Hans
+          - zh-Hant
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddy
@@ -220,33 +229,44 @@ targets:
         type: folder
       - path: Resources/Localizable.xcstrings
         buildPhase: resources
+      # Privacy manifest (required-reason APIs; no tracking, nothing collected).
+      - path: Resources/Privacy/Mac/PrivacyInfo.xcprivacy
+        buildPhase: resources
     info:
       path: Resources/InfoAppStore.plist
       properties:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
-        CFBundleVersion: "6"
-        CFBundleShortVersionString: "1.1"
+        CFBundleVersion: "20"
+        CFBundleShortVersionString: "2.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
         LSApplicationCategoryType: public.app-category.developer-tools
         ITSAppUsesNonExemptEncryption: NO
+        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate a chat message."
+        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         CFBundleLocalizations:
           - en
           - ar
           - bn
+          - de
           - es
           - fr
           - hi
           - id
+          - ja
+          - ko
           - pt-BR
           - ru
+          - th
+          - tr
           - zh-Hans
+          - zh-Hant
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
@@ -297,14 +317,17 @@ targets:
         buildPhase: resources
       - path: Resources/sounds/error.wav
         buildPhase: resources
+      # Privacy manifest (required-reason APIs; no tracking, nothing collected).
+      - path: Resources/Privacy/Phone/PrivacyInfo.xcprivacy
+        buildPhase: resources
     info:
       path: Resources/InfoPhone.plist
       properties:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
-        CFBundleVersion: "3"
-        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "21"
+        CFBundleShortVersionString: "2.0"
         CFBundlePackageType: APPL
         LSRequiresIPhoneOS: YES
         UILaunchScreen: {}
@@ -377,14 +400,16 @@ targets:
       - path: Sources/Phone/MochiActivityAttributes.swift
       - path: Sources/Phone/OpenLeadMochiIntent.swift
       - path: Sources/Phone/DenyApprovalIntent.swift
+      - path: Resources/Privacy/Phone/PrivacyInfo.xcprivacy
+        buildPhase: resources
     info:
       path: Resources/InfoWidgets.plist
       properties:
         CFBundleName: CoucouWidgets
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou.Widgets
-        CFBundleVersion: "3"
-        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "21"
+        CFBundleShortVersionString: "2.0"
         CFBundlePackageType: XPC!
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -420,14 +445,16 @@ targets:
         type: group
       - path: Sources/Phone/MochiLive.swift
       - path: Sources/Phone/MacStubs.swift
+      - path: Resources/Privacy/Phone/PrivacyInfo.xcprivacy
+        buildPhase: resources
     info:
       path: Resources/InfoNotificationContent.plist
       properties:
         CFBundleName: CoucouNotificationContent
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou.NotificationContent
-        CFBundleVersion: "3"
-        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "21"
+        CFBundleShortVersionString: "2.0"
         CFBundlePackageType: XPC!
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.content-extension

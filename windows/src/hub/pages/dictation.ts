@@ -5,11 +5,12 @@
 import { h, clear } from "../../views/dom";
 import { t } from "../../i18n/i18n";
 import { onEvent } from "../../core/bridge";
-import { FlowBridge, type FlowEntry, type FlowStats } from "../../core/flow";
+import { FlowBridge, type FlowEntry, type FlowStats, flowKeyId } from "../../core/flow";
 import type { HubContext } from "../shell";
 import { emptyState, glowCard } from "../hero";
 import { button, card, icon, iconButton, keyLabel, label, number, row, shortCount, toggle } from "../ui";
 import { modelsControl } from "./flowsettings";
+import { pageSave } from "../save";
 
 function dayKey(ms: number): string {
   const d = new Date(ms);
@@ -30,7 +31,7 @@ function time(ms: number): string {
 
 export async function dictationPage(page: HTMLElement, ctx: HubContext) {
   const status = ctx.status;
-  const key = keyLabel(status.keys === "wayland" ? "wayland" : status.prefs.key, status.platform);
+  const key = keyLabel(status.keys === "wayland" ? "wayland" : flowKeyId(status.prefs), status.platform);
   const ready = status.prefs.enabled && status.models.parakeet.state === "ready";
 
   const record = button(t("Record a call"), () => {
@@ -81,9 +82,11 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
       const tools = h("div", { class: "tools" },
         iconButton("copy", t("Copy"), () => void FlowBridge.copy(e.text)),
         iconButton("trash", t("Delete"), () => {
-          entries = entries.filter((x) => x.id !== e.id);
-          void FlowBridge.deleteEntry(e.id);
-          draw();
+          void saveHistory(async () => {
+            await FlowBridge.deleteEntry(e.id);
+            entries = entries.filter((x) => x.id !== e.id);
+            draw();
+          });
         }),
       );
       group!.append(h("div", { class: "hub-entry" }, when, h("div", { class: "words", text: e.text }), tools));
@@ -92,8 +95,10 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
 
   const left = h("div", { style: "display:flex;flex-direction:column;gap:10px;min-width:0" },
     h("div", { class: "hub-history-head" }, label(t("History")), search),
-    list,
   );
+  left.dataset.anchor = "flow.history";
+  const saveHistory = pageSave(left);
+  left.append(list);
   const right = h("div", { style: "display:flex;flex-direction:column;gap:14px" }, numbers(stats), promo(ctx));
   page.append(h("div", { class: "hub-columns" }, left, right));
   draw();
@@ -134,7 +139,7 @@ function promo(ctx: HubContext): HTMLElement {
 /** Until dictation works: turn it on, download the model. */
 function setup(ctx: HubContext): HTMLElement {
   const status = ctx.status;
-  const key = keyLabel(status.keys === "wayland" ? "wayland" : status.prefs.key, status.platform);
+  const key = keyLabel(status.keys === "wayland" ? "wayland" : flowKeyId(status.prefs), status.platform);
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
   body.append(
     h("div", { style: "font:700 17px var(--font)", text: t("Dictate anywhere on your computer") }),
