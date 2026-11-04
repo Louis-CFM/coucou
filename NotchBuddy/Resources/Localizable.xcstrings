@@ -101684,6 +101684,12 @@
             "state" : "translated",
             "value" : "O reconhecimento de voz travou — desligue e ligue a voz para reiniciar."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語音辨識停住了，請關閉再重新開啟語音以重設。"
+          }
         }
       }
     },
@@ -101700,6 +101706,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voz do ElevenLabs"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ElevenLabs 語音"
           }
         }
       }
@@ -101718,6 +101730,12 @@
             "state" : "translated",
             "value" : "Automática"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動"
+          }
         }
       }
     },
@@ -101734,6 +101752,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Expressividade"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表現力"
           }
         }
       }
@@ -101752,6 +101776,12 @@
             "state" : "translated",
             "value" : "Calma"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平靜"
+          }
         }
       }
     },
@@ -101768,6 +101798,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Normal"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標準"
           }
         }
       }
@@ -101786,6 +101822,12 @@
             "state" : "translated",
             "value" : "Animada"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "活潑"
+          }
         }
       }
     },
@@ -101796,6 +101838,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%2$@ %1$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %@"
           }
         }
       }
@@ -101808,6 +101856,12 @@
             "state" : "translated",
             "value" : "Falta a chave de API do %@. Configure-a nos Ajustes."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缺少 %@ 的 API 金鑰，請在「設定」中設定。"
+          }
         }
       }
     },
@@ -101818,6 +101872,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "há %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@前"
           }
         }
       }
@@ -101830,6 +101890,12 @@
             "state" : "translated",
             "value" : "Não foi possível ler %@ — o Coucou não mexeu nele."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法讀取 %@，Coucou 沒有更動它。"
+          }
         }
       }
     },
@@ -101840,6 +101906,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ mudou ou foi removido durante a entrada. Nada foi salvo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入期間 %@ 已變更或被移除，未儲存任何內容。"
           }
         }
       }
@@ -101852,6 +101924,12 @@
             "state" : "translated",
             "value" : "%@ mudou desde que foi conectado, então a chave não foi enviada. Desconecte e conecte de novo em Ajustes → Chat."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自連線後 %@ 已變更，因此未傳送金鑰。請在「設定 → 聊天」中中斷連線，再重新連線。"
+          }
         }
       }
     },
@@ -101862,6 +101940,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ contribuições"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 次貢獻"
           }
         }
       }
@@ -101874,6 +101958,12 @@
             "state" : "translated",
             "value" : "%@ desconectado."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 已中斷連線。"
+          }
         }
       }
     },
@@ -101884,6 +101974,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ falhando"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 個失敗"
           }
         }
       }
@@ -101896,6 +101992,12 @@
             "state" : "translated",
             "value" : "há %@ h"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 小時前"
+          }
         }
       }
     },
@@ -101906,6 +102008,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ não é um JSON válido — o Coucou não mexeu nele."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 不是有效的 JSON，Coucou 沒有更動它。"
           }
         }
       }
@@ -101918,6 +102026,12 @@
             "state" : "translated",
             "value" : "%@ está inacessível. Verifique sua conexão e sua chave de API."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法連上 %@，請檢查連線與 API 金鑰。"
+          }
         }
       }
     },
@@ -101928,6 +102042,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ não está instalado. Escolha outro modelo acima da caixa de chat."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未安裝 %@，請在聊天框上方選擇其他模型。"
           }
         }
       }
@@ -101940,6 +102060,12 @@
             "state" : "translated",
             "value" : "há %@ min"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 分鐘前"
+          }
         }
       }
     },
@@ -101950,6 +102076,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ no último ano"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "過去一年 %@"
           }
         }
       }
@@ -101962,6 +102094,12 @@
             "state" : "translated",
             "value" : "%@ no último ano · %@ repos"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "過去一年 %@ · %@ 個儲存庫"
+          }
         }
       }
     },
@@ -101972,6 +102110,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ sessões"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 個工作階段"
           }
         }
       }
@@ -101984,6 +102128,12 @@
             "state" : "translated",
             "value" : "O %@ iniciou no cmux. A sessão dele não aparece como pílula aqui."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 已在 cmux 中啟動，其工作階段不會在這裡顯示為標籤。"
+          }
         }
       }
     },
@@ -101995,6 +102145,12 @@
             "state" : "translated",
             "value" : "%@ · %@ falhando"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@ 個失敗"
+          }
         }
       }
     },
@@ -102005,6 +102161,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · em execução"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · 執行中"
           }
         }
       }
@@ -102214,6 +102376,24 @@
               }
             }
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "共 %lld 個字元"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "共 %lld 個字元"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -102251,6 +102431,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld passos"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld 個步驟"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld 個步驟"
                 }
               }
             }
@@ -102481,6 +102679,24 @@
               }
             }
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld 個等待中"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld 個等待中"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -102491,6 +102707,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld+ passos"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld+ 個步驟"
           }
         }
       }
@@ -102503,12 +102725,26 @@
             "state" : "translated",
             "value" : "%lld/4 vagas usadas"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已使用 %lld/4 個欄位"
+          }
         }
       }
     },
     "%llds" : {
       "extractionState" : "manual",
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 秒"
+          }
+        }
+      }
     },
     "(Approval asked: allowed for the session.)" : {
       "localizations" : {
@@ -102570,6 +102806,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(已请求批准:已在本次会话中允许。)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：本次工作階段已允許。）"
           }
         }
       }
@@ -102635,6 +102877,12 @@
             "state" : "translated",
             "value" : "(已请求批准:已允许一次。)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：已允許一次。）"
+          }
         }
       }
     },
@@ -102698,6 +102946,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(已请求批准:已始终允许。)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：已一律允許。）"
           }
         }
       }
@@ -102763,6 +103017,12 @@
             "state" : "translated",
             "value" : "(已请求批准:已在别处回复。)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：已在別處回覆。）"
+          }
         }
       }
     },
@@ -102826,6 +103086,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(已请求批准:已拒绝。)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：已拒絕。）"
           }
         }
       }
@@ -102891,6 +103157,12 @@
             "state" : "translated",
             "value" : "(已请求批准:Hermes 未接受该回复。)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：Hermes 未接受該回覆。）"
+          }
         }
       }
     },
@@ -102954,6 +103226,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(已请求批准:Hermes 已停止等待。)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：Hermes 已停止等待。）"
           }
         }
       }
@@ -103019,6 +103297,12 @@
             "state" : "translated",
             "value" : "(已请求批准:未及时回复。)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：未及時回覆。）"
+          }
         }
       }
     },
@@ -103082,6 +103366,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(已请求批准:回复可能未送达 Hermes。)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：回覆可能未送達 Hermes。）"
           }
         }
       }
@@ -103147,6 +103437,12 @@
             "state" : "translated",
             "value" : "(已请求批准:连接已断开。)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：連線已中斷。）"
+          }
         }
       }
     },
@@ -103211,6 +103507,12 @@
             "state" : "translated",
             "value" : "(已请求批准:已撤回。)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（已請求核准：已撤回。）"
+          }
         }
       }
     },
@@ -103221,6 +103523,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(O agente precisou de uma aprovação que o Coucou ainda não consegue dar. Aprove no app Hermes.)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（代理程式需要 Coucou 目前無法給予的核准，請在 Hermes App 中核准。）"
           }
         }
       }
@@ -103233,6 +103541,12 @@
             "state" : "translated",
             "value" : "(A resposta foi cortada: levou mais de 15 minutos.)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（回覆已中斷：耗時超過 15 分鐘。）"
+          }
         }
       }
     },
@@ -103243,6 +103557,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(A resposta foi cortada: passou do limite de tamanho.)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（回覆已中斷：超過大小上限。）"
           }
         }
       }
@@ -103255,6 +103575,12 @@
             "state" : "translated",
             "value" : "(A resposta foi interrompida.)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（回覆已被中斷。）"
+          }
         }
       }
     },
@@ -103265,6 +103591,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(A sessão anterior não estava mais disponível, então uma nova foi iniciada.)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（先前的工作階段已無法使用，因此已開啟新的工作階段。）"
           }
         }
       }
@@ -103277,6 +103609,12 @@
             "state" : "translated",
             "value" : "+ subagente"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+ 子代理"
+          }
         }
       }
     },
@@ -103287,6 +103625,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 contribuição"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 次貢獻"
           }
         }
       }
@@ -103299,6 +103643,12 @@
             "state" : "translated",
             "value" : "1 sessão"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 個工作階段"
+          }
         }
       }
     },
@@ -103309,6 +103659,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "5 horas"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5 小時"
           }
         }
       }
@@ -103321,6 +103677,12 @@
             "state" : "translated",
             "value" : "Há uma senha salva nas suas Chaves."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的鑰匙圈中已儲存一組密碼。"
+          }
         }
       }
     },
@@ -103331,6 +103693,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Um pedido ainda pode estar aberto no cmux. Responda por lá primeiro."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cmux 中可能仍有未回覆的請求，請先在那裡回覆。"
           }
         }
       }
@@ -103396,6 +103764,12 @@
             "state" : "translated",
             "value" : "始终允许"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一律允許"
+          }
         }
       }
     },
@@ -103460,6 +103834,12 @@
             "state" : "translated",
             "value" : "本次会话允许"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本次工作階段允許"
+          }
         }
       }
     },
@@ -103470,6 +103850,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "permitido"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允許"
           }
         }
       }
@@ -103535,6 +103921,12 @@
             "state" : "translated",
             "value" : "已始终允许。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已一律允許。"
+          }
         }
       }
     },
@@ -103598,6 +103990,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已在本次会话中允许。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本次工作階段已允許。"
           }
         }
       }
@@ -103663,6 +104061,12 @@
             "state" : "translated",
             "value" : "已允许一次。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允許一次。"
+          }
         }
       }
     },
@@ -103674,6 +104078,12 @@
             "state" : "translated",
             "value" : "respondeu"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已回覆"
+          }
         }
       }
     },
@@ -103684,6 +104094,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "respondido no terminal"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在終端機中回覆"
           }
         }
       }
@@ -103749,12 +104165,26 @@
             "state" : "translated",
             "value" : "已在别处回复。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在別處回覆。"
+          }
         }
       }
     },
     "API" : {
       "extractionState" : "manual",
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API"
+          }
+        }
+      }
     },
     "API error %@" : {
       "extractionState" : "manual",
@@ -103763,6 +104193,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erro de API %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 錯誤 %@"
           }
         }
       }
@@ -103775,6 +104211,12 @@
             "state" : "translated",
             "value" : "Chave de API (AI Studio)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 金鑰（AI Studio）"
+          }
         }
       }
     },
@@ -103785,6 +104227,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chave de API (API_SERVER_KEY deste perfil)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 金鑰（此設定檔的 API_SERVER_KEY）"
           }
         }
       }
@@ -103797,6 +104245,12 @@
             "state" : "translated",
             "value" : "Chave de API (sk-ant-…)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 金鑰（sk-ant-…）"
+          }
         }
       }
     },
@@ -103807,6 +104261,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chave de API (sk-…)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 金鑰（sk-…）"
           }
         }
       }
@@ -103819,6 +104279,12 @@
             "state" : "translated",
             "value" : "Falta a chave de API. Abra os Ajustes."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缺少 API 金鑰，請開啟設定。"
+          }
         }
       }
     },
@@ -103829,6 +104295,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adicionar"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增"
           }
         }
       }
@@ -103841,6 +104313,12 @@
             "state" : "translated",
             "value" : "Adicionar um agente"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增代理程式"
+          }
         }
       }
     },
@@ -103851,6 +104329,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Já existe um agente chamado %@."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已有名為 %@ 的代理程式。"
           }
         }
       }
@@ -103863,6 +104347,12 @@
             "state" : "translated",
             "value" : "Uma instrução enviada pelo iPhone (exige Face ID) continua sua última sessão do Claude Code em segundo plano, na pasta dela, com claude --resume. Este Mac verifica se há uma a cada 15 s enquanto isto estiver ativado."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "從 iPhone 傳送的指令（需要 Face ID）會在背景中，於其資料夾內使用 claude --resume 接續你上一個 Claude Code 工作階段。開啟此功能時，這台 Mac 每 15 秒檢查一次是否有新指令。"
+          }
         }
       }
     },
@@ -103873,6 +104363,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Outro agente já se chama %@."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "另一個代理程式已叫做 %@。"
           }
         }
       }
@@ -103885,6 +104381,12 @@
             "state" : "translated",
             "value" : "Responda ao pedido pendente primeiro."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請先回覆待處理的請求。"
+          }
         }
       }
     },
@@ -103895,6 +104397,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Respondido"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已回覆"
           }
         }
       }
@@ -103907,6 +104415,12 @@
             "state" : "translated",
             "value" : "API da Anthropic"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anthropic API"
+          }
         }
       }
     },
@@ -103917,6 +104431,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Falta a chave de API da Anthropic. Abra os Ajustes para configurá-la."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缺少 Anthropic API 金鑰，請開啟設定進行設定。"
           }
         }
       }
@@ -103929,6 +104449,12 @@
             "state" : "translated",
             "value" : "Hooks do Antigravity"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity hooks"
+          }
         }
       }
     },
@@ -103939,6 +104465,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "abr"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4月"
           }
         }
       }
@@ -103951,6 +104483,12 @@
             "state" : "translated",
             "value" : "Anexar a janela da frente"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "附加最前方視窗"
+          }
         }
       }
     },
@@ -103961,6 +104499,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ago"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "8月"
           }
         }
       }
@@ -103973,6 +104517,12 @@
             "state" : "translated",
             "value" : "Auto · %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動 · %@"
+          }
         }
       }
     },
@@ -103983,6 +104533,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auto · segue as estações (agora: %@)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動 · 隨季節變換（目前：%@）"
           }
         }
       }
@@ -103995,6 +104551,12 @@
             "state" : "translated",
             "value" : "De volta ao Coucou"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到 Coucou"
+          }
         }
       }
     },
@@ -104005,6 +104567,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível acessar o Hermes em %@. O gateway está rodando?"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法連上 %@ 的 Hermes，閘道有在執行嗎？"
           }
         }
       }
@@ -104017,6 +104585,12 @@
             "state" : "translated",
             "value" : "Cancelado"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已取消"
+          }
         }
       }
     },
@@ -104027,6 +104601,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível acessar %@. O servidor está rodando?"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法連上 %@，伺服器有在執行嗎？"
           }
         }
       }
@@ -104039,6 +104619,12 @@
             "state" : "translated",
             "value" : "Chat — outros provedores"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聊天 — 其他供應商"
+          }
         }
       }
     },
@@ -104049,6 +104635,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Confira a pasta / o comando nos Ajustes."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請檢查「設定」中的資料夾／指令。"
           }
         }
       }
@@ -104061,6 +104653,12 @@
             "state" : "translated",
             "value" : "Escolher"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇"
+          }
         }
       }
     },
@@ -104071,6 +104669,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escolher…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇…"
           }
         }
       }
@@ -104083,6 +104687,12 @@
             "state" : "translated",
             "value" : "Token clássico com escopo repo, ou refinado com acesso de leitura a Pull requests, Commit statuses e Actions."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "具有 repo 範圍的傳統權杖，或對 Pull requests、Commit statuses 與 Actions 具唯讀權限的精細權杖。"
+          }
         }
       }
     },
@@ -104090,6 +104700,12 @@
       "extractionState" : "manual",
       "localizations" : {
         "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Claude Code"
@@ -104105,6 +104721,12 @@
             "state" : "translated",
             "value" : "Hooks do Claude Code"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code hooks"
+          }
         }
       }
     },
@@ -104115,6 +104737,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plano Claude"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude 方案"
           }
         }
       }
@@ -104127,6 +104755,12 @@
             "state" : "translated",
             "value" : "Resposta do Claude"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude 的回覆"
+          }
         }
       }
     },
@@ -104137,6 +104771,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fechar a ilha (se não estiver fixada)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉動態島（未固定時）"
           }
         }
       }
@@ -104149,6 +104789,12 @@
             "state" : "translated",
             "value" : "Código"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "程式碼"
+          }
         }
       }
     },
@@ -104159,6 +104805,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hooks do Codex"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex hooks"
           }
         }
       }
@@ -104224,6 +104876,12 @@
             "state" : "translated",
             "value" : "收起"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收合"
+          }
         }
       }
     },
@@ -104234,6 +104892,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "As Ferramentas de Linha de Comando são necessárias, mas não estão instaladas. Execute: xcode-select --install"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要「命令列工具」，但尚未安裝。請執行：xcode-select --install"
           }
         }
       }
@@ -104246,6 +104910,12 @@
             "state" : "translated",
             "value" : "Confirmar e gravar"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "確認並寫入"
+          }
         }
       }
     },
@@ -104256,6 +104926,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conectar"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線"
           }
         }
       }
@@ -104268,6 +104944,12 @@
             "state" : "translated",
             "value" : "Conecte o %@ em Ajustes → Chat primeiro."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請先在「設定 → 聊天」中連線 %@。"
+          }
         }
       }
     },
@@ -104278,6 +104960,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conecte o LM Studio em Ajustes → Chat primeiro."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請先在「設定 → 聊天」中連線 LM Studio。"
           }
         }
       }
@@ -104290,6 +104978,12 @@
             "state" : "translated",
             "value" : "Conecte o Ollama em Ajustes → Chat primeiro."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請先在「設定 → 聊天」中連線 Ollama。"
+          }
         }
       }
     },
@@ -104300,6 +104994,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conecte um agente Hermes em Ajustes → Chat primeiro."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請先在「設定 → 聊天」中連線 Hermes 代理程式。"
           }
         }
       }
@@ -104312,6 +105012,12 @@
             "state" : "translated",
             "value" : "Conecte-se a um servidor de modelos local. Não precisa de chave de API."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線至本機模型伺服器，不需要 API 金鑰。"
+          }
         }
       }
     },
@@ -104322,6 +105028,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conectando…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線中…"
           }
         }
       }
@@ -104387,6 +105099,12 @@
             "state" : "translated",
             "value" : "与 Hermes 的连接已断开。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "與 Hermes 的連線已中斷。"
+          }
         }
       }
     },
@@ -104397,6 +105115,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conversa compactada."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "對話已壓縮。"
           }
         }
       }
@@ -104409,6 +105133,12 @@
             "state" : "translated",
             "value" : "Copiado!"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已複製！"
+          }
         }
       }
     },
@@ -104419,6 +105149,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar imagem"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "複製圖片"
           }
         }
       }
@@ -104431,6 +105167,12 @@
             "state" : "translated",
             "value" : "O Coucou não conseguiu abrir uma porta local para a entrada."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 無法開啟用於登入的本機連接埠。"
+          }
         }
       }
     },
@@ -104441,6 +105183,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Coucou não conseguiu preparar uma pasta privada para este início. Nada foi iniciado."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 無法為這次啟動準備私人資料夾，未啟動任何內容。"
           }
         }
       }
@@ -104453,6 +105201,12 @@
             "state" : "translated",
             "value" : "Não foi possível fazer backup de %@: %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法備份 %@：%@"
+          }
         }
       }
     },
@@ -104463,6 +105217,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível acessar o %@ em %@. Ele está rodando?"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法連上 %@（位於 %@），它有在執行嗎？"
           }
         }
       }
@@ -104475,6 +105235,12 @@
             "state" : "translated",
             "value" : "Personalizado…"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自訂…"
+          }
         }
       }
     },
@@ -104485,6 +105251,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "dez"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "12月"
           }
         }
       }
@@ -104497,6 +105269,12 @@
             "state" : "translated",
             "value" : "CI da branch padrão"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設分支 CI"
+          }
         }
       }
     },
@@ -104508,6 +105286,12 @@
             "state" : "translated",
             "value" : "Pasta padrão"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設資料夾"
+          }
         }
       }
     },
@@ -104518,6 +105302,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "negado"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已拒絕"
           }
         }
       }
@@ -104583,6 +105373,12 @@
             "state" : "translated",
             "value" : "已拒绝。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已拒絕。"
+          }
         }
       }
     },
@@ -104593,6 +105389,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desconectar"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中斷連線"
           }
         }
       }
@@ -104605,6 +105407,12 @@
             "state" : "translated",
             "value" : "Docs"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件"
+          }
         }
       }
     },
@@ -104615,6 +105423,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arraste para redimensionar o chat · duplo clique para expandir ou reduzir"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖曳可調整聊天大小 · 連按兩下可展開或縮小"
           }
         }
       }
@@ -104627,6 +105441,12 @@
             "state" : "translated",
             "value" : "Duplicado"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重複"
+          }
         }
       }
     },
@@ -104637,6 +105457,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Etapas anteriores ocultas"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已隱藏先前的步驟"
           }
         }
       }
@@ -104649,6 +105475,12 @@
             "state" : "translated",
             "value" : "E-mail enviado para %@."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已將郵件寄給 %@。"
+          }
         }
       }
     },
@@ -104659,6 +105491,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Digite uma URL como https://hermes.example.com."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請輸入類似 https://hermes.example.com 的網址。"
           }
         }
       }
@@ -104671,6 +105509,12 @@
             "state" : "translated",
             "value" : "Erro"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "錯誤"
+          }
         }
       }
     },
@@ -104681,6 +105525,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Expandir o chat"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展開聊天"
           }
         }
       }
@@ -104693,6 +105543,12 @@
             "state" : "translated",
             "value" : "Não foi possível carregar os modelos. Confira sua chave de API."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法載入模型，請檢查你的 API 金鑰。"
+          }
         }
       }
     },
@@ -104703,6 +105559,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "fev"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2月"
           }
         }
       }
@@ -104715,6 +105577,12 @@
             "state" : "translated",
             "value" : "Arquivo"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "檔案"
+          }
         }
       }
     },
@@ -104725,6 +105593,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Primeira mensagem…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第一個提示詞…"
           }
         }
       }
@@ -104737,6 +105611,12 @@
             "state" : "translated",
             "value" : "Hooks do Gemini CLI"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemini CLI hooks"
+          }
         }
       }
     },
@@ -104747,6 +105627,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Atalhos globais — funcionam em qualquer app"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全域快捷鍵 — 在任何 App 中都能使用"
           }
         }
       }
@@ -104759,6 +105645,12 @@
             "state" : "translated",
             "value" : "Ir para o alerta"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前往警示"
+          }
         }
       }
     },
@@ -104770,6 +105662,12 @@
             "state" : "translated",
             "value" : "Passa pelo relay do Coucou até o serviço de push da Apple. Só o nome e o estado do agente são enviados: nenhum nome de projeto, comando ou caminho."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "經由 Coucou relay 傳送到 Apple 推播服務。只會傳送代理程式的名稱與狀態，不含專案名稱、指令或路徑。"
+          }
         }
       }
     },
@@ -104777,6 +105675,12 @@
       "extractionState" : "manual",
       "localizations" : {
         "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google AI"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Google AI"
@@ -104792,6 +105696,12 @@
             "state" : "translated",
             "value" : "Tratado no Codex."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 Codex 處理。"
+          }
         }
       }
     },
@@ -104802,6 +105712,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tratado no Copilot CLI."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 Copilot CLI 處理。"
           }
         }
       }
@@ -104814,6 +105730,12 @@
             "state" : "translated",
             "value" : "Tratado no Cursor."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 Cursor 處理。"
+          }
         }
       }
     },
@@ -104824,6 +105746,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tratado no Hermes."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 Hermes 處理。"
           }
         }
       }
@@ -104836,6 +105764,12 @@
             "state" : "translated",
             "value" : "Tratado no Muse Code."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 Muse Code 處理。"
+          }
         }
       }
     },
@@ -104846,6 +105780,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tratado no VS Code."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 VS Code 處理。"
           }
         }
       }
@@ -104858,6 +105798,12 @@
             "state" : "translated",
             "value" : "Tratado no cmux."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 cmux 處理。"
+          }
         }
       }
     },
@@ -104868,6 +105814,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tratado no %@."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 %@ 處理。"
           }
         }
       }
@@ -104880,6 +105832,12 @@
             "state" : "translated",
             "value" : "Agentes Hermes"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 代理程式"
+          }
         }
       }
     },
@@ -104891,6 +105849,12 @@
             "state" : "translated",
             "value" : "O Hermes não respondeu a tempo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 未及時回覆。"
+          }
         }
       }
     },
@@ -104901,6 +105865,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Hermes não abriu uma sessão."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 未開啟工作階段。"
           }
         }
       }
@@ -104966,6 +105936,12 @@
             "state" : "translated",
             "value" : "Hermes 未接受该回复。请在 Hermes 应用中批准。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 未接受該回覆，請在 Hermes App 中核准。"
+          }
         }
       }
     },
@@ -105030,6 +106006,12 @@
             "state" : "translated",
             "value" : "Hermes 已结束会话。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 已結束工作階段。"
+          }
         }
       }
     },
@@ -105040,6 +106022,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Hermes não tem esse perfil nesta URL. Confira o nome do perfil."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此網址上的 Hermes 沒有這個設定檔，請檢查設定檔名稱。"
           }
         }
       }
@@ -105052,6 +106040,12 @@
             "state" : "translated",
             "value" : "O Hermes recusou a chave de API. Cada perfil tem a sua própria chave."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 拒絕了此 API 金鑰。每個設定檔都有自己的金鑰。"
+          }
         }
       }
     },
@@ -105062,6 +106056,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Hermes recusou a mensagem."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 拒絕了這則訊息。"
           }
         }
       }
@@ -105074,6 +106074,12 @@
             "state" : "translated",
             "value" : "O Hermes recusou a sessão. Entre de novo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 拒絕了此工作階段，請重新登入。"
+          }
         }
       }
     },
@@ -105084,6 +106090,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Hermes recusou o código de entrada. Tente de novo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 拒絕了登入碼，請再試一次。"
           }
         }
       }
@@ -105096,6 +106108,12 @@
             "state" : "translated",
             "value" : "O Hermes recusou a entrada."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 拒絕了登入。"
+          }
         }
       }
     },
@@ -105107,6 +106125,12 @@
             "state" : "translated",
             "value" : "A requisição ao Hermes falhou."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 請求失敗。"
+          }
         }
       }
     },
@@ -105117,6 +106141,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Hermes enviou mais dados do que o Coucou aceita."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 傳送的資料量超過 Coucou 可接受的範圍。"
           }
         }
       }
@@ -105182,6 +106212,12 @@
             "state" : "translated",
             "value" : "Hermes 已撤回该请求。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 已撤回該請求。"
+          }
         }
       }
     },
@@ -105192,6 +106228,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ocultar passos"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隱藏步驟"
           }
         }
       }
@@ -105204,6 +106246,12 @@
             "state" : "translated",
             "value" : "Hooks instalados — abra o Codex e rode /hooks, ou abra Hooks nos ajustes do app, para confiar neles"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks 已安裝，請開啟 Codex 並執行 /hooks，或在 App 設定中開啟 Hooks 以信任"
+          }
         }
       }
     },
@@ -105214,6 +106262,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hooks instalados — reinicie o Antigravity para ativar"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks 已安裝，請重新啟動 Antigravity 以啟用"
           }
         }
       }
@@ -105226,6 +106280,12 @@
             "state" : "translated",
             "value" : "Hooks instalados — reinicie o Gemini CLI para ativar"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks 已安裝，請重新啟動 Gemini CLI 以啟用"
+          }
         }
       }
     },
@@ -105236,6 +106296,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hooks desatualizados — atualize-os para responder às perguntas do Claude pelo notch"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks 已過期，請更新以在動態島中回答 Claude 的問題"
           }
         }
       }
@@ -105248,6 +106314,12 @@
             "state" : "translated",
             "value" : "Imagens"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "圖片"
+          }
         }
       }
     },
@@ -105258,6 +106330,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Instalar"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安裝"
           }
         }
       }
@@ -105270,6 +106348,12 @@
             "state" : "translated",
             "value" : "Instalar os hooks do Coucou em ~/.claude?"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要在 ~/.claude 安裝 Coucou hooks 嗎？"
+          }
         }
       }
     },
@@ -105280,6 +106364,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Instalar hooks"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安裝 hooks"
           }
         }
       }
@@ -105292,6 +106382,12 @@
             "state" : "translated",
             "value" : "Instalar relay"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安裝 relay"
+          }
         }
       }
     },
@@ -105302,6 +106398,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Interrompido."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已中斷。"
           }
         }
       }
@@ -105314,6 +106416,12 @@
             "state" : "translated",
             "value" : "Chave de API inválida (401)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 金鑰無效（401）"
+          }
         }
       }
     },
@@ -105324,6 +106432,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Atalhos da ilha — ativos quando a ilha está em foco"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動態島快捷鍵 — 動態島位於最前方時可使用"
           }
         }
       }
@@ -105336,6 +106450,12 @@
             "state" : "translated",
             "value" : "A chave dele não está ligada a este endereço. Desconecte e conecte de novo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它的金鑰未綁定此位址，請中斷連線後重新連線。"
+          }
         }
       }
     },
@@ -105346,6 +106466,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "jan"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1月"
           }
         }
       }
@@ -105358,6 +106484,12 @@
             "state" : "translated",
             "value" : "jul"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7月"
+          }
         }
       }
     },
@@ -105368,6 +106500,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ir para o terminal"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換至終端機"
           }
         }
       }
@@ -105380,6 +106518,12 @@
             "state" : "translated",
             "value" : "jun"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "6月"
+          }
         }
       }
     },
@@ -105390,6 +106534,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "LM Studio desconectado."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LM Studio 已中斷連線。"
           }
         }
       }
@@ -105402,6 +106552,12 @@
             "state" : "translated",
             "value" : "Comando de abertura"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "啟動指令"
+          }
         }
       }
     },
@@ -105412,6 +106568,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deixar meu iPhone enviar instruções ao Claude Code"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允許我的 iPhone 傳送指令至 Claude Code"
           }
         }
       }
@@ -105424,6 +106586,12 @@
             "state" : "translated",
             "value" : "Só letras, dígitos, espaços e _ . / = : - . Mantendo \"%@\"."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅限字母、數字、空格與 _ . / = : -。保留「%@」。"
+          }
         }
       }
     },
@@ -105434,6 +106602,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Carregar lista"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "載入清單"
           }
         }
       }
@@ -105446,6 +106620,12 @@
             "state" : "translated",
             "value" : "Modelos locais"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本機模型"
+          }
         }
       }
     },
@@ -105456,6 +106636,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erro do Mail: %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「郵件」錯誤：%@"
           }
         }
       }
@@ -105468,6 +106654,12 @@
             "state" : "translated",
             "value" : "mar"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3月"
+          }
         }
       }
     },
@@ -105478,6 +106670,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "mai"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5月"
           }
         }
       }
@@ -105490,6 +106688,12 @@
             "state" : "translated",
             "value" : "Reunião"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "會議"
+          }
         }
       }
     },
@@ -105500,6 +106704,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mochi na área de trabalho"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在桌面顯示／隱藏 Mochi"
           }
         }
       }
@@ -105512,6 +106722,12 @@
             "state" : "translated",
             "value" : "Modelo"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型"
+          }
         }
       }
     },
@@ -105522,6 +106738,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O modelo '%@' não está instalado."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未安裝模型「%@」。"
           }
         }
       }
@@ -105534,6 +106756,12 @@
             "state" : "translated",
             "value" : "ID do modelo (ex.: claude-sonnet-4-6)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型 ID（例如 claude-sonnet-4-6）"
+          }
         }
       }
     },
@@ -105544,6 +106772,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modelo não encontrado: %@. Escolha outro nos Ajustes."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "找不到模型：%@。請在「設定」中選擇其他模型。"
           }
         }
       }
@@ -105556,6 +106790,12 @@
             "state" : "translated",
             "value" : "Levar o Mochi para a Dynamic Island do meu iPhone quando o Mac estiver bloqueado"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac 鎖定時，讓 Mochi 移到 iPhone 的動態島"
+          }
         }
       }
     },
@@ -105566,6 +106806,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Silenciar / reativar sons"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "靜音／取消靜音"
           }
         }
       }
@@ -105578,6 +106824,12 @@
             "state" : "translated",
             "value" : "Nome no chat (opcional)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聊天中的名稱（選填）"
+          }
         }
       }
     },
@@ -105588,6 +106840,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Navegar pelos itens da lista"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瀏覽清單項目"
           }
         }
       }
@@ -105600,6 +106858,12 @@
             "state" : "translated",
             "value" : "Necessária só para iniciar um chat quando não há nenhuma sessão do cmux aberta. No cmux: Ajustes › Automação › Modo de controle do socket › Senha, defina uma senha e cole aqui. Ela fica guardada nas suas Chaves."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅在沒有開啟任何 cmux 工作階段時，才需要用它來開始聊天。請在 cmux 中前往 Settings › Automation › Socket control mode › Password，設定一組密碼，然後貼到這裡。密碼會儲存在你的鑰匙圈中。"
+          }
         }
       }
     },
@@ -105610,6 +106874,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nova conversa"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增聊天"
           }
         }
       }
@@ -105622,6 +106892,12 @@
             "state" : "translated",
             "value" : "Nova conversa no cmux"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 cmux 中新增聊天"
+          }
         }
       }
     },
@@ -105632,6 +106908,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nova conversa"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增對話"
           }
         }
       }
@@ -105644,6 +106926,12 @@
             "state" : "translated",
             "value" : "Pill seguinte / anterior"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一個／上一個標籤"
+          }
         }
       }
     },
@@ -105654,6 +106942,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Próxima pill"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一個標籤"
           }
         }
       }
@@ -105666,6 +106960,12 @@
             "state" : "translated",
             "value" : "Sem chave de API — adicione nos Ajustes."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有 API 金鑰，請在「設定」中新增。"
+          }
         }
       }
     },
@@ -105676,6 +106976,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não há hooks do Antigravity para remover."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有可移除的 Antigravity hooks。"
           }
         }
       }
@@ -105688,6 +106994,12 @@
             "state" : "translated",
             "value" : "Não há hooks do Codex para remover."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有可移除的 Codex hooks。"
+          }
         }
       }
     },
@@ -105698,6 +107010,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não há hooks do Gemini CLI para remover."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有可移除的 Gemini CLI hooks。"
           }
         }
       }
@@ -105710,6 +107028,12 @@
             "state" : "translated",
             "value" : "Sem conexão"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有連線"
+          }
         }
       }
     },
@@ -105720,6 +107044,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda não há modelos — baixe um no %@ primeiro."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前沒有模型，請先在 %@ 下載一個。"
           }
         }
       }
@@ -105732,6 +107062,12 @@
             "state" : "translated",
             "value" : "Ainda não há modelos. Baixe um no LM Studio primeiro."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前沒有模型，請先在 LM Studio 下載一個。"
+          }
         }
       }
     },
@@ -105742,6 +107078,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda não há modelos. Baixe um no Ollama primeiro."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前沒有模型，請先在 Ollama 下載一個。"
           }
         }
       }
@@ -105754,6 +107096,12 @@
             "state" : "translated",
             "value" : "Nenhuma sessão do cmux aberta. Adicione a senha do socket nos Ajustes ou inicie uma sessão no cmux."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有開啟的 cmux 工作階段。請在「設定」中新增 socket 密碼，或在 cmux 中啟動一個工作階段。"
+          }
         }
       }
     },
@@ -105764,6 +107112,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nenhuma senha salva."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未儲存密碼。"
           }
         }
       }
@@ -105776,6 +107130,12 @@
             "state" : "translated",
             "value" : "Sem texto na resposta."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回覆中沒有文字。"
+          }
         }
       }
     },
@@ -105786,6 +107146,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nenhuma sessão"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有工作階段"
           }
         }
       }
@@ -105798,6 +107164,12 @@
             "state" : "translated",
             "value" : "Não definida"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未設定"
+          }
         }
       }
     },
@@ -105808,6 +107180,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "nov"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "11月"
           }
         }
       }
@@ -105820,6 +107198,12 @@
             "state" : "translated",
             "value" : "out"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "10月"
+          }
         }
       }
     },
@@ -105830,6 +107214,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ollama desconectado."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ollama 已中斷連線。"
           }
         }
       }
@@ -105842,6 +107232,12 @@
             "state" : "translated",
             "value" : "O Ollama não está rodando. Abra-o e pergunte de novo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ollama 沒有在執行。請先開啟它，再問一次。"
+          }
         }
       }
     },
@@ -105852,6 +107248,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Só há suporte para URLs http:// e https://."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅支援 http:// 與 https:// 網址。"
           }
         }
       }
@@ -105869,6 +107271,12 @@
             "state" : "translated",
             "value" : "Abrir %@?"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要開啟 %@ 嗎？"
+          }
         }
       }
     },
@@ -105879,6 +107287,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abrir / fechar o diff atual"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟／關閉目前的差異"
           }
         }
       }
@@ -105891,6 +107305,12 @@
             "state" : "translated",
             "value" : "Abrir / fechar a ilha"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟／關閉動態島"
+          }
         }
       }
     },
@@ -105901,6 +107321,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abrir / fechar o guarda-roupa"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟／關閉衣櫥"
           }
         }
       }
@@ -105913,6 +107339,12 @@
             "state" : "translated",
             "value" : "Abrir diff"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟差異"
+          }
         }
       }
     },
@@ -105923,6 +107355,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abrir os Ajustes"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟設定"
           }
         }
       }
@@ -105935,6 +107373,12 @@
             "state" : "translated",
             "value" : "Abrir o chat"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟聊天"
+          }
         }
       }
     },
@@ -105945,6 +107389,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abrir o cmux"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 cmux"
           }
         }
       }
@@ -105957,12 +107407,26 @@
             "state" : "translated",
             "value" : "Abrir o item selecionado"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟所選項目"
+          }
         }
       }
     },
     "OpenAI" : {
       "extractionState" : "manual",
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI"
+          }
+        }
+      }
     },
     "Opens your browser to sign in with the server. Coucou keeps the session in the Keychain." : {
       "extractionState" : "manual",
@@ -105972,12 +107436,26 @@
             "state" : "translated",
             "value" : "Abre o navegador para entrar no servidor. O Coucou guarda a sessão nas Chaves."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟瀏覽器以登入伺服器。Coucou 會把工作階段儲存在鑰匙圈中。"
+          }
         }
       }
     },
     "PDF" : {
       "extractionState" : "manual",
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PDF"
+          }
+        }
+      }
     },
     "Payment" : {
       "extractionState" : "manual",
@@ -105986,6 +107464,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pagamento"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "付款"
           }
         }
       }
@@ -105998,6 +107482,12 @@
             "state" : "translated",
             "value" : "Fixar / desafixar a ilha"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "固定／取消固定動態島"
+          }
         }
       }
     },
@@ -106008,6 +107498,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uso do plano"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "方案用量"
           }
         }
       }
@@ -106020,6 +107516,12 @@
             "state" : "translated",
             "value" : "Pressione as teclas…"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請按下按鍵…"
+          }
         }
       }
     },
@@ -106030,6 +107532,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pill anterior"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一個標籤"
           }
         }
       }
@@ -106042,6 +107550,12 @@
             "state" : "translated",
             "value" : "Perfil"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定檔"
+          }
         }
       }
     },
@@ -106052,6 +107566,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Perfil (vazio = padrão)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定檔（留空 = 預設）"
           }
         }
       }
@@ -106064,6 +107584,12 @@
             "state" : "translated",
             "value" : "Nomes de perfil só usam letras, dígitos, - e _."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定檔名稱只能使用字母、數字、- 與 _。"
+          }
         }
       }
     },
@@ -106074,6 +107600,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Projetos"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "專案"
           }
         }
       }
@@ -106086,6 +107618,12 @@
             "state" : "translated",
             "value" : "Limite de uso atingido."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已達使用頻率上限。"
+          }
         }
       }
     },
@@ -106096,6 +107634,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pronto"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已就緒"
           }
         }
       }
@@ -106108,6 +107652,12 @@
             "state" : "translated",
             "value" : "Precisa reconectar"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要重新連線"
+          }
         }
       }
     },
@@ -106118,6 +107668,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reduzir o chat"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "縮小聊天"
           }
         }
       }
@@ -106130,6 +107686,12 @@
             "state" : "translated",
             "value" : "Relay: instalado"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay：已安裝"
+          }
         }
       }
     },
@@ -106140,6 +107702,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Relay: não instalado"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay：尚未安裝"
           }
         }
       }
@@ -106152,6 +107720,12 @@
             "state" : "translated",
             "value" : "Remover"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除"
+          }
         }
       }
     },
@@ -106162,6 +107736,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Renomear"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新命名"
           }
         }
       }
@@ -106174,6 +107754,12 @@
             "state" : "translated",
             "value" : "Responder…"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回覆…"
+          }
         }
       }
     },
@@ -106184,6 +107770,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Repositórios"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存庫"
           }
         }
       }
@@ -106196,6 +107788,12 @@
             "state" : "translated",
             "value" : "Erro do Resend — confira a chave de API e o remetente."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resend 錯誤，請檢查 API 金鑰與寄件者。"
+          }
         }
       }
     },
@@ -106206,6 +107804,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restaurar todos os padrões"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部還原為預設值"
           }
         }
       }
@@ -106218,6 +107822,12 @@
             "state" : "translated",
             "value" : "Renovando…"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在重置…"
+          }
         }
       }
     },
@@ -106228,6 +107838,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reiniciar agora"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "立即重新啟動"
           }
         }
       }
@@ -106240,6 +107856,12 @@
             "state" : "translated",
             "value" : "Resultado"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "結果"
+          }
         }
       }
     },
@@ -106250,6 +107872,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Revise o JSON abaixo antes de confirmar."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "確認前請檢閱下方的 JSON。"
           }
         }
       }
@@ -106262,6 +107890,12 @@
             "state" : "translated",
             "value" : "Linhas ocultas: %lld"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已隱藏的列數：%lld"
+          }
         }
       }
     },
@@ -106273,6 +107907,12 @@
             "state" : "translated",
             "value" : "Executa: %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "執行：%@"
+          }
         }
       }
     },
@@ -106283,6 +107923,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Salvar integrações"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存整合設定"
           }
         }
       }
@@ -106348,6 +107994,12 @@
             "state" : "translated",
             "value" : "始终允许"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一律允許"
+          }
         }
       }
     },
@@ -106411,6 +108063,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "仅此一次"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅此一次"
           }
         }
       }
@@ -106476,6 +108134,12 @@
             "state" : "translated",
             "value" : "本次会话"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本次工作階段"
+          }
         }
       }
     },
@@ -106540,6 +108204,12 @@
             "state" : "translated",
             "value" : "查看完整命令"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看完整指令"
+          }
         }
       }
     },
@@ -106550,6 +108220,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Selecionar"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選取"
           }
         }
       }
@@ -106562,6 +108238,12 @@
             "state" : "translated",
             "value" : "Selecione sua pasta .claude (pressione ⇧⌘. para mostrar arquivos ocultos)"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇你的 .claude 資料夾（按 ⇧⌘. 可顯示隱藏檔案）"
+          }
         }
       }
     },
@@ -106572,6 +108254,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enviar mensagem do chat"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "傳送聊天訊息"
           }
         }
       }
@@ -106584,6 +108272,12 @@
             "state" : "translated",
             "value" : "Envia suas sessões para o seu iCloud privado, para o app Coucou do iPhone. Nomes de projeto, comandos e perguntas são criptografados com suas chaves do iCloud. Desativar apaga tudo do iCloud."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將你的工作階段傳送到你的私人 iCloud，供 Coucou iPhone App 使用。專案名稱、指令和問題會以你的 iCloud 金鑰加密。關閉此功能會從 iCloud 刪除這些內容。"
+          }
         }
       }
     },
@@ -106594,6 +108288,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "set"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "9月"
           }
         }
       }
@@ -106606,6 +108306,12 @@
             "state" : "translated",
             "value" : "Sessão"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "工作階段"
+          }
         }
       }
     },
@@ -106616,6 +108322,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Defina uma pasta padrão nos Ajustes."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在「設定」中設定預設資料夾。"
           }
         }
       }
@@ -106628,6 +108340,12 @@
             "state" : "translated",
             "value" : "Defina o endereço do remetente nos Ajustes."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在「設定」中設定寄件者位址。"
+          }
         }
       }
     },
@@ -106638,6 +108356,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajustes — Coucou"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定 — Coucou"
           }
         }
       }
@@ -106650,6 +108374,12 @@
             "state" : "translated",
             "value" : "Mostrar no notch"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在瀏海中顯示"
+          }
         }
       }
     },
@@ -106660,6 +108390,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar minhas sessões de agentes no iPhone"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在我的 iPhone 上顯示代理程式工作階段"
           }
         }
       }
@@ -106672,6 +108408,12 @@
             "state" : "translated",
             "value" : "Mostrar passos"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示步驟"
+          }
         }
       }
     },
@@ -106682,6 +108424,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostra o uso do seu plano Claude (limites de 5 horas e semanal) no cabeçalho do notch. O Coucou adiciona um relay de status line em ~/.claude/settings.json. Se você já tem uma status line, ela continua funcionando como antes. Só para os planos Pro e Max."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在瀏海標題列顯示你的 Claude 方案用量（5 小時與每週上限）。Coucou 會在 ~/.claude/settings.json 加入狀態列 relay。如果你已有狀態列，它會照常運作。僅適用於 Pro 與 Max 方案。"
           }
         }
       }
@@ -106694,6 +108442,12 @@
             "state" : "translated",
             "value" : "Entrar"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入"
+          }
         }
       }
     },
@@ -106704,6 +108458,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entrar de novo"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再次登入"
           }
         }
       }
@@ -106716,6 +108476,12 @@
             "state" : "translated",
             "value" : "Entrada cancelada."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入已取消。"
+          }
         }
       }
     },
@@ -106726,6 +108492,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entrar exige https://. Só localhost aceita http:// simples."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入需要 https://，只有 localhost 可使用一般的 http://。"
           }
         }
       }
@@ -106738,6 +108510,12 @@
             "state" : "translated",
             "value" : "A entrada expirou. Tente de novo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入逾時，請再試一次。"
+          }
         }
       }
     },
@@ -106748,6 +108526,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entre de novo no %@ em Ajustes → Chat."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在「設定 → 聊天」中重新登入 %@。"
           }
         }
       }
@@ -106760,6 +108544,12 @@
             "state" : "translated",
             "value" : "A entrada foi rejeitada: a resposta não correspondia a este pedido."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入遭到拒絕：回應與此請求不符。"
+          }
         }
       }
     },
@@ -106770,6 +108560,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entrar…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入…"
           }
         }
       }
@@ -106782,6 +108578,12 @@
             "state" : "translated",
             "value" : "Encerrar sessão"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登出"
+          }
         }
       }
     },
@@ -106792,6 +108594,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sessão iniciada como %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已登入為 %@"
           }
         }
       }
@@ -106804,6 +108612,12 @@
             "state" : "translated",
             "value" : "Saiu de %@."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已登出 %@。"
+          }
         }
       }
     },
@@ -106814,6 +108628,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Senha do socket (opcional)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Socket 密碼（選填）"
           }
         }
       }
@@ -106826,6 +108646,12 @@
             "state" : "translated",
             "value" : "Espaço"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空白鍵"
+          }
         }
       }
     },
@@ -106836,6 +108662,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inicie novas conversas pelo notch, em um novo workspace do cmux."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在新的 cmux workspace 中，從瀏海開始新的聊天。"
           }
         }
       }
@@ -106848,6 +108680,12 @@
             "state" : "translated",
             "value" : "Inicie o servidor local no LM Studio e pergunte de novo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在 LM Studio 中啟動本機伺服器，然後再問一次。"
+          }
         }
       }
     },
@@ -106858,6 +108696,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Iniciando o claude…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在啟動 claude…"
           }
         }
       }
@@ -106870,6 +108714,12 @@
             "state" : "translated",
             "value" : "passo %lld"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "步驟 %lld"
+          }
         }
       }
     },
@@ -106880,6 +108730,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda enviando, tente de novo em instantes."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在傳送中，請稍後再試。"
           }
         }
       }
@@ -106892,6 +108748,12 @@
             "state" : "translated",
             "value" : "Ainda aguardando no Codex."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在 Codex 中等待。"
+          }
         }
       }
     },
@@ -106902,6 +108764,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda aguardando no Copilot CLI."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在 Copilot CLI 中等待。"
           }
         }
       }
@@ -106914,6 +108782,12 @@
             "state" : "translated",
             "value" : "Ainda aguardando no Cursor."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在 Cursor 中等待。"
+          }
         }
       }
     },
@@ -106924,6 +108798,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda aguardando no Hermes."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在 Hermes 中等待。"
           }
         }
       }
@@ -106936,6 +108816,12 @@
             "state" : "translated",
             "value" : "Ainda aguardando no Muse Code."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在 Muse Code 中等待。"
+          }
         }
       }
     },
@@ -106946,6 +108832,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda aguardando no VS Code."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在 VS Code 中等待。"
           }
         }
       }
@@ -106958,6 +108850,12 @@
             "state" : "translated",
             "value" : "Ainda aguardando no cmux."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在 cmux 中等待。"
+          }
         }
       }
     },
@@ -106968,6 +108866,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda aguardando no %@."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍在 %@ 中等待。"
           }
         }
       }
@@ -106980,6 +108884,12 @@
             "state" : "translated",
             "value" : "Ir para a pill pelo número"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "依編號切換標籤"
+          }
         }
       }
     },
@@ -106990,6 +108900,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conflito com o sistema"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "與系統快捷鍵衝突"
           }
         }
       }
@@ -107002,6 +108918,12 @@
             "state" : "translated",
             "value" : "Converse com seus próprios agentes Hermes pelo chat. Uma entrada por perfil; cada chave fica guardada nas Chaves."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在聊天中與你自己的 Hermes 代理程式對話。每個設定檔一筆項目，每組金鑰都儲存在鑰匙圈中。"
+          }
         }
       }
     },
@@ -107012,6 +108934,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O texto está no prompt, pressione Return no cmux."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字已在提示列中，請在 cmux 中按 Return。"
           }
         }
       }
@@ -107024,6 +108952,12 @@
             "state" : "translated",
             "value" : "Essa sessão não está mais aberta no cmux."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "該工作階段已不在 cmux 中開啟。"
+          }
         }
       }
     },
@@ -107034,6 +108968,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O endereço mudou durante a entrada. Entre de novo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入期間位址已變更，請重新登入。"
           }
         }
       }
@@ -107046,6 +108986,12 @@
             "state" : "translated",
             "value" : "O agente está ocupado. Tente de novo em instantes."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "代理程式正忙碌，請稍後再試。"
+          }
         }
       }
     },
@@ -107057,6 +109003,12 @@
             "state" : "translated",
             "value" : "O agente não devolveu texto."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "代理程式沒有回傳文字。"
+          }
         }
       }
     },
@@ -107067,6 +109019,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O agente parou com um erro."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "代理程式因錯誤而停止。"
           }
         }
       }
@@ -107132,6 +109090,12 @@
             "state" : "translated",
             "value" : "该代理已被移除。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "該代理程式已被移除。"
+          }
         }
       }
     },
@@ -107196,6 +109160,12 @@
             "state" : "translated",
             "value" : "回复可能未送达 Hermes。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回覆可能未送達 Hermes。"
+          }
         }
       }
     },
@@ -107206,6 +109176,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A mudança vale depois de reiniciar o Coucou."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "變更將在重新啟動 Coucou 後生效。"
           }
         }
       }
@@ -107218,6 +109194,12 @@
             "state" : "translated",
             "value" : "O chat abriu no cmux, mas o Coucou não conseguiu associá-lo, então sua mensagem não foi digitada. Ela voltou para o campo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聊天已在 cmux 中開啟，但 Coucou 無法與它配對，因此你的訊息未被輸入，已放回輸入欄。"
+          }
         }
       }
     },
@@ -107228,6 +109210,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A chave é enviada sem criptografia na sua rede local para quem responder a este nome. Use https:// ou um endereço IP de confiança."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此金鑰會在你的區域網路中以未加密方式傳送給回應此名稱的任何對象。請使用 https:// 或你信任的 IP 位址。"
           }
         }
       }
@@ -107245,6 +109233,12 @@
             "state" : "translated",
             "value" : "Leva a %@. O link aparece como “%@”."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連結目標為 %@，顯示為「%@」。"
+          }
         }
       }
     },
@@ -107255,6 +109249,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A resposta do servidor é grande demais para uma API Hermes."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器的回應對 Hermes API 而言太大。"
           }
         }
       }
@@ -107267,6 +109267,12 @@
             "state" : "translated",
             "value" : "A resposta do servidor é grande demais para um servidor Hermes."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器的回應對 Hermes 伺服器而言太大。"
+          }
         }
       }
     },
@@ -107277,6 +109283,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O turno terminou com erro."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這一輪因錯誤而結束。"
           }
         }
       }
@@ -107342,6 +109354,12 @@
             "state" : "translated",
             "value" : "该请求已不再等待。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "該請求已不再等待。"
+          }
         }
       }
     },
@@ -107352,6 +109370,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esta URL não responde como um servidor de API Hermes. Use o endereço da API, não o do painel."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此網址的回應不像 Hermes API 伺服器，請使用 API 位址，而不是儀表板的位址。"
           }
         }
       }
@@ -107364,6 +109388,12 @@
             "state" : "translated",
             "value" : "Este agente não aceita um primeiro prompt que comece com \"-\" ou seja só um nome de comando. Reescreva-o."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此代理程式無法接受以「-」開頭或僅為指令名稱的第一個提示詞，請改寫。"
+          }
         }
       }
     },
@@ -107374,6 +109404,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esta sessão ainda não se apresentou ao Coucou. O envio fica disponível depois do próximo prompt dela no cmux."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這個工作階段尚未向 Coucou 回報。在 cmux 中它的下一個提示詞送出後，才能傳送。"
           }
         }
       }
@@ -107439,6 +109475,12 @@
             "state" : "translated",
             "value" : "超时未回复。Hermes 已阻止该命令。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "逾時未回覆，Hermes 已封鎖該指令。"
+          }
         }
       }
     },
@@ -107450,6 +109492,12 @@
             "state" : "translated",
             "value" : "Para usar o Google Gemini ou a OpenAI no chat. As chaves ficam guardadas nas Chaves."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在聊天中使用 Google Gemini 或 OpenAI。金鑰會儲存在「鑰匙圈」中。"
+          }
         }
       }
     },
@@ -107460,6 +109508,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Para: %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收件人：%@"
           }
         }
       }
@@ -107525,6 +109579,12 @@
             "state" : "translated",
             "value" : "命令过长,无法在此批准(%lld 个字符)。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "太長，無法在此核准（%lld 個字元）。"
+          }
         }
       }
     },
@@ -107535,6 +109595,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Total de estrelas"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "星星總數"
           }
         }
       }
@@ -107547,6 +109613,12 @@
             "state" : "translated",
             "value" : "Resposta inesperada da API."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "非預期的 API 回應。"
+          }
         }
       }
     },
@@ -107557,6 +109629,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Formato de resposta inesperado"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "非預期的回應格式"
           }
         }
       }
@@ -107569,6 +109647,12 @@
             "state" : "translated",
             "value" : "Desinstalar"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解除安裝"
+          }
         }
       }
     },
@@ -107579,6 +109663,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desinstalar relay"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解除安裝 relay"
           }
         }
       }
@@ -107591,6 +109681,12 @@
             "state" : "translated",
             "value" : "Sem título"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未命名"
+          }
         }
       }
     },
@@ -107601,6 +109697,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Atualizar hooks"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新 hooks"
           }
         }
       }
@@ -107613,6 +109715,12 @@
             "state" : "translated",
             "value" : "Use https:// para este host. http:// só é permitido para localhost e endereços privados."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此主機請使用 https://。http:// 只允許用於 localhost 與私人位址。"
+          }
         }
       }
     },
@@ -107623,6 +109731,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use a chave secreta (sk_live_…, não pk_live_…)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請使用密鑰（sk_live_…，而非 pk_live_…）"
           }
         }
       }
@@ -107635,6 +109749,12 @@
             "state" : "translated",
             "value" : "Usado pelo chat. A lista vem da sua conta Anthropic."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聊天使用的模型。清單來自你的 Anthropic 帳戶。"
+          }
         }
       }
     },
@@ -107645,6 +109765,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aguardando uma resposta do Claude Code"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待 Claude Code 回覆"
           }
         }
       }
@@ -107657,6 +109783,12 @@
             "state" : "translated",
             "value" : "Aguardando o claude. Ele pode estar pedindo para confiar na pasta."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待 claude，它可能在詢問是否信任此資料夾。"
+          }
         }
       }
     },
@@ -107667,6 +109799,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aguardando o navegador… (clique para cancelar)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待瀏覽器…（點一下即可取消）"
           }
         }
       }
@@ -107679,6 +109817,12 @@
             "state" : "translated",
             "value" : "aguardando você"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等你處理"
+          }
         }
       }
     },
@@ -107689,6 +109833,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "aguardando sua resposta"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等你回覆"
           }
         }
       }
@@ -107701,6 +109851,12 @@
             "state" : "translated",
             "value" : "aguardando sua aprovação"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等你核准"
+          }
         }
       }
     },
@@ -107711,6 +109867,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "aguardando no terminal"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在終端機中等待"
           }
         }
       }
@@ -107723,6 +109885,12 @@
             "state" : "translated",
             "value" : "Semana"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每週"
+          }
         }
       }
     },
@@ -107733,6 +109901,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vai gravar:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup criado antes)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將寫入：\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json（會先建立備份）"
           }
         }
       }
@@ -107798,6 +109972,12 @@
             "state" : "translated",
             "value" : "已撤回请求"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已撤回請求"
+          }
         }
       }
     },
@@ -107808,6 +109988,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Workflow"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "工作流程"
           }
         }
       }
@@ -107820,6 +110006,12 @@
             "state" : "translated",
             "value" : "Workflows"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "工作流程"
+          }
         }
       }
     },
@@ -107830,6 +110022,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "trabalhando…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "處理中…"
           }
         }
       }
@@ -107842,6 +110040,12 @@
             "state" : "translated",
             "value" : "Você pode fechar esta janela e voltar ao app."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你可以關閉此視窗並回到 App。"
+          }
         }
       }
     },
@@ -107853,12 +110057,26 @@
             "state" : "translated",
             "value" : "tudo verde"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部通過"
+          }
         }
       }
     },
     "claude" : {
       "extractionState" : "manual",
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "claude"
+          }
+        }
+      }
     },
     "claude did not start in time." : {
       "extractionState" : "manual",
@@ -107867,6 +110085,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O claude não iniciou a tempo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "claude 未能及時啟動。"
           }
         }
       }
@@ -107879,6 +110103,12 @@
             "state" : "translated",
             "value" : "O claude iniciou em %@. Confira o prompt e pressione Enviar."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "claude 已在 %@ 中啟動，請檢查提示詞後按「傳送」。"
+          }
         }
       }
     },
@@ -107890,12 +110120,26 @@
             "state" : "translated",
             "value" : "O claude iniciou na nova sessão. Confira o prompt e pressione Enviar."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "claude 已在新的工作階段中啟動，請檢查提示詞後按「傳送」。"
+          }
         }
       }
     },
     "cmux" : {
       "extractionState" : "manual",
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cmux"
+          }
+        }
+      }
     },
     "cmux could not be verified." : {
       "extractionState" : "manual",
@@ -107904,6 +110148,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível verificar o cmux."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法驗證 cmux。"
           }
         }
       }
@@ -107916,6 +110166,12 @@
             "state" : "translated",
             "value" : "cmux não está rodando"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cmux 未在執行"
+          }
         }
       }
     },
@@ -107926,6 +110182,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cmux não está rodando."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cmux 未在執行。"
           }
         }
       }
@@ -107938,6 +110200,12 @@
             "state" : "translated",
             "value" : "cmux não instalado"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cmux 尚未安裝"
+          }
         }
       }
     },
@@ -107948,6 +110216,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cmux recusou o comando (código %@)."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cmux 拒絕了該指令（代碼 %@）。"
           }
         }
       }
@@ -107960,6 +110234,12 @@
             "state" : "translated",
             "value" : "cmux · resposta"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cmux · 回覆"
+          }
         }
       }
     },
@@ -107970,6 +110250,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "padrão"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設"
           }
         }
       }
@@ -107982,6 +110268,12 @@
             "state" : "translated",
             "value" : "falhando"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失敗"
+          }
         }
       }
     },
@@ -107992,6 +110284,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "arquivo"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "檔案"
           }
         }
       }
@@ -108004,12 +110302,26 @@
             "state" : "translated",
             "value" : "http:// para um nome: a chave será enviada sem criptografia na sua rede local."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "http:// 連到名稱：金鑰將在你的區域網路中以未加密方式傳送。"
+          }
         }
       }
     },
     "https://hermes.example.com" : {
       "extractionState" : "manual",
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "https://hermes.example.com"
+          }
+        }
+      }
     },
     "in %@ h %@" : {
       "extractionState" : "manual",
@@ -108018,6 +110330,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "em %@ h %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 小時 %@後"
           }
         }
       }
@@ -108030,6 +110348,12 @@
             "state" : "translated",
             "value" : "em %@ min"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 分鐘後"
+          }
         }
       }
     },
@@ -108040,6 +110364,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "agora mesmo"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剛剛"
           }
         }
       }
@@ -108052,6 +110382,12 @@
             "state" : "translated",
             "value" : "agora mesmo"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剛剛"
+          }
         }
       }
     },
@@ -108062,6 +110398,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "sem repos"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有儲存庫"
           }
         }
       }
@@ -108074,6 +110416,12 @@
             "state" : "translated",
             "value" : "agora"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在"
+          }
         }
       }
     },
@@ -108084,6 +110432,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "passando"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通過"
           }
         }
       }
@@ -108096,6 +110450,12 @@
             "state" : "translated",
             "value" : "em execução"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "執行中"
+          }
         }
       }
     },
@@ -108106,6 +110466,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "o servidor"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器"
           }
         }
       }
@@ -108118,6 +110484,12 @@
             "state" : "translated",
             "value" : "desconhecido"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知"
+          }
         }
       }
     },
@@ -108128,6 +110500,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "erro desconhecido"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知錯誤"
           }
         }
       }
@@ -108140,6 +110518,12 @@
             "state" : "translated",
             "value" : "sua conta"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的帳戶"
+          }
         }
       }
     },
@@ -108150,6 +110534,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "~/.codex/hooks.json mudou desde a prévia. Atualize e tente de novo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自預覽後 ~/.codex/hooks.json 已變更，請重新整理後再試一次。"
           }
         }
       }
@@ -108162,6 +110552,12 @@
             "state" : "translated",
             "value" : "~/.codex/hooks.json: \"hooks\" tem um tipo inesperado — o Coucou não mexeu nele."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~/.codex/hooks.json：「hooks」的類型不符合預期，Coucou 沒有更動它。"
+          }
         }
       }
     },
@@ -108172,6 +110568,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "~/.codex/hooks.json: \"hooks\"[\"%@\"] tem um tipo inesperado — o Coucou não mexeu nele."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~/.codex/hooks.json：「hooks」[\"%@\"] 的類型不符合預期，Coucou 沒有更動它。"
           }
         }
       }
@@ -108184,6 +110586,12 @@
             "state" : "translated",
             "value" : "~/.gemini/config/hooks.json mudou desde a prévia. Atualize e tente de novo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自預覽後 ~/.gemini/config/hooks.json 已變更，請重新整理後再試一次。"
+          }
         }
       }
     },
@@ -108194,6 +110602,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "~/.gemini/settings.json mudou desde a prévia. Atualize e tente de novo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自預覽後 ~/.gemini/settings.json 已變更，請重新整理後再試一次。"
           }
         }
       }
@@ -108206,6 +110620,12 @@
             "state" : "translated",
             "value" : "~/.gemini/settings.json: \"hooks\" tem um tipo inesperado — o Coucou não mexeu nele."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~/.gemini/settings.json：「hooks」的類型不符合預期，Coucou 沒有更動它。"
+          }
         }
       }
     },
@@ -108216,6 +110636,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "~/.gemini/settings.json: \"hooks\"[\"%@\"] tem um tipo inesperado — o Coucou não mexeu nele."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~/.gemini/settings.json：「hooks」[\"%@\"] 的類型不符合預期，Coucou 沒有更動它。"
           }
         }
       }
@@ -108228,6 +110654,12 @@
             "state" : "translated",
             "value" : "• subagente concluiu"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "• 子代理已完成"
+          }
         }
       }
     },
@@ -108238,6 +110670,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "→ %@ · %@ itens"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ · %@ 個項目"
           }
         }
       }
@@ -108250,6 +110688,12 @@
             "state" : "translated",
             "value" : "→ %@ · 1 item"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ · 1 個項目"
+          }
         }
       }
     },
@@ -108260,6 +110704,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "⚠ falhou"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⚠ 失敗"
           }
         }
       }
@@ -108272,6 +110722,12 @@
             "state" : "translated",
             "value" : "✓ Hooks do Antigravity instalados em ~/.gemini/config/hooks.json"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Antigravity hooks 已安裝至 ~/.gemini/config/hooks.json"
+          }
         }
       }
     },
@@ -108282,6 +110738,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Hooks do Antigravity removidos."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Antigravity hooks 已移除。"
           }
         }
       }
@@ -108294,6 +110756,12 @@
             "state" : "translated",
             "value" : "✓ Hooks do Codex instalados — rode /hooks no Codex, ou abra Hooks nos ajustes do app, para confiar neles."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Codex hooks 已安裝，請在 Codex 中執行 /hooks，或在 App 設定中開啟 Hooks 以信任。"
+          }
         }
       }
     },
@@ -108304,6 +110772,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Hooks do Codex removidos."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Codex hooks 已移除。"
           }
         }
       }
@@ -108316,6 +110790,12 @@
             "state" : "translated",
             "value" : "✓ Conectado · %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 已連線 · %@"
+          }
         }
       }
     },
@@ -108326,6 +110806,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Conectado · %@ modelos"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 已連線 · %@ 個模型"
           }
         }
       }
@@ -108338,6 +110824,12 @@
             "state" : "translated",
             "value" : "✓ Conectado · 1 modelo"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 已連線 · 1 個模型"
+          }
         }
       }
     },
@@ -108348,6 +110840,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Hooks do Gemini CLI instalados em ~/.gemini/settings.json"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Gemini CLI hooks 已安裝至 ~/.gemini/settings.json"
           }
         }
       }
@@ -108360,6 +110858,12 @@
             "state" : "translated",
             "value" : "✓ Hooks do Gemini CLI removidos."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Gemini CLI hooks 已移除。"
+          }
         }
       }
     },
@@ -108370,6 +110874,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Chave do Google salva."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Google 金鑰已儲存。"
           }
         }
       }
@@ -108382,6 +110892,12 @@
             "state" : "translated",
             "value" : "✓ Hooks instalados em ~/.claude/settings.json"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks 已安裝至 ~/.claude/settings.json"
+          }
         }
       }
     },
@@ -108392,6 +110908,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Hooks instalados — reinicie o VS Code para ativar."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks 已安裝，請重新啟動 VS Code 以啟用。"
           }
         }
       }
@@ -108404,6 +110926,12 @@
             "state" : "translated",
             "value" : "✓ Hooks removidos."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks 已移除。"
+          }
         }
       }
     },
@@ -108414,6 +110942,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Chaves das integrações salvas."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 整合金鑰已儲存。"
           }
         }
       }
@@ -108426,6 +110960,12 @@
             "state" : "translated",
             "value" : "✓ Chave salva."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 金鑰已儲存。"
+          }
         }
       }
     },
@@ -108436,6 +110976,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Chave da OpenAI salva."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ OpenAI 金鑰已儲存。"
           }
         }
       }
@@ -108448,6 +110994,12 @@
             "state" : "translated",
             "value" : "✓ Exibido como %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 顯示為 %@"
+          }
         }
       }
     },
@@ -108458,6 +111010,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Sessão iniciada · %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 已登入 · %@"
           }
         }
       }
@@ -108470,6 +111028,12 @@
             "state" : "translated",
             "value" : "✓ Status line instalada."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 狀態列已安裝。"
+          }
         }
       }
     },
@@ -108480,6 +111044,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Status line removida."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ 狀態列已移除。"
           }
         }
       }
@@ -108492,6 +111062,12 @@
             "state" : "translated",
             "value" : "❌ Nenhum projeto da Vercel encontrado."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "❌ 找不到 Vercel 專案。"
+          }
         }
       }
     },
@@ -108502,6 +111078,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "❌ Nenhum workflow do n8n encontrado."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "❌ 找不到 n8n 工作流程。"
           }
         }
       }
@@ -108514,6 +111096,12 @@
             "state" : "translated",
             "value" : "❌ Salve o token da Vercel primeiro."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "❌ 請先儲存 Vercel 權杖。"
+          }
         }
       }
     },
@@ -108524,6 +111112,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "❌ Salve a URL e a chave de API do n8n primeiro."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "❌ 請先儲存 n8n 的網址與 API 金鑰。"
           }
         }
       }
@@ -108536,6 +111130,12 @@
             "state" : "translated",
             "value" : "❌ Selecione a pasta .claude (oculta, na sua pasta Início)."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "❌ 請選擇 .claude 資料夾（位於你的個人目錄，預設隱藏）。"
+          }
         }
       }
     },
@@ -108546,6 +111146,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "❌ Inicialização: %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "❌ 啟動：%@"
           }
         }
       }
@@ -108558,6 +111164,12 @@
             "state" : "translated",
             "value" : "❌ Erro ao gravar: %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "❌ 寫入錯誤：%@"
+          }
         }
       }
     },
@@ -108568,6 +111180,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mensagem de voz"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語音訊息"
           }
         }
       }
@@ -108580,6 +111198,12 @@
             "state" : "translated",
             "value" : "Áudio"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音訊"
+          }
         }
       }
     },
@@ -108590,6 +111214,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Imagem"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "圖片"
           }
         }
       }
@@ -108602,6 +111232,12 @@
             "state" : "translated",
             "value" : "Vídeo"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "影片"
+          }
         }
       }
     },
@@ -108612,6 +111248,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Documento"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件"
           }
         }
       }
@@ -108624,6 +111266,12 @@
             "state" : "translated",
             "value" : "Arquivo: %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "檔案：%@"
+          }
         }
       }
     },
@@ -108634,6 +111282,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld arquivos"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 個檔案"
           }
         }
       }
@@ -108646,6 +111300,12 @@
             "state" : "translated",
             "value" : "Está no computador de %@. Esta conexão não alcança o arquivo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "檔案在 %@ 的電腦上，此連線無法存取。"
+          }
         }
       }
     },
@@ -108656,6 +111316,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Está no computador do agente. Esta conexão não alcança o arquivo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "檔案在代理程式的電腦上，此連線無法存取。"
           }
         }
       }
@@ -108668,6 +111334,12 @@
             "state" : "translated",
             "value" : "%@ · grande demais para baixar sozinho"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · 太大，無法自動下載"
+          }
         }
       }
     },
@@ -108678,6 +111350,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Grande demais para baixar sozinho."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "太大，無法自動下載。"
           }
         }
       }
@@ -108690,6 +111368,12 @@
             "state" : "translated",
             "value" : "Esperando um clique: esta conversa já baixou muito."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待點擊：此對話已下載了很多內容。"
+          }
         }
       }
     },
@@ -108700,6 +111384,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível salvar o arquivo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法儲存檔案。"
           }
         }
       }
@@ -108712,6 +111402,12 @@
             "state" : "translated",
             "value" : "Baixando · %lld %%"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載中 · %lld %%"
+          }
         }
       }
     },
@@ -108722,6 +111418,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível tocar o arquivo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法播放檔案。"
           }
         }
       }
@@ -108734,6 +111436,12 @@
             "state" : "translated",
             "value" : "Baixando…"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載中…"
+          }
         }
       }
     },
@@ -108744,6 +111452,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível baixar o arquivo."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法下載檔案。"
           }
         }
       }
@@ -108756,6 +111470,12 @@
             "state" : "translated",
             "value" : "Tentar de novo"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再試一次"
+          }
         }
       }
     },
@@ -108766,6 +111486,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arquivo não encontrado no servidor."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器上找不到檔案。"
           }
         }
       }
@@ -108778,6 +111504,12 @@
             "state" : "translated",
             "value" : "O servidor recusou este arquivo."
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器拒絕了此檔案。"
+          }
         }
       }
     },
@@ -108788,6 +111520,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar no Finder"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Finder 中顯示"
           }
         }
       }
@@ -108800,6 +111538,12 @@
             "state" : "translated",
             "value" : "Reproduzir / Pausar"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放／暫停"
+          }
         }
       }
     },
@@ -108811,6 +111555,12 @@
             "state" : "translated",
             "value" : "Abre %@ no navegador"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在瀏覽器中開啟 %@"
+          }
         }
       }
     },
@@ -108821,6 +111571,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Baixar"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載"
           }
         }
       }
@@ -108886,6 +111642,12 @@
             "state" : "translated",
             "value" : "仅显示开头"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅顯示開頭"
+          }
         }
       }
     },
@@ -108949,6 +111711,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hermes 可能隐藏了此命令的一部分。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hermes 可能隱藏了此指令的一部分。"
           }
         }
       }
@@ -109014,6 +111782,12 @@
             "state" : "translated",
             "value" : "本次会话允许:%@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本次工作階段允許：%@"
+          }
         }
       }
     },
@@ -109077,6 +111851,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "始终允许:%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一律允許：%@"
           }
         }
       }
@@ -109286,12 +112066,38 @@
               }
             }
           }
+        },
+        "zh-Hant" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld 行"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld 行"
+                }
+              }
+            }
+          }
         }
       }
     },
     "Codex" : {
       "extractionState" : "manual",
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex"
+          }
+        }
+      }
     },
     "finished" : {
       "localizations" : {
@@ -109305,6 +112111,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "terminou"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成"
           }
         }
       }
