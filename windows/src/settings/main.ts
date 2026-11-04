@@ -611,7 +611,7 @@ const CLOUD: CloudDef[] = [
   { id: "google", name: "Google AI", placeholder: "AIza…", where: "aistudio.google.com" },
   { id: "openai", name: "OpenAI", placeholder: "sk-…", where: "platform.openai.com" },
   { id: "openrouter", name: "OpenRouter", placeholder: "sk-or-…", where: "openrouter.ai/keys" },
-  { id: "requesty", name: "Requesty", placeholder: "sk-…", where: "app.requesty.ai/api-keys" },
+  { id: "requesty", name: "Requesty", placeholder: "rqsty-…", where: "app.requesty.ai/api-keys" },
 ];
 
 function chatProvidersSection(
