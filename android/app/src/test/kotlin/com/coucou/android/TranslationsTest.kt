@@ -16,6 +16,7 @@ class TranslationsTest {
     private val files = File("../i18n/translations").listFiles { f -> f.extension == "json" }!!.sortedBy { it.name }
     private fun placeholders(s: String) = Regex("""%(?:\d+\$)?[sd%]""").findAll(s).map { it.value }.sorted().toList()
     private val categories = mapOf(
+        "it" to listOf("one", "many", "other"),
         "fr" to listOf("one", "many", "other"), "es" to listOf("one", "many", "other"), "pt-BR" to listOf("one", "many", "other"),
         "zh-Hans" to listOf("other"), "hi" to listOf("one", "other"), "bn" to listOf("one", "other"),
         "ru" to listOf("one", "few", "many", "other"), "id" to listOf("other"), "ar" to listOf("zero", "one", "two", "few", "many", "other"),

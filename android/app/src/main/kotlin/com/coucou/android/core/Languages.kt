@@ -12,6 +12,7 @@ object Languages {
     const val SYSTEM = ""
 
     val ALL = listOf(
+        Language("it", "Italiano"),
         Language("fr", "Français"),
         Language("es", "Español"),
         Language("pt-BR", "Português (Brasil)"),
