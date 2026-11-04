@@ -155,6 +155,10 @@ pub fn candidate_paths(home: &str) -> Vec<CandidatePath> {
         path: home_path.join(".cursor").join("mcp.json"),
         source: MCPServerSource::Cursor,
     });
+    paths.push(CandidatePath {
+        path: home_path.join(".codeium").join("windsurf").join("mcp_config.json"),
+        source: MCPServerSource::Windsurf,
+    });
 
     paths
 }
@@ -214,6 +218,7 @@ fn parse_server_dict(
             continue;
         };
 
+        let is_sse_type = server_obj.get("type").and_then(Value::as_str) == Some("sse");
         if let Some(url_val) = server_obj.get("url").and_then(Value::as_str) {
             let norm_url = normalise_value(url_val, home, env);
             let mut headers = HashMap::new();
@@ -224,10 +229,10 @@ fn parse_server_dict(
                     }
                 }
             }
-            let is_sse = norm_url.to_ascii_lowercase().ends_with("/sse");
+            let is_sse = is_sse_type || norm_url.to_ascii_lowercase().ends_with("/sse");
             let mut notes = Vec::new();
             if is_sse {
-                notes.push("Legacy SSE transport is deprecated; streamable HTTP POST is recommended.".into());
+                notes.push("Legacy SSE transport is not supported; streamable HTTP POST is required.".into());
             }
 
             result.push(MCPServerConfig {
@@ -237,6 +242,18 @@ fn parse_server_dict(
                 transport: MCPTransport::Http { url: norm_url, headers },
                 is_enabled: !is_sse,
                 notes,
+            });
+            continue;
+        }
+
+        if is_sse_type {
+            result.push(MCPServerConfig {
+                id: name.to_ascii_lowercase().replace(' ', "-"),
+                name: name.clone(),
+                sources: vec![source.clone()],
+                transport: MCPTransport::Http { url: String::new(), headers: HashMap::new() },
+                is_enabled: false,
+                notes: vec!["Legacy SSE transport is not supported.".into()],
             });
             continue;
         }

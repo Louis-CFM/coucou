@@ -78,8 +78,11 @@ pub fn parse_response(line: &str) -> Option<(Option<u64>, Option<Value>, Option<
     Some((id, result, error))
 }
 
-/// Determines if a tool operation is purely read-only vs mutating based on name and schema hints.
-pub fn is_read_only(name: &str, description: &str) -> bool {
+/// Determines if a tool operation is purely read-only vs mutating based on name, annotations, and schema hints.
+pub fn is_read_only(name: &str, description: &str, read_only_hint: Option<bool>) -> bool {
+    if let Some(hint) = read_only_hint {
+        return hint;
+    }
     let lower_name = name.to_ascii_lowercase();
     let lower_desc = description.to_ascii_lowercase();
 
@@ -109,7 +112,11 @@ pub fn parse_tools_list(result: &Value, server_id: &str, server_name: &str) -> V
         };
         let desc = item.get("description").and_then(Value::as_str).unwrap_or("");
         let schema = item.get("inputSchema").cloned().unwrap_or_else(|| json!({ "type": "object" }));
-        let read_only = is_read_only(name, desc);
+        let read_only_hint = item
+            .get("readOnlyHint")
+            .and_then(Value::as_bool)
+            .or_else(|| item.get("annotations").and_then(|a| a.get("readOnlyHint")).and_then(Value::as_bool));
+        let read_only = is_read_only(name, desc, read_only_hint);
 
         out.push(MCPTool {
             id: format!("mcp__{server_id}__{name}"),
@@ -197,9 +204,11 @@ mod tests {
 
     #[test]
     fn read_only_heuristic_detection() {
-        assert!(is_read_only("get_user", "Returns user details"));
-        assert!(is_read_only("list_files", ""));
-        assert!(!is_read_only("delete_file", "Removes a file from disk"));
-        assert!(!is_read_only("execute_query", "Runs arbitrary SQL"));
+        assert!(is_read_only("get_user", "Returns user details", None));
+        assert!(is_read_only("list_files", "", None));
+        assert!(!is_read_only("delete_file", "Removes a file from disk", None));
+        assert!(!is_read_only("execute_query", "Runs arbitrary SQL", None));
+        assert!(is_read_only("custom_run", "Runs read only diagnostics", Some(true)));
+        assert!(!is_read_only("get_user", "Safe name but mutated in backend", Some(false)));
     }
 }
