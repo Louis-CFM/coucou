@@ -6,10 +6,10 @@ import Foundation
 // `vX.Y.Z` with a `Coucou.zip`; Windows, Linux and Android have their own prefixed tags.
 
 enum MacUpdate {
-    static let owner = "caionorder"
+    static let owner = "Louis-CFM"
     static let repo = "coucou"
-    /// Where the release notes (What's new, the "release page" link) live: the upstream project, whose notes the app shows.
-    /// `owner` is where the fork looks for its own releases; the fork has no tags of its own, so links to it would 404.
+    /// Where the release notes live (What's new, the "release page" link). Kept apart from `owner`,
+    /// which is where the app looks for its releases, so a fork can point `owner` at itself and still show these notes.
     static let notesOwner = "Louis-CFM"
     static let releasesURL = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases?per_page=20")!
     /// What the downloaded app must be signed as: Coucou's bundle id, Louis's Developer ID team.
