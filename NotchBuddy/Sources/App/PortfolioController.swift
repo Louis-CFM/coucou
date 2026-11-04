@@ -892,9 +892,8 @@ private enum WalletFetcher {
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200 else { throw FetchError.networkError }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let dataArr = json["data"] as? [[String: Any]] else { throw FetchError.parseError }
-        let sun = dataArr.first.flatMap { $0["balance"] as? Int } ?? 0
-        return [PortfolioHolding(symbol: "TRX", amount: Double(sun) / 1e6, price: 0)]
+              json["data"] is [[String: Any]] else { throw FetchError.parseError }
+        return TronAccount.parse(json).map { PortfolioHolding(symbol: $0.symbol, amount: $0.amount, price: 0) }
     }
 
     // MARK: XRP Ledger
