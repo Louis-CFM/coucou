@@ -66,6 +66,14 @@ export default defineConfig({
         mochi: resolve(__dirname, "mochi.html"),
         pill: resolve(__dirname, "pill.html"),
       },
+      output: {
+        // The interface's strings in every language (src/i18n/*.json) make a
+        // chunk of their own, kept apart from the code that changes more often.
+        manualChunks: (id) => (/[\\/]src[\\/]i18n[\\/][^\\/]+\.json$/.test(id) ? "i18n" : undefined),
+      },
     },
+    // That chunk is about 0.8 MB and loaded from disk, never downloaded: the
+    // default 500 kB warning is meant for web pages.
+    chunkSizeWarningLimit: 1200,
   },
 });

@@ -160,6 +160,57 @@ enum FlowKeyLogicTests {
             check("too little text to call it a fresh start", !DictationTranscript.isRestart(previous: "one two", new: "three"))
         }
 
+        print("\nCustom shortcut: the chord")
+        do {
+            // ⌃ ⌥ D: left ⌃ 59, left ⌥ 58, D 2.
+            var c = FlowChord(keys: [59, 58, 2])
+            check("one modifier: not yet", c.press(59) == .none)
+            check("the letter on top of the shortcut's modifier is kept from the app", c.swallows(2))
+            check("two of three: not yet", c.press(58) == .none)
+            check("the last key completes the chord", c.swallows(2) && c.press(2) == .down)
+            check("key repeat while held is swallowed", c.swallows(2))
+            check("a repeat does nothing", c.press(2) == .none)
+            check("releasing any key of it ends it", c.release(58) == .up)
+            check("releasing the others does nothing more", c.release(59) == .none && c.release(2) == .none)
+
+            var plain = FlowChord(keys: [59, 58, 2])
+            check("plain typing of the letter goes through", !plain.swallows(2))
+            _ = plain.press(56)                                  // ⇧ held
+            check("the letter with ⇧ (a capital) goes through", !plain.swallows(2))
+
+            var extra = FlowChord(keys: [59, 58])
+            _ = extra.press(59); _ = extra.press(55)             // ⌃ and ⌘
+            check("an extra key held: no chord", extra.press(58) == .none)
+            check("a release of a key never pressed does nothing", extra.release(61) == .none)
+
+            var one = FlowChord(keys: [105])                     // F13 alone
+            check("a lone F-key is swallowed", one.swallows(105))
+            check("and is the chord", one.press(105) == .down)
+
+            var lost = FlowChord(keys: [59, 58])
+            _ = lost.press(59); _ = lost.press(58)
+            check("a release that never came still ends it", lost.forget(where: { $0 == 58 }) == .up)
+            check("forgotten keys are no longer held", lost.held == [59])
+        }
+
+        print("\nCustom shortcut: what it may be")
+        do {
+            check("⌃ ⌥ D is fine", FlowShortcutRules.problem([59, 58, 2]) == nil)
+            check("right ⌥ alone is fine", FlowShortcutRules.problem([61]) == nil)
+            check("fn alone is fine", FlowShortcutRules.problem([63]) == nil)
+            check("F13 alone is fine", FlowShortcutRules.problem([105]) == nil)
+            check("⌃ ⌥ alone is fine", FlowShortcutRules.problem([59, 58]) == nil)
+            check("a letter alone needs a modifier", FlowShortcutRules.problem([2]) == .needsModifier)
+            check("⇧ + a letter still types", FlowShortcutRules.problem([56, 2]) == .needsModifier)
+            check("Space needs a modifier", FlowShortcutRules.problem([49]) == .needsModifier)
+            check("left ⌘ alone is too common", FlowShortcutRules.problem([55]) == .tooCommon)
+            check("Esc is not allowed", FlowShortcutRules.problem([59, 53]) == .forbiddenKey)
+            check("Caps Lock is not allowed", FlowShortcutRules.problem([57]) == .forbiddenKey)
+            check("Return is not allowed (it saves)", FlowShortcutRules.problem([59, 36]) == .forbiddenKey)
+            check("seven keys are too many", FlowShortcutRules.problem([59, 58, 55, 56, 2, 3, 4]) == .tooMany)
+            check("six keys are fine", FlowShortcutRules.problem([59, 58, 55, 56, 2, 3]) == nil)
+        }
+
         if failures == 0 {
             print("\nAll tests passed.")
             exit(0)

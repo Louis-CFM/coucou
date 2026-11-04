@@ -53,6 +53,10 @@ cpal = "0.18"
 # the raw DEFLATE decoder only, already in the tree through png (the same 0.8.9), so nothing new is
 # downloaded or compiled. MIT/Zlib/Apache-2.0.
 miniz_oxide = "0.8"
+# The chat's mail merge cuts a PDF into one page per recipient and reads each page's text
+# (mail/pdf.rs), as the Mac does with PDFKit; Windows has no PDF library of its own. MIT, pure
+# Rust, default features (clock, rayon) off.
+lopdf = { version = "0.46", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

@@ -7,7 +7,8 @@ import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
-  | "ollama" | "lmstudio" | "custom";
+  | "ollama" | "lmstudio" | "custom"
+  | "cursor" | "copilot";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -31,7 +32,13 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
+  // Only through the user's own subscription (cli_relay.rs): no key, no address.
+  { id: "cursor", name: "Cursor", accent: "#A1A1AA", key: null, urlField: null, defaultModel: "", prefer: null },
+  { id: "copilot", name: "GitHub Copilot", accent: "#8B5CF6", key: null, urlField: null, defaultModel: "", prefer: null },
 ];
+
+/** Answered only through the user's subscription, switched on in Settings → Chat. */
+export const SUBSCRIPTION_ONLY: readonly ProviderId[] = ["cursor", "copilot"];
 
 /** Credential store entry of the custom server's optional key. */
 export const CUSTOM_SERVER_KEY = "openai-compatible-key";
@@ -55,13 +62,17 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
 
 /**
  * The chips of the picker: every cloud provider (one without a key says so
- * when picked), and a model server once it is connected — or while it is the
- * active one, so the picker never hides where the chat goes.
+ * when picked), a model server once it is connected, and Cursor or Copilot
+ * once their subscription is on (`subscribed`: the providers whose switch is
+ * on, from Rust) — or while it is the active one, so the picker never hides
+ * where the chat goes.
  */
-export function visibleProviders(settings: Settings): ProviderDef[] {
-  return PROVIDERS.filter(
-    (p) => !p.urlField || settings[p.urlField] !== "" || settings.chatProvider === p.id,
-  );
+export function visibleProviders(settings: Settings, subscribed: ReadonlySet<string> = new Set()): ProviderDef[] {
+  return PROVIDERS.filter((p) => {
+    if (settings.chatProvider === p.id) return true;
+    if (SUBSCRIPTION_ONLY.includes(p.id)) return subscribed.has(p.id) || settings.chatSubscriptions?.[p.id] === true;
+    return !p.urlField || settings[p.urlField] !== "";
+  });
 }
 
 /** The model to keep once the list arrives: the saved one if offered, else a sensible one. */

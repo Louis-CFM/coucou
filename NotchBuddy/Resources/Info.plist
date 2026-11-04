@@ -22,6 +22,8 @@
 		<string>fr</string>
 		<string>hi</string>
 		<string>id</string>
+		<string>ja</string>
+		<string>ko</string>
 		<string>pt-BR</string>
 		<string>ru</string>
 		<string>th</string>
@@ -34,9 +36,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.5.3</string>
+	<string>0.5.8</string>
 	<key>CFBundleVersion</key>
-	<string>20</string>
+	<string>25</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>

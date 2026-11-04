@@ -179,9 +179,9 @@ final class RecapStore {
         let allowed = decisions.filter { $0.decision == "allow" || $0.decision == "always" }.count
         let denied  = decisions.filter { $0.decision == "deny" }.count
 
-        // Top agent by session count
+        // Top agent by session count (a session's own pill counts for its client)
         var countByAgent: [String: Int] = [:]
-        for t in turns { countByAgent[t.pillId, default: 0] += 1 }
+        for t in turns { countByAgent[PillCatalog.basePillId(t.pillId), default: 0] += 1 }
         let topAgentId = countByAgent.max { $0.value < $1.value }?.key
         let topAgent = topAgentId.flatMap { PillCatalog.definition(for: $0)?.name } ?? topAgentId
 
