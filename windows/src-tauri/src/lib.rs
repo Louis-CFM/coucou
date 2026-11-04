@@ -333,7 +333,7 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
     {
-        if platform::focus_session_window(&owners, &folder) {
+        if platform::focus_session_window(&owners, &folder) || in_herdr {
             return true;
         }
         open_in_vscode(path)
@@ -344,7 +344,7 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) {
+            if !platform::focus_session_window(&owners, &folder) && !in_herdr {
                 open_in_vscode(path);
             }
         });

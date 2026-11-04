@@ -1,5 +1,5 @@
-// "Open terminal" for a session inside herdr: the window comes forward as for
-// any terminal (session_window.rs), then herdr selects the session's pane.
+// "Open terminal" for a session inside herdr: herdr selects the session's pane,
+// and the window comes forward as for any terminal (session_window.rs).
 //
 // The relay forwards HERDR_PANE_ID, HERDR_BIN_PATH and, in WSL, WSL_DISTRO_NAME.
 // The binary's full path is needed because `wsl.exe -e` starts no login shell,
@@ -38,6 +38,11 @@ pub fn from_payload(payload: &Value) -> Option<Pane> {
     if !valid_name(id) || !valid_bin(bin) || !(distro.is_empty() || valid_name(distro)) {
         return None;
     }
+    // Without a distro, Windows would read `/usr/bin/herdr` as `C:\usr\bin\herdr`,
+    // a folder any user can create.
+    if cfg!(windows) && distro.is_empty() {
+        return None;
+    }
     Some(Pane {
         id: id.to_string(),
         bin: bin.to_string(),
@@ -62,6 +67,8 @@ fn remember(session: &str, pane: Pane) {
     let mut list = PANES.lock().unwrap_or_else(|e| e.into_inner());
     list.retain(|(s, _)| s != session);
     list.push((session.to_string(), pane));
+    let excess = list.len().saturating_sub(crate::session_window::MAX_SESSIONS);
+    list.drain(..excess);
 }
 
 fn forget(session: &str) {
@@ -73,7 +80,7 @@ fn lookup(session: &str) -> Option<Pane> {
     list.iter().find(|(s, _)| s == session).map(|(_, pane)| pane.clone())
 }
 
-/// The program and its arguments. `wsl.exe -e` runs the binary without a shell.
+/// `wsl.exe -e` runs the binary without a shell, so no shell parses the arguments.
 fn command_args(pane: &Pane) -> (String, Vec<String>) {
     let focus = ["agent".to_string(), "focus".to_string(), pane.id.clone()];
     match &pane.distro {
@@ -88,6 +95,8 @@ fn command_args(pane: &Pane) -> (String, Vec<String>) {
 
 /// Asks herdr to select the session's pane. False for a session that does not
 /// run in herdr, or when herdr could not be started.
+// shortcut: true once herdr starts, not once it succeeds, so a stale pane gets
+// no VS Code fallback; wait for herdr's exit status if that proves confusing.
 pub fn focus(session: &str) -> bool {
     let Some(pane) = lookup(session) else { return false };
     let (program, args) = command_args(&pane);
@@ -120,11 +129,29 @@ mod tests {
     }
 
     #[test]
-    fn a_linux_session_runs_herdr_itself() {
-        let pane = from_payload(&payload("w1:pA", "/usr/bin/herdr", "")).unwrap();
-        let (program, args) = command_args(&pane);
+    fn without_a_distro_herdr_runs_itself_on_linux_only() {
+        let pane = from_payload(&payload("w1:pA", "/usr/bin/herdr", ""));
+        if cfg!(windows) {
+            assert!(pane.is_none());
+            return;
+        }
+        let (program, args) = command_args(&pane.unwrap());
         assert_eq!(program, "/usr/bin/herdr");
         assert_eq!(args, ["agent", "focus", "w1:pA"]);
+    }
+
+    #[test]
+    fn the_pane_list_is_capped() {
+        let extra = crate::session_window::MAX_SESSIONS + 3;
+        for i in 0..extra {
+            observe(&json!({ "session_id": format!("herdr-cap-{i}"), "herdr_pane": "w1:pC",
+                "herdr_bin": "/b/herdr", "wsl_distro": "Ubuntu" }), "UserPromptSubmit");
+        }
+        assert!(lookup("herdr-cap-0").is_none());
+        assert!(lookup(&format!("herdr-cap-{}", extra - 1)).is_some());
+        for i in 0..extra {
+            forget(&format!("herdr-cap-{i}"));
+        }
     }
 
     #[test]
@@ -142,7 +169,8 @@ mod tests {
 
     #[test]
     fn a_session_end_forgets_the_pane() {
-        let start = json!({ "session_id": "herdr-test-1", "herdr_pane": "w1:pB", "herdr_bin": "/b/herdr" });
+        let start = json!({ "session_id": "herdr-test-1", "herdr_pane": "w1:pB", "herdr_bin": "/b/herdr",
+            "wsl_distro": "Ubuntu" });
         observe(&start, "SessionStart");
         assert_eq!(lookup("herdr-test-1").map(|p| p.id), Some("w1:pB".to_string()));
         observe(&json!({ "session_id": "herdr-test-1" }), "SessionEnd");
