@@ -594,6 +594,13 @@ own window.
   ancestor — conhost owns that window — so its folder opens in VS Code instead,
   as it does when `code` is on your `PATH` and nothing was found. Linux walks
   the same tree; what it can bring forward depends on the desktop (see Linux).
+- For a session in [herdr](https://herdr.dev), "Open
+  terminal" also selects the session's pane with `herdr agent focus`, and
+  never falls back to VS Code. The relay reads `HERDR_PANE_ID` and
+  `HERDR_BIN_PATH`. In WSL, a Windows program only sees the variables that
+  `WSLENV` names, so the hook command in the distro's
+  `~/.claude/settings.json` passes them on:
+  `WSLENV=$WSLENV:HERDR_PANE_ID:HERDR_BIN_PATH:WSL_DISTRO_NAME /mnt/c/Users/<you>/AppData/Local/Coucou/bin/coucou-hook.exe`.
 - Global keyboard shortcuts are hot keys on Windows, key grabs on Linux under
   X11, and go through the desktop's GlobalShortcuts portal under Wayland (see
   [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in

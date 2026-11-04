@@ -164,7 +164,7 @@ static SESSIONS: Mutex<Vec<(String, Vec<u32>)>> = Mutex::new(Vec::new());
 
 /// A session ID arrives in a hook payload: only what Claude Code sends (a
 /// UUID) is kept, at most 128 characters.
-fn valid_session(id: &str) -> bool {
+pub(crate) fn valid_session(id: &str) -> bool {
     !id.is_empty() && id.len() <= 128 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 

@@ -12,6 +12,7 @@ mod desktop;
 mod files;
 mod flow;
 mod github;
+mod herdr;
 mod hooks;
 mod i18n;
 mod identity;
@@ -321,11 +322,13 @@ fn open_in_vscode(path: Option<String>) -> bool {
 
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
-/// folder in VS Code, as before.
+/// folder in VS Code, as before. A session in herdr also gets its pane selected,
+/// and never falls back to VS Code.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+    let in_herdr = session_id.as_deref().is_some_and(herdr::focus);
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return open_in_vscode(path);
+        return in_herdr || open_in_vscode(path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
