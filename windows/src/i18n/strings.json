@@ -1607,6 +1607,21 @@
    "ko": "서명 확인 중…",
    "ja": "署名を確認中…"
   },
+  "Choose a zone (Space for a window): Mochi takes it into the island to paste, annotate or ask Claude.": {
+   "zh-Hans": "选择一个区域（按空格选窗口）：Mochi 会把它放进岛中，可粘贴、标注或询问 Claude。",
+   "hi": "एक हिस्सा चुनें (विंडो के लिए Space): Mochi उसे आइलैंड में ले आता है, ताकि आप पेस्ट करें, नोट जोड़ें या Claude से पूछें।",
+   "es": "Elige una zona (Espacio para una ventana): Mochi la lleva a la isla para pegarla, anotarla o preguntar a Claude.",
+   "ar": "اختر منطقة (المسافة لنافذة): يأخذها Mochi إلى الجزيرة لتلصقها أو تعلّق عليها أو تسأل Claude.",
+   "fr": "Choisis une zone (Espace pour une fenêtre) : Mochi la prend dans l'île pour la coller, l'annoter ou la montrer à Claude.",
+   "bn": "একটি অংশ বেছে নিন (উইন্ডোর জন্য Space): Mochi সেটি আইল্যান্ডে নিয়ে আসে, পেস্ট, টীকা বা Claude-কে জিজ্ঞেস করার জন্য।",
+   "pt-BR": "Escolha uma área (Espaço para uma janela): o Mochi leva para a ilha para colar, anotar ou perguntar ao Claude.",
+   "ru": "Выберите область (пробел — окно): Mochi забирает её в остров, чтобы вставить, разметить или спросить Claude.",
+   "id": "Pilih satu area (Spasi untuk jendela): Mochi membawanya ke island untuk ditempel, diberi anotasi, atau ditanyakan ke Claude.",
+   "de": "Wähle einen Bereich (Leertaste für ein Fenster): Mochi nimmt ihn in die Insel, zum Einfügen, Markieren oder um Claude zu fragen.",
+   "tr": "Bir alan seç (pencere için Boşluk): Mochi onu adaya alır; yapıştırabilir, not ekleyebilir ya da Claude'a sorabilirsin.",
+   "ko": "영역을 고르세요(창은 스페이스): Mochi가 아일랜드로 가져가 붙여넣기, 주석, Claude에게 질문할 수 있어요.",
+   "ja": "範囲を選択（ウインドウはスペースキー）：Mochi がアイランドに取り込み、ペースト・注釈・Claude への質問ができます。"
+  },
   "Choose the tools you use. Coucou only shows what you declare here.": {
    "zh-Hans": "选择你使用的工具。Coucou 只显示你在这里声明的内容。",
    "hi": "वे टूल चुनें जो आप उपयोग करते हैं। Coucou केवल वही दिखाता है जो आप यहाँ घोषित करते हैं।",
@@ -2206,6 +2221,21 @@
    "tr": "Kopyalandı",
    "ko": "복사됨",
    "ja": "コピーしました"
+  },
+  "Copied right away, and a thumbnail in the bottom right corner to drag where you like.": {
+   "zh-Hans": "立即复制，右下角出现缩略图，可拖到任意位置。",
+   "hi": "तुरंत कॉपी हो जाता है, और नीचे दाएँ कोने में एक थंबनेल आता है जिसे आप कहीं भी खींच सकते हैं।",
+   "es": "Se copia al instante, y aparece una miniatura abajo a la derecha para arrastrarla donde quieras.",
+   "ar": "تُنسخ فورًا، وتظهر صورة مصغّرة في الزاوية السفلية اليمنى لتسحبها حيث تشاء.",
+   "fr": "Copiée tout de suite, et une miniature en bas à droite à glisser où tu veux.",
+   "bn": "সঙ্গে সঙ্গে কপি হয়, আর নিচে ডান কোণে একটি থাম্বনেইল আসে যা যেখানে খুশি টেনে নেওয়া যায়।",
+   "pt-BR": "Copiada na hora, e uma miniatura no canto inferior direito para arrastar para onde quiser.",
+   "ru": "Сразу копируется, а в правом нижнем углу появляется миниатюра, которую можно перетащить куда угодно.",
+   "id": "Langsung tersalin, dan muncul gambar kecil di pojok kanan bawah untuk diseret ke mana saja.",
+   "de": "Sofort kopiert, dazu eine Miniatur unten rechts, die du ziehen kannst, wohin du willst.",
+   "tr": "Hemen kopyalanır ve sağ alt köşede istediğin yere sürükleyebileceğin bir küçük resim çıkar.",
+   "ko": "바로 복사되고, 오른쪽 아래에 원하는 곳으로 끌어 놓을 수 있는 썸네일이 나타납니다.",
+   "ja": "すぐにコピーされ、右下にサムネイルが表示されます。好きな場所へドラッグできます。"
   },
   "Copied · allow Accessibility to paste": {
    "zh-Hans": "已复制 · 允许辅助功能以粘贴",
@@ -8806,6 +8836,21 @@
    "tr": "Tüm ekranın görüntüsü, kopyalanmış",
    "ko": "전체 화면 스크린샷, 복사됨",
    "ja": "画面全体をスクリーンショットしてコピー"
+  },
+  "Screenshots — the whole screen or a zone": {
+   "zh-Hans": "截屏 — 整个屏幕或一个区域",
+   "hi": "स्क्रीनशॉट — पूरी स्क्रीन या एक हिस्सा",
+   "es": "Capturas de pantalla — toda la pantalla o una zona",
+   "ar": "لقطات الشاشة — الشاشة كاملة أو منطقة منها",
+   "fr": "Captures d'écran — tout l'écran ou une zone",
+   "bn": "স্ক্রিনশট — পুরো স্ক্রিন বা একটি অংশ",
+   "pt-BR": "Capturas de tela — a tela inteira ou uma área",
+   "ru": "Снимки экрана — весь экран или область",
+   "id": "Tangkapan layar — seluruh layar atau satu area",
+   "de": "Bildschirmfotos — der ganze Bildschirm oder ein Bereich",
+   "tr": "Ekran görüntüleri — tüm ekran veya bir alan",
+   "ko": "스크린샷 — 전체 화면 또는 영역",
+   "ja": "スクリーンショット — 画面全体または範囲"
   },
   "Search": {
    "zh-Hans": "搜索",

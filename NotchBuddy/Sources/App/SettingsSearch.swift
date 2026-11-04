@@ -138,6 +138,8 @@ final class SettingsSearch: ObservableObject {
             e("voice.language", .voice, "Language", ["voice.listen-language", "voice.language"]),
             e("voice.tts", .voice, "voice.tts-engine", ["voice.tts-gender", "voice.tts-test"]),
             e("voice.history", .voice, "voice.history-title"),
+            e("shortcuts.screenshots", .shortcuts, "shortcut.group.screenshots",
+              ["shortcut.screenshot", "shortcut.capture", "shortcut.screenshot.detail"]),
             e("shortcuts.global", .shortcuts, "shortcut.group.global"),
             e("shortcuts.island", .shortcuts, "shortcut.group.island"),
             // Mail

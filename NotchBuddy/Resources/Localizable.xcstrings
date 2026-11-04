@@ -23742,6 +23742,309 @@
         }
       }
     },
+    "shortcut.group.screenshots" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لقطات الشاشة — الشاشة كاملة أو منطقة منها"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "স্ক্রিনশট — পুরো স্ক্রিন বা একটি অংশ"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildschirmfotos — der ganze Bildschirm oder ein Bereich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screenshots — the whole screen or a zone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de pantalla — toda la pantalla o una zona"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captures d'écran — tout l'écran ou une zone"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्क्रीनशॉट — पूरी स्क्रीन या एक हिस्सा"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tangkapan layar — seluruh layar atau satu area"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スクリーンショット — 画面全体または範囲"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스크린샷 — 전체 화면 또는 영역"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de tela — a tela inteira ou uma área"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимки экрана — весь экран или область"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ภาพหน้าจอ — ทั้งจอหรือบางส่วน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ekran görüntüleri — tüm ekran veya bir alan"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截屏 — 整个屏幕或一个区域"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截圖 — 整個螢幕或一個區域"
+          }
+        }
+      }
+    },
+    "shortcut.screenshot.detail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تُنسخ فورًا، وتظهر صورة مصغّرة في الزاوية السفلية اليمنى لتسحبها حيث تشاء."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সঙ্গে সঙ্গে কপি হয়, আর নিচে ডান কোণে একটি থাম্বনেইল আসে যা যেখানে খুশি টেনে নেওয়া যায়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sofort kopiert, dazu eine Miniatur unten rechts, die du ziehen kannst, wohin du willst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied right away, and a thumbnail in the bottom right corner to drag where you like."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se copia al instante, y aparece una miniatura abajo a la derecha para arrastrarla donde quieras."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiée tout de suite, et une miniature en bas à droite à glisser où tu veux."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "तुरंत कॉपी हो जाता है, और नीचे दाएँ कोने में एक थंबनेल आता है जिसे आप कहीं भी खींच सकते हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langsung tersalin, dan muncul gambar kecil di pojok kanan bawah untuk diseret ke mana saja."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すぐにコピーされ、右下にサムネイルが表示されます。好きな場所へドラッグできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "바로 복사되고, 오른쪽 아래에 원하는 곳으로 끌어 놓을 수 있는 썸네일이 나타납니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiada na hora, e uma miniatura no canto inferior direito para arrastar para onde quiser."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сразу копируется, а в правом нижнем углу появляется миниатюра, которую можно перетащить куда угодно."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คัดลอกทันที และมีภาพย่อที่มุมขวาล่างให้ลากไปวางที่ไหนก็ได้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hemen kopyalanır ve sağ alt köşede istediğin yere sürükleyebileceğin bir küçük resim çıkar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "立即复制，右下角出现缩略图，可拖到任意位置。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "立即拷貝，右下角出現縮圖，可拖到任何地方。"
+          }
+        }
+      }
+    },
+    "shortcut.capture.detail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختر منطقة (المسافة لنافذة): يأخذها Mochi إلى الجزيرة لتلصقها أو تعلّق عليها أو تسأل Claude."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "একটি অংশ বেছে নিন (উইন্ডোর জন্য Space): Mochi সেটি আইল্যান্ডে নিয়ে আসে, পেস্ট, টীকা বা Claude-কে জিজ্ঞেস করার জন্য।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle einen Bereich (Leertaste für ein Fenster): Mochi nimmt ihn in die Insel, zum Einfügen, Markieren oder um Claude zu fragen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a zone (Space for a window): Mochi takes it into the island to paste, annotate or ask Claude."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una zona (Espacio para una ventana): Mochi la lleva a la isla para pegarla, anotarla o preguntar a Claude."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis une zone (Espace pour une fenêtre) : Mochi la prend dans l'île pour la coller, l'annoter ou la montrer à Claude."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एक हिस्सा चुनें (विंडो के लिए Space): Mochi उसे आइलैंड में ले आता है, ताकि आप पेस्ट करें, नोट जोड़ें या Claude से पूछें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilih satu area (Spasi untuk jendela): Mochi membawanya ke island untuk ditempel, diberi anotasi, atau ditanyakan ke Claude."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範囲を選択（ウインドウはスペースキー）：Mochi がアイランドに取り込み、ペースト・注釈・Claude への質問ができます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "영역을 고르세요(창은 스페이스): Mochi가 아일랜드로 가져가 붙여넣기, 주석, Claude에게 질문할 수 있어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha uma área (Espaço para uma janela): o Mochi leva para a ilha para colar, anotar ou perguntar ao Claude."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите область (пробел — окно): Mochi забирает её в остров, чтобы вставить, разметить или спросить Claude."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลือกพื้นที่ (กด Space เพื่อเลือกหน้าต่าง): Mochi จะพาเข้าไปในไอแลนด์ ให้วาง ใส่คำอธิบาย หรือถาม Claude"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir alan seç (pencere için Boşluk): Mochi onu adaya alır; yapıştırabilir, not ekleyebilir ya da Claude'a sorabilirsin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择一个区域（按空格选窗口）：Mochi 会把它放进岛中，可粘贴、标注或询问 Claude。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇一個區域（按空白鍵選視窗）：Mochi 會把它放進島中，可貼上、標註或詢問 Claude。"
+          }
+        }
+      }
+    },
     "capture.permission" : {
       "extractionState" : "manual",
       "localizations" : {
