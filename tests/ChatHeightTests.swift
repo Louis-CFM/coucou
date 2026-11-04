@@ -144,6 +144,17 @@ enum ChatHeightTests {
         check(ChatScrollPolicy.pinned(after: false, from: scrolledUp, to: M(offsetY: 300, contentHeight: 1000, viewportHeight: 200)) == false, "stays unpinned scrolling further up")
         check(ChatScrollPolicy.pinned(after: true, from: M(offsetY: 0, contentHeight: 100, viewportHeight: 200), to: M(offsetY: 0, contentHeight: 100, viewportHeight: 200)) == true, "short content")
 
+        // A panel that grows keeps the edge the island is anchored to: the top at the notch and the top corners, the bottom
+        // in the bottom corners (the island sits at the panel's base there, so growing downwards would push it off screen).
+        let bottomCorner = ChatHeight.panelOriginY(currentMinY: 100, currentHeight: 560, newHeight: 900, anchoredToBottom: true)
+        check(bottomCorner == 100, "bottom corner + everStretched: the panel grows upwards, minY stays")
+        check(bottomCorner + 900 == 1000, "bottom corner: the top edge moves up by the growth")
+        let topEdge = ChatHeight.panelOriginY(currentMinY: 400, currentHeight: 560, newHeight: 900, anchoredToBottom: false)
+        check(topEdge == 60, "notch and top corners: the panel grows downwards, maxY stays")
+        check(topEdge + 900 == 400 + 560, "top anchor: maxY unchanged")
+        check(ChatHeight.panelOriginY(currentMinY: 100, currentHeight: 900, newHeight: 700, anchoredToBottom: true) == 100, "bottom anchor shrinking keeps minY")
+        check(ChatHeight.panelOriginY(currentMinY: 60, currentHeight: 900, newHeight: 700, anchoredToBottom: false) == 260, "top anchor shrinking keeps maxY")
+
         print("Chat height and scroll policy: \(cases) cases passed")
     }
 }

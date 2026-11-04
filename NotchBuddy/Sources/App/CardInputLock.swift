@@ -23,6 +23,14 @@ enum CardInputLock {
         return now
     }
 
+    /// When the lock starts as one card hands the slot to another, whichever queue they come from (an approval, a question,
+    /// the next question). `shown` is the id of the card on screen, `next` the id of the one that takes it. nil when nothing
+    /// was shown (the arrival arms itself), when nothing takes the card, or when it is the same card.
+    static func handoverArmedAt(shown: UUID?, next: UUID?, now: TimeInterval) -> TimeInterval? {
+        guard let shown, let next, shown != next else { return nil }
+        return now
+    }
+
     static func isLocked(armedAt: TimeInterval?, now: TimeInterval) -> Bool {
         guard let at = armedAt else { return false }
         return now >= at && now - at < delay

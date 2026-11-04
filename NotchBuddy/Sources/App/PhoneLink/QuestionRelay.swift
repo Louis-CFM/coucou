@@ -32,6 +32,8 @@ final class QuestionRelay {
         guard cancellable == nil else { return }
         // @Published sends the new value before the property changes: use the value passed along.
         cancellable = AppState.shared.$waitingQuestions
+            .combineLatest(AppState.shared.$cmuxLaneQuestion)
+            .map { queue, lane in queue + (lane.map { [$0] } ?? []) }
             .removeDuplicates()
             .sink { [weak self] questions in
                 MainActor.assumeIsolated { self?.waitingChanged(to: questions) }
@@ -105,7 +107,7 @@ final class QuestionRelay {
     private func apply(_ answer: Answer) {
         // Check again right before answering the hook: read what waits now.
         guard let entry = QuestionQueue.question(answering: answer.fingerprint, onRecord: answer.recordId,
-                                                 in: AppState.shared.waitingQuestions,
+                                                 in: waiting,
                                                  fingerprintOf: { QuestionPayload(ask: $0).fingerprint }) else {
             log("answer for a question no longer waiting, ignored")
             return

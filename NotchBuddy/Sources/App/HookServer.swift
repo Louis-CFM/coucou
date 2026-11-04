@@ -258,6 +258,7 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func removeApproval(id: UUID, answer json: String? = nil, note: String? = nil) {
         guard let entry = approvals.remove(id: id) else { return }
+        let shownApprovalId = AppState.shared.pendingApproval?.id
         let age = Int(Date().timeIntervalSince(entry.received))
         nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Coucou" } ?? note ?? "dropped")")
         let source = approvalSources.removeValue(forKey: id)
@@ -291,7 +292,12 @@ final class HookServer: @unchecked Sendable {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
             }
         }
-        if questions.head != nil {
+        if let nextQuestion = questions.head {
+            // The question takes the place of the approval just answered: a second click must not answer it.
+            if let at = CardInputLock.handoverArmedAt(shown: shownApprovalId, next: nextQuestion.id,
+                                                      now: Date().timeIntervalSinceReferenceDate) {
+                cardReplacedAt = at
+            }
             showQuestionHead()
             return
         }
@@ -446,6 +452,11 @@ final class HookServer: @unchecked Sendable {
         guard let head = questions.head else { return }
         let needsDisplay = shownQuestion != head.id || state.view != .question
         guard needsDisplay else { return }
+        // Another question takes the card (or this one covers an approval): a click aimed at the previous card must not answer it.
+        if let at = CardInputLock.handoverArmedAt(shown: shownQuestion ?? state.pendingApproval?.id, next: head.id,
+                                                  now: Date().timeIntervalSinceReferenceDate) {
+            cardReplacedAt = at
+        }
         shownQuestion = head.id
         state.pendingQuestion = head.question
         state.isPinned = true
@@ -493,6 +504,7 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func closeQuestionCard(pill: String?) {
         let state = AppState.shared
+        let closedQuestion = shownQuestion
         shownQuestion = nil
         state.pendingQuestion = nil
         state.isPinned = false
@@ -503,6 +515,11 @@ final class HookServer: @unchecked Sendable {
             }
         }
         if let head = approvals.head {
+            // The approval takes the place of the question just answered: a second click must not approve it.
+            if let at = CardInputLock.handoverArmedAt(shown: closedQuestion, next: head.id,
+                                                      now: Date().timeIntervalSinceReferenceDate) {
+                cardReplacedAt = at
+            }
             state.pendingApproval = ApprovalInfo(sessionId: head.sessionId, tool: head.tool,
                                                   command: head.command, inputKey: head.inputKey,
                                                   pillId: head.displayPill, id: head.id,
@@ -548,10 +565,15 @@ final class HookServer: @unchecked Sendable {
         }
         // The cmux card holds the slot with its own connection.
         if pendingQuestionFD >= 0 {
+            if let id, id != AppState.shared.cmuxLaneQuestion?.id {
+                nbLog("Answer for a question no longer on the card, ignored")
+                return
+            }
             sendLaneQuestionAnswers(answers)
             return
         }
         guard !questions.isEmpty else { closeQuestionCard(pill: nil); return }
+        if cardReplacedLocked() { return }
         guard let entry = waitingQuestion(id) else { return }
         guard let data = try? JSONSerialization.data(withJSONObject: ["permissionDecision": "answer", "answers": answers], options: .withoutEscapingSlashes),
               let json = String(data: data, encoding: .utf8) else {
@@ -597,10 +619,15 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     func sendQuestionAsk(for id: UUID? = nil) {
         if pendingQuestionFD >= 0 {
+            if let id, id != AppState.shared.cmuxLaneQuestion?.id {
+                nbLog("Reply-in-terminal for a question no longer on the card, ignored")
+                return
+            }
             sendLaneQuestionAsk()
             return
         }
         guard !questions.isEmpty else { closeQuestionCard(pill: nil); return }
+        if cardReplacedLocked() { return }
         guard let entry = waitingQuestion(id) else { return }
         removeQuestion(id: entry.id, answer: #"{"permissionDecision":"ask"}"#)
     }
@@ -651,7 +678,11 @@ final class HookServer: @unchecked Sendable {
             }
         }
         if reshowApprovalHeadAfterQuestion() { return }
-        if questions.head != nil { showQuestionHead(); return }
+        if questions.head != nil {
+            cardReplacedAt = CardInputLock.armedAt(cardWasVisible: true, now: Date().timeIntervalSinceReferenceDate)
+            showQuestionHead()
+            return
+        }
         #if !APPSTORE
         if presentNextCmuxCard() { return }
         #endif
@@ -725,7 +756,11 @@ final class HookServer: @unchecked Sendable {
         // Runs from onDisappear: the next card (queue head, cmux queue, Hermes) comes on the next turn.
         DispatchQueue.main.async {
             if self.reshowApprovalHeadAfterQuestion() { return }
-            if self.questions.head != nil { self.showQuestionHead(); return }
+            if self.questions.head != nil {
+                self.cardReplacedAt = CardInputLock.armedAt(cardWasVisible: true, now: Date().timeIntervalSinceReferenceDate)
+                self.showQuestionHead()
+                return
+            }
             #if !APPSTORE
             _ = self.presentNextCmuxCard()
             #endif
@@ -2318,6 +2353,9 @@ final class HookServer: @unchecked Sendable {
                    working: true, externalAgent: nil, cmuxKey: cmuxKeyOfRequest)
         setTaskState(pillId, .question, cmuxKey: cmuxKeyOfRequest)
         state.pendingQuestion = parsed
+        // The iPhone and the Android link read the lane's question next to the queue's (cleared with pendingQuestion).
+        state.cmuxLaneQuestion = QueuedQuestion(id: UUID(), fd: -1, sessionId: questionSessionId, pillId: pillId,
+                                                projectName: projectName, cwd: cwd, question: parsed)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 

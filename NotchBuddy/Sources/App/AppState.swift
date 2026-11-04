@@ -853,8 +853,18 @@ final class AppState: ObservableObject {
 
     // Pending AskUserQuestion from Claude Code hook
     @Published var pendingQuestion: AskQuestion? = nil {
-        didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
+        didSet {
+            QuestionLayout.height = pendingQuestion?.estimatedIslandHeight
+            if pendingQuestion == nil, cmuxLaneQuestion != nil { cmuxLaneQuestion = nil }
+        }
     }
+
+    /// The question the cmux lane holds on the card, as a queue entry (fd -1: the lane keeps the connection) so the iPhone can
+    /// show and answer it like the queue's. Set by HookServer with `pendingQuestion`, cleared when that goes.
+    @Published var cmuxLaneQuestion: QueuedQuestion? = nil
+
+    /// What the iPhone shows as waiting: the queue's questions, then the cmux lane's.
+    var phoneQuestions: [QueuedQuestion] { waitingQuestions + (cmuxLaneQuestion.map { [$0] } ?? []) }
 
     /// Every AskUserQuestion waiting for an answer, oldest first: the first one is on the
     /// card (`pendingQuestion`). Written by HookServer only; empty for a demo question.
@@ -1597,6 +1607,8 @@ struct ChatMessage: Identifiable, Equatable {
     var segments: [ChatSegment] = []
     /// A sentence the app wrote (an error kept in the chat), never a text that is still arriving.
     var isNotice = false
+    /// Display only: the turn was asked with Mail on, so a coucou-mail block in this answer is a plan card.
+    var mailPlan = false
     /// Something to draw: text, or the rows of an agent turn that has written no text yet. The chat list and the
     /// scroll targets of the chat share this one rule.
     var isShown: Bool { ChatVisibility.isShown(content: content, segments: segments) }

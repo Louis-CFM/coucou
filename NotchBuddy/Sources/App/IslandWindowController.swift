@@ -331,16 +331,19 @@ final class IslandWindowController: NSWindowController {
     }
 
     /// 560 pt (the base panel height) until the chat has been stretched once; then tall enough for the maximum.
-    /// The panel keeps its top edge on the screen top and its width; it only shrinks when the screen changes
+    /// The panel keeps the edge the island is anchored to (top; bottom in the bottom corners) and its width; it only shrinks when the screen changes
     /// (otherwise the island animates down inside it).
     private func applyPanelHeight(maximum: CGFloat, allowShrink: Bool = false) {
         let height = ChatHeight.panelTarget(current: islandPanel.frame.height, everStretched: panelStretchEnabled,
                                             maximum: maximum, allowShrink: allowShrink)
         guard abs(islandPanel.frame.height - height) > 0.5 else { return }
         var frame = islandPanel.frame
-        frame.origin.y = frame.maxY - height
+        frame.origin.y = ChatHeight.panelOriginY(currentMinY: frame.minY, currentHeight: frame.height, newHeight: height,
+                                                 anchoredToBottom: state.islandPlacement.isBottom)
         frame.size.height = height
         islandPanel.setFrame(frame, display: true)
+        // The island position and the Mochi's home read the real frame.
+        Self.panelFrame = frame
         if state.panelHeight != height { state.panelHeight = height }
     }
 

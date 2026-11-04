@@ -119,6 +119,6 @@ enum WhatsNew {
     static let coffeeURL = URL(string: "https://buy.stripe.com/dRm6oGbfa7Kqcqs0hxes003")!
 
     static func releasePage(_ version: String) -> URL {
-        URL(string: "https://github.com/\(MacUpdate.owner)/\(MacUpdate.repo)/releases/tag/v\(version)")!
+        URL(string: "https://github.com/\(MacUpdate.notesOwner)/\(MacUpdate.repo)/releases/tag/v\(version)")!
     }
 }

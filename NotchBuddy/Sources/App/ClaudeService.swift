@@ -365,7 +365,7 @@ final class ClaudeService {
         do {
             let text = try await CLIRelay.ask(cli, request)
             relayHistory.append((user: historyContext.map { "\($0)\n\n\(query)" } ?? query, assistant: text))
-            state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: text, provider: provider)) }
+            state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: text, provider: provider, mailPlan: !extraSystem.isEmpty)) }
             state.stateOverride = nil
             state.showSharedChatAnswer()
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
@@ -568,7 +568,7 @@ final class ClaudeService {
 
         if useStream {
             // Add placeholder (hidden until first token via ChatBubble empty-content guard)
-            let placeholder = ChatMessage(role: .assistant, content: "", provider: provider)
+            let placeholder = ChatMessage(role: .assistant, content: "", provider: provider, mailPlan: !extraSystem.isEmpty)
             let msgId = placeholder.id
             sharedChatStreaming = true
             state.updateChat(.shared) { $0.append(placeholder) }
@@ -650,7 +650,7 @@ final class ClaudeService {
                 }
                 let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
                 conversationMessages.append(["role": "assistant", "content": trimmed])
-                state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: trimmed, provider: provider)) }
+                state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: trimmed, provider: provider, mailPlan: !extraSystem.isEmpty)) }
                 state.stateOverride = nil
                 state.showSharedChatAnswer()
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
@@ -1045,7 +1045,7 @@ final class ClaudeService {
         }
 
         // Add to display history
-        let answer = ChatMessage(role: .assistant, content: text, provider: .anthropic)
+        let answer = ChatMessage(role: .assistant, content: text, provider: .anthropic, mailPlan: !extraSystem.isEmpty)
         state.updateChat(.shared) { $0.append(answer) }
 
         state.stateOverride = nil

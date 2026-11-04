@@ -55,9 +55,11 @@ final class SessionPublisher {
         guard cancellable == nil else { return }
         let state = AppState.shared
         cancellable = state.$tasks
-            .combineLatest(state.$pendingApproval, state.$waitingQuestions)
-            .map { tasks, approval, questions in
-                SessionSnapshot.all(tasks: tasks, approval: approval, questions: questions)
+            .combineLatest(state.$pendingApproval,
+                           state.$waitingQuestions.combineLatest(state.$cmuxLaneQuestion))
+            .map { tasks, approval, asked in
+                SessionSnapshot.all(tasks: tasks, approval: approval,
+                                    questions: asked.0 + (asked.1.map { [$0] } ?? []))
             }
             .removeDuplicates()
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)

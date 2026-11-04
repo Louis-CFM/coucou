@@ -44,6 +44,23 @@ enum CardInputLockTests {
         check("head change locks clicks for the delay",
               CardInputLock.isLocked(armedAt: CardInputLock.headChangeArmedAt(shownId: a, headId: b, now: 100), now: 100.3))
 
+        print("CardInputLock.handoverArmedAt (approval and question queues share one card)")
+        let q1 = UUID(), q2 = UUID(), ap = UUID()
+        check("question closes, an approval waiting behind it takes the card → locked from now",
+              CardInputLock.handoverArmedAt(shown: q1, next: ap, now: 100) == 100)
+        check("approval answered, a question takes the card → locked from now",
+              CardInputLock.handoverArmedAt(shown: ap, next: q1, now: 100) == 100)
+        check("first question answered, the second takes the card → locked from now",
+              CardInputLock.handoverArmedAt(shown: q1, next: q2, now: 100) == 100)
+        check("same card refreshed → not armed",
+              CardInputLock.handoverArmedAt(shown: q1, next: q1, now: 100) == nil)
+        check("nothing was shown → not armed (the arrival arms itself)",
+              CardInputLock.handoverArmedAt(shown: nil, next: q1, now: 100) == nil)
+        check("nothing takes the card → not armed",
+              CardInputLock.handoverArmedAt(shown: q1, next: nil, now: 100) == nil)
+        check("a second click 300 ms after question → approval handover is ignored",
+              CardInputLock.isLocked(armedAt: CardInputLock.handoverArmedAt(shown: q1, next: ap, now: 100), now: 100.3))
+
         if failures > 0 { print("\(failures) FAILED"); exit(1) }
         print("Card input lock: all cases passed")
     }

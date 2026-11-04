@@ -8,6 +8,9 @@ import Foundation
 enum MacUpdate {
     static let owner = "caionorder"
     static let repo = "coucou"
+    /// Where the release notes (What's new, the "release page" link) live: the upstream project, whose notes the app shows.
+    /// `owner` is where the fork looks for its own releases; the fork has no tags of its own, so links to it would 404.
+    static let notesOwner = "Louis-CFM"
     static let releasesURL = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases?per_page=20")!
     /// What the downloaded app must be signed as: Coucou's bundle id, Louis's Developer ID team.
     static let bundleId = "fr.louisraille.NotchBuddy"
