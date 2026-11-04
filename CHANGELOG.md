@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Screenshot of the whole screen, copied (Mac)** — ⌘⇧2 takes the whole screen the pointer is on, with the Mac's shutter sound. The picture is on the clipboard right away, so ⌘V pastes it into a chat (⌃V in Claude Code's terminal), and a thumbnail shows in the bottom right corner like macOS's own: drag it into a chat, a folder or a mail, click it to open it in Preview, swipe it to the right to put it away. It leaves by itself after a few seconds, and stays while the pointer is on it. Change or turn off the shortcut in Settings → Shortcuts (GitHub build; not in the App Store build)
 - **Android phone link (Mac)** — Coucou for Android can now pair with your Mac, the way it already does with Windows and Linux (Settings → Android phone, off by default). Scan the QR code on the same Wi-Fi, see your agent sessions, and allow or deny a permission request from the phone; Allow still needs the phone's fingerprint or screen lock. Optional switches show session details, let the phone answer Claude Code's questions and show your plan usage. Coucou listens on your local network only while the switch is on, the certificate and the pairing code stay in the Keychain, and nothing runs while it is off (GitHub build; not in the App Store build)
 
 ## Android 0.4.0 — Unreleased

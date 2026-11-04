@@ -760,6 +760,12 @@ final class IslandWindowController: NSWindowController {
             appendAppLog("nb.log", "[Capture] shortcut pressed")
             ScreenCapture.shared.begin()
             #endif
+
+        case .quickScreenshot:
+            #if !APPSTORE
+            appendAppLog("nb.log", "[Screenshot] shortcut pressed")
+            QuickScreenshot.shared.take()
+            #endif
         }
     }
 

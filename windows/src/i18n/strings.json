@@ -8792,6 +8792,21 @@
    "ko": "스크린샷",
    "ja": "スクリーンショット"
   },
+  "Screenshot the whole screen, copied": {
+   "zh-Hans": "截取整个屏幕并复制",
+   "hi": "पूरी स्क्रीन का स्क्रीनशॉट, कॉपी किया हुआ",
+   "es": "Captura de toda la pantalla, copiada",
+   "ar": "لقطة للشاشة كاملة، منسوخة",
+   "fr": "Capture de tout l'écran, copiée",
+   "bn": "পুরো স্ক্রিনের স্ক্রিনশট, কপি করা",
+   "pt-BR": "Captura da tela inteira, copiada",
+   "ru": "Снимок всего экрана в буфер обмена",
+   "id": "Tangkapan seluruh layar, tersalin",
+   "de": "Screenshot des ganzen Bildschirms, kopiert",
+   "tr": "Tüm ekranın görüntüsü, kopyalanmış",
+   "ko": "전체 화면 스크린샷, 복사됨",
+   "ja": "画面全体をスクリーンショットしてコピー"
+  },
   "Search": {
    "zh-Hans": "搜索",
    "hi": "खोजें",

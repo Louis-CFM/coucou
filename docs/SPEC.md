@@ -393,10 +393,11 @@ Ces raccourcis fonctionnent en arrière-plan sans permission Accessibilité.
 | Mochi sur le bureau (`toggleDesktopMochi`) | ⌃⌥D | `shortcut.toggleDesktopMochi.keyCode` / `.flags` | Oui |
 | Ouvrir la garde-robe (`openWardrobe`) | ⌃⌥G | `shortcut.openWardrobe.keyCode` / `.flags` | Oui |
 | Capture d'écran pour Claude (`captureScreen`) | ⌘⇧S | `shortcut.captureScreen.keyCode` / `.flags` | Oui (hors App Store) |
+| Capture de tout l'écran, copiée (`quickScreenshot`) | ⌘⇧2 | `shortcut.quickScreenshot.keyCode` / `.flags` | Oui (hors App Store) |
 
 - Si Carbon ne peut pas enregistrer un raccourci (conflit système), l'action est marquée `.conflict` dans `HotKeyCenter` et un indicateur apparaît dans Réglages → Raccourcis.
 - `toggleIsland` conserve les clés UserDefaults historiques (`hotkeyCode`, `hotkeyFlags`, `hotkeyEnabled`) pour ne pas casser les préférences existantes.
-- Les actions marquées `isNonAppStore` (`attachFrontWindow`, `talkToCoucou`, `captureScreen`) sont omises du build App Store.
+- Les actions marquées `isNonAppStore` (`attachFrontWindow`, `talkToCoucou`, `captureScreen`, `quickScreenshot`) sont omises du build App Store.
 
 ### 14.2 Raccourcis locaux (actifs quand l'île a le focus)
 
@@ -449,6 +450,7 @@ Réglages → Raccourcis (`ShortcutsSettingsView`) :
 - L'image arrive dans l'île (vue `.capture`) : son `gulp`, Mochi avale. Boutons : **Coller** (dans l'app où on était : ⌘V, ou ⌃V dans un terminal pour Claude Code ; le presse-papiers reprend son contenu après 1,5 s), **Copier**, **Annoter** (fenêtre : flèche, cadre, crayon, 4 couleurs, ⌘Z, l'image annotée revient dans l'île), **Demander à Claude** (chat de l'île, image jointe).
 - Avec Flow : tant que la capture est dans l'île (3 min max), maintenir la touche de dictée colle l'image puis les mots au relâchement.
 - Les captures restent dans le dossier temporaire (les 20 dernières) et ne partent vers Claude que si on les colle ou qu'on demande à Claude.
+- ⌘⇧2 (`QuickScreenshot.swift`) : tout l'écran où est le pointeur, d'un coup (`screencapture -R`, avec le son d'obturateur du Mac). L'île ouverte se replie avant. L'image est à deux endroits : dans le presse-papiers (⌘V la colle dans un chat, ⌃V dans le terminal de Claude Code) et en miniature en bas à droite de l'écran, au-dessus du Dock, comme celle de macOS. La miniature ne prend jamais le focus. On la glisse où on veut (le fichier pour un dossier ou un chat, le PNG pour une app qui prend des images), un clic l'ouvre dans Aperçu, glisser vers la droite la range. Elle part seule après 6 s, 3 s après que le pointeur l'a quittée, et reste tant qu'il est dessus. Une nouvelle capture remplace la précédente. Mochi fait l'émote surprise. Même dossier temporaire que ⌘⇧S (« Screenshot … .png »).
 
 ## 17. Flow : mode prompt et traduction (build GitHub)
 
