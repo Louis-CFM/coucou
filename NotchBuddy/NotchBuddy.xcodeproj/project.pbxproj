@@ -299,6 +299,7 @@
 		88A8F2E4E754FAFABF6B1960 /* VoiceAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87F39805C78722F614295B4 /* VoiceAudio.swift */; };
 		88C3F0A4F3AE29DBED8710A0 /* ClaudeSettingsFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B238F6E7B20EFDED5CD3E8E /* ClaudeSettingsFile.swift */; };
 		88F268E408FBBA2702B90E6C /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
+		8990D46C748DF17F2162163F /* DictationOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A053A16AD82088EB7C8E7CD /* DictationOrder.swift */; };
 		89BC677F3ACB387A475FFFED /* ClaudeVoiceBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE8C8C843B4B30C547FF64A /* ClaudeVoiceBrain.swift */; };
 		89C011E983AD17B3BA602764 /* AndroidLinkHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7087F43788D83540965DB00F /* AndroidLinkHub.swift */; };
 		8A6B3688D6B3BF728D106D8B /* UserIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A13AEE6E06F46CEC9D908C /* UserIdentity.swift */; };
@@ -436,6 +437,7 @@
 		BEC5DDB55B3DA67C61CA8470 /* DesktopMochi.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1DDC96E7967032F5D0BD585 /* DesktopMochi.swift */; };
 		BF3F437B1FE9C246E9014F76 /* VoiceActionRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2737EC4885ADB8FDDA1C610 /* VoiceActionRunner.swift */; };
 		BFCBB2517D4BC82685A2EE46 /* MochiMood.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE096F3D7C3CD989EEBA55C4 /* MochiMood.swift */; };
+		BFCFB9025399FA05245087A3 /* DictationOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A053A16AD82088EB7C8E7CD /* DictationOrder.swift */; };
 		C07E0C853112F1E7F6E950B4 /* WhatsNewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3943C1C1CF60ADF28D23B13A /* WhatsNewViews.swift */; };
 		C07E9A04E827284FDF33DB16 /* ShortcutLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA51E5B140C20812641168EA /* ShortcutLogic.swift */; };
 		C0E18D0F6F5F6D131E6066B8 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
@@ -643,6 +645,7 @@
 		168A9A73B519018FAB0AA465 /* GitHubActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubActivity.swift; sourceTree = "<group>"; };
 		192844E7299DEED5C2372067 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		196392ADB84D6B58731A3594 /* AndroidLinkServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidLinkServer.swift; sourceTree = "<group>"; };
+		1A053A16AD82088EB7C8E7CD /* DictationOrder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationOrder.swift; sourceTree = "<group>"; };
 		1A1A34DE2886E394C879CF64 /* FlowHubWords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHubWords.swift; sourceTree = "<group>"; };
 		1A2DE186040A02D800F856CA /* HermesApprovalSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesApprovalSlot.swift; sourceTree = "<group>"; };
 		1B2EED5205DD7161E51BE1E1 /* IntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroView.swift; sourceTree = "<group>"; };
@@ -1004,6 +1007,7 @@
 				C1F6AEEFCD5624EB839AD330 /* DemoGuard.swift */,
 				B1DDC96E7967032F5D0BD585 /* DesktopMochi.swift */,
 				C086E1932F86B9C2B559BE03 /* DesktopMochiLogic.swift */,
+				1A053A16AD82088EB7C8E7CD /* DictationOrder.swift */,
 				56A2317343D062ACCAF4E5BD /* DictationTranscript.swift */,
 				3232F258523DD8D09B670363 /* FileDropView.swift */,
 				0596FD03875A10BD2CCBE332 /* FlowAudioBands.swift */,
@@ -1621,6 +1625,7 @@
 				BE4B7C40FE51AF079C243886 /* DemoGuard.swift in Sources */,
 				BEC5DDB55B3DA67C61CA8470 /* DesktopMochi.swift in Sources */,
 				BA65FC4A40F7227837C26214 /* DesktopMochiLogic.swift in Sources */,
+				BFCFB9025399FA05245087A3 /* DictationOrder.swift in Sources */,
 				FD4B5673A5427128DE1910F3 /* DictationTranscript.swift in Sources */,
 				077ECE0906D8E820BD5FA764 /* DiffEngine.swift in Sources */,
 				541AF30CF808CC0FC1B8D97D /* ElevenLabsTTS.swift in Sources */,
@@ -1939,6 +1944,7 @@
 				1EACAA530CF9D1A45626A11E /* DemoGuard.swift in Sources */,
 				273FC0FA14AAF6CE62FD14AE /* DesktopMochi.swift in Sources */,
 				C93BA975D35B8CD7473CF995 /* DesktopMochiLogic.swift in Sources */,
+				8990D46C748DF17F2162163F /* DictationOrder.swift in Sources */,
 				2768A639F60C4B4C6EC98436 /* DictationTranscript.swift in Sources */,
 				4D958F2DDCE9504490FDA357 /* DiffEngine.swift in Sources */,
 				D7FD1948C7F97D6A2904CDBE /* ElevenLabsTTS.swift in Sources */,

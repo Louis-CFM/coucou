@@ -68,36 +68,6 @@ enum VoiceLang: String, CaseIterable {
         return .en
     }
 
-    /// The locales Flow dictation's Automatic mode listens with, best first, one per language, up to `max`.
-    /// The language chosen for the voice assistant ("en", "fr", "pt"; "auto" or anything else = none) goes
-    /// first, in the user's own regional variant when they have one (pt-PT, en-GB, fr-CA) and in en-US,
-    /// fr-FR or pt-BR otherwise, so a Portuguese speaker is heard in Portuguese before the Mac's English;
-    /// then the last winner, the Mac languages, keyboard layouts and Coucou's own language, then English.
-    /// `resolve` turns an id into the recognizer locale the Mac supports (nil when it has none).
-    static func dictationOrder(listen: String, lastHeard: String?, mac: [String], keyboard: [String],
-                               app: [String], max: Int, resolve: (String) -> Locale?) -> [Locale] {
-        var ids: [String] = []
-        if let lastHeard { ids.append(lastHeard) }
-        ids += mac + keyboard + app
-        if let chosen = VoiceLang(rawValue: listen) {
-            // Lead with the user's own regional variant (pt-PT, en-GB, fr-CA) when they have one; the fixed
-            // locale only when none of their languages matches.
-            let first = ids.first { Locale(identifier: $0).language.languageCode?.identifier == chosen.rawValue }
-            ids.insert(first ?? chosen.locale.identifier, at: 0)
-        }
-        ids.append("en-US")
-        var seen = Set<String>()
-        var out: [Locale] = []
-        for id in ids {
-            guard let locale = resolve(id) else { continue }
-            let language = locale.language.languageCode?.identifier ?? locale.identifier
-            guard seen.insert(language).inserted else { continue }
-            out.append(locale)
-            if out.count == max { break }
-        }
-        return out
-    }
-
     /// True for a (diacritic-folded, lowercase) word that marks Portuguese.
     static func isPortugueseWord(_ w: String) -> Bool { portugueseWords.contains(w) }
 

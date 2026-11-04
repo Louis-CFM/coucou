@@ -233,11 +233,18 @@ final class MacDictation: @unchecked Sendable {
 
     /// The languages Automatic listens for: the voice assistant's language when one is chosen, last
     /// winner, macOS languages, keyboard layouts, Coucou's own language, then English — one per
-    /// language, up to three (the order lives in `VoiceLang.dictationOrder`).
+    /// language, up to three (the order lives in `DictationOrder`).
     static func automaticLocales() -> [Locale] {
         let supported = Array(SFSpeechRecognizer.supportedLocales())
-        return VoiceLang.dictationOrder(
-            listen: VoiceSettings.listenLanguage,
+        #if !APPSTORE
+        // The voice assistant's language only exists in the GitHub build.
+        let listen = VoiceSettings.listenLanguage
+        let chosen = VoiceLang(rawValue: listen).map { (language: $0.rawValue, fallbackLocale: $0.locale.identifier) }
+        #else
+        let chosen: (language: String, fallbackLocale: String)? = nil
+        #endif
+        return DictationOrder.locales(
+            chosen: chosen,
             lastHeard: UserDefaults.standard.string(forKey: lastHeardKey),
             // The Mac's languages (not Coucou's override in Settings → General → Language).
             mac: (CFPreferencesCopyValue("AppleLanguages" as CFString, kCFPreferencesAnyApplication,

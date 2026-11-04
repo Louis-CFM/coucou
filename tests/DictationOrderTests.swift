@@ -21,11 +21,17 @@ struct DictationOrderTests {
         }
         func order(listen: String, last: String? = nil, mac: [String] = [], keyboard: [String] = [],
                    app: [String] = []) -> [String] {
-            VoiceLang.dictationOrder(listen: listen, lastHeard: last, mac: mac, keyboard: keyboard, app: app,
-                                     max: 3, resolve: resolve).map(\.identifier)
+            // What MacDictation passes: the voice languages with their fallback locale, nil for anything else.
+            let fallback = ["en": "en-US", "fr": "fr-FR", "pt": "pt-BR"]
+            let chosen = fallback[listen].map { (language: listen, fallbackLocale: $0) }
+            return DictationOrder.locales(chosen: chosen, lastHeard: last, mac: mac, keyboard: keyboard, app: app,
+                                          max: 3, resolve: resolve).map(\.identifier)
         }
 
         print("dictation order")
+        check("App Store build: no chosen language behaves like auto",
+              DictationOrder.locales(chosen: nil, lastHeard: nil, mac: ["en-BR", "pt-BR"], keyboard: [], app: [],
+                                     max: 3, resolve: resolve).map(\.identifier) == ["en-US", "pt-BR"])
         check("auto keeps today's order (Mac languages, then English)",
               order(listen: "auto", mac: ["en-BR", "pt-BR"]) == ["en-US", "pt-BR"])
         check("auto: last heard first, then Mac languages",
