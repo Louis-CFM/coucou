@@ -266,7 +266,8 @@ all. Through npm's `.cmd` shims the prompt goes in on stdin. Flow's clean-up
 and the notes of a call use Claude Code when no Anthropic key is saved;
 « OK Coucou » still needs the key: its tools are Coucou's own.
 
-The chat also talks to **Google AI (Gemini)**, **OpenAI** and **OpenRouter**:
+The chat also talks to **Google AI (Gemini)**, **OpenAI**, **OpenRouter** and
+**Requesty** (its managed models, key from app.requesty.ai/api-keys):
 add their keys in **Settings… → Chat providers**, then click the model name
 above the chat box to switch provider and model, as on the Mac. The model list
 is fetched from the provider only once you pick it and it has a key. Switching
@@ -630,9 +631,9 @@ own window.
   guessed at with `cmd`. The Codex CLI is looked for on `PATH` and in npm's,
   Volta's, Bun's and pnpm's folders (and nvm's on Linux).
 - The chat's model picker opens inside the chat card instead of a popover, and
-  it also offers OpenRouter and any OpenAI-compatible server, which the Mac
-  does not. Google AI, OpenAI and OpenRouter can see an image you dropped (sent
-  inline), where the Mac sends its name only.
+  it also offers OpenRouter, Requesty and any OpenAI-compatible server, which
+  the Mac does not. Google AI, OpenAI, OpenRouter and Requesty can see an
+  image you dropped (sent inline), where the Mac sends its name only.
 - Live diff: the relay forwards an edit's text whole only once the edit is done
   (PostToolUse), up to 256 KB per string and 512 KB per event. A bigger edit
   shows its "Edits · file" step without counts rather than wrong ones. The
