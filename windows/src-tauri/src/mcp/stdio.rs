@@ -69,7 +69,6 @@ impl StdioClient {
             "OPENAI_",
             "CLAUDE_",
             "GEMINI_",
-            "GENTLE_PI_",
             "PI_CODING_AGENT_",
         ];
         for (k, v) in env {
@@ -222,14 +221,14 @@ mod tests {
             "OPENAI_",
             "CLAUDE_",
             "GEMINI_",
-            "GENTLE_PI_",
+            "AGENT_INTERNAL_",
             "PI_CODING_AGENT_",
         ];
         let mut test_env = HashMap::new();
         test_env.insert("SAFE_VAR".to_string(), "1".to_string());
         test_env.insert("coucou_secret".to_string(), "2".to_string());
         test_env.insert("ANTHROPIC_KEY".to_string(), "3".to_string());
-        test_env.insert("gentle_pi_child".to_string(), "4".to_string());
+        test_env.insert("agent_internal_child".to_string(), "4".to_string());
 
         let mut filtered = HashMap::new();
         for (k, v) in &test_env {
@@ -243,6 +242,6 @@ mod tests {
         assert!(filtered.contains_key("SAFE_VAR"));
         assert!(!filtered.contains_key("coucou_secret"));
         assert!(!filtered.contains_key("ANTHROPIC_KEY"));
-        assert!(!filtered.contains_key("gentle_pi_child"));
+        assert!(!filtered.contains_key("agent_internal_child"));
     }
 }

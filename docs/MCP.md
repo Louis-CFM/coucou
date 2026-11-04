@@ -64,7 +64,7 @@ Coucou automatically reads existing configurations from standard developer tools
 
 ### A. Hardened Subprocesses over Stdio (`MCPStdioClient.swift`)
 * Launches servers as child processes (`Process`) with isolated standard pipes (`stdin`, `stdout`, `stderr`).
-* **Process & Descriptor Hygiene (Gentle Dot pattern):**
+* **Process & Descriptor Hygiene:**
   * All internal sockets and pipes (e.g., Coucou's `HookServer` socket `nb.sock`, IPC channels) are strictly closed-on-exec (`CLOEXEC`) so child tool processes cannot inherit or tamper with internal communications.
   * Continuous draining of `stderr` via dedicated readability handlers to prevent XNU pipe buffer exhaustion (64 KB kernel deadlock).
 * **Environment Sanitization:**

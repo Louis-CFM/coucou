@@ -222,7 +222,7 @@ actor MCPStdioClient: MCPClientProtocol {
     // MARK: - Environment Sanitization
 
     /// Builds a sanitized environment for child MCP subprocesses.
-    /// Following the Gentle Dot hardening pattern, child processes do not inherit Coucou's full environment.
+    /// Child processes do not inherit Coucou's full environment.
     /// Internal app secrets, API keys, IPC tokens, and parent process descriptors are stripped.
     static func sanitizedEnvironment(
         resolvedCommand: String,
@@ -266,7 +266,6 @@ actor MCPStdioClient: MCPClientProtocol {
             "OPENAI_",
             "CLAUDE_",
             "GEMINI_",
-            "GENTLE_PI_",
             "PI_CODING_AGENT_"
         ]
 
