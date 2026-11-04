@@ -258,6 +258,9 @@ final class ClaudeService {
         for turn in conversations[id].turns.values { turn.task?.cancel() }
         generations.renew(id)
         conversations.set(id, Conversation())
+        #if !APPSTORE
+        if id == .shared { relayHistory = [] }
+        #endif
         ChatMediaStore.shared.forgetConversation(id.mediaKey)
     }
 
@@ -298,9 +301,85 @@ final class ClaudeService {
         }
     }
 
+    /// Whether the chat can answer with Claude: an API key, or else Claude Code (GitHub build).
+    var canAnswer: Bool {
+        #if APPSTORE
+        return !(apiKey ?? "").isEmpty
+        #else
+        return !(apiKey ?? "").isEmpty || CLILocator.shared.isInstalled(.claude)
+        #endif
+    }
+
+    #if !APPSTORE
+    // MARK: - Chat through the user's subscription (CLIRelay.swift)
+
+    /// The relay's turns, as plain text: they never mix with the API's content blocks.
+    private var relayHistory: [(user: String, assistant: String)] = []
+
+    private func chatThroughSubscription(_ provider: ChatProvider, query: String, context: PromptContext?, state: AppState) async {
+        guard let cli = provider.installedCLI else {
+            let tool = provider.subscriptionCLIs.first?.displayName ?? provider.displayName
+            await showError(String(format: String(localized: "chat.subscriptions.error.missing"), tool), state: state)
+            return
+        }
+        var contextLine: String?
+        // What later turns see of this one: never a file's contents, which go out with
+        // the web search of the turns after it otherwise.
+        var historyContext: String?
+        var readDir: URL?
+        if relayHistory.isEmpty, let context {
+            switch context {
+            case .window(let app, let title, let url):
+                var text = "Context — App: \(app), Window: \(title)"
+                if let url { text += ", URL: \(url)" }
+                contextLine = text
+                historyContext = text
+            case .file(let name, let fileURL):
+                historyContext = "File: \(name)"
+                if cli == .claude, let fileURL, let dir = try? CLIRelay.isolate(fileURL) {
+                    readDir = dir
+                    contextLine = "File: \(name) (read it at \(dir.appendingPathComponent(fileURL.lastPathComponent).path))"
+                } else if let fileURL, let text = CLIRelay.inlineText(fileURL) {
+                    contextLine = "File: \(name)\nFile contents:\n\(text)"
+                } else {
+                    contextLine = "File: \(name) (its contents can't be read here)"
+                }
+            }
+        }
+        defer { if let readDir { try? FileManager.default.removeItem(at: readDir) } }
+        // A dropped file is read with no web at all: a file written to steer the model
+        // could otherwise send what it reads to a website.
+        let readsFile: Bool = {
+            if case .file = context, relayHistory.isEmpty { return true }
+            return false
+        }()
+        let request = CLIRequest(
+            model: provider == .anthropic ? model : nil,
+            system: systemPrompt + extraSystem,
+            prompt: CLIRelay.chatPrompt(history: relayHistory, context: contextLine, query: query),
+            web: !readsFile,
+            readDir: readDir,
+            noWebPolicy: nil,
+            timeout: 180
+        )
+        do {
+            let text = try await CLIRelay.ask(cli, request)
+            relayHistory.append((user: historyContext.map { "\($0)\n\n\(query)" } ?? query, assistant: text))
+            state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: text, provider: provider, mailPlan: !extraSystem.isEmpty)) }
+            state.stateOverride = nil
+            state.showSharedChatAnswer()
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
+            await showError(error.localizedDescription, state: state)
+        }
+    }
+    #endif
+
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
     private let systemPrompt = ClaudeService.makeSystemPrompt()
+    /// Added to the system prompt for this turn (the chat's Mail switch).
+    private var extraSystem = ""
 
     /// Greets the user by their macOS first name when there is one worth using, and stays
     /// neutral otherwise — same wording as the Windows build.
@@ -339,6 +418,16 @@ final class ClaudeService {
             await chatHermes(query: query, context: context, state: state, agentName: agentName)
             return
         }
+        var query = query
+        extraSystem = ""
+        #if !APPSTORE
+        // Mail on: the AI gets the latest messages under the request, and may answer with a
+        // plan of actions (MailPlan.swift) that runs only after the user's click.
+        if state.chatMailMode {
+            query = await MailAgent.shared.decorate(query)
+            extraSystem = MailAgentPrompt.instructions
+        }
+        #endif
         // The shared chat never reaches a Hermes agent, even if the provider was switched to Hermes since Send.
         // If the provider was never tracked (Hermes before this version) there is no provider to fall back on: nothing is sent.
         guard let provider = state.chatProvider == .hermes ? state.lastSharedProvider : state.chatProvider else {
@@ -348,6 +437,14 @@ final class ClaudeService {
             await showError(String(localized: "API key missing. Open settings."), state: state)
             return
         }
+        #if !APPSTORE
+        // "Use my subscription": the provider's own terminal tool answers, signed in with
+        // the user's account.
+        if state.usesSubscription(provider) {
+            await chatThroughSubscription(provider, query: query, context: context, state: state)
+            return
+        }
+        #endif
         guard provider == .anthropic else {
             await chatOpenAICompatible(query: query, context: context, state: state, provider: provider)
             return
@@ -382,7 +479,7 @@ final class ClaudeService {
             "model": model,
             "max_tokens": 4096,
             "tools": webSearchTools,
-            "system": systemPrompt,
+            "system": systemPrompt + extraSystem,
             "messages": conversationMessages,
         ]
 
@@ -412,7 +509,7 @@ final class ClaudeService {
             case .deepseek:  baseURL = "https://api.deepseek.com/v1"
             case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
             case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
-            case .anthropic, .ollama, .lmstudio, .hermes: baseURL = ""
+            case .anthropic, .ollama, .lmstudio, .hermes, .cursor, .copilot: baseURL = ""
             }
         }
 
@@ -427,18 +524,21 @@ final class ClaudeService {
 
         // Auth header
         let authHeader: String
+        let cloudKey: String?   // the provider's own key, sent when streaming too
         if provider.isLocal {
             authHeader = "Bearer ollama"
+            cloudKey = nil
         } else {
             guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
                 await showError(String(localized: "\(provider.displayName) API key missing. Configure it in Settings."), state: state)
                 return
             }
             authHeader = "Bearer \(key)"
+            cloudKey = key
         }
 
         // Build messages
-        var msgs: [[String: Any]] = [["role": "system", "content": systemPrompt]]
+        var msgs: [[String: Any]] = [["role": "system", "content": systemPrompt + extraSystem]]
         for m in conversationMessages {
             var simplified = m
             if let content = m["content"] as? [[String: Any]],
@@ -468,7 +568,7 @@ final class ClaudeService {
 
         if useStream {
             // Add placeholder (hidden until first token via ChatBubble empty-content guard)
-            let placeholder = ChatMessage(role: .assistant, content: "", provider: provider)
+            let placeholder = ChatMessage(role: .assistant, content: "", provider: provider, mailPlan: !extraSystem.isEmpty)
             let msgId = placeholder.id
             sharedChatStreaming = true
             state.updateChat(.shared) { $0.append(placeholder) }
@@ -485,7 +585,8 @@ final class ClaudeService {
                 let final = try await LocalChat.streamChat(
                     baseURL: baseURL,
                     encodedBody: encodedBody,
-                    model: modelCopy
+                    model: modelCopy,
+                    apiKey: cloudKey
                 ) { [state, msgId] visible in
                     if !visible.isEmpty, state.stateOverride == .thinking {
                         state.stateOverride = nil   // hide typing dots on first visible text
@@ -549,7 +650,7 @@ final class ClaudeService {
                 }
                 let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
                 conversationMessages.append(["role": "assistant", "content": trimmed])
-                state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: trimmed, provider: provider)) }
+                state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: trimmed, provider: provider, mailPlan: !extraSystem.isEmpty)) }
                 state.stateOverride = nil
                 state.showSharedChatAnswer()
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
@@ -944,7 +1045,7 @@ final class ClaudeService {
         }
 
         // Add to display history
-        let answer = ChatMessage(role: .assistant, content: text, provider: .anthropic)
+        let answer = ChatMessage(role: .assistant, content: text, provider: .anthropic, mailPlan: !extraSystem.isEmpty)
         state.updateChat(.shared) { $0.append(answer) }
 
         state.stateOverride = nil

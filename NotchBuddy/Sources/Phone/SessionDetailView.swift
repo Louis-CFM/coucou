@@ -82,7 +82,8 @@ struct SessionDetailView: View {
         }
         // The composer stays at the bottom, like a chat.
         .safeAreaInset(edge: .bottom) {
-            if let session, session.id == "integration_claude" || session.id == "agent_cursor" {
+            // A session's own pill ("integration_claude#2") takes instructions like its client's.
+            if let session, ["integration_claude", "agent_cursor"].contains(PillCatalog.basePillId(session.id)) {
                 InstructionComposer(link: link, session: session)
             }
         }

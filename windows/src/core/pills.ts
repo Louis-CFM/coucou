@@ -96,10 +96,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   { id: "agent_hermes", name: "Hermes", color: "#C084FC", category: "agent",
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   // Claude Code sessions run from the Claude desktop app: the relay tags them
-  // from CLAUDE_CODE_ENTRYPOINT, so there is nothing to install. The app has no
-  // Linux build.
+  // from CLAUDE_CODE_ENTRYPOINT, so there is nothing to install. The app has
+  // official builds for Windows and Linux (.deb).
   { id: "agent_claude-desktop", name: "Claude Desktop", color: "#D97757", category: "agent",
-    subtitle: N_("Agent"), source: "agent", support: "windows", connect: none },
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: none },
   // ── AI for the chat ────────────────────────────────────────────────────────
   { id: "ai_anthropic", name: "Anthropic", color: ACCENT.anthropic, category: "ai",
     subtitle: N_("Chat"), source: "n8n", support: "yes", connect: key("anthropic-api-key") },
@@ -122,6 +122,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("vercel-token") },
   { id: "integration_github", name: "GitHub", color: "#F4505E", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("github-token") },
+  { id: "integration_gitlab", name: "GitLab", color: "#FC6D26", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("gitlab-token") },
+  { id: "integration_gitea", name: "Gitea", color: "#609926", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("gitea-token") },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("notion-api-key") },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A", category: "service",
@@ -133,6 +137,14 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // Spotify through MPRIS on Linux and the system media controls on Windows
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // Mail: classic Outlook on Windows, driven on this computer through its COM objects
+  // (src-tauri/src/mail). The new Outlook has none, and Linux has no Outlook.
+  { id: "integration_mail", name: "Mail", color: "#2F8CFF", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
+  // WhatsApp (experimental) through a gateway on this computer (src-tauri/src/whatsapp): set up,
+  // linked and turned on in Settings → Integrations → WhatsApp, off until then.
+  { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
 ];
 

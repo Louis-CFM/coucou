@@ -11,6 +11,13 @@ import Foundation
 // MARK: - Work group of a turn
 
 enum ChatTurnLayout {
+    /// Whether an answer card draws a mail plan card for its ```coucou-mail block. Only a turn of the shared chat asked with
+    /// Mail on may: text from a Hermes agent (it reads Telegram, the web) or from a chat with Mail off is never a plan to
+    /// run on the user's mailbox, so its block stays plain markdown.
+    static func shouldShowMailPlan(askedWithMail: Bool, text: String) -> Bool {
+        askedWithMail && text.contains("```coucou-mail")
+    }
+
     /// The steps, the dropped steps row and the interim sentences that come before an answer, in order.
     struct WorkGroup: Equatable {
         let id: Int                      // id of the first row

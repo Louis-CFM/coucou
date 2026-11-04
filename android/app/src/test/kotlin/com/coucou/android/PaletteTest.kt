@@ -5,9 +5,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** No dark text on a dark background: every text colour is readable on the surfaces it sits on (the app is dark only). */
+/** No dark text on a dark background, nor light text on a light one: every text colour is readable on the surfaces it sits on. */
 class PaletteTest {
-    private val themes = mapOf("dark" to Palette.DARK)
+    private val themes = mapOf("dark" to Palette.DARK, "light" to Palette.LIGHT)
 
     @Test fun contrastMath() {
         assertEquals(21.0, Palette.contrast(0xFF000000, 0xFFFFFFFF), 0.01)

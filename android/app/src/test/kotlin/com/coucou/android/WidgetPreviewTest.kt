@@ -19,7 +19,7 @@ class WidgetPreviewTest {
         Regex("""<string name="(\w+)">(.*?)</string>""").findAll(read(res + "values/strings.xml")).associate { it.groupValues[1] to it.groupValues[2].replace("\\'", "'") }
 
     /** Provider XML name to the name of its preview. */
-    private val providers = listOf("solo", "list", "big", "pill", "alert", "ring", "today", "mood", "glance")
+    private val providers = listOf("solo", "list", "big", "pill", "alert", "ring", "today", "mood", "team", "glance")
 
     /** The provider file of a Widget: the summary widget keeps the name it has always had. */
     private fun infoName(name: String) = if (name == "glance") "coucou_widget_info" else "coucou_${name}_widget_info"

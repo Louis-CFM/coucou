@@ -1003,5 +1003,14 @@ enum ChatAnswerStyleTests {
                   && shape(ChatTurnLayout.items(segments: [step(0, "a"), step(1, "b"), note(2)], running: false)) == "group:rows,note"
                   && ChatTurnHeader.label(running: true, isNotice: false, hasAnswer: false) == .working
                   && ChatWorkSummary.liveStep(group: .init(id: 0, rows: [step(0, "a"), step(1, "b", "x", .running)]))?.number == 2)
+
+        // 56: the mail plan card is drawn only for a shared chat turn asked with Mail on
+        let planText = "Done.\n```coucou-mail\n{\"actions\":[]}\n```"
+        checkTrue("56 mail plan: asked with Mail on, the block is a plan card",
+                  ChatTurnLayout.shouldShowMailPlan(askedWithMail: true, text: planText))
+        checkTrue("56b mail plan: Mail off or a Hermes agent (never asked with Mail), the block is plain markdown",
+                  !ChatTurnLayout.shouldShowMailPlan(askedWithMail: false, text: planText))
+        checkTrue("56c mail plan: no block in the text, no plan",
+                  !ChatTurnLayout.shouldShowMailPlan(askedWithMail: true, text: "Just text"))
     }
 }

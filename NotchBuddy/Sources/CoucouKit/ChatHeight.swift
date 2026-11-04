@@ -90,6 +90,12 @@ enum ChatHeight {
         return everStretched && !allowShrink ? max(target, current) : target
     }
 
+    /// Where the panel's bottom edge goes when its height changes. The island is anchored to the panel's base in the bottom corners
+    /// (keep `minY`) and to its top elsewhere (keep `maxY`), so a stretched chat never pushes the island off the screen.
+    static func panelOriginY(currentMinY: CGFloat, currentHeight: CGFloat, newHeight: CGFloat, anchoredToBottom: Bool) -> CGFloat {
+        anchoredToBottom ? currentMinY : currentMinY + currentHeight - newHeight
+    }
+
     /// Whether a drag of the grip is still real. The flag `chatResizing` is a promise that the primary
     /// button is down on the chat; if the gesture was cancelled or the view went away, it must not outlive that.
     static func resizeIsLive(resizing: Bool, primaryButtonDown: Bool, isChatView: Bool, isExpanded: Bool) -> Bool {

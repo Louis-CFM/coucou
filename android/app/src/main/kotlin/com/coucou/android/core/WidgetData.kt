@@ -111,16 +111,17 @@ object PlanUsageLook {
         val at = Instant.ofEpochMilli(resetsAtMs).atZone(zone)
         val days = ChronoUnit.DAYS.between(Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate(), at.toLocalDate())
         val clock = "%02d:%02d".format(at.hour, at.minute)
+        val locale = Locale.getDefault()
         return when {
-            days == 0L -> "resets at $clock"
-            days < 7 -> "resets ${at.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH)} $clock"
-            else -> "resets ${at.month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH)} ${at.dayOfMonth} $clock"
+            days == 0L -> Texts.t("usage_resets_at", "resets at %1\$s", clock)
+            days < 7 -> Texts.t("usage_resets_day", "resets %1\$s %2\$s", at.dayOfWeek.getDisplayName(TextStyle.SHORT, locale), clock)
+            else -> Texts.t("usage_resets_date", "resets %1\$s %2\$d %3\$s", at.month.getDisplayName(TextStyle.SHORT, locale), at.dayOfMonth, clock)
         }
     }
 
     /** "Near limit" (with the reset time when known) from the red line; null below it, where there is no warning. */
     fun note(pct: Int, resetsAtMs: Long, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): String? =
-        if (!nearLimit(pct)) null else listOfNotNull("Near limit", resetLine(resetsAtMs, nowMs, zone)).joinToString(" · ")
+        if (!nearLimit(pct)) null else listOfNotNull(Texts.t("usage_near_limit", "Near limit"), resetLine(resetsAtMs, nowMs, zone)).joinToString(" · ")
 }
 
 /** The plan usage a ring or a bar shows: which plan and window, how much of it is used, and the warning line when it is near the limit. */
@@ -163,6 +164,8 @@ data class WidgetContent(
     val today: Int = 0,
     /** Mochi Big's plan usage: Claude then Codex, each with its main window; empty when the computer sends none or is not connected. */
     val usageRows: List<UsageRing> = emptyList(),
+    /** Every agent that runs, most urgent first (the [tiles] are its first few): the Team widget picks its own from it. */
+    val roster: List<WidgetTile> = emptyList(),
 ) {
     /** Which of the three things Mochi Big's right side shows. */
     val usageSide: UsageSide get() = when {
@@ -177,22 +180,22 @@ data class WidgetContent(
     /** The one clear line when there is no agent to list: the computer is not there, or nothing runs. Null when there are agents. */
     val emptyLine: String? get() = when {
         tiles.isNotEmpty() -> null
-        !connected -> "Waiting for your computer"
-        else -> "No agents running"
+        !connected -> Texts.t("widget_waiting_computer", "Waiting for your computer")
+        else -> Texts.t("widget_no_agents", "No agents running")
     }
 
     /** The Waiting Alert's line: "2 waiting" in orange, or a calm word. */
     val alertLine: String get() = when {
-        !connected -> "Not connected"
-        waiting > 0 -> "$waiting waiting"
-        else -> "All calm"
+        !connected -> Texts.t("status_not_connected", "Not connected")
+        waiting > 0 -> Texts.n("widget_n_waiting", waiting, "%1\$d waiting", "%1\$d waiting")
+        else -> Texts.t("widget_all_calm", "All calm")
     }
 
     /** The line under the alert: who is waiting, or why there is nothing to say. */
     val alertSub: String get() = when {
-        !connected -> "Waiting for your PC"
+        !connected -> Texts.t("widget_waiting_pc", "Waiting for your PC")
         waiting > 0 -> top?.name.orEmpty()
-        else -> "Nothing needs you"
+        else -> Texts.t("widget_nothing_needs_you", "Nothing needs you")
     }
 
     /** Mochi's face on the Today widget: pleased once something finished today, calm before. */
@@ -257,13 +260,13 @@ object WidgetData {
         today: Int = 0,
         nowMs: Long = 0L,
     ): WidgetContent {
-        val tiles = if (!glance.connected) emptyList() else sessions
+        val roster = if (!glance.connected) emptyList() else sessions
             .sortedBy { GlanceBuilder.rank(it.state) }
-            .take(MAX_ROWS)
             .map { WidgetTile(it.pillId, nameOf(it.pillId), it.state, GlanceBuilder.lineOf(it), colourOf(it)) }
+        val tiles = roster.take(MAX_ROWS)
         val ring = if (glance.connected) ring(usage, nowMs) else null
         val rows = if (glance.connected) usageRows(usage, nowMs) else emptyList()
-        return WidgetContent(glance.headline, glance.tone, glance.connected, glance.waiting, tiles, ring, today.coerceAtLeast(0), rows)
+        return WidgetContent(glance.headline, glance.tone, glance.connected, glance.waiting, tiles, ring, today.coerceAtLeast(0), rows, roster)
     }
 
     /**
@@ -273,7 +276,7 @@ object WidgetData {
     fun usageRows(usage: UsageSnapshot?, nowMs: Long): List<UsageRing> {
         usage ?: return emptyList()
         return listOf("Claude" to usage.claude, "Codex" to usage.codex).mapNotNull { (name, plan) ->
-            plan?.fiveHour?.let { row(name, "5 h", it, nowMs) } ?: plan?.sevenDay?.let { row(name, "week", it, nowMs) }
+            plan?.fiveHour?.let { row(name, WINDOW_5H, it, nowMs) } ?: plan?.sevenDay?.let { row(name, WINDOW_WEEK, it, nowMs) }
         }
     }
 
@@ -326,6 +329,10 @@ object WidgetData {
 
     private const val HOUR_MS = 3_600_000L
 
+    /** The window names of a plan row, in the app's language ("5 h", "week"). */
+    private val WINDOW_5H: String get() = Texts.t("usage_window_5h", "5 h")
+    private val WINDOW_WEEK: String get() = Texts.t("usage_window_week", "week")
+
     /** One row: the percentage counted as zero once the window has reset, and the "Near limit" line with its reset time. */
     private fun row(plan: String, window: String, w: PlanWindow, nowMs: Long): UsageRing {
         val pct = PlanText.effectivePct(w, nowMs)
@@ -338,7 +345,7 @@ object WidgetData {
         for ((name, plan) in listOf("Claude" to usage.claude, "Codex" to usage.codex)) {
             plan ?: continue
             plan.fiveHour?.let { return row(name, "5 h", it, nowMs) }
-            plan.sevenDay?.let { return row(name, "week", it, nowMs) }
+            plan.sevenDay?.let { return row(name, WINDOW_WEEK, it, nowMs) }
         }
         return null
     }

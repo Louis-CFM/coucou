@@ -38,10 +38,14 @@ object Pills {
         PillDefinition("integration_n8n", "n8n", "#F29B38", PillCategory.SERVICE),
         PillDefinition("integration_vercel", "Vercel", "#7C5CFF", PillCategory.SERVICE),
         PillDefinition("integration_github", "GitHub", "#F4505E", PillCategory.SERVICE),
+        PillDefinition("integration_gitlab", "GitLab", "#FC6D26", PillCategory.SERVICE),
+        PillDefinition("integration_gitea", "Gitea", "#609926", PillCategory.SERVICE),
         PillDefinition("integration_notion", "Notion", "#8C8C8C", PillCategory.SERVICE),
         PillDefinition("integration_calcom", "Cal.com", "#C9956A", PillCategory.SERVICE),
         PillDefinition("integration_stripe", "Stripe", "#0570DE", PillCategory.SERVICE),
         PillDefinition("integration_spotify", "Spotify", "#1DB954", PillCategory.SERVICE),
+        PillDefinition("integration_mail", "Mail", "#2F8CFF", PillCategory.SERVICE),
+        PillDefinition("integration_whatsapp", "WhatsApp", "#25D366", PillCategory.SERVICE),
     )
 
     fun byId(id: String): PillDefinition? = catalog.firstOrNull { it.id == id }

@@ -47,6 +47,14 @@ class ToolLabelsTest {
         assertEquals("", ToolLabels.label("AbCdEfGhIjKlMnOpQrStUvWxYz0123"))
     }
 
+    @Test fun aFileNameInPlaceOfAToolIsJustAFile() {
+        assertEquals("A file", ToolLabels.label("SessionScreen.kt"))
+        assertEquals("A file", ToolLabels.label("build.gradle.kts"))
+        assertEquals("A file", ToolLabels.label("README.md · more"))
+        // A tool name with a dot is still a tool name.
+        assertEquals("Mcp server", ToolLabels.label("mcp.server"))
+    }
+
     @Test fun emptyStaysEmpty() {
         assertEquals("", ToolLabels.label(""))
         assertEquals("", ToolLabels.label("   "))

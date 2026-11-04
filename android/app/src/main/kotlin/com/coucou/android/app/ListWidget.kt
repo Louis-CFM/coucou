@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.coucou.android.R
 import com.coucou.android.core.WidgetContent
+import com.coucou.android.core.WidgetSpoken
 
 /**
  * The List widget: the headline with a badge, then one row per agent of at least 48dp (a bar in its own colour, Mochi's
@@ -41,6 +42,7 @@ class ListWidget : AppWidgetProvider() {
             val v = RemoteViews(context.packageName, R.layout.widget_list)
             WidgetHub.paint(v, R.id.list_root, R.id.list_tint, c.look)
             v.setOnClickPendingIntent(R.id.list_root, WidgetHub.openApp(context, WidgetHub.CODE_LIST_HEADER))
+            v.setContentDescription(R.id.list_root, WidgetSpoken.list(c))
 
             if (c.tiles.isEmpty()) {
                 // The empty state fills the card: Mochi asleep (or calm) with his glow, the headline and one clear line.
@@ -48,7 +50,7 @@ class ListWidget : AppWidgetProvider() {
                 v.setViewVisibility(R.id.list_rows, View.GONE)
                 v.setViewVisibility(R.id.list_empty, View.VISIBLE)
                 v.setImageViewBitmap(R.id.list_empty_face, MochiBitmap.of(c.mood, WidgetHub.px(context, 96), glow = true, tone = c.look))
-                v.setContentDescription(R.id.list_empty_face, context.getString(R.string.widget_mochi_description, c.mood.key))
+                v.setContentDescription(R.id.list_empty_face, context.getString(R.string.widget_mochi_description, WidgetSpoken.mood(c.mood)))
                 v.setImageViewResource(R.id.list_empty_icon, if (c.connected) R.drawable.widget_dot else R.drawable.ic_widget_offline)
                 v.setInt(R.id.list_empty_icon, "setColorFilter", c.look.argb)
                 v.setTextViewText(R.id.list_empty_title, c.headline)
@@ -87,6 +89,7 @@ class ListWidget : AppWidgetProvider() {
                 v.setTextViewText(r.name, tile.name)
                 v.setTextViewText(r.state, tile.stateWord)
                 v.setInt(r.dot, "setColorFilter", tile.tone.argb)
+                v.setContentDescription(r.row, WidgetSpoken.tile(tile))
                 v.setOnClickPendingIntent(r.row, WidgetHub.openSession(context, WidgetHub.CODE_LIST_ROW + i, tile.pillId))
             }
             return v

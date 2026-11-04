@@ -39,7 +39,7 @@ fun LinkHealthPanel(model: AppModel, onHelp: () -> Unit) {
             value = System.currentTimeMillis()
         }
     }
-    val lines = LinkHealthText.lines(model.linkState == LinkState.CONNECTED, model.health, now) ?: return
+    val lines = LinkHealthText.lines(model.linkState == LinkState.CONNECTED, model.health, now, model.wifiUp) ?: return
     val t = tokens()
     Panel {
         Column(Modifier.padding(Spacing.INSIDE.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

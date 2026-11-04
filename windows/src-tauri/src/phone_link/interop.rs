@@ -22,7 +22,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::chat::{BoxFuture, ChatBackend, ChatConfig, ChatFail, ChatLink, ModelOption};
-use super::hub::{ApprovalIn, DiffIn, FileIn, Host, Hub, PlanIn, ServiceIn, ServiceItemIn, SessionIn, UsageIn, WindowIn};
+use super::hub::{ApprovalIn, DiffIn, FileIn, Host, Hub, PlanIn, RecapIn, ServiceIn, ServiceItemIn, SessionIn, UsageIn, WindowIn};
 use super::server::Features;
 use super::pairing::{self, tests::MemStore};
 use super::server;
@@ -43,6 +43,7 @@ struct Switches {
     details: AtomicBool,
     diffs: AtomicBool,
     usage: AtomicBool,
+    recap: AtomicBool,
     services: std::sync::Mutex<Vec<String>>,
 }
 impl Features for Switches {
@@ -54,6 +55,9 @@ impl Features for Switches {
     }
     fn usage(&self) -> bool {
         self.usage.load(Ordering::SeqCst)
+    }
+    fn recap(&self) -> bool {
+        self.recap.load(Ordering::SeqCst)
     }
     fn services(&self) -> Vec<String> {
         self.services.lock().unwrap().clone()
@@ -119,7 +123,7 @@ fn interop_server() {
         let token = std::env::var("COUCOU_INTEROP_TOKEN").unwrap_or_else(|_| "interop-token-0123456789abcdef".into());
         let hub = Hub::new(Arc::new(Printing));
         let fake = Arc::new(FakeChat { on: AtomicBool::new(false) });
-        let switches = Arc::new(Switches { details: AtomicBool::new(false), diffs: AtomicBool::new(false), usage: AtomicBool::new(false), services: std::sync::Mutex::new(Vec::new()) });
+        let switches = Arc::new(Switches { details: AtomicBool::new(false), diffs: AtomicBool::new(false), usage: AtomicBool::new(false), recap: AtomicBool::new(false), services: std::sync::Mutex::new(Vec::new()) });
         let shared = server::Shared::with_features(
             hub.clone(), token.clone(), "Rust desktop".into(), Some(ChatLink::new(fake.clone())), switches.clone(),
         );
@@ -185,6 +189,22 @@ fn interop_server() {
                     claude: Some(PlanIn { five_hour: Some(WindowIn { used_pct: pct.parse().unwrap_or(0.0), resets_at: 1_900_000_000_000 }), plan_type: Some("max".into()), ..PlanIn::default() }),
                     codex: None,
                 }),
+                (Some("recap"), Some(state), _) => switches.recap.store(state == "on", Ordering::SeqCst),
+                // `recapweek 2026-10-05` publishes a sample week (12 sessions...) whose project is a full path, to prove only the folder name leaves.
+                (Some("recapweek"), Some(week), _) => hub.publish_recap(RecapIn {
+                    week: week.into(),
+                    minutes: 340.0,
+                    sessions: 12.0,
+                    files: 40.0,
+                    lines_added: 900.0,
+                    lines_removed: 210.0,
+                    commands: 55.0,
+                    allowed: 20.0,
+                    denied: 3.0,
+                    top_agent: Some("Claude Code".into()),
+                    top_project: Some("/home/someone/private/coucou".into()),
+                }),
+                (Some("recapnone"), _, _) => hub.publish_recap(RecapIn::default()),
                 (Some("diffs"), Some(state), _) => switches.diffs.store(state == "on", Ordering::SeqCst),
                 (Some("diff"), Some(conn), Some(lines)) => {
                     // `lines` is how many sample lines to send (to try the limits and the parts).

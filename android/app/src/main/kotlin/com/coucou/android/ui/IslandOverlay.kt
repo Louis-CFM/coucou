@@ -18,7 +18,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.coucou.android.core.IconKind
+import com.coucou.android.core.MotionPolicy
 import com.coucou.android.core.MotionSpec
+import com.coucou.android.core.MotionState
 import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.Tokens
 import com.coucou.android.core.TypeScale
@@ -60,6 +62,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -183,7 +188,7 @@ class IslandOverlay(
         if (opening) {
             width.jump(b.notchWidth.toDouble()); height.jump(0.0); radius.jump(b.cornerSmall.toDouble())
         }
-        val reduced = MotionSpec.isReduced(Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
+        val reduced = MotionPolicy.reduced(MotionState.choice, Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
         if (phase == IslandTimeline.Phase.OPEN) {
             val (w, h) = IslandGeometry.sizeFor(b, current.kind)
             val corner = (if (current.kind == IslandSpec.Kind.WORKING) b.cornerSmall else b.cornerLarge).toDouble()
@@ -317,7 +322,11 @@ class IslandOverlay(
                         Modifier.fillMaxWidth().padding(top = topInset).alpha(open.coerceIn(0.0, 1.0).toFloat()),
                         contentAlignment = Alignment.TopCenter,
                     ) {
-                        Box(Modifier.requiredWidth(px(targetW.toDouble())).wrapContentHeight(Alignment.Top, unbounded = true)) {
+                        // TalkBack reads what the island shows when it appears: a request at once, the rest when it is quiet.
+                        Box(
+                            Modifier.requiredWidth(px(targetW.toDouble())).wrapContentHeight(Alignment.Top, unbounded = true)
+                                .semantics { liveRegion = if (s.kind == IslandSpec.Kind.APPROVAL) LiveRegionMode.Assertive else LiveRegionMode.Polite },
+                        ) {
                             when (s.kind) {
                                 IslandSpec.Kind.WORKING -> WorkingStrip(s)
                                 IslandSpec.Kind.APPROVAL -> RequestCard(s)

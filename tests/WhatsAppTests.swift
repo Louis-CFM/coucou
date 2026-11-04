@@ -52,6 +52,16 @@ enum WhatsAppTests {
             check("groups heard when not muted", inbox.add(msg("g3", chat: group, from: "336@s.whatsapp.net"), filters: f) == .notify)
         }
 
+        print("\nStatus updates and channels are not conversations (#901)")
+        do {
+            var inbox = WAInbox()
+            let f = WAFilters()
+            check("a contact's Status is left out", inbox.add(msg("s1", chat: "status@broadcast", from: "33600000001@s.whatsapp.net", text: "https://vm.tiktok.com/x"), filters: f) == .ignored)
+            check("a channel post is left out", inbox.add(msg("n1", chat: "120363000000000001@newsletter"), filters: f) == .ignored)
+            check("nothing shows", inbox.visible(filters: f).isEmpty)
+            check("people and groups still are", WAJID.isConversation("33600000001@s.whatsapp.net") && WAJID.isConversation("120363@g.us") && WAJID.isConversation("251556368777322@lid"))
+        }
+
         print("\nOnly the last messages are kept")
         do {
             var inbox = WAInbox()

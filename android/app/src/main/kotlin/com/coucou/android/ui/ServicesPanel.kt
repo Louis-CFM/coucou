@@ -36,13 +36,13 @@ private fun ServiceCardView(c: ServiceCard) {
     Panel {
         Column(Modifier.fillMaxWidth().padding(Spacing.INSIDE.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(c.title, Modifier.weight(1f), style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(c.title, Modifier.weight(1f), style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 2, overflow = TextOverflow.Ellipsis)
                 c.reason?.let { Text(it, style = TypeScale.LABEL.style(t.textDim.c()), maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
             Text(c.headline, style = TypeScale.TITLE.style(t.text.c()), maxLines = 2, overflow = TextOverflow.Ellipsis)
             for (line in c.items) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.GAP.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(line.label, Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(line.label, Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     if (line.detail.isNotEmpty()) Text(line.detail, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 1)
                 }
             }

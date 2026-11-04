@@ -69,6 +69,7 @@ import com.coucou.android.core.ChatReasons
 import com.coucou.android.core.ChatTab
 import com.coucou.android.core.ChatTabState
 import com.coucou.android.core.Screen
+import com.coucou.android.core.ShareDraft
 import com.coucou.android.mochi.BotState
 import com.coucou.android.mochi.MochiEngine
 import com.coucou.android.mochi.MochiView
@@ -166,6 +167,16 @@ fun ChatScreen(model: AppModel, onHome: () -> Unit, onSettings: () -> Unit) {
     }
 
     val tabState = model.chatTabState
+    // Text shared from another app waits for a chat that can take it: it goes in the box (never sent), or is dropped with a word if the
+    // computer does not offer chat. While the computer is not reachable yet it stays, for a couple of minutes.
+    val sharedChatOff = stringResource(R.string.share_chat_off)
+    LaunchedEffect(tabState, model.shareVersion) {
+        when (tabState) {
+            ChatTabState.READY -> model.shareDraft.take()?.let { text = ShareDraft.into(text, it) }
+            ChatTabState.CHAT_OFF, ChatTabState.NO_MODELS -> if (model.shareDraft.take() != null) model.message = sharedChatOff
+            else -> {}
+        }
+    }
     // Nothing to chat with and nothing to read: say why, calmly, with the one thing to do about it.
     if (tabState != ChatTabState.READY && messages.isEmpty()) {
         ChatEmpty(tabState, onHome, onSettings)
@@ -375,7 +386,7 @@ private fun ModelChip(model: AppModel) {
             horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(R.string.chat_model, current?.label ?: "—"), style = TypeScale.LABEL.style(t.text.c()), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (models.size > 1) CoucouIcon(IconKind.CHEVRON, tint = t.textDim.c(), size = 16.dp, modifier = Modifier.rotate(90f))
+            if (models.size > 1) CoucouIcon(IconKind.CHEVRON, tint = t.textDim.c(), size = 16.dp, modifier = Modifier.rotate(90f), mirror = false)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             for (m in models) {

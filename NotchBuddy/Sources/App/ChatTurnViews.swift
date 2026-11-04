@@ -41,6 +41,8 @@ struct AgentTurnBlock: View, Equatable {
     var label: ChatTurnHeader.Label = .none
     /// The message this block draws: what the user opened is remembered under it for the app session.
     var messageID: UUID? = nil
+    /// The turn was asked with Mail on (shared chat only): a coucou-mail block is then drawn as a plan card.
+    var mailPlan = false
 
     /// Folded groups that start open (a snapshot or a preview); the user's clicks do the rest.
     @State private var expanded: Set<Int>
@@ -49,7 +51,8 @@ struct AgentTurnBlock: View, Equatable {
     @Environment(\.chatMedia) private var media
 
     init(speaker: ChatSpeaker, showsHeader: Bool, segments: [ChatSegment], typing: Bool = false, running: Bool = false,
-         label: ChatTurnHeader.Label = .none, messageID: UUID? = nil, initiallyExpanded: Set<Int> = []) {
+         label: ChatTurnHeader.Label = .none, messageID: UUID? = nil, mailPlan: Bool = false,
+         initiallyExpanded: Set<Int> = []) {
         self.speaker = speaker
         self.showsHeader = showsHeader
         self.segments = segments
@@ -57,6 +60,7 @@ struct AgentTurnBlock: View, Equatable {
         self.running = running
         self.label = label
         self.messageID = messageID
+        self.mailPlan = mailPlan
         let remembered = messageID.flatMap { ChatFolds.memory.entry(for: $0) }
         _expanded = State(initialValue: remembered?.expanded ?? initiallyExpanded)
         _touched = State(initialValue: remembered?.touched ?? !initiallyExpanded.isEmpty)
@@ -64,7 +68,7 @@ struct AgentTurnBlock: View, Equatable {
 
     nonisolated static func == (a: AgentTurnBlock, b: AgentTurnBlock) -> Bool {
         a.speaker == b.speaker && a.showsHeader == b.showsHeader && a.segments == b.segments
-            && a.typing == b.typing && a.running == b.running && a.label == b.label
+            && a.typing == b.typing && a.running == b.running && a.label == b.label && a.mailPlan == b.mailPlan
     }
 
     private var color: Color { Color(hex: speaker.colorHex) }
@@ -185,12 +189,36 @@ struct AgentTurnBlock: View, Equatable {
                 }
             }
         case .card(let id, let text, let open):
-            ChatMarkdownView(markdown: text, style: .card(verdict: hasWork(before: index, in: items)), streaming: open)
-                .equatable()
-                .transformEnvironment(\.chatMedia) {
-                    $0.scope = "\(messageID?.uuidString ?? "")-\(id)"
-                    $0.colorHex = speaker.colorHex
+            if ChatTurnLayout.shouldShowMailPlan(askedWithMail: mailPlan, text: text) {
+                // A mail plan (MailPlan.swift) is not shown as raw JSON: its prose is the card, the plan a card of its own.
+                let parsed = MailPlanParser.extract(text)
+                VStack(alignment: .leading, spacing: 6) {
+                    if !parsed.prose.isEmpty {
+                        ChatMarkdownView(markdown: parsed.prose, style: .card(verdict: hasWork(before: index, in: items)), streaming: open)
+                            .equatable()
+                            .transformEnvironment(\.chatMedia) {
+                                $0.scope = "\(messageID?.uuidString ?? "")-\(id)"
+                                $0.colorHex = speaker.colorHex
+                            }
+                    }
+                    #if !APPSTORE
+                    if let plan = parsed.plan, let messageID {
+                        MailPlanCard(plan: plan, messageId: messageID)
+                    } else if let error = parsed.error {
+                        Text(String(format: String(localized: "mail.plan.error %@"), error))
+                            .font(.system(size: 10.5))
+                            .foregroundColor(Color(hex: "#F5A524"))
+                    }
+                    #endif
                 }
+            } else {
+                ChatMarkdownView(markdown: text, style: .card(verdict: hasWork(before: index, in: items)), streaming: open)
+                    .equatable()
+                    .transformEnvironment(\.chatMedia) {
+                        $0.scope = "\(messageID?.uuidString ?? "")-\(id)"
+                        $0.colorHex = speaker.colorHex
+                    }
+            }
         case .note(_, let text):
             Text(verbatim: text)
                 .font(.system(size: 11))
@@ -883,7 +911,8 @@ struct ChatTurnList: View {
                                     isNotice: message.isNotice,
                                     hasAnswer: ChatTurnHeader.hasAnswer(segments: message.segments, content: message.content),
                                     waitsForUser: ChatTurnLayout.waitsForUser(message.segments)),
-                                messageID: message.id)
+                                messageID: message.id,
+                                mailPlan: message.mailPlan)
                                 .equatable()
                         }
                     }

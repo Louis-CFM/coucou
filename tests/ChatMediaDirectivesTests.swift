@@ -7,7 +7,7 @@ private let screenshot = """
 Primeiro áudio da Giogina em espanhol. 6s, voz ef_dora.
 
 [[audio_as_voice]]
-MEDIA:/Users/caionorder/.hermes/norder-runs/giogina-es-audio/her-new-photos.ogg
+MEDIA:/Users/someone/Documents/runs/audio/her-new-photos.ogg
 
 Ouve e me fala o ajuste: mais lenta, mais grave, mais latina, ou texto diferente. Só depois eu gero os outros 23.
 """
@@ -42,7 +42,7 @@ struct ChatMediaDirectivesTests {
         checkTrue("02 the screenshot, finished", {
             let r = x(screenshot)
             return r.text == screenshotClean && kinds(r) == [.voice] && r.attachments[0].name == "her-new-photos.ogg"
-                && paths(r) == ["/Users/caionorder/.hermes/norder-runs/giogina-es-audio/her-new-photos.ogg"]
+                && paths(r) == ["/Users/someone/Documents/runs/audio/her-new-photos.ogg"]
         }())
         checkTrue("02b the marked text puts the slot where the directive was, between blank lines", {
             let r = x(screenshot)
@@ -172,7 +172,7 @@ struct ChatMediaDirectivesTests {
                     if appearedAt == nil {
                         appearedAt = n
                         // the first time it shows, the path is whole and the line is complete
-                        guard paths(r) == ["/Users/caionorder/.hermes/norder-runs/giogina-es-audio/her-new-photos.ogg"],
+                        guard paths(r) == ["/Users/someone/Documents/runs/audio/her-new-photos.ogg"],
                               chars[n - 1] == "\n" else { return false }
                     }
                     count += 1

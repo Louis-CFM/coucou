@@ -15,6 +15,8 @@ enum IslandView: String, CaseIterable {
     case listening    // voice wake detected — "À l'écoute…" with live transcript
     case voiceResult  // voice command executed — "✓ Musique lancée" for ~2 s
     case capture      // a screen capture just taken (⌃⌥X): paste, copy, annotate, ask Claude
+    case update       // a new Coucou is out on GitHub: one click to install it (GitHub build)
+    case whatsNew     // Coucou just updated itself: what the version brings, then your Coucou so far (GitHub build)
 }
 
 // MARK: - Bot State
@@ -84,6 +86,22 @@ struct AgentTask: Identifiable, Equatable {
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
     var subtitle: String?    = nil  // second line under the name (cmux sessions: folder and git branch)
     var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
+    /// The sessions sharing this pill, for the open card; empty while one session (or none) is behind it.
+    var sessionLines: [SessionLine] = []
+
+    /// The client pill this task belongs to: its id, or for a session's own pill
+    /// ("integration_claude#2") the pill of its client. Compare this, not `id`, to a pill ID.
+    var pill: String { PillCatalog.basePillId(id) }
+}
+
+/// One of several sessions behind a pill, as the open card lists them.
+struct SessionLine: Identifiable, Equatable {
+    var id: String
+    var title: String
+    var state: BotState
+    var lastStep: String
+    /// The session the pill shows (its name, steps and state are the pill's).
+    var isShown: Bool
 }
 
 enum AgentSource: Equatable {
@@ -104,6 +122,9 @@ enum ChatProvider: String, CaseIterable, Codable {
     case deepseek  = "deepseek"
     case qwen      = "qwen"
     case moonshot  = "moonshot"
+    // Answered only through the user's own subscription (CLIRelay.swift, GitHub build)
+    case cursor    = "cursor"
+    case copilot   = "copilot"
 
     var displayName: String {
         switch self {
@@ -116,6 +137,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "DeepSeek"
         case .qwen:      "Qwen"
         case .moonshot:  "Moonshot"
+        case .cursor:    "Cursor"
+        case .copilot:   "GitHub Copilot"
         }
     }
 
@@ -130,6 +153,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "#5B8FF9"
         case .qwen:      "#FF6A00"
         case .moonshot:  "#7C5CFC"
+        case .cursor:    "#A1A1AA"
+        case .copilot:   "#8B5CF6"
         }
     }
 
@@ -144,6 +169,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "deepseek-chat"
         case .qwen:      "qwen-max"
         case .moonshot:  "moonshot-v1-32k"
+        case .cursor:    ""
+        case .copilot:   ""
         }
     }
 
@@ -158,6 +185,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "deepseek-api-key"
         case .qwen:      "qwen-api-key"
         case .moonshot:  "moonshot-api-key"
+        case .cursor:    ""
+        case .copilot:   ""
         }
     }
 
@@ -176,6 +205,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "ai_deepseek"
         case .qwen:      "ai_qwen"
         case .moonshot:  "ai_moonshot"
+        case .cursor:    "ai_cursor"
+        case .copilot:   "ai_copilot"
         }
     }
 
@@ -190,6 +221,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case "ai_deepseek":  self = .deepseek
         case "ai_qwen":      self = .qwen
         case "ai_moonshot":  self = .moonshot
+        case "ai_cursor":    self = .cursor
+        case "ai_copilot":   self = .copilot
         default:             return nil
         }
     }
@@ -248,6 +281,10 @@ enum IslandConst {
         .voiceResult:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
         // Screen capture: Mochi on the left (he just swallowed it), the image and what to do with it
         .capture:      ViewLayout(height: 160, botX: 58,  botY: nil, botDiameter: 52, agentMode: .none),
+        // New version: Mochi on the left, the version and Update now
+        .update:       ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
+        // After an update: taller, four items then the stats (like mail, it fills the height)
+        .whatsNew:     ViewLayout(height: 232, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
     ]
 
     // Project colors — keyed by lowercase display name or slug

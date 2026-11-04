@@ -22,7 +22,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.coucou.android.R
 import com.coucou.android.app.AppModel
-import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.Spacing
 import com.coucou.android.core.Tokens
 import com.coucou.android.core.TypeScale
@@ -51,8 +50,8 @@ fun DiscoveryHint(onPairAgain: () -> Unit, onEnterAddress: () -> Unit) {
 fun AddressSheet(model: AppModel, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf("") }
     var bad by remember { mutableStateOf(false) }
-    val white = Color(IslandSurface.TEXT)
-    val dim = Color(IslandSurface.TEXT_DIM)
+    val white = Color(tokens().heroText)
+    val dim = Color(tokens().heroTextDim)
     BottomSheetHost(onDismiss) {
         Text(stringResource(R.string.address_title), style = TypeScale.TITLE.style(white))
         Text(stringResource(R.string.address_hint), Modifier.padding(top = 4.dp, bottom = 12.dp), style = TypeScale.SECONDARY.style(dim))
@@ -62,7 +61,7 @@ fun AddressSheet(model: AppModel, onDismiss: () -> Unit) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = white, unfocusedTextColor = white, cursorColor = white,
-                focusedBorderColor = white, unfocusedBorderColor = Color.White.copy(alpha = 0.25f),
+                focusedBorderColor = white, unfocusedBorderColor = Color(tokens().heroText).copy(alpha = 0.25f),
             ),
         )
         if (bad) Text(stringResource(R.string.address_bad), Modifier.padding(top = 8.dp), style = TypeScale.SECONDARY.style(Color(Tokens.DARK.danger)))

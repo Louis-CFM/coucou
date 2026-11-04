@@ -43,6 +43,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -51,7 +55,6 @@ import com.coucou.android.app.AppModel
 import com.coucou.android.core.ApprovalSheetPlan
 import com.coucou.android.core.HomePanel
 import com.coucou.android.core.IconKind
-import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.MotionSpec
 import com.coucou.android.core.Pills
 import com.coucou.android.core.QuestionFlow
@@ -59,6 +62,7 @@ import com.coucou.android.link.AskedOption
 import com.coucou.android.link.QuestionRequest
 import com.coucou.android.core.Radii
 import com.coucou.android.core.Spacing
+import com.coucou.android.core.SpokenLabels
 import com.coucou.android.core.TypeScale
 import com.coucou.android.link.ApprovalRequest
 import com.coucou.android.mochi.BotState
@@ -73,27 +77,34 @@ import kotlinx.coroutines.delay
  * panel itself never reach the scrim.
  */
 @Composable
-fun BottomSheetHost(onDismiss: () -> Unit, wash: Color? = null, content: @Composable ColumnScope.() -> Unit) {
+fun BottomSheetHost(onDismiss: () -> Unit, wash: Color? = null, announce: String? = null, content: @Composable ColumnScope.() -> Unit) {
     BackHandler(onBack = onDismiss)
+    val closeLabel = stringResource(R.string.action_close)
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     val shape = RoundedCornerShape(topStart = Radii.SHEET.dp, topEnd = Radii.SHEET.dp)
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+                .semantics { contentDescription = closeLabel; role = Role.Button },
         )
         AnimatedVisibility(
             visible = shown, modifier = Modifier.align(Alignment.BottomCenter),
             enter = if (reducedMotion()) fadeIn(tween(MotionSpec.REDUCED_MS)) else slideInVertically(spring(dampingRatio = 0.72f, stiffness = 400f)) { it } + fadeIn(),
         ) {
+            val washAlpha = (tokens().washAlpha * 0.9).toFloat()
             Column(
-                Modifier.fillMaxWidth().clip(shape).background(Color(IslandSurface.PANEL)).border(1.dp, Color.White.copy(alpha = 0.08f), shape)
-                    .then(if (wash != null) Modifier.drawBehind { drawWash(wash, 0.45f) } else Modifier)
+                Modifier.fillMaxWidth().clip(shape).background(Color(tokens().sheet)).border(1.dp, Color(tokens().heroLine), shape)
+                    .then(if (wash != null) Modifier.drawBehind { drawWash(wash, washAlpha) } else Modifier)
                     .pointerInput(Unit) { detectTapGestures { } }
+                    // A large font can make the sheet taller than the screen: it scrolls, so Deny and Allow are always reachable.
+                    .verticalScroll(rememberScrollState())
+                    // TalkBack announces the sheet when it rises, so a request is heard without searching for it.
+                    .semantics { if (announce != null) paneTitle = announce }
                     .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 20.dp),
                 content = {
-                    Box(Modifier.align(Alignment.CenterHorizontally).size(width = 36.dp, height = 4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.2f)))
+                    Box(Modifier.align(Alignment.CenterHorizontally).size(width = 36.dp, height = 4.dp).clip(RoundedCornerShape(2.dp)).background(Color(tokens().heroTextDim).copy(alpha = 0.45f)))
                     Box(Modifier.size(14.dp))
                     content()
                 },
@@ -123,16 +134,17 @@ fun ApprovalSheet(model: AppModel, r: ApprovalRequest, onAllow: (ApprovalRequest
     var armed by remember(r.fingerprint) { mutableStateOf(false) }
     LaunchedEffect(r.fingerprint) { delay(ApprovalSheetPlan.GUARD_MS); armed = true }
     var showCommand by remember(r.fingerprint) { mutableStateOf(false) }
-    val white = Color(IslandSurface.TEXT)
-    val dim = Color(IslandSurface.TEXT_DIM)
+    val white = Color(tokens().heroText)
+    val dim = Color(tokens().heroTextDim)
     val wash = MochiConst.STATES[BotState.APPROVAL]?.color?.let(::rgbColor)
     val name = model.agentName(r.pillId)
     val kind = Pills.byId(r.pillId)?.name.orEmpty()
-    BottomSheetHost(onDismiss, wash) {
+    val announce = SpokenLabels.approval(stringResource(R.string.approval_title), name, stringResource(R.string.approval_wants, ApprovalSheetPlan.action(r.tool)))
+    BottomSheetHost(onDismiss, wash, announce) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             SheetMochi(BotState.APPROVAL, agentColour(model, r.pillId))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (kind.isNotBlank() && kind != name) "$name · $kind" else name, style = TypeScale.SECONDARY.style(dim), maxLines = 1)
+                Text(if (kind.isNotBlank() && kind != name) "$name · $kind" else name, style = TypeScale.SECONDARY.style(dim), maxLines = 2)
                 Text(stringResource(R.string.approval_wants, ApprovalSheetPlan.action(r.tool)), style = TypeScale.TITLE.style(white), maxLines = 3)
             }
         }
@@ -144,7 +156,7 @@ fun ApprovalSheet(model: AppModel, r: ApprovalRequest, onAllow: (ApprovalRequest
         )
         if (showCommand) {
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.07f)).padding(12.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(tokens().heroFill)).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(r.tool, style = TypeScale.LABEL.style(dim), maxLines = 1)
@@ -166,7 +178,7 @@ fun ApprovalSheet(model: AppModel, r: ApprovalRequest, onAllow: (ApprovalRequest
             if (canAllow) {
                 PillButton(
                     stringResource(R.string.action_allow), { onAllow(r) }, Modifier.weight(1f), PillKind.PRIMARY, enabled = armed, onDark = true,
-                    icon = { CoucouIcon(IconKind.LOCK, tint = Color(IslandSurface.ON_PRIMARY), size = 18.dp) },
+                    icon = { CoucouIcon(IconKind.LOCK, tint = Color(tokens().heroOnPrimary), size = 18.dp) },
                 )
             }
         }
@@ -186,11 +198,12 @@ fun ApprovalSheet(model: AppModel, r: ApprovalRequest, onAllow: (ApprovalRequest
  */
 @Composable
 fun QuestionSheet(model: AppModel, pillId: String, onDismiss: () -> Unit, onSend: (QuestionRequest, List<List<String>>) -> Unit) {
-    val white = Color(IslandSurface.TEXT)
-    val dim = Color(IslandSurface.TEXT_DIM)
+    val white = Color(tokens().heroText)
+    val dim = Color(tokens().heroTextDim)
     val wash = MochiConst.STATES[BotState.QUESTION]?.color?.let(::rgbColor)
     val request = model.questionFor(pillId)
-    BottomSheetHost(onDismiss, wash) {
+    val announce = stringResource(R.string.question_title, model.agentName(pillId))
+    BottomSheetHost(onDismiss, wash, announce) {
         if (request == null) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 SheetMochi(BotState.QUESTION, agentColour(model, pillId))
@@ -227,7 +240,7 @@ fun QuestionSheet(model: AppModel, pillId: String, onDismiss: () -> Unit, onSend
                     stringResource(R.string.question_send),
                     { QuestionFlow.picks(request.questions, st)?.let { onSend(request, it) } }, Modifier.weight(1f), PillKind.PRIMARY,
                     enabled = armed && QuestionFlow.complete(request.questions, st), onDark = true,
-                    icon = { CoucouIcon(IconKind.LOCK, tint = Color(IslandSurface.ON_PRIMARY), size = 18.dp) },
+                    icon = { CoucouIcon(IconKind.LOCK, tint = Color(tokens().heroOnPrimary), size = 18.dp) },
                 )
             } else {
                 PillButton(
@@ -248,12 +261,12 @@ fun QuestionSheet(model: AppModel, pillId: String, onDismiss: () -> Unit, onSend
 /** One option: a label, its description, and a mark that it is picked. Tapping it is the only way to answer. */
 @Composable
 private fun OptionRow(option: AskedOption, selected: Boolean, multi: Boolean, onClick: () -> Unit) {
-    val white = Color(IslandSurface.TEXT)
-    val dim = Color(IslandSurface.TEXT_DIM)
+    val white = Color(tokens().heroText)
+    val dim = Color(tokens().heroTextDim)
     val shape = RoundedCornerShape(16.dp)
     Row(
         Modifier.fillMaxWidth().heightIn(min = Spacing.MIN_TOUCH.dp).clip(shape)
-            .background(Color.White.copy(alpha = if (selected) 0.16f else 0.07f))
+            .background(Color(tokens().heroText).copy(alpha = if (selected) 0.16f else 0.07f))
             .border(1.dp, if (selected) white.copy(alpha = 0.7f) else Color.Transparent, shape)
             .selectable(selected = selected, role = if (multi) Role.Checkbox else Role.RadioButton, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -264,7 +277,7 @@ private fun OptionRow(option: AskedOption, selected: Boolean, multi: Boolean, on
                 .background(if (selected) white else Color.Transparent)
                 .border(1.5.dp, if (selected) white else dim, if (multi) RoundedCornerShape(6.dp) else CircleShape),
             contentAlignment = Alignment.Center,
-        ) { if (selected) CoucouIcon(IconKind.CHECK, tint = Color(IslandSurface.ON_PRIMARY), size = 16.dp) }
+        ) { if (selected) CoucouIcon(IconKind.CHECK, tint = Color(tokens().heroOnPrimary), size = 16.dp) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(option.label, style = TypeScale.BODY.style(white).copy(fontWeight = FontWeight.SemiBold))
             if (option.description.isNotBlank()) Text(option.description, style = TypeScale.SECONDARY.style(dim))
