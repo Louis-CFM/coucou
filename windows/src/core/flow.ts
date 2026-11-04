@@ -20,13 +20,27 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
   return invoke<T>(cmd, args);
 }
 
-export type FlowKey = "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super";
+export type FlowKey =
+  | "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super" | "left_ctrl" | "left_alt" | "left_shift"
+  /** A shortcut of one's own: the keys in `keyCombo`. */
+  | "custom";
+
+/** A key as the pages write it: a FlowKey, "custom:AltLeft+ShiftLeft+KeyF" for
+ *  a shortcut of one's own, "wayland" where the desktop holds it, "" unknown. */
+export type FlowKeyId = FlowKey | `custom:${string}` | "wayland" | "";
+
+/** The key of `prefs` as the pages write it. */
+export function flowKeyId(prefs: { key: FlowKey; keyCombo?: string[] }): FlowKeyId {
+  return prefs.key === "custom" ? `custom:${(prefs.keyCombo ?? []).join("+")}` : prefs.key;
+}
 export type Edge = "bottom" | "bottom-left" | "bottom-right" | "left" | "right";
 export type Style = "verbatim" | "natural" | "polished";
 
 export interface FlowPrefs {
   enabled: boolean;
   key: FlowKey;
+  /** The keys of a shortcut of one's own (KeyboardEvent.code names), when `key` is "custom". */
+  keyCombo: string[];
   edge: Edge;
   mic: string;
   keepDays: number;
@@ -38,6 +52,8 @@ export interface FlowPrefs {
   voice: boolean;
   voiceOutput: VoiceOutput;
   voiceGender: "female" | "male";
+  /** The other apps go quiet while Coucou listens to you (Windows). */
+  muteOthers: boolean;
 }
 
 export type ModelState =
@@ -166,7 +182,7 @@ export interface PillState {
   phase: "idle" | "listening" | "thinking" | "locked" | "copied" | "failed" | "pastedAgain";
   edge: Edge;
   /** "wayland" where the desktop holds the shortcut. */
-  key: FlowKey | "wayland" | "";
+  key: FlowKeyId;
   noteStartedAt: number | null;
   announcement: Announcement | null;
   enabled: boolean;

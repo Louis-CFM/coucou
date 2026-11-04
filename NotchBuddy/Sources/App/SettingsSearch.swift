@@ -89,7 +89,7 @@ final class SettingsSearch: ObservableObject {
             e("flow.snippets", .snippets, "hub.page.snippets"),
             e("flow.styles", .styles, "hub.page.styles", ["hub.cleanup", "hub.style-default", "hub.style-apps"]),
             e("flow.keys", .settings, "hub.settings.keys",
-              ["flow.enable", "hub.settings.hold", "flow.edge", "hub.settings.handsfree", "hub.settings.paste-again", "hub.settings.cancel"]),
+              ["flow.enable", "hub.settings.hold", "flow.key-custom", "flow.shortcut.title", "flow.edge", "flow.mute-mac", "hub.settings.handsfree", "hub.settings.paste-again", "hub.settings.cancel"]),
             e("flow.ai", .settings, "flow.ai.title", ["flow.prompt-mode", "flow.translate"]),
             e("flow.permission", .settings, "hub.settings.permission", ["flow.accessibility-open"]),
             e("flow.recognition", .settings, "hub.settings.recognition", ["Dictation language"]),
@@ -111,6 +111,7 @@ final class SettingsSearch: ObservableObject {
               ["Keep a history of my coding sessions", "Hide project names in shared images", "Clear history"]),
             e("general.language", .general, "Language", ["Restart Coucou"]),
             e("general.iphone", .general, "iPhone", ["iphone.sync.toggle", "iphone.live-activity.toggle", "iphone.instruction.toggle"]),
+            e("general.android", .general, "Android phone", ["android.link.toggle", "android.link.details", "android.link.answers", "android.link.usage"]),
             // Notch → Active pills, Agents, Chat, Integrations
             e("pills.main", .pills, "settings.main-pill", ["Active pills"]),
             e("agents.claude", .agents, "hooks.claude-code.title",
@@ -147,6 +148,9 @@ final class SettingsSearch: ObservableObject {
         ]
         #if !PHONE_LINK
         list.removeAll { $0.id == "general.iphone" }
+        #endif
+        #if APPSTORE
+        list.removeAll { $0.id == "general.android" }
         #endif
         return list
     }()

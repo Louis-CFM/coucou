@@ -50,8 +50,10 @@ You can also [build it yourself](#build-it-yourself).
 
 | What you do | What happens |
 |---|---|
-| Move the mouse to the very top-centre of the screen | Mochi peeks out |
+| Look at the top-centre of the screen | The closed island: a small black island that stays there while Coucou runs, where a Mac has its notch. It shows Mochi, as on a Mac without a notch, or the time, the date and the time, your Claude usage or what's playing (**Settings → General → Closed island shows**). **Hide the island** keeps nothing there: move the pointer to the very top-centre of the screen instead |
+| Move the pointer onto the closed island | Mochi peeks out: the compact island |
 | Click the small island | It opens. With **Settings → General → Open on hover**, resting the pointer on it is enough, and it folds again shortly after the pointer leaves (click inside to keep it open) |
+| The **✕** at the top right of the open island | Folds it back to the compact island now, without waiting for the auto-close |
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…) |

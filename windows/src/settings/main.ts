@@ -11,6 +11,7 @@ import {
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { closedIsland } from "../core/closed";
 import type { UpdateStatus } from "../core/update";
 import { SOUND_NAMES } from "../core/sound";
 import {
@@ -1032,6 +1033,23 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // The closed island (core/closed.ts): what stays at the top of the screen.
+  const closed = h("select", {}) as HTMLSelectElement;
+  closed.append(
+    h("option", { value: "mochi", text: t("Mochi, as on a Mac without a notch") }),
+    h("option", { value: "time", text: t("The time") }),
+    h("option", { value: "datetime", text: t("The date and the time") }),
+    h("option", { value: "claude", text: t("Claude usage") }),
+    h("option", { value: "music", text: t("What's playing") }),
+    h("option", { value: "empty", text: t("Nothing, just the island") }),
+    h("option", { value: "hidden", text: t("Hide the island") }),
+  );
+  closed.value = closedIsland(settings.closedIsland);
+  closed.addEventListener("change", () => {
+    settings.closedIsland = closed.value;
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -1084,6 +1102,11 @@ function generalSection(): HTMLElement {
       toggle(settings.showClock, (v) => { settings.showClock = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("The date and the time in the middle of the island when it is compact.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Closed island shows") }),
+      closed,
+    ),
+    h("div", { class: "hint", text: t("A PC has no notch: once closed, a small island stays at the top of the screen. Hover it to bring Coucou back. Hidden, move the pointer to the very top of the screen.") }),
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
