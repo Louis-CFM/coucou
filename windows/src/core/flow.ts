@@ -54,6 +54,8 @@ export interface FlowPrefs {
   voiceGender: "female" | "male";
   /** The other apps go quiet while Coucou listens to you (Windows). */
   muteOthers: boolean;
+  /** One short press of the key starts hands-free dictation, instead of two. */
+  oneTapHandsFree: boolean;
 }
 
 export type ModelState =

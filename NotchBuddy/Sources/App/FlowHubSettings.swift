@@ -53,8 +53,13 @@ struct HubSettingsPage: View {
                 }
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.handsfree"),
-                       detail: String(localized: "hub.settings.handsfree-detail")) {
-                    HubKeyCap(text: "\(flow.key.symbol) \(flow.key.symbol)")
+                       detail: flow.oneTapHandsFree ? String(localized: "flow.one-tap-detail")
+                                                    : String(localized: "hub.settings.handsfree-detail")) {
+                    HubKeyCap(text: flow.oneTapHandsFree ? flow.key.symbol : "\(flow.key.symbol) \(flow.key.symbol)")
+                }
+                HubDivider()
+                HubRow(title: String(localized: "flow.one-tap")) {
+                    Toggle("", isOn: $flow.oneTapHandsFree).toggleStyle(.switch).labelsHidden()
                 }
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.paste-again"),

@@ -27057,6 +27057,208 @@
         }
       }
     },
+    "flow.one-tap" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "دون استخدام اليدين بضغطة واحدة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এক চাপে হ্যান্ডস-ফ্রি"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freihändig mit einem Druck"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands-free with one press"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manos libres con una pulsación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mains libres en une pression"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एक बार दबाकर हैंड्स-फ़्री"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanpa tangan dengan sekali tekan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 回押すだけでハンズフリー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번 눌러 핸즈프리"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mãos livres com um toque"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без рук одним нажатием"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แฮนด์ฟรีด้วยการกดครั้งเดียว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tek basışla eller serbest"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一次即免手持"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一下即免按鍵"
+          }
+        }
+      }
+    },
+    "flow.one-tap-detail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اضغط مرة، وتحدّث كما تشاء، ثم اضغط مرة أخرى للصق."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "একবার চাপুন, যতক্ষণ খুশি বলুন, পেস্ট করতে আবার চাপুন।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einmal drücken, beliebig lange sprechen, erneut drücken zum Einfügen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap once, speak as long as you like, tap again to paste."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsa una vez, habla lo que quieras y vuelve a pulsar para pegar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tape une fois, parle aussi longtemps que tu veux, tape encore pour coller."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एक बार दबाएँ, जितना चाहें बोलें, चिपकाने के लिए फिर से दबाएँ।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ketuk sekali, bicara sepuasnya, ketuk lagi untuk menempel."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 回タップして好きなだけ話し、もう一度タップで貼り付けます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번 탭하고 원하는 만큼 말한 다음, 다시 탭하면 붙여넣어져요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toque uma vez, fale o quanto quiser, toque de novo para colar."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите один раз, говорите сколько угодно, нажмите снова, чтобы вставить."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แตะหนึ่งครั้งแล้วพูดได้นานตามต้องการ แตะอีกครั้งเพื่อวางข้อความ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir kez bas, istediğin kadar konuş, yapıştırmak için tekrar bas."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一次，想说多久就说多久，再按一次即粘贴。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一下後即可持續說話，再按一下即可貼上。"
+          }
+        }
+      }
+    },
     "flow.mute-mac" : {
       "extractionState" : "manual",
       "localizations" : {

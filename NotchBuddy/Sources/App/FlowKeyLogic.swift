@@ -3,7 +3,7 @@ import Foundation
 /// The key logic of Flow dictation, with nothing from AppKit in it (tests/FlowKeyLogicTests.swift).
 ///
 /// - Hold the key: Coucou listens. Release it: the words are pasted where you type.
-/// - Two quick taps: hands-free, until the next tap.
+/// - Two quick taps: hands-free, until the next tap. With `oneTap` (a Flow setting), one short press is enough.
 /// - Esc, or another key pressed while the key is held (a shortcut such as ⌥E), cancels.
 ///
 /// Listening starts on the first press, so a word said right away is not lost; a press too short
@@ -36,6 +36,7 @@ struct FlowKeyLogic: Equatable {
     static let doubleTapWindow = 0.40
 
     private(set) var phase: Phase = .idle
+    var oneTap = false
 
     var isActive: Bool { phase != .idle }
 
@@ -62,6 +63,7 @@ struct FlowKeyLogic: Equatable {
             phase = .idle
             return .finish
         }
+        if oneTap { phase = .locked; return .lock }
         phase = .tapWait(until: t + Self.doubleTapWindow)
         return .none
     }

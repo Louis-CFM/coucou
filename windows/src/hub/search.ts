@@ -92,7 +92,7 @@ export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
     id: "flow.keys",
     page: "flowsettings",
     title: "hub.settings.keys",
-    terms: ["flow.enable", "hub.settings.hold", "flow.edge", "hub.settings.handsfree", "hub.settings.paste-again", "hub.settings.cancel"],
+    terms: ["flow.enable", "hub.settings.hold", "flow.edge", "hub.settings.handsfree", "Hands-free with one press", "hub.settings.paste-again", "hub.settings.cancel"],
   },
   { id: "flow.ai", page: "flowsettings", title: "flow.ai.title", terms: ["flow.prompt-mode", "flow.translate"] },
   { id: "flow.permission", page: "flowsettings", title: "hub.settings.permission", terms: ["flow.accessibility-open"] },
