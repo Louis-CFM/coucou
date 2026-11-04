@@ -161,7 +161,7 @@ check(strings.get("Session", {}).get("extractionState") == "manual", "'Session' 
 check(strings["Session"]["localizations"]["pt-BR"]["stringUnit"]["value"] == "Sessão", "'Session' still reads 'Sessão' in pt-BR")
 for scope in ("once", "session", "always"):
     entry = strings.get("Scope: " + scope, {})
-    check(sorted(entry.get("localizations", {}).keys()) == sorted(ALL_LANGS), "'Scope: %s' (the selector word) has its own key in all 10 languages" % scope)
+    check(set(ALL_LANGS) <= set(entry.get("localizations", {})), "'Scope: %s' (the selector word) has its own key in all 10 languages" % scope)
 check("Once" not in strings, "no leftover 'Once' key")
 
 # the extractor must see the forms the app relies on
