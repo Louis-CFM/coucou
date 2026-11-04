@@ -792,11 +792,18 @@ private func openSessionApp(_ task: AgentTask?) {
     }
 }
 
-/// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
+/// Opens the Claude desktop app on the active Claude Code session — target of the Claude Desktop pill.
 private let claudeDesktopBundleId = "com.anthropic.claudefordesktop"
 
 private func openClaudeDesktopApp() {
-    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: claudeDesktopBundleId) {
+    // Deep-link to the most recently active Claude Code session (the app's own
+    // "Continue Last Claude Code Session" action) so the button lands in that
+    // session, not wherever the app window was last left. Opening the claude://
+    // URL also launches or foregrounds the app, so it replaces the plain raise.
+    guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: claudeDesktopBundleId) != nil else { return }
+    if let deepLink = URL(string: "claude://code/continue?session=last&source=desktop_action") {
+        NSWorkspace.shared.open(deepLink)
+    } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: claudeDesktopBundleId) {
         NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
     }
 }
