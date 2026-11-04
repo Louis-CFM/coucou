@@ -3,18 +3,23 @@ import AppKit
 import ApplicationServices
 import Carbon
 
-/// The key that you hold to dictate.
+/// The key that you hold to dictate, or your own shortcut (FlowShortcut).
 enum FlowKey: String, CaseIterable, Identifiable {
-    case rightOption, rightCommand, rightControl, fn
+    case rightOption, rightCommand, rightControl, fn, custom
 
     var id: String { rawValue }
 
+    /// The keys of the menu; the custom shortcut has its own entries.
+    static let presets: [FlowKey] = [.rightOption, .rightCommand, .rightControl, .fn]
+
+    /// The custom shortcut has no single key: FlowShortcutTap watches it.
     var keyCode: UInt16 {
         switch self {
         case .rightOption:  return UInt16(kVK_RightOption)
         case .rightCommand: return UInt16(kVK_RightCommand)
         case .rightControl: return UInt16(kVK_RightControl)
         case .fn:           return UInt16(kVK_Function)
+        case .custom:       return UInt16.max
         }
     }
 
@@ -27,24 +32,33 @@ enum FlowKey: String, CaseIterable, Identifiable {
         case .rightCommand: return raw & 0x0000_0010 != 0   // NX_DEVICERCMDKEYMASK
         case .rightControl: return raw & 0x0000_2000 != 0   // NX_DEVICERCTLKEYMASK
         case .fn:           return flags.contains(.function)
+        case .custom:       return false
         }
     }
 
-    var symbol: String {
+    @MainActor var symbol: String {
         switch self {
         case .rightOption:  return "⌥"
         case .rightCommand: return "⌘"
         case .rightControl: return "⌃"
         case .fn:           return "fn"
+        case .custom:
+            let keys = FlowShortcut.order
+            return keys.isEmpty ? "⌨︎" : FlowShortcut.compact(keys)
         }
     }
 
-    var label: String {
+    /// In sentences ("Hold ⌃ ⌥ D to dictate").
+    @MainActor var label: String {
         switch self {
         case .fn: return String(localized: "flow.key-fn")
+        case .custom:
+            let keys = FlowShortcut.order
+            return keys.isEmpty ? String(localized: "flow.key-custom") : FlowShortcut.compact(keys)
         default:  return String(format: String(localized: "flow.key-right %@"), symbol)
         }
     }
+
 }
 
 /// Flow dictation, like Wispr Flow (GitHub build): hold a key anywhere on the Mac, speak, let go,
@@ -75,6 +89,19 @@ final class FlowDictation: ObservableObject {
             UserDefaults.standard.set(key.rawValue, forKey: Self.keyKey)
             pill.model.keyLabel = key.label
             cancelAll()
+            // The custom shortcut is watched by its own tap: put it in place, or take it away.
+            if isEnabled { removeMonitors(); installMonitors() }
+        }
+    }
+    /// The custom shortcut's keys, in the order they were pressed (FlowShortcut.order).
+    @Published private(set) var shortcutOrder: [UInt16] = FlowShortcut.order
+    var shortcut: Set<UInt16> { Set(shortcutOrder) }
+    /// While Settings records a new shortcut, the keys start nothing.
+    var recordingShortcut = false {
+        didSet {
+            guard recordingShortcut != oldValue else { return }
+            shortcutTap?.paused = recordingShortcut
+            if recordingShortcut { cancelAll() }
         }
     }
     /// Where the pill lives: centred along the bottom, or on the left or right edge.
@@ -89,6 +116,7 @@ final class FlowDictation: ObservableObject {
 
     private var logic = FlowKeyLogic()
     private var monitors: [Any] = []
+    private var shortcutTap: FlowShortcutTap?
     private var current: Listen?
     private var startTask: Task<Void, Never>?
     private var tickTask: Task<Void, Never>?
@@ -127,8 +155,16 @@ final class FlowDictation: ObservableObject {
         finish()
     }
 
+    /// A new custom shortcut, recorded in Settings: Flow uses it from now on.
+    func setShortcut(_ keys: [UInt16]) {
+        FlowShortcut.order = keys
+        shortcutOrder = keys
+        key = .custom                    // labels, the pill, and the tap with the new keys
+    }
+
     /// At launch: listens for the key if Flow dictation is on.
     func start() {
+        SystemMute.shared.restoreLeftover()   // a dictation cut short by a crash left the Mac muted
         refresh()
         if isEnabled, FlowStore.shared.engine == .parakeet { Parakeet.shared.preload() }
     }
@@ -184,11 +220,28 @@ final class FlowDictation: ObservableObject {
             MainActor.assumeIsolated { self?.handle(type: info.0, keyCode: info.1, flags: info.2, characters: info.3) }
             return event
         }) { monitors.append(local) }
+        // A custom shortcut: held and released like the key, its own key kept from the app in front.
+        // Esc, ⌃⌘V and the other keys still come through the monitors above.
+        if key == .custom, !shortcut.isEmpty {
+            let tap = FlowShortcutTap(keys: shortcut)
+            tap.onDown = { [weak self] in
+                guard let self, !self.recordingShortcut else { return }
+                self.apply(self.logic.keyDown(at: ProcessInfo.processInfo.systemUptime))
+            }
+            tap.onUp = { [weak self] in
+                guard let self, !self.recordingShortcut else { return }
+                self.apply(self.logic.keyUp(at: ProcessInfo.processInfo.systemUptime))
+            }
+            tap.paused = recordingShortcut
+            if tap.start() { shortcutTap = tap }
+        }
     }
 
     private func removeMonitors() {
         monitors.forEach { NSEvent.removeMonitor($0) }
         monitors.removeAll()
+        shortcutTap?.stop()
+        shortcutTap = nil
     }
 
     /// Until macOS trusts Coucou, the global monitor gets nothing: check again every 2 s and
@@ -221,11 +274,12 @@ final class FlowDictation: ObservableObject {
         switch FlowPaste.insert(text) {
         case .pasted:   pill.flash(.pastedAgain)
         case .noAccess: announceNoAccess()
-        case .noField:  announceNoField()
+        case .noField:  announceNoField(text)
         }
     }
 
     private func handle(type: NSEvent.EventType, keyCode: UInt16, flags: NSEvent.ModifierFlags, characters: String?) {
+        guard !recordingShortcut else { return }
         let now = ProcessInfo.processInfo.systemUptime
         switch type {
         case .keyDown:
@@ -308,9 +362,13 @@ final class FlowDictation: ObservableObject {
         Task { @MainActor [weak self] in self?.recheckTrust() }
         let listen = Listen(useParakeet: FlowStore.shared.engine == .parakeet && Parakeet.shared.isReady)
         current = listen
+        FlowPaste.wakeAccessibility(of: listen.app)
         bands.reset()
         pill.listen()
         SoundEngine.shared.play("blip")
+        // Once the blip is heard, everything else the Mac plays goes quiet (videos, music, a
+        // call…) so the microphone hears only you.
+        SystemMute.shared.engage(after: .milliseconds(150))
         let bands = self.bands
         startTask = Task { @MainActor [weak self] in
             await listen.start(bands: bands)
@@ -320,6 +378,7 @@ final class FlowDictation: ObservableObject {
                 // No permission, no recognizer for these languages, or no microphone.
                 self.logic.reset()
                 self.current = nil
+                SystemMute.shared.release(after: .zero)
                 self.pill.flash(.failed)
                 self.pill.announce(FlowAnnouncement(symbol: "mic.slash.fill", tint: "#FF6B6B", text: String(localized: "flow.ann.mic"),
                                                     action: String(localized: "flow.ann.settings"))) {
@@ -343,12 +402,22 @@ final class FlowDictation: ObservableObject {
             try? await Task.sleep(for: .milliseconds(Self.tailMilliseconds))
             guard !listen.cancelled else { return }
             let heard = await listen.finish().trimmingCharacters(in: .whitespacesAndNewlines)
+            // The microphone is closed: the Mac's sound comes back, unless another listen has begun.
+            if self?.current == nil || self?.current === listen { SystemMute.shared.release() }
             guard let self, !listen.cancelled else { return }
             // Replacements and the dictionary, then Claude's clean-up when it is on, then the snippets.
             let store = FlowStore.shared
             let prepared = store.prepare(heard)
             var body = prepared.text
-            if store.cleanupEnabled, !body.isEmpty {
+            // Prompt mode or translation: one call to Claude does the clean-up too.
+            let language = FlowLanguages.language(store.translateTo)
+            if (store.promptMode || language != nil), !body.isEmpty {
+                let shaped = await FlowCleanup.transform(body, prompt: store.promptMode, language: language,
+                                                         style: store.style(for: listen.app?.bundleIdentifier),
+                                                         app: listen.app?.localizedName, words: store.words)
+                guard !listen.cancelled else { return }
+                if FlowText.keepsMarks(shaped, prepared.snippets) { body = shaped }
+            } else if store.cleanupEnabled, !body.isEmpty {
                 let cleaned = await FlowCleanup.clean(body, style: store.style(for: listen.app?.bundleIdentifier),
                                                       app: listen.app?.localizedName, words: store.words)
                 guard !listen.cancelled else { return }
@@ -363,6 +432,8 @@ final class FlowDictation: ObservableObject {
             let latest = self.current === listen
             if latest { self.current = nil }
             guard !text.isEmpty else { if latest { self.pill.rest() }; return }
+            // A capture waiting on the island (⌘⇧S): the image goes in first, then the words.
+            _ = await ScreenCapture.shared.pasteForDictation()
             let result = FlowPaste.insert(text)
             if latest { self.pill.rest() }
             switch result {
@@ -375,7 +446,7 @@ final class FlowDictation: ObservableObject {
                 self.waitForTrust()
                 self.announceNoAccess()
             case .noField:
-                self.announceNoField()
+                self.announceNoField(text)
             }
         }
     }
@@ -388,8 +459,16 @@ final class FlowDictation: ObservableObject {
         }
     }
 
-    private func announceNoField() {
-        pill.announce(FlowAnnouncement(symbol: "doc.on.clipboard.fill", text: String(localized: "flow.ann.no-field")))
+    /// Nowhere to paste: the pill grows with the words (three lines at most) and a Copy button, so
+    /// they can be pasted by hand. It stays 20 s, longer while the pointer is on it.
+    private func announceNoField(_ text: String) {
+        pill.announce(FlowAnnouncement(symbol: "text.cursor", text: String(localized: "flow.ann.no-field-title"),
+                                       action: String(localized: "hub.copy"), quote: text),
+                      for: 20, closesAfter: 0.9) {
+            let board = NSPasteboard.general
+            board.clearContents()
+            board.setString(text, forType: .string)
+        }
     }
 
     private func abort() {
@@ -399,6 +478,7 @@ final class FlowDictation: ObservableObject {
             listen.stop()
         }
         current = nil
+        SystemMute.shared.release()
         pill.rest()
     }
 
@@ -460,27 +540,74 @@ enum FlowPaste {
         return .pasted
     }
 
-    /// Whether the focused element takes text: true for a text field, false when the focus is on
-    /// something else (the desktop, a list…) or nowhere, nil when the app does not say (then the
-    /// paste is trusted).
+    /// Whether the focused element takes text: true for a text field, false only when the focus is
+    /// clearly somewhere that never takes text (the desktop, a list, a button…), nil when it can't
+    /// be told (then the paste is trusted).
+    ///
+    /// Chromium and Electron apps (Claude, Slack, VS Code, Chrome…) build their accessibility
+    /// lazily: while their text box has the focus they often report no focused element, or a plain
+    /// group or window. Those used to count as "no text field" and the pill said the words were
+    /// only copied when they had in fact been pasted.
     @MainActor static func focusTakesText() -> Bool? {
+        let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"
+        let browser = browsers.contains(front)
         let system = AXUIElementCreateSystemWide()
         var value: CFTypeRef?
         let status = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &value)
-        if status == .noValue { return false }
+        if status == .noValue {
+            // Nothing focused: only the desktop, and a browser whose accessibility is awake, say so reliably.
+            return front == "com.apple.finder" || browser ? false : nil
+        }
         guard status == .success, let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
         let element = value as! AXUIElement
-        var role: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        var roleValue: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+        let role = roleValue as? String
+        // In a web browser the page itself has the focus (a YouTube video, an article): nothing to
+        // type in. A field of the page reports its own role (AXTextField, AXTextArea for an editor).
+        if browser, role == "AXWebArea" {
+            appendAppLog("nb.log", "[Flow] no text field in \(front) (the page): the words are shown with Copy")
+            return false
+        }
         let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField", "AXWebArea"]
-        if let role = role as? String, textRoles.contains(role) { return true }
+        if let role, textRoles.contains(role) { return true }
         var settable: DarwinBoolean = false
         if AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success, settable.boolValue {
             return true
         }
         var range: CFTypeRef?
         if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &range) == .success { return true }
-        return role == nil ? nil : false
+        // Only roles that never take text say "no field"; any other one (AXGroup, AXWindow,
+        // AXUnknown… what web views often report) is trusted.
+        let notText: Set<String> = ["AXList", "AXOutline", "AXTable", "AXRow", "AXCell", "AXBrowser", "AXImage",
+                                    "AXButton", "AXCheckBox", "AXRadioButton", "AXSlider", "AXPopUpButton",
+                                    "AXMenu", "AXMenuItem", "AXMenuBar", "AXMenuBarItem", "AXDockItem"]
+        if let role, notText.contains(role) || browser {
+            appendAppLog("nb.log", "[Flow] no text field in \(front) (\(role)): the words are shown with Copy")
+            return false
+        }
+        return nil
+    }
+
+    /// Web browsers: their pages' accessibility is awake while Flow listens (see wakeAccessibility),
+    /// so what they report can be trusted. Electron apps (Claude, Slack, VS Code…) are not in it.
+    static let browsers: Set<String> = [
+        "com.apple.Safari", "com.apple.SafariTechnologyPreview", "com.google.Chrome", "com.google.Chrome.beta",
+        "com.google.Chrome.canary", "company.thebrowser.Browser", "company.thebrowser.dia", "com.brave.Browser",
+        "com.microsoft.edgemac", "org.mozilla.firefox", "com.operasoftware.Opera", "com.vivaldi.Vivaldi",
+        "app.zen-browser.zen", "org.chromium.Chromium",
+    ]
+    @MainActor private static var woken: Set<pid_t> = []
+
+    /// Chromium browsers build the accessibility of their pages only when asked: when Flow starts
+    /// listening in one, it is turned on (once per browser launch), so by the paste the focused
+    /// element is the real one, a field of the page or the page itself.
+    @MainActor static func wakeAccessibility(of app: NSRunningApplication?) {
+        guard let app, let id = app.bundleIdentifier, browsers.contains(id), AXIsProcessTrusted(),
+              !woken.contains(app.processIdentifier) else { return }
+        woken.insert(app.processIdentifier)
+        let element = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetAttributeValue(element, "AXManualAccessibility" as CFString, kCFBooleanTrue)
     }
 
     /// The key that types "v" with ⌘ held in the current keyboard layout: the same key on QWERTY

@@ -38,6 +38,18 @@ data class UserSettings(
     val outfit: String = com.coucou.android.mochi.outfit.Wardrobe.FOLLOW,
     /** Use the relay when the computer is not reachable on this network (only matters when the pairing includes one). */
     val useRelay: Boolean = true,
+    /** Do not light the screen when a request arrives on a sleeping phone (the notification is still posted). Off = today's behaviour. */
+    val keepScreenOff: Boolean = false,
+    /** How a request buzzes the phone; the standard pattern is today's. */
+    val vibration: VibrationChoice = VibrationChoice.STANDARD,
+    /** Reduce motion: follow the system (default), always, or never. */
+    val motion: MotionChoice = MotionChoice.SYSTEM,
+    /** Light, dark or the phone's own. */
+    val theme: ThemeChoice = ThemeChoice.SYSTEM,
+    /** Use the phone's own colours (Material You, Android 12 and later) for the surfaces and text. Off by default. */
+    val dynamicColour: Boolean = false,
+    /** Agents (catalog ids) whose finished / failed / limit notices stay quiet. Requests and questions are never muted. */
+    val mutedAgents: Set<String> = emptySet(),
 ) {
     companion object {
         private const val SOUND = "sound_on"
@@ -48,6 +60,12 @@ data class UserSettings(
         private const val Q_TO = "quiet_to"
         private const val OUTFIT = "outfit_choice"
         private const val RELAY = "use_relay"
+        private const val NO_WAKE = "no_wake_screen"
+        private const val VIBRATION = "vibration_choice"
+        private const val MOTION = "motion_choice"
+        private const val THEME = "theme_choice"
+        private const val DYNAMIC = "dynamic_colour"
+        private const val MUTED = "muted_agents"
 
         fun load(store: KeyValueStore): UserSettings {
             val d = UserSettings()
@@ -62,6 +80,12 @@ data class UserSettings(
                 ),
                 outfit = com.coucou.android.mochi.outfit.Wardrobe.parseLocal(store.getString(OUTFIT, d.outfit)),
                 useRelay = store.getBoolean(RELAY, d.useRelay),
+                keepScreenOff = store.getBoolean(NO_WAKE, d.keepScreenOff),
+                vibration = VibrationChoice.parse(store.getString(VIBRATION, d.vibration.key)),
+                motion = MotionChoice.parse(store.getString(MOTION, d.motion.key)),
+                theme = ThemeChoice.parse(store.getString(THEME, d.theme.key)),
+                dynamicColour = store.getBoolean(DYNAMIC, d.dynamicColour),
+                mutedAgents = AgentMute.decode(store.getString(MUTED, "")),
             )
         }
 
@@ -74,6 +98,12 @@ data class UserSettings(
             store.put(Q_TO, QuietHours.wrap(s.quiet.toMin))
             store.put(OUTFIT, com.coucou.android.mochi.outfit.Wardrobe.parseLocal(s.outfit))
             store.put(RELAY, s.useRelay)
+            store.put(NO_WAKE, s.keepScreenOff)
+            store.put(VIBRATION, s.vibration.key)
+            store.put(MOTION, s.motion.key)
+            store.put(THEME, s.theme.key)
+            store.put(DYNAMIC, s.dynamicColour)
+            store.put(MUTED, AgentMute.encode(s.mutedAgents))
         }
     }
 }
@@ -94,15 +124,18 @@ object StatusPolicy {
      * - The switch "when an agent finishes or fails" governs finished / failed / rate limited.
      * - Quiet hours silence those too (no sound, no pill) but the notice stays in the shade.
      *   A question is never silenced: like a permission request it needs the user.
+     * - A muted agent ([UserSettings.mutedAgents]) is silent for those too, but never for a question.
      * - Inside Coucou the screen already shows everything: no notification, no pill. The sound stays.
      * - The notification is always posted quietly (shade only): the sound is Mochi's own and the pill
      *   is the on-screen alert, so nothing overlaps or rings twice.
      */
-    fun announce(previous: BotState?, now: BotState, s: UserSettings, minuteOfDay: Int, appInForeground: Boolean): Announce {
+    fun announce(previous: BotState?, now: BotState, s: UserSettings, minuteOfDay: Int, appInForeground: Boolean, pillId: String? = null): Announce {
         if (previous == null || previous == now) return Announce.NONE
         val question = now == BotState.QUESTION
         if (!question && now !in NEWS) return Announce.NONE
         if (!question && !s.notifyDone) return Announce.NONE
+        // An agent the user muted stays quiet when it finishes or fails. A question is never muted: it is waiting for the user.
+        if (!question && pillId != null && pillId in s.mutedAgents) return Announce.NONE
         val quiet = !question && s.quiet.isQuiet(minuteOfDay)
         return Announce(
             sound = s.soundOn && !quiet,

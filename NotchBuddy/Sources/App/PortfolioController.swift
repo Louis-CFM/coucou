@@ -631,11 +631,11 @@ private enum ExchangeFetcher {
 
     private static func krakenSymbol(_ raw: String) -> String {
         let map: [String: String] = [
-            "XXBT": "BTC", "XETH": "ETH", "XLTC": "LTC", "XXLM": "XLM",
+            "XXBT": "BTC", "XXDG": "DOGE", "XETH": "ETH", "XLTC": "LTC", "XXLM": "XLM",
             "XXMR": "XMR", "XXRP": "XRP", "XZEC": "ZEC", "ZUSD": "USD",
             "ZEUR": "EUR",  "ZGBP": "GBP", "ZCAD": "CAD", "ZJPY": "JPY",
         ]
-        return map[raw] ?? (raw.hasPrefix("X") || raw.hasPrefix("Z") ? String(raw.dropFirst()) : raw)
+        return map[raw] ?? (raw.count == 4 && (raw.hasPrefix("X") || raw.hasPrefix("Z")) ? String(raw.dropFirst()) : raw)
     }
 
     // MARK: Coinbase (Advanced Trade, CDP API key)

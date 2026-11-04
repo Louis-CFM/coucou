@@ -504,6 +504,9 @@ final class PhoneLink {
 
     /// Set when the user taps "Review" on an approval notification.
     var reviewFingerprint: String?
+    /// When the notification of the request under review arrived: a request older than the
+    /// Mac's 2-minute wait has expired rather than been answered.
+    var reviewSince: Date?
 
     /// Sends allow / deny for one exact request. The Mac applies it only if the
     /// fingerprint still matches the request it is waiting on.

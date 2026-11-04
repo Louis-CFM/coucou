@@ -5,11 +5,13 @@ import Combine
 
 // MARK: - Answer Claude's questions from the iPhone
 //
-// While Claude Code waits on an AskUserQuestion, the session record carries
-// the question and its choices (SessionPublisher). The iPhone answers with an
-// `Answer` record: the question's fingerprint and the labels picked. This Mac
-// looks for answers every 2 s, only while a question waits, and applies one
-// only if it matches the question still waiting and every label is one of its
+// While Claude Code waits on an AskUserQuestion, a session record carries
+// the question and its choices (SessionPublisher): the pill's own record for
+// the first question behind it, a record of its own for each other session's.
+// The iPhone answers with an `Answer` record: the question's fingerprint, the
+// record it was shown on and the labels picked. This Mac looks for answers
+// every 2 s, only while a question waits, and applies one only if it matches a
+// question still waiting on that record and every label is one of its
 // choices. Answers are single use: deleted as soon as they are read.
 
 @MainActor
@@ -21,50 +23,56 @@ final class QuestionRelay {
     private var zoneID: CKRecordZone.ID { SessionSnapshot.zoneID }
 
     private var cancellable: AnyCancellable?
-    private var current: (fingerprint: String, since: Date)?
+    /// The questions waiting, oldest first (AppState.waitingQuestions).
+    private var waiting: [QueuedQuestion] = []
     private var pollTask: Task<Void, Never>?
     private var changeToken: CKServerChangeToken?
 
     func start() {
         guard cancellable == nil else { return }
         // @Published sends the new value before the property changes: use the value passed along.
-        cancellable = AppState.shared.$pendingQuestion
-            .map { $0.map(QuestionPayload.init(ask:)) }
+        cancellable = AppState.shared.$waitingQuestions
             .removeDuplicates()
-            .sink { [weak self] payload in
-                MainActor.assumeIsolated { self?.pendingChanged(to: payload) }
+            .sink { [weak self] questions in
+                MainActor.assumeIsolated { self?.waitingChanged(to: questions) }
             }
     }
 
     func stop() {
         cancellable = nil
-        pendingChanged(to: nil)
+        waitingChanged(to: [])
     }
 
-    private func pendingChanged(to payload: QuestionPayload?) {
-        // Never publish demo questions (they have no real fd in HookServer)
-        if payload != nil, !HookServer.shared.hasRealPendingQuestion { return }
-        let fingerprint = payload?.fingerprint
-        guard current?.fingerprint != fingerprint else { return }
-        pollTask?.cancel()
-        pollTask = nil
-        current = nil
-        guard let fingerprint else { return }
-        current = (fingerprint, Date())
+    private func waitingChanged(to questions: [QueuedQuestion]) {
+        waiting = questions
+        guard !questions.isEmpty else {
+            pollTask?.cancel()
+            pollTask = nil
+            return
+        }
+        guard pollTask == nil else { return }
+        // Each question goes back to its terminal after 120 s at the latest, so the polling
+        // stops with the last one (the empty list cancels it).
         pollTask = Task { [weak self] in
-            // The Mac gives the question back to the terminal after 120 s.
-            for _ in 0..<62 {
+            while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(2))
-                guard !Task.isCancelled, let self else { return }
-                if await self.checkAnswers(for: fingerprint) { return }
+                guard !Task.isCancelled, let self, !self.waiting.isEmpty else { return }
+                await self.checkAnswers()
             }
         }
     }
 
-    /// Returns true once a matching answer was applied.
-    private func checkAnswers(for fingerprint: String) async -> Bool {
-        guard current?.fingerprint == fingerprint, let since = current?.since else { return true }
-        var found: [(id: CKRecord.ID, fingerprint: String, selections: String)] = []
+    private struct Answer {
+        let id: CKRecord.ID
+        let fingerprint: String
+        let recordId: String
+        let answeredAt: Date
+        let selections: String
+    }
+
+    private func checkAnswers() async {
+        guard let oldest = waiting.map(\.received).min() else { return }
+        var found: [Answer] = []
         do {
             var more = true
             while more {
@@ -73,48 +81,47 @@ final class QuestionRelay {
                     guard case .success(let mod) = result, mod.record.recordType == "Answer" else { continue }
                     let record = mod.record
                     let answeredAt = record["answeredAt"] as? Date ?? .distantPast
-                    guard answeredAt >= since.addingTimeInterval(-5) else { continue }
-                    found.append((id, record["fingerprint"] as? String ?? "",
-                                  record.encryptedValues["selections"] as? String ?? ""))
+                    guard answeredAt >= oldest.addingTimeInterval(-5) else { continue }
+                    found.append(Answer(id: id, fingerprint: record["fingerprint"] as? String ?? "",
+                                        recordId: record["pillId"] as? String ?? "", answeredAt: answeredAt,
+                                        selections: record.encryptedValues["selections"] as? String ?? ""))
                 }
                 changeToken = changes.changeToken
                 more = changes.moreComing
             }
         } catch let error as CKError where error.code == .changeTokenExpired {
             changeToken = nil
-            return false
+            return
         } catch {
             log("answer check failed: \(error.localizedDescription)")
-            return false
-        }
-        guard !found.isEmpty else { return false }
-        let ids = found.map { $0.id }
-        Task { _ = try? await database.modifyRecords(saving: [], deleting: ids) }
-        guard let match = found.first(where: { $0.fingerprint == fingerprint }) else {
-            log("ignored \(found.count) answer(s) for another question")
-            return false
-        }
-        apply(match.selections, fingerprint: fingerprint)
-        return true
-    }
-
-    private func apply(_ json: String, fingerprint: String) {
-        // Check again right before answering the hook.
-        guard let pending = AppState.shared.pendingQuestion else {
-            log("answer arrived after the question was resolved, ignored")
             return
         }
-        let payload = QuestionPayload(ask: pending)
-        guard payload.fingerprint == fingerprint else {
+        guard !found.isEmpty else { return }
+        let ids = found.map(\.id)
+        Task { _ = try? await database.modifyRecords(saving: [], deleting: ids) }
+        for answer in found.sorted(by: { $0.answeredAt < $1.answeredAt }) { apply(answer) }
+    }
+
+    private func apply(_ answer: Answer) {
+        // Check again right before answering the hook: read what waits now.
+        guard let entry = QuestionQueue.question(answering: answer.fingerprint, onRecord: answer.recordId,
+                                                 in: AppState.shared.waitingQuestions,
+                                                 fingerprintOf: { QuestionPayload(ask: $0).fingerprint }) else {
+            log("answer for a question no longer waiting, ignored")
+            return
+        }
+        guard answer.answeredAt >= entry.received.addingTimeInterval(-5) else {
             log("answer for an older question, ignored")
             return
         }
-        guard let selections = QuestionPayload.decodeSelections(json), payload.accepts(selections) else {
+        guard let selections = QuestionPayload.decodeSelections(answer.selections),
+              QuestionPayload(ask: entry.question).accepts(selections) else {
             log("answer with unknown choices, ignored")
             return
         }
-        log("answered from the iPhone")
-        HookServer.shared.sendQuestionAnswers(AskQuestion.buildAnswers(questions: pending.questions, selections: selections))
+        log("answered from the iPhone (\(entry.phoneRecordId))")
+        HookServer.shared.sendQuestionAnswers(
+            AskQuestion.buildAnswers(questions: entry.question.questions, selections: selections), for: entry.id)
     }
 
     private func log(_ message: String) {

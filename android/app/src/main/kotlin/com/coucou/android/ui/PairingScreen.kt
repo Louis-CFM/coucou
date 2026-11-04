@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import com.coucou.android.R
 import com.coucou.android.app.AppModel
 import com.coucou.android.core.IconKind
-import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.Spacing
 import com.coucou.android.core.Tokens
 import com.coucou.android.core.TypeScale
@@ -81,7 +80,7 @@ fun PairingScreen(model: AppModel, onScan: () -> Unit, onAbout: () -> Unit) {
             PillButton(stringResource(R.string.demo_try), { model.startDemo() }, Modifier.weight(1f))
         }
         Spacer(Modifier.size(32.dp))
-        Text(stringResource(R.string.pairing_footer), style = TypeScale.SECONDARY.style(t.textFaint.c()).copy(textAlign = TextAlign.Center))
+        Text(stringResource(R.string.pairing_credit), style = TypeScale.SECONDARY.style(t.textFaint.c()).copy(textAlign = TextAlign.Center))
         Text(
             stringResource(R.string.pairing_about),
             Modifier.heightIn(min = Spacing.MIN_TOUCH.dp).clickable(role = Role.Button, onClick = onAbout).padding(horizontal = 16.dp, vertical = 14.dp),
@@ -97,8 +96,8 @@ private fun PasteSheet(model: AppModel, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf("") }
     var bad by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
-    val white = Color(IslandSurface.TEXT)
-    val dim = Color(IslandSurface.TEXT_DIM)
+    val white = Color(tokens().heroText)
+    val dim = Color(tokens().heroTextDim)
     fun pairWith(link: String) {
         if (PairingPayload.parse(link) != null) { model.pair(link); onDismiss() } else bad = true
     }
@@ -111,7 +110,7 @@ private fun PasteSheet(model: AppModel, onDismiss: () -> Unit) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = white, unfocusedTextColor = white, cursorColor = white,
-                focusedBorderColor = white, unfocusedBorderColor = Color.White.copy(alpha = 0.25f),
+                focusedBorderColor = white, unfocusedBorderColor = Color(tokens().heroText).copy(alpha = 0.25f),
             ),
         )
         if (bad) Text(stringResource(R.string.msg_bad_link), Modifier.padding(top = 8.dp), style = TypeScale.SECONDARY.style(Color(Tokens.DARK.danger)))

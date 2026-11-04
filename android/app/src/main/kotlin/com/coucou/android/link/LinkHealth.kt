@@ -1,5 +1,7 @@
 package com.coucou.android.link
 
+import com.coucou.android.core.Texts
+
 /**
  * What the phone knows about the health of the link, in plain terms, so Home can say what happened ("Connection lost 2 min ago,
  * reconnecting") instead of showing a silent state. Pure: the clock is passed in, so every sentence is a unit test.
@@ -27,26 +29,33 @@ object LinkHealthText {
     fun ago(ms: Long): String {
         val minutes = (ms.coerceAtLeast(0) / 60_000).toInt()
         return when {
-            minutes < 1 -> "less than a minute"
-            minutes < 60 -> "$minutes min"
-            minutes % 60 == 0 -> "${minutes / 60} h"
-            else -> "${minutes / 60} h ${minutes % 60} min"
+            minutes < 1 -> Texts.t("ago_less_than_minute", "less than a minute")
+            minutes < 60 -> Texts.t("ago_minutes", "%1\$d min", minutes)
+            minutes % 60 == 0 -> Texts.t("ago_hours", "%1\$d h", minutes / 60)
+            else -> Texts.t("ago_hours_minutes", "%1\$d h %2\$d min", minutes / 60, minutes % 60)
         }
     }
 
-    private fun why(reason: LostReason?) = when (reason) {
-        LostReason.SILENT -> "The computer stopped answering. This is usual after the phone slept."
-        LostReason.CLOSED -> "The computer closed the connection."
-        LostReason.NETWORK -> "The network dropped."
+    /**
+     * The most likely cause in plain words, from what the link layer knows: why the link ended and whether the phone is on Wi-Fi. The
+     * phone cannot see the computer's side, so a cause it cannot know is a short list of what to look at, never a guess stated as fact.
+     */
+    fun why(reason: LostReason?, wifiUp: Boolean = true) = when (reason) {
+        LostReason.SILENT -> Texts.t("lost_silent", "The computer stopped answering. This is usual after the phone slept.")
+        LostReason.CLOSED -> Texts.t("lost_closed", "The computer closed the connection. Coucou may have been closed or restarted there.")
+        LostReason.NETWORK ->
+            if (!wifiUp) Texts.t("lost_no_wifi", "The phone is not on Wi-Fi. Join the network your computer is on, or use the internet link.")
+            else Texts.t("lost_unreachable", "The phone cannot reach the computer. Coucou may be closed there, its phone link may be off, or it is on another network.")
         null -> ""
     }
 
     /** The two lines for Home while the link is down after having worked; null when there is nothing to say. */
-    fun lines(connected: Boolean, health: LinkHealth, nowMs: Long): Pair<String, String>? {
+    fun lines(connected: Boolean, health: LinkHealth, nowMs: Long, wifiUp: Boolean = true): Pair<String, String>? {
         val at = health.lostAtMs ?: return null
         if (connected) return null
-        val head = "Connection lost ${ago(nowMs - at)} ago, reconnecting" + if (health.attempts >= 3) " (${health.attempts} tries)" else ""
-        return head to why(health.reason)
+        val head = Texts.t("lost_head", "Connection lost %1\$s ago, reconnecting", ago(nowMs - at)) +
+            if (health.attempts >= 3) " " + Texts.t("lost_tries", "(%1\$d tries)", health.attempts) else ""
+        return head to why(health.reason, wifiUp)
     }
 }
 
@@ -82,9 +91,9 @@ object BatteryHint {
 
     fun steps(samsung: Boolean): List<String> =
         if (samsung) listOf(
-            "Open Settings > Apps > Coucou for Android > Battery and choose Unrestricted.",
-            "Then Settings > Battery > Background usage limits: make sure Coucou is not in Sleeping apps or Deep sleeping apps (add it to Never sleeping apps).",
+            Texts.t("battery_step_samsung_1", "Open Settings > Apps > Coucou for Android > Battery and choose Unrestricted."),
+            Texts.t("battery_step_samsung_2", "Then Settings > Battery > Background usage limits: make sure Coucou is not in Sleeping apps or Deep sleeping apps (add it to Never sleeping apps)."),
         ) else listOf(
-            "Open the app's battery setting and choose Unrestricted (or Don't optimise).",
+            Texts.t("battery_step_generic", "Open the app's battery setting and choose Unrestricted (or Don't optimise)."),
         )
 }

@@ -301,6 +301,16 @@ Chaque jalon se termine par build + capture + comparaison aux références + com
 - Hidden = 0 % CPU ; compact < 3 % ; mémoire < 100 Mo.
 - La démo (⌃⌥⌘D) se filme d'une traite sans intervention.
 
+## 12 bis. Coucou dans un coin de l'écran
+
+Version GitHub : l'île peut vivre au notch (par défaut) ou dans un des quatre coins de son écran (`AppState.islandPlacement`, clé `islandPlacement` : `notch`, `topLeft`, `topRight`, `bottomLeft`, `bottomRight`).
+
+- **Où** : coins du haut juste sous la barre des menus, coins du bas juste au-dessus du Dock (`screen.visibleFrame`), à 10 pt des bords. La géométrie est dans `IslandPlacement` (pure, testée par `scripts/test-island-placement.sh`) : origine du panneau, rectangle de l'île dans le panneau, coin visé par un lâcher.
+- **Forme** : au repos, une tuile carrée aux coins arrondis (60 pt, rayon 18), Mochi seul dedans, fin liseré et ombre. Au survol, les autres pills sortent une à une en petites tuiles (40 pt) le long du bord de l'écran. Ouverte, l'île grandit depuis son coin (640 × 260 pt, 320 quand la carte Mail lit un mail) : Mochi dans le coin, les Mochis des autres pills sur un quart de cercle autour de lui (rayon 150 pt), avec leur nom ; un clic sur l'un les fait se croiser et échanger leurs places, son cercle s'efface puis se redessine depuis le haut. La carte prend le reste de la largeur. Mochi est dessiné dans une boîte fixe, alignée sur le coin du panneau (`CornerBot`), pour ne pas trembler pendant que l'île grandit.
+- **Aimant** : pendant qu'on glisse Mochi, il est attiré de plus en plus vers le coin visé, et la tuile d'arrivée s'affiche (petit son).
+- **Choisir** : Réglages → Général → Affichage → Position, ou glisser Mochi et le lâcher à moins de 180 pt d'un coin de l'écran (ou en haut au centre pour revenir au notch). Son `pop`, émote `happy`.
+- **Suivent l'île** : le suivi des yeux, Mochi sur le bureau (départ et retour), les sous-titres de la voix (sous l'île en haut, au-dessus en bas), la zone de survol et les clics.
+
 ## 13. Mochi sur le bureau
 
 Mochi peut quitter l'island et vivre comme une icône flottante sur le bureau. Il conserve tout son comportement (tenue, émotes, suivi des yeux, danse) et réagit aux alertes.
@@ -382,10 +392,11 @@ Ces raccourcis fonctionnent en arrière-plan sans permission Accessibilité.
 | Couper le son (`toggleMute`) | ⌃⌥M | `shortcut.toggleMute.keyCode` / `.flags` | Oui |
 | Mochi sur le bureau (`toggleDesktopMochi`) | ⌃⌥D | `shortcut.toggleDesktopMochi.keyCode` / `.flags` | Oui |
 | Ouvrir la garde-robe (`openWardrobe`) | ⌃⌥G | `shortcut.openWardrobe.keyCode` / `.flags` | Oui |
+| Capture d'écran pour Claude (`captureScreen`) | ⌘⇧S | `shortcut.captureScreen.keyCode` / `.flags` | Oui (hors App Store) |
 
 - Si Carbon ne peut pas enregistrer un raccourci (conflit système), l'action est marquée `.conflict` dans `HotKeyCenter` et un indicateur apparaît dans Réglages → Raccourcis.
 - `toggleIsland` conserve les clés UserDefaults historiques (`hotkeyCode`, `hotkeyFlags`, `hotkeyEnabled`) pour ne pas casser les préférences existantes.
-- Les actions marquées `isNonAppStore` (`attachFrontWindow`) sont omises du build App Store.
+- Les actions marquées `isNonAppStore` (`attachFrontWindow`, `talkToCoucou`, `captureScreen`) sont omises du build App Store.
 
 ### 14.2 Raccourcis locaux (actifs quand l'île a le focus)
 
@@ -415,3 +426,46 @@ Réglages → Raccourcis (`ShortcutsSettingsView`) :
 - Les conflits système (Carbon a refusé l'enregistrement) sont signalés en orange.
 - Bouton **Tout réinitialiser** remet les valeurs par défaut sur toutes les actions.
 - Les raccourcis locaux sont affichés en lecture seule.
+
+## 15. Mochi et le Mac
+
+`MachineVitals` lit l'état du Mac toutes les 3 s, **seulement quand Mochi est à l'écran** (île visible ou Mochi sur le bureau). Île cachée : aucune lecture. Réglages → Général → « Mochi et ton Mac » (activé par défaut).
+
+| Ce que lit Coucou | Seuil | Mochi |
+|---|---|---|
+| Processeur (`host_statistics`, tous les cœurs) | ≥ 80 % deux lectures de suite | transpire (gouttes), souffle vite |
+| État thermique (`ProcessInfo.thermalState`) | fair / serious / critical | rougit, vagues de chaleur au-dessus de la tête dès serious |
+| Pression mémoire (`DispatchSource.makeMemoryPressureSource`) | warning / critical | gonfle |
+| Batterie (`IOPSCopyPowerSourcesInfo`), sur batterie | < 20 % / < 10 % | paupières lourdes et bâillements / s'endort (z) |
+
+- Les humeurs ne s'affichent que dans les états calmes (idle, working, thinking, searching, finished) ; fatigue et sommeil seulement en idle et finished. Une demande de permission les efface.
+- Brancher le chargeur pendant que Mochi est fatigué : il se réveille (émote happy, son `pop`).
+- Pointeur sur Mochi (ou sur l'île compacte) : une ligne sous l'île dit pourquoi, par ex. « CPU 94 % · node, Google Chrome » (les deux apps qui prennent le plus de processeur, lues seulement quand il transpire).
+- Dessin : `MochiMood.swift` (CoucouKit), l'iPhone ne règle jamais l'humeur.
+
+## 16. Capture d'écran pour Claude (build GitHub)
+
+- ⌘⇧S : l'île se replie, puis la sélection de macOS (`screencapture -i -x -o`) : zone, Espace pour une fenêtre, Échap pour annuler. Première fois : permission Enregistrement de l'écran.
+- L'image arrive dans l'île (vue `.capture`) : son `gulp`, Mochi avale. Boutons : **Coller** (dans l'app où on était : ⌘V, ou ⌃V dans un terminal pour Claude Code ; le presse-papiers reprend son contenu après 1,5 s), **Copier**, **Annoter** (fenêtre : flèche, cadre, crayon, 4 couleurs, ⌘Z, l'image annotée revient dans l'île), **Demander à Claude** (chat de l'île, image jointe).
+- Avec Flow : tant que la capture est dans l'île (3 min max), maintenir la touche de dictée colle l'image puis les mots au relâchement.
+- Les captures restent dans le dossier temporaire (les 20 dernières) et ne partent vers Claude que si on les colle ou qu'on demande à Claude.
+
+## 17. Flow : mode prompt et traduction (build GitHub)
+
+Coucou → Flow → Réglages → « Prompt et traduction ». Les deux passent par Claude avec la clé de l'utilisateur (comme le nettoyage) : seuls les mots partent chez Anthropic, jamais la voix.
+
+- **Mode prompt** (`flowPromptMode`) : ce qui est dit devient un prompt structuré pour un agent (Claude Code, Cursor, ChatGPT…) : objectif, contexte, étapes numérotées, contraintes, « fini quand », seulement les parties qui ont du contenu. Une demande courte reste une ou deux phrases. Rien n'est inventé : chaque exigence, nom, nombre et fichier dit est gardé.
+- **Traduire en** (`flowTranslateTo`, vide = comme je parle) : on parle dans n'importe quelle langue, c'est collé dans la langue choisie. ~70 langues et variantes régionales (`FlowLanguages`), chacune avec ce qui la distingue : anglais US / UK / australien / canadien / irlandais / indien…, français de France / Québec / Suisse (septante, nonante) / Belgique, allemand d'Allemagne / Suisse (jamais ß) / Autriche, espagnol d'Espagne / Mexique / Argentine (voseo) / Colombie / Amérique latine, portugais du Brésil / du Portugal, italien, néerlandais / flamand, chinois simplifié / traditionnel (Taïwan, Hong Kong), turc, arabe, japonais, coréen…
+- Un seul appel fait nettoyage + prompt + traduction (`FlowCleanup.transform`, Claude Haiku, 8 s, 12 s en mode prompt). Les marques ⟦n⟧ des snippets sont gardées. Réponse vide, trop longue ou trop courte (comptée en caractères), ou pas de réponse à temps : les mots sont collés tels qu'entendus.
+
+## 18. Notetaker : écho, intervenants et mots mal entendus (build GitHub)
+
+Constaté sur un vrai appel sans casque : la voix de l'autre revenait dans le micro et passait pour la mienne, un même interlocuteur était coupé en deux personnes, et Parakeet écrivait « UG charging » pour « EV charging ».
+
+- **Une seule horloge.** Le micro et le son du Mac comptent leur temps depuis le même instant : le son du Mac, qui démarre un peu après, commence par le silence manquant. Les lignes et l'écho s'alignent.
+- **L'écho, au son.** Le son du Mac sert de référence : on mesure le délai et la force avec lesquels il revient dans le micro, puis un mot du micro qui n'a pas nettement plus d'énergie (≈ 10 dB) que cet écho est retiré. Avec un casque, l'écho est nul et rien n'est retiré ; parler par-dessus l'autre reste à moi.
+- **L'écho, aux mots.** En plus : trois mots de suite que l'autre a dits dans le même ordre au même moment, et la fin de sa phrase, sont retirés de mes lignes.
+- **Une voix coupée en deux.** Un « intervenant » qui ne parle que par bribes (jamais 3 s d'affilée, peu au total) est rendu à la voix la plus proche (empreinte vocale du diarizer, sinon la plus proche dans le temps).
+- **Mots mal entendus.** Quand Claude écrit les résumés (clé de Réglages → Chat), il corrige d'abord la transcription : mots mal reconnus, hésitations retirées, sans reformuler ni traduire, sans inventer de nom, de numéro ni de lien, `[?]` sur ce qui reste incompréhensible. Chaque correction est vérifiée (une ligne corrigée doit rester proche de l'originale) et ce qui avait été entendu est gardé (`raw`). Il nomme aussi un intervenant quand l'appel dit qui il est ; un nom donné par l'utilisateur n'est jamais remplacé.
+- **Au fil des appels.** Menu ⋯ d'une ligne (ou clic droit) : Corriger la ligne, Dit par…, Supprimer la ligne. Les mots apportés en corrigeant (noms, marques, sigles, mots techniques) et les noms donnés aux intervenants sont retenus (`Notes/vocabulary.json`, 300 max) et envoyés à Claude avec chaque transcription, avec le dictionnaire de Flow. Renommer un intervenant avec le nom d'un autre fusionne les deux.
+- Menu ⋯ de la note : « Corriger à nouveau la transcription ».

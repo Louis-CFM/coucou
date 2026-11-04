@@ -16,7 +16,7 @@ class ProtocolChatTest {
 
     @Test fun aHelloAsksForTheOptionalFeaturesTheAppHas() {
         val o = JSONObject(Wire.encode(ClientMsg.Hello(1, "tok", "Pixel", Protocol.CAPABILITIES)))
-        assertEquals(listOf("chat", "details", "answers", "prefs", "diffs", "usage", "services", "relay"), (0 until o.getJSONArray("caps").length()).map { o.getJSONArray("caps").getString(it) })
+        assertEquals(listOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay"), (0 until o.getJSONArray("caps").length()).map { o.getJSONArray("caps").getString(it) })
     }
 
     @Test fun aWelcomeWithoutCapsOffersNothing() {

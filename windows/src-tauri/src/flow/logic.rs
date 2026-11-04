@@ -137,8 +137,9 @@ impl KeyLogic {
     }
 }
 
-/// The key held to dictate. A key that is a modifier on its own, so holding it
-/// does nothing in any app.
+/// The key held to dictate: a modifier on its own (holding it does nothing in
+/// any app), Ctrl + Win, or a shortcut of the user's own (`Custom`, the keys in
+/// `Prefs::key_combo`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum FlowKey {
@@ -147,22 +148,122 @@ pub enum FlowKey {
     RightAlt,
     RightShift,
     LeftCtrlSuper,
+    LeftCtrl,
+    LeftAlt,
+    LeftShift,
+    Custom,
 }
 
+/// The most keys a shortcut of one's own may hold.
+pub const MAX_COMBO: usize = 4;
+
 impl FlowKey {
-    /// How the key is written in the interface (the same in every language).
-    pub fn label(self) -> &'static str {
-        match self {
-            FlowKey::RightCtrl => "Right Ctrl",
-            FlowKey::RightAlt => "Right Alt",
-            FlowKey::RightShift => "Right Shift",
-            FlowKey::LeftCtrlSuper => {
-                if cfg!(windows) {
-                    "Ctrl + Win"
-                } else {
-                    "Ctrl + Super"
+    /// The keys to hold together, by their KeyboardEvent.code name
+    /// ("ControlRight", "AltLeft", "KeyF"…): the platforms map those to their
+    /// own codes. A custom shortcut that can't be used falls back to Right Ctrl.
+    pub fn codes(self, combo: &[String]) -> Vec<String> {
+        let fixed: &[&str] = match self {
+            FlowKey::RightCtrl => &["ControlRight"],
+            FlowKey::RightAlt => &["AltRight"],
+            FlowKey::RightShift => &["ShiftRight"],
+            FlowKey::LeftCtrlSuper => &["ControlLeft", "MetaLeft"],
+            FlowKey::LeftCtrl => &["ControlLeft"],
+            FlowKey::LeftAlt => &["AltLeft"],
+            FlowKey::LeftShift => &["ShiftLeft"],
+            FlowKey::Custom => {
+                let mut out: Vec<String> = Vec::new();
+                for code in combo {
+                    if known_code(code) && !out.contains(code) {
+                        out.push(code.clone());
+                    }
                 }
+                if out.is_empty() || out.len() > MAX_COMBO {
+                    return vec!["ControlRight".into()];
+                }
+                return out;
             }
+        };
+        fixed.iter().map(|c| c.to_string()).collect()
+    }
+
+    /// How the key is written in the log (the pages write their own).
+    pub fn label(self, combo: &[String]) -> String {
+        match self {
+            FlowKey::RightCtrl => "Right Ctrl".into(),
+            FlowKey::RightAlt => "Right Alt".into(),
+            FlowKey::RightShift => "Right Shift".into(),
+            FlowKey::LeftCtrl => "Left Ctrl".into(),
+            FlowKey::LeftAlt => "Left Alt".into(),
+            FlowKey::LeftShift => "Left Shift".into(),
+            FlowKey::LeftCtrlSuper => if cfg!(windows) { "Ctrl + Win" } else { "Ctrl + Super" }.into(),
+            FlowKey::Custom => self.codes(combo).join(" + "),
+        }
+    }
+}
+
+/// The key names a shortcut may use: modifiers, letters, digits, F1–F24 and
+/// a few others every keyboard has in the same place.
+pub fn known_code(code: &str) -> bool {
+    is_modifier_code(code)
+        || code.strip_prefix("Key").is_some_and(|c| c.len() == 1 && c.chars().all(|ch| ch.is_ascii_uppercase()))
+        || code.strip_prefix("Digit").is_some_and(|c| c.len() == 1 && c.chars().all(|ch| ch.is_ascii_digit()))
+        || code.strip_prefix('F').and_then(|n| n.parse::<u8>().ok()).is_some_and(|n| (1..=24).contains(&n))
+        || matches!(code, "Space" | "Backquote" | "Insert" | "Pause" | "ScrollLock" | "CapsLock" | "ContextMenu")
+}
+
+pub fn is_modifier_code(code: &str) -> bool {
+    matches!(
+        code,
+        "ControlLeft" | "ControlRight" | "AltLeft" | "AltRight" | "ShiftLeft" | "ShiftRight" | "MetaLeft" | "MetaRight"
+    )
+}
+
+/// What a key going down or up does to a shortcut held to dictate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComboEdge {
+    /// Not one of its keys.
+    Outside,
+    /// One of its keys, and nothing changes for dictation.
+    Part,
+    /// The last of its keys went down: hold to dictate starts.
+    Down,
+    /// Its keys are all held and one repeats.
+    Repeat,
+    /// One of its keys came up while all were held: hold to dictate ends.
+    Up,
+}
+
+/// The keys of a shortcut, which are down: the same on every platform, the
+/// platform only says which member a key is.
+#[derive(Debug, Clone, Default)]
+pub struct Combo {
+    held: Vec<bool>,
+}
+
+impl Combo {
+    pub fn new(len: usize) -> Self {
+        Self { held: vec![false; len] }
+    }
+
+    /// Every key is down (Windows reads it to keep a shortcut's own letter).
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub fn all_held(&self) -> bool {
+        !self.held.is_empty() && self.held.iter().all(|&h| h)
+    }
+
+    /// Member `i` went down (`down`) or up.
+    pub fn key(&mut self, i: usize, down: bool) -> ComboEdge {
+        if i >= self.held.len() {
+            return ComboEdge::Outside;
+        }
+        let was_all = self.held.iter().all(|&h| h);
+        let was = std::mem::replace(&mut self.held[i], down);
+        let now_all = self.held.iter().all(|&h| h);
+        match (was_all, now_all) {
+            (false, true) => ComboEdge::Down,
+            (true, false) => ComboEdge::Up,
+            (true, true) if down && was => ComboEdge::Repeat,
+            _ => ComboEdge::Part,
         }
     }
 }
@@ -206,6 +307,49 @@ pub mod bands {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_keys_of_each_choice() {
+        assert_eq!(FlowKey::RightCtrl.codes(&[]), ["ControlRight"]);
+        assert_eq!(FlowKey::LeftCtrlSuper.codes(&[]), ["ControlLeft", "MetaLeft"]);
+        assert_eq!(FlowKey::LeftAlt.codes(&[]), ["AltLeft"]);
+        let combo: Vec<String> = ["AltLeft", "ShiftLeft", "KeyF"].map(String::from).to_vec();
+        assert_eq!(FlowKey::Custom.codes(&combo), combo);
+        assert_eq!(FlowKey::Custom.label(&combo), "AltLeft + ShiftLeft + KeyF");
+        // Nothing usable, unknown names, doubles, too many: Right Ctrl, or what is left.
+        assert_eq!(FlowKey::Custom.codes(&[]), ["ControlRight"]);
+        assert_eq!(FlowKey::Custom.codes(&["Hyper".into(), "KeyF".into(), "KeyF".into()]), ["KeyF"]);
+        let five: Vec<String> = ["ControlLeft", "AltLeft", "ShiftLeft", "MetaLeft", "KeyF"].map(String::from).to_vec();
+        assert_eq!(FlowKey::Custom.codes(&five), ["ControlRight"]);
+        // The other keys' names, written to the prefs, are kept as they come.
+        assert_eq!(serde_json::to_string(&FlowKey::LeftShift).unwrap(), "\"left_shift\"");
+        assert_eq!(serde_json::from_str::<FlowKey>("\"custom\"").unwrap(), FlowKey::Custom);
+    }
+
+    #[test]
+    fn a_shortcut_starts_when_its_last_key_goes_down_and_ends_with_the_first_up() {
+        let mut c = Combo::new(3); // Alt, Shift, F
+        assert_eq!(c.key(0, true), ComboEdge::Part);
+        assert_eq!(c.key(1, true), ComboEdge::Part);
+        assert_eq!(c.key(2, true), ComboEdge::Down);
+        assert_eq!(c.key(2, true), ComboEdge::Repeat);
+        assert!(c.all_held());
+        assert_eq!(c.key(1, false), ComboEdge::Up);
+        assert_eq!(c.key(2, false), ComboEdge::Part);
+        assert_eq!(c.key(0, false), ComboEdge::Part);
+        assert_eq!(c.key(7, true), ComboEdge::Outside);
+        // Any order.
+        assert_eq!(c.key(2, true), ComboEdge::Part);
+        assert_eq!(c.key(0, true), ComboEdge::Part);
+        assert_eq!(c.key(1, true), ComboEdge::Down);
+        assert_eq!(c.key(0, false), ComboEdge::Up);
+        assert!(!c.all_held());
+        // One key on its own.
+        let mut one = Combo::new(1);
+        assert_eq!(one.key(0, true), ComboEdge::Down);
+        assert_eq!(one.key(0, true), ComboEdge::Repeat);
+        assert_eq!(one.key(0, false), ComboEdge::Up);
+    }
 
     #[test]
     fn hold_then_release_pastes() {

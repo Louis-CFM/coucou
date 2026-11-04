@@ -19,25 +19,22 @@ import androidx.compose.ui.unit.dp
 import com.coucou.android.R
 import com.coucou.android.app.AppModel
 import com.coucou.android.core.DiffState
-import com.coucou.android.core.IslandSurface
+import com.coucou.android.core.Tokens
 import com.coucou.android.core.TypeScale
 import com.coucou.android.link.DiffRow
 
 /** What the file-change sheet draws a row in: the colour of its text and of the tint behind it. */
 internal object DiffLook {
-    val ADDED = Color(0xFF34D399)
-    val REMOVED = Color(0xFFFF8D97)
-
-    fun text(kind: Char): Color = when (kind) {
-        '+' -> ADDED
-        '-' -> REMOVED
-        '@' -> Color(IslandSurface.TEXT_DIM)
-        else -> Color(IslandSurface.TEXT)
+    fun text(kind: Char, t: Tokens): Color = when (kind) {
+        '+' -> Color(t.diffAdded)
+        '-' -> Color(t.diffRemoved)
+        '@' -> Color(t.heroTextDim)
+        else -> Color(t.heroText)
     }
 
-    fun tint(kind: Char): Color = when (kind) {
-        '+' -> ADDED.copy(alpha = 0.12f)
-        '-' -> REMOVED.copy(alpha = 0.12f)
+    fun tint(kind: Char, t: Tokens): Color = when (kind) {
+        '+' -> Color(t.diffAdded).copy(alpha = 0.12f)
+        '-' -> Color(t.diffRemoved).copy(alpha = 0.12f)
         else -> Color.Transparent
     }
 
@@ -58,8 +55,8 @@ internal object DiffLook {
 fun DiffSheet(model: AppModel) {
     val state = model.diffState
     if (state is DiffState.Idle) return
-    val white = Color(IslandSurface.TEXT)
-    val dim = Color(IslandSurface.TEXT_DIM)
+    val white = Color(tokens().heroText)
+    val dim = Color(tokens().heroTextDim)
     BottomSheetHost(onDismiss = { model.closeDiff() }) {
         val name = when (state) {
             is DiffState.Loading -> state.name
@@ -96,8 +93,9 @@ fun DiffSheet(model: AppModel) {
 
 @Composable
 private fun DiffLine(row: DiffRow) {
-    val mono = TypeScale.MONO.style(DiffLook.text(row.kind))
-    Row(Modifier.fillMaxWidth().background(DiffLook.tint(row.kind)).padding(horizontal = 6.dp, vertical = 1.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val t = tokens()
+    val mono = TypeScale.MONO.style(DiffLook.text(row.kind, t))
+    Row(Modifier.fillMaxWidth().background(DiffLook.tint(row.kind, t)).padding(horizontal = 6.dp, vertical = 1.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(DiffLook.marker(row.kind), style = mono.copy(fontFamily = FontFamily.Monospace))
         Text(row.text, Modifier.weight(1f), style = mono.copy(fontFamily = FontFamily.Monospace))
     }

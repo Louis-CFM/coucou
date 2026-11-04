@@ -767,6 +767,10 @@ const EVENT_MAP = {
   'session.idle': 'Stop',
   'session.error': 'StopFailure',
   'session.deleted': 'SessionEnd',
+  // OpenCode 2 names a turn's start and end instead (#717).
+  'session.execution.started': 'UserPromptSubmit',
+  'session.execution.succeeded': 'Stop',
+  'session.execution.failed': 'StopFailure',
 };
 
 function forward(hook_event_name, payload) {
@@ -813,7 +817,7 @@ export const CoucouPlugin = async ({ directory } = {}) => ({
 export default {
   id: 'coucou',
   setup: async (ctx = {}) => {
-    const dir = ctx.directory || '';
+    const dir = ctx.directory || ctx.location?.directory || '';
     if (ctx.tool?.hook) {
       try {
         ctx.tool.hook('execute.before', async (input, output) => {
@@ -841,7 +845,7 @@ export default {
             if (!hook_event_name) continue;
             const props = event?.properties || {};
             forward(hook_event_name, {
-              session_id: props.sessionID || props.info?.id || event?.sessionID || '',
+              session_id: props.sessionID || props.info?.id || event?.data?.sessionID || event?.sessionID || '',
               cwd: dir,
             });
           }
@@ -1264,6 +1268,25 @@ mod tests {
             }
             let _ = std::fs::remove_dir_all(home);
         }
+    }
+
+    #[test]
+    fn the_opencode_plugin_maps_opencode_2_turns() {
+        // OpenCode 2 never sends session.idle: a turn ends with
+        // session.execution.succeeded, its session id in `data` (#717).
+        let home = scratch("plugin-opencode-2");
+        let relay = linux();
+        let plan = config_file::preview(&Agent::OpenCode.edits(&home, &relay, true)).unwrap();
+        apply_in(Agent::OpenCode, &home, &relay, true, &plan.fingerprint).unwrap();
+        let main = std::fs::read_to_string(&Agent::OpenCode.files(&home)[0]).unwrap();
+        assert!(main.contains("'session.execution.started': 'UserPromptSubmit'"));
+        assert!(main.contains("'session.execution.succeeded': 'Stop'"));
+        assert!(main.contains("'session.execution.failed': 'StopFailure'"));
+        assert!(main.contains("event?.data?.sessionID"));
+        assert!(main.contains("ctx.location?.directory"));
+        // OpenCode 1 keeps its own names.
+        assert!(main.contains("'session.idle': 'Stop'"));
+        let _ = std::fs::remove_dir_all(home);
     }
 
     #[test]

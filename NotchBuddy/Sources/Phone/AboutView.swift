@@ -173,7 +173,7 @@ struct OnboardingView: View {
                      icon: "icloud")
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Then, from here").font(.headline)
-                    Text("• Allow or deny a command, right from the Lock Screen\n• Answer Claude's questions\n• See what Claude did, file by file\n• Write or dictate the next instruction, or ask Siri (GitHub version on the Mac)\n• Mochi in your Dynamic Island when your Mac is locked")
+                    Text("• Allow or deny a command, right from the Lock Screen\n• Answer Claude's questions\n• See what Claude did, file by file\n• Mochi in your Dynamic Island when your Mac is locked")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }

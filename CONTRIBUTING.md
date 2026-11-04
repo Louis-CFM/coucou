@@ -24,6 +24,16 @@ Check auto-close timing and live setting changes:
 bash scripts/test-auto-close.sh
 ```
 
+Check macOS translations:
+
+```bash
+python3 scripts/test-localization.py
+```
+
+Add English and Traditional Chinese entries for every new localized label. Keep
+format arguments and plural paths intact. This check does not replace building
+both Mac targets or checking the language and layout in the app.
+
 ## Good first contributions
 
 - A new service integration (a poller + an entry in `PillCatalog.swift` in the `.service` category + a detail card). Look at `StripePoller.swift` for a compact example.

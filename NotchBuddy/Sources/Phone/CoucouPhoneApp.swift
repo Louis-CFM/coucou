@@ -68,9 +68,10 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         let note = CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKQueryNotification
         let pillId = userInfo["pillId"] as? String ?? note?.recordFields?["pillId"] as? String ?? ""
 
+        let received = response.notification.date
         if let fingerprint = PhoneLink.approvalFingerprint(in: request) {
             Task { @MainActor in
-                await Self.handleApproval(action: action, fingerprint: fingerprint, pillId: pillId)
+                await Self.handleApproval(action: action, fingerprint: fingerprint, pillId: pillId, received: received)
                 done()
             }
             return
@@ -98,7 +99,7 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     }
 
     @MainActor
-    private static func handleApproval(action: String, fingerprint: String, pillId: String) async {
+    private static func handleApproval(action: String, fingerprint: String, pillId: String, received: Date) async {
         let link = PhoneLink.shared
         link.noteICloudAlert(fingerprint)
         switch action {
@@ -112,6 +113,7 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
             _ = await link.allowFromOutside(fingerprint: fingerprint, pillId: pillId, from: "a notification")
         default:
             // Review, or a tap on the notification: open the command, Allow needs Face ID there.
+            link.reviewSince = received
             link.reviewFingerprint = fingerprint
             Task { await link.refresh() }
         }

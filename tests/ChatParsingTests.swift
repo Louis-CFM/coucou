@@ -36,6 +36,19 @@ enum ChatParsingTests {
         check("no-op clean URL",       LocalChat.normaliseURL("http://localhost:11434"),       "http://localhost:11434")
         check("trims whitespace",      LocalChat.normaliseURL("  http://localhost:11434  "),   "http://localhost:11434")
 
+        print("LocalChat.streamEndpoint")
+        let local = LocalChat.streamEndpoint(baseURL: "http://localhost:11434", apiKey: nil)
+        check("local URL adds /v1",       local.url,           "http://localhost:11434/v1/chat/completions")
+        check("local sends Bearer ollama", local.authorization, "Bearer ollama")
+        let emptyKey = LocalChat.streamEndpoint(baseURL: "http://localhost:1234", apiKey: "")
+        check("empty key = local",        emptyKey.authorization, "Bearer ollama")
+        let deepseek = LocalChat.streamEndpoint(baseURL: "https://api.deepseek.com/v1", apiKey: "sk-deep")
+        check("cloud URL keeps its /v1",  deepseek.url,           "https://api.deepseek.com/v1/chat/completions")
+        check("cloud sends its key",      deepseek.authorization, "Bearer sk-deep")
+        let qwen = LocalChat.streamEndpoint(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: "sk-qwen")
+        check("qwen URL",                 qwen.url,           "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
+        check("qwen sends its key",       qwen.authorization, "Bearer sk-qwen")
+
         print("LocalChat.parseSSEDelta")
         let sseData = #"data: {"id":"1","choices":[{"delta":{"content":"hello"}}]}"#
         check("parses delta",          LocalChat.parseSSEDelta(sseData) ?? "", "hello")
@@ -141,6 +154,46 @@ enum ChatParsingTests {
             checkTrue("code block in response",             response.contains("```python"))
         } catch {
             print("  ✗ unexpected error: \(error)")
+            failures += 1
+        }
+
+        print("LocalChat.streamChat — cloud provider sends its key (fake server)")
+
+        // A cloud base URL ends with /v1 (https://api.deepseek.com/v1); the fake
+        // server answers 401 unless the bearer token is the key passed here.
+        do {
+            let response = try await LocalChat.streamChat(
+                baseURL: baseURL + "/v1",
+                model: "deepseek-chat",
+                messages: [["role": "user", "content": "hello"]],
+                apiKey: "sk-test-cloud-key",
+                onToken: { _ in }
+            )
+            checkTrue("cloud stream authenticated, reply whole", response.contains("## Answer"))
+        } catch {
+            print("  ✗ unexpected error: \(error)")
+            failures += 1
+        }
+
+        do {
+            _ = try await LocalChat.streamChat(
+                baseURL: baseURL + "/v1",
+                model: "deepseek-chat",
+                messages: [["role": "user", "content": "hello"]],
+                apiKey: "sk-wrong-key",
+                onToken: { _ in }
+            )
+            print("  ✗ should have thrown for a wrong key")
+            failures += 1
+        } catch let e as LocalChatError {
+            if case .serverError(let msg) = e {
+                checkTrue("wrong key → server's auth message", msg.contains("Authentication Fails"))
+            } else {
+                print("  ✗ wrong error case: \(e)")
+                failures += 1
+            }
+        } catch {
+            print("  ✗ unexpected error type: \(error)")
             failures += 1
         }
 

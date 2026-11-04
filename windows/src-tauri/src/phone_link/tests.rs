@@ -1572,6 +1572,140 @@ mod usage_tests {
     }
 }
 
+mod recap_tests {
+    use super::*;
+    use crate::phone_link::hub::RecapIn;
+    use crate::phone_link::server::Features;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    struct Switch {
+        recap: AtomicBool,
+        details: AtomicBool,
+    }
+    impl Features for Switch {
+        fn details(&self) -> bool {
+            self.details.load(Ordering::SeqCst)
+        }
+        fn recap(&self) -> bool {
+            self.recap.load(Ordering::SeqCst)
+        }
+    }
+
+    fn switch(recap: bool, details: bool) -> Arc<Switch> {
+        Arc::new(Switch { recap: AtomicBool::new(recap), details: AtomicBool::new(details) })
+    }
+
+    async fn phone(rig: &Rig, caps: Option<Value>) -> (Client, Value) {
+        let mut c = Client::connect(rig.port, &rig.fingerprint).await.unwrap();
+        let mut hello = json!({ "type": "hello", "v": 1, "token": TOKEN, "device": "Test phone" });
+        if let Some(caps) = caps {
+            hello["caps"] = caps;
+        }
+        c.send(hello).await;
+        let welcome = c.expect("welcome").await;
+        (c, welcome)
+    }
+
+    fn week() -> RecapIn {
+        RecapIn {
+            week: "2026-10-05".into(),
+            minutes: 340.0,
+            sessions: 12.0,
+            files: 40.0,
+            lines_added: 900.0,
+            lines_removed: 210.0,
+            commands: 55.0,
+            allowed: 20.0,
+            denied: 3.0,
+            top_agent: Some("Claude Code".into()),
+            top_project: Some("/home/someone/private/coucou".into()),
+        }
+    }
+
+    #[test]
+    fn recap_is_offered_only_while_the_switch_is_on_and_the_phone_asked() {
+        block_on(async {
+            let on = Rig::start_full(None, switch(true, false)).await;
+            let (_c, welcome) = phone(&on, Some(json!(["recap"]))).await;
+            assert_eq!(welcome["caps"], json!(["recap"]));
+            let (_c, welcome) = phone(&on, None).await;
+            assert!(welcome.get("caps").is_none(), "a phone that did not ask is offered nothing");
+            let off = Rig::start_full(None, switch(false, false)).await;
+            let (_c, welcome) = phone(&off, Some(json!(["recap"]))).await;
+            assert!(welcome.get("caps").is_none(), "{welcome}");
+        });
+    }
+
+    #[test]
+    fn the_switch_is_read_again_for_every_connection() {
+        block_on(async {
+            let features = switch(false, false);
+            let rig = Rig::start_full(None, features.clone()).await;
+            let (_c, welcome) = phone(&rig, Some(json!(["recap"]))).await;
+            assert!(welcome.get("caps").is_none());
+            features.recap.store(true, Ordering::SeqCst);
+            let (_c, welcome) = phone(&rig, Some(json!(["recap"]))).await;
+            assert_eq!(welcome["caps"], json!(["recap"]));
+            features.recap.store(false, Ordering::SeqCst);
+            let (_c, welcome) = phone(&rig, Some(json!(["recap"]))).await;
+            assert!(welcome.get("caps").is_none());
+        });
+    }
+
+    #[test]
+    fn the_phone_hears_the_week_with_counts_only_and_a_change() {
+        block_on(async {
+            let rig = Rig::start_full(None, switch(true, false)).await;
+            rig.hub.publish_recap(week());
+            let (mut c, _) = phone(&rig, Some(json!(["recap"]))).await;
+            c.expect("sessions").await;
+            let line = c.expect("recap").await;
+            assert_eq!(line["sessions"], 12);
+            assert_eq!(line["minutes"], 340);
+            assert_eq!(line["topAgent"], "Claude Code");
+            assert!(line.get("project").is_none(), "no project without the details switch: {line}");
+            let mut next = week();
+            next.week = "2026-10-12".into();
+            rig.hub.publish_recap(next);
+            assert_eq!(c.expect("recap").await["week"], "2026-10-12");
+            rig.hub.publish_recap(RecapIn::default());
+            assert_eq!(c.expect("recap").await, json!({ "type": "recap" }));
+        });
+    }
+
+    #[test]
+    fn the_project_folder_goes_only_with_details_and_never_as_a_path() {
+        block_on(async {
+            let rig = Rig::start_full(None, switch(true, true)).await;
+            rig.hub.publish_recap(week());
+            let (mut c, welcome) = phone(&rig, Some(json!(["recap", "details"]))).await;
+            assert_eq!(welcome["caps"], json!(["details", "recap"]));
+            c.expect("sessions").await;
+            let line = c.expect("recap").await;
+            assert_eq!(line["project"], "coucou");
+            assert!(!line.to_string().contains("someone"), "{line}");
+        });
+    }
+
+    #[test]
+    fn a_phone_without_the_capability_never_hears_of_a_recap() {
+        block_on(async {
+            let rig = Rig::start_full(None, switch(true, false)).await;
+            let (mut plain, _) = phone(&rig, None).await;
+            plain.expect("sessions").await;
+            rig.hub.publish_recap(week());
+            plain.send(json!({ "type": "ping" })).await;
+            loop {
+                let line = plain.recv().await.unwrap();
+                assert_ne!(line["type"], "recap");
+                if line["type"] == "pong" {
+                    break;
+                }
+            }
+        });
+    }
+}
+
 mod services_tests {
     use super::*;
     use crate::phone_link::hub::{ServiceIn, ServiceItemIn};
@@ -1707,8 +1841,10 @@ fn every_secret_the_phone_link_stores_is_in_the_keystores_key_list() {
     ] {
         assert!(crate::secrets::INTERNAL_KEYS.contains(&key), "{key} is not in secrets::INTERNAL_KEYS");
     }
-    // And nothing in the list is a stray: each one is used by the phone link.
-    assert_eq!(crate::secrets::INTERNAL_KEYS.len(), 6);
+    // And nothing in the list is a stray: each one is used by the phone link, or by WhatsApp
+    // (checked in whatsapp/mod.rs).
+    let whatsapp = crate::secrets::INTERNAL_KEYS.iter().filter(|k| k.starts_with("whatsapp-")).count();
+    assert_eq!(crate::secrets::INTERNAL_KEYS.len() - whatsapp, 6);
 }
 
 #[test]

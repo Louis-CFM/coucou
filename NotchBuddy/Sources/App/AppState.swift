@@ -121,6 +121,10 @@ final class AppState: ObservableObject {
     }
 
     // In-chat provider + model — picked via the model selector in the prompt view
+    /// The chat's Mail switch (GitHub build): the AI sees the latest messages and may prepare
+    /// actions on them. Off at each launch.
+    @Published var chatMailMode = false
+
     @Published var chatProvider: ChatProvider = .anthropic {
         didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
     }
@@ -167,6 +171,22 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        #if !APPSTORE
+        // Through the subscription: Claude Code takes the model aliases; the other tools
+        // use the model chosen in them.
+        if usesSubscription(provider) {
+            providerModelFetchError.removeValue(forKey: provider)
+            if provider == .anthropic {
+                var models = Self.claudeCodeModels
+                if !models.contains(where: { $0.id == claudeModel }) { models.insert((claudeModel, claudeModel), at: 0) }
+                fetchedProviderModels[provider] = models
+            } else {
+                let tool = (provider.installedCLI ?? provider.subscriptionCLIs.first)?.displayName ?? provider.displayName
+                fetchedProviderModels[provider] = [("", String(format: String(localized: "chat.subscriptions.default-model"), tool))]
+            }
+            return
+        }
+        #endif
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -218,6 +238,7 @@ final class AppState: ObservableObject {
             case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
             case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
             case .ollama, .lmstudio: models = []  // handled above
+            case .cursor, .copilot:  models = []  // subscription only, handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -249,11 +270,16 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == moonshotChatModel }) {
                         moonshotChatModel = models.first!.id
                     }
-                case .ollama, .lmstudio: break
+                case .ollama, .lmstudio, .cursor, .copilot: break
                 }
             }
         }
     }
+
+    /// The models offered when Claude Code answers: its aliases always point at the latest.
+    static let claudeCodeModels: [(id: String, label: String)] = [
+        ("sonnet", "Claude Sonnet"), ("opus", "Claude Opus"), ("haiku", "Claude Haiku"),
+    ]
 
     /// The model currently active for chat (provider-aware).
     var activeChatModel: String {
@@ -266,6 +292,7 @@ final class AppState: ObservableObject {
         case .deepseek:  return deepseekChatModel
         case .qwen:      return qwenChatModel
         case .moonshot:  return moonshotChatModel
+        case .cursor, .copilot: return ""
         }
     }
 
@@ -301,12 +328,16 @@ final class AppState: ObservableObject {
     @Published var openOnHover: Bool = false {
         didSet { UserDefaults.standard.set(openOnHover, forKey: "openOnHover") }
     }
+    /// A pill other than the one shown finishes or fails: show its card for a moment (#683).
+    @Published var alertsFromAllPills: Bool = false {
+        didSet { UserDefaults.standard.set(alertsFromAllPills, forKey: "alertsFromAllPills") }
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
 
     // Absence interval — persisted
-    var absenceInterval: TimeInterval = 3 * 60 {
+    @Published var absenceInterval: TimeInterval = 3 * 60 {
         didSet { UserDefaults.standard.set(absenceInterval, forKey: "absenceInterval") }
     }
 
@@ -324,6 +355,21 @@ final class AppState: ObservableObject {
     }
     var hotkeyCode: UInt16 = 45 {  // 'n'
         didSet { UserDefaults.standard.set(Int(hotkeyCode), forKey: "hotkeyCode") }
+    }
+
+    /// Two Mochis swapping places in a corner (CornerArcView draws both): the main one hides.
+    @Published var cornerSwapping = false
+    /// The pointer on the compact tile in a corner: the other pills come out of it (CornerBubbles).
+    @Published var cornerPeek = false
+    /// One of them clicked: once open, the island swaps it with Mochi (CornerArcView).
+    @Published var cornerPendingSwap: String? = nil
+
+    /// Where the island lives on its screen: the notch, or a corner (IslandPlacement) — persisted.
+    @Published var islandPlacement: IslandPlacement = .notch {
+        didSet {
+            IslandPlacement.current = islandPlacement
+            UserDefaults.standard.set(islandPlacement.rawValue, forKey: "islandPlacement")
+        }
     }
 
     // Screen hosting the island (notch screen by default) — persisted
@@ -409,6 +455,10 @@ final class AppState: ObservableObject {
     @Published var pendingQuestion: AskQuestion? = nil {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
     }
+
+    /// Every AskUserQuestion waiting for an answer, oldest first: the first one is on the
+    /// card (`pendingQuestion`). Written by HookServer only; empty for a demo question.
+    @Published var waitingQuestions: [QueuedQuestion] = []
 
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
@@ -538,6 +588,7 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
+        if let v = ud.object(forKey: "alertsFromAllPills") as? Bool { alertsFromAllPills = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }
@@ -547,6 +598,10 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }
         if let v = ud.string(forKey: "islandDisplay") { islandDisplay = IslandDisplayChoice(storageValue: v) }
+        if let v = ud.string(forKey: "islandPlacement"), let p = IslandPlacement(rawValue: v) {
+            islandPlacement = p
+            IslandPlacement.current = p   // didSet doesn't run from init
+        }
         if let d = ud.data(forKey: "vercelProjectFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
         if let d = ud.data(forKey: "n8nWorkflowFilter"),
@@ -576,6 +631,15 @@ final class AppState: ObservableObject {
 
     var focusTask: AgentTask? {
         tasks.first { $0.id == focusId } ?? tasks.first
+    }
+
+    /// The places beside the focused pill (4, SessionBoard.slots): the pills as they come, a
+    /// waiting one (a session popped out of its client's pill, or a pill waiting itself) in the
+    /// place of an idle or finished pill, and "+N" for the waiting ones left over.
+    var gridSlots: [SessionBoard.Slot] {
+        SessionBoard.slots(tasks.filter { $0.id != focusId }.map {
+            SessionBoard.Cell(id: $0.id, state: $0.state, poppedOut: $0.id != $0.pill)
+        })
     }
 
     var effectiveState: BotState {

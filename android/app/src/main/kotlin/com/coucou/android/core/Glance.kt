@@ -54,12 +54,12 @@ object GlanceBuilder {
         approvals: Int,
         nameOf: (String) -> String,
     ): Glance {
-        if (!paired) return Glance("Not paired", "Open Coucou to connect to your computer", GlanceTone.CALM, false, emptyList(), 0)
+        if (!paired) return Glance(Texts.t("glance_not_paired", "Not paired"), Texts.t("glance_not_paired_detail", "Open Coucou to connect to your computer"), GlanceTone.CALM, false, emptyList(), 0)
         if (link != LinkState.CONNECTED) {
             val connecting = link == LinkState.CONNECTING
             return Glance(
-                if (connecting) "Connecting…" else "Not connected",
-                if (connecting) "Reaching your computer" else "Coucou cannot reach your computer",
+                if (connecting) Texts.t("status_connecting", "Connecting…") else Texts.t("status_not_connected", "Not connected"),
+                if (connecting) Texts.t("glance_reaching", "Reaching your computer") else Texts.t("glance_cannot_reach", "Coucou cannot reach your computer"),
                 GlanceTone.CALM, false, emptyList(), 0,
             )
         }
@@ -72,43 +72,44 @@ object GlanceBuilder {
         val where = desktop?.takeIf { it.isNotBlank() }
         return when {
             approvals > 0 -> Glance(
-                "Waiting for you",
-                if (approvals == 1) "1 request to approve" else "$approvals requests to approve",
+                Texts.t("glance_waiting_you", "Waiting for you"),
+                Texts.n("glance_requests", approvals, "%1\$d request to approve", "%1\$d requests to approve"),
                 GlanceTone.ATTENTION, true, lines, waiting,
             )
             questions > 0 -> Glance(
-                "Waiting for your answer",
-                if (questions == 1) "1 question from an agent" else "$questions questions from agents",
+                Texts.t("glance_waiting_answer", "Waiting for your answer"),
+                Texts.n("glance_questions", questions, "%1\$d question from an agent", "%1\$d questions from agents"),
                 GlanceTone.ATTENTION, true, lines, waiting,
             )
             trouble > 0 -> Glance(
-                "An agent needs a look",
-                if (trouble == 1) "1 agent stopped" else "$trouble agents stopped",
+                Texts.t("glance_needs_look", "An agent needs a look"),
+                Texts.n("glance_stopped", trouble, "%1\$d agent stopped", "%1\$d agents stopped"),
                 GlanceTone.TROUBLE, true, lines, 0,
             )
             busy > 0 -> Glance(
-                if (busy == 1) "${nameOf(ranked.first { it.state in BUSY }.pillId)} is working" else "$busy agents are working",
-                where?.let { "On $it" } ?: "Working",
+                if (busy == 1) Texts.t("glance_one_working", "%1\$s is working", nameOf(ranked.first { it.state in BUSY }.pillId))
+                else Texts.n("glance_working_many", busy, "%1\$d agent is working", "%1\$d agents are working"),
+                where?.let { Texts.t("glance_on", "On %1\$s", it) } ?: Texts.t("state_working", "Working"),
                 GlanceTone.BUSY, true, lines, 0,
             )
             sessions.any { it.state == BotState.FINISHED } -> Glance(
-                "All done", where?.let { "On $it" } ?: "Finished", GlanceTone.OK, true, lines, 0,
+                Texts.t("glance_all_done", "All done"), where?.let { Texts.t("glance_on", "On %1\$s", it) } ?: Texts.t("state_finished", "Finished"), GlanceTone.OK, true, lines, 0,
             )
-            else -> Glance("Connected", where?.let { "To $it" } ?: "Nothing is running", GlanceTone.OK, true, lines, 0)
+            else -> Glance(Texts.t("status_connected", "Connected"), where?.let { Texts.t("glance_to", "To %1\$s", it) } ?: Texts.t("glance_nothing_running", "Nothing is running"), GlanceTone.OK, true, lines, 0)
         }
     }
 
     /** The plain line of a session: its state in a few words, never its step text or answer (those stay in the app). */
     fun lineOf(s: SessionInfo): String = when (s.state) {
-        BotState.APPROVAL -> "Waiting for your approval"
-        BotState.QUESTION -> "Has a question"
-        BotState.ERROR -> "Stopped on an error"
-        BotState.RATELIMIT -> "Hit a limit"
-        BotState.DIZZY -> "Needs a look"
-        BotState.FINISHED -> "Finished"
-        BotState.SLEEPING, BotState.IDLE -> "Idle"
-        BotState.THINKING -> "Thinking"
-        BotState.SEARCHING -> "Searching"
-        else -> "Working" // never the step text: it can hold a file name or a command
+        BotState.APPROVAL -> Texts.t("glance_line_approval", "Waiting for your approval")
+        BotState.QUESTION -> Texts.t("notif_question", "Has a question")
+        BotState.ERROR -> Texts.t("notif_error", "Stopped on an error")
+        BotState.RATELIMIT -> Texts.t("glance_line_limit", "Hit a limit")
+        BotState.DIZZY -> Texts.t("glance_line_dizzy", "Needs a look")
+        BotState.FINISHED -> Texts.t("state_finished", "Finished")
+        BotState.SLEEPING, BotState.IDLE -> Texts.t("glance_line_idle", "Idle")
+        BotState.THINKING -> Texts.t("state_thinking", "Thinking")
+        BotState.SEARCHING -> Texts.t("state_searching", "Searching")
+        else -> Texts.t("state_working", "Working") // never the step text: it can hold a file name or a command
     }
 }

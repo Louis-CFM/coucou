@@ -46,6 +46,10 @@ final class NoteTaker: ObservableObject {
     /// Notes whose transcript or summary is being written.
     @Published private(set) var working: Set<UUID> = []
 
+    /// Words and names learnt from your corrections (newest first): Claude gets them with every
+    /// transcript to correct, so a word fixed once is heard right in the next calls.
+    @Published private(set) var vocabulary: [String] = []
+
     @Published var summaryEngine: NoteSummaryEngine {
         didSet { UserDefaults.standard.set(summaryEngine.rawValue, forKey: Self.engineKey) }
     }
@@ -72,6 +76,7 @@ final class NoteTaker: ObservableObject {
             summaryEngine = FlowCleanup.hasKey ? .claude : (Self.appleModelAvailable ? .apple : .off)
         }
         load()
+        loadVocabulary()
         appObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { note in
@@ -127,8 +132,10 @@ final class NoteTaker: ObservableObject {
         let dir = Self.folder(for: note.id)
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            let micChannel = try ChannelRecorder(url: dir.appendingPathComponent("mic.wav"), label: "fr.louisraille.NotchBuddy.notetaker.mic")
-            let systemChannel = try ChannelRecorder(url: dir.appendingPathComponent("system.wav"), label: "fr.louisraille.NotchBuddy.notetaker.sys")
+            // One clock for both recordings, so the Mac's sound lines up with the microphone.
+            let origin = DispatchTime.now().uptimeNanoseconds
+            let micChannel = try ChannelRecorder(url: dir.appendingPathComponent("mic.wav"), label: "fr.louisraille.NotchBuddy.notetaker.mic", origin: origin)
+            let systemChannel = try ChannelRecorder(url: dir.appendingPathComponent("system.wav"), label: "fr.louisraille.NotchBuddy.notetaker.sys", origin: origin)
             let mic = MicCapture()
             guard mic.start(sink: { micChannel.append($0) }) else {
                 startError = String(localized: "notes.error.mic")
@@ -239,19 +246,26 @@ final class NoteTaker: ObservableObject {
                 throw NSError(domain: "Notetaker", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "notes.error.no-audio")])
             }
             let asr = try await Parakeet.shared.manager()
-            let mine = try await Self.words(in: micURL, asr: asr)
+            var mine = try await Self.words(in: micURL, asr: asr)
             var theirs: [TimedWord] = []
             if FileManager.default.fileExists(atPath: systemURL.path) {
                 theirs = try await Self.words(in: systemURL, asr: asr)
             }
             let built: (speakers: [NoteSpeaker], lines: [NoteLine])
             if theirs.count >= 5 {
-                // A call: you on the microphone, the others on the Mac's sound.
-                let turns = try await Self.diarize(systemURL)
+                // A call: you on the microphone, the others on the Mac's sound. Without headphones
+                // the others also come back into the microphone: that echo is taken out of your words.
+                let heard = mine, others = theirs
+                mine = await Task.detached(priority: .userInitiated) {
+                    let byEar = NoteEcho.removing(heard, micLevels: Self.levels(micURL), sysLevels: Self.levels(systemURL))
+                    return NoteBuilder.removingEchoWords(byEar.words, others: others)
+                }.value
+                appendAppLog("nb.log", "[Notetaker] echo: \(heard.count - mine.count) of \(heard.count) microphone words were the others")
+                let turns = NoteBuilder.mergingFragments(try await Self.diarize(systemURL))
                 built = NoteBuilder.build(mine: mine, others: theirs, turns: turns, meName: me, personName: Self.personName)
             } else if mine.count >= 20 {
                 // People around the Mac: one recording, the voices told apart.
-                let turns = try await Self.diarize(micURL)
+                let turns = NoteBuilder.mergingFragments(try await Self.diarize(micURL))
                 if Set(turns.map(\.speaker)).count > 1 {
                     built = NoteBuilder.buildRoom(words: mine, turns: turns, personName: Self.personName)
                 } else {
@@ -278,6 +292,9 @@ final class NoteTaker: ObservableObject {
             current.error = error.localizedDescription
             replace(current)
             return
+        }
+        if summaryEngine == .claude, !note.lines.isEmpty {
+            await correct(id)
         }
         if summaryEngine != .off, !note.lines.isEmpty {
             await summarize(id)
@@ -319,8 +336,102 @@ final class NoteTaker: ObservableObject {
         try await diarizer.prepareModels(directory: Parakeet.modelsRoot)
         let result = try await diarizer.process(url)
         return result.segments.map {
-            SpeakerTurn(speaker: $0.speakerId, start: Double($0.startTimeSeconds), end: Double($0.endTimeSeconds))
+            SpeakerTurn(speaker: $0.speakerId, start: Double($0.startTimeSeconds), end: Double($0.endTimeSeconds),
+                        embedding: $0.embedding)
         }
+    }
+
+    /// The 20 ms levels of a recording, read a second at a time (a long call never sits in memory).
+    nonisolated private static func levels(_ url: URL) -> [Float] {
+        guard let file = try? AVAudioFile(forReading: url) else { return [] }
+        let chunk = AVAudioFrameCount(ChannelRecorder.sampleRate)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: chunk) else { return [] }
+        var out: [Float] = []
+        while file.framePosition < file.length {
+            guard (try? file.read(into: buffer, frameCount: chunk)) != nil, buffer.frameLength > 0,
+                  let data = buffer.floatChannelData?[0] else { break }
+            out += NoteEcho.levels(Array(UnsafeBufferPointer(start: data, count: Int(buffer.frameLength))),
+                                   sampleRate: file.processingFormat.sampleRate)
+        }
+        return out
+    }
+
+    // MARK: - Correcting the transcript
+
+    nonisolated static let correctionInstructions = """
+    You fix the speech-recognition errors in the transcript of a call. The recognizer often mishears \
+    names, brands, technical terms, numbers, and accented or non-native speech: "UG charging" for \
+    "EV charging", "elemental codes" for "Elementor shortcodes".
+    Each line is "[n] Speaker: words". For each line that needs it, write it as the person actually said it:
+    - fix the misheard words, using the whole conversation, its topic and the vocabulary given;
+    - remove hesitations (uh, um, euh) and words repeated by accident (the the);
+    - keep the speaker's own words, grammar and language, even when imperfect or mixed: never rephrase, \
+    translate, shorten, complete or tidy up a sentence;
+    - never invent a name, number, address or link: when one is unclear, keep what was heard;
+    - when a passage stays impossible to understand, keep it and add [?] after it.
+    Also give the real name of a speaker when the call makes it certain (they say their own name, or \
+    are called by it); otherwise leave them out.
+    Reply ONLY with JSON, no code block, in this shape: \
+    {"lines": {"n": "the corrected words, without the speaker"}, "speakers": {"Speaker as written": "Name"}}
+    Put only the lines you changed.
+    """
+
+    /// Claude fixes the words the speech recognition got wrong (with the Claude key of Settings,
+    /// when Claude writes the summaries). What was heard stays in each line's `raw`.
+    func correct(_ id: UUID) async {
+        guard summaryEngine == .claude, let note = self.note(id), !note.lines.isEmpty else { return }
+        let key = KeychainStore.shared.get("anthropic-api-key") ?? ""
+        guard !key.isEmpty else { return }
+        working.insert(id)
+        defer { working.remove(id) }
+        let model = AppState.shared.claudeModel.isEmpty ? AppState.defaultClaudeModel : AppState.shared.claudeModel
+        var seen = Set<String>()
+        let terms = (vocabulary + FlowStore.shared.words).filter { seen.insert($0.lowercased()).inserted }.prefix(400)
+        var total = NoteBuilder.Correction(lines: [:], speakers: [:])
+        for range in NoteBuilder.batches(note.lines) {
+            var request = ""
+            if !terms.isEmpty { request += "<vocabulary>\n" + terms.joined(separator: ", ") + "\n</vocabulary>\n" }
+            request += "<transcript>\n" + NoteBuilder.numberedTranscript(note, range: range) + "\n</transcript>"
+            guard let reply = await Self.claude(system: Self.correctionInstructions, user: request, key: key,
+                                                model: model, maxTokens: 8_000),
+                  let correction = NoteBuilder.parseCorrection(reply) else { continue }
+            total.lines.merge(correction.lines.filter { range.contains($0.key) }) { $1 }
+            total.speakers.merge(correction.speakers) { first, _ in first }
+        }
+        // Edited, reassigned or deleted meanwhile: only the lines still as they were are fixed.
+        guard let current = self.note(id), current.lines.map(\.id) == note.lines.map(\.id) else { return }
+        total.lines = total.lines.filter { current.lines[$0.key].text == note.lines[$0.key].text }
+        let result = NoteBuilder.applying(total, to: current, personName: Self.personName)
+        replace(result.note)
+        appendAppLog("nb.log", "[Notetaker] correction: \(result.fixed) of \(note.lines.count) lines fixed")
+    }
+
+    nonisolated private static func claude(system: String, user: String, key: String, model: String, maxTokens: Int) async -> String? {
+        func call(_ model: String) async -> String? {
+            var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+            request.httpMethod = "POST"
+            request.timeoutInterval = 180
+            request.setValue(key, forHTTPHeaderField: "x-api-key")
+            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+            request.setValue("application/json", forHTTPHeaderField: "content-type")
+            let body: [String: Any] = [
+                "model": model,
+                "max_tokens": maxTokens,
+                "system": system,
+                "messages": [["role": "user", "content": user]],
+            ]
+            guard let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
+            request.httpBody = data
+            guard let result = try? await URLSession.shared.data(for: request),
+                  (result.1 as? HTTPURLResponse)?.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: result.0) as? [String: Any],
+                  let content = json["content"] as? [[String: Any]] else { return nil }
+            let text = content.compactMap { $0["text"] as? String }.joined()
+            return text.isEmpty ? nil : text
+        }
+        if let text = await call(model) { return text }
+        if model == FlowCleanup.model { return nil }
+        return await call(FlowCleanup.model)
     }
 
     // MARK: - Summary
@@ -364,36 +475,16 @@ final class NoteTaker: ObservableObject {
     nonisolated static let summaryInstructions = """
     You write the notes of a meeting from its transcript. Each line is "Name: words".
     Write in the language of the transcript. Invent nothing that was not said.
+    The transcript comes from speech recognition: a word that makes no sense was probably misheard, \
+    understand it from the context.
     Reply ONLY with JSON, no code block, in this exact shape:
     {"title": "a short title, 6 words at most", "summary": "2 to 4 sentences: what was decided and why", \
     "key_points": ["up to 6 short points"], "todos": [{"text": "the task", "owner": "the person's name as written in the transcript, or null", "due": "the deadline as said, or null"}]}
     """
 
     nonisolated private static func claudeSummary(_ transcript: String, key: String, model: String) async -> String? {
-        func call(_ model: String) async -> String? {
-            var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-            request.httpMethod = "POST"
-            request.timeoutInterval = 120
-            request.setValue(key, forHTTPHeaderField: "x-api-key")
-            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-            request.setValue("application/json", forHTTPHeaderField: "content-type")
-            let body: [String: Any] = [
-                "model": model,
-                "max_tokens": 2048,
-                "system": summaryInstructions,
-                "messages": [["role": "user", "content": "<transcript>\n\(transcript.prefix(400_000))\n</transcript>"]],
-            ]
-            guard let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
-            request.httpBody = data
-            guard let result = try? await URLSession.shared.data(for: request),
-                  (result.1 as? HTTPURLResponse)?.statusCode == 200,
-                  let json = try? JSONSerialization.jsonObject(with: result.0) as? [String: Any],
-                  let content = json["content"] as? [[String: Any]] else { return nil }
-            let text = content.compactMap { $0["text"] as? String }.joined()
-            return text.isEmpty ? nil : text
-        }
-        if let text = await call(model) { return text }
-        return await call(FlowCleanup.model)
+        await claude(system: summaryInstructions, user: "<transcript>\n\(transcript.prefix(400_000))\n</transcript>",
+                     key: key, model: model, maxTokens: 2048)
     }
 
     /// Apple's on-device model has a small context: a long call is first noted in parts, then the
@@ -438,12 +529,78 @@ final class NoteTaker: ObservableObject {
         replace(note)
     }
 
+    /// Renames someone. Given the name of another person of the call, the two are one: the diarizer
+    /// had cut one voice in two, and their lines are put together.
     func rename(_ id: UUID, speaker: String, to name: String) {
         guard var note = self.note(id), let index = note.speakers.firstIndex(where: { $0.id == speaker }) else { return }
         let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !n.isEmpty else { return }
-        note.speakers[index].name = n
+        let isMe = note.speakers[index].isMe
+        if !isMe, let other = note.speakers.first(where: { $0.id != speaker && !$0.isMe && $0.name.caseInsensitiveCompare(n) == .orderedSame }) {
+            for k in note.lines.indices where note.lines[k].speaker == speaker { note.lines[k].speaker = other.id }
+            note.speakers.remove(at: index)
+        } else {
+            note.speakers[index].name = n
+        }
+        if !isMe { learn([n]) }
         replace(note)
+    }
+
+    /// You fix a line: the words you brought in are learnt for the next calls.
+    func edit(_ id: UUID, line: UUID, text: String) {
+        guard var note = self.note(id), let index = note.lines.firstIndex(where: { $0.id == line }) else { return }
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, t != note.lines[index].text else { return }
+        learn(NoteBuilder.newTerms(old: note.lines[index].text, new: t))
+        if note.lines[index].raw == nil { note.lines[index].raw = note.lines[index].text }
+        note.lines[index].text = t
+        replace(note)
+    }
+
+    /// A line said by someone else than shown (an echo left, a voice taken for another).
+    func assign(_ id: UUID, line: UUID, to speaker: String) {
+        guard var note = self.note(id), note.speaker(speaker) != nil,
+              let index = note.lines.firstIndex(where: { $0.id == line }) else { return }
+        note.lines[index].speaker = speaker
+        replace(note)
+    }
+
+    func deleteLine(_ id: UUID, line: UUID) {
+        guard var note = self.note(id) else { return }
+        note.lines.removeAll { $0.id == line }
+        replace(note)
+    }
+
+    /// Correct the transcript again, then the summary from it.
+    func correctAgain(_ id: UUID) async {
+        await correct(id)
+        if summaryEngine != .off { await summarize(id) }
+    }
+
+    var canCorrect: Bool {
+        summaryEngine == .claude && FlowCleanup.hasKey
+    }
+
+    // MARK: - Vocabulary
+
+    private static var vocabularyURL: URL { folder.appendingPathComponent("vocabulary.json") }
+
+    func learn(_ terms: [String]) {
+        let fresh = terms.filter { term in !vocabulary.contains { $0.caseInsensitiveCompare(term) == .orderedSame } }
+        guard !fresh.isEmpty else { return }
+        vocabulary = Array((fresh + vocabulary).prefix(300))
+        do {
+            try FileManager.default.createDirectory(at: Self.folder, withIntermediateDirectories: true)
+            try JSONEncoder().encode(vocabulary).write(to: Self.vocabularyURL, options: .atomic)
+        } catch {
+            appendAppLog("nb.log", "[Notetaker] could not save the vocabulary: \(error.localizedDescription)")
+        }
+    }
+
+    private func loadVocabulary() {
+        guard let data = try? Data(contentsOf: Self.vocabularyURL),
+              let words = try? JSONDecoder().decode([String].self, from: data) else { return }
+        vocabulary = words
     }
 
     func toggle(_ id: UUID, todo: UUID) {

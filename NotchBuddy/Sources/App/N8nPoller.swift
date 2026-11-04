@@ -9,6 +9,31 @@ final class N8nPoller: @unchecked Sendable {
     static let shared = N8nPoller()
     private var timer: DispatchSourceTimer?
     private var lastExecutionId: String = ""
+    private var isFirstLoad: Bool = true
+
+    // ISO8601DateFormatter is thread-safe; only read after creation.
+    nonisolated(unsafe) private static let isoFormatterFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    // ISO8601DateFormatter is thread-safe; only read after creation.
+    nonisolated(unsafe) private static let isoFormatterStandard: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    static func parseExecutionDate(from json: [String: Any]) -> Date {
+        let dateString = (json["stoppedAt"] as? String) ?? (json["startedAt"] as? String)
+        if let dateString {
+            if let date = isoFormatterFractional.date(from: dateString) ?? isoFormatterStandard.date(from: dateString) {
+                return date
+            }
+        }
+        return Date()
+    }
 
     private init() {}
 
@@ -31,8 +56,8 @@ final class N8nPoller: @unchecked Sendable {
         }
         let base = rawBase.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let endpoints = [
-            "\(base)/api/v1/executions?limit=1&includeData=false",
-            "\(base)/rest/executions?limit=1&includeData=false",
+            "\(base)/api/v1/executions?limit=10&includeData=false",
+            "\(base)/rest/executions?limit=10&includeData=false",
         ]
         tryList(endpoints, apiKey: apiKey, base: base, idx: 0)
     }
@@ -77,44 +102,86 @@ final class N8nPoller: @unchecked Sendable {
                 return
             }
 
-            guard let first = items.first else { self.n8nLog("No executions found"); return }
+            let terminal = ["success", "error", "crashed", "canceled", "failed"]
+            let terminalItems = items.filter { item in
+                let status = item["status"] as? String ?? ""
+                return terminal.contains(status)
+            }
 
-            let id: String
-            if let s = first["id"] as? String      { id = s }
-            else if let n = first["id"] as? Int    { id = "\(n)" }
-            else { self.n8nLog("No id in execution"); return }
-
-            guard id != self.lastExecutionId else { return }
-
-            // Terminal check: use status field — more reliable than the `finished` bool
-            // (published workflows often have finished=false on error)
-            let status = first["status"] as? String ?? ""
-            let isTerminal = ["success", "error", "crashed", "canceled", "failed"].contains(status)
-            guard isTerminal else {
-                self.n8nLog("id=\(id) status=\(status.isEmpty ? "?" : status) — not terminal")
+            guard let newest = terminalItems.first else {
+                if self.isFirstLoad && items.isEmpty {
+                    self.isFirstLoad = false
+                }
                 return
             }
 
-            self.lastExecutionId = id
-            let success = status == "success"
-            self.n8nLog("New execution id=\(id) status=\(status)")
+            let newestId: String
+            if let s = newest["id"] as? String      { newestId = s }
+            else if let n = newest["id"] as? Int    { newestId = "\(n)" }
+            else { self.n8nLog("No id in execution"); return }
 
-            // Fetch full detail (includeData=true required in some n8n versions)
+            // First load — populate silently, anchor lastExecutionId to avoid duplicate on next poll
+            if self.isFirstLoad {
+                self.isFirstLoad = false
+                self.lastExecutionId = newestId
+                self.n8nLog("First load seeded lastExecutionId=\(newestId)")
+                return
+            }
+
+            guard newestId != self.lastExecutionId else { return }
+
+            // Identify all new terminal executions since lastExecutionId
+            let newItems: [[String: Any]]
+            if let idx = terminalItems.firstIndex(where: { item in
+                let id = (item["id"] as? String) ?? (item["id"] as? Int).map(String.init) ?? ""
+                return id == self.lastExecutionId
+            }) {
+                newItems = Array(terminalItems.prefix(upTo: idx))
+            } else {
+                newItems = terminalItems
+            }
+
+            guard let newestExec = newItems.first else { return }
+
+            self.lastExecutionId = newestId
+            let status = newestExec["status"] as? String ?? ""
+            let success = status == "success"
+            let newestDate = Self.parseExecutionDate(from: newestExec)
+            self.n8nLog("New execution id=\(newestId) status=\(status)")
+
+            // Process intermediate completed executions into history (oldest to newest)
+            if newItems.count > 1 {
+                let intermediate = Array(newItems.dropFirst().reversed())
+                DispatchQueue.main.async {
+                    let state = AppState.shared
+                    for item in intermediate {
+                        let name = self.extractWorkflowName(from: item)
+                        let ok = (item["status"] as? String ?? "") == "success"
+                        let date = Self.parseExecutionDate(from: item)
+                        if state.n8nWorkflowFilter.isEmpty || state.n8nWorkflowFilter.contains(name) {
+                            state.n8nRuns = Array(([N8nRun(workflow: name, detail: nil, success: ok, date: date)]
+                                                   + state.n8nRuns).prefix(10))
+                        }
+                    }
+                }
+            }
+
+            // Fetch full detail for the newest execution
             let detailUrls = [
-                "\(base)/api/v1/executions/\(id)?includeData=true",
-                "\(base)/api/v1/executions/\(id)",
-                "\(base)/rest/executions/\(id)?includeData=true",
-                "\(base)/rest/executions/\(id)",
+                "\(base)/api/v1/executions/\(newestId)?includeData=true",
+                "\(base)/api/v1/executions/\(newestId)",
+                "\(base)/rest/executions/\(newestId)?includeData=true",
+                "\(base)/rest/executions/\(newestId)",
             ]
-            self.fetchDetail(detailUrls, apiKey: apiKey, success: success, idx: 0)
+            self.fetchDetail(detailUrls, apiKey: apiKey, success: success, fallbackDate: newestDate, idx: 0)
         }.resume()
     }
 
     // MARK: - Fetch full execution detail
 
-    private func fetchDetail(_ urls: [String], apiKey: String, success: Bool, idx: Int) {
+    private func fetchDetail(_ urls: [String], apiKey: String, success: Bool, fallbackDate: Date, idx: Int) {
         guard idx < urls.count, let url = URL(string: urls[idx]) else {
-            dispatch(success: success, name: "Workflow", detail: nil)
+            dispatch(success: success, name: "Workflow", detail: nil, date: fallbackDate)
             return
         }
         var req = URLRequest(url: url, timeoutInterval: 10)
@@ -126,17 +193,19 @@ final class N8nPoller: @unchecked Sendable {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else {
                 self.n8nLog("Detail HTTP \(code) \(url.host ?? "?")\(url.path)")
-                self.fetchDetail(urls, apiKey: apiKey, success: success, idx: idx + 1)
+                self.fetchDetail(urls, apiKey: apiKey, success: success, fallbackDate: fallbackDate, idx: idx + 1)
                 return
             }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                self.fetchDetail(urls, apiKey: apiKey, success: success, idx: idx + 1)
+                self.fetchDetail(urls, apiKey: apiKey, success: success, fallbackDate: fallbackDate, idx: idx + 1)
                 return
             }
             let name = self.extractWorkflowName(from: json)
             let detail = self.parseDetail(from: json, success: success)
+            let date = Self.parseExecutionDate(from: json)
+            let executionDate = (json["stoppedAt"] != nil || json["startedAt"] != nil) ? date : fallbackDate
             self.n8nLog("Parsed: \(name)")
-            self.dispatch(success: success, name: name, detail: detail)
+            self.dispatch(success: success, name: name, detail: detail, date: executionDate)
         }.resume()
     }
 
@@ -213,18 +282,18 @@ final class N8nPoller: @unchecked Sendable {
 
     // MARK: - Dispatch to main
 
-    private func dispatch(success: Bool, name: String, detail: String?) {
-        DispatchQueue.main.async { self.handleExecution(success: success, name: name, detail: detail) }
+    private func dispatch(success: Bool, name: String, detail: String?, date: Date) {
+        DispatchQueue.main.async { self.handleExecution(success: success, name: name, detail: detail, date: date) }
     }
 
     @MainActor
-    private func handleExecution(success: Bool, name: String, detail: String?) {
+    private func handleExecution(success: Bool, name: String, detail: String?, date: Date) {
         let state = AppState.shared
 
         // Apply workflow filter (empty = all workflows)
         if !state.n8nWorkflowFilter.isEmpty && !state.n8nWorkflowFilter.contains(name) { return }
 
-        state.n8nRuns = Array(([N8nRun(workflow: name, detail: detail, success: success, date: Date())]
+        state.n8nRuns = Array(([N8nRun(workflow: name, detail: detail, success: success, date: date)]
                                + state.n8nRuns).prefix(10))
 
         guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_n8n" }) else { return }

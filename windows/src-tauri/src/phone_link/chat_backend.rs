@@ -48,10 +48,13 @@ impl ChatBackend for AppChat {
         let id = model_id.to_string();
         Box::pin(async move {
             let Some((provider, model)) = parse_model_id(&id) else { return Err(ChatFail::Internal) };
-            if let Some(key) = key_name(provider) {
-                if secrets::get(key).is_none() {
-                    return Err(ChatFail::NoKey);
-                }
+            let ready = match key_name(provider) {
+                Some(claude::KEY) => claude::ready(),
+                Some(key) => secrets::present(key),
+                None => true,
+            };
+            if !ready {
+                return Err(ChatFail::NoKey);
             }
             let result = chat::send_for_phone(&settings, &chat, provider, model, text, |so_far| {
                 let _ = deltas.send(so_far);

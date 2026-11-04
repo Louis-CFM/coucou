@@ -20,7 +20,7 @@ class ScreenLayoutTest {
     @Test fun settingsHoldsDisconnectGalleryOverlayAndTheRequiredNotice() {
         for (s in listOf(
             "R.string.action_unpair", "R.string.demo_leave", "R.string.gallery", "R.string.overlay_title",
-            "R.string.about_unofficial", "R.string.about_repo", "R.string.about_assets", "R.string.settings_section_about",
+            "R.string.about_credit", "R.string.about_repo", "R.string.about_assets", "R.string.settings_section_about",
         )) assertTrue("Settings must carry $s", settings.contains(s))
     }
 

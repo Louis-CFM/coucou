@@ -6,19 +6,19 @@ enum Outfit: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .auto:         return "Auto (seasons)"
-        case .none:         return "None"
-        case .partyHat:     return "Party hat"
-        case .beanie:       return "Beanie"
-        case .crown:        return "Crown"
-        case .sunglasses:   return "Sunglasses"
-        case .roundGlasses: return "Round glasses"
-        case .bow:          return "Bow"
-        case .scarf:        return "Scarf"
-        case .witchHat:     return "Witch hat"
-        case .pumpkin:      return "Pumpkin"
-        case .santaHat:     return "Santa hat"
-        case .bunnyEars:    return "Bunny ears"
+        case .auto:         return String(localized: "Auto (seasons)")
+        case .none:         return String(localized: "None")
+        case .partyHat:     return String(localized: "Party hat")
+        case .beanie:       return String(localized: "Beanie")
+        case .crown:        return String(localized: "Crown")
+        case .sunglasses:   return String(localized: "Sunglasses")
+        case .roundGlasses: return String(localized: "Round glasses")
+        case .bow:          return String(localized: "Bow")
+        case .scarf:        return String(localized: "Scarf")
+        case .witchHat:     return String(localized: "Witch hat")
+        case .pumpkin:      return String(localized: "Pumpkin")
+        case .santaHat:     return String(localized: "Santa hat")
+        case .bunnyEars:    return String(localized: "Bunny ears")
         }
     }
 

@@ -18,7 +18,7 @@ use x11rb::protocol::Event;
 use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
 
-use super::logic::FlowKey;
+use super::logic::{Combo, ComboEdge};
 use super::KeyEvent;
 
 // Keysyms (X11/keysymdef.h).
@@ -26,8 +26,10 @@ const XK_SHIFT_L: u32 = 0xffe1;
 const XK_SHIFT_R: u32 = 0xffe2;
 const XK_CONTROL_L: u32 = 0xffe3;
 const XK_CONTROL_R: u32 = 0xffe4;
+const XK_ALT_L: u32 = 0xffe9;
 const XK_ALT_R: u32 = 0xffea;
 const XK_SUPER_L: u32 = 0xffeb;
+const XK_SUPER_R: u32 = 0xffec;
 const XK_ISO_LEVEL3_SHIFT: u32 = 0xfe03;
 const XK_ESCAPE: u32 = 0xff1b;
 const XK_V: u32 = 0x0076;
@@ -95,7 +97,48 @@ pub fn keys_supported() -> Result<(), &'static str> {
     }
 }
 
-pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListener, String> {
+/// A KeyboardEvent.code name → the keysyms that may stand for it (the right Alt
+/// is often ISO_Level3_Shift, AltGr).
+pub fn code_keysyms(code: &str) -> Option<Vec<u32>> {
+    let syms = match code {
+        "ControlLeft" => vec![XK_CONTROL_L],
+        "ControlRight" => vec![XK_CONTROL_R],
+        "AltLeft" => vec![XK_ALT_L],
+        "AltRight" => vec![XK_ALT_R, XK_ISO_LEVEL3_SHIFT],
+        "ShiftLeft" => vec![XK_SHIFT_L],
+        "ShiftRight" => vec![XK_SHIFT_R],
+        "MetaLeft" => vec![XK_SUPER_L],
+        "MetaRight" => vec![XK_SUPER_R],
+        "Space" => vec![0x20],
+        "Backquote" => vec![0x60],
+        "Insert" => vec![0xff63],
+        "Pause" => vec![0xff13],
+        "ScrollLock" => vec![0xff14],
+        "CapsLock" => vec![0xffe5],
+        "ContextMenu" => vec![0xff67],
+        _ => {
+            if let Some(c) = code.strip_prefix("Key").filter(|c| c.len() == 1) {
+                vec![c.to_ascii_lowercase().as_bytes()[0] as u32]
+            } else if let Some(d) = code.strip_prefix("Digit").filter(|d| d.len() == 1) {
+                vec![d.as_bytes()[0] as u32]
+            } else {
+                let n: u32 = code.strip_prefix('F')?.parse().ok()?;
+                if !(1..=24).contains(&n) {
+                    return None;
+                }
+                vec![0xffbe + n - 1]
+            }
+        }
+    };
+    Some(syms)
+}
+
+/// Watches the keys `codes` (KeyboardEvent.code names), held together to dictate.
+pub fn listen(codes: &[String], tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListener, String> {
+    let members: Vec<Vec<u32>> = codes.iter().filter_map(|c| code_keysyms(c)).collect();
+    if members.is_empty() || members.len() != codes.len() {
+        return Err(format!("unknown keys: {codes:?}"));
+    }
     let (conn, screen) = x11rb::connect(None).map_err(|e| e.to_string())?;
     let root = conn.setup().roots[screen].root;
     let version = conn.xinput_xi_query_version(2, 0).map_err(|e| e.to_string())?.reply().map_err(|e| e.to_string())?;
@@ -113,20 +156,15 @@ pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListen
     let stop_thread = stop.clone();
     let thread = std::thread::Builder::new()
         .name("coucou-flow-keys".into())
-        .spawn(move || run(conn, keymap, key, tx, stop_thread))
+        .spawn(move || run(conn, keymap, members, tx, stop_thread))
         .map_err(|e| e.to_string())?;
     Ok(KeyListener { stop, thread: Some(thread) })
 }
 
-fn run(conn: RustConnection, keymap: Keymap, key: FlowKey, tx: Sender<(KeyEvent, Instant)>, stop: Arc<AtomicBool>) {
+fn run(conn: RustConnection, keymap: Keymap, members: Vec<Vec<u32>>, tx: Sender<(KeyEvent, Instant)>, stop: Arc<AtomicBool>) {
     let fd = conn.stream().as_raw_fd();
-    let ours = |code: u32| match key {
-        FlowKey::RightCtrl => keymap.has(code, XK_CONTROL_R),
-        FlowKey::RightAlt => keymap.has(code, XK_ALT_R) || keymap.has(code, XK_ISO_LEVEL3_SHIFT),
-        FlowKey::RightShift => keymap.has(code, XK_SHIFT_R),
-        FlowKey::LeftCtrlSuper => false,
-    };
-    let mut combo = 0u8;
+    let member = |code: u32| members.iter().position(|syms| syms.iter().any(|&s| keymap.has(code, s)));
+    let mut combo = Combo::new(members.len());
     while !stop.load(Ordering::Relaxed) {
         // Sleep in poll() until the server writes, waking now and then for `stop`.
         let mut pfd = libc::pollfd { fd, events: libc::POLLIN, revents: 0 };
@@ -143,19 +181,16 @@ fn run(conn: RustConnection, keymap: Keymap, key: FlowKey, tx: Sender<(KeyEvent,
                 _ => continue,
             };
             let now = Instant::now();
-            if key == FlowKey::LeftCtrlSuper && (keymap.has(code, XK_CONTROL_L) || keymap.has(code, XK_SUPER_L)) {
-                let bit = if keymap.has(code, XK_CONTROL_L) { 1 } else { 2 };
-                let before = combo;
-                combo = if down { combo | bit } else { combo & !bit };
-                if combo == 3 && down {
-                    let _ = tx.send((KeyEvent::Down, now));
-                } else if before == 3 && combo != 3 {
-                    let _ = tx.send((KeyEvent::Up, now));
+            if let Some(i) = member(code) {
+                match combo.key(i, down) {
+                    ComboEdge::Down | ComboEdge::Repeat => {
+                        let _ = tx.send((KeyEvent::Down, now));
+                    }
+                    ComboEdge::Up => {
+                        let _ = tx.send((KeyEvent::Up, now));
+                    }
+                    ComboEdge::Part | ComboEdge::Outside => {}
                 }
-                continue;
-            }
-            if ours(code) {
-                let _ = tx.send((if down { KeyEvent::Down } else { KeyEvent::Up }, now));
             } else if down && keymap.has(code, XK_ESCAPE) {
                 let _ = tx.send((KeyEvent::Escape, now));
             } else if down && !keymap.is_modifier(code) {
@@ -166,7 +201,7 @@ fn run(conn: RustConnection, keymap: Keymap, key: FlowKey, tx: Sender<(KeyEvent,
 }
 
 /// Nothing to wait for: the paste is sent once the key is up on X11.
-pub fn wait_key_released(_key: FlowKey) {
+pub fn wait_key_released(_codes: &[String]) {
     std::thread::sleep(Duration::from_millis(30));
 }
 

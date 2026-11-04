@@ -123,6 +123,8 @@ final class ApprovalRelay {
             changeToken = nil
             return false
         } catch {
+            // The request was settled on the Mac meanwhile: its poll is cancelled, not failed.
+            if Task.isCancelled || (error as? CKError)?.code == .operationCancelled { return true }
             log("decision check failed: \(error.localizedDescription)")
             return false
         }
