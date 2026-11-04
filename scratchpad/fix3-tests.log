@@ -1,0 +1,135 @@
+== intent
+Running IntentParser tests…
+error: input file 'NotchBuddy/Sources/App/Voice/VoiceQuery.swift' was modified during the build
+error: input file 'NotchBuddy/Sources/App/Voice/VoiceQuery.swift' was modified during the build
+== entity
+Running EntityResolver tests…
+
+55/55 passed.
+== query
+error: link command failed with exit code 1 (use -v to see invocation)
+Undefined symbols for architecture arm64:
+  "static main.VoiceLang.isPortugueseWord(Swift.String) -> Swift.Bool", referenced from:
+      closure #6 (Swift.String) -> Swift.Bool in static main.VoiceQuery.mail(of: Swift.String) -> main.VoiceQuery.MailRequest? in VoiceQuery-1.o
+ld: symbol(s) not found for architecture arm64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+error: input file 'NotchBuddy/Sources/App/Voice/VoiceQuery.swift' was modified during the build
+error: input file 'NotchBuddy/Sources/App/Voice/VoiceQuery.swift' was modified during the build
+== runner
+Running VoiceActionRunner tests…
+
+177/177 passed.
+=== ConversationContext tests ===
+ConversationContextTests: all cases passed
+Running VoiceAnswer pt-BR tests…
+✓  stripe today
+✓  stripe one payment
+✓  stripe no sale
+✓  stripe balance only
+✓  stripe no data
+✓  github stars
+✓  github PRs
+✓  github review
+✓  github CI
+✓  github one star
+✓  github nothing
+✓  vercel live
+✓  vercel failed
+✓  vercel previous
+✓  vercel none
+✓  resend
+✓  n8n
+✓  n8n failed
+✓  notion
+✓  calcom
+✓  calcom none
+✓  agents
+✓  approval first
+✓  agents idle
+✓  claude plan
+✓  codex plan name
+✓  plan none
+✓  music
+✓  music none
+✓  pills
+✓  pills none
+✓  weather off
+✓  weather no city
+✓  weather unavailable
+✓  weather tomorrow
+✓  weather now
+✓  weather today no now
+✓  not connected
+✓  not connected weather
+✓  not connected music
+✓  pt answer non-empty stripe
+✓  pt answer differs from en stripe
+✓  pt answer non-empty github
+✓  pt answer differs from en github
+✓  pt answer non-empty vercel
+✓  pt answer differs from en vercel
+✓  pt answer non-empty resend
+✓  pt answer differs from en resend
+✓  pt answer non-empty n8n
+✓  pt answer differs from en n8n
+✓  pt answer non-empty notion
+✓  pt answer differs from en notion
+✓  pt answer non-empty calcom
+✓  pt answer differs from en calcom
+✓  pt answer non-empty agents
+✓  pt answer differs from en agents
+✓  pt answer non-empty claudePlan
+✓  pt answer differs from en claudePlan
+✓  pt answer non-empty codexPlan
+✓  pt answer differs from en codexPlan
+✓  pt answer non-empty music
+✓  pt answer differs from en music
+✓  pt answer non-empty pills
+✓  pt answer differs from en pills
+✓  pt answer non-empty weatherToday
+✓  pt answer differs from en weatherToday
+✓  pt answer non-empty weatherTomorrow
+✓  pt answer differs from en weatherTomorrow
+✓  pt not-connected stripe
+✓  pt not-connected github
+✓  pt not-connected vercel
+✓  pt not-connected resend
+✓  pt not-connected n8n
+✓  pt not-connected notion
+✓  pt not-connected calcom
+✓  pt not-connected agents
+✓  pt not-connected claudePlan
+✓  pt not-connected codexPlan
+✓  pt not-connected music
+✓  pt not-connected pills
+✓  pt not-connected weatherToday
+✓  pt not-connected weatherTomorrow
+✓  wmo 0
+✓  wmo 2
+✓  wmo 3
+✓  wmo 45
+✓  wmo 53
+✓  wmo 63
+✓  wmo 65
+✓  wmo 73
+✓  wmo 81
+✓  wmo 82
+✓  wmo 86
+✓  wmo 95
+✓  wmo 7
+✓  state working differs from en
+✓  state thinking differs from en
+✓  state searching differs from en
+✓  state approval differs from en
+✓  state question differs from en
+✓  state error differs from en
+✓  state finished differs from en
+✓  state ratelimit differs from en
+✓  state x differs from en
+✓  fr same as french:true
+✓  en same as french:false
+✓  fr text
+✓  en text
+
+108/108 passed.
+done
