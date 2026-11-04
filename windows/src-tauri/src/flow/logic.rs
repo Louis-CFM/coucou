@@ -8,8 +8,8 @@
 //   Ctrl+C), cancels.
 //
 // Listening starts on the first press, so a word said right away is not lost; a
-// press too short to be a hold waits a moment for the second tap, and is
-// dropped if none comes.
+// press too short to be a hold waits a moment for the second tap (without
+// `one_tap`), and is dropped if none comes.
 
 use serde::{Deserialize, Serialize};
 
