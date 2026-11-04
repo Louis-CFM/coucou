@@ -8,7 +8,8 @@ import Speech
 /// Apple's recognizer only understands one language per request, so "Automatic" (the default)
 /// listens with up to three recognizers at once — the user's languages (macOS languages,
 /// keyboard layouts, then English) — shows the one that won last time while you speak, and when
-/// you stop keeps the transcript the recognizers were the most confident about. A fixed language
+/// you stop keeps the transcript the recognizers were the most confident about. When a voice
+/// language is chosen in Settings, it leads instead of last time's winner. A fixed language
 /// can be chosen from the mic's right-click menu.
 ///
 /// Not main-actor bound, because the audio tap and the recognizers call back on their own
@@ -230,29 +231,21 @@ final class MacDictation: @unchecked Sendable {
 
     // MARK: Languages
 
-    /// The languages Automatic listens for: last winner, macOS languages, keyboard layouts,
-    /// Coucou's own language, then English — one per language, up to three.
+    /// The languages Automatic listens for: the voice assistant's language when one is chosen, last
+    /// winner, macOS languages, keyboard layouts, Coucou's own language, then English — one per
+    /// language, up to three (the order lives in `VoiceLang.dictationOrder`).
     static func automaticLocales() -> [Locale] {
-        var ids: [String] = []
-        if let last = UserDefaults.standard.string(forKey: lastHeardKey) { ids.append(last) }
-        // The Mac's languages (not Coucou's override in Settings → General → Language).
-        ids += (CFPreferencesCopyValue("AppleLanguages" as CFString, kCFPreferencesAnyApplication,
-                                       kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String]) ?? []
-        ids += keyboardLanguages()
-        ids += Locale.preferredLanguages
-        ids.append("en-US")
-
         let supported = Array(SFSpeechRecognizer.supportedLocales())
-        var seen = Set<String>()
-        var out: [Locale] = []
-        for id in ids {
-            guard let locale = match(id, in: supported) else { continue }
-            let language = locale.language.languageCode?.identifier ?? locale.identifier
-            guard seen.insert(language).inserted else { continue }
-            out.append(locale)
-            if out.count == maxCandidates { break }
-        }
-        return out
+        return VoiceLang.dictationOrder(
+            listen: VoiceSettings.listenLanguage,
+            lastHeard: UserDefaults.standard.string(forKey: lastHeardKey),
+            // The Mac's languages (not Coucou's override in Settings → General → Language).
+            mac: (CFPreferencesCopyValue("AppleLanguages" as CFString, kCFPreferencesAnyApplication,
+                                         kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String]) ?? [],
+            keyboard: keyboardLanguages(),
+            app: Locale.preferredLanguages,
+            max: maxCandidates,
+            resolve: { match($0, in: supported) })
     }
 
     /// Every language the recognizer knows, by name.
