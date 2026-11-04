@@ -180,7 +180,6 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool, width: 
     island::apply_geometry(&app, &pref, collapsed.then_some(size));
     // The closed island must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
-    shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
 }
 
@@ -1066,6 +1065,7 @@ pub fn run() {
             let handle = app.handle().clone();
             app.manage(phone_link::PhoneLink::new(handle.clone()));
             tray::build(&handle)?;
+            platform::keep_topmost(&handle);
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
             // Same rule for Mochi's desktop window and the dictation pill.
@@ -1095,6 +1095,7 @@ pub fn run() {
             }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
+            island::spawn_drop_zone_watch(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
