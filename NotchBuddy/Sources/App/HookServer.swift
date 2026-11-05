@@ -5009,8 +5009,10 @@ export default function (amp: any): void {
         return content.contains("nb-hook") && content.contains("hermes")
     }
 
-    /// Returns true if the installed Hermes version exposes register_approval_transport.
-    /// Runs a quick python3 import check; returns false on any error or if hermes is not installed.
+    /// Why the approvals toggle can or cannot be used.
+    typealias HermesApprovalSupport = HermesDetect.Support
+
+    #if !APPSTORE
     /// Finds the `hermes` executable in PATH and common install locations.
     private static func hermesExecutablePath() -> String? {
         // Try PATH via `which` first
@@ -5041,54 +5043,47 @@ export default function (amp: any): void {
         return nil
     }
 
-    /// Reads the shebang of `executablePath` and returns the interpreter path.
-    /// Handles `#!/usr/bin/env python3` by resolving via `which`.
-    private static func interpreterFromShebang(_ executablePath: String) -> String? {
-        guard let fh = FileHandle(forReadingAtPath: executablePath) else { return nil }
-        let data = fh.readData(ofLength: 512)
-        try? fh.close()
-        guard let text = String(data: data, encoding: .utf8),
-              text.hasPrefix("#!") else { return nil }
-        let line = String(text.prefix(while: { $0 != "\n" }).dropFirst(2))
-            .trimmingCharacters(in: .whitespaces)
-        if line.hasPrefix("/usr/bin/env ") {
-            let name = String(line.dropFirst("/usr/bin/env ".count))
-                .trimmingCharacters(in: .whitespaces)
-            let task = Process(); let pipe = Pipe()
-            task.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-            task.arguments = [name]; task.standardOutput = pipe; task.standardError = Pipe()
-            if (try? task.run()) != nil {
-                task.waitUntilExit()
-                let out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                return out.isEmpty ? nil : out
-            }
-            return nil
-        }
-        return line.isEmpty ? nil : line
+    /// Reads the first 4 KB of a file as text (nil when unreadable or not UTF-8, e.g. a Mach-O binary).
+    private static func headOfFile(_ path: String) -> String? {
+        guard let fh = FileHandle(forReadingAtPath: path) else { return nil }
+        defer { try? fh.close() }
+        // Lenient decode: a cut inside a multi-byte character must not lose the whole launcher text.
+        let data = fh.readData(ofLength: 4096)
+        if data.contains(0) { return nil }
+        return String(decoding: data, as: UTF8.self)
     }
 
-    /// Returns true if the installed Hermes version exposes register_approval_transport.
-    /// Finds the hermes binary, reads its shebang to get the right interpreter (never uses
-    /// system python3), and runs an import check with a 3-second timeout.
-    /// Returns false if hermes/interpreter not found, or import fails.
-    #if !APPSTORE
-    static func hermesSupportsApprovalTransport() -> Bool {
-        guard let hermesPath = hermesExecutablePath(),
-              let pythonPath = interpreterFromShebang(hermesPath),
-              FileManager.default.isExecutableFile(atPath: pythonPath) else { return false }
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: pythonPath)
-        task.arguments     = ["-c", "from hermes_cli.approval_transport import ApprovalRequest"]
-        task.standardOutput = Pipe(); task.standardError = Pipe()
-        do { try task.run() } catch { return false }
-        // Wait up to 3 seconds
+    /// Runs `executable args...` with a 3-second limit. Returns (exit status, stdout), nil when it can't start or times out.
+    private static func runWithTimeout(_ executable: String, _ args: [String]) -> (status: Int32, output: String)? {
+        let task = Process(); let out = Pipe()
+        task.executableURL = URL(fileURLWithPath: executable)
+        task.arguments = args
+        task.standardOutput = out; task.standardError = Pipe()
+        do { try task.run() } catch { return nil }
         let group = DispatchGroup(); group.enter()
-        var exited = false
-        DispatchQueue.global(qos: .background).async { task.waitUntilExit(); exited = true; group.leave() }
-        if group.wait(timeout: .now() + 3) == .timedOut { task.terminate(); return false }
-        return task.terminationStatus == 0
+        DispatchQueue.global(qos: .background).async { task.waitUntilExit(); group.leave() }
+        if group.wait(timeout: .now() + 3) == .timedOut { task.terminate(); return nil }
+        let text = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        return (task.terminationStatus, text)
     }
+
+    /// Whether the installed Hermes exposes the approval transport. The decision lives in `HermesDetect.decide`
+    /// (unit-tested); this only wires it to the disk and to `Process`: the interpreter of the Hermes launcher runs
+    /// `-I -c "import ..." <install dir>`, 3 s per attempt, never the system python3. Fails closed.
+    static func hermesApprovalSupport() -> HermesApprovalSupport {
+        let hermesPath = hermesExecutablePath()
+        return HermesDetect.decide(
+            hermesPath: hermesPath,
+            home: FileManager.default.homeDirectoryForCurrentUser.path,
+            readFile: { headOfFile($0) },
+            exists: { FileManager.default.isExecutableFile(atPath: $0) },
+            runImport: { python, dir in
+                runWithTimeout(python, HermesDetect.importArguments(installDir: dir))?.status == 0
+            },
+            versionOutput: { hermesPath.flatMap { runWithTimeout($0, ["--version"])?.output } })
+    }
+
+    static func hermesSupportsApprovalTransport() -> Bool { hermesApprovalSupport() == .supported }
     #endif
 
     private func buildHermesInitPy() -> String {

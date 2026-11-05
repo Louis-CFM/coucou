@@ -74020,6 +74020,29 @@
         }
       }
     },
+    "plugin.hermes.approvals.notfound" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou can't find Hermes on this Mac — is the hermes command installed?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Coucou não encontrou o Hermes neste Mac — o comando hermes está instalado?"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 在這台 Mac 上找不到 Hermes — 是否已安裝 hermes 指令？"
+          }
+        }
+      }
+    },
     "plugin.hermes.installed" : {
       "localizations" : {
         "ar" : {

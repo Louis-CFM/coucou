@@ -85,6 +85,7 @@ struct SettingsView: View {
     @State private var pendingHermesConfigContent: String = ""
     @AppStorage("hermesApprovalsEnabled") private var hermesApprovalsEnabled: Bool = false
     @State private var hermesSupportsApprovals: Bool = false
+    @State private var hermesNotFound: Bool = false
     #endif
 
     // Multi-provider chat keys
@@ -1002,7 +1003,9 @@ struct SettingsView: View {
                         .onChange(of: hermesApprovalsEnabled) { _, _ in triggerHermesConfigPreview() }
                         .disabled(!hermesSupportsApprovals)
                     if !hermesSupportsApprovals {
-                        Text("Requires a newer version of Hermes — run: hermes update")
+                        Text(hermesNotFound
+                             ? String(localized: "plugin.hermes.approvals.notfound")
+                             : String(localized: "Requires a newer version of Hermes — run: hermes update"))
                             .font(.caption)
                             .foregroundColor(.orange)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1037,11 +1040,14 @@ struct SettingsView: View {
             .settingsAnchor("agents.hermes")
         #if !APPSTORE
         .task(id: hermesPluginInstalled) {
-            guard hermesPluginInstalled else { hermesSupportsApprovals = false; return }
+            guard hermesPluginInstalled else { hermesSupportsApprovals = false; hermesNotFound = false; return }
             let result = await Task.detached(priority: .background) {
-                HookServer.hermesSupportsApprovalTransport()
+                HookServer.hermesApprovalSupport()
             }.value
-            await MainActor.run { hermesSupportsApprovals = result }
+            await MainActor.run {
+                hermesSupportsApprovals = result == .supported
+                hermesNotFound = result == .hermesNotFound
+            }
         }
         #endif
 

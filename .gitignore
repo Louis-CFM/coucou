@@ -25,3 +25,6 @@ NotchBuddy/Sources/App/Voice/GitHash.generated.swift
 
 # Agent scratch files (plans, handoffs, test logs): never part of a PR
 scratchpad/
+
+# Python bytecode of the scripts
+scripts/__pycache__/
