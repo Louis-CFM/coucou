@@ -122,6 +122,7 @@
 		35468D647AFF3E66EE158994 /* SettingsSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C57EA9BF72452EE9425662 /* SettingsSearch.swift */; };
 		36EBFB9A047DEBAC43E5D0CC /* VoiceCaptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */; };
 		3756B7E1A55D9CEC8C4D34A4 /* IslandStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */; };
+		37D20515A3C90CD29193E681 /* HermesDetect.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7E22E42596596A89C7FED3 /* HermesDetect.swift */; };
 		387C264EC24937E8DE1D1DA7 /* MailAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3354331F3796665541F42FF /* MailAgent.swift */; };
 		38EEB2D3A6EC538958D92575 /* GitHubPulse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3AD61802A32C4833F3EDA /* GitHubPulse.swift */; };
 		390486F7CDC01C1BCDBB27F9 /* VoiceActionRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2737EC4885ADB8FDDA1C610 /* VoiceActionRunner.swift */; };
@@ -392,6 +393,7 @@
 		ADB4EF797FBD6CC90F8D25D3 /* MochiActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323F242B14A61A7C071EC115 /* MochiActivityAttributes.swift */; };
 		ADBB9C15DDA4044625B325BE /* MochiOutfitDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84E5D91129352E8A1D32AA4 /* MochiOutfitDrawing.swift */; };
 		AF595AED562F9005983AA29A /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E86C0F4781F9FEE122C4B92 /* AppLanguage.swift */; };
+		AFA9327882D553A1ABC43CF8 /* HermesDetect.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7E22E42596596A89C7FED3 /* HermesDetect.swift */; };
 		AFCA04C905C4E92BC480E4A2 /* VoiceQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AF6918593586EFF1989C6 /* VoiceQuery.swift */; };
 		B036EAEA0736AF38A8237D37 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E2C10416B58B437F402ABCEB /* PrivacyInfo.xcprivacy */; };
 		B0458F7D63DAFFCFD6D8A72D /* ChatMediaSniff.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E2A6611D303C615F292A4 /* ChatMediaSniff.swift */; };
@@ -872,6 +874,7 @@
 		ECD4A635006365A493A57B18 /* FlowDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowDictation.swift; sourceTree = "<group>"; };
 		EDC1DEBFCAEBE6F0EEB865F3 /* EntityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityResolver.swift; sourceTree = "<group>"; };
 		EE60A834934474CDAE022FF8 /* SearchAndSpotlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchAndSpotlight.swift; sourceTree = "<group>"; };
+		EF7E22E42596596A89C7FED3 /* HermesDetect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesDetect.swift; sourceTree = "<group>"; };
 		EFE8C8C843B4B30C547FF64A /* ClaudeVoiceBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeVoiceBrain.swift; sourceTree = "<group>"; };
 		F0E2C3ACD815230A0ECAB014 /* EnergyVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyVAD.swift; sourceTree = "<group>"; };
 		F1064AD8471C51AFF4F12258 /* SharedSessions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedSessions.swift; sourceTree = "<group>"; };
@@ -1037,6 +1040,7 @@
 				1A2DE186040A02D800F856CA /* HermesApprovalSlot.swift */,
 				96CAD97FB2A246232EE04059 /* HermesApprovalViews.swift */,
 				782AD2764A58AE9CC258C4BB /* HermesChat.swift */,
+				EF7E22E42596596A89C7FED3 /* HermesDetect.swift */,
 				D93A05993C57DBF01195C08B /* HermesPills.swift */,
 				159294F851FE97C2E84221DC /* HermesSignIn.swift */,
 				480F129573A8C1E0A43E0573 /* HermesSignInNet.swift */,
@@ -1659,6 +1663,7 @@
 				EE52C4E4495EAD12F38B945E /* HermesApprovalSlot.swift in Sources */,
 				6BC6F307918D13F8B84DC363 /* HermesApprovalViews.swift in Sources */,
 				BA37CBAE83C2BA32A3773EA4 /* HermesChat.swift in Sources */,
+				AFA9327882D553A1ABC43CF8 /* HermesDetect.swift in Sources */,
 				9925BEAB4121EA9BC9B52169 /* HermesPills.swift in Sources */,
 				472F7A6E388F2D88BD804630 /* HermesSignIn.swift in Sources */,
 				A8DE03387E75846A62B3A3D0 /* HermesSignInNet.swift in Sources */,
@@ -1978,6 +1983,7 @@
 				0A71241B51C1ED8EE4A1DF22 /* HermesApprovalSlot.swift in Sources */,
 				2195F68E4DD0843754DEF1C2 /* HermesApprovalViews.swift in Sources */,
 				1B9DC40E30AD7F75AB0B37F4 /* HermesChat.swift in Sources */,
+				37D20515A3C90CD29193E681 /* HermesDetect.swift in Sources */,
 				019C48F59DAC135C328F4C51 /* HermesPills.swift in Sources */,
 				077152EFBA05F1CB965CD5AB /* HermesSignIn.swift in Sources */,
 				BB61FCFF6EE49433DF821FBC /* HermesSignInNet.swift in Sources */,
