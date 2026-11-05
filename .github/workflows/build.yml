@@ -128,17 +128,44 @@ jobs:
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
+      - name: Test chat fold memory
+        run: bash scripts/test-chat-fold.sh
+
+      - name: Test demo guard
+        run: bash scripts/test-demo-guard.sh
+
       - name: Test Claude response text
         run: bash scripts/test-claude-response.sh
 
       - name: Test chat parsing
         run: bash scripts/test-chat-parsing.sh
 
+      - name: Test chat answer style
+        run: bash scripts/test-chat-answer-style.sh
+
+      - name: Test Hermes chat
+        run: bash scripts/test-hermes-chat.sh
+
+      - name: Test chat media
+        run: bash scripts/test-chat-media.sh
+
+      - name: Test Hermes sign in (includes the approval answers)
+        run: bash scripts/test-hermes-signin.sh
+
+      - name: Test Hermes approvals
+        run: bash scripts/test-hermes-approval.sh
+
       - name: Test plan gauge
         run: bash scripts/test-plan-gauge.sh
 
       - name: Test ask question
         run: bash scripts/test-ask-question.sh
+
+      - name: Test cmux routing
+        run: bash scripts/test-cmux-routing.sh
+
+      - name: Test cmux timeline
+        run: bash scripts/test-cmux-timeline.sh
 
       - name: Test the Android link (pairing, framing, admission, approvals, certificate)
         run: bash scripts/test-android-link.sh
@@ -154,6 +181,12 @@ jobs:
 
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
+
+      - name: Step language tests
+        run: bash scripts/test-step-language.sh
+
+      - name: Localization tests
+        run: bash scripts/test-localization.sh
 
       - name: Pill colour tests
         run: bash scripts/test-pill-colors.sh

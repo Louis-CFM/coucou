@@ -101,8 +101,8 @@ enum FlowCleanup {
                                         app: String?, words: [String]) -> String {
         var lines = [
             "You turn raw speech-to-text into the text the speaker meant to type.",
-            "Remove filler words (euh, hum, uh, um, like, tu vois…), stutters and repeated words.",
-            "When the speaker corrects themselves (\"at 3, no, at 4\"), keep only the correction.",
+            "Remove filler words (euh, hum, uh, um, like, tu vois, é…, hã, né, tipo, sabe, então when used as filler…), stutters and repeated words.",
+            "When the speaker corrects themselves (\"at 3, no, at 4\", \"às 3, não, às 4\"), keep only the correction.",
             "Fix punctuation, capitals and obvious recognition mistakes.",
         ]
         if prompt {
@@ -154,8 +154,8 @@ enum FlowCleanup {
         }
         var lines = [
             "You turn raw speech-to-text into the text the speaker meant to type.",
-            "Remove filler words (euh, hum, uh, um, like, tu vois…), stutters and repeated words.",
-            "When the speaker corrects themselves (\"at 3, no, at 4\"), keep only the correction.",
+            "Remove filler words (euh, hum, uh, um, like, tu vois, é…, hã, né, tipo, sabe, então when used as filler…), stutters and repeated words.",
+            "When the speaker corrects themselves (\"at 3, no, at 4\", \"às 3, não, às 4\"), keep only the correction.",
             "Fix punctuation, capitals and obvious recognition mistakes. Format spoken lists as lists.",
             tone,
             "Always answer in the language the text is in. Never translate.",

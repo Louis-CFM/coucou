@@ -74,7 +74,13 @@ struct VoiceQueryTests {
         check("body tell her", VoiceQuery.bodyAnswer("tell her that the file is ready").instruction, "the file is ready")
         check("simple mail fr", VoiceQuery.simpleMail(from: "faut dire que l'image est prête"), "Bonjour,\n\nL'image est prête.\n\nBonne journée !")
         check("simple mail en", VoiceQuery.simpleMail(from: "the file is ready"), "Hi,\n\nThe file is ready.\n\nBest,")
-        check("looks French", VoiceQuery.looksFrench("l'image est prête"), true)
+        check("mail en: pro plan keeps recipient", VoiceQuery.mail(of: "send an email to Tana about the pro plan")?.recipient, "Tana")
+        check("mail fr: compte pro keeps recipient", VoiceQuery.mail(of: "envoie un mail à Tana pour le compte pro")?.recipient, "Tana")
+        check("mail pt: pro Tana", VoiceQuery.mail(of: "manda um e-mail pro Tana")?.recipient, "Tana")
+        check("mail pt: a imagem pro Tana", VoiceQuery.mail(of: "manda a imagem pro Tana")?.recipient, "Tana")
+        check("mail language en: tell him no", VoiceQuery.mailLanguage("tell him no"), .en)
+        check("mail language en: asap", VoiceQuery.mailLanguage("let her know as soon as possible"), .en)
+        check("looks French",VoiceQuery.looksFrench("l'image est prête"), true)
         check("looks English", VoiceQuery.looksFrench("the image is ready"), false)
         check("mail pour lui dire → drafted", VoiceQuery.mail(of: "envoie un mail à Tana pour lui dire que l'image est prête")?.instruction, "l'image est prête")
         check("mail description → literal", VoiceQuery.mail(of: "envoie un mail à Tana avec le texte rendez-vous demain")?.body, "rendez-vous demain")
@@ -174,6 +180,99 @@ struct VoiceQueryTests {
         contains("weather en", VoiceAnswer.text(.weatherTomorrow, w, french: false), "Tomorrow in Bordeaux: rain, 12 to 19 degrees")
         check("wmo 0", VoiceAnswer.weatherText(0, fr: true), "ciel dégagé")
         check("wmo 95", VoiceAnswer.weatherText(95, fr: false), "thunderstorms")
+
+        // ── Portuguese (pt-BR) ────────────────────────────────────────────────
+        let ptTopics: [(String, VoiceTopic?)] = [
+            ("quanto eu vendi hoje?", .stripe),
+            ("qual é o meu saldo no Stripe?", .stripe),
+            ("quantas estrelas eu tenho no GitHub?", .github),
+            ("quantas estrelas eu tenho", .github),
+            ("como tá o tempo amanhã?", .weatherTomorrow),
+            ("como está o tempo hoje", .weatherToday),
+            ("vai chover amanhã?", .weatherTomorrow),
+            ("que calor, qual a temperatura?", .weatherToday),
+            ("previsão do tempo", .weatherToday),
+            ("meu deploy do Vercel passou?", .vercel),
+            ("tem reunião hoje?", .calcom),
+            ("quantos compromissos eu tenho hoje?", .calcom),
+            ("quanto falta do meu plano do Claude?", .claudePlan),
+            ("qual é o meu limite do Codex?", .codexPlan),
+            ("o que está acontecendo no Claude Code?", .agents),
+            ("o que tá rolando?", .agents),
+            ("que música está tocando?", .music),
+            ("quais pílulas estão ativas?", .pills),
+            ("quantos e-mails eu enviei?", .resend),
+            ("como estão as automações do n8n?", .n8n),
+            // Commands and plain talk stay as they are
+            ("adiciona o GitHub", nil),
+            ("toca música", nil),
+            ("tira o Stripe", nil),
+            ("você pode adicionar o GitHub?", nil),
+            ("quanto tempo falta?", nil),
+            ("ele ficou muito tempo no telefone", nil),
+            ("bom dia", nil),
+        ]
+        for (phrase, want) in ptTopics { check("pt topic «\(phrase)»", VoiceQuery.topic(of: phrase), want) }
+        check("pt parse stripe question", IntentParser.parse("quanto eu vendi hoje?", pills: pills), .query(.stripe))
+        check("pt parse weather", IntentParser.parse("como tá o tempo amanhã?", pills: pills), .query(.weatherTomorrow))
+
+        // Mail
+        check("pt mail to Tana", VoiceQuery.mail(of: "manda um e-mail pro Tana dizendo que a imagem está pronta"),
+              VoiceQuery.MailRequest(recipient: "Tana", file: nil, folder: nil, instruction: "a imagem está pronta"))
+        check("pt mail para o Tana", VoiceQuery.mail(of: "envia um email para o Tana"),
+              VoiceQuery.MailRequest(recipient: "Tana", file: nil, folder: nil))
+        check("pt mail para a Ana", VoiceQuery.mail(of: "escreve um email para a Ana"),
+              VoiceQuery.MailRequest(recipient: "Ana", file: nil, folder: nil))
+        check("pt guided mail", VoiceQuery.mail(of: "manda um e-mail"),
+              VoiceQuery.MailRequest(recipient: "", file: nil, folder: nil))
+        check("pt mail file", VoiceQuery.mail(of: "manda a imagem Goku.png pro Tana"),
+              VoiceQuery.MailRequest(recipient: "Tana", file: "Goku.png", folder: nil))
+        check("pt mail file que se chama", VoiceQuery.mail(of: "manda a imagem que se chama Goku.png pro Tana"),
+              VoiceQuery.MailRequest(recipient: "Tana", file: "Goku.png", folder: nil))
+        check("pt mail subject and body", VoiceQuery.mail(of: "manda um email pro tana@gmail.com, assunto Aqui está a imagem, com o texto Imagem em 1980 por 1080"),
+              VoiceQuery.MailRequest(recipient: "tana@gmail.com", file: nil, folder: nil,
+                                     subject: "Aqui está a imagem", body: "Imagem em 1980 por 1080"))
+        check("pt mail spoken address", VoiceQuery.mail(of: "manda um email pra tana arobase gmail ponto com")?.recipient, "tana arobase gmail ponto com")
+        check("pt mail falando que", VoiceQuery.mail(of: "manda um email pro Tana falando que o arquivo está pronto")?.instruction, "o arquivo está pronto")
+        check("pt not a mail", VoiceQuery.mail(of: "manda a música"), nil)
+        check("pt parse mail", IntentParser.parse("manda um e-mail pro Tana", pills: pills),
+              .mail(VoiceQuery.MailRequest(recipient: "Tana", file: nil, folder: nil)))
+        check("pt recipient é o Tana", VoiceQuery.recipientAnswer("é o Tana"), "Tana")
+        check("pt recipient pro Enzo", VoiceQuery.recipientAnswer("pro Enzo"), "Enzo")
+        check("pt recipient ele se chama", VoiceQuery.recipientAnswer("ele se chama Enzo"), "Enzo")
+        check("pt subject answer", VoiceQuery.subjectAnswer("o assunto é Aqui está a imagem"), "Aqui está a imagem")
+        check("pt no subject", VoiceQuery.subjectAnswer("sem assunto"), "")
+        check("pt body literal", VoiceQuery.bodyAnswer("palavra por palavra: Imagem em 1980 por 1080").body, "Imagem em 1980 por 1080")
+        check("pt body draft", VoiceQuery.bodyAnswer("diz que a imagem está pronta").instruction, "a imagem está pronta")
+        check("pt body draft avisa", VoiceQuery.bodyAnswer("avisa que vou me atrasar").instruction, "vou me atrasar")
+        check("pt simple mail", VoiceQuery.simpleMail(from: "a imagem está pronta"), "Olá,\n\nA imagem está pronta.\n\nAbraço!")
+        check("pt mail language", VoiceQuery.mailLanguage("a imagem está pronta"), .pt)
+        check("fr mail language", VoiceQuery.mailLanguage("l'image est prête"), .fr)
+        check("en mail language", VoiceQuery.mailLanguage("the file is ready"), .en)
+
+        // Web search
+        check("pt web", VoiceQuery.webQuery(of: "pesquisa na internet quem ganhou ontem"), "quem ganhou ontem")
+        check("pt web procura", VoiceQuery.webQuery(of: "procura no Google a capital da Austrália"), "a capital da Austrália")
+        check("pt web você pode", VoiceQuery.webQuery(of: "você pode pesquisar na internet a previsão da bolsa por favor"), "a previsão da bolsa")
+        check("pt web empty", VoiceQuery.webQuery(of: "pesquisa na internet"), "")
+        check("pt not web", VoiceQuery.webQuery(of: "toca música"), nil)
+        check("pt parse web", IntentParser.parse("pesquisa na internet quem ganhou ontem", pills: pills), .webSearch(query: "quem ganhou ontem"))
+
+        // Questions
+        for q in ["quem ganhou ontem?", "quando é o próximo jogo", "onde fica Paris", "por que o céu é azul",
+                  "como funciona um motor", "o que é um buraco negro", "qual é a capital da França",
+                  "me explica o que é blockchain", "então quem ganhou", "quantos anos tem o Brasil"] {
+            check("pt question «\(q)»", VoiceQuery.looksLikeQuestion(q), true)
+        }
+        for q in ["você pode abrir o Figma", "pode tocar música", "adiciona o GitHub", "toca Daft Punk"] {
+            check("pt not question «\(q)»", VoiceQuery.looksLikeQuestion(q), false)
+        }
+
+        // Apps
+        check("pt abre o Figma", VoiceQuery.appToOpen("abre o Figma"), "Figma")
+        check("pt abre o app Notes", VoiceQuery.appToOpen("abre o app Notes"), "Notes")
+        check("pt abrir o aplicativo Safari", VoiceQuery.appToOpen("abrir o aplicativo Safari"), "Safari")
+        check("pt parse open app", IntentParser.parse("abre o Figma", pills: pills), .openApp(name: "Figma"))
 
         let total = pass + fail
         if fail == 0 { print("\n\(total)/\(total) passed.") }

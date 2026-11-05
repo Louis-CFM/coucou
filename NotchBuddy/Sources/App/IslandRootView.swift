@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Top-level SwiftUI view rendered inside the 720×320 transparent panel.
+/// Top-level SwiftUI view rendered inside the 720-wide transparent panel (560 tall, taller once the chat has been stretched).
 /// The island is drawn at the top-center; everything else is transparent and click-through.
 /// Note: drag-drop is handled at the AppKit level in IslandWindowController (FileDropNSView),
 /// not in SwiftUI, to avoid interfering with SwiftUI hit-testing.
@@ -87,11 +87,7 @@ struct IslandContainer: View {
     private let openSpring = Animation.spring(response: 0.5, dampingFraction: 0.72)
     private let closeEase  = Animation.timingCurve(0.45, 0, 0.2, 1, duration: 0.34)
 
-    private var chatPromptHeight: CGFloat {
-        let base: CGFloat = 240
-        let perMsg: CGFloat = 40
-        return min(300, base + CGFloat(state.chatHistory.count) * perMsg)
-    }
+    private var chatPromptHeight: CGFloat { state.chatPromptHeight }
 
     /// Pixels the content must be pushed down to clear the concave ear transparent area.
     /// = 0 in expanded mode (no ears), = earRadius in compact/notch mode.
@@ -184,7 +180,7 @@ struct IslandContainer: View {
                 // retain the panel's full height for particles and hands.
                 .mask(alignment: .topLeading) {
                     Rectangle().frame(width: islandWidth,
-                                      height: state.mode == .expanded ? 320 : islandHeight)
+                                      height: state.mode == .expanded ? state.panelHeight : islandHeight)
                 }
                 .opacity(uploadActive || greetingActive ? 0 : 1)
                 .animation(.easeInOut(duration: 0.25), value: uploadActive || greetingActive)
@@ -251,10 +247,21 @@ struct IslandContainer: View {
                 islandHeight = newView == .prompt ? chatPromptHeight : h
             }
         }
-        .onChange(of: state.chatHistory.count) { _, _ in
+        // A long Hermes command is read in a taller island, and the island comes back when it is folded.
+        .onChange(of: state.approvalReadingHeight) { _, _ in
+            guard state.mode == .expanded, state.view == .approval else { return }
+            let (_, h) = islandSize(mode: .expanded, view: .approval, progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight)
+            withAnimation(openSpring) { islandHeight = h }
+        }
+        .onChange(of: state.promptMessageCount) { _, _ in
             guard state.mode == .expanded, state.view == .prompt else { return }
             withAnimation(openSpring) { islandHeight = chatPromptHeight }
         }
+        // The user stretched the chat (drag follows the pointer, button / double click spring) or the
+        // screen changed its room.
+        .onChange(of: state.chatStretchedHeight) { _, _ in resizeChat() }
+        .onChange(of: state.chatMaxHeight) { _, _ in resizeChat() }
         .onAppear {
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
@@ -287,6 +294,15 @@ struct IslandContainer: View {
             // The notch ↔ a corner: flat or rounded top, a round tile at rest.
             cornerRadius = islandCorner(state.mode)
             islandTopRadius = state.islandPlacement.isCorner ? cornerRadius : 0
+        }
+    }
+
+    private func resizeChat() {
+        guard state.mode == .expanded, state.view == .prompt else { return }
+        if state.chatResizing {
+            islandHeight = chatPromptHeight
+        } else {
+            withAnimation(openSpring) { islandHeight = chatPromptHeight }
         }
     }
 
@@ -640,6 +656,7 @@ struct IslandContentView: View {
                     // chat (prompt) is always flexible; mail is flexible only when active so
                     // it doesn't push the ZStack taller when inactive.
                     let isTall = v == .prompt || ((v == .mail || v == .whatsNew) && active)
+                        || (v == .approval && active && state.approvalReadingHeight != nil)
                         || (v == .overview && active && cornerHome)
                     let anim: Animation = active
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
@@ -691,10 +708,14 @@ struct IslandHeader: View {
                 TabButton(icon: "house.fill", view: .overview, state: state)
                 TabButton(icon: "bubble.left.fill", view: .prompt, state: state, preAction: {
                     #if !APPSTORE
-                    if state.promptContext == nil {
+                    // A cmux reply takes no window context: nothing is captured when that is what opens.
+                    if state.promptContext == nil, !state.chatTabOpensCmuxReply {
                         state.promptContext = WindowContextCapture.captureActive(from: state.lastExternalApp)
                     }
                     #endif
+                }, open: {
+                    // What the slot shows follows the focused pill: its Hermes chat, its cmux reply, else the shared chat.
+                    state.showPromptSlot()
                 })
                 TabButton(icon: "plus", view: .upload, state: state)
             }
@@ -714,6 +735,19 @@ struct IslandHeader: View {
                 }
                 #endif
                 HStack(spacing: 14) {
+                    // Chat only: same toggle as a double click on the grip at the bottom of the card.
+                    if state.view == .prompt && state.chatCanStretch {
+                        Button(action: { state.toggleChatStretch() }) {
+                            Image(systemName: state.chatIsStretched
+                                  ? "arrow.down.right.and.arrow.up.left"
+                                  : "arrow.up.left.and.arrow.down.right")
+                                .font(.system(size: 14))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                        }
+                        .buttonStyle(.plain)
+                        .help(state.chatIsStretched ? String(localized: "Reduce chat") : String(localized: "Expand chat"))
+                    }
+
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             state.view = .settings
@@ -760,6 +794,8 @@ struct TabButton: View {
     let view: IslandView
     @ObservedObject var state: AppState
     var preAction: (() -> Void)? = nil
+    /// Replaces the plain switch to `view` (the chat tab decides what the slot shows).
+    var open: (() -> Void)? = nil
     @State private var isHovered = false
 
     private var isOn: Bool {
@@ -771,7 +807,7 @@ struct TabButton: View {
         Button(action: {
             preAction?()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                state.view = view
+                if let open { open() } else { state.view = view }
             }
         }) {
             Image(systemName: icon)

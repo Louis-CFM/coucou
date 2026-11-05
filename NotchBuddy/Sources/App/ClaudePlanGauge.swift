@@ -74,7 +74,7 @@ enum ClaudePlanGauge {
 
     /// Label shown in the island pill chip.
     static func pillLabel(_ usage: PlanUsage?) -> String {
-        guard let usage, let pct = dominantPct(usage) else { return "Claude plan" }
+        guard let usage, let pct = dominantPct(usage) else { return String(localized: "Claude plan") }
         return "Claude \(Int(pct.rounded()))%"
     }
 }

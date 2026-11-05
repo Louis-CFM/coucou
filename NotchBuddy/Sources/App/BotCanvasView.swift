@@ -226,7 +226,7 @@ struct BotCanvasView: View {
         let botX = botPoint(islandH: islandH)
         // The chat view grows with the conversation: vertical look uses its real height.
         let actualH: CGFloat = (state.mode == .expanded && state.view == .prompt)
-            ? min(300, 240 + CGFloat(state.chatHistory.count) * 40)
+            ? state.chatPromptHeight
             : islandH
         let botY = actualH == islandH ? botX : botPoint(islandH: actualH)
         return (tanh((mouse.x - botX.x) / 260),

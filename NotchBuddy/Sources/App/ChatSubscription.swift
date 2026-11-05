@@ -15,7 +15,7 @@ extension ChatProvider {
         case .openai:    [.codex]
         case .cursor:    [.cursor]
         case .copilot:   [.copilot]
-        case .ollama, .lmstudio, .deepseek, .qwen, .moonshot: []
+        case .ollama, .lmstudio, .deepseek, .qwen, .moonshot, .hermes: []
         }
     }
 
@@ -79,7 +79,7 @@ extension AppState {
             return chatProvider == .anthropic ? "\(claudeModel) · \(tool)" : tool
         }
         #endif
-        return activeChatModel
+        return activeChatModelLabel
     }
 }
 

@@ -41,8 +41,8 @@ enum VoiceQuery {
         // Weather words are clear enough on their own ("météo", "il pleut ?").
         if hasAny(["meteo", "weather", "quel temps", "il pleut", "va pleuvoir", "pleuvoir",
                    "temperature", "il fait chaud", "il fait froid", "fait il beau", "il fait beau",
-                   "forecast", "rain", "parapluie", "umbrella"]) {
-            return hasAny(["demain", "tomorrow"]) ? .weatherTomorrow : .weatherToday
+                   "forecast", "rain", "parapluie", "umbrella"]) || VoicePT.isWeather(text) {
+            return hasAny(["demain", "tomorrow"] + VoicePT.tomorrow) ? .weatherTomorrow : .weatherToday
         }
         guard asks else { return nil }
 
@@ -51,40 +51,40 @@ enum VoiceQuery {
         if hasAny(["github", "git hub", "gt"]) { return .github }
         if has("vercel") { return .vercel }
         if has("resend") { return .resend }
-        if hasAny(["n8n", "n 8 n", "workflow", "workflows", "automatisation", "automatisations"]) { return .n8n }
+        if hasAny(["n8n", "n 8 n", "workflow", "workflows", "automatisation", "automatisations"] + VoicePT.n8nWords) { return .n8n }
         if has("notion") { return .notion }
         if hasAny(["cal com", "calcom", "rendez vous", "rdv", "agenda", "reunion", "reunions",
-                   "meeting", "meetings", "booking", "bookings", "reservation", "reservations"]) { return .calcom }
-        if hasAny(["quota", "limite", "limites", "forfait", "usage", "plan"]) {
+                   "meeting", "meetings", "booking", "bookings", "reservation", "reservations"] + VoicePT.calcomWords) { return .calcom }
+        if hasAny(["quota", "limite", "limites", "forfait", "usage", "plan"] + VoicePT.quotaWords) {
             return has("codex") ? .codexPlan : .claudePlan
         }
         if hasAny(["claude", "codex", "cursor", "gemini", "copilot", "vs code", "vscode", "visual studio",
                    "agent", "agents",
                    "session", "sessions", "qu est ce qui se passe", "ou en est", "il fait quoi",
-                   "what s happening", "whats happening"]) { return .agents }
+                   "what s happening", "whats happening"] + VoicePT.agentWords) { return .agents }
         // Generic words.
         if hasAny(["argent", "vendu", "vente", "ventes", "chiffre", "revenu", "revenus", "gagne",
                    "encaisse", "paiement", "paiements", "solde", "money", "sales", "revenue",
-                   "earned", "payments", "balance"]) { return .stripe }
+                   "earned", "payments", "balance"] + VoicePT.moneyWords) { return .stripe }
         if hasAny(["etoile", "etoiles", "star", "stars", "pull request", "pull requests", "pr", "prs",
-                   "repo", "repos", "ci"]) { return .github }
-        if hasAny(["deploiement", "deploiements", "deploy", "deploye", "deployment", "push", "pousse"]) { return .vercel }
+                   "repo", "repos", "ci"] + VoicePT.githubWords) { return .github }
+        if hasAny(["deploiement", "deploiements", "deploy", "deploye", "deployment", "push", "pousse"] + VoicePT.vercelWords) { return .vercel }
         // Generic "mails" means Resend stats only when asking about sent mail.
         if hasAny(["mail", "mails", "email", "emails"]),
-           hasAny(["combien", "how many", "derniers", "dernier", "last", "envoyes", "envoye", "sent", "delivres", "delivered"]) {
+           hasAny(["combien", "how many", "derniers", "dernier", "last", "envoyes", "envoye", "sent", "delivres", "delivered"] + VoicePT.mailCountWords) {
             return .resend
         }
-        if hasAny(["chanson", "musique", "titre", "morceau", "song", "track", "playing", "ecoute"]) { return .music }
-        if hasAny(["pilule", "pilules", "pill", "pills"]) { return .pills }
+        if hasAny(["chanson", "musique", "titre", "morceau", "song", "track", "playing", "ecoute"] + VoicePT.musicWords) { return .music }
+        if hasAny(["pilule", "pilules", "pill", "pills"] + VoicePT.pillWords) { return .pills }
         return nil
     }
 
-    private static let questionMarkers = [
+    private static let questionMarkers: [String] = [
         "combien", "quel", "quelle", "quels", "quelles", "est ce", "c est quoi", "qu est ce",
         "ou en", "comment", "dis moi", "donne moi", "montre moi", "y a t il", "il y a",
         "how", "what", "whats", "did", "is", "are", "any", "tell me", "show me", "statut", "status",
         "etat", "est il", "est elle", "a t il", "a t elle",
-    ]
+    ] + VoicePT.questionMarkers
 
     private static let actionVerbs: Set<String> = [
         "ajoute", "ajouter", "ajoutes", "rajoute", "enleve", "enlever", "enleves", "retire", "retirer",
@@ -92,7 +92,7 @@ enum VoiceQuery {
         "remplace", "remplacer", "active", "activer", "desactive", "vire", "virer",
         "envoie", "envoyer", "envoies", "ecris", "ecrire", "redige", "rediger", "ouvre", "ouvrir",
         "add", "remove", "play", "open", "send", "write", "compose", "draft", "email",
-    ]
+    ].union(VoicePT.actionVerbs)
 
     // MARK: Email
     //
@@ -118,21 +118,21 @@ enum VoiceQuery {
     private static let sendVerbs: Set<String> = [
         "envoie", "envoyer", "envoies", "envoyes", "ecris", "ecrire", "ecrit", "redige", "rediger",
         "send", "email", "mail", "write", "compose", "draft",
-    ]
-    private static let mailWords: Set<String> = ["mail", "email", "mel", "courriel", "emails", "mails"]
+    ].union(VoicePT.sendVerbs)
+    private static let mailWords: Set<String> = ["mail", "email", "mel", "courriel", "emails", "mails"].union(VoicePT.mailWords)
     private static let fileWords: Set<String> = ["fichier", "image", "photo", "document", "pdf", "file",
-                                                 "picture", "screenshot", "capture", "video"]
+                                                 "picture", "screenshot", "capture", "video"].union(VoicePT.fileWords)
     private static let subjectMarkers = ["en objet", "comme objet", "avec l'objet", "avec pour objet", "objet",
-                                         "en titre", "sujet", "with the subject", "subject", "titled"]
+                                         "en titre", "sujet", "with the subject", "subject", "titled"] + VoicePT.subjectMarkers
     private static let bodyMarkers = ["en description", "description", "corps du mail", "en texte", "avec le texte",
                                       "pour lui dire que", "pour lui dire", "pour dire que", "en disant que",
                                       "en disant", "qui dit", "with the text", "body", "saying that", "saying",
-                                      "that says", "to say that", "to say", "telling"]
+                                      "that says", "to say that", "to say", "telling"] + VoicePT.bodyMarkers
     /// Markers after which the text is what the mail is about, for Coucou to write it
     /// ("pour lui dire que l'image est prête"); the others dictate the exact text.
     private static let instructionMarkers: Set<String> = ["pour lui dire que", "pour lui dire", "pour dire que",
                                                           "en disant que", "en disant", "saying that", "saying",
-                                                          "to say that", "to say", "telling"]
+                                                          "to say that", "to say", "telling"].union(VoicePT.instructionMarkers)
 
     static func mail(of raw: String) -> MailRequest? {
         // 1. Subject and body are free text: cut them out of the raw string first.
@@ -160,12 +160,22 @@ enum VoiceQuery {
         guard isMail || n.contains(where: { fileWords.contains($0) }) else { return nil }
 
         // No "à / to": a guided mail — Coucou asks who, the subject, the text, an attachment.
-        guard let to = n.lastIndex(where: { $0 == "a" || $0 == "to" }), to > v, to + 1 < n.count else {
+        // "pro / pra / para" count as "to" only in a sentence with another Portuguese word, or when there is no "a / to"
+        // ("the pro plan", "le compte pro" must not move the recipient).
+        let ptMail = n.contains { !VoicePT.mailToWords.contains($0) && VoiceLang.isPortugueseWord($0) }
+        let toIndex = n.lastIndex(where: { $0 == "a" || $0 == "to" || (ptMail && VoicePT.mailToWords.contains($0)) })
+            ?? n.lastIndex(where: { VoicePT.mailToWords.contains($0) })
+        guard let to = toIndex, to > v, to + 1 < n.count else {
             guard isMail else { return nil }
             return MailRequest(recipient: "", file: nil, folder: nil, subject: subject, body: bodyText,
                                instruction: bodyIsInstruction ? bodySegment : nil)
         }
-        let after = Array(r[(to + 1)...])
+        // "para o Tana", "pra a Ana": the article is not part of the name.
+        var firstRecipient = to + 1
+        if ["para", "pra"].contains(n[to]), firstRecipient + 1 < n.count, VoicePT.mailArticles.contains(n[firstRecipient]) {
+            firstRecipient += 1
+        }
+        let after = Array(r[firstRecipient...])
         var recipientWords: [String] = []
         var rest: [String] = []
         if let first = after.first, first.contains("@") || isSpelledEmail(after) {
@@ -186,17 +196,21 @@ enum VoiceQuery {
         var folder: MailRequest.Folder? = nil
         if n.contains(where: { ["telechargements", "telechargement", "downloads"].contains($0) }) { folder = .downloads }
         else if n.contains(where: { ["bureau", "desktop"].contains($0) }) { folder = .desktop }
-        else if n.contains(where: { ["documents"].contains($0) }) { folder = .documents }
-        else if n.contains(where: { ["photos", "images", "pictures"].contains($0) }) { folder = .pictures }
+        else if n.contains(where: { ["documents"].contains($0) || VoicePT.folderDocuments.contains($0) }) { folder = .documents }
+        else if n.contains(where: { ["photos", "images", "pictures"].contains($0) || VoicePT.folderPictures.contains($0) }) { folder = .pictures }
 
         var file: String? = nil
         if let f = n.firstIndex(where: { fileWords.contains($0) }) {
             let skip: Set<String> = ["qui", "s", "appelle", "appellent", "appelee", "appele", "nommee", "nomme",
-                                     "called", "named", "la", "le", "l", "the", "mon", "ma", "my", "intitule", "intitulee"]
+                                     "called", "named", "la", "le", "l", "the", "mon", "ma", "my", "intitule", "intitulee"].union(VoicePT.fileSkip)
             let stop: Set<String> = ["des", "du", "de", "dans", "from", "in", "par", "en", "a", "to", "et", "and",
                                      "pour", "que", "qu", "j", "je", "sur", "on", "mes", "my", "telechargements",
-                                     "telechargement", "downloads", "bureau", "desktop", "documents", "photos", "pictures"]
+                                     "telechargement", "downloads", "bureau", "desktop", "documents", "photos", "pictures"].union(VoicePT.fileStop)
             var i = f + 1
+            // "a imagem que se chama Goku.png"
+            for seq in VoicePT.fileNamePrefixes where i + seq.count < n.count && Array(n[i..<(i + seq.count)]) == seq {
+                i += seq.count; break
+            }
             while i < n.count, skip.contains(n[i]) { i += 1 }
             var parts: [String] = []
             while i < n.count, !(stop.contains(n[i]) && !parts.isEmpty) {
@@ -232,7 +246,7 @@ enum VoiceQuery {
                                 "mon pote", "ma pote", "mon frère", "ma sœur", "ma soeur",
                                 "his name is", "her name is", "their name is", "the name is", "name is",
                                 "his email is", "her email is", "it's called", "called",
-                                "c'est pour", "c'est", "c est", "it's", "its", "to", "à", "a", "pour", "for", "the", "le", "la"])
+                                "c'est pour", "c'est", "c est", "it's", "its", "to", "à", "a", "pour", "for", "the", "le", "la"] + VoicePT.recipientLeads)
         t = t.trimmingCharacters(in: CharacterSet(charactersIn: " .,;:!?"))
         return spokenEmail(t) ?? t
     }
@@ -268,9 +282,9 @@ enum VoiceQuery {
     /// "l'objet c'est Voilà votre image" → "Voilà votre image"; "pas d'objet" / "no subject" → "".
     static func subjectAnswer(_ raw: String) -> String {
         let n = IntentParser.normalise(raw)
-        if ["pas d objet", "aucun objet", "sans objet", "no subject", "none", "rien", "nothing", "pas d objet merci"].contains(n) { return "" }
+        if ["pas d objet", "aucun objet", "sans objet", "no subject", "none", "rien", "nothing", "pas d objet merci"].contains(n) || VoicePT.subjectNone.contains(n) { return "" }
         return stripLead(raw, ["l'objet c'est", "l'objet est", "l'objet", "objet", "en objet", "the subject is", "subject is",
-                               "subject", "c'est", "it's", "mets", "put", "write"])
+                               "subject", "c'est", "it's", "mets", "put", "write"] + VoicePT.subjectLeads)
             .trimmingCharacters(in: CharacterSet(charactersIn: " .,;:!?\"«»“”"))
     }
 
@@ -279,7 +293,7 @@ enum VoiceQuery {
     /// word for word …" dictates the exact text.
     static func bodyAnswer(_ raw: String) -> (body: String?, instruction: String?) {
         let literalLeads = ["mot pour mot", "texte exact", "le texte exact c'est", "écris exactement", "ecris exactement",
-                            "exactement", "word for word", "verbatim", "exactly", "write exactly", "the exact text is"]
+                            "exactement", "word for word", "verbatim", "exactly", "write exactly", "the exact text is"] + VoicePT.literalLeads
         let literal = stripLead(raw, literalLeads)
         if literal.count < raw.trimmingCharacters(in: .whitespacesAndNewlines).count {
             return (literal.trimmingCharacters(in: CharacterSet(charactersIn: " :;\"«»“”")), nil)
@@ -300,7 +314,8 @@ enum VoiceQuery {
                         "préviens-le que", "préviens-la", "préviens-le", "le message c'est", "le message", "c'est",
                         "write her that", "write him that", "write them that", "write that", "write", "tell her that",
                         "tell him that", "tell them that", "tell her", "tell him", "tell them", "say that", "say",
-                        "let her know that", "let him know that", "let them know that", "draft", "the message is", "that"])
+                        "let her know that", "let him know that", "let them know that", "draft", "the message is", "that"]
+                       + VoicePT.instructionLeads)
             .trimmingCharacters(in: CharacterSet(charactersIn: " :;\"«»“”"))
     }
 
@@ -317,6 +332,13 @@ enum VoiceQuery {
         return f > e
     }
 
+    /// The language to write a mail in, from what the user said. Portuguese is checked first
+    /// (its "a", "que", "de" also read as French); French and English keep their old rule.
+    static func mailLanguage(_ s: String) -> VoiceLang {
+        if VoiceLang.detect(s) == .pt { return .pt }
+        return looksFrench(s) ? .fr : .en
+    }
+
     /// A plain mail from the instruction when no model can write it: "l'image est prête"
     /// → "Bonjour,\n\nL'image est prête.\n\nBonne journée !"
     static func simpleMail(from instruction: String) -> String {
@@ -324,7 +346,11 @@ enum VoiceQuery {
         guard let first = t.first else { return instruction }
         t = first.uppercased() + t.dropFirst()
         if let last = t.last, !".!?".contains(last) { t += "." }
-        return looksFrench(instruction) ? "Bonjour,\n\n\(t)\n\nBonne journée !" : "Hi,\n\n\(t)\n\nBest,"
+        switch mailLanguage(instruction) {
+        case .pt: return "Olá,\n\n\(t)\n\nAbraço!"
+        case .fr: return "Bonjour,\n\n\(t)\n\nBonne journée !"
+        case .en: return "Hi,\n\n\(t)\n\nBest,"
+        }
     }
 
     /// "oui, Goku.png" / "yes the file called invoice" → "Goku.png" / "invoice"; nil for "no".
@@ -400,7 +426,7 @@ enum VoiceQuery {
     /// ": tu écris : Voilà votre image." → "Voilà votre image"
     private static func cleanFreeText(_ s: String) -> String? {
         var t = s.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lead = ["tu écris", "tu ecris", "tu mets", "écris", "ecris", "mets", "write", "put", "it's", "is", "c'est", "ce sera"]
+        let lead = ["tu écris", "tu ecris", "tu mets", "écris", "ecris", "mets", "write", "put", "it's", "is", "c'est", "ce sera"] + VoicePT.freeTextLeads
         var changed = true
         while changed {
             changed = false
@@ -425,10 +451,11 @@ enum VoiceQuery {
         guard !n.isEmpty else { return nil }
         let joined = " " + n.joined(separator: " ") + " "
         let webWords = [" internet ", " web ", " google ", " googler ", " en ligne ", " online ", " look up ", " look it up "]
+        // Portuguese: "na internet", "no google" are covered by " internet " / " google ".
         guard webWords.contains(where: { joined.contains($0) }) else { return nil }
         let verbs: Set<String> = ["cherche", "cherches", "chercher", "recherche", "recherches", "rechercher",
                                   "regarde", "regardes", "regarder", "trouve", "trouves", "trouver",
-                                  "search", "look", "find", "check", "fais", "faire"]
+                                  "search", "look", "find", "check", "fais", "faire"].union(VoicePT.webVerbs)
         // "Google" is a verb only first ("Google the weather…"), not in "ouvre Google Chrome".
         guard n.contains(where: { verbs.contains($0) }) || ["google", "googler"].contains(n[0]) else { return nil }
 
@@ -449,13 +476,13 @@ enum VoiceQuery {
             ["des", "informations", "sur"], ["des", "infos", "sur"], ["infos", "sur"], ["information", "about"],
             ["info", "about"], ["info", "on"], ["for", "me"], ["pour", "moi"], ["moi"], ["me"], ["for"],
             ["about"], ["sur"],
-        ]
+        ] + VoicePT.webHeads
         let tails: [[String]] = [
             ["sur", "internet"], ["sur", "le", "web"], ["sur", "google"], ["en", "ligne"], ["on", "the", "internet"],
             ["on", "the", "web"], ["on", "internet"], ["on", "google"], ["online"], ["internet"],
             ["s", "il", "te", "plait"], ["s", "il", "vous", "plait"], ["stp"], ["please"], ["pour", "moi"],
             ["for", "me"], ["merci"], ["thanks"], ["thank", "you"],
-        ]
+        ] + VoicePT.webTails
         var h = 0, t = n.count
         var changed = true
         while changed && h < t {
@@ -478,22 +505,23 @@ enum VoiceQuery {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         var n = IntentParser.normalise(trimmed).split(separator: " ").map(String.init)
         while let f = n.first, n.count > 1,
-              ["ok", "okay", "coucou", "hey", "alors", "bon", "euh", "et", "and", "so", "mais", "but"].contains(f) {
+              ["ok", "okay", "coucou", "hey", "alors", "bon", "euh", "et", "and", "so", "mais", "but"].contains(f)
+                || VoicePT.questionLeads.contains(f) {
             n.removeFirst()
         }
         guard let first = n.first else { return false }
         let joined = n.joined(separator: " ")
         let requests = ["tu peux", "peux tu", "est ce que tu peux", "est ce que tu pourrais", "tu pourrais",
-                        "pourrais tu", "can you", "could you", "would you", "will you", "please"]
+                        "pourrais tu", "can you", "could you", "would you", "will you", "please"] + VoicePT.questionRequests
         if requests.contains(where: { joined == $0 || joined.hasPrefix($0 + " ") }) { return false }
         if trimmed.hasSuffix("?") || trimmed.hasSuffix("？") { return true }
         let starters: Set<String> = ["what", "who", "when", "where", "why", "how", "which", "whose",
                                      "is", "are", "was", "were", "does", "did",
                                      "qui", "quoi", "quand", "pourquoi", "comment", "combien",
-                                     "quel", "quelle", "quels", "quelles", "explain", "explique", "raconte"]
+                                     "quel", "quelle", "quels", "quelles", "explain", "explique", "raconte"].union(VoicePT.questionStarters)
         if starters.contains(first) { return true }
         let phrases = ["qu est ce", "c est quoi", "c est qui", "est ce que", "est ce qu", "tell me", "dis moi",
-                       "parle moi", "ou est", "ou sont", "ou se", "ou en est"]
+                       "parle moi", "ou est", "ou sont", "ou se", "ou en est"] + VoicePT.questionPhrases
         return phrases.contains(where: { joined == $0 || joined.hasPrefix($0 + " ") })
     }
 
@@ -543,10 +571,11 @@ enum VoiceQuery {
         let n = IntentParser.normalise(raw).split(separator: " ").map(String.init)
         let r = rawWords(raw)
         guard n.count == r.count,
-              let i = n.firstIndex(where: { ["ouvre", "ouvrir", "open"].contains($0) }),
+              let i = n.firstIndex(where: { ["ouvre", "ouvrir", "open"].contains($0) || VoicePT.appVerbs.contains($0) }),
               i + 1 < n.count else { return nil }
         var start = i + 1
-        while start < n.count, ["moi", "l", "la", "le", "app", "application", "the", "appli"].contains(n[start]) { start += 1 }
+        while start < n.count, ["moi", "l", "la", "le", "app", "application", "the", "appli"].contains(n[start])
+                || VoicePT.appSkip.contains(n[start]) { start += 1 }
         guard start < n.count else { return nil }
         let name = r[start...].joined(separator: " ").trimmingCharacters(in: .punctuationCharacters)
         return name.isEmpty ? nil : name

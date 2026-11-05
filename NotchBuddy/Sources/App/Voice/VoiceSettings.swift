@@ -35,15 +35,30 @@ enum VoiceSettings {
         set { UserDefaults.standard.set(newValue, forKey: captionEnabledKey) }
     }
 
-    /// Language Coucou ANSWERS in: "en" (default) or "fr".
+    /// Language Coucou ANSWERS in: "en", "fr" or "pt" (Brazilian Portuguese). When nothing is stored
+    /// it follows the app and Mac language (pt on a Portuguese app or Mac, en otherwise); a stored
+    /// value is never overwritten.
     static var language: String {
-        get { UserDefaults.standard.string(forKey: "voiceLanguage") ?? "en" }
+        get { UserDefaults.standard.string(forKey: "voiceLanguage") ?? defaultLanguage }
         set { UserDefaults.standard.set(newValue, forKey: "voiceLanguage") }
     }
-    static var answerLocale: Locale { Locale(identifier: language == "fr" ? "fr-FR" : "en-US") }
+    static var lang: VoiceLang { VoiceLang(code: language) }
+    static var answerLocale: Locale { lang.locale }
 
-    /// Language Coucou LISTENS to: "auto" (the Mac's dictation language, default), "en" or "fr".
+    private static var defaultLanguage: String {
+        let app = AppLanguage.launched
+        // With an explicit app language, Locale.preferredLanguages is that choice: read the system's own list.
+        let preferred = app == .system
+            ? Locale.preferredLanguages
+            : (UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)?["AppleLanguages"] as? [String]
+               ?? Locale.preferredLanguages)
+        return VoiceLang.defaultCode(appPortuguese: app == .portuguese, preferred: preferred,
+                                     region: Locale.current.region?.identifier)
+    }
+
+    /// Language Coucou LISTENS to: "auto" (the Mac's dictation language, default), "en", "fr" or "pt".
     /// Independent from the answer language: speak French, hear English.
+    /// Flow dictation's Automatic mode also follows it (that language is tried first).
     static var listenLanguage: String {
         get { UserDefaults.standard.string(forKey: "voiceListenLanguage") ?? "auto" }
         set { UserDefaults.standard.set(newValue, forKey: "voiceListenLanguage") }
@@ -59,6 +74,16 @@ enum VoiceSettings {
     static var ttsEngine: String {
         get { UserDefaults.standard.string(forKey: "voiceTTSEngine") ?? "system" }
         set { UserDefaults.standard.set(newValue, forKey: "voiceTTSEngine") }
+    }
+    /// ElevenLabs voice_id chosen in Settings; empty = Automatic (picked from gender/language).
+    static var elevenVoiceId: String {
+        get { UserDefaults.standard.string(forKey: "voiceElevenVoiceId") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceElevenVoiceId") }
+    }
+    /// ElevenLabs expressiveness: "calm", "normal" (default) or "lively".
+    static var elevenExpressiveness: String {
+        get { UserDefaults.standard.string(forKey: "voiceElevenExpressiveness") ?? "normal" }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceElevenExpressiveness") }
     }
     /// ElevenLabs voice: "female" (default) or "male".
     static var elevenGender: String {

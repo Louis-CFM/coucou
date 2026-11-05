@@ -75,6 +75,26 @@ final class DemoEngine: ObservableObject {
 
     private var snapshot: Snapshot? = nil
 
+    /// The demo reads and writes this conversation only, whatever the conversation on screen is (`DemoGuard`).
+    private static let chatConversation = ConversationID.shared
+
+    /// Real things waiting for the user right now, read from the live state at each call.
+    var realPending: DemoGuard.Pending {
+        // A Hermes request that waits (on screen or in line) is real too: the demo never covers it.
+        var pending = DemoGuard.Pending(approval: HookServer.shared.hasRealPendingApproval || HermesApprovalCenter.shared.hasWaiting,
+                                        question: HookServer.shared.hasRealPendingQuestion)
+        #if !APPSTORE
+        pending.cmuxQueued = HookServer.shared.hasQueuedCmuxCards
+        #endif
+        return pending
+    }
+
+    /// Opens the island on a view, unless something real waits for the user.
+    private func expand(_ view: IslandView) {
+        guard DemoGuard.mayChangeView(realPending) else { return }
+        NotificationCenter.default.post(name: .hookExpand, object: view)
+    }
+
     // MARK: Start
 
     func start() {
@@ -92,7 +112,7 @@ final class DemoEngine: ObservableObject {
         snapshot = Snapshot(
             tasks:               s.tasks,
             focusId:             s.focusId,
-            chatHistory:         s.chatHistory,
+            chatHistory:         s.chatMessages(DemoEngine.chatConversation),
             stateOverride:       s.stateOverride,
             isPinned:            s.isPinned,
             noteMessage:         s.noteMessage,
@@ -150,7 +170,7 @@ final class DemoEngine: ObservableObject {
             }
 
         // Open island immediately on the demo session
-        NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
+        expand(.overview)
 
         let gen = generation
         demoTask = Task { @MainActor [weak self] in
@@ -200,7 +220,7 @@ final class DemoEngine: ObservableObject {
         snapshot = nil
 
         // Restore AppState (NOT pendingApproval, NOT pendingQuestion — HookServer owns those)
-        s.chatHistory   = snap.chatHistory
+        s.updateChat(DemoEngine.chatConversation) { $0 = snap.chatHistory }
         s.stateOverride = snap.stateOverride
         s.noteMessage   = snap.noteMessage
 
@@ -262,15 +282,15 @@ final class DemoEngine: ObservableObject {
 
         // Restore focus
         let fid = snap.focusId ?? s.mainPillId
-        s.focusId = s.tasks.contains(where: { $0.id == fid }) ? fid : s.mainPillId
+        if DemoGuard.mayChangeView(realPending) { s.focusId = s.tasks.contains(where: { $0.id == fid }) ? fid : s.mainPillId }
 
         // Restore view/mode only when no real request is pinned
-        if s.pendingApproval == nil && s.pendingQuestion == nil {
+        if s.pendingApproval == nil && s.pendingQuestion == nil && DemoGuard.mayChangeView(realPending) {
             s.mode = snap.mode
             s.view = snap.view
         }
 
-        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+        if DemoGuard.mayChangeView(realPending) { NotificationCenter.default.post(name: .islandCollapse, object: nil) }
     }
 
     // MARK: Integration data injection (no UserDefaults writes)
@@ -430,7 +450,8 @@ final class DemoEngine: ObservableObject {
         await waitUntilVisible()
         guard isActive, self.generation == gen else { return }
 
-        s.focusId = mainPillId
+        // A real card that waits has moved the focus to its own pill: the demo leaves it there.
+        if DemoGuard.mayChangeView(realPending) { s.focusId = mainPillId }
         if let idx = s.tasks.firstIndex(where: { $0.id == mainPillId }) {
             s.tasks[idx].state     = .working
             s.tasks[idx].steps     = []
@@ -508,9 +529,9 @@ final class DemoEngine: ObservableObject {
 
         // ── Step 4: Permission request ───────────────────────────────────────────
         // Does NOT call waitUntilVisible — the hookExpand will open the island.
-        // Skip if a real approval is waiting (don't overwrite HookServer's card).
+        // Skip if anything real is waiting (don't overwrite HookServer's card, don't move the view).
         var decision = "allow"
-        if !HookServer.shared.hasRealPendingApproval {
+        if DemoGuard.mayShowOwnCard(realPending) {
             playSound("approval")
             s.pendingApproval = ApprovalInfo(
                 sessionId: "demo_session",
@@ -520,7 +541,7 @@ final class DemoEngine: ObservableObject {
                 pillId: mainPillId
             )
             s.isPinned = true
-            NotificationCenter.default.post(name: .hookExpand, object: IslandView.approval)
+            expand(.approval)
             decision = await waitForApprovalOrTimeout(seconds: 8.0)
             guard isActive, self.generation == gen else { return }
         }
@@ -528,8 +549,11 @@ final class DemoEngine: ObservableObject {
         // ── Step 5: AskUserQuestion ──────────────────────────────────────────────
         await waitUntilVisible(); guard isActive, self.generation == gen else { return }
         var chosenReporter = "Verbose"
-        if !HookServer.shared.hasRealPendingQuestion {
+        if DemoGuard.mayShowOwnCard(realPending) {
             await sleep(0.5); guard isActive, self.generation == gen else { return }
+            // Asked again after the wait, with no await between this check and the write: a real question or
+            // approval that arrived meanwhile is never covered by the demo question.
+            if DemoGuard.mayShowOwnCard(realPending) {
             playSound("question")
             s.pendingQuestion = AskQuestion(questions: [
                 AskQuestionItem(
@@ -544,10 +568,11 @@ final class DemoEngine: ObservableObject {
                 )
             ])
             s.isPinned = true
-            NotificationCenter.default.post(name: .hookExpand, object: IslandView.question)
+            expand(.question)
             await waitForQuestionOrTimeout(seconds: 8.0)
             chosenReporter = lastQuestionAnswer ?? "Verbose"
             guard isActive, self.generation == gen else { return }
+            }
         }
 
         // ── Step 6: Finish primary session ───────────────────────────────────────
@@ -560,27 +585,31 @@ final class DemoEngine: ObservableObject {
                 ? "npm test skipped (denied). Staged — run tests before merge."
                 : "All 23 tests pass (\(chosenReporter)). Auth refactor complete — 94 % coverage."
         }
-        NotificationCenter.default.post(name: .hookExpand, object: IslandView.finished)
+        expand(.finished)
         await sleep(2.5); guard isActive, self.generation == gen else { return }
 
         // ── Step 7: Chat ─────────────────────────────────────────────────────────
         await waitUntilVisible(); guard isActive, self.generation == gen else { return }
-        s.chatHistory = []
-        NotificationCenter.default.post(name: .hookExpand, object: IslandView.prompt)
-        await sleep(1.0); guard isActive, self.generation == gen else { return }
-        s.chatHistory.append(ChatMessage(role: .user, content: "What did you change in LoginForm?"))
-        await sleep(0.4); guard isActive, self.generation == gen else { return }
-        await streamChatResponse(for: "What did you change in LoginForm?", gen: gen)
-        guard isActive, self.generation == gen else { return }
-        await sleep(2.0); guard isActive, self.generation == gen else { return }
+        // With a Hermes agent selected the shared conversation is not on screen: the step is skipped.
+        let chatRan = DemoGuard.showsChatStep(providerIsHermes: s.chatProvider == .hermes)
+        if chatRan {
+            s.updateChat(Self.chatConversation) { $0 = [] }
+            expand(.prompt)
+            await sleep(1.0); guard isActive, self.generation == gen else { return }
+            s.updateChat(Self.chatConversation) { $0.append(ChatMessage(role: .user, content: "What did you change in LoginForm?")) }
+            await sleep(0.4); guard isActive, self.generation == gen else { return }
+            await streamChatResponse(for: "What did you change in LoginForm?", gen: gen)
+            guard isActive, self.generation == gen else { return }
+            await sleep(2.0); guard isActive, self.generation == gen else { return }
+        }
 
         // ── Step 8: Weekly recap ─────────────────────────────────────────────────
         await waitUntilVisible(); guard isActive, self.generation == gen else { return }
-        NotificationCenter.default.post(name: .hookExpand, object: IslandView.recap)
+        expand(.recap)
         await sleep(5.0); guard isActive, self.generation == gen else { return }
 
         // ── Step 9: Reset for next cycle ─────────────────────────────────────────
-        s.chatHistory = []
+        if chatRan { s.updateChat(Self.chatConversation) { $0 = [] } }
         s.stateOverride = nil
         if let idx = s.tasks.firstIndex(where: { $0.id == mainPillId }) {
             s.tasks[idx].state     = .idle
@@ -607,10 +636,12 @@ final class DemoEngine: ObservableObject {
         if s.pendingApproval?.sessionId == "demo_session" { s.pendingApproval = nil }
         if !HookServer.shared.hasRealPendingQuestion     { s.pendingQuestion = nil }
         if s.pendingApproval == nil && s.pendingQuestion == nil { s.isPinned = false }
-        s.focusId = mainPillId
+        // The focus and the fold belong to the view: a real card that waits (it moved the focus to its own pill)
+        // keeps both, like the pin above.
+        if DemoGuard.mayChangeView(realPending) { s.focusId = mainPillId }
         lastApprovalDecision = "allow"
         lastQuestionAnswer = nil
-        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+        if DemoGuard.mayChangeView(realPending) { NotificationCenter.default.post(name: .islandCollapse, object: nil) }
     }
 
     // MARK: Intercept handlers (called by HookServer)
@@ -649,14 +680,16 @@ final class DemoEngine: ObservableObject {
         """
         let msg = ChatMessage(role: .assistant, content: "")
         let msgId = msg.id
-        s.chatHistory.append(msg)
+        s.updateChat(Self.chatConversation) { $0.append(msg) }
         let words = response.components(separatedBy: " ")
         var built = ""
         for word in words {
             guard isActive, !Task.isCancelled, self.generation == gen else { break }
             built += (built.isEmpty ? "" : " ") + word
-            guard let idx = s.chatHistory.firstIndex(where: { $0.id == msgId }) else { break }
-            s.chatHistory[idx].content = built
+            guard s.chatMessages(Self.chatConversation).contains(where: { $0.id == msgId }) else { break }
+            s.updateChat(Self.chatConversation, createIfMissing: false) { messages in
+                if let idx = messages.firstIndex(where: { $0.id == msgId }) { messages[idx].content = built }
+            }
             try? await Task.sleep(nanoseconds: 60_000_000)
             guard isActive, !Task.isCancelled, self.generation == gen else { break }
         }
@@ -699,8 +732,10 @@ final class DemoEngine: ObservableObject {
                 let s = AppState.shared
                 if s.pendingApproval?.sessionId == "demo_session" {
                     s.pendingApproval = nil
-                    s.isPinned = false
-                    s.view = s.tasks.isEmpty ? .empty : .overview
+                    if DemoGuard.mayChangeView(self.realPending) {
+                        s.isPinned = false
+                        s.view = s.tasks.isEmpty ? .empty : .overview
+                    }
                 }
                 c.resume(returning: "allow")
             }
@@ -722,8 +757,10 @@ final class DemoEngine: ObservableObject {
                 if !HookServer.shared.hasRealPendingQuestion {
                     let s = AppState.shared
                     s.pendingQuestion = nil
-                    s.isPinned = false
-                    s.view = s.tasks.isEmpty ? .empty : .overview
+                    if DemoGuard.mayChangeView(self.realPending) {
+                        s.isPinned = false
+                        s.view = s.tasks.isEmpty ? .empty : .overview
+                    }
                 }
                 c.resume()
             }

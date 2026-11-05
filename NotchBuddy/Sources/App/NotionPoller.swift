@@ -36,9 +36,9 @@ final class NotionPoller: @unchecked Sendable {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             if code != 200 {
                 let msg: String
-                if code == 401 { msg = "Invalid API key (401)" }
-                else if code == 0 { msg = error?.localizedDescription ?? "No connection" }
-                else { msg = "API error \(code)" }
+                if code == 401 { msg = String(localized: "Invalid API key (401)") }
+                else if code == 0 { msg = error?.localizedDescription ?? String(localized: "No connection") }
+                else { msg = String(localized: "API error \(String(code))") }
                 DispatchQueue.main.async { AppState.shared.setIfChanged(\.notionError, msg) }
                 return
             }
@@ -59,7 +59,7 @@ final class NotionPoller: @unchecked Sendable {
         guard let id = obj["id"] as? String else { return nil }
         let objType = obj["object"] as? String ?? "page"
 
-        var title = "Untitled"
+        var title = String(localized: "Untitled")
         if objType == "database" {
             if let arr = obj["title"] as? [[String: Any]],
                let text = arr.first?["plain_text"] as? String, !text.isEmpty {

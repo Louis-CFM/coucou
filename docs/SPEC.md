@@ -287,7 +287,7 @@ Chaque jalon se termine par build + capture + comparaison aux références + com
 - **M2 Personnage** : port de `Bot` (Mochi), tous les états et émotes, mini-bonhommes, halo, badges, particules, mains. Pause quand masqué.
 - **M3 Vues** : toutes les vues §5, défilé, pastilles, colonne, élément partagé, voiles. Comparer avec les 16 captures.
 - **M4 Sons** : branchement §9, réglages son.
-- **M5 Claude Code** : hooks, approbations, questions, saut au terminal (INTEGRATIONS §1).
+- **M5 Claude Code** : hooks, approbations, questions, saut au terminal (INTEGRATIONS §1). Sessions dans cmux (version GitHub) : une pastille par surface, file d'attente des cartes, saut exact (INTEGRATIONS §1). cmux peut être la pastille Main : répondre à une session et démarrer un nouveau chat dans un nouveau workspace depuis le notch, icônes distinctes par session (INTEGRATIONS §1).
 - **M6 n8n** : polling, erreurs, relance, ouverture (INTEGRATIONS §2).
 - **M7 Fichiers** : glisser-déposer, prompt sur fichier, mail via Mail (INTEGRATIONS §3 et §6).
 - **M8 Fenêtres + recherche** : attache, capture, URL, API Claude avec recherche web, vue résultat (INTEGRATIONS §4 et §5).

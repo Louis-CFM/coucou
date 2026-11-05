@@ -383,6 +383,13 @@ final class LiveActivityRelay {
 
     /// The most urgent session, as the iPhone's Live Activity shows it.
     nonisolated static func leadState(tasks: [AgentTask], approval: ApprovalInfo?) -> MochiActivityState? {
+        // A Hermes approval never leaves the Mac: its pill reads as working, with nothing to answer from the Lock Screen.
+        let approval = approval.flatMap { HermesApproval.reachesPhone(pillId: $0.pillId) ? $0 : nil }
+        let tasks = tasks.map { t -> AgentTask in
+            var t = t
+            if HermesPills.isTaskId(t.id), t.state == .approval { t.state = .thinking }
+            return t
+        }
         let ranked = tasks
             .filter { $0.source != .n8n && PillCatalog.isSession($0.id) }   // same sessions as SessionPublisher
             .map { task -> (AgentTask, Int) in
@@ -394,16 +401,18 @@ final class LiveActivityRelay {
         guard let lead = ranked.min(by: { $0.1 < $1.1 }) else { return nil }
         let (task, urgency) = lead
         let others = ranked.filter { $0.0.id != task.id && $0.1 <= 3 }.count
+        // Same as SessionPublisher: the rows of a Hermes pill never leave the Mac, nor do their numbers.
+        let progress = HermesPills.publishedProgress(taskId: task.id, stepIndex: task.stepIndex, stepCount: task.steps.count)
         return MochiActivityState(
             pillId: task.id,
             agent: PillCatalog.definition(for: task.id)?.name ?? "Agent",
             color: task.color,
             state: (urgency == 0 ? BotState.approval : task.state).rawValue,
             statusText: MochiActivityState.statusText(state: task.state, urgency: urgency,
-                                                      stepIndex: task.stepIndex, stepCount: task.steps.count),
+                                                      stepIndex: progress.stepIndex, stepCount: progress.stepCount),
             tone: MochiActivityState.tone(urgency: urgency),
-            stepIndex: max(0, task.stepIndex),
-            stepCount: task.steps.count,
+            stepIndex: max(0, progress.stepIndex),
+            stepCount: progress.stepCount,
             others: others,
             approval: approval?.pillId == task.id ? approval.map(ApprovalRelay.fingerprint) : nil)
     }

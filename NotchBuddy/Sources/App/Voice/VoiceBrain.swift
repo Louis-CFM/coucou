@@ -110,6 +110,17 @@ final class VoiceBrain {
 
     /// Instructions in the language Coucou speaks (Settings → Voice, English by default).
     static func instructions() -> String {
+        if VoiceSettings.lang == .pt {
+            return """
+            Você é o Coucou, um assistente que mora no notch do MacBook. O usuário pode falar português, inglês ou francês: responda sempre em português do Brasil.
+            Responda com no máximo 1 ou 2 frases. Seja direto e conciso.
+            Só faça uma pergunta se realmente precisar de um detalhe para agir: uma só, curta, terminando com "?". Caso contrário, nunca termine com uma pergunta.
+            Use as ferramentas para pílulas e música.
+            Para qualquer pergunta sobre Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, agentes (Claude Code, Codex…), o plano Claude ou Codex, música ou clima, chame primeiro a ferramenta de serviço e responda com os dados dela, sem inventar nada.
+            Para um e-mail, chame a ferramenta de e-mail: o Coucou pergunta o que falta, abre o e-mail no notch e é o usuário que clica em Enviar. Se pedirem para você escrever, redija o texto você mesmo.
+            Para os nomes das pílulas, use o nome exato dito pelo usuário.
+            """
+        }
         if VoiceSettings.language == "fr" {
             return """
             Tu es Coucou, un assistant dans le notch du MacBook. L'utilisateur peut parler anglais ou français : réponds toujours en français.
@@ -139,15 +150,25 @@ final class VoiceBrain {
         if #available(macOS 26, *) {
             guard SystemLanguageModel.default.availability == .available else { return nil }
             // The mail is written in the language I used for it, whatever Coucou speaks.
-            let fr = VoiceQuery.looksFrench(instruction)
+            let lang = VoiceQuery.mailLanguage(instruction)
             // An address is not a name to greet: a plain greeting then.
             let name = recipient.contains("@") ? "" : recipient
-            let session = LanguageModelSession(instructions: fr
-                ? "Tu écris des mails courts et naturels à la place de l'utilisateur : une salutation, 1 à 3 phrases qui disent ce qu'il veut dire, sans rien inventer, sans objet ni signature. Réponds uniquement avec le texte du mail."
-                : "You write short, natural emails for the user: a greeting, 1 to 3 sentences saying what they want to say, inventing nothing, no subject line or signature. Reply with the email text only.")
-            let to = name.isEmpty ? "" : (fr ? " à \(name)" : " to \(name)")
-            let prompt = fr ? "Mail\(to). Ce que je veux dire : \(instruction)"
-                            : "Email\(to). What I want to say: \(instruction)"
+            let instructions: String
+            switch lang {
+            case .pt:
+                instructions = "Você escreve e-mails curtos e naturais no lugar do usuário: uma saudação, 1 a 3 frases dizendo o que ele quer dizer, sem inventar nada, sem assunto nem assinatura. Responda apenas com o texto do e-mail."
+            case .fr:
+                instructions = "Tu écris des mails courts et naturels à la place de l'utilisateur : une salutation, 1 à 3 phrases qui disent ce qu'il veut dire, sans rien inventer, sans objet ni signature. Réponds uniquement avec le texte du mail."
+            case .en:
+                instructions = "You write short, natural emails for the user: a greeting, 1 to 3 sentences saying what they want to say, inventing nothing, no subject line or signature. Reply with the email text only."
+            }
+            let session = LanguageModelSession(instructions: instructions)
+            let prompt: String
+            switch lang {
+            case .pt: prompt = "E-mail\(name.isEmpty ? "" : " para \(name)"). O que eu quero dizer: \(instruction)"
+            case .fr: prompt = "Mail\(name.isEmpty ? "" : " à \(name)"). Ce que je veux dire : \(instruction)"
+            case .en: prompt = "Email\(name.isEmpty ? "" : " to \(name)"). What I want to say: \(instruction)"
+            }
             // Boxed like the conversation session: the timeout closure must be Sendable.
             let box = SessionContainer(session: session, collector: IntentCollector())
             do {
@@ -454,7 +475,7 @@ struct ServiceTool: Tool, @unchecked Sendable {
         guard let topic = VoiceTopic(rawValue: arguments.topic) else {
             return "unknown topic: \(arguments.topic)"
         }
-        return await LiveVoiceInfo.shared.answer(topic, locale: Locale(identifier: VoiceSettings.language == "fr" ? "fr-FR" : "en-US"))
+        return await LiveVoiceInfo.shared.answer(topic, locale: VoiceSettings.answerLocale)
     }
 }
 

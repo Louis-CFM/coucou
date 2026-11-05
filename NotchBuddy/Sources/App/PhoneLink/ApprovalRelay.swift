@@ -59,6 +59,8 @@ final class ApprovalRelay {
     private func pendingChanged(to approval: ApprovalInfo?) {
         // Never publish demo approval cards to iCloud
         if approval?.sessionId == "demo_session" { return }
+        // A Hermes approval stays on this Mac: not to iCloud, not to the iPhone (which could otherwise answer it).
+        if let approval, !HermesApproval.reachesPhone(pillId: approval.pillId) { return }
         let fingerprint = approval.map(Self.fingerprint)
         if let old = current, old.fingerprint != fingerprint {
             pollTask?.cancel()
@@ -143,7 +145,7 @@ final class ApprovalRelay {
 
     private func apply(_ decision: String, fingerprint: String) {
         // Check again on the main actor, right before answering the hook.
-        guard let pending = AppState.shared.pendingApproval,
+        guard let pending = AppState.shared.pendingApproval, HermesApproval.reachesPhone(pillId: pending.pillId),
               Self.fingerprint(pending) == fingerprint else {
             log("decision arrived after the request was resolved, ignored")
             return

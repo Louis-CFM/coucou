@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         DemoEngine.shared.stop()
         HotKeyCenter.shared.unregisterAll()
+        ChatMediaStore.shared.shutdown()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -36,6 +37,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         // Warm up Keychain cache on main thread BEFORE any poller or view touches it
         _ = KeychainStore.shared
+        _ = AppLanguage.launched
+        // What a crashed run left in the private media folder goes away before anything is fetched.
+        ChatMediaStore.shared.sweepStale()
+        HermesChat.Diagnostics.setSink { appendAppLog("nb.log", $0) }
         #if APPSTORE
         NSApp.setActivationPolicy(.accessory)
         #else
@@ -209,6 +214,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.expand(to: .overview)
     }
 
+    /// Identifies the Settings window (its title is translated, so it cannot be compared).
+    static let settingsWindowID = NSUserInterfaceItemIdentifier("coucou.settings")
+
     @objc private func openWeeklyRecap() {
         islandController?.expand(to: .recap)
     }
@@ -250,6 +258,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
                            backing: .buffered, defer: false)
         win.title = String(localized: "settings.window.title")
+        win.identifier = Self.settingsWindowID
         let host = NSHostingView(rootView: SettingsView())
         host.sizingOptions = [.minSize]
         win.contentView = host

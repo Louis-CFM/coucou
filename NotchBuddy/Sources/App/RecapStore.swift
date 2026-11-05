@@ -181,9 +181,21 @@ final class RecapStore {
 
         // Top agent by session count (a session's own pill counts for its client)
         var countByAgent: [String: Int] = [:]
-        for t in turns { countByAgent[PillCatalog.basePillId(t.pillId), default: 0] += 1 }
+        for t in turns {
+            #if !APPSTORE
+            countByAgent[CmuxRouting.recapAgentKey(PillCatalog.basePillId(t.pillId)), default: 0] += 1
+            #else
+            countByAgent[PillCatalog.basePillId(t.pillId), default: 0] += 1
+            #endif
+        }
         let topAgentId = countByAgent.max { $0.value < $1.value }?.key
+        #if !APPSTORE
+        let topAgent = topAgentId.flatMap { id in
+            CmuxRouting.isCmuxTaskId(id) ? "cmux" : PillCatalog.definition(for: id)?.name
+        } ?? topAgentId
+        #else
         let topAgent = topAgentId.flatMap { PillCatalog.definition(for: $0)?.name } ?? topAgentId
+        #endif
 
         // Top project by session count
         var countByProject: [String: Int] = [:]

@@ -72,6 +72,12 @@ final class IslandWindowController: NSWindowController {
     // Island-local key monitor (active only when island is key window)
     private var localKeyMonitor: Any?
 
+    // Chat stretch: panel height follows the room on the current screen
+    private var panelStretchEnabled = false
+    private var chatStretchSubscription: AnyCancellable?
+    private var chatRoomSubscription: AnyCancellable?
+    private var screenObserver: NSObjectProtocol?
+
     convenience init() {
         let screen = Self.targetScreen(for: AppState.shared.islandDisplay)
         Self.currentScreen = screen
@@ -80,7 +86,7 @@ final class IslandWindowController: NSWindowController {
         let nH = geometry.height
 
         let panelW: CGFloat = 720
-        let panelH: CGFloat = 560
+        let panelH = ChatHeight.basePanelHeight
         let origin = AppState.shared.islandPlacement.panelOrigin(
             screen: screen.frame, visible: screen.visibleFrame, panelSize: CGSize(width: panelW, height: panelH))
         Self.panelFrame = NSRect(origin: origin, size: CGSize(width: panelW, height: panelH))
@@ -131,7 +137,9 @@ final class IslandWindowController: NSWindowController {
         // FileDropNSView sits below the hosting view (hitTest returns nil → no mouse interference).
         // AppKit routes NSDraggingDestination events to registered views independently of hitTest.
         let dropView = FileDropNSView(frame: NSRect(origin: .zero, size: contentSize))
-        dropView.autoresizingMask = [.width, .height]
+        // Stays the size of the panel it always was, glued to the top: a taller panel (stretched chat) must
+        // not turn the middle of the screen into a file drop zone.
+        dropView.autoresizingMask = [.width, .minYMargin]
         dropView.onDragEntered = { [weak self] loc in
             Task { @MainActor in
                 let iLoc = self?.windowToIsland(loc) ?? CGPoint(x: 320, y: 88)
@@ -191,6 +199,7 @@ final class IslandWindowController: NSWindowController {
         startLocalKeyMonitor()
         startHotKeys()
         wireFSM()
+        wireChatRoom()
         #if !APPSTORE
         VoiceActionRunner.shared.configureLive()
         #endif
@@ -199,11 +208,20 @@ final class IslandWindowController: NSWindowController {
         // (nonactivatingPanel never auto-becomes key, but TextField needs it)
         viewSubscription = state.$view
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] newView in
+            .sink { [weak self] _ in
                 guard let self else { return }
-                if newView == .prompt {
+                // The value is delivered one hop late: judge the view as it is now, not as it was when it changed.
+                let newView = self.state.view
+                if newView == .prompt, !self.state.hermesAnnounceBlocksKey {
                     self.islandPanel.makeKey()
                 }
+                #if !APPSTORE
+                // The cmux prompt lives in the .prompt slot only.
+                if newView != .prompt {
+                    self.state.cmuxPrompt = nil
+                    self.state.cmuxNotice = nil
+                }
+                #endif
             }
 
         // Screen choice changed in Settings: move right away (explicit user action).
@@ -262,6 +280,8 @@ final class IslandWindowController: NSWindowController {
         // notchWidth/hasNotch are not @Published: tell the views to resize the island.
         NotificationCenter.default.post(name: .islandScreenChanged, object: nil)
         state.objectWillChange.send()
+        // The new screen has its own room for a stretched chat: measure again, shrinking the panel if needed.
+        refreshChatRoom(screenChanged: true)
     }
 
     /// Follow-the-mouse mode: hop to the cursor's screen while the island is not open,
@@ -274,6 +294,86 @@ final class IslandWindowController: NSWindowController {
               target != Self.currentScreen else { return }
         relocate(to: target)
     }
+
+    // MARK: - Chat room (how tall the stretched chat may be, and the panel that holds it)
+
+    /// Event driven: no timer. Runs at start, when the user stretches the chat, and when the screens change.
+    private func wireChatRoom() {
+        panelStretchEnabled = state.chatStretchedHeight != nil
+        refreshChatRoom()
+        // `$x` emits before the value is set, so the panel is already tall when the island starts to grow.
+        chatStretchSubscription = state.$chatStretchedHeight.sink { [weak self] stretched in
+            guard let self else { return }
+            if stretched != nil { self.panelStretchEnabled = true }
+            self.applyPanelHeight(maximum: self.state.chatMaxHeight)
+        }
+        // The pointer reached the grip: grow the panel now, so the first drag tick does not resize the window.
+        chatRoomSubscription = state.$chatRoomRequested.sink { [weak self] requested in
+            guard let self, requested else { return }
+            self.panelStretchEnabled = true
+            self.applyPanelHeight(maximum: self.state.chatMaxHeight)
+        }
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshChatRoom(screenChanged: true) }
+        }
+    }
+
+    /// Room for the chat on the screen the island is on: from the top of the screen to the Dock (or the
+    /// bottom edge), minus a margin. The stored height is clamped to it when read, never rewritten.
+    private func refreshChatRoom(screenChanged: Bool = false) {
+        let screen = islandPanel.screen ?? Self.notchScreen() ?? NSScreen.main
+        guard let screen else { return }
+        let maximum = ChatHeight.maximumHeight(availableHeight: screen.frame.maxY - screen.visibleFrame.minY)
+        if state.chatMaxHeight != maximum { state.chatMaxHeight = maximum }
+        applyPanelHeight(maximum: maximum, allowShrink: screenChanged)
+    }
+
+    /// 560 pt (the base panel height) until the chat has been stretched once; then tall enough for the maximum.
+    /// The panel keeps the edge the island is anchored to (top; bottom in the bottom corners) and its width; it only shrinks when the screen changes
+    /// (otherwise the island animates down inside it).
+    private func applyPanelHeight(maximum: CGFloat, allowShrink: Bool = false) {
+        let height = ChatHeight.panelTarget(current: islandPanel.frame.height, everStretched: panelStretchEnabled,
+                                            maximum: maximum, allowShrink: allowShrink)
+        guard abs(islandPanel.frame.height - height) > 0.5 else { return }
+        var frame = islandPanel.frame
+        frame.origin.y = ChatHeight.panelOriginY(currentMinY: frame.minY, currentHeight: frame.height, newHeight: height,
+                                                 anchoredToBottom: state.islandPlacement.isBottom)
+        frame.size.height = height
+        islandPanel.setFrame(frame, display: true)
+        // The island position and the Mochi's home read the real frame.
+        Self.panelFrame = frame
+        if state.panelHeight != height { state.panelHeight = height }
+    }
+
+    /// Opens the prompt slot with no target (hot key, attach window): it shows what belongs to the focused pill.
+    /// `carriesContext`: a window was attached, so a chat opens (never a cmux reply, which takes no context).
+    func openPromptSlot(makeKey: Bool = true, carriesContext: Bool = false) {
+        if makeKey { islandPanel.makeKey() }
+        #if !APPSTORE
+        if case .cmuxReply(let taskId, _) = state.promptContentOnOpen(carriesContext: carriesContext) {
+            openCmuxPrompt(.reply(taskId: taskId))
+            return
+        }
+        #else
+        _ = state.promptContentOnOpen(carriesContext: carriesContext)
+        #endif
+        expand(to: .prompt)
+    }
+
+    #if !APPSTORE
+    /// Opens the reply / new chat prompt of cmux in the `.prompt` slot.
+    func openCmuxPrompt(_ mode: CmuxPromptMode) {
+        state.applyNoticeRuleForOpening(mode)
+        islandPanel.makeKey()
+        // AppState clears the cmux prompt on every other entry to the prompt view; this one keeps it.
+        state.cmuxOpeningPrompt = true
+        expand(to: .prompt)
+        state.cmuxPrompt = mode
+        state.cmuxOpeningPrompt = false
+    }
+    #endif
 
     // MARK: - FSM wiring
 
@@ -475,6 +575,13 @@ final class IslandWindowController: NSWindowController {
         // in the app window immediately below the menu bar.
         var hoverRect = !hasNotch && state.mode != .expanded
             ? islandRect : islandRect.insetBy(dx: -6, dy: -6)
+        // Dragging the chat grip keeps the island "hovered" even if the pointer outruns the island edge,
+        // but only while the drag is real: a stuck flag is cleared here instead of swallowing the panel.
+        if state.chatResizing && !ChatHeight.resizeIsLive(
+            resizing: true, primaryButtonDown: NSEvent.pressedMouseButtons & 1 != 0,
+            isChatView: state.view == .prompt, isExpanded: state.mode == .expanded) {
+            state.chatResizing = false
+        }
         // Compact in a corner with the pills out of the tile: they count as the island.
         let placement = state.islandPlacement
         if placement.isCorner && state.mode == .compact && state.cornerPeek {
@@ -485,7 +592,7 @@ final class IslandWindowController: NSWindowController {
                                                    width: b.width, height: b.height))
             }
         }
-        let inIsland = hoverRect.contains(local)
+        let inIsland = hoverRect.contains(local) || state.chatResizing
         let peek = placement.isCorner && state.mode == .compact && inIsland
         if state.cornerPeek != peek { state.cornerPeek = peek }
 
@@ -646,6 +753,8 @@ final class IslandWindowController: NSWindowController {
     }
 
     func expand(to view: IslandView) {
+        // The Dock may have changed size or moved without a screen notification: measure the room again.
+        if view == .prompt { refreshChatRoom() }
         state.view = view
         if state.mode == .expanded {
             // Already expanded — just switch view
@@ -653,6 +762,10 @@ final class IslandWindowController: NSWindowController {
             setMode(.expanded)
         }
         state.lastActivity = .now
+        #if !APPSTORE
+        // The user is looking at the island: bring the cmux workspaces (names, new and closed ones) up to date.
+        HookServer.shared.requestCmuxDiscovery()
+        #endif
     }
 
     func collapse(allowPendingApproval: Bool = false) {
@@ -700,8 +813,7 @@ final class IslandWindowController: NSWindowController {
             }
 
         case .openChat:
-            islandPanel.makeKey()
-            expand(to: .prompt)
+            openPromptSlot()
 
         case .goToAlert:
             if state.pendingApproval != nil {
@@ -866,6 +978,9 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
+        #if !APPSTORE
+        if let t = state.focusTask, CmuxJump.jump(for: t) { collapse(); return }
+        #endif
         if !TerminalTarget.activate(sessionBundleId: state.focusTask?.sessionBundleId) {
             NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
@@ -884,8 +999,7 @@ final class IslandWindowController: NSWindowController {
         state.promptContext = ctx
         SoundEngine.shared.play("approve")
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
-        islandPanel.makeKey()
-        expand(to: .prompt)
+        openPromptSlot(carriesContext: true)
     }
     #endif
 
@@ -905,11 +1019,28 @@ final class IslandWindowController: NSWindowController {
             }
         }
 
+        #if !APPSTORE
+        NotificationCenter.default.addObserver(forName: .openCmuxPrompt, object: nil, queue: .main) { [weak self] note in
+            guard let self, let mode = note.object as? CmuxPromptModeBox else { return }
+            self.fsm.openedExternally()
+            self.openCmuxPrompt(mode.mode)
+        }
+        #endif
+
         // Hook server expand requests (alerts only)
         NotificationCenter.default.addObserver(forName: .hookExpand, object: nil, queue: .main) { [weak self] note in
             guard let self, let view = note.object as? IslandView else { return }
             self.fsm.openedExternally()
             self.expand(to: view)
+        }
+
+        // A finished Hermes answer: the island opens on the chat without taking keyboard focus, and folds by
+        // itself after the usual delay (hovering cancels it), like after a hover.
+        NotificationCenter.default.addObserver(forName: .hermesAnnounceExpand, object: nil, queue: .main) { [weak self] note in
+            guard let self, let view = note.object as? IslandView else { return }
+            self.fsm.openedExternally()
+            self.expand(to: view)
+            self.fsm.mouseLeft()
         }
 
         // Hook server compact reveal (non-alert work events: session start, tool use, etc.)
@@ -1034,7 +1165,7 @@ final class IslandWindowController: NSWindowController {
                     self.state.promptContext = ctx
                     SoundEngine.shared.play("approve")
                     NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
-                    self.expand(to: .prompt)
+                    self.openPromptSlot(makeKey: false, carriesContext: true)
                 } else if !inNotchZone {
                     // Drop outside notch zone → install Mochi on the desktop.
                     // Prevent hideDragGhost from closing the ghost panel so we can promote it.
@@ -1062,6 +1193,7 @@ final class IslandWindowController: NSWindowController {
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
             guard let self else { return event }
             MainActor.assumeIsolated {
+                if self.state.chatResizing { self.state.chatResizing = false }
                 let hadPendingClick = self.pendingIslandClick
                 let wasDragging     = self.inAttachDrag
                 self.pendingIslandClick = false
@@ -1082,6 +1214,9 @@ final class IslandWindowController: NSWindowController {
             return event
         }
         NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp) { _ in
+            Task { @MainActor in
+                if AppState.shared.chatResizing { AppState.shared.chatResizing = false }
+            }
             finishDrag()
         }
 
@@ -1399,6 +1534,8 @@ final class IslandWindowController: NSWindowController {
         if state.pendingApproval != nil { return .approval }
         // A question left on screen behind another view (#852) still waits: opening shows it.
         if state.pendingQuestion != nil { return .question }
+        // An unseen Hermes answer, or a turn still running: back to that chat, not the overview.
+        if state.opensOnHermesChat { return .prompt }
         #if !APPSTORE
         // Mochi is blue: a new Coucou waits, and that is the first thing the island shows.
         if state.pendingQuestion == nil, MacUpdater.shared.hintActive {
@@ -1429,6 +1566,8 @@ final class IslandWindowController: NSWindowController {
             guard let self else { return }
             self.state.removeTask(id: taskId)
             self.state.isPinned = false
+            // A Hermes answer announced meanwhile keeps the island open.
+            if self.state.hermesAnnounceHoldsIsland { return }
             self.collapse()
         }
         finishedPinTimer = item
@@ -1459,16 +1598,14 @@ final class IslandWindowController: NSWindowController {
 
     private func isBotHit(_ windowPoint: CGPoint) -> Bool {
         let s = AppState.shared
-        let panelH = window?.frame.height ?? 320
+        let panelH = window?.frame.height ?? ChatHeight.basePanelHeight
         let panelW = window?.frame.width  ?? 720
         let (islandW, fixedH) = islandSize(mode: s.mode, view: s.view,
                                             progress: s.uploadProgress, nw: notchW, nh: notchH)
         // Chat view resizes dynamically — must match IslandContainer.chatPromptHeight
         let islandH: CGFloat
         if s.mode == .expanded && s.view == .prompt {
-            let base: CGFloat = 240
-            let perMsg: CGFloat = 40
-            islandH = min(300, base + CGFloat(s.chatHistory.count) * perMsg)
+            islandH = s.chatPromptHeight
         } else {
             islandH = fixedH
         }
@@ -1602,9 +1739,7 @@ final class IslandPanel: NSPanel {
                                       progress: s.uploadProgress, nw: nw, nh: nh)
         let h: CGFloat
         if s.mode == .expanded && s.view == .prompt {
-            let base: CGFloat = 240
-            let perMsg: CGFloat = 40
-            h = min(300, base + CGFloat(s.chatHistory.count) * perMsg)
+            h = s.chatPromptHeight
         } else {
             h = fixedH
         }
@@ -1764,7 +1899,12 @@ extension IslandWindowController {
            runner.info.webSearchEnabled, runner.info.hasWebKey, VoiceSettings.speakEnabled {
             // A web search takes a few seconds: say so instead of going quiet.
             VoiceSpeaker.shared.onDidFinish = nil
-            let wait = VoiceSettings.language == "fr" ? "Je regarde." : "Let me check."
+            let wait: String
+            switch VoiceSettings.lang {
+            case .fr: wait = "Je regarde."
+            case .pt: wait = "Deixa eu ver."
+            case .en: wait = "Let me check."
+            }
             VoiceSpeaker.shared.speak(wait, locale: VoiceSettings.answerLocale)
         }
 
@@ -2003,7 +2143,7 @@ extension IslandWindowController {
         // answer in mine ("You're speaking French. Want me to answer in French?").
         if !expectAnswer, !ClaudeVoiceBrain.isActive, !VoiceSettings.languageOfferDone,
            let spoken = VoiceEngine.shared.speechLocale?.language.languageCode?.identifier,
-           ["fr", "en"].contains(spoken), spoken != VoiceSettings.language,
+           ["fr", "en", "pt"].contains(spoken), spoken != VoiceSettings.language,
            VoiceEngine.shared.isEnabled {
             VoiceSettings.languageOfferDone = true
             let offer = VoiceActionRunner.shared.offerLanguageSwitch(to: spoken)
@@ -2044,8 +2184,13 @@ extension IslandWindowController {
             return false
         }
         appendAppLog("nb.log", "[Voice] Claude turn \(Int(Date().timeIntervalSince(t0) * 1000)) ms\(reply.acted ? ", acted" : "")")
-        let fr = VoiceSettings.language == "fr"
-        let text = reply.text.isEmpty ? (fr ? "C'est fait." : "Done.") : reply.text
+        let done: String
+        switch VoiceSettings.lang {
+        case .fr: done = "C'est fait."
+        case .pt: done = "Pronto."
+        case .en: done = "Done."
+        }
+        let text = reply.text.isEmpty ? done : reply.text
         VoiceTranscriptHistory.shared.record(transcript: transcript, note: text, origin: .brain)
         consecutiveFailures = 0
         if reply.acted { NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy) }
@@ -2072,9 +2217,12 @@ extension IslandWindowController {
         if state.soundEnabled { SoundEngine.shared.play("approve") }
         fsm.openedExternally()
         expand(to: .mail)
-        let fr = VoiceSettings.language == "fr"
-        let text = fr ? "\(url.lastPathComponent) est en pièce jointe. Tu n'as plus qu'à cliquer sur Envoyer."
-                      : "\(url.lastPathComponent) is attached. Just click Send."
+        let text: String
+        switch VoiceSettings.lang {
+        case .fr: text = "\(url.lastPathComponent) est en pièce jointe. Tu n'as plus qu'à cliquer sur Envoyer."
+        case .pt: text = "\(url.lastPathComponent) está anexado. É só clicar em Enviar."
+        case .en: text = "\(url.lastPathComponent) is attached. Just click Send."
+        }
         if VoiceSettings.speakEnabled {
             VoiceSpeaker.shared.onDidFinish = nil
             VoiceSpeaker.shared.speak(text, locale: VoiceSettings.answerLocale)
@@ -2192,6 +2340,9 @@ extension Notification.Name {
     static let islandToggleDiff           = Notification.Name("notchBuddy.islandToggleDiff")
     static let islandActivateCardSelection = Notification.Name("notchBuddy.islandActivateCardSelection")
     static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
+    #if !APPSTORE
+    static let openCmuxPrompt      = Notification.Name("notchBuddy.openCmuxPrompt")
+    #endif
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
     static let musicReveal      = Notification.Name("notchBuddy.musicReveal")
     // Greeting ↔ IslandWindowController
@@ -2230,6 +2381,9 @@ func islandSize(mode: IslandMode, view: IslandView,
         }
         let layout = IslandConst.viewLayouts[view]!
         if view == .question, let h = QuestionLayout.height {
+            return (IslandConst.expandedWidth, h)
+        }
+        if view == .approval, let h = ApprovalReadingLayout.height {
             return (IslandConst.expandedWidth, h)
         }
         if view == .overview, let h = MailLayout.detailHeight {

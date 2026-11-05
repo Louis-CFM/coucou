@@ -220,7 +220,7 @@ enum ServiceSnapshots {
     static func stripe(_ s: AppState) -> ServiceSnapshot? {
         if let error = s.stripeError, !s.stripeLoaded {
             return ServiceSnapshot(pillId: "integration_stripe", tone: .error, headline: "Can't reach Stripe",
-                                   reason: error, sections: [], updatedAt: Date())
+                                   reason: PhoneText.english(error), sections: [], updatedAt: Date())
         }
         guard s.stripeLoaded else { return nil }
         let currency = s.stripeCurrency.uppercased()
@@ -232,7 +232,7 @@ enum ServiceSnapshots {
         let reason: String
         if let error = s.stripeError {
             overall = .error
-            reason = "Stripe answered with an error: \(error)"
+            reason = "Stripe answered with an error: \(PhoneText.english(error))"
         } else if let latest {
             let what = latest.description.map { " · \($0)" } ?? ""
             switch latest.status {
@@ -271,6 +271,8 @@ enum ServiceSnapshots {
         func tone(_ d: VercelDeployment) -> ServiceTone {
             d.isSuccess ? .ok : (d.state == "CANCELED" ? .warning : .error)
         }
+        // The Mac's own label follows the app language; the iPhone gets English.
+        func status(_ d: VercelDeployment) -> String { d.isSuccess ? "Ready" : (d.state == "CANCELED" ? "Canceled" : "Error") }
         let branch = latest.branch.map { " · \($0)" } ?? ""
         let reason: String
         switch latest.state {
@@ -280,12 +282,12 @@ enum ServiceSnapshots {
         }
         let items = deployments.prefix(10).map { d in
             ServiceItem(title: d.projectName,
-                        detail: [d.statusLabel, d.branch, d.commitMessage].compactMap { $0 }.joined(separator: " · "),
+                        detail: [status(d), d.branch, d.commitMessage].compactMap { $0 }.joined(separator: " · "),
                         tone: tone(d), date: d.createdAt,
                         url: d.url.isEmpty ? nil : "https://\(d.url)")
         }
         return ServiceSnapshot(pillId: "integration_vercel", tone: tone(latest),
-                               headline: "\(latest.projectName) · \(latest.statusLabel)", reason: reason,
+                               headline: "\(latest.projectName) · \(status(latest))", reason: reason,
                                sections: [ServiceSection(title: "Deployments", items: items)],
                                updatedAt: latest.createdAt)
     }
@@ -324,7 +326,7 @@ enum ServiceSnapshots {
     static func calcom(_ s: AppState) -> ServiceSnapshot? {
         if let error = s.calcomError, !s.calcomLoaded {
             return ServiceSnapshot(pillId: "integration_calcom", tone: .error, headline: "Can't reach Cal.com",
-                                   reason: error, sections: [], updatedAt: Date())
+                                   reason: PhoneText.english(error), sections: [], updatedAt: Date())
         }
         guard s.calcomLoaded else { return nil }
         let upcoming = s.calcomBookings.filter { $0.endTime > Date() }.sorted { $0.startTime < $1.startTime }
@@ -336,13 +338,13 @@ enum ServiceSnapshots {
             let soon = next.startTime.timeIntervalSinceNow < 3600
             overall = soon ? .warning : .info
             let with = next.attendeeName.map { " with \($0)" } ?? ""
-            reason = "\(soon ? "Starting soon" : "Next"): \(next.title)\(with), \(next.startTime.formatted(time))"
+            reason = "\(soon ? "Starting soon" : "Next"): \(PhoneText.english(next.title))\(with), \(next.startTime.formatted(time))"
         } else {
             overall = .idle
             reason = "No upcoming booking"
         }
         let items = upcoming.prefix(10).map {
-            ServiceItem(title: $0.title,
+            ServiceItem(title: PhoneText.english($0.title),
                         detail: [$0.attendeeName, $0.status.lowercased()].compactMap { $0 }.joined(separator: " · "),
                         tone: $0.isActive ? .info : .idle, date: $0.startTime)
         }
@@ -359,9 +361,9 @@ enum ServiceSnapshots {
         guard let latest = s.n8nRuns.first else { return nil }
         let reason = latest.success
             ? "Last run succeeded: \(latest.workflow)"
-            : "Last run failed: \(latest.workflow)\(latest.detail.map { " · \($0)" } ?? "")"
+            : "Last run failed: \(latest.workflow)\(latest.detail.map { " · \(PhoneText.english($0))" } ?? "")"
         let items = s.n8nRuns.map {
-            ServiceItem(title: $0.workflow, detail: $0.detail ?? ($0.success ? "succeeded" : "failed"),
+            ServiceItem(title: $0.workflow, detail: $0.detail.map(PhoneText.english) ?? ($0.success ? "succeeded" : "failed"),
                         tone: $0.success ? .ok : .error, date: $0.date)
         }
         let failed = s.n8nRuns.filter { !$0.success }.count
@@ -376,15 +378,15 @@ enum ServiceSnapshots {
     static func notion(_ s: AppState) -> ServiceSnapshot? {
         if let error = s.notionError, !s.notionLoaded {
             return ServiceSnapshot(pillId: "integration_notion", tone: .error, headline: "Can't reach Notion",
-                                   reason: error, sections: [], updatedAt: Date())
+                                   reason: PhoneText.english(error), sections: [], updatedAt: Date())
         }
         guard s.notionLoaded else { return nil }
         let pages = s.notionPages.sorted { $0.lastEditedAt > $1.lastEditedAt }
         let items = pages.prefix(10).map {
-            ServiceItem(title: [$0.emoji, $0.title].compactMap { $0 }.joined(separator: " "),
+            ServiceItem(title: [$0.emoji, PhoneText.english($0.title)].compactMap { $0 }.joined(separator: " "),
                         tone: .info, date: $0.lastEditedAt, url: $0.url)
         }
-        let reason = pages.first.map { "Last edited: \($0.title)" } ?? "No recent page"
+        let reason = pages.first.map { "Last edited: \(PhoneText.english($0.title))" } ?? "No recent page"
         let recent = (pages.first?.lastEditedAt.timeIntervalSinceNow ?? -.infinity) > -3600
         return ServiceSnapshot(pillId: "integration_notion", tone: recent ? .info : .idle,
                                headline: "\(pages.count) recent page\(pages.count == 1 ? "" : "s")", reason: reason,

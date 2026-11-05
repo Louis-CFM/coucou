@@ -8,12 +8,56 @@ final class AppState: ObservableObject {
     static let shared = AppState()
 
     // Island state
-    @Published var mode: IslandMode = .hidden
-    @Published var view: IslandView = .overview
+    @Published var mode: IslandMode = .hidden {
+        didSet {
+            #if !APPSTORE
+            if mode != .expanded { clearCmuxPrompt() }
+            #endif
+            clearHermesBadgeIfChatShown()
+            syncChatMediaVisibility()
+        }
+    }
+    @Published var view: IslandView = .overview {
+        didSet {
+            #if !APPSTORE
+            // Every entry to the prompt view that is not the cmux one shows the normal chat.
+            if view == .prompt && !cmuxOpeningPrompt { clearCmuxPrompt() }
+            #endif
+            clearHermesBadgeIfChatShown()
+            syncChatMediaVisibility()
+        }
+    }
+
+    /// The chat is on screen only while the island is open on the prompt view: a media row fetches by itself only then,
+    /// and a voice message that plays is paused (keeping its position) the moment the island folds or hides.
+    private func syncChatMediaVisibility() {
+        ChatMediaVisibility.shared.set(mode == .expanded && view == .prompt)
+    }
+
+    /// Another conversation came on screen (another agent, or the shared chat): a voice message of the one that left
+    /// pauses, keeping its position.
+    private func syncChatMediaConversation() {
+        ChatMediaStore.shared.conversationChanged(to: activeConversationID.mediaKey)
+    }
+
+    /// Where the answers of the chat on screen come from, for the media rows. Only a Hermes agent writes directives;
+    /// only a sign in agent can be asked for a file.
+    var chatMediaContext: ChatMediaContext {
+        guard chatProvider == .hermes, let agent = activeHermesAgent else { return ChatMediaContext() }
+        return ChatMediaContext(enabled: true, conversation: activeConversationID.mediaKey, agent: agent, agentName: agent.shownName)
+    }
 
     // Tasks
     @Published var tasks: [AgentTask] = []
-    @Published var focusId: String? = nil
+    @Published var focusId: String? = nil {
+        didSet {
+            // The prompt slot must show what belongs to the focused pill: any writer that moves the focus
+            // (new session, approval card, Hermes announce...) closes a slot that no longer belongs to it.
+            guard oldValue != focusId, !applyingFocusEffect, let content = promptContent,
+                  !PromptSlot.belongs(content, to: focusPill) else { return }
+            closePromptSlot()
+        }
+    }
 
     // Bot state override
     @Published var stateOverride: BotState? = nil
@@ -126,7 +170,72 @@ final class AppState: ObservableObject {
     @Published var chatMailMode = false
 
     @Published var chatProvider: ChatProvider = .anthropic {
-        didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
+        didSet {
+            UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider")
+            if chatProvider != .hermes { lastSharedProvider = chatProvider }
+            syncChatMediaConversation()
+            // Switching only changes which conversation is shown: a Hermes agent never shares one with another
+            // provider or agent, and nothing is cleared or cancelled by the switch.
+            clearHermesBadgeIfChatShown()
+        }
+    }
+
+    /// The last provider of the shared chat (any provider but Hermes). The shared chat is shown with it when the
+    /// provider is Hermes and the slot opens for a pill that is not a Hermes agent.
+    /// Nil when it is not known (Hermes was already selected before this was tracked): nothing switches to a
+    /// cloud provider by itself then.
+    private(set) var lastSharedProvider: ChatProvider? = nil {
+        didSet { if let p = lastSharedProvider { UserDefaults.standard.set(p.rawValue, forKey: "chatSharedProvider") } }
+    }
+
+    /// Every chat conversation, in memory for the app session only (never written to disk): one for the non Hermes
+    /// providers, one per Hermes agent (by identity name).
+    @Published private var chatHistories = ConversationStore<[ChatMessage]>(empty: [])
+
+    /// The conversation on screen.
+    var activeConversationID: ConversationID {
+        .current(hermesActive: chatProvider == .hermes, agent: activeHermesAgent?.name)
+    }
+
+    /// The messages of the conversation on screen.
+    var chatHistory: [ChatMessage] {
+        get { chatHistories[activeConversationID] }
+        set { chatHistories.set(activeConversationID, newValue) }
+    }
+
+    /// The messages of one conversation, shown or not (a missing one reads as empty).
+    func chatMessages(_ id: ConversationID) -> [ChatMessage] { chatHistories[id] }
+
+    /// Changes the messages of one conversation, shown or not (a turn may finish while another chat is on screen).
+    /// A turn that outlives its conversation (the agent was removed) passes `createIfMissing: false`: it must not
+    /// bring an empty conversation back.
+    func updateChat(_ id: ConversationID, createIfMissing: Bool = true, _ body: (inout [ChatMessage]) -> Void) {
+        if createIfMissing { chatHistories.mutate(id, body) } else { chatHistories.mutateIfPresent(id, body) }
+    }
+
+    /// Clears one conversation: its messages, its stored server session and its running turns, nothing else.
+    func clearConversation(_ id: ConversationID) {
+        ChatFolds.memory.forget(chatHistories[id].map(\.id))
+        chatHistories.remove(id)
+        ClaudeService.shared.clearConversation(id)
+        // Cancelled turns end by themselves and release their own count in `hermesTurnsRunning`.
+        if let name = id.hermesAgent { clearHermesPillCard(agentName: name) }
+        if let name = id.hermesAgent, let pill = HermesPills.taskIds(for: hermesAgents.map { $0.name })[name],
+           let i = tasks.firstIndex(where: { $0.id == pill }) { tasks[i].pillBadge = nil }
+    }
+
+    /// The new conversation action: clears the conversation on screen only.
+    func clearActiveConversation() { clearConversation(activeConversationID) }
+
+    /// An agent that is gone: its conversation and its running turns go with it.
+    private func discardHermesConversations(of names: [String]) {
+        for name in names {
+            ChatFolds.memory.forget(chatHistories[.hermes(name)].map(\.id))
+            chatHistories.remove(.hermes(name))
+            hermesCards[name]?.discard()
+            ClaudeService.shared.dropConversation(.hermes(name))
+            promptDrafts.clear(.hermesChat(agent: name))
+        }
     }
     @Published var googleChatModel: String = ChatProvider.google.defaultModel {
         didSet { UserDefaults.standard.set(googleChatModel, forKey: "googleChatModel") }
@@ -155,6 +264,141 @@ final class AppState: ObservableObject {
     @Published var lmstudioServerURL: String = "" {
         didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
     }
+    // Hermes agents: the list holds no secret (keys live in the Keychain item "hermes-agent-keys")
+    @Published var hermesAgents: [HermesAgent] = [] {
+        didSet {
+            UserDefaults.standard.set(HermesChat.encodeAgents(hermesAgents), forKey: "hermesAgents")
+            let gone = Set(oldValue.map { $0.name }).subtracting(hermesAgents.map { $0.name })
+            discardHermesConversations(of: gone.sorted())
+            for name in gone { HermesApprovalCenter.shared.agentRemoved(name) }
+        }
+    }
+    @Published var hermesChatAgent: String = "" {
+        didSet {
+            UserDefaults.standard.set(hermesChatAgent, forKey: "hermesChatAgent")
+            clearHermesBadgeIfChatShown()
+            syncChatMediaConversation()
+        }
+    }
+    /// The agent picked in the chat (by name), else the first configured one.
+    var activeHermesAgent: HermesAgent? {
+        hermesAgents.first(where: { $0.name == hermesChatAgent }) ?? hermesAgents.first
+    }
+
+    /// Picks the Hermes agent used by the chat. Each agent has its own conversation: selecting another one only
+    /// switches which conversation is shown, nothing is cleared or cancelled.
+    func selectHermesAgent(_ name: String) {
+        hermesChatAgent = name
+    }
+
+    /// Replaces the stored agent of the same name (or adds it) with one update of the list. A conversation tied to a
+    /// different destination (another address, profile or kind) is dropped: its history must not reach the new one.
+    private func storeHermesAgent(_ agent: HermesAgent) {
+        let old = hermesAgents.first { $0.name == agent.name }
+        var next = agent
+        if next.displayName == nil { next.displayName = old?.displayName }
+        var list = hermesAgents
+        list.removeAll { $0.name == agent.name }
+        list.append(next)
+        hermesAgents = list
+        if let old, !old.sameDestination(as: next) { clearConversation(.hermes(agent.name)) }
+    }
+
+    /// Sets (or clears, with an empty text) the display name of an agent. The identity name stays: Keychain binding,
+    /// pill id, conversation and selection are untouched.
+    @discardableResult
+    func renameHermesAgent(_ identity: String, to raw: String) -> Result<String, HermesAgentNames.RenameError> {
+        switch HermesAgentNames.rename(identity, to: raw, in: hermesAgents) {
+        case .failure(let e): return .failure(e)
+        case .success(let list):
+            hermesAgents = list
+            fetchedProviderModels[.hermes] = nil   // the picker lists the shown names
+            syncHermesPills()
+            return .success(list.first { $0.name == identity }?.shownName ?? identity)
+        }
+    }
+
+    /// True when `name` is already the identity or the shown name of an agent (a new agent may not take it).
+    func hermesNameTaken(_ name: String) -> Bool {
+        hermesAgents.contains { $0.name == name } || HermesAgentNames.isTaken(name, in: hermesAgents, except: nil)
+    }
+
+    /// Stores the agent and its key bound to its URL and profile (Keychain only), then selects it.
+    func addHermesAgent(_ agent: HermesAgent, key: String) {
+        var keys = HermesChat.decodeKeys(KeychainStore.shared.get("hermes-agent-keys") ?? "")
+        keys[agent.name] = HermesChat.KeyRecord(key: key, baseURL: agent.baseURL, profile: agent.profile)
+        KeychainStore.shared.set("hermes-agent-keys", value: HermesChat.encodeKeys(keys))
+        storeHermesAgent(agent)
+        fetchedProviderModels[.hermes] = nil
+        providerModelFetchError[.hermes] = nil
+        hermesChatAgent = agent.name
+        syncHermesPills()
+    }
+
+    /// True when the key stored for `agent` is bound to its current URL and profile.
+    func isHermesAgentBound(_ agent: HermesAgent) -> Bool {
+        if case .success = HermesChat.boundKey(for: agent, in: HermesChat.decodeKeys(KeychainStore.shared.get("hermes-agent-keys") ?? "")) { return true }
+        return false
+    }
+
+    // MARK: Hermes sign in sessions (Keychain item "hermes-agent-sessions", one record per agent name)
+    // Reads happen here; every write goes through `HermesSessions.shared`, the single owner of the item.
+
+    private func hermesSessions() -> [String: HermesSignIn.SessionRecord] {
+        HermesSignIn.decodeSessions(KeychainStore.shared.get("hermes-agent-sessions") ?? "")
+    }
+
+    /// "Signed in as <label>" text for a sign in agent, or nil when it has no usable session
+    /// (no record, a record for another address, or an expired one that cannot be refreshed).
+    func hermesSessionLabel(_ agent: HermesAgent) -> String? {
+        guard case .success(let r) = HermesSignIn.boundSession(for: agent, in: hermesSessions()),
+              HermesSignIn.tokenAction(r, now: Date().timeIntervalSince1970) != .signInAgain else { return nil }
+        return r.label.isEmpty ? r.userID : r.label
+    }
+
+    /// Keeps a session obtained by "Sign in again", only while the agent still exists with the same address and
+    /// kind; otherwise the result is dropped (false). The check and the store call happen with no suspension in
+    /// between, and `removeHermesAgent` removes the record again after the row, so no record outlives its agent.
+    func storeHermesSession(_ record: HermesSignIn.SessionRecord, for agent: HermesAgent) async -> Bool {
+        guard hermesAgents.contains(where: { $0.name == agent.name && $0.baseURL == agent.baseURL && $0.connection == .signIn }) else { return false }
+        await HermesSessions.shared.store(record, name: agent.name)
+        clearConversation(.hermes(agent.name))   // the stored server session belonged to the old sign in
+        return true
+    }
+
+    /// Drops the session of an agent, keeps the row.
+    func signOutHermesAgent(named name: String) async {
+        await HermesSessions.shared.remove(name: name)
+        clearConversation(.hermes(name))
+    }
+
+    /// Adds a signed-in agent and stores its session (Keychain only), then selects it.
+    func addHermesSignedInAgent(_ agent: HermesAgent, record: HermesSignIn.SessionRecord) async {
+        var signedIn = agent
+        signedIn.connection = .signIn
+        await HermesSessions.shared.store(record, name: signedIn.name)
+        storeHermesAgent(signedIn)
+        fetchedProviderModels[.hermes] = nil
+        providerModelFetchError[.hermes] = nil
+        hermesChatAgent = signedIn.name
+        syncHermesPills()
+    }
+
+    func removeHermesAgent(named name: String) async {
+        var keys = HermesChat.decodeKeys(KeychainStore.shared.get("hermes-agent-keys") ?? "")
+        keys[name] = nil
+        if keys.isEmpty { KeychainStore.shared.remove("hermes-agent-keys") }
+        else { KeychainStore.shared.set("hermes-agent-keys", value: HermesChat.encodeKeys(keys)) }
+        await HermesSessions.shared.remove(name: name)
+        hermesAgents.removeAll { $0.name == name }   // its conversation is dropped by the list observer
+        fetchedProviderModels[.hermes] = nil
+        providerModelFetchError[.hermes] = nil
+        if hermesChatAgent == name { hermesChatAgent = hermesAgents.first?.name ?? "" }
+        if hermesAgents.isEmpty, chatProvider == .hermes { chatProvider = .anthropic }
+        syncHermesPills()
+        // A "Sign in again" stored while the first removal ran: the row is gone now, so the record goes too.
+        await HermesSessions.shared.remove(name: name)
+    }
 
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
@@ -171,6 +415,19 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        // Hermes: the picker lists the configured agents (local list, no network call)
+        if provider == .hermes {
+            if hermesAgents.isEmpty {
+                providerModelFetchError[.hermes] = String(localized: "Connect a Hermes agent in Settings → Chat first.")
+            } else {
+                fetchedProviderModels[.hermes] = hermesAgents.map { (id: $0.name, label: $0.shownName) }
+                providerModelFetchError.removeValue(forKey: .hermes)
+                if !hermesAgents.contains(where: { $0.name == hermesChatAgent }) {
+                    selectHermesAgent(hermesAgents[0].name)
+                }
+            }
+            return
+        }
         #if !APPSTORE
         // Through the subscription: Claude Code takes the model aliases; the other tools
         // use the model chosen in them.
@@ -193,8 +450,8 @@ final class AppState: ObservableObject {
             let normalised = LocalChat.normaliseURL(baseURL)
             guard !normalised.isEmpty else {
                 providerModelFetchError[provider] = provider == .ollama
-                    ? "Connect Ollama in Settings → Chat first."
-                    : "Connect LM Studio in Settings → Chat first."
+                    ? String(localized: "Connect Ollama in Settings → Chat first.")
+                    : String(localized: "Connect LM Studio in Settings → Chat first.")
                 return
             }
             loadingProviderModels.insert(provider)
@@ -205,8 +462,8 @@ final class AppState: ObservableObject {
                 switch result {
                 case .success(let models) where models.isEmpty:
                     providerModelFetchError[provider] = provider == .ollama
-                        ? "No models yet. Download one in Ollama first."
-                        : "No models yet. Download one in LM Studio first."
+                        ? String(localized: "No models yet. Download one in Ollama first.")
+                        : String(localized: "No models yet. Download one in LM Studio first.")
                 case .success(let models):
                     fetchedProviderModels[provider] = models
                     let current = provider == .ollama ? ollamaChatModel : lmstudioChatModel
@@ -216,14 +473,14 @@ final class AppState: ObservableObject {
                         else                   { lmstudioChatModel = first }
                     }
                 case .failure:
-                    providerModelFetchError[provider] = "Cannot reach \(normalised). Is the server running?"
+                    providerModelFetchError[provider] = String(localized: "Cannot reach \(normalised). Is the server running?")
                 }
             }
             return
         }
         // Remote providers: require API key
         guard let apiKey = KeychainStore.shared.get(provider.keychainKey), !apiKey.isEmpty else {
-            providerModelFetchError[provider] = "No API key — add it in Settings."
+            providerModelFetchError[provider] = String(localized: "No API key — add it in Settings.")
             return
         }
         loadingProviderModels.insert(provider)
@@ -237,12 +494,12 @@ final class AppState: ObservableObject {
             case .deepseek:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.deepseek.com/v1", apiKey: apiKey)
             case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
             case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
-            case .ollama, .lmstudio: models = []  // handled above
+            case .ollama, .lmstudio, .hermes: models = []  // handled above
             case .cursor, .copilot:  models = []  // subscription only, handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
-                providerModelFetchError[provider] = "Failed to load models. Check your API key."
+                providerModelFetchError[provider] = String(localized: "Failed to load models. Check your API key.")
             } else {
                 fetchedProviderModels[provider] = models
                 switch provider {
@@ -270,10 +527,15 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == moonshotChatModel }) {
                         moonshotChatModel = models.first!.id
                     }
-                case .ollama, .lmstudio, .cursor, .copilot: break
+                case .ollama, .lmstudio, .hermes, .cursor, .copilot: break
                 }
             }
         }
+    }
+
+    /// What the chat header shows for the model: the shown name of the active Hermes agent, else the model id.
+    var activeChatModelLabel: String {
+        chatProvider == .hermes ? (activeHermesAgent?.shownName ?? "Hermes") : activeChatModel
     }
 
     /// The models offered when Claude Code answers: its aliases always point at the latest.
@@ -282,13 +544,17 @@ final class AppState: ObservableObject {
     ]
 
     /// The model currently active for chat (provider-aware).
-    var activeChatModel: String {
-        switch chatProvider {
+    var activeChatModel: String { chatModel(for: chatProvider) }
+
+    /// The model of one provider (a turn keeps the provider it started with).
+    func chatModel(for provider: ChatProvider) -> String {
+        switch provider {
         case .anthropic: return claudeModel
         case .google:    return googleChatModel
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .hermes:    return activeHermesAgent?.name ?? "Hermes"
         case .deepseek:  return deepseekChatModel
         case .qwen:      return qwenChatModel
         case .moonshot:  return moonshotChatModel
@@ -446,15 +712,159 @@ final class AppState: ObservableObject {
     @Published var n8nRuns: [N8nRun] = []
 
     // Chat conversation history
-    @Published var chatHistory: [ChatMessage] = []
+
+    #if !APPSTORE
+    // cmux as the main workspace: the reply / new chat prompt, per session transcripts, settings.
+    @Published var cmuxPrompt: CmuxPromptMode? = nil
+    /// True only while `IslandWindowController.openCmuxPrompt` switches to the prompt view.
+    var cmuxOpeningPrompt = false
+    /// 0, 1 or 2 and more: how many messages the timeline of the session on screen holds, as far as the height of the
+    /// reply view tells. Written by `CmuxTimelines` only when that changes, so an event of a session redraws nothing here.
+    @Published var cmuxTimelineBucket = 0
+    /// The session the user picked in the reply header, per pill id. Memory only, until that session closes.
+    @Published var cmuxReplyChoice: [String: String] = [:]
+    /// Bumped when the sessions of a workspace change, so the reply header and cards redraw.
+    @Published var cmuxRevision = 0
+    @Published var cmuxNotice: String? = nil {
+        didSet { if !settingCmuxFailure { cmuxNoticeFailure = nil; cmuxNoticeOffersCmux = false; cmuxNoticeOwner = nil } }
+    }
+    /// The reply the notice is about (a failed send). The reply view shows a notice with an owner only when it
+    /// renders that very reply; a notice with no owner belongs to the prompt in general.
+    @Published private(set) var cmuxNoticeOwner: PromptSlot.Content? = nil
+    /// What `CmuxPromptView` renders now. Set and cleared by that view; a send that ends after the view is gone
+    /// uses it to tell whether its reply is still on screen.
+    var cmuxRenderedContent: PromptSlot.Content? = nil
+    /// The notice is the "started in cmux" one of a command line launcher: it offers the Open cmux action.
+    @Published private(set) var cmuxNoticeOffersCmux = false
+    func showCmuxStarted(_ text: String) {
+        cmuxNotice = text
+        cmuxNoticeOffersCmux = true
+    }
+    /// Which cmux failure the notice shows, when it is one. The prompt view tells them apart by this case,
+    /// never by comparing the translated text.
+    @Published private(set) var cmuxNoticeFailure: CmuxControl.Failure? = nil
+    private var settingCmuxFailure = false
+    func showCmuxFailure(_ failure: CmuxControl.Failure, owner: PromptSlot.Content? = nil) {
+        settingCmuxFailure = true
+        cmuxNotice = failure.message
+        cmuxNoticeFailure = failure
+        cmuxNoticeOffersCmux = false
+        cmuxNoticeOwner = owner
+        settingCmuxFailure = false
+    }
+    @Published var cmuxBusy = false
+    @Published var cmuxRecentFolders: [String] = UserDefaults.standard.stringArray(forKey: "cmuxRecentFolders") ?? [] {
+        didSet { UserDefaults.standard.set(cmuxRecentFolders, forKey: "cmuxRecentFolders") }
+    }
+    @Published var cmuxDefaultFolder: String = UserDefaults.standard.string(forKey: "cmuxDefaultFolder") ?? "" {
+        didSet { UserDefaults.standard.set(cmuxDefaultFolder, forKey: "cmuxDefaultFolder") }
+    }
+    /// Launch command per launcher, by `CmuxLauncher.Id` raw value. Loaded once, with the migration of the
+    /// old single command (see `CmuxLauncher.resolvedCommand`). Nothing is written at load: a value is
+    /// stored only when the user edits it (`setCmuxCommand`).
+    @Published var cmuxLaunchCommands: [String: String] = {
+        let defaults = UserDefaults.standard
+        var out: [String: String] = [:]
+        for l in CmuxLauncher.all {
+            let value = l.resolvedCommand(stored: defaults.string(forKey: l.defaultsKey),
+                                          legacy: defaults.string(forKey: CmuxLauncher.legacyDefaultsKey))
+            out[l.id.rawValue] = value
+        }
+        return out
+    }()
+
+    /// A valid command typed by the user: kept in memory and stored under the launcher's own key.
+    func setCmuxCommand(_ value: String, for launcher: CmuxLauncher) {
+        guard CmuxRouting.isValidLaunchCommand(value) else { return }
+        cmuxLaunchCommands[launcher.id.rawValue] = value
+        UserDefaults.standard.set(value, forKey: launcher.defaultsKey)
+    }
+
+    func cmuxCommand(for launcher: CmuxLauncher) -> String {
+        cmuxLaunchCommands[launcher.id.rawValue] ?? launcher.defaultCommand
+    }
+
+    /// Closes the cmux prompt (reply / new chat) and its notice. Drafts stay in `promptDrafts`.
+    func clearCmuxPrompt() {
+        if cmuxPrompt != nil { cmuxPrompt = nil }
+        if cmuxNotice != nil { cmuxNotice = nil }
+    }
+    #endif
+
+    /// Messages shown in the prompt view, for its height: the cmux transcript or new chat when one is
+    /// open, else the normal chat. Equal to `chatHistory.count` whenever cmux is not involved.
+    var promptMessageCount: Int {
+        #if !APPSTORE
+        switch cmuxPrompt {
+        case .reply(let id)?: return CmuxTimelines.shared.messageCount(for: HookServer.shared.cmuxReplyTarget(for: id) ?? id)
+        case .newChat?:       return 1
+        case nil:             break
+        }
+        #endif
+        return chatHistory.count
+    }
+
+    // MARK: Chat height (the user can stretch the chat card; see ChatHeight)
+
+    /// Height the user chose for the chat; nil = never stretched. Persisted, raw (clamped when read).
+    @Published private(set) var chatStretchedHeight: CGFloat? = ChatHeight.storedValue(
+        from: UserDefaults.standard.double(forKey: ChatHeight.defaultsKey))
+    /// Tallest the chat may be on the screen the island is on; the window controller keeps it current.
+    @Published var chatMaxHeight: CGFloat = ChatHeight.defaultCap
+    /// Height of the island panel (560 until the chat has been stretched); the window controller keeps it current.
+    @Published var panelHeight: CGFloat = ChatHeight.basePanelHeight
+    /// True while the grip is being dragged: the island follows the pointer without animation and stays open.
+    @Published var chatResizing = false
+    /// Set when the pointer reaches the grip: the panel grows before the mouse goes down, not inside the drag.
+    @Published var chatRoomRequested = false
+
+    /// Height of the chat card for the current messages and the user's stretch.
+    var chatPromptHeight: CGFloat {
+        ChatHeight.resolve(messageCount: promptMessageCount, stored: chatStretchedHeight, maximum: chatMaxHeight)
+    }
+    var chatCanStretch: Bool {
+        ChatHeight.canStretch(messageCount: promptMessageCount, maximum: chatMaxHeight)
+    }
+    var chatIsStretched: Bool {
+        ChatHeight.isStretched(messageCount: promptMessageCount, stored: chatStretchedHeight, maximum: chatMaxHeight)
+    }
+
+    /// Sets the stretch; `persist: false` while dragging (written once when the drag ends).
+    func setChatStretch(_ height: CGFloat?, persist: Bool = true) {
+        chatStretchedHeight = height
+        guard persist else { return }
+        if let height { UserDefaults.standard.set(Double(height), forKey: ChatHeight.defaultsKey) }
+        else { UserDefaults.standard.removeObject(forKey: ChatHeight.defaultsKey) }
+    }
+
+    /// Double click on the grip, or the header button.
+    func toggleChatStretch() {
+        setChatStretch(ChatHeight.toggled(messageCount: promptMessageCount,
+                                          stored: chatStretchedHeight, maximum: chatMaxHeight))
+    }
 
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
 
+    /// Height of the island while the whole text of a long Hermes command is read (nil: the card of every day).
+    @Published var approvalReadingHeight: CGFloat? = nil {
+        didSet { ApprovalReadingLayout.height = approvalReadingHeight }
+    }
+
     // Pending AskUserQuestion from Claude Code hook
     @Published var pendingQuestion: AskQuestion? = nil {
-        didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
+        didSet {
+            QuestionLayout.height = pendingQuestion?.estimatedIslandHeight
+            if pendingQuestion == nil, cmuxLaneQuestion != nil { cmuxLaneQuestion = nil }
+        }
     }
+
+    /// The question the cmux lane holds on the card, as a queue entry (fd -1: the lane keeps the connection) so the iPhone can
+    /// show and answer it like the queue's. Set by HookServer with `pendingQuestion`, cleared when that goes.
+    @Published var cmuxLaneQuestion: QueuedQuestion? = nil
+
+    /// What the iPhone shows as waiting: the queue's questions, then the cmux lane's.
+    var phoneQuestions: [QueuedQuestion] { waitingQuestions + (cmuxLaneQuestion.map { [$0] } ?? []) }
 
     /// Every AskUserQuestion waiting for an answer, oldest first: the first one is on the
     /// card (`pendingQuestion`). Written by HookServer only; empty for a demo question.
@@ -576,7 +986,10 @@ final class AppState: ObservableObject {
         pillColors = PillColors.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
+        if let v = ud.string(forKey: "chatSharedProvider"), let p = ChatProvider(rawValue: v), p != .hermes { lastSharedProvider = p }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        // didSet does not run in init: seed the shared provider from the one loaded when it was never stored.
+        if lastSharedProvider == nil, chatProvider != .hermes { lastSharedProvider = chatProvider }
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
@@ -586,6 +999,8 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "moonshotChatModel"), !v.isEmpty { moonshotChatModel = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
+        if let v = ud.string(forKey: "hermesAgents"), !v.isEmpty { hermesAgents = HermesChat.decodeAgents(v) }
+        if let v = ud.string(forKey: "hermesChatAgent"), !v.isEmpty { hermesChatAgent = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
         if let v = ud.object(forKey: "alertsFromAllPills") as? Bool { alertsFromAllPills = v }
@@ -684,11 +1099,18 @@ final class AppState: ObservableObject {
         tasks[idx].state = state
     }
 
-    func setFocus(_ id: String) {
-        guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
-        focusId = id
-        tasks[idx].pillBadge = nil  // clear badge when user brings task to focus
-    }
+    // Prompt slot state (the logic is in PromptSlotState.swift): stored properties cannot live in an extension.
+    /// Set while `setFocus` moves the focus itself and applies the slot rule right after.
+    var applyingFocusEffect = false
+    /// Drafts of the prompt slot by content. Memory only, capped. Not published: the views write it on every
+    /// keystroke; a writer outside the views uses `writeDraft` so the open view picks the text up.
+    var promptDrafts = PromptDrafts()
+    /// First prompts of a new chat that could not go back to their field (see PromptStash). Memory only.
+    var promptStash = PromptStash()
+    /// Bumped by `writeDraft` only, never by the typing of the user: an open view that sees it reloads its draft.
+    @Published var draftRevision = 0
+    /// Bumped by the writers that end a launch (timeout, folder match, failed first prompt): only these lower `launching`.
+    @Published var launchEndedRevision = 0
 
     func setPillBadge(_ badge: PillBadge, for id: String) {
         guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
@@ -758,8 +1180,198 @@ final class AppState: ObservableObject {
             }
         }
         sortTasksByCatalog()
+        syncHermesPills()
         if focusId == nil { focusId = mainPillId }
         syncMode()
+    }
+
+    // MARK: Hermes agent pills (one per connected agent, not in the catalog, not sessions)
+
+    /// Creates the pill of each connected agent, drops the pill of a removed one and puts them right
+    /// after the main pill. Pills are never touched by hook events: their ids match no hook agent.
+    func syncHermesPills() {
+        let plan = HermesPills.reconcile(existingIds: tasks.map { $0.id }, agents: hermesAgents.map { $0.name })
+        for id in plan.remove {
+            tasks.removeAll { $0.id == id }
+            if focusId == id { focusId = mainPillId }
+        }
+        var taken = Set(tasks.filter { HermesPills.isTaskId($0.id) }.map { $0.color })
+        for entry in plan.add {
+            let look = PillLook.appearance(key: String(entry.id.dropFirst(HermesPills.taskPrefix.count)), takenColors: taken)
+            taken.insert(look.color)
+            let shown = hermesAgents.first { $0.name == entry.name }?.shownName ?? entry.name
+            var task = AgentTask(id: entry.id, name: shown, color: look.color, state: .idle, steps: [], source: .agent)
+            if look.eye != "pill" { task.miniEye = EyeShape(rawValue: look.eye) }
+            tasks.append(task)
+        }
+        let ids = HermesPills.taskIds(for: hermesAgents.map { $0.name })
+        for agent in hermesAgents {
+            guard let id = ids[agent.name], let i = tasks.firstIndex(where: { $0.id == id }) else { continue }
+            let line = HermesPills.subtitle(profile: agent.profile, baseURL: agent.baseURL)
+            if tasks[i].subtitle != line { tasks[i].subtitle = line }
+            if tasks[i].name != agent.shownName { tasks[i].name = agent.shownName }
+        }
+        placeHermesPills()
+        syncMode()
+        syncView()
+    }
+
+    /// Keeps the Hermes pills (in connection order) right after the main pill, ahead of cmux sessions.
+    func placeHermesPills() {
+        let ids = HermesPills.taskIds(for: hermesAgents.map { $0.name })
+        let hermes = hermesAgents.compactMap { a in ids[a.name].flatMap { id in tasks.first { $0.id == id } } }
+        guard !hermes.isEmpty else { return }
+        var rest = tasks.filter { !HermesPills.isTaskId($0.id) }
+        let at = (rest.firstIndex { $0.id == mainPillId }).map { $0 + 1 } ?? 0
+        rest.insert(contentsOf: hermes, at: at)
+        if rest.map({ $0.id }) != tasks.map({ $0.id }) { tasks = rest }
+    }
+
+    /// Running chat turns per agent name. The pill stays thinking until the last of them ends.
+    /// Published: the last message of a chat is drawn as finished when the count drops, with or without a pill row.
+    @Published private(set) var hermesTurnsRunning: [String: Int] = [:]
+
+    /// A turn starts (`true`) or ends (`false`) for an agent: the pill is thinking while any turn runs.
+    func setHermesPillBusy(agentName: String, _ busy: Bool) {
+        let count = max(0, (hermesTurnsRunning[agentName] ?? 0) + (busy ? 1 : -1))
+        hermesTurnsRunning[agentName] = count == 0 ? nil : count
+        guard let id = HermesPills.taskIds(for: hermesAgents.map { $0.name })[agentName],
+              let i = tasks.firstIndex(where: { $0.id == id }) else { return }
+        let target: BotState = count > 0 ? .thinking : .idle
+        if tasks[i].state != target { tasks[i].state = target }
+    }
+
+    /// The overview card of each Hermes agent across its turns (see `HermesCard`): display only, never persisted.
+    private var hermesCards: [String: HermesCard] = [:]
+
+    /// A turn of this agent starts: the card starts from scratch. The returned number goes with every later call of the turn.
+    func beginHermesPillTurn(agentName: String) -> Int {
+        var card = hermesCards[agentName] ?? HermesCard()
+        let turn = card.start()
+        hermesCards[agentName] = card
+        showHermesCard(agentName)
+        return turn
+    }
+
+    /// The rows of a running turn reach the card of that agent's pill, as ticker lines. Only what the chat already
+    /// shows; the pill of another agent is never touched, and only the newest running turn writes.
+    func setHermesPillRows(agentName: String, turn: Int, segments: [ChatSegment]) {
+        guard hermesCards[agentName] != nil else { return }
+        hermesCards[agentName]?.rows(turn, HermesTicker.lines(from: segments))
+        showHermesCard(agentName)
+    }
+
+    /// A turn of this agent ends. After a success the rows stay (the last one is the answer); a failed or cancelled
+    /// turn, or one whose conversation was cleared, leaves no row.
+    func endHermesPillTurn(agentName: String, turn: Int, finished: Bool) {
+        guard hermesCards[agentName] != nil else { return }
+        hermesCards[agentName]?.end(turn, finished: finished)
+        showHermesCard(agentName)
+    }
+
+    /// The conversation of this agent was cleared: the card empties now, running turns write nothing more.
+    func clearHermesPillCard(agentName: String) {
+        guard hermesCards[agentName] != nil else { return }
+        hermesCards[agentName]?.clear()
+        showHermesCard(agentName)
+    }
+
+    private func showHermesCard(_ agentName: String) {
+        guard let card = hermesCards[agentName],
+              let id = HermesPills.taskIds(for: hermesAgents.map { $0.name })[agentName],
+              let i = tasks.firstIndex(where: { $0.id == id }) else { return }
+        // The index goes with the lines, also for a pill that was created with the default 0 and no row.
+        let index = HermesTicker.stepIndex(forCount: card.lines.count)
+        if tasks[i].steps != card.lines { tasks[i].steps = card.lines }
+        if tasks[i].stepIndex != index { tasks[i].stepIndex = index }
+    }
+
+    /// Task id of the pill of the active Hermes agent, when the Hermes chat is the selected one.
+    var activeHermesPillId: String? {
+        guard chatProvider == .hermes, let agent = activeHermesAgent else { return nil }
+        return HermesPills.taskIds(for: hermesAgents.map { $0.name })[agent.name]
+    }
+
+    /// The pill of the active agent carries an answer the user has not seen yet.
+    var hermesHasUnseenAnswer: Bool {
+        guard let id = activeHermesPillId else { return false }
+        return tasks.first { $0.id == id }?.pillBadge == .finished
+    }
+
+    /// A chat turn of the active agent is running.
+    var hermesTurnRunning: Bool {
+        guard chatProvider == .hermes, let agent = activeHermesAgent else { return false }
+        return (hermesTurnsRunning[agent.name] ?? 0) > 0
+    }
+
+    /// An approval or question card is on screen, or cmux cards wait for their turn.
+    var alertCardPending: Bool {
+        if pendingApproval != nil || pendingQuestion != nil { return true }
+        #if !APPSTORE
+        if HookServer.shared.hasQueuedCmuxCards { return true }
+        #endif
+        return false
+    }
+
+    /// The island should open on the Hermes chat rather than the overview.
+    var opensOnHermesChat: Bool {
+        PromptSlot.reopensOnHermesChat(focus: focusPill, activeAgent: chatProvider == .hermes ? activeHermesAgent?.name : nil,
+                                       unseenAnswer: hermesHasUnseenAnswer, turnRunning: hermesTurnRunning,
+                                       alertPending: alertCardPending)
+    }
+
+    /// The cmux prompt occupies the prompt slot, or is being opened (the view changes before `cmuxPrompt` is set).
+    var cmuxPromptIsOpenOrOpening: Bool {
+        #if !APPSTORE
+        return cmuxPrompt != nil || cmuxOpeningPrompt
+        #else
+        return false
+        #endif
+    }
+
+    /// Set when an announced answer takes the screen: it is not the user's own opening of the chat, so it must not
+    /// take keyboard focus, and the delayed collapses of earlier alerts must not close it right away.
+    private(set) var hermesAnnounceAt: Date = .distantPast
+    /// The panel must not become key for an announced answer (keystrokes meant for another app).
+    var hermesAnnounceBlocksKey: Bool { Date().timeIntervalSince(hermesAnnounceAt) < 1 }
+    /// A pending collapse from an earlier alert (approval note 3 s, finished pin 5.2 s) must leave an announced answer open.
+    var hermesAnnounceHoldsIsland: Bool { Date().timeIntervalSince(hermesAnnounceAt) < 8 }
+
+    /// The badge of the answer goes away once the chat with that agent is on screen.
+    private func clearHermesBadgeIfChatShown() {
+        guard let id = activeHermesPillId,
+              let i = tasks.firstIndex(where: { $0.id == id }), tasks[i].pillBadge != nil else { return }
+        guard HermesAnnounce.chatIsShown(expanded: mode == .expanded, viewIsChat: view == .prompt,
+                                         cmuxPromptOpen: cmuxPromptIsOpenOrOpening) else { return }
+        tasks[i].pillBadge = nil
+    }
+
+    /// A finished turn: tells the user when the chat is not on screen. Sound and badge always, the island
+    /// comes back to `target` (the chat, or the error note) unless an approval or question card holds the screen.
+    @discardableResult
+    func announceHermesTurn(agentName: String, failed: Bool, view target: IslandView) -> HermesAnnounce.Outcome {
+        let ofThisAgent = activeConversationID == .hermes(agentName)
+        let outcome = HermesAnnounce.decide(expanded: mode == .expanded, viewIsChat: view == .prompt,
+                                            cmuxPromptOpen: cmuxPromptIsOpenOrOpening, alertPending: alertCardPending,
+                                            chatIsOfThisAgent: ofThisAgent)
+        guard outcome != .none else { return outcome }
+        SoundEngine.shared.play(failed ? "error" : "finish")
+        let pillId = HermesPills.taskIds(for: hermesAgents.map { $0.name })[agentName]
+        // An error that takes the screen is read on the spot: no badge left behind.
+        if let pillId, let i = tasks.firstIndex(where: { $0.id == pillId }), !(failed && outcome == .expand) {
+            tasks[i].pillBadge = failed ? .error : .finished
+        }
+        guard outcome == .expand else { return outcome }
+        // The island comes back on the chat of the agent that answered, not on whatever was selected.
+        if !ofThisAgent, hermesAgents.contains(where: { $0.name == agentName }) {
+            chatProvider = .hermes
+            hermesChatAgent = agentName
+        }
+        if let pillId, tasks.contains(where: { $0.id == pillId }) { focusId = pillId }
+        hermesAnnounceAt = Date()
+        if mode == .expanded { view = target }
+        else { NotificationCenter.default.post(name: .hermesAnnounceExpand, object: target) }
+        return outcome
     }
 
     /// Toggle a catalog pill on/off.
@@ -861,10 +1473,11 @@ struct VercelDeployment: Identifiable {
     let branch: String?
 
     var isSuccess: Bool { state == "READY" }
-    var statusLabel: String { isSuccess ? "Ready" : (state == "CANCELED" ? "Canceled" : "Error") }
+    var statusLabel: String { isSuccess ? String(localized: "Ready") : (state == "CANCELED" ? String(localized: "Canceled") : String(localized: "Error")) }
+    var isJustNow: Bool { Date().timeIntervalSince(createdAt) < 60 }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
+        if diff < 60    { return String(localized: "just now") }
         if diff < 3600  { return "\(Int(diff/60))m" }
         if diff < 86400 { return "\(Int(diff/3600))h" }
         return "\(Int(diff/86400))d"
@@ -896,7 +1509,7 @@ struct ResendEmail: Identifiable {
     }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
+        if diff < 60    { return String(localized: "just now") }
         if diff < 3600  { return "\(Int(diff/60))m" }
         if diff < 86400 { return "\(Int(diff/3600))h" }
         return "\(Int(diff/86400))d"
@@ -925,7 +1538,7 @@ struct StripePayment: Identifiable, Equatable {
     var isSuccess: Bool { status == "succeeded" }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
+        if diff < 60    { return String(localized: "just now") }
         if diff < 3600  { return "\(Int(diff/60))m" }
         if diff < 86400 { return "\(Int(diff/3600))h" }
         return "\(Int(diff/86400))d"
@@ -972,7 +1585,7 @@ struct NotionPage: Identifiable {
 
     var timeAgo: String {
         let diff = Date().timeIntervalSince(lastEditedAt)
-        if diff < 60 { return "now" }
+        if diff < 60 { return String(localized: "now") }
         if diff < 3600 { return "\(Int(diff/60))m" }
         if diff < 86400 { return "\(Int(diff/3600))h" }
         return "\(Int(diff/86400))d"
@@ -987,4 +1600,31 @@ struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
     let role: ChatRole
     var content: String   // var for streaming updates
+    /// Display only, never encoded, persisted, logged or sent: the shared chat provider that wrote an answer
+    /// (nil for the user, for Hermes and for messages made before this field), and the rows of an agent turn
+    /// (empty: the message is drawn as one answer made from `content`).
+    var provider: ChatProvider? = nil
+    var segments: [ChatSegment] = []
+    /// A sentence the app wrote (an error kept in the chat), never a text that is still arriving.
+    var isNotice = false
+    /// Display only: the turn was asked with Mail on, so a coucou-mail block in this answer is a plan card.
+    var mailPlan = false
+    /// Something to draw: text, or the rows of an agent turn that has written no text yet. The chat list and the
+    /// scroll targets of the chat share this one rule.
+    var isShown: Bool { ChatVisibility.isShown(content: content, segments: segments) }
+}
+
+/// The one sign in session store of the app, over the Keychain item "hermes-agent-sessions".
+extension ChatMediaStore {
+    /// The one store of the app: it asks the agents with the one set of sign in sessions.
+    static let shared = ChatMediaStore(sessions: .shared)
+}
+
+extension HermesSessions {
+    static let shared = HermesSessions(storage: HermesSessionStorage(
+        load: { KeychainStore.shared.get("hermes-agent-sessions") ?? "" },
+        save: { value in
+            if value.isEmpty { KeychainStore.shared.remove("hermes-agent-sessions") }
+            else { KeychainStore.shared.set("hermes-agent-sessions", value: value) }
+        }))
 }

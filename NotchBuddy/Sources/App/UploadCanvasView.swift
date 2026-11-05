@@ -53,7 +53,7 @@ struct UploadCanvasView: View {
         ZStack(alignment: .topLeading) {
             // Primary: "Ask a question about it"
             Button {
-                withAnimation(.easeInOut(duration: 0.22)) { state.view = .prompt }
+                withAnimation(.easeInOut(duration: 0.22)) { state.showPromptSlot(carriesContext: true) }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                     UploadSequenceEngine.shared.deactivate()
                 }
@@ -165,7 +165,7 @@ struct UploadCanvasView: View {
             .foregroundColor(Color(hex:"#D5D7DB"))
         tCtx.draw(label, at: CGPoint(x: USC.TEXT_X, y: USC.TEXT_Y - 4), anchor: .leading)
 
-        let chips = ["PDF","Images","Code","Docs"]
+        let chips = [String(localized: "PDF"), String(localized: "Images"), String(localized: "Code"), String(localized: "Docs")]
         var cx = USC.TEXT_X
         for chip in chips {
             let chipText = Text(chip).font(.system(size:11, weight:.medium)).foregroundColor(Color(hex:"#B9BDC4"))
@@ -188,8 +188,8 @@ struct UploadCanvasView: View {
         let barLen = (x1-x0) * f.barReveal
 
         // Filename label
-        let name = state.droppedFile?.name ?? "file"
-        let label = Text("Uploading \(name)")
+        let name = state.droppedFile?.name ?? String(localized: "file")
+        let label = Text("Uploading \(Text(verbatim: name))")
             .font(.system(size:12.5, weight:.medium))
             .foregroundColor(Color(hex:"#A9ADB5"))
         pCtx.draw(label, at: CGPoint(x: x0, y: by-30), anchor: .leading)
@@ -262,8 +262,8 @@ struct UploadCanvasView: View {
         // Slide up: translate down by (1-alpha)*4
         cCtx.concatenate(CGAffineTransform(translationX: 0, y: CGFloat((1-f.chooseAlpha)*4)))
 
-        let name = state.droppedFile?.name ?? "file"
-        let titleText = Text("\(name) is ready.")
+        let name = state.droppedFile?.name ?? String(localized: "file")
+        let titleText = Text("\(Text(verbatim: name)) is ready.")
             .font(.system(size:14, weight:.semibold))
             .foregroundColor(Color(hex:"#F5F6F8"))
         cCtx.draw(titleText, at: CGPoint(x:114, y:80), anchor: .leading)

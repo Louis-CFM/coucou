@@ -232,7 +232,7 @@ final class MacUpdater: ObservableObject {
              .relaunching(let r), .manual(let r), .failed(let r, _): release = r
         default: release = latest
         }
-        let url = release?.pageURL ?? URL(string: "https://github.com/\(MacUpdate.owner)/\(MacUpdate.repo)/releases/latest")!
+        let url = release?.pageURL ?? URL(string: "https://github.com/\(MacUpdate.notesOwner)/\(MacUpdate.repo)/releases/latest")!
         NSWorkspace.shared.open(url)
     }
 

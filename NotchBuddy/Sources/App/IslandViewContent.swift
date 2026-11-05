@@ -19,7 +19,12 @@ struct IslandViewContent: View {
         case .uploading: UploadingView(state: state)
         case .choose:    ChooseView(state: state)
         case .mail:      MailView(state: state)
-        case .prompt:    PromptView(state: state)
+        case .prompt:
+            #if !APPSTORE
+            if let mode = state.cmuxPrompt { CmuxPromptView(state: state, bornMode: mode).id(mode) } else { PromptView(state: state) }
+            #else
+            PromptView(state: state)
+            #endif
         case .searching: SearchingView(state: state)
         case .result:    ResultView(state: state)
         case .note:      NoteView(state: state)
@@ -70,6 +75,14 @@ struct OverviewView: View {
 
     var agent: AgentTask? { state.focusTask }
 
+    /// Room for the ↗ button; cmux sessions also carry a reply button.
+    static func headerTrailing(for task: AgentTask) -> CGFloat {
+        #if !APPSTORE
+        if CmuxRouting.isCmuxTaskId(task.id) { return 58 }
+        #endif
+        return 36
+    }
+
     /// The focused pill's card (the left card at the notch).
     @ViewBuilder private var leftCard: some View {
         ZStack(alignment: .topLeading) {
@@ -82,6 +95,13 @@ struct OverviewView: View {
                         withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
                     })
                 } else {
+                    // A cmux session shows `folder (branch)` on a second line under its name.
+                    // A Hermes agent shows `Hermes · profile or host` in the same slot.
+                    #if !APPSTORE
+                    let cmuxLine: String? = (CmuxRouting.isCmuxTaskId(agent.id) || HermesPills.isTaskId(agent.id)) ? agent.subtitle : nil
+                    #else
+                    let cmuxLine: String? = HermesPills.isTaskId(agent.id) ? agent.subtitle : nil
+                    #endif
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: 6) {
                             Circle()
@@ -93,10 +113,11 @@ struct OverviewView: View {
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                                 .layoutPriority(1)
+                            if cmuxLine == nil {
                             Text({ () -> String in
                                 switch agent.source {
                                 case .claudeCode: return "Claude Code"
-                                case .agent:      return "Agent"
+                                case .agent:      return String(localized: "Agent")
                                 case .n8n:        return "n8n"
                                 }
                             }())
@@ -104,8 +125,9 @@ struct OverviewView: View {
                                 .foregroundColor(Color(hex: "#8E939C"))
                                 .lineLimit(1)
                                 .truncationMode(.tail)
+                            }
                             Spacer(minLength: 2)
-                            if agent.steps.count > 1 && agent.sessionLines.isEmpty {
+                            if agent.steps.count > 1 && agent.sessionLines.isEmpty && !HermesPills.isTaskId(agent.id) {
                                 Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
                                     .font(.system(size: 11))
                                     .foregroundColor(Color(hex: "#6B7079"))
@@ -114,7 +136,18 @@ struct OverviewView: View {
                         }
                         .padding(.top, 6)
                         .padding(.leading, 108)
-                        .padding(.trailing, 36)
+                        .padding(.trailing, Self.headerTrailing(for: agent))
+
+                        if let cmuxLine {
+                            Text(cmuxLine)
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .padding(.top, 1)
+                                .padding(.leading, 108)
+                                .padding(.trailing, Self.headerTrailing(for: agent))
+                        }
 
                         // Several sessions share the pill: one line each, instead of the steps.
                         Group {
@@ -127,7 +160,7 @@ struct OverviewView: View {
                             }
                         }
                             .frame(height: 44)
-                            .padding(.top, 6)
+                            .padding(.top, cmuxLine == nil ? 6 : 2)
                             .padding(.leading, 108)
                             .padding(.trailing, 12)
                     }
@@ -191,6 +224,23 @@ struct OverviewView: View {
                 .padding(.top, 8)
                 .padding(.trailing, 10)
                 .frame(maxWidth: .infinity, alignment: .trailing)
+                #if !APPSTORE
+                // Reply to the focused cmux session, next to the jump button.
+                if let a = agent, CmuxRouting.isCmuxTaskId(a.id) {
+                    Button(action: { CmuxHub.openReply(taskId: a.id) }) {
+                        Image(systemName: "arrowshape.turn.up.left")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundColor(Color(hex: "#5F646D"))
+                            .frame(width: 16, height: 16)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 8)
+                    .padding(.trailing, 32)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                #endif
             }
         }
     }
@@ -268,7 +318,15 @@ struct OverviewView: View {
 
     private func openAgentTarget(_ task: AgentTask?) {
         guard let task else { return }
+        if HermesPills.isTaskId(task.id) { openHermesAgentChat(taskId: task.id); return }
+        #if !APPSTORE
+        if CmuxJump.jump(for: task) { return }
+        #endif
         switch task.pill {
+        #if !APPSTORE
+        case CmuxRouting.hubPillId:
+            CmuxHub.openCmux()
+        #endif
         case "integration_claude":
             if ClaudeHost.activate(task.hostApp) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
@@ -342,6 +400,8 @@ struct OverviewView: View {
             switchChatProvider(.ollama)
         case "ai_lmstudio":
             switchChatProvider(.lmstudio)
+        case "ai_hermes":
+            switchChatProvider(.hermes)
         case "integration_music":
             #if !APPSTORE
             MusicController.shared.openMusic()
@@ -383,7 +443,7 @@ struct EmptyStateView: View {
                 }
                 Spacer()
                 PrimaryButton("Ask Claude") {
-                    state.view = .prompt
+                    state.showPromptSlot(carriesContext: true)
                 }
             }
             .padding(.leading, 118)
@@ -407,15 +467,24 @@ struct ApprovalView: View {
     }
 
     var body: some View {
+        // A Hermes agent has its own card (answers and long commands); every other agent keeps the card below as it is.
+        if HermesPills.isTaskId(approval?.pillId) {
+            HermesApprovalHost(state: state)
+        } else {
+            standardCard
+        }
+    }
+
+    private var standardCard: some View {
         // Captured when the card is drawn: a click answers the request that was on screen,
         // and is ignored if the card has moved on to the next one since.
         let shownId = approval?.id
         let isPlan = approval?.tool == "ExitPlanMode"
-        ZStack {
+        return ZStack {
             CardBackground(wash: .amber)
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 7) {
-                    AgentWho(task: asker, label: isPlan ? "has a plan ready" : "needs permission")
+                    AgentWho(task: asker, label: isPlan ? "has a plan ready" : "needs permission", origin: cmuxCardOriginLabel())
                     // Other requests waiting behind this one: "1/3".
                     if let count = approval?.queueCount, count > 1 {
                         Text(verbatim: "1/\(count)")
@@ -492,6 +561,20 @@ struct QuestionView: View {
         return task
     }
 
+    /// A cmux question names its workspace; every other source keeps the plain header.
+    private var cmuxQuestionPill: AgentTask? {
+        #if !APPSTORE
+        if let id = HookServer.shared.cmuxQuestionPillId, CmuxRouting.isCmuxTaskId(id) {
+            return state.tasks.first { $0.id == id }
+        }
+        #endif
+        return nil
+    }
+
+    private static func advanceTitle(_ isLast: Bool) -> String {
+        isLast ? String(localized: "Send") : String(localized: "Next")
+    }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .cyan)
@@ -508,7 +591,7 @@ struct QuestionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     // Header row: agent name + question counter + "Reply in terminal" link
                     HStack(spacing: 4) {
-                        AgentWho(task: asker, label: "Claude Code is asking")
+                        AgentWho(task: cmuxQuestionPill ?? asker, label: "Claude Code is asking", origin: cmuxCardOriginLabel())
                         // Questions from other sessions waiting behind this one: "+2".
                         if state.waitingQuestions.count > 1 {
                             Text(verbatim: "+\(state.waitingQuestions.count - 1)")
@@ -557,7 +640,7 @@ struct QuestionView: View {
                             .padding(.horizontal, 8).padding(.vertical, 5)
                             .background(Color.white.opacity(0.07))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
-                            Button(isLast ? "Send" : "Next") {
+                            Button(Self.advanceTitle(isLast)) {
                                 commitOtherAndProceed(q: q, qi: qi, isLast: isLast)
                             }
                             .buttonStyle(.plain)
@@ -642,7 +725,7 @@ struct QuestionView: View {
                     }
                     // Send/Next — only for multi-select (and not while "Other…" field is open)
                     if isMulti && !curOther {
-                        PrimaryButton(isLast ? "Send" : "Next") {
+                        PrimaryButton(verbatim: Self.advanceTitle(isLast)) {
                             proceedFromQuestion(q: q, qi: qi, isLast: isLast)
                         }
                         .disabled(!canProceed)
@@ -820,7 +903,22 @@ struct FinishedView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
-                    if state.focusTask?.pill == "agent_claude-desktop" {
+                    #if !APPSTORE
+                    let finishedInCmux = state.focusTask.map { CmuxRouting.isCmuxTaskId($0.id) } ?? false
+                    #else
+                    let finishedInCmux = false
+                    #endif
+                    if finishedInCmux {
+                        #if !APPSTORE
+                        if let t = state.focusTask {
+                            PrimaryButton("Reply") { CmuxHub.openReply(taskId: t.id) }
+                            SecondaryButton("Open terminal") {
+                                _ = CmuxJump.jump(for: t)
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                            }
+                        }
+                        #endif
+                    } else if state.focusTask?.pill == "agent_claude-desktop" {
                         // Sessions from the Claude desktop app live there, not in a terminal.
                         PrimaryButton("Open Claude") {
                             openClaudeDesktopApp()
@@ -938,6 +1036,8 @@ struct DiffCardView: View {
 
 struct DiffLineRowView: View {
     let line: DiffLine
+    /// Space at the sides inside the coloured band: the diff card draws none, the changed lines of a chat turn some.
+    var inset: CGFloat = 0
 
     private var bgColor: Color {
         switch line.kind {
@@ -976,6 +1076,7 @@ struct DiffLineRowView: View {
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.horizontal, inset)
         .background(bgColor)
         .frame(maxWidth: .infinity)
     }
@@ -1038,7 +1139,7 @@ struct UploadView: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(state.fileDragOver ? Color(hex: "#34D399") : Color(hex: "#D5D7DB"))
                 HStack(spacing: 6) {
-                    ForEach(["PDF", "Images", "Code", "Docs"], id: \.self) { label in
+                    ForEach([String(localized: "PDF"), String(localized: "Images"), String(localized: "Code"), String(localized: "Docs")], id: \.self) { label in
                         Text(label)
                             .font(.system(size: 11))
                             .padding(.horizontal, 8).padding(.vertical, 3)
@@ -1125,7 +1226,7 @@ struct UploadingView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 12))
                             .foregroundColor(Color(hex: "#34D399"))
-                        Text("  \(state.droppedFile?.name ?? "File")")
+                        Text("  \(state.droppedFile?.name ?? String(localized: "File"))")
                             .font(.system(size: 12.5, weight: .semibold))
                             .foregroundColor(Color(hex: "#34D399"))
                             .lineLimit(1).truncationMode(.middle)
@@ -1166,7 +1267,7 @@ struct ChooseView: View {
                     .font(.system(size: 14, weight: .semibold))
                 Text("What do you want to do with it?").font(.system(size: 12.5)).foregroundColor(Color(hex: "#9398A1"))
                 HStack(spacing: 8) {
-                    PrimaryButton("Ask a question") { state.view = .prompt }
+                    PrimaryButton("Ask a question") { state.showPromptSlot(carriesContext: true) }
                     SecondaryButton("Send by email") { state.view = .mail }
                 }
             }
@@ -1200,7 +1301,7 @@ struct MailView: View {
                 }
 
                 MailField(label: "To", placeholder: "address@example.com", text: $to)
-                MailField(label: "Subject", placeholder: state.droppedFile?.name ?? "Subject", text: $subject)
+                MailField(label: "Subject", placeholder: state.droppedFile?.name ?? String(localized: "Subject"), text: $subject)
 
                 // Body — TextEditor scrolls internally when text overflows
                 TextEditor(text: $bodyText)
@@ -1278,12 +1379,12 @@ struct MailView: View {
                 await MainActor.run {
                     isSending = false
                     if ok { onSuccess(recipient: recipient) }
-                    else  { statusMsg = "Resend error — check API key & sender." }
+                    else  { statusMsg = String(localized: "Resend error — check API key & sender.") }
                 }
             }
         } else if apiKey != nil && fromAddr == nil {
             // API key set but no sender — guide user instead of silent fallback
-            statusMsg = "Set sender address in Settings."
+            statusMsg = String(localized: "Set sender address in Settings.")
         } else {
             // No Resend — fallback to Mail
             sendViaAppleMail(to: to, subject: subj)
@@ -1375,7 +1476,7 @@ struct MailView: View {
             let message: String? = await Task.detached(priority: .userInitiated) {
                 var err: NSDictionary?
                 NSAppleScript(source: script)?.executeAndReturnError(&err)
-                return err.map { "Mail error: \($0["NSAppleScriptErrorMessage"] as? String ?? "unknown")" }
+                return err.map { String(localized: "Mail error: \($0["NSAppleScriptErrorMessage"] as? String ?? String(localized: "unknown"))") }
             }.value
             await MainActor.run {
                 isSending = false
@@ -1389,7 +1490,7 @@ struct MailView: View {
         state.voiceMailDraft = nil
         SoundEngine.shared.play("send")
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.wink)
-        state.noteMessage = "Email sent to \(recipient)."
+        state.noteMessage = String(localized: "Email sent to \(recipient).")
         state.view = .note
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -1434,8 +1535,42 @@ private struct DictationLanguageMenu: View {
 struct PromptView: View {
     @ObservedObject var state: AppState
     @State private var text: String = ""
-    @FocusState private var focused: Bool
+    /// The conversation the text in the field was loaded for; a send needs it to be the one on screen.
+    @State private var textOwner: PromptSlot.Content?
+    /// Keyboard focus of the chat field (`MultilineField` follows it both ways).
+    @State private var focused = false
     @State private var showModelPicker = false
+    /// Follow the newest text unless the user scrolled up.
+    @State private var pinned = true
+
+    /// The typing dots belong to the conversation on screen: a Hermes conversation shows them while one of its own
+    /// turns waits for text; the shared chat, while its own request runs (the override, unless it is a Hermes turn's).
+    private var typingShown: Bool {
+        let id = state.activeConversationID
+        if id.hermesAgent != nil { return ClaudeService.shared.isWaiting(id) }
+        return state.stateOverride != nil && !ClaudeService.shared.anyHermesWaiting
+    }
+
+    /// The field shows the draft of the conversation on screen. The owner of the text is set here, and only here.
+    private func loadDraft() {
+        // The chat view owns chat contents only: while a cmux prompt is open (its reply or new chat is on screen)
+        // it loads nothing and takes no owner, so it can never hold, or send, text meant for a cmux session.
+        guard let content = state.promptContent,
+              PromptSlot.chatMayLoadDraft(onScreen: content, cmuxPromptOpen: state.cmuxPromptIsOpenOrOpening) else { return }
+        textOwner = content
+        let draft = state.promptDrafts.text(for: content)
+        if text != draft { text = draft }
+    }
+
+    /// The field. An edit is filed under the owner of the text when it happens, not under what is on screen later.
+    private var fieldText: Binding<String> {
+        Binding(get: { text }, set: { setText($0) })
+    }
+
+    private func setText(_ new: String) {
+        text = new
+        if let owner = textOwner { state.promptDrafts.set(new, for: owner) }
+    }
 
     @State private var dictation = MacDictation()
     var body: some View {
@@ -1450,35 +1585,44 @@ struct PromptView: View {
                 if !state.chatHistory.isEmpty {
                     ScrollViewReader { proxy in
                         ScrollView(.vertical, showsIndicators: false) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(state.chatHistory) { msg in
-                                    ChatBubble(
-                                        message: msg,
-                                        isStreaming: state.stateOverride != nil
-                                            && msg.role == .assistant
-                                            && msg.id == state.chatHistory.last?.id
-                                    ).id(msg.id)
-                                }
-                                if state.stateOverride != nil {
-                                    HStack { TypingDotsView(); Spacer(minLength: 32) }
-                                        .id("typing")
-                                }
-                            }
+                            ChatTurnList(messages: state.chatHistory,
+                                         speaker: { state.chatSpeaker(for: $0) },
+                                         streamingLast: state.chatProvider == .hermes
+                                             ? state.hermesTurnRunning : ClaudeService.shared.sharedChatStreaming,
+                                         typing: typingShown)
+                            .environment(\.chatMedia, state.chatMediaContext)
                             .padding(.vertical, 2)
                         }
-                        .onChange(of: state.chatHistory) { _, _ in
-                            if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
+                        .pinnedScrollTracking($pinned) {
+                            if typingShown { proxy.scrollTo("typing", anchor: .bottom) }
+                            else if let last = state.chatHistory.last(where: { $0.isShown }) {
                                 proxy.scrollTo(last.id, anchor: .bottom)
                             }
                         }
-                        .onChange(of: state.stateOverride) { _, v in
-                            if v != nil {
+                        .onChange(of: state.chatHistory) { _, _ in
+                            guard pinned else { return }
+                            if let last = state.chatHistory.last(where: { $0.isShown }) {
+                                proxy.scrollTo(last.id, anchor: .bottom)
+                            }
+                        }
+                        .onChange(of: typingShown) { _, shown in
+                            guard pinned else { return }
+                            if shown {
                                 withAnimation { proxy.scrollTo("typing", anchor: .bottom) }
-                            } else if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
+                            } else if let last = state.chatHistory.last(where: { $0.isShown }) {
                                 withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                             }
                         }
                         .onAppear {
+                            pinned = true
+                            if let last = state.chatHistory.last {
+                                proxy.scrollTo(last.id, anchor: .bottom)
+                            }
+                        }
+                        // Another agent's chat keeps this scroll view: start at its last message, not where the
+                        // previous conversation was scrolled to.
+                        .onChange(of: state.activeConversationID) { _, _ in
+                            pinned = true
                             if let last = state.chatHistory.last {
                                 proxy.scrollTo(last.id, anchor: .bottom)
                             }
@@ -1524,13 +1668,8 @@ struct PromptView: View {
                 .padding(.horizontal, 10)
 
                 HStack(spacing: 8) {
-                    TextField(state.chatHistory.isEmpty ? String(localized: "Ask me anything…") : String(localized: "Continue…"), text: $text)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 13))
-                        .focused($focused)
-                        // No Writing Tools button on the island's fields: it lands near the notch (#936).
-                        .writingToolsBehavior(.disabled)
-                        .onSubmit { sendMessage() }
+                    MultilineField(placeholder: state.chatHistory.isEmpty ? String(localized: "Ask me anything…") : String(localized: "Continue…"),
+                                   text: fieldText, isFocused: $focused, onSubmit: sendMessage)
 
                     // Dictate instead of typing (on-device speech recognition when available)
                     Button {
@@ -1570,8 +1709,10 @@ struct PromptView: View {
             .padding(.top, 12)
             .padding(.bottom, 14)
         }
+        .overlay(alignment: .bottom) { ChatResizeGrip(state: state) }
         .padding(.bottom, 10)
-        .onAppear { focused = true }
+        .onAppear { focused = true; loadDraft() }
+        .onChange(of: state.promptContent) { _, _ in loadDraft() }
         .onChange(of: state.view) { _, view in
             if view == .prompt {
                 state.fetchModelsIfNeeded(for: state.chatProvider)
@@ -1583,14 +1724,13 @@ struct PromptView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandSendMessage)) { _ in
-            guard state.view == .prompt else { return }
+            guard state.view == .prompt, !state.cmuxPromptIsOpenOrOpening else { return }
             sendMessage()
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandNewConversation)) { _ in
             guard state.view == .prompt else { return }
-            text = ""
-            state.chatHistory = []
-            ClaudeService.shared.clearConversation()
+            setText("")
+            state.clearActiveConversation()
             focused = true
         }
     }
@@ -1606,12 +1746,27 @@ struct PromptView: View {
         }
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
-        text = ""
+        // The text was typed for the conversation it was loaded for. If another one is on screen now, nothing
+        // is sent: the field takes that conversation's draft and the text stays with its own.
+        // A chat send needs a chat content as owner and on screen, and no cmux prompt open. The refusal reloads the
+        // field only when this view is the one on screen (loadDraft refuses for a cmux content).
+        guard let onScreen = state.promptContent,
+              PromptSlot.chatTextMayDeliver(owner: textOwner, onScreen: onScreen, cmuxPromptOpen: state.cmuxPromptIsOpenOrOpening) else {
+            if state.view == .prompt { loadDraft() }
+            return
+        }
+        // The conversation on screen now: the bubble and the request both go to it, whatever is shown later.
+        let target = state.activeConversationID
+        // The demo does not talk to a Hermes agent. Refused here, like the refusal above: the text stays in the
+        // field, no bubble is added, no state changes, nothing is sent.
+        guard DemoGuard.mayChatSend(demoActive: DemoEngine.shared.isActive, targetIsHermesAgent: target.hermesAgent != nil) else { return }
+        setText("")
         focused = false
-        state.chatHistory.append(ChatMessage(role: .user, content: query))
+        pinned = true
+        state.updateChat(target) { $0.append(ChatMessage(role: .user, content: query)) }
         state.stateOverride = .thinking
         Task {
-            await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
+            await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state, target: target)
             await MainActor.run { focused = true }
         }
     }
@@ -1658,6 +1813,7 @@ struct ModelPickerView: View {
             let visibleProviders = ChatProvider.allCases.filter { p in
                 if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                if p == .hermes   { return !AppState.shared.hermesAgents.isEmpty      || state.chatProvider == .hermes }
                 // Cursor and Copilot answer only through the subscription switched on in Settings.
                 if p.subscriptionOnly { return state.usesSubscription(p) || state.chatProvider == p }
                 return true
@@ -1669,6 +1825,7 @@ struct ModelPickerView: View {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                             state.chatProvider = provider
                         }
+                        state.syncFocusToChat()
                         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
                         SoundEngine.shared.play("pop")
                     } label: {
@@ -1705,14 +1862,14 @@ struct ModelPickerView: View {
         .background(Color(hex: "#16171B"))
         .onAppear {
             // Force-refresh local providers every time the picker opens
-            if state.chatProvider.isLocal {
+            if state.chatProvider.isLocal || state.chatProvider == .hermes {
                 state.fetchedProviderModels[state.chatProvider] = nil
                 state.providerModelFetchError[state.chatProvider] = nil
             }
             state.fetchModelsIfNeeded(for: state.chatProvider)
         }
         .onChange(of: state.chatProvider) { _, provider in
-            if provider.isLocal {
+            if provider.isLocal || provider == .hermes {
                 state.fetchedProviderModels[provider] = nil
                 state.providerModelFetchError[provider] = nil
             }
@@ -1749,11 +1906,13 @@ struct ModelPickerView: View {
                             case .openai:    state.openAIChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
+                            case .hermes:    state.selectHermesAgent(model.id)
                             case .deepseek:  state.deepseekChatModel = model.id
                             case .qwen:      state.qwenChatModel = model.id
                             case .moonshot:  state.moonshotChatModel = model.id
                             case .cursor, .copilot: break
                             }
+                            state.syncFocusToChat()
                             isPresented = false
                             SoundEngine.shared.play("blip")
                         } label: {
@@ -1785,57 +1944,23 @@ struct ModelPickerView: View {
     }
 }
 
+/// The user's message: a bubble on the right. What an agent writes is drawn by `AgentTurnBlock`.
 struct ChatBubble: View {
     let message: ChatMessage
     var isStreaming: Bool = false
 
     var body: some View {
-        if !message.content.isEmpty {
+        if message.role == .user, !message.content.isEmpty {
             HStack(alignment: .top) {
-                if message.role == .user {
-                    Spacer(minLength: 32)
-                    Text(message.content)
-                        .font(.system(size: 12.5))
-                        .foregroundColor(Color(hex: "#F1F2F4"))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .textSelection(.enabled)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(Color.white.opacity(0.13))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
-                    Group {
-                        if isStreaming {
-                            TimelineView(.periodic(from: .now, by: 0.5)) { tl in
-                                let show = Int(tl.date.timeIntervalSinceReferenceDate / 0.5).isMultiple(of: 2)
-                                // A plan being written (```coucou-mail) is not shown as raw JSON.
-                                Text(MailPlanParser.extract(message.content).prose + (show ? "▌" : " "))
-                                    .font(.system(size: 12.5))
-                                    .foregroundColor(Color(hex: "#B0B5BE"))
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        } else {
-                            let parsed = MailPlanParser.extract(message.content)
-                            VStack(alignment: .leading, spacing: 6) {
-                                if !parsed.prose.isEmpty {
-                                    ChatMarkdownView(markdown: parsed.prose)
-                                }
-                                #if !APPSTORE
-                                if let plan = parsed.plan {
-                                    MailPlanCard(plan: plan, messageId: message.id)
-                                } else if let error = parsed.error {
-                                    Text(String(format: String(localized: "mail.plan.error %@"), error))
-                                        .font(.system(size: 10.5))
-                                        .foregroundColor(Color(hex: "#F5A524"))
-                                }
-                                #endif
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 8).padding(.vertical, 6)
-                    .background(Color.white.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    Spacer(minLength: 8)
-                }
+                Spacer(minLength: 32)
+                Text(message.content)
+                    .font(.system(size: 12.5))
+                    .foregroundColor(Color(hex: "#F1F2F4"))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Color.white.opacity(0.13))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
     }
@@ -2000,6 +2125,12 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_cmux":
+            #if !APPSTORE
+            return CmuxHub.isInstalled()
+            #else
+            return false
+            #endif
         case "agent_copilot":
             #if !APPSTORE
             return HookServer.copilotHooksInstalled()
@@ -2059,6 +2190,7 @@ struct IntegrationCardView: View {
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil || AppState.shared.subscriptionReady(.openai)
         case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
         case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
+        case "ai_hermes":     return !AppState.shared.hermesAgents.isEmpty
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -2188,6 +2320,12 @@ struct IntegrationCardView: View {
 
     private var statusLabel: String {
         #if !APPSTORE
+        if task.id == CmuxRouting.hubPillId {
+            if !CmuxHub.isInstalled() { return String(localized: "cmux not installed") }
+            let n = HookServer.shared.cmuxSessionCount
+            if n == 0 { return CmuxHub.isRunning() ? String(localized: "No session") : String(localized: "cmux is not running") }
+            return n == 1 ? String(localized: "1 session") : String(localized: "\(String(n)) sessions")
+        }
         if task.id == "integration_music" {
             if appState.musicAutomationDenied { return String(localized: "Automation not allowed") }
             if appState.musicPlaying { return String(format: String(localized: "Playing · %@"), MusicController.shared.trackTitle ?? String(localized: "Unknown")) }
@@ -2220,6 +2358,9 @@ struct IntegrationCardView: View {
             if task.pill == "agent_claude-desktop" { return String(localized: "Ready · no setup needed") }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
+                if provider == .hermes {
+                    return String(localized: "Connected · \(appState.activeHermesAgent?.shownName ?? "")")
+                }
                 if provider.isLocal {
                     let model = provider == .ollama ? appState.ollamaChatModel : appState.lmstudioChatModel
                     return String(localized: "Connected · \(model)")
@@ -2241,7 +2382,7 @@ struct IntegrationCardView: View {
             if isHooks { return String(localized: "Hooks not installed") }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
-                return provider.isLocal ? String(localized: "Not connected") : String(localized: "Key not configured")
+                return provider.isLocal || provider == .hermes ? String(localized: "Not connected") : String(localized: "Key not configured")
             }
             return String(localized: "Key not configured")
         }
@@ -2340,7 +2481,7 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
+                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? String(localized: "Agent"))
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
@@ -2378,11 +2519,11 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(task.pill == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp)
-                                                         : PillCatalog.definition(for: task.id)?.name ?? task.name)
+                    Text(verbatim: task.pill == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp)
+                                                                   : PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
-                    Text(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration")
+                    Text(PillCatalog.definition(for: task.id)?.subtitle ?? String(localized: "Integration"))
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                     Spacer(minLength: 2)
@@ -2446,6 +2587,19 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                         }
+                    } else if task.id == "integration_cmux" {
+                        #if !APPSTORE
+                        if isConfigured {
+                            Button("New chat") { CmuxHub.open(.newChat) }
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(Color(hex: task.color).opacity(0.85))
+                                .buttonStyle(.plain)
+                            Button("Open cmux") { CmuxHub.openCmux() }
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(Color(hex: task.color).opacity(0.85))
+                                .buttonStyle(.plain)
+                        }
+                        #endif
                     } else if task.id == "integration_music" {
                         #if !APPSTORE
                         Button("Open Music") { MusicController.shared.openMusic() }
@@ -2481,7 +2635,7 @@ struct IntegrationCardView: View {
                         }) {
                             HStack(spacing: 5) {
                                 Circle().fill(accent).frame(width: 5, height: 5)
-                                Text(task.steps.first ?? "Workflow")
+                                Text(task.steps.first ?? String(localized: "Workflow"))
                                     .font(.system(size: 11))
                                     .foregroundColor(Color(hex: "#C5C8CD"))
                                     .lineLimit(1).truncationMode(.tail)
@@ -2702,7 +2856,7 @@ struct VercelDetailView: View {
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#6B7079"))
                     }
-                    Text(deployment.timeAgo + " ago")
+                    Text(deployment.isJustNow ? String(localized: "just now ago") : String(localized: "\(deployment.timeAgo) ago"))
                         .font(.system(size: 10))
                         .foregroundColor(Color(hex: "#6B7079"))
                 }
@@ -2916,8 +3070,8 @@ struct GitHubPulseCardView: View {
                     if n == 0 { return "0" }
                     let failing = pulse.myPRs.filter { $0.ci == .failure }.count
                     let pending = pulse.myPRs.filter { $0.ci == .pending }.count
-                    if failing > 0 { return "\(n) · \(failing) failing" }
-                    if pending > 0 { return "\(n) · running" }
+                    if failing > 0 { return String(localized: "\(String(n)) · \(String(failing)) failing") }
+                    if pending > 0 { return String(localized: "\(String(n)) · running") }
                     return "\(n)"
                 }()
                 GitHubStatRow(
@@ -2940,18 +3094,18 @@ struct GitHubPulseCardView: View {
                     switch mainWorst {
                     case .failure:
                         let n = pulse.mainCI.filter { $0.ci == .failure }.count
-                        return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
+                        return ("xmark.octagon.fill", "#F4505E", String(localized: "\(String(n)) failing"))
                     case .pending:
-                        return ("checkmark.seal.fill", "#F5A524", "running")
+                        return ("checkmark.seal.fill", "#F5A524", String(localized: "running"))
                     case .success:
-                        return ("checkmark.seal.fill", "#22C55E", "all green")
+                        return ("checkmark.seal.fill", "#22C55E", String(localized: "all green"))
                     case .unknown:
-                        return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
+                        return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? String(localized: "no repos") : String(localized: "unknown"))
                     }
                 }()
                 GitHubStatRow(
                     icon: ciIcon, iconColor: ciIconColor,
-                    label: "Default branch CI", value: ciValue
+                    label: String(localized: "Default branch CI"), value: ciValue
                 ) { onTapSection(.mainCI) }
             }
             .padding(.top, 6)
@@ -3012,7 +3166,7 @@ struct GitHubDetailView: View {
         switch section {
         case .myPRs:    return String(localized: "My PRs")
         case .toReview: return String(localized: "To review")
-        case .mainCI:   return "Default branch CI"
+        case .mainCI:   return String(localized: "Default branch CI")
         case .activity: return String(localized: "Activity")
         }
     }
@@ -3151,15 +3305,15 @@ private struct GitHubActivityDetailContent: View {
             let label: String
             switch day.count {
             case 0:  label = String(localized: "No contributions")
-            case 1:  label = "1 contribution"
-            default: label = "\(day.count) contributions"
+            case 1:  label = String(localized: "1 contribution")
+            default: label = String(localized: "\(String(day.count)) contributions")
             }
             return "\(activityDateLabel(day.date)) · \(label)"
         }
         guard let act = activity else { return "" }
         let total = activityTotalLabel(act.total)
-        if let s = stats { return "\(total) past year · \(s.totalRepos) repos" }
-        return "\(total) past year"
+        if let s = stats { return String(localized: "\(total) past year · \(String(s.totalRepos)) repos") }
+        return String(localized: "\(total) past year")
     }
 
     var body: some View {
@@ -3241,8 +3395,10 @@ private struct GitHubActivityDetailContent: View {
         guard parts.count == 3,
               let month = Int(parts[1]), month >= 1 && month <= 12,
               let day   = Int(parts[2]) else { return dateStr }
-        let months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-        return "\(months[month - 1]) \(day)"
+        let months = [String(localized: "Jan"), String(localized: "Feb"), String(localized: "Mar"), String(localized: "Apr"),
+                      String(localized: "May"), String(localized: "Jun"), String(localized: "Jul"), String(localized: "Aug"),
+                      String(localized: "Sep"), String(localized: "Oct"), String(localized: "Nov"), String(localized: "Dec")]
+        return String(localized: "\(months[month - 1]) \(String(day))")
     }
 
     private func activityTotalLabel(_ n: Int) -> String {
@@ -3325,9 +3481,9 @@ private struct GitHubRepoCIRowView: View {
 
     private var ciStateWord: String? {
         switch repo.ci {
-        case .failure: return "failing"
-        case .pending: return "running"
-        case .success: return "passing"
+        case .failure: return String(localized: "failing")
+        case .pending: return String(localized: "running")
+        case .success: return String(localized: "passing")
         case .unknown: return nil
         }
     }
@@ -3420,7 +3576,7 @@ struct GitHubStatsCardView: View {
 private struct StatRow: View {
     let icon: String
     let color: String
-    let label: String
+    let label: LocalizedStringKey
     let value: String
 
     var body: some View {
@@ -3512,7 +3668,7 @@ private struct StripePaymentRow: View {
         let accent = payment.isSuccess ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
         HStack(spacing: 5) {
             Circle().fill(accent).frame(width: 5, height: 5)
-            Text(payment.description ?? "Payment")
+            Text(payment.description ?? String(localized: "Payment"))
                 .font(.system(size: 11))
                 .foregroundColor(Color(hex: "#C5C8CD"))
                 .lineLimit(1).truncationMode(.tail)
@@ -3898,7 +4054,7 @@ struct N8nDetailView: View {
 
                 Circle().fill(accent).frame(width: 6, height: 6)
 
-                Text(task.steps.first ?? "Workflow")
+                Text(task.steps.first ?? String(localized: "Workflow"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
                     .lineLimit(1).truncationMode(.middle)
@@ -4007,6 +4163,7 @@ struct TickerView: View {
 
     @State private var displayIndex: Int = -1
     @State private var isTransitioning = false
+    @State private var hermesSettle = 0   // Hermes pills: counts the ends of a transition
 
     private let completedScale: CGFloat = 11.5 / 13   // 0.885 — matches completed font size
 
@@ -4060,6 +4217,7 @@ struct TickerView: View {
             }
         }
         .onChange(of: task?.steps.count) { _, _ in
+            guard !isHermesCard else { return }   // a Hermes pill is followed by the signature below
             guard let task, !task.steps.isEmpty, !isTransitioning else { return }
             let newIdx = task.stepIndex
             if displayIndex < 0 {
@@ -4070,6 +4228,37 @@ struct TickerView: View {
             }
             guard newIdx != displayIndex else { return }
             tickerAnimate(to: newIdx)
+        }
+        // Hermes pills only (nil for every other pill, so this never fires for them): the card follows the count and
+        // the last line, and asks again when a transition ends (`hermesSettle`).
+        .onChange(of: hermesSignature) { _, _ in hermesSync() }
+        .onChange(of: hermesSettle) { _, _ in hermesSync() }
+    }
+
+    private var isHermesCard: Bool { HermesPills.isTaskId(task?.id) }
+
+    private var hermesSignature: HermesTicker.Signature? {
+        guard isHermesCard, let task else { return nil }
+        return HermesTicker.Signature(count: task.steps.count, last: task.steps.last)
+    }
+
+    /// What the card of a Hermes pill shows for its list now: the placeholder when empty, the new row otherwise.
+    private func hermesSync() {
+        guard isHermesCard, let task else { return }
+        switch HermesTicker.tickerPlan(count: task.steps.count, shownIndex: displayIndex, shownLast: rowB,
+                                       last: task.steps.last, transitioning: isTransitioning) {
+        case .nothing:
+            return
+        case .placeholder:
+            displayIndex = -1
+            rowA = "…"
+            rowB = "…"
+        case .show(let idx):
+            displayIndex = idx
+            rowA = idx > 0 ? steps[max(0, idx - 1)] : "…"
+            rowB = steps[min(idx, steps.count - 1)]
+        case .animate(let idx):
+            tickerAnimate(to: idx)
         }
     }
 
@@ -4108,6 +4297,7 @@ struct TickerView: View {
             self.rowCOffset      = 44
             self.rowCOpacity     = 0
             self.isTransitioning = false
+            if self.isHermesCard { self.hermesSettle += 1 }
         }
     }
 }
@@ -4203,6 +4393,8 @@ struct TickerRowView: View {
 
 struct TickerShimmerText: View {
     let text: String
+    /// 13 in the ticker; the chat step rows use a smaller one.
+    var size: CGFloat = 13
     var paused: Bool = false
     @Environment(\.islandViewActive) private var viewActive
 
@@ -4214,7 +4406,7 @@ struct TickerShimmerText: View {
             // phase sweeps -0.1 → 1.1 so white peak enters from left and exits right
             let phase = p * 1.2 - 0.1
             Text(text)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: size, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .foregroundStyle(LinearGradient(stops: [
@@ -4232,33 +4424,81 @@ struct AgentPillsView: View {
     @ObservedObject var state: AppState
     @State private var swapping = false
 
+    /// Pills the card shows besides the focused one. Up to 4 fill the card as before; more scroll (GitHub build).
+    private let visibleCount = 4
+
+    private var others: [AgentTask] {
+        state.tasks.filter { $0.id != state.focusId }
+    }
+
+    #if APPSTORE
+    // The App Store build keeps the four places of the board (SessionBoard.slots), "+N" for the waiting ones left over.
+    private var slots: [SessionBoard.Slot] { state.gridSlots }
+    #else
+    // GitHub build: every pill keeps its place and the card scrolls past four; a waiting one is scrolled into view.
+    private var slots: [SessionBoard.Slot] { others.map { SessionBoard.Slot.pill($0.id) } }
+    #endif
+
+    /// Pills that carry an approval badge, in display order: one that is off screen scrolls into view.
+    private var approvalIds: [String] {
+        others.filter { $0.pillBadge == .approval }.map { $0.id }
+    }
+
     private let columns = [
         GridItem(.flexible(), spacing: 4),
         GridItem(.flexible(), spacing: 4)
     ]
 
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(state.gridSlots, id: \.id) { slot in
-                    switch slot {
-                    case .pill(let id):
-                        if let task = state.tasks.first(where: { $0.id == id }) { pill(task) }
-                    case .waiting(let ids):
-                        WaitingStackPill(count: ids.count) {
-                            swapping = true
-                            state.setFocus(ids[0])
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
+    private var grid: some View {
+        LazyVGrid(columns: columns, spacing: 4) {
+            ForEach(slots, id: \.id) { slot in
+                switch slot {
+                case .pill(let id):
+                    if let task = state.tasks.first(where: { $0.id == id }) { pill(task) }
+                case .waiting(let ids):
+                    WaitingStackPill(count: ids.count) {
+                        swapping = true
+                        state.setFocus(ids[0])
+                        SoundEngine.shared.play("blip")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
                 }
             }
-            .padding(.horizontal, 8)
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 8)
+    }
+
+    var body: some View {
+        if slots.count <= visibleCount {
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                grid
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            // More pills than fit: the same grid scrolls, top aligned, with a short fade at the bottom as the
+            // only cue.
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    grid.padding(.vertical, 8)
+                }
+                .mask(
+                    VStack(spacing: 0) {
+                        Rectangle()
+                        LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                            .frame(height: 10)
+                    }
+                )
+                .onChange(of: approvalIds) { _, ids in
+                    if let first = ids.first { withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(first, anchor: .center) } }
+                }
+                .onAppear {
+                    if let first = approvalIds.first { proxy.scrollTo(first, anchor: .center) }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 
     @ViewBuilder
@@ -4267,21 +4507,21 @@ struct AgentPillsView: View {
         if task.id == "integration_music" {
             MusicPill(task: task, state: state, swapping: $swapping) {
                 swapping = true
-                state.setFocus(task.id)
+                state.setFocus(task.id, byPointer: true)
                 SoundEngine.shared.play("blip")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
             }
         } else if task.id == "integration_spotify" {
             SpotifyPill(task: task, swapping: $swapping) {
                 swapping = true
-                state.setFocus(task.id)
+                state.setFocus(task.id, byPointer: true)
                 SoundEngine.shared.play("blip")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
             }
         } else {
             AgentPill(task: task, state: state, swapping: $swapping) {
                 swapping = true
-                state.setFocus(task.id)
+                state.setFocus(task.id, byPointer: true)
                 SoundEngine.shared.play("blip")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
             }
@@ -4289,7 +4529,7 @@ struct AgentPillsView: View {
         #else
         AgentPill(task: task, state: state, swapping: $swapping) {
             swapping = true
-            state.setFocus(task.id)
+            state.setFocus(task.id, byPointer: true)
             SoundEngine.shared.play("blip")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
         }
@@ -4342,11 +4582,26 @@ struct AgentPill: View {
 
     // The Claude pill shows "VS Code" (or "Claude Code" for a terminal session) regardless of project name
     private var displayName: String {
-        task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp) : task.name
+        if task.id == "integration_claude" { return ClaudeHost.pillName(hostApp: task.hostApp) }
+        #if !APPSTORE
+        if CmuxRouting.isCmuxTaskId(task.id) { return CmuxRouting.pillLabel(task.name) }
+        #endif
+        return task.name
+    }
+
+    // Only cmux session labels (pane titles, often long) are kept clear of the mascot
+    // (8 + 22 + 4); every other pill keeps its original full-width label.
+    private var labelInset: CGFloat {
+        #if !APPSTORE
+        if CmuxRouting.isCmuxTaskId(task.id) { return 34 }
+        #endif
+        return 0
     }
 
     var body: some View {
-        Button(action: { onTap() }) {
+        Button(action: {
+            onTap()   // a Hermes pill opens its chat through setFocus(byPointer:)
+        }) {
             ZStack(alignment: .topTrailing) {
                 ZStack {
                     Capsule()
@@ -4369,6 +4624,7 @@ struct AgentPill: View {
                                          : Color(hex: "#6B7079"))
                         .lineLimit(1)
                         .truncationMode(.tail)
+                        .padding(.horizontal, labelInset)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .frame(maxWidth: .infinity)
@@ -4666,8 +4922,8 @@ struct WardrobeView: View {
         if let h = hoveredOutfit {
             if h == .auto {
                 let seasonal = Outfit.seasonal(for: Date(), calendar: .current)
-                let name = seasonal == .none ? "None" : seasonal.displayName
-                return "Auto · follows the seasons (now: \(name))"
+                let name = seasonal == .none ? String(localized: "None") : seasonal.displayName
+                return String(localized: "Auto · follows the seasons (now: \(name))")
             }
             return h.displayName
         }
@@ -4675,8 +4931,8 @@ struct WardrobeView: View {
         let sel = state.mochiOutfitSelection
         if sel == .auto {
             let seasonal = Outfit.seasonal(for: Date(), calendar: .current)
-            let name = seasonal == .none ? "None" : seasonal.displayName
-            return "Auto · \(name)"
+            let name = seasonal == .none ? String(localized: "None") : seasonal.displayName
+            return String(localized: "Auto · \(name)")
         }
         return sel.displayName
     }
@@ -5014,6 +5270,8 @@ extension CardBackground where Content == EmptyView {
 struct AgentWho: View {
     let task: AgentTask?
     let label: String
+    /// Name of the session inside a cmux workspace that has several (the card of a helper).
+    var origin: String? = nil
 
     var body: some View {
         HStack(spacing: 7) {
@@ -5022,8 +5280,21 @@ struct AgentWho: View {
                 Text(task.name).font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
             }
             Text(LocalizedStringKey(label)).font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
+            if let origin {
+                Text(verbatim: "· " + origin).font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C")).lineLimit(1)
+            }
         }
     }
+}
+
+/// The session a cmux card belongs to, when its workspace has several. nil for every other card.
+@MainActor
+func cmuxCardOriginLabel() -> String? {
+    #if !APPSTORE
+    return HookServer.shared.cmuxCardOrigin
+    #else
+    return nil
+    #endif
 }
 
 struct CodeBlock: View {
@@ -5077,7 +5348,7 @@ struct ContextChip: View {
 }
 
 struct MailField: View {
-    let label: String
+    let label: LocalizedStringKey
     let placeholder: String
     @Binding var text: String
 
@@ -5327,7 +5598,7 @@ struct SettingsIslandView: View {
 }
 
 struct StatusBadge: View {
-    let label: String
+    let label: LocalizedStringKey
     let ok: Bool
 
     var body: some View {
@@ -5359,6 +5630,17 @@ func switchChatProvider(_ provider: ChatProvider) {
         SoundEngine.shared.play("pop")
     }
     state.view = .prompt
+    state.syncFocusToChat()
+}
+
+/// A Hermes agent pill: selects the Hermes provider and that agent (each agent keeps its own conversation),
+/// then opens the chat prompt so the user can type to it at once.
+@MainActor
+func openHermesAgentChat(taskId: String) {
+    let state = AppState.shared
+    guard let name = HermesPills.agentName(forTaskId: taskId, in: state.hermesAgents.map { $0.name }) else { return }
+    state.selectHermesAgent(name)
+    switchChatProvider(.hermes)
 }
 
 extension Color {

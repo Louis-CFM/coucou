@@ -109,7 +109,7 @@ enum IntentParser {
                 }
             }
             // "change la pilule principale pour Codex" / "pilule principale c est X"
-            for sep in ["pour", "c est", "est"] {
+            for sep in ["pour", "c est", "est"] + VoicePT.mainSeparators {
                 let sepWords = sep.split(separator: " ").map(String.init)
                 if let sepStart = indexOfSequence(sepWords, in: fwords) {
                     let entity = fwords[(sepStart + sepWords.count)...].joined(separator: " ")
@@ -133,9 +133,10 @@ enum IntentParser {
             }
         }
         // "Cursor comme pilule principale"
-        if fwords.contains("comme") && (fwords.contains("principale") || fwords.contains("principal")) {
-            if let comIdx = fwords.firstIndex(of: "comme"), comIdx > 0 {
-                let entity = fwords[0..<comIdx].joined(separator: " ")
+        if (fwords.contains("comme") || fwords.contains("como")) && (fwords.contains("principale") || fwords.contains("principal")) {
+            if let comIdx = fwords.firstIndex(where: { $0 == "comme" || $0 == "como" }), comIdx > 0 {
+                // "coloca o Cursor como principal": the verb is not part of the name.
+                let entity = fwords[0..<comIdx].drop(while: { VoicePT.mainLeadVerbs.contains($0) }).joined(separator: " ")
                 let clean  = stripArticles(entity)
                 if !clean.isEmpty,
                    let id = EntityResolver.resolve(clean, from: pills, category: .workspace) {
@@ -167,8 +168,8 @@ enum IntentParser {
         // "tu peux lancer ma playlist" / "play my Focus playlist" (English puts the name
         // before the word): take what sits between the verb and "playlist", or ask.
         if fwords.last == "playlist" || fwords.last == "playlists",
-           let v = fwords.firstIndex(where: { ["lance", "mets", "met", "joue", "balance", "play", "start"].contains($0) }) {
-            let fillers: Set<String> = ["my", "the", "a", "la", "le", "les", "ma", "mon", "une", "un"]
+           let v = fwords.firstIndex(where: { ["lance", "mets", "met", "joue", "balance", "play", "start"].contains($0) || VoicePT.playlistVerbs.contains($0) }) {
+            let fillers: Set<String> = ["my", "the", "a", "la", "le", "les", "ma", "mon", "une", "un", "o", "os", "as", "uma"]
             let between = (v + 1)..<(fwords.count - 1)
             let name = between.filter { !fillers.contains(fwords[$0]) }
                 .map { $0 < frawWords.count ? frawWords[$0] : fwords[$0] }
@@ -305,7 +306,7 @@ enum IntentParser {
     /// "Cursor" alone is unknown → falls back to the single-intent parser which returns
     /// `.pillAddMultiple`).
     static func parseMultiAction(_ raw: String, pills: [PillDefinition] = []) -> [VoiceIntent]? {
-        let conjunctions: Set<String> = ["et", "puis", "ensuite", "and", "then"]
+        let conjunctions: Set<String> = ["et", "puis", "ensuite", "and", "then"].union(VoicePT.conjunctions)
 
         // 1. Commas (before normalise, which strips punctuation).
         let commaParts = raw.split(separator: ",")
@@ -345,14 +346,14 @@ enum IntentParser {
     }
 
     /// Action verbs that start a new action inside one sentence (normalised forms,
-    /// imperative and infinitive, FR + EN).
+    /// imperative and infinitive, FR + EN + PT).
     static let segmentVerbs: Set<String> = [
         "ajoute", "ajouter", "rajoute", "rajouter", "mets", "met", "mettre", "remets", "remettre",
         "active", "activer", "enleve", "enlever", "retire", "retirer", "supprime", "supprimer",
         "vire", "virer", "degage", "degager", "desactive", "desactiver", "cache", "cacher",
         "lance", "lancer", "joue", "jouer",
         "add", "remove", "put", "enable", "disable", "play",
-    ]
+    ].union(VoicePT.segmentVerbs)
 
     /// "ajoute Stripe enleve Vercel" → ["ajoute Stripe", "enleve Vercel"].
     /// A new segment starts at an action verb only when the current one already has a verb.
@@ -371,7 +372,7 @@ enum IntentParser {
         }
         if !cur.isEmpty { parts.append(cur) }
         // "mets Gemini et | enlève GitHub": the joining word stays out of both pieces.
-        let joins: Set<String> = ["et", "puis", "ensuite", "and", "then"]
+        let joins: Set<String> = ["et", "puis", "ensuite", "and", "then"].union(VoicePT.conjunctions)
         return parts.compactMap { p in
             var p = p
             while let l = p.last,  joins.contains(normalise(l)) { p.removeLast() }
@@ -384,7 +385,7 @@ enum IntentParser {
     private static func stripTrailingInstead(
         _ words: [String], rawWords: [String]
     ) -> ([String], [String]) {
-        let tails: [[String]] = [["a", "la", "place"], ["a", "sa", "place"], ["instead"]]
+        let tails: [[String]] = [["a", "la", "place"], ["a", "sa", "place"], ["instead"]] + VoicePT.trailingTails
         for t in tails where words.count > t.count && Array(words.suffix(t.count)) == t {
             let n = words.count - t.count
             return (Array(words.prefix(n)), Array(rawWords.prefix(min(n, rawWords.count))))
@@ -397,12 +398,20 @@ enum IntentParser {
     private static func stripTrailingLocation(
         _ words: [String], rawWords: [String]
     ) -> ([String], [String]) {
-        guard let i = words.lastIndex(of: "dans"), i > 0 else { return (words, rawWords) }
+        guard let i = words.lastIndex(where: { $0 == "dans" || VoicePT.locationPrepositions.contains($0) }),
+              i > 0 else { return (words, rawWords) }
         let tail = Array(words[(i + 1)...])
         let articles: Set<String> = ["les", "la", "le", "l"]
         let places:   Set<String> = ["pilules", "pilule", "notch", "encoche", "barre", "liste"]
-        let ok = (tail.count == 1 && articles.contains(tail[0]))
+        let ok: Bool
+        if words[i] == "dans" {
+            ok = (tail.count == 1 && articles.contains(tail[0]))
               || (tail.count == 2 && articles.contains(tail[0]) && places.contains(tail[1]))
+        } else {
+            // "… no notch", "… nas pilulas", "… na minha barra" (the contraction already holds the article).
+            ok = (tail.count == 1 && VoicePT.places.contains(tail[0]))
+              || (tail.count == 2 && ["o", "a", "os", "as"].contains(tail[0]) && VoicePT.places.contains(tail[1]))
+        }
         guard ok else { return (words, rawWords) }
         return (Array(words[..<i]), Array(rawWords[..<min(i, rawWords.count)]))
     }
@@ -442,7 +451,7 @@ enum IntentParser {
         let fillers:  Set<String>    = ["un", "peu", "s", "il", "te", "plait", "moi",
                                         "truc", "chose", "machin", "bidule",
                                         "pile", "piles", "aussi", "stp"]
-        let synonyms: [String: String] = ["ma": "la", "mon": "le", "mes": "les"]
+        let synonyms: [String: String] = ["ma": "la", "mon": "le", "mes": "les"].merging(VoicePT.possessives) { fr, _ in fr }
         var fw: [String] = []
         var fr: [String] = []
         for (w, r) in zip(words, rawWords) {
@@ -503,9 +512,14 @@ enum IntentParser {
     private static func stripArticles(_ name: String) -> String {
         let articles: Set<String> = ["du", "de", "la", "le", "les", "des", "l",
                                       "some", "the", "a", "an", "pilule", "pill",
-                                      "pile", "piles", "ma", "mon", "mes"]
+                                      "pile", "piles", "ma", "mon", "mes"].union(VoicePT.articles)
         var ws = name.split(separator: " ").map(String.init)
-        while let first = ws.first, articles.contains(first) { ws.removeFirst() }
+        var afterPT = false
+        while let first = ws.first {
+            if articles.contains(first) { afterPT = afterPT || VoicePT.articles.contains(first) }
+            else if !(afterPT && VoicePT.articlesAfterArticle.contains(first)) { break }
+            ws.removeFirst()
+        }
         return ws.joined(separator: " ")
     }
 
@@ -513,19 +527,24 @@ enum IntentParser {
     private static func stripArticlesRaw(_ name: String) -> String {
         let articles: Set<String> = ["du", "de", "la", "le", "les", "des", "l",
                                       "some", "the", "a", "an", "pilule", "pill",
-                                      "pile", "piles", "ma", "mon", "mes"]
+                                      "pile", "piles", "ma", "mon", "mes"].union(VoicePT.articles)
         var ws = name.split(separator: " ").map(String.init)
-        while let first = ws.first, articles.contains(first.lowercased()) { ws.removeFirst() }
+        var afterPT = false
+        while let first = ws.first?.lowercased() {
+            if articles.contains(first) { afterPT = afterPT || VoicePT.articles.contains(first) }
+            else if !(afterPT && VoicePT.articlesAfterArticle.contains(first)) { break }
+            ws.removeFirst()
+        }
         return ws.joined(separator: " ")
     }
 
-    /// Split entity string by "et"/"and" conjunctions.
+    /// Split entity string by "et"/"and"/"e" conjunctions.
     private static func splitByConjunction(_ name: String) -> [String] {
         let words = name.split(separator: " ").map(String.init)
         var parts: [[String]] = []
         var cur:   [String]  = []
         for w in words {
-            if w == "et" || w == "and" {
+            if w == "et" || w == "and" || w == "e" {
                 if !cur.isEmpty { parts.append(cur); cur = [] }
             } else { cur.append(w) }
         }
@@ -550,7 +569,7 @@ enum IntentParser {
     private static func extractMusicPlayTarget(
         _ words: [String], pills: [PillDefinition]
     ) -> MusicTarget? {
-        for preposition in ["sur", "on"] {
+        for preposition in ["sur", "on"] + VoicePT.musicTargetPrepositions {
             guard let idx = words.lastIndex(of: preposition), idx + 1 < words.count else { continue }
             let afterWords = Array(words[(idx+1)...])
             let entity = afterWords.joined(separator: " ")
@@ -565,8 +584,8 @@ enum IntentParser {
     // MARK: - pillReplace extraction
 
     private static func extractReplace(_ words: [String], pills: [PillDefinition]) -> (String, String)? {
-        let startTriggers: [[String]] = [["remplace"], ["replace"], ["echange"], ["swap"], ["change"]]
-        let separators = ["par", "for", "contre", "with", "by"]
+        let startTriggers: [[String]] = [["remplace"], ["replace"], ["echange"], ["swap"], ["change"]] + VoicePT.replaceStarts
+        let separators = ["par", "for", "contre", "with", "by"] + VoicePT.replaceSeparators
         for start in startTriggers {
             guard contains(words, sequence: start) else { continue }
             guard let startIdx = indexOfSequence(start, in: words) else { continue }
@@ -587,10 +606,10 @@ enum IntentParser {
     /// "mets (la pilule) X à la place de Y" / "X au lieu de Y" / "X instead of Y" → (Y, X).
     private static func extractInsteadOf(_ words: [String], pills: [PillDefinition]) -> (String, String)? {
         let markers: [[String]] = [["a", "la", "place", "de"], ["a", "la", "place", "du"],
-                                   ["au", "lieu", "de"], ["au", "lieu", "du"], ["instead", "of"]]
+                                   ["au", "lieu", "de"], ["au", "lieu", "du"], ["instead", "of"]] + VoicePT.insteadMarkers
         let leadVerbs: Set<String> = ["mets", "met", "remets", "ajoute", "rajoute", "active",
-                                      "affiche", "put", "add", "use", "utilise", "prends"]
-        let noise: Set<String> = ["la", "le", "les", "l", "pilule", "pilules", "the", "pill", "me", "moi"]
+                                      "affiche", "put", "add", "use", "utilise", "prends"].union(VoicePT.insteadLeadVerbs)
+        let noise: Set<String> = ["la", "le", "les", "l", "pilule", "pilules", "the", "pill", "me", "moi"].union(VoicePT.insteadNoise)
         for m in markers {
             guard let i = indexOfSequence(m, in: words), i > 0, i + m.count < words.count else { continue }
             let left  = words[..<i].filter { !leadVerbs.contains($0) && !noise.contains($0) }
@@ -607,14 +626,14 @@ enum IntentParser {
     // MARK: - pillOnly extraction
 
     private static func extractOnly(_ words: [String], pills: [PillDefinition]) -> [String]? {
-        let starts: [[String]] = [["garde", "seulement"], ["keep", "only"], ["garder", "seulement"]]
+        let starts: [[String]] = [["garde", "seulement"], ["keep", "only"], ["garder", "seulement"]] + VoicePT.onlyStarts
         for start in starts {
             guard contains(words, sequence: start) else { continue }
             let rest = Array(words[start.count...])
             var parts: [[String]] = []
             var cur:   [String]  = []
             for w in rest {
-                if w == "et" || w == "and" { if !cur.isEmpty { parts.append(cur); cur = [] } }
+                if w == "et" || w == "and" || w == "e" { if !cur.isEmpty { parts.append(cur); cur = [] } }
                 else { cur.append(w) }
             }
             if !cur.isEmpty { parts.append(cur) }
@@ -646,13 +665,13 @@ enum IntentParser {
         ["could", "you"],
         ["can", "you"],
         ["please"],
-    ]
+    ] + VoicePT.politenessPrefixes
 
     /// Spoken interjections dropped from the start of a phrase (normalised).
     private static let interjections: Set<String> = [
         "merci", "ouais", "oui", "ok", "okay", "bon", "alors", "euh", "bah", "ben", "hein",
         "voila", "donc", "hey", "yeah", "yes", "so", "well", "um", "uh", "thanks",
-    ]
+    ].union(VoicePT.interjections)
 
     /// Maps normalised infinitive forms → imperative/trigger forms.
     private static let infinitiveMap: [String: String] = [
@@ -687,7 +706,7 @@ enum IntentParser {
         "demarrer":    "lance",
         "demarre":     "lance",
         "demarres":    "lance",
-    ]
+    ].merging(VoicePT.infinitiveMap) { fr, _ in fr }
 
     private static let pausePrefixes: [[String]] = [
         ["pause"], ["stop"], ["stoppe"], ["coupe"],
@@ -697,77 +716,77 @@ enum IntentParser {
         ["arrete", "la", "lecture"],
         ["arrete"],
         ["coupe", "la", "musique"],
-    ]
+    ] + VoicePT.pausePrefixes
 
     private static let nextPrefixes: [[String]] = [
         ["morceau", "suivant"], ["chanson", "suivante"], ["suivant"], ["prochain"],
         ["next", "track"], ["next", "song"], ["next"], ["skip"],
         ["chanson", "d", "apres"], ["d", "apres"],
         ["passe", "a", "la", "suivante"],
-    ]
+    ] + VoicePT.nextPrefixes
 
     private static let prevPrefixes: [[String]] = [
         ["morceau", "precedent"], ["chanson", "precedente"], ["precedent"], ["en", "arriere"],
         ["previous", "track"], ["previous", "song"], ["previous"], ["back"],
         ["remets", "la", "chanson", "d", "avant"], ["chanson", "d", "avant"],
         ["reviens", "en", "arriere"],
-    ]
+    ] + VoicePT.prevPrefixes
 
     private static let volUpPrefixes: [[String]] = [
         ["monte", "le", "son"], ["monte", "le", "volume"],
         ["augmente", "le", "son"], ["augmente", "le", "volume"],
         ["plus", "fort"], ["volume", "up"], ["louder"], ["turn", "up"],
-    ]
+    ] + VoicePT.volUpPrefixes
 
     private static let volDownPrefixes: [[String]] = [
         ["baisse", "le", "son"], ["baisse", "le", "volume"],
         ["diminue", "le", "son"], ["diminue", "le", "volume"],
         ["moins", "fort"], ["volume", "down"], ["quieter"], ["turn", "down"],
-    ]
+    ] + VoicePT.volDownPrefixes
 
     private static let playlistTriggers: [[String]] = [
         ["joue", "la", "playlist"], ["lance", "la", "playlist"],
         ["mets", "la", "playlist"], ["demarre", "la", "playlist"],
         ["play", "playlist"], ["start", "playlist"],
         ["balance", "la", "playlist"],
-    ]
+    ] + VoicePT.playlistTriggers
 
     // SetMain-only verbs — no fall-through to music on miss
     private static let pillMainTriggers: [[String]] = [
         ["passe", "sur"], ["change", "pour"], ["met", "sur"], ["mets", "sur"],
         ["switch", "to"], ["set", "main", "to"], ["change", "to"],
         ["utilise"], ["use"],
-    ]
+    ] + VoicePT.pillMainTriggers
 
     // Ambiguous verbs — pill first, then music
     private static let musicPillTriggers: [[String]] = [
         ["joue"], ["play"], ["mets"], ["met"], ["lance"], ["start"],
         ["demarre"], ["balance"], ["envoie"], ["reprends"], ["resume"],
-    ]
+    ] + VoicePT.musicPillTriggers
 
     // Pill-add-only verbs
     private static let pillAddOnlyTriggers: [[String]] = [
         ["active"], ["affiche"], ["montre"], ["rajoute"], ["ajoute"],
         ["add"], ["enable"], ["show"], ["activate"],
         ["je", "veux"], ["me", "faut"],
-    ]
+    ] + VoicePT.pillAddOnlyTriggers
 
     private static let pillRemoveTriggers: [[String]] = [
         ["enleve"], ["supprime"], ["desactive"], ["cache"], ["retire"], ["efface"],
         ["remove"], ["disable"], ["hide"], ["delete"],
         ["vire"], ["degage"], ["enleve", "moi"], ["plus", "besoin", "de"],
-    ]
+    ] + VoicePT.pillRemoveTriggers
 
     // Bare music verbs (single word → musicPlay)
     private static let bareMusicVerbs: Set<String> = [
         "joue", "lance", "lecture", "play", "start", "demarre", "balance",
         "reprends", "resume",
-    ]
+    ].union(VoicePT.bareMusicVerbs)
 
     // Generic musicPlay nouns (entity after verb → musicPlay, not artist)
     private static let musicGenericWords: Set<String> = [
         "musique", "son", "music", "audio", "chanson", "chansons",
-    ]
+    ].union(VoicePT.musicGenericWords)
 
     // Music-service pill ids — pill detected but route to musicPlay
     private static let musicServicePillIds: Set<String> = [
@@ -782,6 +801,6 @@ enum IntentParser {
         ["balance", "de", "la", "musique"], ["balance", "la", "musique"],
         ["envoie", "de", "la", "musique"],
         ["mets", "de", "la", "musique"], ["mets", "du", "son"],
-    ]
+    ] + VoicePT.playPrefixes
 }
 #endif

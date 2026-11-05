@@ -192,7 +192,7 @@ enum ShortcutLogic {
         if f & ShortcutSpec.optBit   != 0 { s += "⌥" }
         if f & ShortcutSpec.shiftBit != 0 { s += "⇧" }
         if f & ShortcutSpec.cmdBit   != 0 { s += "⌘" }
-        s += keyCodeToString(spec.keyCode)
+        s += spec.keyCode == 49 ? String(localized: "Space") : keyCodeToString(spec.keyCode)
         return s
     }
 

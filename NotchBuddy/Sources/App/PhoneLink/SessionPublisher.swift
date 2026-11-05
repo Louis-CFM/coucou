@@ -55,9 +55,11 @@ final class SessionPublisher {
         guard cancellable == nil else { return }
         let state = AppState.shared
         cancellable = state.$tasks
-            .combineLatest(state.$pendingApproval, state.$waitingQuestions)
-            .map { tasks, approval, questions in
-                SessionSnapshot.all(tasks: tasks, approval: approval, questions: questions)
+            .combineLatest(state.$pendingApproval,
+                           state.$waitingQuestions.combineLatest(state.$cmuxLaneQuestion))
+            .map { tasks, approval, asked in
+                SessionSnapshot.all(tasks: tasks, approval: approval,
+                                    questions: asked.0 + (asked.1.map { [$0] } ?? []))
             }
             .removeDuplicates()
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
@@ -182,7 +184,9 @@ struct SessionSnapshot: Equatable {
         var result: [String: SessionSnapshot] = [:]
         // Services (Stripe, GitHub…) go through ServicePublisher, with their data.
         for task in tasks where task.source != .n8n && PillCatalog.isSession(task.id) {
-            let hasApproval = approval?.pillId == task.id
+            // A Hermes approval never leaves the Mac, and neither does the fact that the pill waits for one.
+            let isHermesTask = HermesPills.isTaskId(task.id)
+            let hasApproval = approval?.pillId == task.id && !isHermesTask
             // The pill's record carries the first question behind it, as it always has; a
             // session popped out of its pill (SessionBoard) has its own pill, and record.
             let question = task.state == .question
@@ -190,13 +194,16 @@ struct SessionSnapshot: Equatable {
                 : nil
             let questionText = question?.questions.map(\.question).joined(separator: "\n") ?? ""
             let payload = question.map(QuestionPayload.init(ask:))
+            // The rows of a Hermes turn are for the overview card of the notch only: they never leave the Mac.
+            let isHermes = HermesPills.isTaskId(task.id)
+            let progress = HermesPills.publishedProgress(taskId: task.id, stepIndex: task.stepIndex, stepCount: task.steps.count)
             result[task.id] = SessionSnapshot(
                 pillId: task.id,
-                name: task.name,
+                name: PhoneText.english(task.name),
                 color: task.color,
-                state: task.state.rawValue,
-                stepIndex: task.stepIndex,
-                steps: task.steps,
+                state: (isHermesTask && task.state == .approval ? BotState.thinking : task.state).rawValue,
+                stepIndex: progress.stepIndex,
+                steps: isHermes ? [] : task.steps.map(PhoneText.english),
                 cwd: task.sessionCwd ?? "",
                 finalLine: task.finalLine ?? "",
                 approvalTool: hasApproval ? (approval?.tool ?? "") : "",

@@ -41,6 +41,7 @@ enum WakePhrase {
             ["ok",  "cou", "cou"],
             ["hey", "coucou"],
             ["hey", "cou", "cou"],
+            ["ei",  "coucou"],   // pt-BR recognizer's "hey"
         ]
 
         // Find LAST occurrence of any pattern
@@ -86,6 +87,13 @@ enum WakePhrase {
     /// Normalise a single word token for wake-phrase matching.
     private static func normWord(_ w: String) -> String {
         var t = normalise(w)
+        // pt-BR recognizers write the wake word as okei/oquei and cucu/cuco/cocu. Whole-token
+        // maps only (never "coco"/"cocô"/"o que"): those occur in normal Portuguese speech.
+        switch t {
+        case "okei", "oquei": return "ok"
+        case "cucu", "cuco", "cocu": return "coucou"
+        default: break
+        }
         t = t
             .replacingOccurrences(of: "cuckoo", with: "coucou")
             .replacingOccurrences(of: "kuku",   with: "coucou")

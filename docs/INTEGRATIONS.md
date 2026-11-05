@@ -38,6 +38,17 @@ claude (terminal, VS Code, app Claude)
 
 Vérifier dans la doc la liste exacte des événements et leurs champs.
 
+### Sessions dans cmux (version GitHub)
+- Chaque surface cmux a sa pastille (`agent_cmux_<surface>`), nommée d'après le dossier du projet (suffixe ` 2`, ` 3` si doublon). Six pastilles cmux au maximum ; au-delà, la plus ancienne inactive est retirée. Les pastilles survivent à `Stop` et reviennent au repos.
+- `nb-hook` ajoute `cmux_surface_id`, `cmux_workspace_id`, `cmux_socket_path` et `cmux_socket_capability` quand `CMUX_SURFACE_ID` est défini. Le jeton n'est jamais journalisé ni écrit sur disque.
+- Une seule carte d'approbation ou de question est affichée à la fois. Les suivantes (autres surfaces) attendent en file, sans son, et passent à leur tour ; chacune demande son propre clic. Une demande en file qui expire ou qui est réglée dans le terminal est retirée sans réponse.
+- Avec le lien iPhone activé, les sessions cmux sont relayées comme les sessions VS Code ; le jeton cmux n'en fait jamais partie.
+- Codex, Gemini et Antigravity lancés dans cmux gardent leur pastille actuelle.
+- **cmux comme pastille Main** (version GitHub) : `integration_cmux` est une pastille hub (statut, `New chat`, `Open cmux`) qui ne reçoit aucun événement de hook. Les sessions restent des pastilles `agent_cmux_<surface>` ; avec cmux en Main, une nouvelle session prend le focus seulement si le focus est sur le hub et que la vue le permet.
+- **Répondre** à une session depuis le notch : le texte part par `cmux rpc surface.send_text` puis `surface.send_key` (`enter`), JSON construit par `JSONSerialization`, passé comme un seul argument de processus, jamais par un shell. L'envoi est désactivé tant que la session attend une approbation ou une question.
+- **Nouveau chat** : `cmux new-workspace --cwd <dossier> --command <commande de lancement>` (`claude` par défaut, réglable dans Réglages › Agents › cmux). Le prompt n'est jamais dans la commande : il est tapé une seule fois, à la réception du `SessionStart` de la nouvelle surface. Sans session ouverte, un mot de passe de socket (Keychain, clé `cmux-socket-password`) est nécessaire ; il passe par l'environnement du processus fils uniquement.
+- Chaque pastille de session cmux a une couleur et une forme d'yeux dérivées de l'identifiant de surface, stables pendant la session.
+
 ### Approuver depuis le notch
 - Sur `PermissionRequest`, `nb-hook` **attend** la décision de l'app (défaut 110 s, réglable) puis écrit sur stdout le JSON de décision du hook (d'après la doc actuelle : `hookSpecificOutput` avec `decision.behavior` = `allow` ou `deny`). Timeout du hook dans settings.json : décision + 10 s.
 - Pas de réponse avant le délai, ou app fermée → aucune sortie, le terminal affiche sa demande habituelle. Si Louis répond dans le terminal, l'app retire l'alerte au prochain événement de la session.
@@ -63,6 +74,7 @@ Vérifier dans la doc la liste exacte des événements et leurs champs.
 | `TERM_PROGRAM=Apple_Terminal` + tty | AppleScript Terminal : sélectionner l'onglet dont le `tty` correspond, activer |
 | `TERM_PROGRAM=iTerm.app` + `ITERM_SESSION_ID` | AppleScript iTerm : sélectionner la session, activer |
 | `TERM_PROGRAM=vscode` | ouvrir le dossier `cwd` dans VS Code ou Cursor (selon `__CFBundleIdentifier`) |
+| cmux (`CMUX_SURFACE_ID` ou `com.cmuxterm.app`), version GitHub | activer cmux, puis `cmux select-workspace` et `cmux focus-panel` pour la surface exacte (jeton gardé en mémoire, transmis par l'environnement du processus) ; sans jeton ou sans identifiants : cmux passe au premier plan |
 | Ghostty, Warp, autre | activer l'app |
 | Conductor (`__CFBundleIdentifier=com.conductor.app`, sans `TERM_PROGRAM`) | activer Conductor (pas de lien documenté vers un workspace précis) |
 | rien (app Claude) | activer l'app Claude |

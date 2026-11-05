@@ -43,6 +43,20 @@ enum WakePhraseTests {
         checkMatch("ok coucou search ok coucou play music",
                    WakePhrase.split("ok coucou search ok coucou play music"),   cmd: "play music")
 
+        // Portuguese (pt-BR recognizer spellings)
+        checkMatch("okei coucou adiciona",   WakePhrase.split("Okei Coucou adiciona GitHub"), cmd: "adiciona GitHub")
+        checkMatch("oquei coucou",           WakePhrase.split("oquei coucou"),            cmd: "")
+        checkMatch("ok cucu toca música",    WakePhrase.split("ok cucu toca música"),     cmd: "toca música")
+        checkMatch("ok cuco",                WakePhrase.split("ok cuco"),                 cmd: "")
+        checkMatch("ok cocu",                WakePhrase.split("ok cocu pausa"),           cmd: "pausa")
+        checkMatch("ei coucou",              WakePhrase.split("Ei, Coucou, próxima"),     cmd: "próxima")
+        checkNoMatch("pt ok tudo bem",       WakePhrase.split("ok, tudo bem"))
+        checkNoMatch("pt ok o que você acha", WakePhrase.split("ok, o que você acha"))
+        checkNoMatch("pt coco ralado",       WakePhrase.split("ok coco ralado"))
+        checkNoMatch("pt ok cocô",           WakePhrase.split("ok cocô"))
+        checkNoMatch("pt ei tudo bem",       WakePhrase.split("ei tudo bem"))
+        checkNoMatch("pt standalone cucu",   WakePhrase.split("cucu"))
+
         // Partial word-by-word delivery
         checkNoMatch("ok alone",             WakePhrase.split("ok"))
         checkMatch("ok coucou partial",      WakePhrase.split("ok coucou"),              cmd: "")

@@ -74,6 +74,8 @@ final class KeychainStore: @unchecked Sendable {
         "stripe-api-key",
         "calcom-api-key",
         "notion-api-key",
+        "hermes-agent-keys",
+        "hermes-agent-sessions",
         "elevenlabs-api-key",
         // WhatsApp (local gateway): its address, credentials and the webhook's signing secret
         "whatsapp-url", "whatsapp-api-key", "whatsapp-webhook-secret",
@@ -210,14 +212,93 @@ final class ClaudeService {
 
     var apiKey: String? { KeychainStore.shared.get("anthropic-api-key") }
 
-    // Multi-turn conversation messages (for API)
-    private var conversationMessages: [[String: Any]] = []
+    /// A local provider (Ollama, LM Studio) is streaming an answer into the shared chat. Display only: it tells the
+    /// chat that the last text is still arriving. The writes that end it also write the message, which redraws.
+    private(set) var sharedChatStreaming = false
 
-    func clearConversation() {
-        conversationMessages = []
+    /// Hermes turns in flight, by id. A second message may start while the first still runs.
+    private struct HermesTurn {
+        var task: Task<String, Error>?
+        var hasText = false
+    }
+
+    /// What the service keeps per conversation (see `ConversationID`): the messages sent to the server, the turns in
+    /// flight and, for a signed-in Hermes agent, the stored server session. Memory only.
+    private struct Conversation {
+        var messages: [[String: Any]] = []
+        var turns: [UUID: HermesTurn] = [:]
+        var serverSession: String?
+    }
+    private var conversations = ConversationStore<Conversation>(empty: Conversation())
+    /// A request that started before a clear or a drop must not touch the new conversation: it carries the
+    /// generation it started under. Only `ensureConversation` and `clearConversation` create one.
+    private var generations = ConversationGenerations()
+
+    /// The conversation still has the generation the request started under (a cleared or dropped one does not).
+    private func isCurrent(_ id: ConversationID, generation: Int) -> Bool {
+        generations.isCurrent(id, generation)
+    }
+
+    /// Creates the conversation if it has none yet and returns its generation.
+    @discardableResult
+    private func ensureConversation(_ id: ConversationID) -> Int {
+        let generation = generations.ensure(id)
+        if !conversations.contains(id) { conversations.set(id, Conversation()) }
+        return generation
+    }
+
+    /// Messages of the conversation shared by the non Hermes providers.
+    private var conversationMessages: [[String: Any]] {
+        get { conversations[.shared].messages }
+        set { ensureConversation(.shared); conversations.mutate(.shared) { $0.messages = newValue } }
+    }
+
+    /// Empties one conversation (messages, server session) and cancels its running turns. The others are untouched.
+    func clearConversation(_ id: ConversationID) {
+        for turn in conversations[id].turns.values { turn.task?.cancel() }
+        generations.renew(id)
+        conversations.set(id, Conversation())
         #if !APPSTORE
-        relayHistory = []
+        if id == .shared { relayHistory = [] }
         #endif
+        ChatMediaStore.shared.forgetConversation(id.mediaKey)
+    }
+
+    /// Forgets one conversation for good (its agent was removed) and cancels its running turns.
+    func dropConversation(_ id: ConversationID) {
+        for turn in conversations[id].turns.values { turn.task?.cancel() }
+        generations.drop(id)
+        conversations.remove(id)
+        ChatMediaStore.shared.forgetConversation(id.mediaKey)
+    }
+
+    /// A turn of this conversation has not produced its first text yet.
+    func isWaiting(_ id: ConversationID) -> Bool {
+        conversations[id].turns.values.contains { !$0.hasText }
+    }
+
+    /// A turn of any Hermes conversation has not produced its first text yet.
+    var anyHermesWaiting: Bool {
+        conversations.values.contains { $0.turns.values.contains { !$0.hasText } }
+    }
+
+    /// The typing dots show while a running turn has not produced text yet. Every override this code sets (dots, or
+    /// the error left by a failed sibling turn) is dropped by the rule in `HermesAnnounce.typingOverride`.
+    private func refreshHermesTyping(_ state: AppState) {
+        let current: HermesAnnounce.Override
+        switch state.stateOverride {
+        case nil: current = .none
+        case .some(.thinking): current = .thinking
+        case .some(.error): current = .error
+        default: current = .other
+        }
+        let next = HermesAnnounce.typingOverride(current: current, anyTurnWaiting: conversations.values.contains { $0.turns.values.contains { !$0.hasText } })
+        guard next != current else { return }
+        switch next {
+        case .none: state.stateOverride = nil
+        case .thinking: state.stateOverride = .thinking
+        case .error, .other: break
+        }
     }
 
     /// Whether the chat can answer with Claude: an API key, or else Claude Code (GitHub build).
@@ -284,9 +365,9 @@ final class ClaudeService {
         do {
             let text = try await CLIRelay.ask(cli, request)
             relayHistory.append((user: historyContext.map { "\($0)\n\n\(query)" } ?? query, assistant: text))
-            state.chatHistory.append(ChatMessage(role: .assistant, content: text))
+            state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: text, provider: provider, mailPlan: !extraSystem.isEmpty)) }
             state.stateOverride = nil
-            state.view = .prompt
+            state.showSharedChatAnswer()
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
         } catch {
             await showError(error.localizedDescription, state: state)
@@ -322,11 +403,19 @@ final class ClaudeService {
 
     // MARK: - Chat (multi-turn, natural text + web search)
 
-    func chat(query: String, context: PromptContext?, state: AppState) async {
+    /// `target` is the conversation on screen when Send was pressed (the bubble went there): the request goes to
+    /// that one, never to whatever is on screen when this runs.
+    func chat(query: String, context: PromptContext?, state: AppState, target: ConversationID) async {
         if DemoEngine.shared.isActive {
+            // A message for a Hermes agent never gets here during the demo: the caller refuses it first
+            // (DemoGuard.mayChatSend), before the field is emptied or a bubble is added.
             state.stateOverride = .thinking
             await DemoEngine.shared.streamChatResponse(for: query)
             state.stateOverride = nil
+            return
+        }
+        if let agentName = target.hermesAgent {
+            await chatHermes(query: query, context: context, state: state, agentName: agentName)
             return
         }
         var query = query
@@ -339,20 +428,29 @@ final class ClaudeService {
             extraSystem = MailAgentPrompt.instructions
         }
         #endif
+        // The shared chat never reaches a Hermes agent, even if the provider was switched to Hermes since Send.
+        // If the provider was never tracked (Hermes before this version) there is no provider to fall back on: nothing is sent.
+        guard let provider = state.chatProvider == .hermes ? state.lastSharedProvider : state.chatProvider else {
+            // Not reachable today (a shared target means the provider was not Hermes at the press). If it ever is,
+            // the user sees the existing provider error and the typing dots go, never a bubble with no answer.
+            state.stateOverride = nil
+            await showError(String(localized: "API key missing. Open settings."), state: state)
+            return
+        }
         #if !APPSTORE
         // "Use my subscription": the provider's own terminal tool answers, signed in with
         // the user's account.
-        if state.usesSubscription(state.chatProvider) {
-            await chatThroughSubscription(state.chatProvider, query: query, context: context, state: state)
+        if state.usesSubscription(provider) {
+            await chatThroughSubscription(provider, query: query, context: context, state: state)
             return
         }
         #endif
-        guard state.chatProvider == .anthropic else {
-            await chatOpenAICompatible(query: query, context: context, state: state)
+        guard provider == .anthropic else {
+            await chatOpenAICompatible(query: query, context: context, state: state, provider: provider)
             return
         }
         guard let key = apiKey, !key.isEmpty else {
-            await showError("API key missing. Open settings.", state: state)
+            await showError(String(localized: "API key missing. Open settings."), state: state)
             return
         }
 
@@ -389,16 +487,15 @@ final class ClaudeService {
             let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
             await handleChatResult(data, state: state)
         } catch {
-            conversationMessages.removeLast()
+            if !conversationMessages.isEmpty { conversationMessages.removeLast() }
             await showError(error.localizedDescription, state: state)
         }
     }
 
     // MARK: - OpenAI-compatible chat (Google Gemini / OpenAI / Ollama / LM Studio)
 
-    func chatOpenAICompatible(query: String, context: PromptContext?, state: AppState) async {
-        let provider = state.chatProvider
-        guard provider != .anthropic else { return }
+    func chatOpenAICompatible(query: String, context: PromptContext?, state: AppState, provider: ChatProvider) async {
+        guard provider != .anthropic, provider != .hermes else { return }
 
         let baseURL: String
         if provider == .ollama {
@@ -412,14 +509,14 @@ final class ClaudeService {
             case .deepseek:  baseURL = "https://api.deepseek.com/v1"
             case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
             case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
-            case .anthropic, .ollama, .lmstudio, .cursor, .copilot: baseURL = ""
+            case .anthropic, .ollama, .lmstudio, .hermes, .cursor, .copilot: baseURL = ""
             }
         }
 
         guard !baseURL.isEmpty else {
             if provider.isLocal {
                 let name = provider == .ollama ? "Ollama" : "LM Studio"
-                await showError("Connect \(name) in Settings → Chat first.", state: state)
+                await showError(String(localized: "Connect \(name) in Settings → Chat first."), state: state)
             }
             return
         }
@@ -433,7 +530,7 @@ final class ClaudeService {
             cloudKey = nil
         } else {
             guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
-                await showError("\(provider.displayName) API key missing. Configure it in Settings.", state: state)
+                await showError(String(localized: "\(provider.displayName) API key missing. Configure it in Settings."), state: state)
                 return
             }
             authHeader = "Bearer \(key)"
@@ -451,37 +548,13 @@ final class ClaudeService {
             }
             msgs.append(simplified)
         }
-        var userText = query
-        if conversationMessages.isEmpty, let ctx = context {
-            switch ctx {
-            case .window(let app, let title, let url):
-                var prefix = "Context — App: \(app), Window: \(title)"
-                if let u = url { prefix += ", URL: \(u)" }
-                userText = prefix + "\n\n" + query
-            case .file(let name, let fileURL):
-                if provider.isLocal, let fileURL = fileURL {
-                    let ext = fileURL.pathExtension.lowercased()
-                    let binaryExts = ["pdf", "jpg", "jpeg", "png", "gif", "webp"]
-                    if !binaryExts.contains(ext),
-                       let text = try? String(contentsOf: fileURL, encoding: .utf8), !text.isEmpty {
-                        let truncated = text.count > 24_000
-                            ? String(text.prefix(24_000)) + "\n[truncated]"
-                            : text
-                        userText = "File: \(name)\n\n\(truncated)\n\n" + query
-                    } else {
-                        userText = "File: \(name)\n\n" + query
-                    }
-                } else {
-                    userText = "File: \(name)\n\n" + query
-                }
-            }
-        }
+        let userText = openAIUserText(query: query, context: context, inlineFiles: provider.isLocal, firstTurn: conversationMessages.isEmpty)
         msgs.append(["role": "user", "content": userText])
         conversationMessages.append(["role": "user", "content": userText])
 
         let useStream = provider.isLocal || provider == .deepseek || provider == .qwen || provider == .moonshot
         var body: [String: Any] = [
-            "model": state.activeChatModel,
+            "model": state.chatModel(for: provider),
             "max_tokens": 4096,
             "messages": msgs,
         ]
@@ -495,11 +568,12 @@ final class ClaudeService {
 
         if useStream {
             // Add placeholder (hidden until first token via ChatBubble empty-content guard)
-            let placeholder = ChatMessage(role: .assistant, content: "")
+            let placeholder = ChatMessage(role: .assistant, content: "", provider: provider, mailPlan: !extraSystem.isEmpty)
             let msgId = placeholder.id
-            state.chatHistory.append(placeholder)
+            sharedChatStreaming = true
+            state.updateChat(.shared) { $0.append(placeholder) }
             state.stateOverride = .thinking
-            let modelCopy = state.activeChatModel
+            let modelCopy = state.chatModel(for: provider)
             let streamBody: [String: Any] = [
                 "model": modelCopy,
                 "messages": msgs,
@@ -517,40 +591,43 @@ final class ClaudeService {
                     if !visible.isEmpty, state.stateOverride == .thinking {
                         state.stateOverride = nil   // hide typing dots on first visible text
                     }
-                    if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
-                        state.chatHistory[idx].content = visible
+                    state.updateChat(.shared) { h in
+                        if let idx = h.firstIndex(where: { $0.id == msgId }) { h[idx].content = visible }
                     }
                 }
+                sharedChatStreaming = false
                 conversationMessages.append(["role": "assistant", "content": final])
-                if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
-                    state.chatHistory[idx].content = final
+                state.updateChat(.shared) { h in
+                    if let idx = h.firstIndex(where: { $0.id == msgId }) { h[idx].content = final }
                 }
                 state.stateOverride = nil
-                state.view = .prompt
+                state.showSharedChatAnswer()
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             } catch let e as LocalChatError {
-                conversationMessages.removeLast()
-                state.chatHistory.removeAll { $0.id == msgId }
+                sharedChatStreaming = false
+                if !conversationMessages.isEmpty { conversationMessages.removeLast() }
+                state.updateChat(.shared) { $0.removeAll { $0.id == msgId } }
                 state.stateOverride = nil
                 let msg: String
                 switch e {
                 case .serverUnreachable:
                     if provider == .ollama {
-                        msg = "Ollama isn't running. Open it, then ask again."
+                        msg = String(localized: "Ollama isn't running. Open it, then ask again.")
                     } else if provider == .lmstudio {
-                        msg = "Start the local server in LM Studio, then ask again."
+                        msg = String(localized: "Start the local server in LM Studio, then ask again.")
                     } else {
-                        msg = "\(provider.displayName) is unreachable. Check your connection and API key."
+                        msg = String(localized: "\(provider.displayName) is unreachable. Check your connection and API key.")
                     }
                 case .modelNotFound(let m):
-                    msg = "\(m) isn't installed. Pick another model above the chat box."
+                    msg = String(localized: "\(m) isn't installed. Pick another model above the chat box.")
                 case .serverError(let s):
                     msg = s
                 }
                 await showError(msg, state: state)
             } catch {
-                conversationMessages.removeLast()
-                state.chatHistory.removeAll { $0.id == msgId }
+                sharedChatStreaming = false
+                if !conversationMessages.isEmpty { conversationMessages.removeLast() }
+                state.updateChat(.shared) { $0.removeAll { $0.id == msgId } }
                 state.stateOverride = nil
                 await showError(error.localizedDescription, state: state)
             }
@@ -569,26 +646,207 @@ final class ClaudeService {
                       let choices = json["choices"] as? [[String: Any]],
                       let message = choices.first?["message"] as? [String: Any],
                       let content = message["content"] as? String else {
-                    throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected response format"])
+                    throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: String(localized: "Unexpected response format")])
                 }
                 let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
                 conversationMessages.append(["role": "assistant", "content": trimmed])
-                state.chatHistory.append(ChatMessage(role: .assistant, content: trimmed))
+                state.updateChat(.shared) { $0.append(ChatMessage(role: .assistant, content: trimmed, provider: provider, mailPlan: !extraSystem.isEmpty)) }
                 state.stateOverride = nil
-                state.view = .prompt
+                state.showSharedChatAnswer()
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             } catch {
-                conversationMessages.removeLast()
+                if !conversationMessages.isEmpty { conversationMessages.removeLast() }
                 await showError(error.localizedDescription, state: state)
             }
         }
+    }
+
+    /// User text for the first turn of an OpenAI-style chat: window/file context prepended to the query.
+    /// `inlineFiles` inlines text files (up to 24 000 chars); otherwise only the file name is sent.
+    private func openAIUserText(query: String, context: PromptContext?, inlineFiles: Bool, firstTurn: Bool) -> String {
+        var userText = query
+        if firstTurn, let ctx = context {
+            switch ctx {
+            case .window(let app, let title, let url):
+                var prefix = "Context — App: \(app), Window: \(title)"
+                if let u = url { prefix += ", URL: \(u)" }
+                userText = prefix + "\n\n" + query
+            case .file(let name, let fileURL):
+                if inlineFiles, let fileURL = fileURL {
+                    let ext = fileURL.pathExtension.lowercased()
+                    let binaryExts = ["pdf", "jpg", "jpeg", "png", "gif", "webp"]
+                    if !binaryExts.contains(ext),
+                       let text = try? String(contentsOf: fileURL, encoding: .utf8), !text.isEmpty {
+                        let truncated = text.count > 24_000
+                            ? String(text.prefix(24_000)) + "\n[truncated]"
+                            : text
+                        userText = "File: \(name)\n\n\(truncated)\n\n" + query
+                    } else {
+                        userText = "File: \(name)\n\n" + query
+                    }
+                } else {
+                    userText = "File: \(name)\n\n" + query
+                }
+            }
+        }
+        return userText
+    }
+
+    // MARK: - Hermes agents (stateless, streamed, no Mochi system prompt)
+
+    func chatHermes(query: String, context: PromptContext?, state: AppState, agentName: String) async {
+        // The agent the message was typed for, by name: a different active agent now does not take it over.
+        guard let agent = state.hermesAgents.first(where: { $0.name == agentName }) else {
+            await showError(String(localized: "Connect a Hermes agent in Settings → Chat first."), state: state)
+            return
+        }
+        let signIn = agent.connection == .signIn
+        var key = ""
+        if signIn {
+            // No session for this agent (or for this address): nothing is sent.
+            if case .failure(let e) = HermesSignIn.boundSession(for: agent, in: HermesSignIn.decodeSessions(KeychainStore.shared.get("hermes-agent-sessions") ?? "")) {
+                await showError(e.userMessage, state: state)
+                return
+            }
+        } else {
+            switch HermesChat.boundKey(for: agent, in: HermesChat.decodeKeys(KeychainStore.shared.get("hermes-agent-keys") ?? "")) {
+            case .success(let k): key = k
+            case .failure(let e):
+                // The key is never sent: the stored agent does not match what the key was connected to.
+                await showError(e.userMessage, state: state)
+                return
+            }
+        }
+
+        // This agent's own conversation: nothing of another agent or provider is ever read or sent here.
+        let id = ConversationID.hermes(agent.name)
+        let generation = ensureConversation(id)
+        // No system message: Hermes layers it over the agent's own prompt.
+        var msgs = HermesChat.requestMessages(from: conversations[id].messages)
+        let userText = openAIUserText(query: query, context: context, inlineFiles: true, firstTurn: conversations[id].messages.isEmpty)
+        msgs.append(["role": "user", "content": userText])
+        conversations.mutateIfPresent(id) { $0.messages.append(["role": "user", "content": userText]) }
+
+        let placeholder = ChatMessage(role: .assistant, content: "")
+        let msgId = placeholder.id
+        state.updateChat(id) { $0.append(placeholder) }
+        let turnId = UUID()
+        conversations.mutateIfPresent(id) { $0.turns[turnId] = HermesTurn(task: nil, hasText: false) }
+        refreshHermesTyping(state)
+        state.setHermesPillBusy(agentName: agent.name, true)
+        let pillTurn = state.beginHermesPillTurn(agentName: agent.name)
+        defer { state.setHermesPillBusy(agentName: agent.name, false) }
+        let startedAt = Date()
+        appendAppLog("nb.log", "hermes turn started signIn=\(signIn)")
+        let body: [String: Any] = ["model": agent.modelName, "messages": msgs, "stream": true]
+        let encodedBody = signIn ? Data() : ((try? JSONSerialization.data(withJSONObject: body)) ?? Data())
+        let storedSession = conversations[id].serverSession
+        let task = Task { [state, msgId] () async throws -> String in
+            let firstText: @MainActor () -> Void = {
+                if self.conversations[id].turns[turnId]?.hasText == false {
+                    // hide typing dots once no turn waits for text
+                    self.conversations.mutateIfPresent(id) { $0.turns[turnId]?.hasText = true }
+                    appendAppLog("nb.log", "hermes turn first text after=\(Self.seconds(since: startedAt))s")
+                    self.refreshHermesTyping(state)
+                }
+            }
+            // One write per tick: the text and the rows of the turn arrive together. Display only; written by message id
+            // under the same rule as the text (a cleared or removed conversation is never brought back), and the first
+            // text or the first row hides the typing dots.
+            let onTurn: @MainActor (String?, [ChatSegment]?) -> Void = { visible, segments in
+                if visible?.isEmpty == false || segments?.isEmpty == false { firstText() }
+                // The overview card of this agent's pill follows the rows while the turn runs: a turn that already
+                // ended (cancelled, cleared) writes nothing there.
+                if let segments, self.conversations[id].turns[turnId] != nil {
+                    state.setHermesPillRows(agentName: agent.name, turn: pillTurn, segments: segments)
+                }
+                state.updateChat(id, createIfMissing: false) { h in
+                    guard let idx = h.firstIndex(where: { $0.id == msgId }) else { return }
+                    if let visible { h[idx].content = visible }
+                    if let segments { h[idx].segments = segments }
+                }
+            }
+            if signIn {
+                // The server keeps the history: only the new text is sent, the session is resumed by id.
+                return try await HermesSignInNet.streamTurn(
+                    agent: agent, sessions: HermesSessions.shared, storedSession: storedSession, text: userText,
+                    onSession: { sessionId in
+                        if self.isCurrent(id, generation: generation) {
+                            self.conversations.mutateIfPresent(id) { $0.serverSession = sessionId.isEmpty ? nil : sessionId }
+                        }
+                    },
+                    onToken: { onTurn($0, nil) }, onSegments: { onTurn(nil, $0) }, onTurn: onTurn,
+                    approvals: HermesApprovalCenter.hooks)
+            }
+            return try await HermesChat.streamChat(agent: agent, key: key, encodedBody: encodedBody,
+                                                   onToken: { onTurn($0, nil) }, onSegments: { onTurn(nil, $0) }, onTurn: onTurn,
+                                                   approvals: HermesApprovalCenter.hooks)
+        }
+        conversations.mutateIfPresent(id) { $0.turns[turnId]?.task = task }
+        do {
+            let final = try await task.value
+            conversations.mutateIfPresent(id) { $0.turns[turnId] = nil }
+            guard isCurrent(id, generation: generation) else {
+                state.endHermesPillTurn(agentName: agent.name, turn: pillTurn, finished: false)
+                appendAppLog("nb.log", "hermes turn discarded (conversation cleared) after=\(Self.seconds(since: startedAt))s")
+                refreshHermesTyping(state)
+                return
+            }
+            // The rows already end with the answer (the last publish sealed it): nothing is added from the returned text.
+            state.endHermesPillTurn(agentName: agent.name, turn: pillTurn, finished: true)
+            conversations.mutateIfPresent(id) { $0.messages.append(["role": "assistant", "content": final]) }
+            state.updateChat(id, createIfMissing: false) { h in
+                if let idx = h.firstIndex(where: { $0.id == msgId }) { h[idx].content = final }
+            }
+            refreshHermesTyping(state)
+            appendAppLog("nb.log", "hermes turn finished duration=\(Self.seconds(since: startedAt))s chars=\(final.count)")
+            // This agent's chat on screen: nothing changes. Otherwise sound, badge and back to the chat.
+            state.announceHermesTurn(agentName: agent.name, failed: false, view: .prompt)
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
+            conversations.mutateIfPresent(id) { $0.turns[turnId] = nil }
+            guard isCurrent(id, generation: generation) else {
+                // Cleared meanwhile: leave the new conversation alone, only stop the typing dots
+                // when no newer Hermes request is still waiting for its first text.
+                state.endHermesPillTurn(agentName: agent.name, turn: pillTurn, finished: false)
+                appendAppLog("nb.log", "hermes turn discarded (conversation cleared) after=\(Self.seconds(since: startedAt))s")
+                refreshHermesTyping(state)
+                return
+            }
+            state.endHermesPillTurn(agentName: agent.name, turn: pillTurn, finished: false)
+            // Remove this turn's own message: a sibling turn may have added its own after it.
+            conversations.mutateIfPresent(id) { c in
+                if let own = c.messages.lastIndex(where: { ($0["role"] as? String) == "user" && ($0["content"] as? String) == userText }) {
+                    c.messages.remove(at: own)
+                }
+            }
+            state.updateChat(id, createIfMissing: false) { $0.removeAll { $0.id == msgId } }
+            refreshHermesTyping(state)
+            let msg = (error as? HermesChatError)?.userMessage ?? String(localized: "Hermes request failed.")
+            appendAppLog("nb.log", "hermes turn failed after=\(Self.seconds(since: startedAt))s error=\(Self.errorCaseName(error))")
+            let outcome = state.announceHermesTurn(agentName: agent.name, failed: true, view: .note)
+            // A card on screen keeps the screen: the error is only signalled by the sound and the pill badge.
+            if outcome == .badgeOnly {
+                // The text waits in the chat of this agent for when it is next shown.
+                state.updateChat(id, createIfMissing: false) { $0.append(ChatMessage(role: .assistant, content: msg, isNotice: true)) }
+            } else { await showError(msg, state: state) }
+        }
+    }
+
+    private static func seconds(since start: Date) -> String { String(format: "%.1f", Date().timeIntervalSince(start)) }
+
+    /// Case name of an error, never its associated values (they may carry a host or a server text).
+    private static func errorCaseName(_ error: Error) -> String {
+        if error is CancellationError { return "cancelled" }
+        if error is HermesChatError { return String(String(describing: error).prefix { $0 != "(" }) }
+        return "other"
     }
 
     // MARK: - Structured search (M8 — window attach + web search)
 
     func search(query: String, context: PromptContext?, state: AppState) async {
         guard let key = apiKey, !key.isEmpty else {
-            await showError("Anthropic API key missing. Open settings to configure it.", state: state)
+            await showError(String(localized: "Anthropic API key missing. Open settings to configure it."), state: state)
             return
         }
 
@@ -669,25 +927,37 @@ final class ClaudeService {
     /// A short answer Coucou can say aloud, with web search, in the answer language.
     /// `history` holds the previous exchanges of this voice conversation (memory only).
     /// nil on any failure: no key, network, quota.
-    func voiceAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String? {
+    func voiceAnswer(_ question: String, history: [VoiceWebTurn], lang: VoiceLang) async -> String? {
         guard let key = apiKey, !key.isEmpty else { return nil }
         let today = Date().formatted(.dateTime.weekday(.wide).day().month(.wide).year()
-            .locale(Locale(identifier: french ? "fr_FR" : "en_US")))
-        let system = french
-            ? """
+            .locale(lang.formatLocale))
+        let system: String
+        switch lang {
+        case .fr:
+            system = """
               Tu es Coucou, un assistant vocal dans le notch du Mac. Nous sommes le \(today). \
               Ta réponse est lue à voix haute : 2 à 4 phrases courtes, en français, sans markdown, sans liste, \
               sans lien, sans citer tes sources. Cherche sur le web dès que la réponse peut avoir changé \
               (actualité, résultats, prix, horaires, météo, personnes). Donne directement les faits utiles. \
               S'il y a clairement plus à raconter, termine par une seule courte question pour proposer la suite.
               """
-            : """
+        case .pt:
+            system = """
+              Você é o Coucou, um assistente de voz no notch do Mac. Hoje é \(today). \
+              Sua resposta é lida em voz alta: de 2 a 4 frases curtas, em português do Brasil, sem markdown, \
+              sem listas, sem links, sem citar fontes. Pesquise na web sempre que a resposta puder ter mudado \
+              (notícias, resultados, preços, horários, clima, pessoas). Dê direto os fatos úteis. \
+              Se claramente houver mais a contar, termine com uma única pergunta curta se oferecendo para continuar.
+              """
+        case .en:
+            system = """
               You are Coucou, a voice assistant in the Mac's notch. Today is \(today). \
               Your answer is read aloud: 2 to 4 short sentences in English, no markdown, no lists, no links, \
               never cite sources. Search the web whenever the answer may have changed (news, scores, prices, \
               opening hours, weather, people). Give the useful facts straight away. \
               When there is clearly more worth telling, end with one short question offering to go on.
               """
+        }
         var messages: [[String: Any]] = []
         for turn in history {
             messages.append(["role": "user", "content": turn.question])
@@ -746,12 +1016,12 @@ final class ClaudeService {
                     let id = AppState.shared.claudeModel
                     throw NSError(domain: "Claude", code: 0,
                         userInfo: [NSLocalizedDescriptionKey:
-                            "Model not found: \(id). Pick another one in Settings."])
+                            String(localized: "Model not found: \(id). Pick another one in Settings.")])
                 }
                 throw NSError(domain: "Claude", code: 0,
                     userInfo: [NSLocalizedDescriptionKey: errMsg])
             }
-            let msg = String(data: data, encoding: .utf8) ?? "unknown error"
+            let msg = String(data: data, encoding: .utf8) ?? String(localized: "unknown error")
             throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: msg])
         }
         return data
@@ -762,7 +1032,7 @@ final class ClaudeService {
     private func handleChatResult(_ data: Data, state: AppState) async {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]] else {
-            await showError("Unexpected API response.", state: state)
+            await showError(String(localized: "Unexpected API response."), state: state)
             return
         }
 
@@ -770,15 +1040,16 @@ final class ClaudeService {
         conversationMessages.append(["role": "assistant", "content": content])
 
         guard let text = claudeResponseText(fromContent: content) else {
-            await showError("No response text.", state: state)
+            await showError(String(localized: "No response text."), state: state)
             return
         }
 
         // Add to display history
-        state.chatHistory.append(ChatMessage(role: .assistant, content: text))
+        let answer = ChatMessage(role: .assistant, content: text, provider: .anthropic, mailPlan: !extraSystem.isEmpty)
+        state.updateChat(.shared) { $0.append(answer) }
 
         state.stateOverride = nil
-        state.view = .prompt
+        state.showSharedChatAnswer()
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
     }
 
@@ -789,7 +1060,7 @@ final class ClaudeService {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]],
               let text = claudeResponseText(fromContent: content) else {
-            await showError("Unexpected API response.", state: state)
+            await showError(String(localized: "Unexpected API response."), state: state)
             return
         }
 
@@ -804,7 +1075,7 @@ final class ClaudeService {
         // Try to parse as our JSON format
         if let resultData = cleanText.data(using: .utf8),
            let parsed = try? JSONSerialization.jsonObject(with: resultData) as? [String: Any] {
-            let title  = parsed["title"] as? String ?? "Result"
+            let title  = parsed["title"] as? String ?? String(localized: "Result")
             let note   = parsed["note"] as? String
             var items: [ResultItem] = []
             if let rawItems = parsed["items"] as? [[String: Any]] {
@@ -821,7 +1092,7 @@ final class ClaudeService {
             // Fallback: show raw text in 3-line chunks
             let lines = cleanText.components(separatedBy: "\n").filter { !$0.isEmpty }.prefix(3)
             state.searchResult = SearchResult(
-                title: "Claude's response",
+                title: String(localized: "Claude's response"),
                 items: lines.map { ResultItem(label: $0, detail: "", url: nil) },
                 note: nil
             )

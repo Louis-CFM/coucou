@@ -665,7 +665,7 @@ final class DesktopMochiController {
             let origin = clampToVisibleFrame(dragOriginAtStart)
             panel?.setFrameOrigin(origin)
             persistPosition()
-            islandController?.expand(to: .prompt)
+            islandController?.openPromptSlot(makeKey: false, carriesContext: true)
             return
         }
         #endif

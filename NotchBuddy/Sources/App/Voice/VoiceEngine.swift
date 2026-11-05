@@ -103,7 +103,10 @@ final class VoiceEngine: ObservableObject {
     private static let minRebuildInterval:       TimeInterval = 5.0
     private static let maxRebuildsPerMinute                   = 5
 
-    private static let cancelPhrases = ["annule", "annuler", "cancel", "laisse tomber", "never mind"]
+    private var lastLoggedListenLocale: String? = nil
+    private static let cancelPhrases = ["annule", "annuler", "cancel", "laisse tomber", "never mind",
+                                            "cancela", "cancelar", "deixa pra la", "deixa pra lá",
+                                            "deixa para la", "deixa para lá", "esquece"]
 
     // MARK: - Init
 
@@ -501,7 +504,7 @@ final class VoiceEngine: ObservableObject {
         if tooSoon || tooMany {
             appendAppLog("nb.log", "[Voice] rebuild limit reached (\(reason))")
             if audioError == nil {
-                audioError = "Voice recognition stalled — toggle Voice off/on to reset."
+                audioError = String(localized: "voice.error-stalled")
             }
             return
         }
@@ -645,6 +648,12 @@ final class VoiceEngine: ObservableObject {
 
     // MARK: - Command session management
 
+    /// Portuguese linkers extend the silence only for someone speaking Portuguese.
+    private var speaksPortuguese: Bool {
+        let listen = VoiceSettings.listenLanguage
+        return listen == "pt" || (listen == "auto" && VoiceSettings.lang == .pt)
+    }
+
     private func resetSilenceTimer() {
         silenceWork?.cancel()
         let timeout: TimeInterval
@@ -652,7 +661,8 @@ final class VoiceEngine: ObservableObject {
             timeout = directInitialTimeout
         } else {
             timeout = TurnEndPolicy.silenceDelay(for: WakePhrase.normalise(commandTranscript),
-                                                 longAnswer: VoiceActionRunner.shared.expectsLongAnswer)
+                                                 longAnswer: VoiceActionRunner.shared.expectsLongAnswer,
+                                                 portuguese: speaksPortuguese)
         }
         scheduleSilenceCheck(after: timeout)
     }
@@ -700,6 +710,18 @@ final class VoiceEngine: ObservableObject {
 
     // MARK: - Helpers
 
+    /// Logs the recognizer once per distinct choice, so a silent fallback (pt-BR not installed
+    /// on-device) shows up in nb.log.
+    private func logListening(_ locale: Locale, wanted: String) {
+        let id = locale.identifier
+        guard id != lastLoggedListenLocale else { return }
+        lastLoggedListenLocale = id
+        appendAppLog("nb.log", "[Voice] listening in \(id) (wanted \(wanted))")
+        if wanted == "pt" && !id.lowercased().hasPrefix("pt") {
+            appendAppLog("nb.log", "[Voice] pt-BR recognizer not available on-device")
+        }
+    }
+
     private func suitableLocale() -> Locale? {
         // The language I speak (Settings → Voice → "You speak"): automatic = the Mac's
         // dictation languages first. The answer language is separate (VoiceSettings.language).
@@ -707,13 +729,16 @@ final class VoiceEngine: ObservableObject {
         switch VoiceSettings.listenLanguage {
         case "fr": candidates = [Locale(identifier: "fr-FR"), Locale(identifier: "fr-CA")]
         case "en": candidates = [Locale(identifier: "en-US"), Locale(identifier: "en-GB"), Locale(identifier: "en-AU")]
+        case "pt": candidates = [Locale(identifier: "pt-BR"), Locale(identifier: "pt-PT")]
         default:   candidates = []
         }
         candidates += MacDictation.automaticLocales()
-        candidates += [Locale(identifier: "en-US"), Locale(identifier: "fr-FR")]
+        candidates += [VoiceSettings.lang.locale, Locale(identifier: "en-US"), Locale(identifier: "fr-FR")]
+        let wanted = VoiceSettings.listenLanguage
         for locale in candidates {
             if let r = SFSpeechRecognizer(locale: locale),
                r.supportsOnDeviceRecognition, r.isAvailable {
+                logListening(locale, wanted: wanted)
                 return locale
             }
         }

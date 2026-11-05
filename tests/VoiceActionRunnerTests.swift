@@ -235,6 +235,67 @@ enum VoiceActionRunnerTests {
         runner.pendingQuestion = nil
         runner.commandLocale = nil
 
+        // Language offer in Portuguese (3x3 combinations, yes / no / mixed answers)
+        runner.commandLocale = Locale(identifier: "en-US")
+        check("offer en→pt", runner.offerLanguageSwitch(to: "pt").contains("Want me to answer in Portuguese?"), true)
+        runner.commandLocale = Locale(identifier: "fr-FR")
+        check("offer fr→pt", runner.offerLanguageSwitch(to: "pt").contains("portugais"), true)
+        runner.commandLocale = Locale(identifier: "pt-BR")
+        check("offer pt→pt", runner.offerLanguageSwitch(to: "pt"), "Quer que eu responda em português?")
+        check("offer pt→fr", runner.offerLanguageSwitch(to: "fr").contains("falando francês"), true)
+        check("offer pt→en", runner.offerLanguageSwitch(to: "en").contains("falando inglês"), true)
+        runner.commandLocale = Locale(identifier: "en-US")
+        check("offer en→en", runner.offerLanguageSwitch(to: "en"), "Want me to answer in English?")
+        runner.commandLocale = Locale(identifier: "fr-FR")
+        check("offer fr→en", runner.offerLanguageSwitch(to: "en").contains("en anglais"), true)
+        check("offer fr→fr", runner.offerLanguageSwitch(to: "fr"), "Tu veux que je te réponde en français ?")
+        runner.commandLocale = Locale(identifier: "pt-BR")
+        _ = runner.offerLanguageSwitch(to: "fr")
+        switched = nil
+        var swPt = await runner.handleAnswer("sim, pode ser", availablePills: pills)
+        check("pt: sim → switch to fr", switched, "fr")
+        check("pt: sim → locale is fr-FR", runner.commandLocale?.identifier, "fr-FR")
+        check("pt: sim → answered in French", swPt.message.contains("en français"), true)
+        runner.commandLocale = Locale(identifier: "en-US")
+        _ = runner.offerLanguageSwitch(to: "pt")
+        swPt = await runner.handleAnswer("claro", availablePills: pills)
+        check("claro → switch to pt", switched, "pt")
+        check("claro → locale is pt-BR", runner.commandLocale?.identifier, "pt-BR")
+        check("claro → answered in Portuguese", swPt.message, "Beleza, agora respondo em português.")
+        switched = nil
+        _ = runner.offerLanguageSwitch(to: "en")
+        swPt = await runner.handleAnswer("não, deixa assim", availablePills: pills)
+        check("não → no switch", switched == nil, true)
+        check("não → keeps Portuguese", swPt.message, "Ok, continuo em português.")
+        _ = runner.offerLanguageSwitch(to: "en")
+        swPt = await runner.handleAnswer("hmm talvez", availablePills: pills)
+        if case .question = swPt.outcome { print("✓  pt: unclear answer asks again"); pass += 1 }
+        else { print("✗  pt: unclear answer asks again — got \(swPt.outcome)"); fail += 1 }
+        runner.pendingQuestion = nil
+        for (said, want) in [("sim", true), ("Claro!", true), ("pode ser", true), ("beleza", true), ("com certeza", true),
+                             ("bora", true), ("uhum", true), ("quero", true), ("não", false), ("não precisa", false),
+                             ("deixa assim", false), ("mantém", false), ("fica", false), ("vamos ver", false)] {
+            check("isYes \(said)", VoiceActionRunner.isYes(said), want)
+        }
+        for (said, want) in [("não", true), ("nao precisa", true), ("deixa", true), ("deixa assim", true),
+                             ("mantém", true), ("fica", true), ("sim", false), ("claro", false)] {
+            check("isNo \(said)", VoiceActionRunner.isNo(said), want)
+        }
+        check("isYes yes still", VoiceActionRunner.isYes("yes please"), true)
+        check("isNo non still", VoiceActionRunner.isNo("non merci"), true)
+        runner.commandLocale = nil
+
+        // Incomplete add / remove in Portuguese → asks which pill
+        let ptAdd = runner.askIfIncomplete("eu quero que você adicione")
+        if case .question = ptAdd?.outcome { print("✓  pt incomplete add → question"); pass += 1 }
+        else { print("✗  pt incomplete add — got \(String(describing: ptAdd))"); fail += 1 }
+        runner.pendingQuestion = nil
+        let ptRemove = runner.askIfIncomplete("tira uma pílula")
+        if case .question = ptRemove?.outcome { print("✓  pt incomplete remove → question"); pass += 1 }
+        else { print("✗  pt incomplete remove — got \(String(describing: ptRemove))"); fail += 1 }
+        runner.pendingQuestion = nil
+        check("pt: no question without a verb", runner.askIfIncomplete("e aí, tudo bem") == nil, true)
+
         // ── Guided email: who → subject → text → attachment → card ────────────
         let info = TestInfo()
         runner.info = info
@@ -287,6 +348,48 @@ enum VoiceActionRunnerTests {
         check("cancelsMail laisse tomber", VoiceActionRunner.cancelsMail("Laisse tomber"), true)
         check("cancelsMail not a subject", VoiceActionRunner.cancelsMail("cancel the meeting"), false)
         runner.pendingQuestion = nil
+        for said in ["Cancela", "cancelar", "Deixa pra lá", "deixa para lá", "Esquece", "para"] {
+            check("cancelsMail pt \(said)", VoiceActionRunner.cancelsMail(said), true)
+        }
+        check("cancelsMail pt: not a subject", VoiceActionRunner.cancelsMail("para a reunião de amanhã"), false)
+
+        // Guided email and web search in Portuguese
+        runner.commandLocale = Locale(identifier: "pt-BR")
+        info.card = nil
+        r = await runner.run(.mail(VoiceQuery.MailRequest(recipient: "", file: nil, folder: nil)), availablePills: pills)
+        check("pt mail asks who", r.message.contains("Pra quem eu mando o e-mail?"), true)
+        r = await runner.handleAnswer("Tana", availablePills: pills)
+        check("pt mail asks subject", r.message, "Qual é o assunto?")
+        r = await runner.handleAnswer("A imagem está pronta", availablePills: pills)
+        check("pt mail asks text", r.message.contains("O que eu digo?"), true)
+        r = await runner.handleAnswer("Oi Tana, a imagem está pronta", availablePills: pills)
+        check("pt mail asks attachment", r.message.contains("Tem algum anexo?"), true)
+        r = await runner.handleAnswer("não", availablePills: pills)
+        check("pt mail card shown", info.card?.to, "tana@example.com")
+        check("pt mail done", r.message.contains("Aqui está o seu e-mail"), true)
+        info.card = nil
+        _ = await runner.run(.mail(VoiceQuery.MailRequest(recipient: "", file: nil, folder: nil)), availablePills: pills)
+        r = await runner.handleAnswer("cancela", availablePills: pills)
+        check("pt cancel → cancelled", r.message, "Ok, cancelei o e-mail.")
+        check("pt cancel → no card", info.card == nil, true)
+        runner.pendingQuestion = nil
+        runner.resetWebThread()
+        info.webReply = "A Espanha ganhou. Quer os detalhes?"
+        r = await runner.run(.webSearch(query: "quem ganhou a Euro"), availablePills: pills)
+        check("pt web answer", r.message, "A Espanha ganhou. Quer os detalhes?")
+        check("pt web lang is pt", info.webLangs.last, .pt)
+        r = await runner.run(.webSearch(query: ""), availablePills: pills)
+        check("pt empty web query asks", r.message, "O que eu pesquiso?")
+        runner.pendingQuestion = nil
+        runner.commandLocale = Locale(identifier: "fr-FR")
+        _ = await runner.run(.webSearch(query: "x"), availablePills: pills)
+        check("fr web lang is fr", info.webLangs.last, .fr)
+        runner.commandLocale = Locale(identifier: "en-US")
+        _ = await runner.run(.webSearch(query: "x"), availablePills: pills)
+        check("en web lang is en", info.webLangs.last, .en)
+        runner.commandLocale = nil
+        runner.resetWebThread()
+        info.webReply = "Spain won. Want the details?"
 
         // ── Web search: answer, follow-up keeps the history, off / no key ─────
         runner.resetWebThread()
@@ -309,6 +412,15 @@ enum VoiceActionRunnerTests {
         info.hasWebKey = false
         r = await runner.run(.webSearch(query: "x"), availablePills: pills)
         check("no key → asks for key", r.message.contains("Anthropic API key"), true)
+        runner.commandLocale = Locale(identifier: "pt-BR")
+        r = await runner.run(.webSearch(query: "x"), availablePills: pills)
+        check("pt no key → informal tone", r.message,
+              "Pra pesquisar na internet, adiciona sua chave de API da Anthropic em Ajustes e ativa a busca na internet em Voz.")
+        info.hasWebKey = true
+        r = await runner.run(.webSearch(query: "x"), availablePills: pills)
+        check("pt web off → informal tone", r.message, "A busca na internet está desligada. Ativa em Ajustes, Voz.")
+        info.hasWebKey = false
+        runner.commandLocale = Locale(identifier: "en-US")
         runner.resetWebThread()
         check("web thread reset", runner.hasWebThread, false)
         runner.commandLocale = nil
@@ -408,8 +520,10 @@ final class TestInfo: VoiceInfoProviding {
     var hasWebKey = true
     var webCalls: [(String, Int)] = []
     var webReply: String? = "Spain won. Want the details?"
-    func webAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String? {
+    var webLangs: [VoiceLang] = []
+    func webAnswer(_ question: String, history: [VoiceWebTurn], lang: VoiceLang) async -> String? {
         webCalls.append((question, history.count))
+        webLangs.append(lang)
         return webReply
     }
 }

@@ -77,6 +77,8 @@ enum PillCatalog {
               category: .workspace, subtitle: String(localized: "Integration"),  source: .agent,  githubOnly: true),
         .init(id: "agent_codex",         name: "Codex",       color: "#2DD4BF",
               category: .workspace, subtitle: String(localized: "Integration"),  source: .agent,  githubOnly: true),
+        .init(id: "integration_cmux",    name: "cmux",        color: "#7DD3FC",
+              category: .workspace, subtitle: String(localized: "Integration"),  source: .claudeCode, githubOnly: true),
         // ── Agents ───────────────────────────────────────────────────────────
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
               category: .agent,     subtitle: String(localized: "Agent"),        source: .agent,  githubOnly: true),
@@ -104,6 +106,8 @@ enum PillCatalog {
         .init(id: "ai_ollama",           name: "Ollama",      color: ChatProvider.ollama.accentHex,
               category: .ai,        subtitle: String(localized: "Chat"),         source: .n8n),
         .init(id: "ai_lmstudio",         name: "LM Studio",   color: ChatProvider.lmstudio.accentHex,
+              category: .ai,        subtitle: String(localized: "Chat"),         source: .n8n),
+        .init(id: "ai_hermes",           name: "Hermes",      color: ChatProvider.hermes.accentHex,
               category: .ai,        subtitle: String(localized: "Chat"),         source: .n8n),
         // ── Services ─────────────────────────────────────────────────────────
         .init(id: "integration_resend",  name: "Resend",      color: "#22C55E",

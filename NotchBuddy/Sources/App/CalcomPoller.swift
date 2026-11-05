@@ -43,9 +43,9 @@ final class CalcomPoller: @unchecked Sendable {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             if code != 200 {
                 let msg: String
-                if code == 401 { msg = "Invalid API key (401)" }
-                else if code == 0 { msg = error?.localizedDescription ?? "No connection" }
-                else { msg = "API error \(code)" }
+                if code == 401 { msg = String(localized: "Invalid API key (401)") }
+                else if code == 0 { msg = error?.localizedDescription ?? String(localized: "No connection") }
+                else { msg = String(localized: "API error \(String(code))") }
                 DispatchQueue.main.async { AppState.shared.setIfChanged(\.calcomError, msg) }
                 return
             }
@@ -68,7 +68,7 @@ final class CalcomPoller: @unchecked Sendable {
         else if let s = b["id"] as? String, let i = Int(s) { id = i }
         else { return nil }
 
-        let title  = (b["title"] as? String) ?? "Meeting"
+        let title  = (b["title"] as? String) ?? String(localized: "Meeting")
         let status = (b["status"] as? String) ?? "accepted"
         guard let startStr = (b["start"] as? String) ?? (b["startTime"] as? String) else { return nil }
 
