@@ -23,20 +23,32 @@ interface Animated {
 
 const live = new Set<Animated>();
 let frame: number | null = null;
+/** The stand-in timer while the webview gives no animation frames (see `ask`). */
+let fallback: number | null = null;
+/** No animation frame came after the last ask: the timer drives the loop. */
+let starved = false;
 let last = performance.now();
 const start = performance.now();
 /** The Coucou window is on screen, as Rust last said (`setWindowShown`). */
 let windowShown = true;
 
 function running(): boolean {
-  return shouldAnimate(live.size, document.visibilityState, windowShown);
+  // WebView2 can leave a window created hidden reporting "hidden" once shown:
+  // focused, it is in front of the user whatever the page thinks.
+  const visibility = document.hasFocus?.() ? "visible" : document.visibilityState;
+  return shouldAnimate(live.size, visibility, windowShown);
 }
 
 function loop(now: number) {
   frame = null;
+  if (fallback !== null) {
+    window.clearTimeout(fallback);
+    fallback = null;
+  }
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   const t = (now - start) / 1000;
+  stepVoice(dt, now);
   for (const a of live) {
     if (!a.el.isConnected) {
       // Built but not shown yet: wait for it (a few seconds at most).
@@ -46,27 +58,72 @@ function loop(now: number) {
     a.shown = true;
     if (onScreen(a.el.getBoundingClientRect(), window.innerWidth, window.innerHeight)) a.draw(dt, t);
   }
-  if (running()) frame = requestAnimationFrame(loop);
+  if (running()) ask();
+}
+
+/**
+ * The next frame. WebView2 gives a window created hidden no animation frames
+ * until something wakes its compositor, so a timer stands in when
+ * none comes: the bands stay alive at 30 frames a second instead of frozen,
+ * and the loop goes back to real frames the moment one arrives.
+ */
+function ask() {
+  frame = requestAnimationFrame((now) => {
+    starved = false;
+    loop(now);
+  });
+  fallback = window.setTimeout(() => {
+    fallback = null;
+    if (frame === null) return;
+    cancelAnimationFrame(frame);
+    starved = true;
+    loop(performance.now());
+  }, starved ? 33 : 250);
 }
 
 function wake() {
-  if (frame === null && running()) {
+  if (frame === null && fallback === null && running()) {
     last = performance.now();
-    frame = requestAnimationFrame(loop);
+    ask();
   }
 }
 
 document.addEventListener("visibilitychange", wake);
+window.addEventListener("focus", wake);
 
 /** The window was shown or hidden (the `hub-visible` event): hidden, the loop
  *  stops at once; shown, it starts again. */
 export function setWindowShown(shown: boolean) {
   windowShown = shown;
-  if (!shown && frame !== null) {
-    cancelAnimationFrame(frame);
+  if (!shown) {
+    if (frame !== null) cancelAnimationFrame(frame);
+    if (fallback !== null) window.clearTimeout(fallback);
     frame = null;
+    fallback = null;
   }
   wake();
+}
+
+// ── The voice ─────────────────────────────────────────────────────────────────
+
+/** How loud the dictation is, 0…1, as the bands last said (`flow-bands`). */
+let voiceGoal = 0;
+let voiceAt = 0;
+/** The level the bands draw with, eased towards the voice. */
+let voice = 0;
+
+/** While you dictate, the bands' light and particles follow your voice. */
+export function setVoiceLevel(level: number) {
+  voiceGoal = Math.max(0, Math.min(1, level));
+  voiceAt = performance.now();
+  wake();
+}
+
+/** One step of the eased level; the voice fades once the bands stop coming. */
+function stepVoice(dt: number, now: number) {
+  const goal = now - voiceAt > 250 ? 0 : voiceGoal;
+  voice += (goal - voice) * Math.min(1, dt * (goal > voice ? 14 : 4));
+  if (voice < 0.001) voice = 0;
 }
 
 function add(a: Animated) {
@@ -158,7 +215,8 @@ export function backdrop(canvas: HTMLCanvasElement, color: string, pointerFrom: 
       lin.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = lin;
       ctx.fillRect(0, 0, w, h);
-      const breath = 0.85 + 0.15 * Math.sin(t * 0.9);
+      // The voice brightens the glow and lifts the particles.
+      const breath = 0.85 + 0.15 * Math.sin(t * 0.9) + voice * 0.55;
       const rad = ctx.createRadialGradient(w * 0.92, -h * 0.15, 0, w * 0.92, -h * 0.15, Math.max(w, h) * 0.55 * breath);
       rad.addColorStop(0, rgba(color, 0.3 * breath));
       rad.addColorStop(0.5, rgba(color, 0.08));
@@ -168,10 +226,11 @@ export function backdrop(canvas: HTMLCanvasElement, color: string, pointerFrom: 
 
       for (const p of particles) {
         // Drift, always; the pointer pushes them away.
+        const lift = 1 + voice * 5;
         p.x += p.vx * dt * p.depth;
-        p.y += p.vy * dt * p.depth;
-        let alpha = (0.22 + 0.5 * (0.5 + 0.5 * Math.sin(t * (1.2 + p.depth) + p.phase))) * p.depth;
-        let r = p.r;
+        p.y += p.vy * dt * p.depth * lift;
+        let alpha = (0.22 + 0.5 * (0.5 + 0.5 * Math.sin(t * (1.2 + p.depth) + p.phase))) * p.depth + voice * 0.35;
+        let r = p.r * (1 + voice * 0.6);
         if (pointer && strength > 0.01) {
           const dx = p.x - pointer.x;
           const dy = p.y - pointer.y;
@@ -401,6 +460,10 @@ export const THEMES: Record<string, Theme> = {
   phone: { color: "#3DDC84", cast: [m("#3DDC84", 56, 0.25), m("#F5F6F8", 46, 0.8, { outfit: "beanie" })] },
   voice: { color: "#F97316", cast: [m("#F97316", 60, 0.3), m("#F5F6F8", 48, 0.85, { outfit: "roundGlasses" })] },
   shortcuts: { color: "#6366F1", cast: [m("#6366F1", 56, 0.2, { outfit: "sunglasses" }), m("#F5F6F8", 46, 0.8)] },
+  mailOverview: { color: "#2F8CFF", cast: [m("#2F8CFF", 58, 0.2, { state: "working" }), m("#F5F6F8", 46, 0.7), m("#F5A524", 40, 1)] },
+  mailRules: { color: "#34D399", cast: [m("#34D399", 56, 0.3, { outfit: "roundGlasses" }), m("#8E939C", 46, 0.85)] },
+  mailBanned: { color: "#FF453A", cast: [m("#FF453A", 54, 0.25, { outfit: "sunglasses" }), m("#F5F6F8", 44, 0.8, { state: "sleeping", roams: false })] },
+  mailVIP: { color: "#F5A524", cast: [m("#F5A524", 60, 0.3, { outfit: "crown" }), m("#2F8CFF", 46, 0.85)] },
 };
 
 /** The band itself: title, line, actions, and the Mochis. */
@@ -409,6 +472,8 @@ export function hero(page: string, title: string, subtitle: string | null, actio
   const el = document.createElement("div");
   el.className = compact ? "hub-hero compact" : "hub-hero";
   el.style.setProperty("--hero-line", rgba(theme.color, 0.16));
+  el.style.setProperty("--hero-glow", rgba(theme.color, 0.3));
+  el.style.setProperty("--hero-tint", rgba(theme.color, 0.1));
   const back = document.createElement("canvas");
   back.className = "backdrop";
   const mochis = document.createElement("canvas");
@@ -440,6 +505,8 @@ export function glowCard(color: string, ...content: (HTMLElement | string)[]): H
   const el = document.createElement("div");
   el.className = "hub-glow";
   el.style.setProperty("--glow-line", rgba(color, 0.18));
+  el.style.setProperty("--hero-glow", rgba(color, 0.3));
+  el.style.setProperty("--hero-tint", rgba(color, 0.1));
   const canvas = document.createElement("canvas");
   const inner = document.createElement("div");
   inner.className = "inner";

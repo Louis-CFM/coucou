@@ -55,12 +55,15 @@ final class StripePoller: @unchecked Sendable {
             guard let data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
 
-            // Sum available + pending so recent charges show up immediately
+            // Sum available + pending for the primary currency so recent charges show up immediately
             let available = json["available"] as? [[String: Any]] ?? []
             let pending   = json["pending"]   as? [[String: Any]] ?? []
             let allBuckets = available + pending
             guard let currency = (allBuckets.first)?["currency"] as? String else { return }
-            let amount = allBuckets.compactMap { $0["amount"] as? Int }.reduce(0, +)
+            let amount = allBuckets
+                .filter { ($0["currency"] as? String) == currency }
+                .compactMap { $0["amount"] as? Int }
+                .reduce(0, +)
 
             DispatchQueue.main.async {
                 let state = AppState.shared

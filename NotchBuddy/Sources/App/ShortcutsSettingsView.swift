@@ -44,7 +44,7 @@ struct ShortcutsSettingsView: View {
             }
             .padding(6)
         }
-        .hubFindable("shortcut.group.global")
+            .settingsAnchor("shortcuts.global")
     }
 
     /// Shortcuts listed here. The App Store build hides the ones it can't run.
@@ -125,7 +125,7 @@ struct ShortcutsSettingsView: View {
             }
             .padding(6)
         }
-        .hubFindable("shortcut.group.island")
+            .settingsAnchor("shortcuts.island")
     }
 
     // MARK: - Bindings

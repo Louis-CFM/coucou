@@ -79,8 +79,8 @@ struct HubDictionaryPage: View {
     }
 }
 
-/// A word of the dictionary, with its × to remove it.
-private struct HubChip: View {
+/// A word of the dictionary (or a banned word, a VIP), with its × to remove it.
+struct HubChip: View {
     let text: String
     let remove: () -> Void
     @State private var hover = false
@@ -222,7 +222,6 @@ struct HubStylesPage: View {
                         .labelsHidden()
                         .disabled(!FlowCleanup.hasKey && !store.cleanupEnabled)
                 }
-                .hubFindable("hub.cleanup")
                 if !FlowCleanup.hasKey {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
@@ -242,7 +241,6 @@ struct HubStylesPage: View {
                 HubRow(title: String(localized: "hub.style-default"), detail: store.defaultStyle.detail) {
                     stylePicker($store.defaultStyle)
                 }
-                .hubFindable("hub.style-default")
             }
             .opacity(1)
 

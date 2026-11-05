@@ -5,47 +5,58 @@
 
 import "./hub.css";
 import { h, clear } from "../views/dom";
-import { t, tl } from "../i18n/i18n";
+import { t, onLanguageChange } from "../i18n/i18n";
 import { onEvent } from "../core/bridge";
-import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus } from "../core/flow";
-import { hero, liveMochi, setWindowShown } from "./hero";
-import { searchSettings, normalize, type Hit, type PageInfo } from "./search";
+import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus, flowKeyId } from "../core/flow";
+import { hero, liveMochi, setVoiceLevel, setWindowShown } from "./hero";
 import { icon, keyLabel } from "./ui";
+import { searchSettings, SETTINGS_ENTRIES, type SettingsSearchHit } from "./search";
 
 export type PageId =
   | "dictation" | "notes" | "insights" | "dictionary" | "snippets" | "styles" | "flowsettings"
-  | "general" | "pills" | "agents" | "chat" | "voice" | "integrations" | "phone" | "shortcuts";
+  | "general" | "pills" | "agents" | "chat" | "voice" | "integrations" | "phone" | "shortcuts"
+  | "mailOverview" | "mailRules" | "mailBanned" | "mailVIP";
 
 interface PageDef {
   id: PageId;
   icon: string;
   title: () => string;
+  /** English name for search in any interface language. */
+  titleKey: string;
   /** The band's line; none for pages that draw their own band. */
   subtitle?: () => string;
 }
 
 export const FLOW_PAGES: PageDef[] = [
-  { id: "dictation", icon: "mic", title: () => t("Dictation") },
-  { id: "notes", icon: "record", title: () => t("Notetaker") },
-  { id: "insights", icon: "chart", title: () => t("Statistics") },
-  { id: "dictionary", icon: "book", title: () => t("Dictionary") },
-  { id: "snippets", icon: "bolt", title: () => t("Snippets") },
-  { id: "styles", icon: "text", title: () => t("Styles") },
-  { id: "flowsettings", icon: "sliders", title: () => t("Settings") },
+  { id: "dictation", icon: "mic", title: () => t("Dictation"), titleKey: "Dictation" },
+  { id: "notes", icon: "record", title: () => t("Notetaker"), titleKey: "Notetaker" },
+  { id: "insights", icon: "chart", title: () => t("Statistics"), titleKey: "Statistics" },
+  { id: "dictionary", icon: "book", title: () => t("Dictionary"), titleKey: "Dictionary" },
+  { id: "snippets", icon: "bolt", title: () => t("Snippets"), titleKey: "Snippets" },
+  { id: "styles", icon: "text", title: () => t("Styles"), titleKey: "Styles" },
+  { id: "flowsettings", icon: "sliders", title: () => t("Settings"), titleKey: "Settings" },
 ];
 
 export const NOTCH_PAGES: PageDef[] = [
-  { id: "general", icon: "gear", title: () => t("General"), subtitle: () => t("Mochi, his sounds and how the island behaves.") },
-  { id: "pills", icon: "grid", title: () => t("Active pills"), subtitle: () => t("The pills shown in the island, their order and their colours.") },
-  { id: "agents", icon: "terminal", title: () => t("Agents"), subtitle: () => t("Claude Code, Codex and the other agents Mochi follows.") },
-  { id: "chat", icon: "chat", title: () => t("Chat"), subtitle: () => t("The AI of the island's chat, with your own keys.") },
-  { id: "voice", icon: "wave", title: () => "OK Coucou" },
-  { id: "integrations", icon: "puzzle", title: () => t("Integrations"), subtitle: () => t("Stripe, GitHub, Vercel, n8n, Notion and the rest.") },
-  { id: "phone", icon: "phone", title: () => t("Android phone"), subtitle: () => t("Your agents and their approvals on your Android phone, over your Wi-Fi.") },
-  { id: "shortcuts", icon: "keyboard", title: () => t("Shortcuts"), subtitle: () => t("The keys that open the island and its actions.") },
+  { id: "general", icon: "gear", title: () => t("General"), titleKey: "General", subtitle: () => t("Mochi, his sounds and how the island behaves.") },
+  { id: "pills", icon: "grid", title: () => t("Active pills"), titleKey: "Active pills", subtitle: () => t("The pills shown in the island, their order and their colours.") },
+  { id: "agents", icon: "terminal", title: () => t("Agents"), titleKey: "Agents", subtitle: () => t("Claude Code, Codex and the other agents Mochi follows.") },
+  { id: "chat", icon: "chat", title: () => t("Chat"), titleKey: "Chat", subtitle: () => t("The AI of the island's chat, with your own keys.") },
+  { id: "voice", icon: "wave", title: () => "OK Coucou", titleKey: "OK Coucou" },
+  { id: "integrations", icon: "puzzle", title: () => t("Integrations"), titleKey: "Integrations", subtitle: () => t("Stripe, GitHub, Vercel, n8n, Notion and the rest.") },
+  { id: "phone", icon: "phone", title: () => t("Android phone"), titleKey: "Android phone", subtitle: () => t("Your agents and their approvals on your Android phone, over your Wi-Fi.") },
+  { id: "shortcuts", icon: "keyboard", title: () => t("Shortcuts"), titleKey: "Shortcuts", subtitle: () => t("The keys that open the island and its actions.") },
 ];
 
-const ALL = [...FLOW_PAGES, ...NOTCH_PAGES];
+/** Mail (classic Outlook): Windows only, Linux has no Outlook. */
+export const MAIL_PAGES: PageDef[] = [
+  { id: "mailOverview", icon: "tray", title: () => t("Overview"), titleKey: "Overview" },
+  { id: "mailRules", icon: "filter", title: () => t("Rules"), titleKey: "Rules" },
+  { id: "mailBanned", icon: "nosign", title: () => t("Banned words"), titleKey: "Banned words" },
+  { id: "mailVIP", icon: "star", title: () => t("VIP"), titleKey: "VIP" },
+];
+
+const ALL = [...FLOW_PAGES, ...NOTCH_PAGES, ...MAIL_PAGES];
 
 /** What a page gets to draw itself and reach the rest of the window. */
 export interface HubContext {
@@ -72,8 +83,8 @@ export interface HubOptions {
 
 const DEFAULT_STATUS: FlowStatus = {
   prefs: {
-    enabled: false, key: "right_ctrl", edge: "bottom", mic: "", keepDays: 30, cleanup: false,
-    defaultStyle: "natural", summaryEngine: "claude", openAtLaunch: true, voice: false, voiceOutput: "system", voiceGender: "female",
+    enabled: false, key: "right_ctrl", keyCombo: [], edge: "bottom", mic: "", keepDays: 30, cleanup: false,
+    defaultStyle: "natural", summaryEngine: "claude", openAtLaunch: true, voice: false, voiceOutput: "system", voiceGender: "female", muteOthers: true,
   },
   models: { parakeet: { state: "missing" }, downloadMb: 700 },
   keys: "ok",
@@ -88,11 +99,17 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   // The window is created hidden and only shown and hidden afterwards: its
   // canvases animate only while it is on screen (#792).
   await onEvent<boolean>("hub-visible", setWindowShown);
+  // While you dictate: the loudest of the pill's bands.
+  await onEvent<number[]>("flow-bands", (bands) => setVoiceLevel(Math.max(0, ...bands)));
   const shown = await FlowBridge.hubShown();
   if (shown !== null) setWindowShown(shown);
   let current: PageId = "dictation";
+  let searchHits: SettingsSearchHit[] = [];
+  let activeSearch = 0;
   let status: FlowStatus = (await FlowBridge.status()) ?? DEFAULT_STATUS;
   const items = new Map<PageId, HTMLElement>();
+  const labels = new Map<PageId, HTMLElement>();
+  const searchRows = new Map<string, HTMLElement>();
   const statusLine = h("div", { class: "hub-status" });
   const scroll = h("div", { class: "hub-scroll" });
   let rendering = 0;
@@ -132,28 +149,24 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       text = t("Use the pill's microphone to dictate");
     } else {
       color = "#34d399";
-      text = t("Ready · hold {0}", { 0: keyLabel(status.keys === "wayland" ? "wayland" : status.prefs.key, status.platform) });
+      text = t("Ready · hold {0}", { 0: keyLabel(status.keys === "wayland" ? "wayland" : flowKeyId(status.prefs), status.platform) });
     }
     statusLine.append(h("i", { class: "dot", style: `background:${color}` }), h("span", { text }));
   }
 
-  /** Underlines the setting a search result led to, and brings it into view. */
-  function underline(container: HTMLElement, text: string) {
-    const want = normalize(text.trim());
-    const found = [...container.querySelectorAll<HTMLElement>("label, .title, .hub-label, .subhead, h2 span")]
-      .find((el) => normalize((el.textContent ?? "").trim()) === want);
-    if (!found) return;
-    found.classList.add("hub-found");
-    found.scrollIntoView({ block: "center", behavior: "smooth" });
+  function updateSearchRowHighlights() {
+    for (const [id, rowEl] of searchRows) {
+      rowEl.classList.toggle("on", id === searchHits[activeSearch]?.id);
+    }
   }
 
-  /** `find`: the label of a setting to underline once the page is drawn (from the search box). */
-  async function show(page: PageId, find?: string) {
+  async function show(page: PageId, targetAnchor?: string) {
     const def = ALL.find((p) => p.id === page) ?? FLOW_PAGES[0];
     ctx.onLeave?.();
     ctx.onLeave = undefined;
     current = def.id;
     for (const [id, el] of items) el.classList.toggle("on", id === current);
+    updateSearchRowHighlights();
     const token = ++rendering;
     const page_ = h("div", { class: "hub-page" });
     const renderer = opts.flowPages[def.id];
@@ -168,8 +181,19 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     if (token !== rendering) return;
     clear(scroll);
     scroll.append(page_);
-    scroll.scrollTop = 0;
-    if (find) underline(page_, find);
+    if (targetAnchor) {
+      const el = page_.querySelector(`[data-anchor="${targetAnchor}"]`) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.remove("hub-card-glowing");
+        void el.offsetWidth;
+        el.classList.add("hub-card-glowing");
+      } else {
+        scroll.scrollTop = 0;
+      }
+    } else {
+      scroll.scrollTop = 0;
+    }
   }
 
   // ── The sidebar ──
@@ -178,77 +202,140 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   side.append(h("div", { class: "hub-brand" }, logo, h("span", { text: "Coucou" })));
   liveMochi(logo as HTMLCanvasElement);
 
-  // The search box: while something is typed, the results take the place of the pages.
-  const input = h("input", {
-    class: "hub-input hub-search",
-    type: "search",
-    placeholder: tl("Search settings"),
-    "aria-label": tl("Search settings"),
+  // Settings search field
+  const searchInput = h("input", {
+    class: "hub-search-input",
+    type: "text",
+    placeholder: t("Search settings"),
+    "aria-label": t("Search settings"),
     autocomplete: "off",
     spellcheck: "false",
   }) as HTMLInputElement;
-  const hits = h("div", { class: "hub-hits" });
-  let results: Hit[] = [];
-  let active = 0;
 
-  const pageInfos = (): PageInfo[] => [
-    ...FLOW_PAGES.map((p) => ({ id: p.id, title: p.title(), group: "Flow" })),
-    ...NOTCH_PAGES.map((p) => ({ id: p.id, title: p.title(), group: t("Notch") })),
-  ];
+  const searchClear = h("button", {
+    class: "hub-search-clear",
+    title: t("Close"),
+    style: "display:none",
+  }, icon("x"));
 
-  function drawHits() {
-    clear(hits);
-    const query = input.value.trim();
-    side.classList.toggle("searching", query !== "");
-    results = query ? searchSettings(query, pageInfos()) : [];
-    if (!query) return;
-    if (!results.length) {
-      hits.append(h("div", { class: "hub-hits-empty", text: t("No results") }));
-      return;
-    }
-    active = Math.min(active, results.length - 1);
-    results.forEach((hit, i) => {
-      const b = h("button", { class: `hub-hit${i === active ? " on" : ""}`, onclick: () => openHit(hit) });
-      b.append(h("span", { class: "name", text: hit.text }), h("span", { class: "where", text: hit.where }));
-      hits.append(b);
-    });
-  }
+  const searchBox = h("div", { class: "hub-search" },
+    icon("search"),
+    searchInput,
+    searchClear,
+  );
+  searchBox.querySelector("svg")?.classList.add("hub-search-icon");
+  side.append(searchBox);
 
-  function openHit(hit: Hit) {
-    input.value = "";
-    active = 0;
-    drawHits();
-    void show(hit.page, hit.setting ? hit.text : undefined);
-  }
+  const groupsContainer = h("div", { class: "hub-groups" });
+  const resultsContainer = h("div", { class: "hub-search-results", style: "display:none" });
+  side.append(groupsContainer, resultsContainer);
 
-  input.addEventListener("input", () => {
-    active = 0;
-    drawHits();
-  });
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      input.value = "";
-      drawHits();
-    } else if (e.key === "Enter" && results[active]) {
-      openHit(results[active]);
-    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && results.length) {
-      e.preventDefault();
-      active = (active + (e.key === "ArrowDown" ? 1 : -1) + results.length) % results.length;
-      drawHits();
-    }
-  });
-  side.append(input, hits);
   const group = (title: string, pages: PageDef[]) => {
-    side.append(h("div", { class: "hub-group", text: title }));
+    const heading = h("div", { class: "hub-group", text: title });
+    groupsContainer.append(heading);
     for (const p of pages) {
       const b = h("button", { class: "hub-item", onclick: () => void show(p.id) });
-      b.append(icon(p.icon), h("span", { text: p.title() }));
+      const label = h("span", { text: p.title() });
+      b.append(icon(p.icon), label);
       items.set(p.id, b);
-      side.append(b);
+      labels.set(p.id, label);
+      groupsContainer.append(b);
     }
+    return heading;
   };
   group("Flow", FLOW_PAGES);
-  group(t("Notch"), NOTCH_PAGES);
+  const notchGroup = group(t("Notch"), NOTCH_PAGES);
+  if (status.platform === "windows") group("Mail", MAIL_PAGES);
+
+  function renderSearchResults() {
+    clear(resultsContainer);
+    searchRows.clear();
+    const query = searchInput.value.trim();
+    if (!query) {
+      searchClear.style.display = "none";
+      resultsContainer.style.display = "none";
+      groupsContainer.style.display = "";
+      searchHits = [];
+      return;
+    }
+    searchClear.style.display = "";
+    groupsContainer.style.display = "none";
+    resultsContainer.style.display = "";
+    const pages = status.platform === "windows" ? ALL : [...FLOW_PAGES, ...NOTCH_PAGES];
+    searchHits = searchSettings(query, (pageId) => ALL.find((p) => p.id === pageId)?.title() ?? pageId, [
+      ...pages.map((p) => ({ id: "page." + p.id, page: p.id, title: p.titleKey, terms: [], isPage: true })),
+      ...SETTINGS_ENTRIES.filter((entry) => pages.some((p) => p.id === entry.page)),
+    ]);
+    activeSearch = Math.min(activeSearch, Math.max(0, searchHits.length - 1));
+    if (searchHits.length === 0) {
+      resultsContainer.append(h("div", { class: "hub-search-empty", text: t("No setting found") }));
+      return;
+    }
+    for (const hit of searchHits) {
+      const pageDef = ALL.find((p) => p.id === hit.entry.page);
+      const row = h("button", { class: "hub-search-row" });
+      if (searchHits[activeSearch] === hit) {
+        row.classList.add("on");
+      }
+      row.append(icon(pageDef?.icon ?? "sliders"));
+      const textContainer = h("div", { class: "hub-search-row-text" });
+      const rowTitle = h("div", { class: "hub-search-row-title", text: hit.label ?? t(hit.entry.title) });
+      const rowSubtitle = h("div", {
+        class: "hub-search-row-subtitle",
+        text: hit.label
+          ? `${pageDef?.title() ?? ""} › ${t(hit.entry.title)}`
+          : (pageDef?.title() ?? ""),
+      });
+      textContainer.append(rowTitle, rowSubtitle);
+      row.append(textContainer);
+      row.addEventListener("click", () => {
+        openHit(hit);
+      });
+      searchRows.set(hit.id, row);
+      resultsContainer.append(row);
+    }
+  }
+
+  function openHit(hit: SettingsSearchHit) {
+    searchInput.value = "";
+    activeSearch = 0;
+    renderSearchResults();
+    void show(hit.entry.page, hit.entry.isPage ? undefined : hit.entry.id);
+  }
+
+  searchInput.addEventListener("input", () => {
+    activeSearch = 0;
+    renderSearchResults();
+  });
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      searchInput.value = "";
+      renderSearchResults();
+    } else if (e.key === "Enter") {
+      if (searchHits.length > 0) {
+        openHit(searchHits[activeSearch]);
+      }
+    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && searchHits.length) {
+      e.preventDefault();
+      activeSearch = (activeSearch + (e.key === "ArrowDown" ? 1 : -1) + searchHits.length) % searchHits.length;
+      updateSearchRowHighlights();
+      searchRows.get(searchHits[activeSearch].id)?.scrollIntoView({ block: "nearest" });
+    }
+  });
+
+  searchClear.addEventListener("click", () => {
+    searchInput.value = "";
+    renderSearchResults();
+    searchInput.focus();
+  });
+
+  onLanguageChange(() => {
+    searchInput.placeholder = t("Search settings");
+    searchInput.setAttribute("aria-label", t("Search settings"));
+    activeSearch = 0;
+    if (searchInput.value.trim()) renderSearchResults();
+  });
+
   side.append(h("div", { class: "spacer" }), statusLine, h("div", { class: "hub-version", text: `Coucou ${opts.version}` }));
 
   clear(root);
@@ -269,7 +356,15 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     drawStatus();
   });
   return {
-    redraw: () => void show(current),
+    redraw: () => {
+      for (const p of ALL) {
+        const label = labels.get(p.id);
+        if (label) label.textContent = p.title();
+      }
+      notchGroup.textContent = t("Notch");
+      drawStatus();
+      void show(current);
+    },
     current: () => current,
   };
 }

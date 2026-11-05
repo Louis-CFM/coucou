@@ -7,11 +7,13 @@ import SwiftUI
 enum HubPage: String, CaseIterable, Identifiable {
     case dictation, notes, insights, dictionary, snippets, styles, settings
     case general, pills, agents, chat, integrations, voice, shortcuts
+    case mailOverview, mailRules, mailBanned, mailVIP
 
     var id: String { rawValue }
 
     static let flowPages: [HubPage] = [.dictation, .notes, .insights, .dictionary, .snippets, .styles, .settings]
     static let notchPages: [HubPage] = [.general, .pills, .agents, .chat, .integrations, .voice, .shortcuts]
+    static let mailPages: [HubPage] = [.mailOverview, .mailRules, .mailBanned, .mailVIP]
 
     /// The section of Settings this page shows, for the notch's pages.
     var settingsSection: String? {
@@ -32,22 +34,28 @@ enum HubPage: String, CaseIterable, Identifiable {
         notchPages.first { $0.settingsSection == section } ?? .general
     }
 
-    var title: String {
+    var title: String { NSLocalizedString(titleKey, comment: "") }
+
+    var titleKey: String {
         switch self {
-        case .general:      return String(localized: "General")
-        case .pills:        return String(localized: "Active pills")
-        case .agents:       return String(localized: "Agents")
-        case .chat:         return String(localized: "Chat")
-        case .integrations: return String(localized: "Integrations")
-        case .voice:        return String(localized: "Voice")
-        case .shortcuts:    return String(localized: "Shortcuts")
-        case .dictation:  return String(localized: "hub.page.dictation")
-        case .notes:      return String(localized: "hub.page.notes")
-        case .insights:   return String(localized: "hub.page.insights")
-        case .dictionary: return String(localized: "hub.page.dictionary")
-        case .snippets:   return String(localized: "hub.page.snippets")
-        case .styles:     return String(localized: "hub.page.styles")
-        case .settings:   return String(localized: "hub.page.settings")
+        case .general:      return "General"
+        case .pills:        return "Active pills"
+        case .agents:       return "Agents"
+        case .chat:         return "Chat"
+        case .integrations: return "Integrations"
+        case .voice:        return "Voice"
+        case .shortcuts:    return "Shortcuts"
+        case .dictation:  return "hub.page.dictation"
+        case .notes:      return "hub.page.notes"
+        case .insights:   return "hub.page.insights"
+        case .dictionary: return "hub.page.dictionary"
+        case .snippets:   return "hub.page.snippets"
+        case .styles:     return "hub.page.styles"
+        case .settings:   return "hub.page.settings"
+        case .mailOverview: return "hub.mail.overview"
+        case .mailRules:    return "hub.mail.rules"
+        case .mailBanned:   return "hub.mail.banned"
+        case .mailVIP:      return "hub.mail.vip"
         }
     }
 
@@ -67,6 +75,10 @@ enum HubPage: String, CaseIterable, Identifiable {
         case .integrations: return "puzzlepiece.extension"
         case .voice:        return "waveform"
         case .shortcuts:    return "keyboard"
+        case .mailOverview: return "tray"
+        case .mailRules:    return "line.3.horizontal.decrease"
+        case .mailBanned:   return "nosign"
+        case .mailVIP:      return "star"
         }
     }
 }
@@ -125,24 +137,7 @@ extension HubPage {
 
 @MainActor
 final class HubRouter: ObservableObject {
-    /// Any other way to a page (the sidebar, the tray, a link) forgets the setting a search led to.
-    @Published var page: HubPage = .dictation {
-        didSet { if !opening { find = nil } }
-    }
-    /// The setting a search result led to, to scroll to and light once its page is drawn.
-    @Published var find: HubFindRequest?
-    private var findCount = 0
-    private var opening = false
-
-    /// Opens a page, and the setting on it a search result led to (nil: just the page).
-    func open(_ page: HubPage, find target: String?) {
-        opening = true
-        defer { opening = false }
-        self.page = page
-        guard let target else { find = nil; return }
-        findCount += 1
-        find = HubFindRequest(target: target, token: findCount)
-    }
+    @Published var page: HubPage = .dictation
 }
 
 /// Opens the Coucou Flow window: the history of the dictations, the Notetaker, the numbers, the
@@ -237,7 +232,6 @@ struct FlowHubView: View {
         .tint(HubTheme.accent)
         .environment(\.hubVisible, windowState.visible)
         .environment(\.hubPage, router.page)
-        .environment(\.hubFind, router.find)
     }
 
     @ViewBuilder private var page: some View {
@@ -249,6 +243,10 @@ struct FlowHubView: View {
         case .snippets:   HubSnippetsPage()
         case .styles:     HubStylesPage(router: router)
         case .settings:   HubSettingsPage()
+        case .mailOverview: HubMailOverviewPage()
+        case .mailRules:    HubMailRulesPage()
+        case .mailBanned:   HubMailBannedPage()
+        case .mailVIP:      HubMailVIPPage()
         default:
             if let section = router.page.settingsSection {
                 VStack(alignment: .leading, spacing: 0) {
@@ -268,8 +266,7 @@ struct FlowHubView: View {
 private struct HubSidebar: View {
     @ObservedObject var router: HubRouter
     @ObservedObject private var flow = FlowDictation.shared
-    @State private var query = ""
-    @State private var active = 0
+    @ObservedObject private var search = SettingsSearch.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -284,14 +281,16 @@ private struct HubSidebar: View {
             .padding(.horizontal, 8)
             // Halfway between the window's buttons and "FLOW".
             .padding(.top, 25)
-            .padding(.bottom, 14)
+            .padding(.bottom, 16)
 
-            HubSidebarSearch(router: router, query: $query, active: $active)
+            HubSearchField()
                 .padding(.bottom, 14)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                if !search.query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    HubSearchResults()
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
                         HubSidebarHeader(text: "Flow")
                         ForEach(HubPage.flowPages) { page in
                             HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
@@ -301,9 +300,11 @@ private struct HubSidebar: View {
                         ForEach(HubPage.notchPages) { page in
                             HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
                         }
-                    } else {
-                        // While something is typed, the results take the place of the pages.
-                        HubSidebarResults(router: router, query: $query, active: $active)
+                        HubSidebarHeader(text: "Mail")
+                            .padding(.top, 14)
+                        ForEach(HubPage.mailPages) { page in
+                            HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+                        }
                     }
                 }
             }
@@ -412,18 +413,20 @@ struct HubPageScaffold<Trailing: View, Content: View>: View {
     @Environment(\.hubPage) private var page
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                HubHero(page: page, title: title, subtitle: subtitle, trailing: trailing)
-                content()
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    HubHero(page: page, title: title, subtitle: subtitle, trailing: trailing)
+                    content()
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 24)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 1100, alignment: .leading)
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 24)
-            .padding(.bottom, 28)
-            .frame(maxWidth: 1100, alignment: .leading)
+            .scrollIndicators(.automatic)
+            .settingsSearchScroll(proxy)
         }
-        .scrollIndicators(.automatic)
-        .hubScrollsToFind()
     }
 }
 

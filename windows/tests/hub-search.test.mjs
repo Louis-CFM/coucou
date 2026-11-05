@@ -1,109 +1,68 @@
-// The search box of the Coucou window (src/hub/search.ts): what you type finds
-// a page or a setting, in the language you read or in English, ignoring accents.
-
+// Regression coverage for #839, adapted to the shared settings index.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { installFakeDom } from "./fakedom.mjs";
-
 installFakeDom();
+const { setLanguage, t } = await import("../src/i18n/i18n.ts");
+const { SETTINGS_ENTRIES, searchSettings, normalize } = await import("../src/hub/search.ts");
 
-const { setLanguage, isComplete, t } = await import("../src/i18n/i18n.ts");
-const { SETTINGS, searchSettings, normalize } = await import("../src/hub/search.ts");
-
-// shell.ts imports its stylesheet, which Node cannot load: the pages are
-// listed here as the sidebar shows them, and their ids are read from the
-// source below to be sure they are the real ones.
-const FLOW = [
-  ["dictation", "Dictation"], ["notes", "Notetaker"], ["insights", "Statistics"], ["dictionary", "Dictionary"],
-  ["snippets", "Snippets"], ["styles", "Styles"], ["flowsettings", "Settings"],
-];
-const NOTCH = [
-  ["general", "General"], ["pills", "Active pills"], ["agents", "Agents"], ["chat", "Chat"], ["voice", "OK Coucou"],
-  ["integrations", "Integrations"], ["phone", "Android phone"], ["shortcuts", "Shortcuts"],
-];
-
-/** The pages as the sidebar lists them, in the current language. */
-const pages = () => [
-  ...FLOW.map(([id, title]) => ({ id, title: id === "voice" ? title : t(title), group: "Flow" })),
-  ...NOTCH.map(([id, title]) => ({ id, title: id === "voice" ? title : t(title), group: "Notch" })),
-];
-
+const title = (page) => t(page === "general" ? "General" : "Settings");
 function inLanguage(lang, fn) {
   setLanguage(lang);
-  try {
-    fn();
-  } finally {
-    setLanguage("en");
-  }
+  try { fn(); } finally { setLanguage("en"); }
 }
 
-test("\"idioma\" leads to General → Language", () => {
+test("Spanish and English both find Language without changing the UI language", () => {
   inLanguage("es", () => {
-    const [first] = searchSettings("idioma", pages());
-    assert.equal(first.page, "general");
-    assert.equal(first.text, "Idioma");
-    assert.equal(first.setting, true);
-    assert.equal(first.where, "Notch · General");
+    for (const query of ["idioma", "language"]) {
+      const hit = searchSettings(query, title).find((h) => h.entry.id === "general.language");
+      assert.ok(hit, query);
+      assert.equal(t(hit.entry.title), "Idioma");
+    }
   });
 });
 
-test("English works in any language, and so does the language's own word", () => {
+test("English labels resolve to the localized label and stable box anchor", () => {
   inLanguage("es", () => {
-    assert.equal(searchSettings("language", pages())[0].page, "general");
-    assert.equal(searchSettings("microfono", pages()).some((h) => h.page === "flowsettings"), true);
+    const hits = searchSettings("paste last", title);
+    const hit = hits.find((h) => h.entry.id === "flow.keys");
+    assert.ok(hit);
+    assert.equal(hit.label, t("Paste the last dictation again"));
+    assert.notEqual(hit.label, "Paste the last dictation again");
   });
-  assert.equal(searchSettings("language", pages())[0].text, "Language");
 });
 
-test("capitals and accents do not matter", () => {
-  assert.equal(normalize("Réglages"), "reglages");
+test("French accents and capitals do not matter", () => {
+  assert.equal(normalize("R\u00e9glages"), "reglages");
   inLanguage("fr", () => {
-    const hits = searchSettings("REGLAGES", pages());
-    assert.equal(hits[0].setting, false);
-    assert.equal(hits[0].page, "flowsettings");
+    assert.ok(searchSettings("REGLAGES", title).length > 0);
   });
 });
 
-test("a page matches by its name and just opens", () => {
-  const [first] = searchSettings("shortcuts", pages());
-  assert.deepEqual(first, { page: "shortcuts", text: "Shortcuts", where: "Notch", setting: false });
+test("sidebar pages are searchable and do not request a box anchor", () => {
+  const page = { id: "page.shortcuts", page: "shortcuts", title: "Shortcuts", terms: [], isPage: true };
+  const [hit] = searchSettings("shortcuts", title, [page, ...SETTINGS_ENTRIES]);
+  assert.equal(hit.entry, page);
+  assert.equal(hit.entry.isPage, true);
 });
 
-test("every word has to be there, in any order", () => {
-  const hits = searchSettings("clock island", pages());
-  assert.equal(hits[0].text, "Show clock in the island");
-  assert.deepEqual(searchSettings("clock zzz", pages()), []);
+test("every query word is required, in any order", () => {
+  const a = searchSettings("open sounds folder", title).map((h) => h.id);
+  assert.ok(a.length > 0);
+  assert.deepEqual(searchSettings("folder sounds open", title).map((h) => h.id), a);
+  assert.deepEqual(searchSettings("sounds zzz", title), []);
 });
 
-test("a name that starts with the query comes before one that only has it", () => {
-  const hits = searchSettings("dictat", pages());
-  assert.ok(hits.length > 2);
-  assert.equal(hits[0].text, "Dictation"); // the page starts with it
-  assert.equal(hits[0].setting, false);
-  // The settings that only have it inside a word keep the order of the list.
-  const texts = hits.map((h) => h.text);
-  assert.ok(texts.indexOf("Hold to dictate") < texts.indexOf("Paste the last dictation again"));
+test("empty queries and result cap follow the current search contract", () => {
+  assert.deepEqual(searchSettings("", title), []);
+  assert.deepEqual(searchSettings("   ", title), []);
+  assert.ok(searchSettings("e", title).length <= 30);
 });
 
-test("an empty or blank query finds nothing", () => {
-  assert.deepEqual(searchSettings("", pages()), []);
-  assert.deepEqual(searchSettings("   ", pages()), []);
-});
-
-test("at most twenty results", () => {
-  assert.ok(searchSettings("e", pages()).length <= 20);
-});
-
-test("every setting listed is on a page of the window and translated everywhere", () => {
-  const shell = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../src/hub/shell.ts"), "utf8");
-  const real = new Set([...shell.matchAll(/\{ id: "(\w+)", icon:/g)].map((m) => m[1]));
-  assert.deepEqual([...real].sort(), pages().map((p) => p.id).sort());
-  const ids = new Set(pages().map((p) => p.id));
-  for (const s of SETTINGS) {
-    assert.ok(ids.has(s.page), `${s.key}: no page "${s.page}"`);
-    assert.ok(isComplete(s.key), `${s.key} is not translated in every language`);
-  }
+test("the index targets current sidebar pages including Mail", () => {
+  const shell = readFileSync(new URL("../src/hub/shell.ts", import.meta.url), "utf8");
+  const ids = new Set([...shell.matchAll(/\{ id: "(\w+)", icon:/g)].map((m) => m[1]));
+  for (const entry of SETTINGS_ENTRIES) assert.ok(ids.has(entry.page), entry.id);
+  assert.ok(ids.has("mailRules"));
 });

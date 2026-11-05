@@ -42,6 +42,8 @@ async function main() {
   }
 
   const island = new Island(root);
+  // The dev previews (dev/*.html) drive the island from the console.
+  if (import.meta.env.DEV) Object.assign(window, { __island: island, __state: State });
 
   const boot = await Bridge.boot();
   if (boot) {
@@ -61,6 +63,7 @@ async function main() {
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
+  await onEvent<null>("closed-hover", () => island.wakeFromClosed());
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {
@@ -108,10 +111,22 @@ async function main() {
   await onEvent<null>("screen-changed", async () => {
     await checkZoom();
     void Bridge.reposition();
+    island.ensureRunning();
   });
 
-  const mediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-  mediaQuery.addEventListener?.("change", () => void checkZoom());
+  // A query only matches the ratio it was made for: once it changes, watch the
+  // new one, or the next monitor's scale goes unnoticed and the zoom stays wrong.
+  // One frame redraws Mochi at the new ratio, even while the loop is idle.
+  const watchRatio = () => {
+    window
+      .matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      .addEventListener?.("change", () => {
+        watchRatio();
+        void checkZoom();
+        island.ensureRunning();
+      }, { once: true });
+  };
+  watchRatio();
 
   window.addEventListener(
     "wheel",

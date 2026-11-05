@@ -3,8 +3,8 @@
 
 Coucou shows, once after it updated itself, what the new version brings (an icon, a title and a
 line per item, in every language the app speaks). The entries live in
-  NotchBuddy/Resources/whats-new.json   (Mac, the 14 languages of Localizable.xcstrings)
-  windows/src/whats-new/whats-new.json  (Windows and Linux, the 12 languages of strings.json)
+  NotchBuddy/Resources/whats-new.json   (Mac, the 16 languages of Localizable.xcstrings)
+  windows/src/whats-new/whats-new.json  (Windows and Linux, the languages of strings.json)
 This test fails when the version the app is about to ship has no entry, or an entry is
 incomplete. release.sh runs it too, so a release can't go out without its "What's new".
 
@@ -23,7 +23,7 @@ ICONS = {
     "sparkles", "bolt", "puzzle", "paint", "eye", "keyboard", "heart", "clock", "download", "bug",
 }
 
-MAC_LANGS = ["en", "fr", "es", "pt-BR", "ru", "zh-Hans", "hi", "ar", "bn", "id", "de", "tr", "th", "zh-Hant"]
+MAC_LANGS = ["en", "fr", "es", "pt-BR", "ru", "zh-Hans", "hi", "ar", "bn", "id", "de", "tr", "th", "zh-Hant", "ko", "ja"]
 
 MAX_ITEMS = 4
 MAX_TITLE = 48     # characters, any language: one line in the card

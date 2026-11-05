@@ -187,7 +187,7 @@ final class DemoEngine: ObservableObject {
         if s.pendingApproval?.sessionId == "demo_session" {
             s.pendingApproval = nil
         }
-        // Clear demo question (real questions always have pendingQuestionFD >= 0)
+        // Clear demo question (real questions always hold an nb-hook connection in the queue)
         if !HookServer.shared.hasRealPendingQuestion {
             s.pendingQuestion = nil
         }

@@ -461,7 +461,7 @@ function chatBlock(makeToggle: Toggle, settings: Settings): HTMLElement {
     body.replaceChildren();
     if (!status.enabled) return;
     const hasKey: Record<string, boolean> = {};
-    for (const p of usableProvidersCandidates()) hasKey[p.id] = (await Bridge.secretPresent(p.key!)) ?? false;
+    for (const p of usableProvidersCandidates()) hasKey[p.id] = (await Bridge.keyReady(p.key!)) ?? false;
     const providers = usableProviders(settings, hasKey);
     body.append(h("div", { class: "hint", text: t("Models the phone may use") }));
     if (providers.length === 0) body.append(h("div", { class: "hint", text: t("No provider is ready: add an API key or connect a local model first.") }));

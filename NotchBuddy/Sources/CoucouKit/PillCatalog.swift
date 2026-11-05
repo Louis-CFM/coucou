@@ -130,8 +130,10 @@ enum PillCatalog {
               category: .service,   subtitle: String(localized: "Integration"),  source: .n8n, githubOnly: true),
         .init(id: "integration_crypto",    name: "Crypto",      color: "#F7931A",
               category: .service,   subtitle: String(localized: "Integration"),  source: .n8n),
+        // GitHub build only, as intended when it was added (exchange API keys: not worth an
+        // App Review question for the store build).
         .init(id: "integration_portfolio", name: "Portfolio",   color: "#FFD700",
-              category: .service,   subtitle: String(localized: "Integration"),  source: .n8n),
+              category: .service,   subtitle: String(localized: "Integration"),  source: .n8n, githubOnly: true),
     ]
 
     /// Pills available in the current build target.
@@ -146,8 +148,17 @@ enum PillCatalog {
     /// Default ID for the always-on main workspace pill.
     static let defaultMainPillId = "integration_claude"
 
-    /// Looks up a definition by task ID (nil if not in catalog).
+    /// The catalog pill an ID stands for. A second session's own pill ("integration_claude#2",
+    /// SessionPillMap) and the iPhone record of a second question behind a pill
+    /// ("integration_claude#q2", QueuedQuestion.phoneRecordId) read as that pill; pill IDs
+    /// themselves never contain "#".
+    static func basePillId(_ id: String) -> String {
+        id.firstIndex(of: "#").map { String(id[..<$0]) } ?? id
+    }
+
+    /// Looks up a definition by task ID (nil if not in catalog), see `basePillId`.
     static func definition(for id: String) -> PillDefinition? {
-        all.first { $0.id == id }
+        let pill = basePillId(id)
+        return all.first { $0.id == pill }
     }
 }

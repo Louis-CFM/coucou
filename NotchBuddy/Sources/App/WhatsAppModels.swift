@@ -74,6 +74,10 @@ struct WAFilters: Equatable, Sendable {
 enum WAJID {
     static func isGroup(_ jid: String) -> Bool { jid.hasSuffix("@g.us") }
 
+    /// Status updates (status@broadcast), broadcast lists and channels (…@newsletter) come in as
+    /// messages too, but they are not conversations: a contact's Status would become a chat named after them (#901).
+    static func isConversation(_ jid: String) -> Bool { !jid.hasSuffix("@broadcast") && !jid.hasSuffix("@newsletter") }
+
     /// "33612345678@s.whatsapp.net" → "+33 6 12 34 56 78"-ish: the digits with a plus.
     static func displayNumber(_ jid: String) -> String {
         let user = jid.split(separator: "@").first.map(String.init) ?? jid
@@ -130,7 +134,7 @@ struct WAInbox: Equatable, Sendable {
     mutating func add(_ message: WAMessage, filters: WAFilters, name: String? = nil, history: Bool = false) -> Outcome {
         guard !seenIds.contains(message.id) else { return .duplicate }
         let chat = WAJID.normalized(message.chat)
-        guard !filters.ignored.contains(chat) else { return .ignored }
+        guard WAJID.isConversation(chat), !filters.ignored.contains(chat) else { return .ignored }
         seenIds.insert(message.id)
         seenOrder.append(message.id)
         if seenOrder.count > 2_000 {

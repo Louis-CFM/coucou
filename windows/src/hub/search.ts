@@ -1,138 +1,189 @@
-// The search box at the top of the Coucou window's sidebar: what you type finds
-// the page or the setting, in the language you read it in (or in English), and
-// shell.ts opens the page and underlines the setting.
-//
-// The settings are listed here by hand, by the English text of their label
-// (N_("…"): the i18n test checks each one is translated). The page draws the
-// label through t() as it always did, so the text shown now is the text to look
-// for on the page. A setting that is not on the page when it opens (the phone's
-// options appear once the link is on) still opens its page, just not underlined.
+// Settings search in the Coucou window: matches every setting of Flow,
+// Notch and Mail in the app's language, whatever the accents and case.
+// Port of SettingsSearch.swift and SettingsSearchMatch.swift.
 
-import { N_, t } from "../i18n/i18n";
+import { t } from "../i18n/i18n";
 import type { PageId } from "./shell";
 
-interface Entry {
+export interface SettingsSearchEntry {
+  /** The box's anchor, unique. */
+  id: string;
   page: PageId;
-  /** The label's English text, as it is drawn on the page. */
-  key: string;
-}
-
-export const SETTINGS: readonly Entry[] = [
-  // Flow
-  { page: "dictation", key: N_("Turn on dictation") },
-  { page: "dictation", key: N_("Parakeet, on your computer") },
-  { page: "dictation", key: N_("History") },
-  { page: "styles", key: N_("Style per app") },
-  { page: "styles", key: N_("Other apps") },
-  { page: "styles", key: N_("Clean up with Claude") },
-  { page: "flowsettings", key: N_("Keys") },
-  { page: "flowsettings", key: N_("Hold a key to dictate anywhere") },
-  { page: "flowsettings", key: N_("Hold to dictate") },
-  { page: "flowsettings", key: N_("Where the pill is") },
-  { page: "flowsettings", key: N_("Hands-free") },
-  { page: "flowsettings", key: N_("Paste the last dictation again") },
-  { page: "flowsettings", key: N_("Cancel a dictation") },
-  { page: "flowsettings", key: N_("Microphone") },
-  { page: "flowsettings", key: N_("Recognition") },
-  { page: "flowsettings", key: N_("Parakeet, on your computer") },
-  { page: "flowsettings", key: N_("Summaries") },
-  { page: "flowsettings", key: N_("Open this window when you open Coucou") },
-  { page: "flowsettings", key: N_("Privacy") },
-  { page: "flowsettings", key: N_("Keep the history") },
-  // Notch
-  { page: "general", key: N_("Sound") },
-  { page: "general", key: N_("Open on hover") },
-  { page: "general", key: N_("Show clock in the island") },
-  { page: "general", key: N_("Auto-close") },
-  { page: "general", key: N_("Island lives on") },
-  { page: "general", key: N_("Launch at startup") },
-  { page: "general", key: N_("Weekly recap") },
-  { page: "general", key: N_("Updates") },
-  { page: "general", key: N_("Language") },
-  { page: "pills", key: N_("Main tool") },
-  { page: "agents", key: N_("Plan usage") },
-  { page: "agents", key: N_("Show in notch") },
-  { page: "agents", key: N_("Show Codex plan in the notch") },
-  { page: "chat", key: N_("API key") },
-  { page: "chat", key: N_("Model") },
-  { page: "chat", key: N_("Chat providers") },
-  { page: "chat", key: N_("Local models") },
-  { page: "voice", key: N_("Listening") },
-  { page: "voice", key: N_("Answers") },
-  { page: "voice", key: N_("Coucou answers out loud") },
-  { page: "voice", key: N_("Voice") },
-  { page: "voice", key: N_("ElevenLabs key") },
-  { page: "voice", key: N_("Privacy") },
-  { page: "phone", key: N_("Phone link") },
-  { page: "phone", key: N_("Away from home Wi-Fi") },
-  { page: "phone", key: N_("Relay address") },
-  { page: "phone", key: N_("Relay access key") },
-  { page: "phone", key: N_("Show session details on the phone") },
-  { page: "phone", key: N_("Let the phone answer Claude Code's questions") },
-  { page: "phone", key: N_("Show these services on the phone") },
-  { page: "phone", key: N_("Show my plan usage on the phone") },
-  { page: "phone", key: N_("Show the files an agent changed on the phone") },
-  { page: "phone", key: N_("Let the phone chat with my AI providers") },
-  { page: "shortcuts", key: N_("From anywhere") },
-  { page: "shortcuts", key: N_("In the open island") },
-];
-
-/** A page of the window, as the sidebar shows it now. */
-export interface PageInfo {
-  id: PageId;
+  /** The box's title (catalog key, or a name that is never translated). */
   title: string;
-  /** Where it is: "Flow" or "Notch". */
-  group: string;
+  /** The labels inside the box (catalog keys). */
+  terms: string[];
+  /** A sidebar page rather than a box to scroll to. */
+  isPage?: boolean;
 }
 
-export interface Hit {
-  page: PageId;
-  /** What the result says, and the text to underline on the page (settings only). */
-  text: string;
-  /** "Notch · General". */
-  where: string;
-  /** False for a page itself, which just opens. */
-  setting: boolean;
+export interface SettingsSearchHit {
+  entry: SettingsSearchEntry;
+  label?: string;
+  id: string;
 }
 
-/** Lower case, without the accents: "Réglages" and "reglages" are the same word. */
-export function normalize(text: string): string {
-  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-}
-
-/** 0 when `name` starts with the query, 1 at the start of a word, 2 anywhere; null when it is not there. */
-function rank(query: string, tokens: string[], names: string[]): number | null {
-  const [shown] = names;
-  if (shown.startsWith(query)) return 0;
-  if (` ${shown}`.includes(` ${query}`)) return 1;
-  const all = names.join(" ");
-  return tokens.every((word) => all.includes(word)) ? 2 : null;
-}
-
-const MAX_HITS = 20;
+export type MatchResult =
+  | { kind: "box" }
+  | { kind: "label"; label: string };
 
 /**
- * The pages and settings that match `query`, the best first. Each word of the
- * query has to be in the name, in the current language or in English.
+ * Normalizes a string for searching: case-insensitive, diacritic/accent-insensitive,
+ * trimmed of leading/trailing whitespace.
  */
-export function searchSettings(query: string, pages: readonly PageInfo[]): Hit[] {
-  const tokens = normalize(query).split(/\s+/).filter(Boolean);
-  if (!tokens.length) return [];
-  const wanted = tokens.join(" ");
-  const where = new Map(pages.map((p) => [p.id, p]));
-  const found: { hit: Hit; rank: number }[] = [];
+export function normalize(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
 
-  for (const page of pages) {
-    const r = rank(wanted, tokens, [normalize(page.title)]);
-    if (r !== null) found.push({ rank: r, hit: { page: page.id, text: page.title, where: page.group, setting: false } });
+/**
+ * The words of a query, normalized.
+ */
+export function words(query: string): string[] {
+  return query
+    .split(/\s+/)
+    .map(normalize)
+    .filter((w) => w.length > 0);
+}
+
+/**
+ * Matches a list of query words against a box's title, page and inner labels.
+ * Returns null when the box doesn't have every word.
+ */
+export function match(
+  wordList: string[],
+  title: string,
+  page: string,
+  labels: string[]
+): MatchResult | null {
+  if (wordList.length === 0) return null;
+  const head = normalize(title + " " + page);
+  const texts = labels.map(normalize);
+  const all = [head, ...texts].join(" ");
+  if (!wordList.every((w) => all.includes(w))) return null;
+  if (wordList.every((w) => head.includes(w))) return { kind: "box" };
+
+  // The label with the most of the words, the first one when tied.
+  let bestIndex = -1;
+  let bestCount = 0;
+  for (let i = 0; i < texts.length; i++) {
+    const text = texts[i];
+    const count = wordList.filter((w) => text.includes(w)).length;
+    if (count > 0 && count > bestCount) {
+      bestIndex = i;
+      bestCount = count;
+    }
   }
-  for (const entry of SETTINGS) {
-    const page = where.get(entry.page);
-    if (!page) continue;
-    const text = t(entry.key);
-    const r = rank(wanted, tokens, [normalize(text), normalize(entry.key)]);
-    if (r !== null) found.push({ rank: r, hit: { page: entry.page, text, where: `${page.group} · ${page.title}`, setting: true } });
+
+  if (bestIndex < 0) return { kind: "box" };
+  return { kind: "label", label: labels[bestIndex] };
+}
+
+export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
+  // Flow
+  { id: "flow.history", page: "dictation", title: "History", terms: ["Dictation"] },
+  { id: "flow.notes", page: "notes", title: "Notetaker", terms: ["Live", "Key points"] },
+  { id: "flow.insights", page: "insights", title: "Statistics", terms: [] },
+  { id: "flow.dictionary", page: "dictionary", title: "Dictionary", terms: ["Replacements"] },
+  { id: "flow.snippets", page: "snippets", title: "Snippets", terms: [] },
+  { id: "flow.styles", page: "styles", title: "Styles", terms: ["Clean up with Claude", "Other apps", "Style per app"] },
+  {
+    id: "flow.keys",
+    page: "flowsettings",
+    title: "Keys",
+    terms: ["Hold a key to dictate anywhere", "Hold the key", "Where the pill is", "Hands-free", "Paste the last dictation again", "Cancel a dictation"],
+  },
+  { id: "flow.ai", page: "flowsettings", title: "Prompt and translation", terms: ["Prompt mode", "Translate into"] },
+  { id: "flow.permission", page: "flowsettings", title: "Permission", terms: ["Open Accessibility settings"] },
+  { id: "flow.recognition", page: "flowsettings", title: "Recognition", terms: ["Dictation language"] },
+  { id: "flow.summary", page: "flowsettings", title: "Notetaker", terms: ["Summaries"] },
+  { id: "flow.app", page: "flowsettings", title: "App", terms: ["Show Coucou in the Dock", "Open this window when you open Coucou"] },
+  { id: "flow.privacy", page: "flowsettings", title: "Privacy", terms: ["Keep the history"] },
+
+  // Notch → General
+  { id: "general.demo", page: "general", title: "Demo", terms: [] },
+  { id: "general.sound", page: "general", title: "Sound", terms: ["Enable sounds", "Volume", "Open sounds folder", "Reload sounds"] },
+  { id: "general.behavior", page: "general", title: "Behavior", terms: ["Open on hover", "Close after", "Hide after", "Open for every pill’s alerts"] },
+  { id: "general.display", page: "general", title: "Display", terms: ["Show Mochi on", "The main screen", "The screen under the mouse", "A specific screen"] },
+  { id: "general.vitals", page: "general", title: "Mochi and your computer", terms: ["Mochi reacts to your Mac"] },
+  { id: "general.hotkey", page: "general", title: "Hotkey", terms: ["Show island with shortcut", "Shortcut"] },
+  { id: "general.startup", page: "general", title: "Startup", terms: ["Launch at startup"] },
+  { id: "general.update", page: "general", title: "Updates", terms: [] },
+  { id: "general.recap", page: "general", title: "Weekly recap", terms: ["Keep a history of my coding sessions", "Hide project names in shared images", "Clear history"] },
+  { id: "general.language", page: "general", title: "Language", terms: ["Restart Coucou"] },
+
+  // Notch → Pills, Agents, Chat, Integrations, Phone, Voice, Shortcuts
+  { id: "pills.main", page: "pills", title: "Main", terms: ["Active pills"] },
+  { id: "agents.claude", page: "agents", title: "Claude Code hooks", terms: ["Answer questions and permissions from terminal sessions in the notch"] },
+  { id: "agents.claude-desktop", page: "agents", title: "Claude Desktop chats (experimental)", terms: [] },
+  { id: "agents.gemini", page: "agents", title: "Gemini CLI hooks", terms: [] },
+  { id: "agents.antigravity", page: "agents", title: "Antigravity hooks", terms: [] },
+  { id: "agents.codex", page: "agents", title: "Codex hooks", terms: [] },
+  { id: "agents.copilot", page: "agents", title: "GitHub Copilot CLI hooks", terms: [] },
+  { id: "agents.muse", page: "agents", title: "Muse Code hooks", terms: [] },
+  { id: "agents.opencode", page: "agents", title: "OpenCode plugin", terms: [] },
+  { id: "agents.amp", page: "agents", title: "Amp plugin", terms: [] },
+  { id: "agents.hermes", page: "agents", title: "Hermes Agent", terms: ["Show approval requests in the notch"] },
+  { id: "agents.plan", page: "agents", title: "Plan usage", terms: ["Show in notch", "Show Codex plan in the notch"] },
+  { id: "chat.subscriptions", page: "chat", title: "Your AI subscriptions", terms: ["Use my subscription"] },
+  { id: "chat.anthropic", page: "chat", title: "Anthropic API", terms: ["Model", "Anthropic", "Claude"] },
+  { id: "chat.others", page: "chat", title: "Chat — other providers", terms: ["Google AI", "OpenAI", "DeepSeek", "Gemini"] },
+  { id: "chat.local", page: "chat", title: "Local models", terms: ["Ollama", "LM Studio"] },
+  {
+    id: "integrations.all",
+    page: "integrations",
+    title: "Integrations",
+    terms: [
+      "Stripe", "GitHub", "Vercel", "n8n", "Notion", "Resend", "Cal.com", "WhatsApp", "Spotify", "Crypto",
+      "Linear", "X", "YouTube", "Figma", "OpenWeather", "Railway", "Supabase", "Hugging Face", "Sentry", "PostHog", "Twilio",
+    ],
+  },
+  { id: "phone.android", page: "phone", title: "Android phone", terms: ["Phone link", "Show the sessions on the phone", "Allow approvals from the phone"] },
+  { id: "voice.wake", page: "voice", title: "«\u202FOK Coucou\u202F» — voice wake word", terms: ["Enable voice command", "Request permissions"] },
+  { id: "voice.language", page: "voice", title: "Language", terms: ["You speak", "Coucou answers in"] },
+  { id: "voice.tts", page: "voice", title: "Voice", terms: ["Voice type", "Test the voice"] },
+  { id: "voice.history", page: "voice", title: "Recently heard phrases", terms: [] },
+  { id: "shortcuts.global", page: "shortcuts", title: "Global shortcuts — active from any app", terms: [] },
+  { id: "shortcuts.island", page: "shortcuts", title: "Notch shortcuts — active when the notch is in front", terms: [] },
+
+  // Mail
+  { id: "mail.autosort", page: "mailOverview", title: "Sort new messages automatically", terms: ["Journal", "Sent by Coucou", "Undo"] },
+  { id: "mail.rules", page: "mailRules", title: "Rules", terms: ["Sender", "Subject", "Move to Junk"] },
+  { id: "mail.banned", page: "mailBanned", title: "Banned words", terms: [] },
+  { id: "mail.vip", page: "mailVIP", title: "VIP", terms: [] },
+];
+
+/**
+ * Searches the settings index given a query string and page title resolver.
+ */
+export function searchSettings(
+  query: string,
+  getPageTitle: (page: PageId) => string,
+  entries: SettingsSearchEntry[] = SETTINGS_ENTRIES
+): SettingsSearchHit[] {
+  const qWords = words(query);
+  if (qWords.length === 0) return [];
+  const boxes: SettingsSearchHit[] = [];
+  const labels: SettingsSearchHit[] = [];
+
+  for (const entry of entries) {
+    const titleText = t(entry.title);
+    const pageText = getPageTitle(entry.page);
+    const labelTexts = entry.terms.map((k) => t(k));
+    const res = match(qWords, titleText, pageText, labelTexts)
+      ?? match(qWords, entry.title, "", entry.terms);
+    if (!res) continue;
+    if (res.kind === "box") {
+      boxes.push({ entry, id: entry.id });
+    } else {
+      const index = entry.terms.indexOf(res.label);
+      const label = labelTexts.includes(res.label) ? res.label : labelTexts[index] ?? res.label;
+      labels.push({ entry, label, id: `${entry.id}|${label}` });
+    }
   }
-  // A stable sort: at the same rank, the pages and then the settings keep their order.
-  return found.sort((a, b) => a.rank - b.rank).slice(0, MAX_HITS).map((f) => f.hit);
+
+  return [...boxes, ...labels].slice(0, 30);
 }

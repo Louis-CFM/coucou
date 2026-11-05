@@ -16,8 +16,8 @@ class LanguagesTest {
         .findAll(read("../scripts/gen-strings.mjs")).map { Triple(it.groupValues[1], it.groupValues[2], it.groupValues[3]) }.toList()
     private val translations = File("../i18n/translations").listFiles { f -> f.extension == "json" }.orEmpty().map { it.nameWithoutExtension }.sorted()
 
-    @Test fun theGeneratorKnowsNineLanguages() {
-        assertEquals(listOf("fr", "es", "pt-BR", "zh-Hans", "hi", "bn", "ru", "id", "ar"), table.map { it.first })
+    @Test fun theGeneratorKnowsTheSupportedLanguages() {
+        assertEquals(listOf("fr", "es", "pt-BR", "zh-Hans", "hi", "bn", "ru", "id", "ar", "tr"), table.map { it.first })
     }
 
     @Test fun thePickerOffersExactlyTheLanguagesThatAreTranslated() {
@@ -62,6 +62,13 @@ class LanguagesTest {
         assertEquals(Languages.SYSTEM, Languages.match("de"))
         assertEquals(Languages.SYSTEM, Languages.match(""))
         assertEquals(Languages.SYSTEM, Languages.match(null))
+    }
+
+    @Test fun turkishRegionalLocalesSelectTurkish() {
+        for (tag in listOf("tr", "tr-TR", "tr-CY", "tr_TR", "TR-tr")) {
+            assertEquals(tag, "tr", Languages.match(tag))
+        }
+        assertEquals("Türkçe", Languages.ALL.single { it.tag == "tr" }.name)
     }
 
     @Test fun layoutsMirrorForRightToLeftLanguages() {

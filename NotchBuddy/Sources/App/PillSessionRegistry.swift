@@ -148,6 +148,13 @@ struct PillSessionRegistry {
         return owner.session == session
     }
 
+    /// What `session` shows behind `pill`: its project name, cwd and terminal. nil if not live there.
+    func display(pill: String, session: String) -> Display? {
+        guard let s = pills[pill]?.sessions[session] else { return nil }
+        return Display(session: session, projectName: s.projectName, cwd: s.cwd,
+                       hostApp: s.hostApp, bundleId: s.bundleId)
+    }
+
     func liveCount(pill: String) -> Int { pills[pill]?.order.count ?? 0 }
 
     func workingCount(pill: String) -> Int {
