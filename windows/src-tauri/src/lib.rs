@@ -180,6 +180,12 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool, width: 
     island::apply_geometry(&app, &pref, collapsed.then_some(size));
     // The closed island must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
+    // WebKitGTK's render loop can deadlock against the compositor after the
+    // island has sat still (remap_island_surface): re-map on every fold and
+    // wake so the next animation finds a live frame flow.
+    if let Some(win) = island::window(&app) {
+        platform::remap_island_surface(&win);
+    }
     shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
 }
