@@ -10,7 +10,7 @@ import { onEvent } from "../core/bridge";
 import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus, flowKeyId } from "../core/flow";
 import { hero, liveMochi, setVoiceLevel, setWindowShown } from "./hero";
 import { icon, keyLabel } from "./ui";
-import { searchSettings, type SettingsSearchHit } from "./search";
+import { searchSettings, SETTINGS_ENTRIES, type SettingsSearchHit } from "./search";
 
 export type PageId =
   | "dictation" | "notes" | "insights" | "dictionary" | "snippets" | "styles" | "flowsettings"
@@ -21,37 +21,39 @@ interface PageDef {
   id: PageId;
   icon: string;
   title: () => string;
+  /** English name for search in any interface language. */
+  titleKey: string;
   /** The band's line; none for pages that draw their own band. */
   subtitle?: () => string;
 }
 
 export const FLOW_PAGES: PageDef[] = [
-  { id: "dictation", icon: "mic", title: () => t("Dictation") },
-  { id: "notes", icon: "record", title: () => t("Notetaker") },
-  { id: "insights", icon: "chart", title: () => t("Statistics") },
-  { id: "dictionary", icon: "book", title: () => t("Dictionary") },
-  { id: "snippets", icon: "bolt", title: () => t("Snippets") },
-  { id: "styles", icon: "text", title: () => t("Styles") },
-  { id: "flowsettings", icon: "sliders", title: () => t("Settings") },
+  { id: "dictation", icon: "mic", title: () => t("Dictation"), titleKey: "Dictation" },
+  { id: "notes", icon: "record", title: () => t("Notetaker"), titleKey: "Notetaker" },
+  { id: "insights", icon: "chart", title: () => t("Statistics"), titleKey: "Statistics" },
+  { id: "dictionary", icon: "book", title: () => t("Dictionary"), titleKey: "Dictionary" },
+  { id: "snippets", icon: "bolt", title: () => t("Snippets"), titleKey: "Snippets" },
+  { id: "styles", icon: "text", title: () => t("Styles"), titleKey: "Styles" },
+  { id: "flowsettings", icon: "sliders", title: () => t("Settings"), titleKey: "Settings" },
 ];
 
 export const NOTCH_PAGES: PageDef[] = [
-  { id: "general", icon: "gear", title: () => t("General"), subtitle: () => t("Mochi, his sounds and how the island behaves.") },
-  { id: "pills", icon: "grid", title: () => t("Active pills"), subtitle: () => t("The pills shown in the island, their order and their colours.") },
-  { id: "agents", icon: "terminal", title: () => t("Agents"), subtitle: () => t("Claude Code, Codex and the other agents Mochi follows.") },
-  { id: "chat", icon: "chat", title: () => t("Chat"), subtitle: () => t("The AI of the island's chat, with your own keys.") },
-  { id: "voice", icon: "wave", title: () => "OK Coucou" },
-  { id: "integrations", icon: "puzzle", title: () => t("Integrations"), subtitle: () => t("Stripe, GitHub, Vercel, n8n, Notion and the rest.") },
-  { id: "phone", icon: "phone", title: () => t("Android phone"), subtitle: () => t("Your agents and their approvals on your Android phone, over your Wi-Fi.") },
-  { id: "shortcuts", icon: "keyboard", title: () => t("Shortcuts"), subtitle: () => t("The keys that open the island and its actions.") },
+  { id: "general", icon: "gear", title: () => t("General"), titleKey: "General", subtitle: () => t("Mochi, his sounds and how the island behaves.") },
+  { id: "pills", icon: "grid", title: () => t("Active pills"), titleKey: "Active pills", subtitle: () => t("The pills shown in the island, their order and their colours.") },
+  { id: "agents", icon: "terminal", title: () => t("Agents"), titleKey: "Agents", subtitle: () => t("Claude Code, Codex and the other agents Mochi follows.") },
+  { id: "chat", icon: "chat", title: () => t("Chat"), titleKey: "Chat", subtitle: () => t("The AI of the island's chat, with your own keys.") },
+  { id: "voice", icon: "wave", title: () => "OK Coucou", titleKey: "OK Coucou" },
+  { id: "integrations", icon: "puzzle", title: () => t("Integrations"), titleKey: "Integrations", subtitle: () => t("Stripe, GitHub, Vercel, n8n, Notion and the rest.") },
+  { id: "phone", icon: "phone", title: () => t("Android phone"), titleKey: "Android phone", subtitle: () => t("Your agents and their approvals on your Android phone, over your Wi-Fi.") },
+  { id: "shortcuts", icon: "keyboard", title: () => t("Shortcuts"), titleKey: "Shortcuts", subtitle: () => t("The keys that open the island and its actions.") },
 ];
 
 /** Mail (classic Outlook): Windows only, Linux has no Outlook. */
 export const MAIL_PAGES: PageDef[] = [
-  { id: "mailOverview", icon: "tray", title: () => t("Overview") },
-  { id: "mailRules", icon: "filter", title: () => t("Rules") },
-  { id: "mailBanned", icon: "nosign", title: () => t("Banned words") },
-  { id: "mailVIP", icon: "star", title: () => t("VIP") },
+  { id: "mailOverview", icon: "tray", title: () => t("Overview"), titleKey: "Overview" },
+  { id: "mailRules", icon: "filter", title: () => t("Rules"), titleKey: "Rules" },
+  { id: "mailBanned", icon: "nosign", title: () => t("Banned words"), titleKey: "Banned words" },
+  { id: "mailVIP", icon: "star", title: () => t("VIP"), titleKey: "VIP" },
 ];
 
 const ALL = [...FLOW_PAGES, ...NOTCH_PAGES, ...MAIL_PAGES];
@@ -102,8 +104,8 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   const shown = await FlowBridge.hubShown();
   if (shown !== null) setWindowShown(shown);
   let current: PageId = "dictation";
-  let activeAnchor: string | null = null;
   let searchHits: SettingsSearchHit[] = [];
+  let activeSearch = 0;
   let status: FlowStatus = (await FlowBridge.status()) ?? DEFAULT_STATUS;
   const items = new Map<PageId, HTMLElement>();
   const labels = new Map<PageId, HTMLElement>();
@@ -154,7 +156,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
 
   function updateSearchRowHighlights() {
     for (const [id, rowEl] of searchRows) {
-      rowEl.classList.toggle("on", id === activeAnchor);
+      rowEl.classList.toggle("on", id === searchHits[activeSearch]?.id);
     }
   }
 
@@ -163,7 +165,6 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     ctx.onLeave?.();
     ctx.onLeave = undefined;
     current = def.id;
-    activeAnchor = targetAnchor ?? null;
     for (const [id, el] of items) el.classList.toggle("on", id === current);
     updateSearchRowHighlights();
     const token = ++rendering;
@@ -206,6 +207,8 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     class: "hub-search-input",
     type: "text",
     placeholder: t("Search settings"),
+    "aria-label": t("Search settings"),
+    autocomplete: "off",
     spellcheck: "false",
   }) as HTMLInputElement;
 
@@ -258,7 +261,12 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     searchClear.style.display = "";
     groupsContainer.style.display = "none";
     resultsContainer.style.display = "";
-    searchHits = searchSettings(query, (pageId) => ALL.find((p) => p.id === pageId)?.title() ?? pageId);
+    const pages = status.platform === "windows" ? ALL : [...FLOW_PAGES, ...NOTCH_PAGES];
+    searchHits = searchSettings(query, (pageId) => ALL.find((p) => p.id === pageId)?.title() ?? pageId, [
+      ...pages.map((p) => ({ id: "page." + p.id, page: p.id, title: p.titleKey, terms: [], isPage: true })),
+      ...SETTINGS_ENTRIES.filter((entry) => pages.some((p) => p.id === entry.page)),
+    ]);
+    activeSearch = Math.min(activeSearch, Math.max(0, searchHits.length - 1));
     if (searchHits.length === 0) {
       resultsContainer.append(h("div", { class: "hub-search-empty", text: t("No setting found") }));
       return;
@@ -266,7 +274,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     for (const hit of searchHits) {
       const pageDef = ALL.find((p) => p.id === hit.entry.page);
       const row = h("button", { class: "hub-search-row" });
-      if (activeAnchor === hit.entry.id && current === hit.entry.page) {
+      if (searchHits[activeSearch] === hit) {
         row.classList.add("on");
       }
       row.append(icon(pageDef?.icon ?? "sliders"));
@@ -281,22 +289,37 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       textContainer.append(rowTitle, rowSubtitle);
       row.append(textContainer);
       row.addEventListener("click", () => {
-        void show(hit.entry.page, hit.entry.id);
+        openHit(hit);
       });
-      searchRows.set(hit.entry.id, row);
+      searchRows.set(hit.id, row);
       resultsContainer.append(row);
     }
   }
 
-  searchInput.addEventListener("input", renderSearchResults);
+  function openHit(hit: SettingsSearchHit) {
+    searchInput.value = "";
+    activeSearch = 0;
+    renderSearchResults();
+    void show(hit.entry.page, hit.entry.isPage ? undefined : hit.entry.id);
+  }
+
+  searchInput.addEventListener("input", () => {
+    activeSearch = 0;
+    renderSearchResults();
+  });
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       searchInput.value = "";
       renderSearchResults();
     } else if (e.key === "Enter") {
       if (searchHits.length > 0) {
-        void show(searchHits[0].entry.page, searchHits[0].entry.id);
+        openHit(searchHits[activeSearch]);
       }
+    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && searchHits.length) {
+      e.preventDefault();
+      activeSearch = (activeSearch + (e.key === "ArrowDown" ? 1 : -1) + searchHits.length) % searchHits.length;
+      updateSearchRowHighlights();
+      searchRows.get(searchHits[activeSearch].id)?.scrollIntoView({ block: "nearest" });
     }
   });
 
@@ -308,6 +331,8 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
 
   onLanguageChange(() => {
     searchInput.placeholder = t("Search settings");
+    searchInput.setAttribute("aria-label", t("Search settings"));
+    activeSearch = 0;
     if (searchInput.value.trim()) renderSearchResults();
   });
 

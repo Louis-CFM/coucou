@@ -57,7 +57,7 @@ test("SettingsSearch - searchSettings searches entries across Flow, Notch and Ma
   assert.ok(resKeys.some((h) => h.entry.id === "flow.keys"));
 
   // Search by term inside box
-  const resHandsfree = searchSettings("handsfree", getPageTitle);
+  const resHandsfree = searchSettings("hands-free", getPageTitle);
   assert.ok(resHandsfree.length > 0);
   assert.ok(resHandsfree.some((h) => h.entry.id === "flow.keys"));
 

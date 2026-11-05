@@ -17,6 +17,7 @@ struct SettingsSearchEntry: Identifiable, Sendable {
     let title: String
     /// The labels inside the box (catalog keys).
     let terms: [String]
+    var isPage = false
 }
 
 /// A result: the box, and the label that matched when it isn't the title.
@@ -31,15 +32,21 @@ final class SettingsSearch: ObservableObject {
     static let shared = SettingsSearch()
 
     @Published var query = ""
+    @Published var active = 0
     /// The box to show, and a fresh token each time it is asked (the same box twice glows twice).
     @Published private(set) var target: String?
     @Published private(set) var token = UUID()
-    /// The last box opened from the results (its row stays selected).
-    @Published private(set) var shown: String?
 
     /// The words of the app's language for a key (names stay as they are).
     nonisolated static func text(_ key: String) -> String {
         NSLocalizedString(key, comment: "")
+    }
+
+    private static let english = Bundle.main.path(forResource: "en", ofType: "lproj")
+        .flatMap(Bundle.init(path:)) ?? .main
+
+    private static func englishText(_ key: String) -> String {
+        english.localizedString(forKey: key, value: nil, table: nil)
     }
 
     func results() -> [SettingsSearchHit] {
@@ -48,11 +55,23 @@ final class SettingsSearch: ObservableObject {
         // The boxes named by the words first, then the settings inside the others.
         var boxes: [SettingsSearchHit] = []
         var labels: [SettingsSearchHit] = []
-        for entry in Self.entries {
-            switch SettingsSearchMatch.match(words, title: Self.text(entry.title), page: entry.page.title,
-                                             labels: entry.terms.map(Self.text)) {
+        let pages = HubPage.flowPages + HubPage.notchPages + HubPage.mailPages
+        let pageEntries = pages.map {
+            SettingsSearchEntry(id: "page." + $0.rawValue, page: $0, title: $0.titleKey, terms: [], isPage: true)
+        }
+        for entry in pageEntries + Self.entries {
+            let labelsNow = entry.terms.map(Self.text)
+            let match = SettingsSearchMatch.match(words, title: Self.text(entry.title), page: entry.page.title,
+                                                  labels: labelsNow)
+                ?? SettingsSearchMatch.match(words, title: Self.englishText(entry.title),
+                                              page: Self.englishText(entry.page.titleKey),
+                                              labels: entry.terms.map(Self.englishText))
+            switch match {
             case .box?: boxes.append(SettingsSearchHit(entry: entry, label: nil))
-            case .label(let label)?: labels.append(SettingsSearchHit(entry: entry, label: label))
+            case .label(let label)?:
+                let index = entry.terms.firstIndex { Self.englishText($0) == label }
+                let shown = labelsNow.contains(label) ? label : index.map { labelsNow[$0] } ?? label
+                labels.append(SettingsSearchHit(entry: entry, label: shown))
             case nil: break
             }
         }
@@ -61,9 +80,10 @@ final class SettingsSearch: ObservableObject {
 
     /// Opens the box's page; the page scrolls to the box and makes it glow.
     func reveal(_ entry: SettingsSearchEntry) {
+        query = ""
+        active = 0
         FlowHubController.shared.router.page = entry.page
-        target = entry.id
-        shown = entry.id
+        target = entry.isPage ? nil : entry.id
         let mine = UUID()
         token = mine
         // Once shown, the box is no longer asked for: coming back to its page later doesn't
@@ -72,6 +92,12 @@ final class SettingsSearch: ObservableObject {
             guard let self, self.token == mine else { return }
             self.target = nil
         }
+    }
+
+    func move(_ step: Int) {
+        let count = results().count
+        guard count > 0 else { return }
+        active = (active + step + count) % count
     }
 
     // MARK: - The index
@@ -227,8 +253,12 @@ struct HubSearchField: View {
                 .font(.system(size: 13))
                 .focused($focused)
                 .onExitCommand { search.query = "" }
-                // Return opens the first result.
-                .onSubmit { if let first = search.results().first { search.reveal(first.entry) } }
+                .onSubmit {
+                    let hits = search.results()
+                    if hits.indices.contains(search.active) { search.reveal(hits[search.active].entry) }
+                }
+                .onKeyPress(.downArrow) { search.move(1); return .handled }
+                .onKeyPress(.upArrow) { search.move(-1); return .handled }
             if !search.query.isEmpty {
                 Button { search.query = "" } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -243,28 +273,34 @@ struct HubSearchField: View {
         .frame(height: 32)
         .background(RoundedRectangle(cornerRadius: 9).fill(HubTheme.card))
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(focused ? HubTheme.accent.opacity(0.6) : Color.white.opacity(0.07)))
+        .onChange(of: search.query) { _, _ in search.active = 0 }
     }
 }
 
 /// What the search found, in place of the pages while something is typed.
 struct HubSearchResults: View {
     @ObservedObject private var search = SettingsSearch.shared
-    @ObservedObject var router: HubRouter
 
     var body: some View {
         let hits = search.results()
-        VStack(alignment: .leading, spacing: 2) {
-            if hits.isEmpty {
-                Text("hub.search.none")
-                    .font(.system(size: 12.5))
-                    .foregroundColor(HubTheme.muted)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 6)
-            }
-            ForEach(hits) { hit in
-                HubSearchRow(hit: hit, selected: search.shown == hit.entry.id && router.page == hit.entry.page) {
-                    search.reveal(hit.entry)
+        ScrollViewReader { proxy in
+            VStack(alignment: .leading, spacing: 2) {
+                if hits.isEmpty {
+                    Text("hub.search.none")
+                        .font(.system(size: 12.5))
+                        .foregroundColor(HubTheme.muted)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 6)
                 }
+                ForEach(Array(hits.enumerated()), id: \.element.id) { index, hit in
+                    HubSearchRow(hit: hit, selected: search.active == index) {
+                        search.reveal(hit.entry)
+                    }
+                    .id(hit.id)
+                }
+            }
+            .onChange(of: search.active) { _, index in
+                if hits.indices.contains(index) { proxy.scrollTo(hits[index].id) }
             }
         }
     }

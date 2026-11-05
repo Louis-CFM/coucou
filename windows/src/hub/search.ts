@@ -13,6 +13,8 @@ export interface SettingsSearchEntry {
   title: string;
   /** The labels inside the box (catalog keys). */
   terms: string[];
+  /** A sidebar page rather than a box to scroll to. */
+  isPage?: boolean;
 }
 
 export interface SettingsSearchHit {
@@ -82,54 +84,54 @@ export function match(
 
 export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
   // Flow
-  { id: "flow.history", page: "dictation", title: "hub.history", terms: ["hub.page.dictation"] },
-  { id: "flow.notes", page: "notes", title: "hub.page.notes", terms: ["notes.live", "notes.key-points"] },
-  { id: "flow.insights", page: "insights", title: "hub.page.insights", terms: [] },
-  { id: "flow.dictionary", page: "dictionary", title: "hub.page.dictionary", terms: ["hub.replacements"] },
-  { id: "flow.snippets", page: "snippets", title: "hub.page.snippets", terms: [] },
-  { id: "flow.styles", page: "styles", title: "hub.page.styles", terms: ["hub.cleanup", "hub.style-default", "hub.style-apps"] },
+  { id: "flow.history", page: "dictation", title: "History", terms: ["Dictation"] },
+  { id: "flow.notes", page: "notes", title: "Notetaker", terms: ["Live", "Key points"] },
+  { id: "flow.insights", page: "insights", title: "Statistics", terms: [] },
+  { id: "flow.dictionary", page: "dictionary", title: "Dictionary", terms: ["Replacements"] },
+  { id: "flow.snippets", page: "snippets", title: "Snippets", terms: [] },
+  { id: "flow.styles", page: "styles", title: "Styles", terms: ["Clean up with Claude", "Other apps", "Style per app"] },
   {
     id: "flow.keys",
     page: "flowsettings",
-    title: "hub.settings.keys",
-    terms: ["flow.enable", "hub.settings.hold", "flow.edge", "hub.settings.handsfree", "hub.settings.paste-again", "hub.settings.cancel"],
+    title: "Keys",
+    terms: ["Hold a key to dictate anywhere", "Hold the key", "Where the pill is", "Hands-free", "Paste the last dictation again", "Cancel a dictation"],
   },
-  { id: "flow.ai", page: "flowsettings", title: "flow.ai.title", terms: ["flow.prompt-mode", "flow.translate"] },
-  { id: "flow.permission", page: "flowsettings", title: "hub.settings.permission", terms: ["flow.accessibility-open"] },
-  { id: "flow.recognition", page: "flowsettings", title: "hub.settings.recognition", terms: ["Dictation language"] },
-  { id: "flow.summary", page: "flowsettings", title: "hub.page.notes", terms: ["notes.engine"] },
-  { id: "flow.app", page: "flowsettings", title: "hub.settings.app", terms: ["hub.settings.dock", "hub.settings.open-at-launch"] },
-  { id: "flow.privacy", page: "flowsettings", title: "hub.settings.privacy", terms: ["hub.settings.keep"] },
+  { id: "flow.ai", page: "flowsettings", title: "Prompt and translation", terms: ["Prompt mode", "Translate into"] },
+  { id: "flow.permission", page: "flowsettings", title: "Permission", terms: ["Open Accessibility settings"] },
+  { id: "flow.recognition", page: "flowsettings", title: "Recognition", terms: ["Dictation language"] },
+  { id: "flow.summary", page: "flowsettings", title: "Notetaker", terms: ["Summaries"] },
+  { id: "flow.app", page: "flowsettings", title: "App", terms: ["Show Coucou in the Dock", "Open this window when you open Coucou"] },
+  { id: "flow.privacy", page: "flowsettings", title: "Privacy", terms: ["Keep the history"] },
 
   // Notch → General
-  { id: "general.demo", page: "general", title: "demo.groupbox.title", terms: [] },
+  { id: "general.demo", page: "general", title: "Demo", terms: [] },
   { id: "general.sound", page: "general", title: "Sound", terms: ["Enable sounds", "Volume", "Open sounds folder", "Reload sounds"] },
-  { id: "general.behavior", page: "general", title: "Behavior", terms: ["Open on hover", "Close after", "Hide after", "alerts.all-pills"] },
-  { id: "general.display", page: "general", title: "Display", terms: ["Show Mochi on", "Screen with the notch", "Main screen (menu bar)", "Follow the mouse"] },
-  { id: "general.vitals", page: "general", title: "vitals.title", terms: ["vitals.toggle"] },
+  { id: "general.behavior", page: "general", title: "Behavior", terms: ["Open on hover", "Close after", "Hide after", "Open for every pill’s alerts"] },
+  { id: "general.display", page: "general", title: "Display", terms: ["Show Mochi on", "The main screen", "The screen under the mouse", "A specific screen"] },
+  { id: "general.vitals", page: "general", title: "Mochi and your computer", terms: ["Mochi reacts to your Mac"] },
   { id: "general.hotkey", page: "general", title: "Hotkey", terms: ["Show island with shortcut", "Shortcut"] },
-  { id: "general.startup", page: "general", title: "Startup", terms: ["Launch at Mac startup"] },
-  { id: "general.update", page: "general", title: "update.settings.title", terms: [] },
+  { id: "general.startup", page: "general", title: "Startup", terms: ["Launch at startup"] },
+  { id: "general.update", page: "general", title: "Updates", terms: [] },
   { id: "general.recap", page: "general", title: "Weekly recap", terms: ["Keep a history of my coding sessions", "Hide project names in shared images", "Clear history"] },
   { id: "general.language", page: "general", title: "Language", terms: ["Restart Coucou"] },
 
   // Notch → Pills, Agents, Chat, Integrations, Phone, Voice, Shortcuts
-  { id: "pills.main", page: "pills", title: "settings.main-pill", terms: ["Active pills"] },
-  { id: "agents.claude", page: "agents", title: "hooks.claude-code.title", terms: ["Answer questions and permissions from terminal sessions in the notch"] },
-  { id: "agents.claude-desktop", page: "agents", title: "claude-desktop.chat.title", terms: [] },
-  { id: "agents.gemini", page: "agents", title: "hooks.gemini.title", terms: [] },
-  { id: "agents.antigravity", page: "agents", title: "hooks.antigravity.title", terms: [] },
-  { id: "agents.codex", page: "agents", title: "hooks.codex.title", terms: [] },
-  { id: "agents.copilot", page: "agents", title: "hooks.copilot.title", terms: [] },
-  { id: "agents.muse", page: "agents", title: "hooks.muse.title", terms: [] },
-  { id: "agents.opencode", page: "agents", title: "plugin.opencode.title", terms: [] },
-  { id: "agents.amp", page: "agents", title: "plugin.amp.title", terms: [] },
-  { id: "agents.hermes", page: "agents", title: "plugin.hermes.title", terms: ["plugin.hermes.approvals"] },
-  { id: "agents.plan", page: "agents", title: "plan.title", terms: ["plan.show-in-notch", "Show Codex plan in the notch"] },
-  { id: "chat.subscriptions", page: "chat", title: "chat.subscriptions.title", terms: ["chat.subscriptions.use"] },
-  { id: "chat.anthropic", page: "chat", title: "chat.anthropic-api.title", terms: ["chat.model", "Anthropic", "Claude"] },
-  { id: "chat.others", page: "chat", title: "chat.other-providers.title", terms: ["Google AI", "OpenAI", "DeepSeek", "Gemini"] },
-  { id: "chat.local", page: "chat", title: "chat.local.title", terms: ["Ollama", "LM Studio"] },
+  { id: "pills.main", page: "pills", title: "Main", terms: ["Active pills"] },
+  { id: "agents.claude", page: "agents", title: "Claude Code hooks", terms: ["Answer questions and permissions from terminal sessions in the notch"] },
+  { id: "agents.claude-desktop", page: "agents", title: "Claude Desktop chats (experimental)", terms: [] },
+  { id: "agents.gemini", page: "agents", title: "Gemini CLI hooks", terms: [] },
+  { id: "agents.antigravity", page: "agents", title: "Antigravity hooks", terms: [] },
+  { id: "agents.codex", page: "agents", title: "Codex hooks", terms: [] },
+  { id: "agents.copilot", page: "agents", title: "GitHub Copilot CLI hooks", terms: [] },
+  { id: "agents.muse", page: "agents", title: "Muse Code hooks", terms: [] },
+  { id: "agents.opencode", page: "agents", title: "OpenCode plugin", terms: [] },
+  { id: "agents.amp", page: "agents", title: "Amp plugin", terms: [] },
+  { id: "agents.hermes", page: "agents", title: "Hermes Agent", terms: ["Show approval requests in the notch"] },
+  { id: "agents.plan", page: "agents", title: "Plan usage", terms: ["Show in notch", "Show Codex plan in the notch"] },
+  { id: "chat.subscriptions", page: "chat", title: "Your AI subscriptions", terms: ["Use my subscription"] },
+  { id: "chat.anthropic", page: "chat", title: "Anthropic API", terms: ["Model", "Anthropic", "Claude"] },
+  { id: "chat.others", page: "chat", title: "Chat — other providers", terms: ["Google AI", "OpenAI", "DeepSeek", "Gemini"] },
+  { id: "chat.local", page: "chat", title: "Local models", terms: ["Ollama", "LM Studio"] },
   {
     id: "integrations.all",
     page: "integrations",
@@ -139,19 +141,19 @@ export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
       "Linear", "X", "YouTube", "Figma", "OpenWeather", "Railway", "Supabase", "Hugging Face", "Sentry", "PostHog", "Twilio",
     ],
   },
-  { id: "phone.android", page: "phone", title: "phone.title", terms: ["phone.status", "phone.pairing", "phone.approvals"] },
+  { id: "phone.android", page: "phone", title: "Android phone", terms: ["Phone link", "Show the sessions on the phone", "Allow approvals from the phone"] },
   { id: "voice.wake", page: "voice", title: "«\u202FOK Coucou\u202F» — voice wake word", terms: ["Enable voice command", "Request permissions"] },
-  { id: "voice.language", page: "voice", title: "Language", terms: ["voice.listen-language", "voice.language"] },
-  { id: "voice.tts", page: "voice", title: "voice.tts-engine", terms: ["voice.tts-gender", "voice.tts-test"] },
-  { id: "voice.history", page: "voice", title: "voice.history-title", terms: [] },
-  { id: "shortcuts.global", page: "shortcuts", title: "shortcut.group.global", terms: [] },
-  { id: "shortcuts.island", page: "shortcuts", title: "shortcut.group.island", terms: [] },
+  { id: "voice.language", page: "voice", title: "Language", terms: ["You speak", "Coucou answers in"] },
+  { id: "voice.tts", page: "voice", title: "Voice", terms: ["Voice type", "Test the voice"] },
+  { id: "voice.history", page: "voice", title: "Recently heard phrases", terms: [] },
+  { id: "shortcuts.global", page: "shortcuts", title: "Global shortcuts — active from any app", terms: [] },
+  { id: "shortcuts.island", page: "shortcuts", title: "Notch shortcuts — active when the notch is in front", terms: [] },
 
   // Mail
-  { id: "mail.autosort", page: "mailOverview", title: "hub.mail.autosort", terms: ["hub.mail.journal", "hub.mail.sent", "hub.mail.undo"] },
-  { id: "mail.rules", page: "mailRules", title: "hub.mail.rules", terms: ["hub.mail.field.sender", "hub.mail.field.subject", "hub.mail.do.junk"] },
-  { id: "mail.banned", page: "mailBanned", title: "hub.mail.banned", terms: [] },
-  { id: "mail.vip", page: "mailVIP", title: "hub.mail.vip", terms: [] },
+  { id: "mail.autosort", page: "mailOverview", title: "Sort new messages automatically", terms: ["Journal", "Sent by Coucou", "Undo"] },
+  { id: "mail.rules", page: "mailRules", title: "Rules", terms: ["Sender", "Subject", "Move to Junk"] },
+  { id: "mail.banned", page: "mailBanned", title: "Banned words", terms: [] },
+  { id: "mail.vip", page: "mailVIP", title: "VIP", terms: [] },
 ];
 
 /**
@@ -171,12 +173,15 @@ export function searchSettings(
     const titleText = t(entry.title);
     const pageText = getPageTitle(entry.page);
     const labelTexts = entry.terms.map((k) => t(k));
-    const res = match(qWords, titleText, pageText, labelTexts);
+    const res = match(qWords, titleText, pageText, labelTexts)
+      ?? match(qWords, entry.title, "", entry.terms);
     if (!res) continue;
     if (res.kind === "box") {
       boxes.push({ entry, id: entry.id });
     } else {
-      labels.push({ entry, label: res.label, id: `${entry.id}|${res.label}` });
+      const index = entry.terms.indexOf(res.label);
+      const label = labelTexts.includes(res.label) ? res.label : labelTexts[index] ?? res.label;
+      labels.push({ entry, label, id: `${entry.id}|${label}` });
     }
   }
 
