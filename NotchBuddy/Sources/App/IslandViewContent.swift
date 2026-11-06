@@ -57,6 +57,12 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .launch:
+            #if !APPSTORE
+            LaunchView(state: state)
+            #else
+            EmptyView()
+            #endif
         }
     }
 }

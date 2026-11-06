@@ -697,6 +697,10 @@ struct IslandHeader: View {
                     #endif
                 })
                 TabButton(icon: "plus", view: .upload, state: state)
+                #if !APPSTORE
+                // A new Claude Code session, in a project, from here.
+                TabButton(icon: "terminal", view: .launch, state: state)
+                #endif
             }
             .padding(.leading, 14)
 

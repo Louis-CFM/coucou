@@ -143,6 +143,9 @@ jobs:
       - name: Test the App Store review moments
         run: bash scripts/test-review-policy.sh
 
+      - name: Test the new-session launcher
+        run: bash scripts/test-session-launch.sh
+
       - name: Test the Android link (pairing, framing, admission, approvals, certificate)
         run: bash scripts/test-android-link.sh
 

@@ -1607,6 +1607,51 @@
    "ko": "서명 확인 중…",
    "ja": "署名を確認中…"
   },
+  "Choose": {
+   "zh-Hans": "选择",
+   "hi": "चुनें",
+   "es": "Elegir",
+   "ar": "اختيار",
+   "fr": "Choisir",
+   "bn": "বেছে নিন",
+   "pt-BR": "Escolher",
+   "ru": "Выбрать",
+   "id": "Pilih",
+   "de": "Auswählen",
+   "tr": "Seç",
+   "ko": "선택",
+   "ja": "選択"
+  },
+  "Choose a folder…": {
+   "zh-Hans": "选择文件夹…",
+   "hi": "फ़ोल्डर चुनें…",
+   "es": "Elegir una carpeta…",
+   "ar": "اختيار مجلد…",
+   "fr": "Choisir un dossier…",
+   "bn": "ফোল্ডার বেছে নিন…",
+   "pt-BR": "Escolher uma pasta…",
+   "ru": "Выбрать папку…",
+   "id": "Pilih folder…",
+   "de": "Ordner auswählen …",
+   "tr": "Klasör seç…",
+   "ko": "폴더 선택…",
+   "ja": "フォルダを選択…"
+  },
+  "Choose a project": {
+   "zh-Hans": "选择项目",
+   "hi": "प्रोजेक्ट चुनें",
+   "es": "Elegir un proyecto",
+   "ar": "اختيار مشروع",
+   "fr": "Choisir un projet",
+   "bn": "প্রজেক্ট বেছে নিন",
+   "pt-BR": "Escolher um projeto",
+   "ru": "Выбрать проект",
+   "id": "Pilih proyek",
+   "de": "Projekt auswählen",
+   "tr": "Proje seç",
+   "ko": "프로젝트 선택",
+   "ja": "プロジェクトを選択"
+  },
   "Choose a zone (Space for a window): Mochi takes it into the island to paste, annotate or ask Claude.": {
    "zh-Hans": "选择一个区域（按空格选窗口）：Mochi 会把它放进岛中，可粘贴、标注或询问 Claude。",
    "hi": "एक हिस्सा चुनें (विंडो के लिए Space): Mochi उसे आइलैंड में ले आता है, ताकि आप पेस्ट करें, नोट जोड़ें या Claude से पूछें।",
@@ -2596,6 +2641,21 @@
    "tr": "Başlatılamadı: {0}",
    "ko": "시작할 수 없음: {0}",
    "ja": "開始できませんでした: {0}"
+  },
+  "Couldn't open the terminal in this folder.": {
+   "zh-Hans": "无法在此文件夹中打开终端。",
+   "hi": "इस फ़ोल्डर में टर्मिनल नहीं खुल सका।",
+   "es": "No se pudo abrir el terminal en esta carpeta.",
+   "ar": "تعذّر فتح الطرفية في هذا المجلد.",
+   "fr": "Impossible d'ouvrir le terminal dans ce dossier.",
+   "bn": "এই ফোল্ডারে টার্মিনাল খোলা গেল না।",
+   "pt-BR": "Não foi possível abrir o terminal nesta pasta.",
+   "ru": "Не удалось открыть терминал в этой папке.",
+   "id": "Tidak bisa membuka terminal di folder ini.",
+   "de": "Das Terminal konnte in diesem Ordner nicht geöffnet werden.",
+   "tr": "Terminal bu klasörde açılamadı.",
+   "ko": "이 폴더에서 터미널을 열 수 없습니다.",
+   "ja": "このフォルダでターミナルを開けませんでした。"
   },
   "Couldn’t reach GitHub": {
    "zh-Hans": "无法连接 GitHub",
@@ -5867,6 +5927,21 @@
    "ko": "입력 필요",
    "ja": "入力が必要"
   },
+  "New Claude Code session": {
+   "zh-Hans": "新的 Claude Code 会话",
+   "hi": "नया Claude Code सत्र",
+   "es": "Nueva sesión de Claude Code",
+   "ar": "جلسة Claude Code جديدة",
+   "fr": "Nouvelle session Claude Code",
+   "bn": "নতুন Claude Code সেশন",
+   "pt-BR": "Nova sessão do Claude Code",
+   "ru": "Новая сессия Claude Code",
+   "id": "Sesi Claude Code baru",
+   "de": "Neue Claude Code-Sitzung",
+   "tr": "Yeni Claude Code oturumu",
+   "ko": "새 Claude Code 세션",
+   "ja": "新しい Claude Code セッション"
+  },
   "New conversation": {
    "zh-Hans": "新建对话",
    "hi": "नई बातचीत",
@@ -7336,6 +7411,21 @@
    "tr": "Apple Music açılıyor…",
    "ko": "Apple Music 여는 중…",
    "ja": "Apple Music を開いています…"
+  },
+  "Opens your terminal in the project, with Claude Code and your words.": {
+   "zh-Hans": "在项目中打开终端，启动 Claude Code 并带上你的话。",
+   "hi": "प्रोजेक्ट में आपका टर्मिनल खोलता है, Claude Code और आपके शब्दों के साथ।",
+   "es": "Abre tu terminal en el proyecto, con Claude Code y tus palabras.",
+   "ar": "يفتح الطرفية في المشروع مع Claude Code وكلماتك.",
+   "fr": "Ouvre ton terminal dans le projet, avec Claude Code et tes mots.",
+   "bn": "প্রজেক্টে আপনার টার্মিনাল খোলে, Claude Code আর আপনার কথা নিয়ে।",
+   "pt-BR": "Abre seu terminal no projeto, com o Claude Code e suas palavras.",
+   "ru": "Откроет терминал в проекте с Claude Code и вашими словами.",
+   "id": "Membuka terminal di proyek, dengan Claude Code dan kata-katamu.",
+   "de": "Öffnet dein Terminal im Projekt, mit Claude Code und deinen Worten.",
+   "tr": "Terminalini projede açar, Claude Code ve senin sözlerinle.",
+   "ko": "프로젝트에서 터미널을 열고 Claude Code에 내 말을 전합니다.",
+   "ja": "プロジェクトでターミナルを開き、Claude Code にあなたの言葉を渡します。"
   },
   "Other apps": {
    "zh-Hans": "其他 App",
@@ -11146,6 +11236,21 @@
    "tr": "Bununla ne yapmak istiyorsun?",
    "ko": "이걸로 뭘 해 볼까요?",
    "ja": "これをどうしますか？"
+  },
+  "What should Claude do?": {
+   "zh-Hans": "要 Claude 做什么？",
+   "hi": "Claude क्या करे?",
+   "es": "¿Qué debe hacer Claude?",
+   "ar": "ماذا يفعل Claude؟",
+   "fr": "Que doit faire Claude ?",
+   "bn": "Claude কী করবে?",
+   "pt-BR": "O que o Claude deve fazer?",
+   "ru": "Что сделать Claude?",
+   "id": "Apa yang harus dilakukan Claude?",
+   "de": "Was soll Claude tun?",
+   "tr": "Claude ne yapsın?",
+   "ko": "Claude가 무엇을 할까요?",
+   "ja": "Claude に何をしてもらいますか？"
   },
   "What you dictated, how fast, and where.": {
    "zh-Hans": "你听写了什么、多快、在哪里。",

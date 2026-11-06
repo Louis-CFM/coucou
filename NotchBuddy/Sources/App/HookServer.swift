@@ -619,6 +619,11 @@ final class HookServer: @unchecked Sendable {
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
+        #if !APPSTORE
+        if (name == "SessionStart" || name == "UserPromptSubmit") && (payload["coucou_agent"] as? String ?? "").isEmpty {
+            SessionLauncher.shared.remember(folder: cwd, terminal: bundleId)
+        }
+        #endif
 
         // Cursor identified solely by its stable Electron bundle ID.
         // ToDesktop builds other apps too — do not match on "todesktop" alone.

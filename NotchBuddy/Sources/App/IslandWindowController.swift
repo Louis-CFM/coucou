@@ -202,7 +202,7 @@ final class IslandWindowController: NSWindowController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newView in
                 guard let self else { return }
-                if newView == .prompt {
+                if newView == .prompt || newView == .launch {
                     self.islandPanel.makeKey()
                 }
             }
@@ -760,6 +760,13 @@ final class IslandWindowController: NSWindowController {
             #if !APPSTORE
             appendAppLog("nb.log", "[Capture] shortcut pressed")
             ScreenCapture.shared.begin()
+            #endif
+
+        case .newSession:
+            #if !APPSTORE
+            islandPanel.makeKey()
+            fsm.openedExternally()
+            expand(to: .launch)
             #endif
 
         case .quickScreenshot:
