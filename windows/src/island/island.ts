@@ -224,13 +224,13 @@ export class Island {
           integration_stripe: "https://dashboard.stripe.com/payments",
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
-          // No WhatsApp app to bring forward here as on the Mac: WhatsApp Web, in the browser.
-          integration_whatsapp: "https://web.whatsapp.com",
         };
         if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
         else if (task.id === "integration_claude" || task.sessionId) {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
+        // WhatsApp Desktop at the open conversation; WhatsApp Web when it isn't installed.
+        else if (task.id === "integration_whatsapp") void Bridge.whatsappOpenApp();
         else if (task.id === "integration_gitea") void Bridge.openGitea();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);

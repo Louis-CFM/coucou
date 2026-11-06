@@ -397,8 +397,10 @@ API key), and change the port of Coucou's webhook (47823).
 
 - There is no macOS Focus to follow, so "Stay quiet during a Focus" is not
   offered.
-- The card's ↗ opens WhatsApp Web, as there is no WhatsApp app here to bring
-  forward.
+- The card's ↗ opens WhatsApp Desktop (the Microsoft Store app) at the
+  conversation open in the card, when it is a person's. Without an app for
+  `whatsapp:` links (on Linux, the default `x-scheme-handler/whatsapp`), it
+  opens WhatsApp Web in the browser, at the same chat.
 - You type the path to your own GOWA binary instead of picking it.
 
 ## New versions
