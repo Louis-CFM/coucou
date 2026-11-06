@@ -1790,11 +1790,23 @@ export class Island {
     const on = State.mode === "compact" && State.settings.showClock;
     this.clockEl.style.opacity = on ? "1" : "0";
     if (!on) return;
+    // The plan's pill sits on the right: the clock ends where it starts.
+    const planShown = this.compactPlan.style.opacity === "1";
+    const planRight = parseFloat(this.compactPlan.style.right) || 0;
+    const right = planShown ? planRight + this.compactPlan.offsetWidth + 6 : 56;
+    this.clockEl.style.right = `${right}px`;
+    const room = this.width.value - 50 - right;
     const now = new Date();
-    const date = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
     const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const text = `${date}  ${time}`;
-    if (this.clockEl.textContent !== text) this.clockEl.textContent = text;
+    const full = `${now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}  ${time}`;
+    const short = `${now.toLocaleDateString([], { day: "numeric", month: "short" })}  ${time}`;
+    // The longest that fits: with the weekday, without it, the time alone.
+    const range = document.createRange();
+    for (const text of [full, short, time]) {
+      if (this.clockEl.textContent !== text) this.clockEl.textContent = text;
+      range.selectNodeContents(this.clockEl);
+      if (range.getBoundingClientRect().width <= room || text === time) break;
+    }
   }
 
   /** Applies settings coming from Rust at boot. */
