@@ -2904,6 +2904,16 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--dim-2);
 }
 
+/* The head with its magnifier: room on the right for the card's ↗, as in Mail's. */
+.wa-list-head {
+  padding-right: 36px;
+}
+
+/* The search result Enter opens (↓ ↑ move it), like GitHub's highlighted row. */
+.wa-row.selected {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .wa-spacer {
   flex: 1 1 0;
 }
@@ -3146,7 +3156,9 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   flex: 1 1 0;
 }
 
-.mail-icon {
+/* The magnifier, ✕ and search field: the Mail card's, and the WhatsApp card's. */
+.mail-icon,
+.wa-icon {
   border: 0;
   background: transparent;
   color: #8e939c;
@@ -3158,11 +3170,13 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   flex: 0 0 auto;
 }
 
-.mail-icon:hover {
+.mail-icon:hover,
+.wa-icon:hover {
   color: var(--ink);
 }
 
-.mail-search {
+.mail-search,
+.wa-search {
   flex: 1 1 auto;
   min-width: 0;
   border: 0;

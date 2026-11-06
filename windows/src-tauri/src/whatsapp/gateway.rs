@@ -303,6 +303,14 @@ pub mod gowa {
     pub fn sent_id(data: &[u8]) -> Option<String> {
         text(results(data)?.get("message_id"))
     }
+
+    /// `GET /user/my/contacts` → `results: {data: [{jid, name}]}`: the address book, as
+    /// (jid, name). Entries without a name are left out.
+    pub fn contacts(data: &[u8]) -> Vec<(String, String)> {
+        let Some(r) = results(data) else { return vec![] };
+        let Some(list) = r.get("data").and_then(Value::as_array) else { return vec![] };
+        list.iter().filter_map(|c| Some((text(c.get("jid"))?, text(c.get("name"))?))).collect()
+    }
 }
 
 pub mod openwa {
@@ -699,6 +707,9 @@ mod tests {
         assert_eq!(list[0].chat_name.as_deref(), Some("Famille"));
         let chats = r#"{"code":"SUCCESS","results":{"data":[{"jid":"628123456789@s.whatsapp.net","name":"John","last_message_time":"2025-07-13T11:06:00Z"}]}}"#;
         assert_eq!(gowa::chats(chats.as_bytes())[0].1, "John");
+        let contacts = r#"{"code":"SUCCESS","message":"Success get list contacts","results":{"data":[{"jid":"447700900123@s.whatsapp.net","name":"Sam Example"},{"jid":"447700900456@s.whatsapp.net","name":""}]}}"#;
+        assert_eq!(gowa::contacts(contacts.as_bytes()), [("447700900123@s.whatsapp.net".to_string(), "Sam Example".to_string())]);
+        assert!(gowa::contacts(br#"{"code":"SUCCESS","results":null}"#).is_empty());
 
         let session = r#"[{"id":"0b5d","name":"coucou","status":"ready","phone":"628123456789"}]"#;
         let s = &openwa::sessions(session.as_bytes())[0];

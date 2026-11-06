@@ -6904,6 +6904,36 @@
       "ko": "새 메시지가 없어요",
       "ja": "新しいメッセージはありません"
     },
+    "Find a contact": {
+      "zh-Hans": "查找联系人",
+      "hi": "संपर्क खोजें",
+      "es": "Buscar un contacto",
+      "ar": "ابحث عن جهة اتصال",
+      "fr": "Trouver un contact",
+      "bn": "পরিচিতি খুঁজুন",
+      "pt-BR": "Encontrar um contato",
+      "ru": "Найти контакт",
+      "id": "Cari kontak",
+      "de": "Kontakt suchen",
+      "tr": "Kişi bul",
+      "ko": "연락처 찾기",
+      "ja": "連絡先を探す"
+    },
+    "Nobody by that name": {
+      "zh-Hans": "没有叫这个名字的人",
+      "hi": "इस नाम का कोई नहीं",
+      "es": "Nadie con ese nombre",
+      "ar": "لا أحد بهذا الاسم",
+      "fr": "Personne à ce nom",
+      "bn": "এই নামে কেউ নেই",
+      "pt-BR": "Ninguém com esse nome",
+      "ru": "Никого с таким именем",
+      "id": "Tidak ada yang bernama itu",
+      "de": "Niemand mit diesem Namen",
+      "tr": "Bu adda kimse yok",
+      "ko": "그 이름의 사람이 없어요",
+      "ja": "その名前の人はいません"
+    },
     "No GOWA build for this computer was found on GitHub. Try again later, or set your own gateway under Advanced.": {
       "zh-Hans": "GitHub 上没有适用于此电脑的 GOWA 版本。请稍后重试，或在“高级”中设置你自己的网关。",
       "hi": "GitHub पर इस कंप्यूटर के लिए GOWA नहीं मिला। बाद में फिर कोशिश करें, या एडवांस्ड में अपना गेटवे सेट करें।",

@@ -403,6 +403,17 @@ impl Provider {
             }
         }
     }
+
+    /// The address book, as (jid, name), for the card's search. GOWA only: with OpenWA the search
+    /// looks through the conversations in the card alone.
+    pub async fn contacts(&self) -> Result<Vec<(String, String)>, WaError> {
+        match self {
+            Provider::Gowa { http, device } => {
+                Ok(gowa::contacts(&Self::gowa_scoped(http, device, Method::GET, "/user/my/contacts", &[], None).await?))
+            }
+            Provider::Openwa { .. } => Ok(vec![]),
+        }
+    }
 }
 
 #[cfg(test)]
