@@ -343,15 +343,28 @@ test("the search: every word of the name, or the digits of the number; conversat
   assert.equal(names("e", 1).length, 1);
 });
 
-test("the magnifier finds someone and opens their chat in WhatsApp; nothing is sent from it", async () => {
+test("the magnifier finds someone, and their conversation opens here to write to; nothing is sent before Enter", async () => {
   const c = card();
   const realInvoke = internals.invoke;
-  internals.invoke = async (cmd, args) => cmd === "whatsapp_contacts"
-    ? [{ id: "447700900456@s.whatsapp.net", name: "Alex Example" }, { id: "447700900789@s.whatsapp.net", name: "Alexis Example" }]
-    : realInvoke(cmd, args);
+  const alex = "447700900456@s.whatsapp.net";
+  const alexis = "447700900789@s.whatsapp.net";
+  /** What Rust's whatsapp_start answers: the card's copy, or null when it refuses. */
+  let started = null;
+  internals.invoke = async (cmd, args) => {
+    if (cmd === "whatsapp_contacts") return [{ id: alex, name: "Alex Example" }, { id: alexis, name: "Alexis Example" }];
+    const reply = await realInvoke(cmd, args);
+    return cmd === "whatsapp_start" ? started : reply;
+  };
   const typed = (field, text) => {
     field.value = text;
     for (const fn of field.listeners.get("input")) fn({});
+  };
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const search = async (text) => {
+    c.el.find(".wa-icon")[0].fire("click");
+    await settle();
+    typed(c.el.find("INPUT")[0], text);
+    return c.el.find("INPUT")[0];
   };
   try {
     WhatsApp.view = connected({ unread: 1, conversations: [conversation()] });
@@ -359,38 +372,61 @@ test("the magnifier finds someone and opens their chat in WhatsApp; nothing is s
     State.view = "overview";
     State.focusId = WHATSAPP_ID;
     c.sync();
-    const magnifier = c.el.find(".wa-icon")[0];
-    magnifier.fire("click");
+    const find = await search("alex");
     assert.deepEqual(c.calls.keyboard, [true], "the island takes the keyboard for the field");
-    await new Promise((r) => setTimeout(r, 0));
-    const field = c.el.find("INPUT")[0];
-    typed(field, "alex");
     assert.deepEqual(c.calls.hold, [true], "the island stays open while a name is typed");
     const rows = c.el.find(".wa-row");
     assert.equal(rows.length, 2);
     assert.match(rows[0].textContent, /Alex Example.*\+447700900456/);
     assert.ok(rows[0].classList.contains("selected"));
-    key(field, "ArrowDown");
+    key(find, "ArrowDown");
     assert.ok(c.el.find(".wa-row")[1].classList.contains("selected"));
+
+    // Someone new from your contacts: Rust starts an empty conversation, and the card opens it.
+    started = connected({
+      unread: 1,
+      conversations: [conversation({ id: alexis, name: "Alexis Example", messages: [], unread: 0 }), conversation()],
+    });
     const sends = sent("whatsapp_send").length;
-    assert.equal(key(field, "Enter").defaultPrevented, true);
-    assert.deepEqual(sent("whatsapp_open_app").at(-1), { chat: "447700900789@s.whatsapp.net" });
-    assert.equal(sent("whatsapp_send").length, sends);
-    // Closed: the conversations again, the keyboard given back.
-    assert.equal(c.el.find(".wa-row").length, 1);
-    assert.deepEqual(c.calls.keyboard, [true, false]);
-    assert.equal(c.calls.hold.at(-1), false);
+    assert.equal(key(find, "Enter").defaultPrevented, true);
+    await settle();
+    assert.deepEqual(sent("whatsapp_start").at(-1), { chat: alexis });
+    assert.deepEqual(sent("whatsapp_open").at(-1), { chat: alexis });
+    assert.match(c.el.find(".wa-name")[0].textContent, /Alexis Example/);
+    assert.equal(sent("whatsapp_send").length, sends, "picking someone sends nothing");
+    const reply = c.el.find("TEXTAREA")[0];
+    typed(reply, "Hi Alexis");
+    key(reply, "Enter");
+    await Promise.resolve();
+    assert.deepEqual(sent("whatsapp_send").at(-1), { chat: alexis, text: "Hi Alexis" });
+    key(reply, "Escape");
+    assert.deepEqual(sent("whatsapp_close").at(-1), { chat: alexis });
+
+    // Refused (not in your contacts, or the gateway didn't answer): WhatsApp opens at the chat.
+    WhatsApp.view = connected({ unread: 1, conversations: [conversation()] });
+    c.sync();
+    started = null;
+    key(await search("alex"), "Enter");
+    await settle();
+    assert.deepEqual(sent("whatsapp_start").at(-1), { chat: alex });
+    assert.deepEqual(sent("whatsapp_open_app").at(-1), { chat: alex });
+
+    // Someone already in the card: their conversation, no new one.
+    const starts = sent("whatsapp_start").length;
+    key(await search("marie"), "Enter");
+    await settle();
+    assert.equal(sent("whatsapp_start").length, starts);
+    assert.deepEqual(sent("whatsapp_open").at(-1), { chat: "33612345678@s.whatsapp.net" });
+    key(c.el.find("TEXTAREA")[0], "Escape");
 
     // Nobody by that name; Escape goes back to the list, not the island folding away.
-    magnifier.fire("click");
-    await new Promise((r) => setTimeout(r, 0));
-    typed(field, "zz");
+    const nobody = await search("zz");
     assert.match(c.el.textContent, /Nobody by that name/);
-    assert.equal(key(field, "Escape").propagationStopped, true);
+    assert.equal(key(nobody, "Escape").propagationStopped, true);
     assert.equal(c.el.find(".wa-row").length, 1);
 
     // Leaving the card closes the search.
-    magnifier.fire("click");
+    c.el.find(".wa-icon")[0].fire("click");
     State.mode = "compact";
     State.notify();
     assert.equal(c.calls.keyboard.at(-1), false);

@@ -8,8 +8,10 @@
 // own Enter or click, and while a reply is being typed the island stays open.
 //
 // The magnifier finds someone, among the conversations and WhatsApp's address book, by name or
-// number; a click or Enter opens their chat in WhatsApp, ready to type. Nothing is sent from the
-// search, and the address book is kept only while it is open.
+// number; a click or Enter opens their conversation here, empty when it is new, with the same
+// reply field and the same rules (Rust only lets a new one start with someone in your contacts).
+// If Rust refuses, WhatsApp opens at their chat instead. The address book is kept only while the
+// search is open.
 //
 // Built once and synced in place: the field keeps its draft and the keyboard while messages arrive.
 
@@ -123,11 +125,20 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     sync();
   }
 
-  /** Someone picked: WhatsApp opens at their chat, ready to type. Nothing is sent from here. */
-  function pick(p: WaContact | undefined) {
+  /** Someone picked: their conversation opens here, ready to type. Nothing is sent until Enter. */
+  async function pick(p: WaContact | undefined) {
     if (!p) return;
-    void Bridge.whatsappOpenApp(p.id);
     setSearch(false);
+    if (!WhatsApp.view.conversations.some((c) => c.id === p.id)) {
+      const view = await Bridge.whatsappStart(p.id);
+      if (!view) {
+        // Refused (not in your contacts, or the gateway didn't answer): WhatsApp itself, at the chat.
+        void Bridge.whatsappOpenApp(p.id);
+        return;
+      }
+      WhatsApp.view = view;
+    }
+    open(p.id);
   }
 
   searchBtn.addEventListener("click", () => setSearch(true));
@@ -147,7 +158,7 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
       sync();
     } else if (key === "Enter" && !(e as KeyboardEvent).isComposing) {
       e.preventDefault();
-      pick(found[Math.min(picked, found.length - 1)]);
+      void pick(found[Math.min(picked, found.length - 1)]);
     } else if (key === "Escape") {
       // Back to the list, not the island folding away.
       e.preventDefault();
@@ -268,8 +279,7 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
       h("span", { class: "int-name wa-row-name", text: p.name }),
       h("span", { class: "int-sub wa-preview", text: `+${p.id.split("@")[0]}` }),
     );
-    r.title = t("Open {name}", { name: "WhatsApp" });
-    r.addEventListener("click", () => pick(p));
+    r.addEventListener("click", () => void pick(p));
     return r;
   }
 

@@ -379,9 +379,13 @@ account only, because WhatsApp may restrict accounts that abuse it.
   reply if you turn that setting off.
 - The magnifier finds someone by name or number, among the conversations and
   your WhatsApp contacts (GOWA's address book). Click them, or pick them with
-  **↓ ↑** and **Enter**, and WhatsApp opens at their chat, ready to type
-  (WhatsApp Web without the app). Nothing is sent from the search, and the
-  contacts are kept only while it is open.
+  **↓ ↑** and **Enter**, and their conversation opens in the card, empty if you
+  have not written yet: type, then **Enter**, as for a reply, with the same
+  limits (one person, a few messages a minute). A new conversation starts only
+  with someone in your contacts, never a typed-in number; if Coucou can't
+  start one, WhatsApp opens at their chat instead. Closed without a word, it
+  leaves the list. Nothing is sent from the search itself, and the contacts
+  are kept only while it is open.
 
 **Your own gateway**
 

@@ -468,6 +468,9 @@ export const Bridge = {
   whatsappOpenApp: (chat: string | null = null) => call<boolean>("whatsapp_open_app", { chat }),
   /** The address book for the card's search, asked when it opens. Island only. */
   whatsappContacts: () => call<WaContact[]>("whatsapp_contacts"),
+  /** Someone picked in the search, to write to from the card: their conversation (empty when
+   *  new, and only for someone in your contacts). The card's copy with it, or null if refused. */
+  whatsappStart: (chat: string) => call<WaIslandView | null>("whatsapp_start", { chat }),
   /** Enter or the send button only. True once the gateway took it. */
   whatsappSend: (chat: string, text: string) => call<boolean>("whatsapp_send", { chat, text }),
   /** A chat id, or (Settings) a phone number. */

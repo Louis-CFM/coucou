@@ -914,9 +914,16 @@ fn open(chat: &str) {
 }
 
 fn close(chat: &str) {
-    let mut c = ctl();
-    if c.open_chat.as_deref() == Some(model::normalized(chat).as_str()) {
-        c.open_chat = None;
+    let dropped = {
+        let mut c = ctl();
+        if c.open_chat.as_deref() == Some(model::normalized(chat).as_str()) {
+            c.open_chat = None;
+        }
+        // Started from the search and left without a word: no empty row stays in the list.
+        c.inbox.drop_if_empty(chat)
+    };
+    if dropped {
+        changed();
     }
 }
 
@@ -1165,6 +1172,33 @@ pub async fn whatsapp_contacts(window: WebviewWindow) -> Result<Vec<Contact>, St
     let provider = ctl().provider.clone();
     let Some(provider) = provider else { return Ok(vec![]) };
     Ok(contact_list(provider.contacts().await.unwrap_or_default()))
+}
+
+/// Someone picked in the card's search, to write to from the card. A conversation already in the
+/// card stays as it is; anyone else must be in your own WhatsApp contacts (the gateway's address
+/// book, asked again here: never a typed-in number) and gets an empty conversation. Nothing is
+/// sent: the first message, like every reply, leaves only on your Enter or click, a few a minute.
+/// The card's copy with it in, or None when refused.
+#[tauri::command]
+pub async fn whatsapp_start(window: WebviewWindow, chat: String) -> Result<Option<IslandView>, String> {
+    only(&window, crate::island::WINDOW_LABEL)?;
+    let key = model::normalized(&chat);
+    let (provider, gen, known) = {
+        let c = ctl();
+        let Some(p) = c.provider.clone() else { return Ok(None) };
+        (p, c.generation, c.inbox.conversations.contains_key(&key))
+    };
+    if !known {
+        let book = contact_list(provider.contacts().await.unwrap_or_default());
+        let Some(person) = book.into_iter().find(|p| p.id == key) else { return Ok(None) };
+        let mut c = ctl();
+        let filters = c.filters();
+        if c.generation != gen || !c.inbox.start(&key, &person.name, &filters, gateway::now_ms()) {
+            return Ok(None);
+        }
+    }
+    changed();
+    Ok(Some(ctl().island_view()))
 }
 
 /// Enter or the send button in the island's card: the only way a message leaves Coucou.

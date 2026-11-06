@@ -296,6 +296,39 @@ impl Inbox {
         }
     }
 
+    /// Someone you picked from your own WhatsApp contacts in the card's search (the caller checks
+    /// the address book): their conversation, empty until you write, so the card can open it. One
+    /// person only: never a group, a hidden number or an ignored chat. A conversation already
+    /// there stays as it is. True when it is in the inbox.
+    pub fn start(&mut self, chat: &str, name: &str, filters: &Filters, now: i64) -> bool {
+        let chat = normalized(chat);
+        if !chat.ends_with("@s.whatsapp.net") || filters.ignored.contains(&chat) {
+            return false;
+        }
+        let number = display_number(&chat);
+        let name = name.trim();
+        self.conversations.entry(chat.clone()).or_insert_with(|| Conversation {
+            id: chat.clone(),
+            name: if name.is_empty() { number } else { name.to_string() },
+            is_group: false,
+            messages: Vec::new(),
+            unread: 0,
+            last_activity: now,
+        });
+        true
+    }
+
+    /// A conversation started from the search and closed without a word: it leaves the list.
+    /// True when it went.
+    pub fn drop_if_empty(&mut self, chat: &str) -> bool {
+        let chat = normalized(chat);
+        if self.conversations.get(&chat).is_some_and(|c| c.messages.is_empty()) {
+            self.conversations.remove(&chat);
+            return true;
+        }
+        false
+    }
+
     /// Everything goes (Coucou quits, WhatsApp turned off).
     pub fn clear(&mut self) {
         self.conversations.clear();
@@ -325,7 +358,8 @@ pub fn check_reply(text: &str, chat: &str, inbox: &Inbox) -> Option<Refusal> {
     if trimmed.chars().count() > MAX_REPLY {
         return Some(Refusal::TooLong);
     }
-    // Never a new chat, never a list of recipients: only a conversation that wrote to you.
+    // Never a typed-in number, never a list of recipients: only a conversation that wrote to you,
+    // or one you started with a single person from your own contacts (Inbox::start).
     if !inbox.conversations.contains_key(&normalized(chat)) {
         return Some(Refusal::NotAConversation);
     }
@@ -480,6 +514,34 @@ mod tests {
         mine.from_me = true;
         assert_eq!(inbox.add(mine, &f, None, false), Outcome::Quiet);
         assert_eq!(inbox.conversations["33600000002@s.whatsapp.net"].unread, 0, "my own message reads the chat");
+    }
+
+    #[test]
+    fn a_contact_picked_in_the_search_gets_an_empty_conversation_and_only_a_person() {
+        let mut inbox = Inbox::default();
+        let mut f = Filters::default();
+        let alex = "447700900123@s.whatsapp.net";
+        assert_eq!(check_reply("Hi", alex, &inbox), Some(Refusal::NotAConversation), "no new chat by default");
+        assert!(inbox.start("447700900123:4@s.whatsapp.net", " Alex Example ", &f, 1_800_000_000_000));
+        assert_eq!(inbox.conversations[alex].name, "Alex Example");
+        assert!(inbox.conversations[alex].messages.is_empty());
+        assert_eq!(inbox.conversations[alex].unread, 0);
+        assert_eq!(check_reply("Hi", alex, &inbox), None, "the first message can be written");
+        // A conversation already there stays as it is.
+        inbox.add(msg("1", "447700900456@s.whatsapp.net", 0), &f, None, false);
+        assert!(inbox.start("447700900456@s.whatsapp.net", "Someone else", &f, 0));
+        assert_eq!(inbox.conversations["447700900456@s.whatsapp.net"].name, "Marie");
+        assert_eq!(inbox.conversations["447700900456@s.whatsapp.net"].messages.len(), 1);
+        // Never a group, a hidden number or an ignored chat.
+        assert!(!inbox.start("120363000000000001@g.us", "A group", &f, 0));
+        assert!(!inbox.start("123456789012345@lid", "Hidden", &f, 0));
+        f.ignored.insert("447700900789@s.whatsapp.net".into());
+        assert!(!inbox.start("447700900789@s.whatsapp.net", "Ignored", &f, 0));
+        assert_eq!(inbox.conversations.len(), 2);
+        // Closed without a word: it goes; one with messages stays.
+        assert!(inbox.drop_if_empty(alex));
+        assert!(!inbox.conversations.contains_key(alex));
+        assert!(!inbox.drop_if_empty("447700900456@s.whatsapp.net"));
     }
 
     #[test]
