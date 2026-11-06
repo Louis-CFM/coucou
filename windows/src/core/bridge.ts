@@ -294,6 +294,11 @@ export const Bridge = {
    */
   agentHooksApply: (agent: string, install: boolean, fingerprint: string) =>
     callOrThrow<string>("agent_hooks_apply", { agent, install, fingerprint }),
+  /** Settings → Agents → Antigravity → Approve commands from the notch, and whether its hooks can wait. */
+  agyApprovalsStatus: () => call<AgyApprovalsStatus>("agy_approvals_status"),
+  /** Off by default; only from the switch in Settings. */
+  agyApprovalsSetEnabled: (enabled: boolean) =>
+    callOrThrow<AgyApprovalsStatus>("agy_approvals_set_enabled", { enabled }),
   // ── Plan usage: the status line relay, installed apart from the hooks ──────
   /** Diff of the status line change. `install: false` previews taking the relay out. */
   statusLinePreview: (install: boolean) => callOrThrow<HookPreview>("status_line_preview", { install }),
@@ -593,6 +598,12 @@ export interface HookStatus {
 }
 
 /** One agent other than Claude Code, as agents.rs reports it. */
+export interface AgyApprovalsStatus {
+  enabled: boolean;
+  /** Coucou's PreToolUse hook can wait for a click (120 s); older hooks (10 s) must be installed again. */
+  hooksReady: boolean;
+}
+
 export interface AgentHookStatus {
   /** The `--agent` name; its pill is `agent_<id>`. */
   id: string;

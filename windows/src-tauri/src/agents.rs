@@ -517,18 +517,22 @@ fn gemini_install(root: &Value, commands: &[(String, String, u64)]) -> Result<Va
 // Hooks are named groups at the top level; Coucou's is `coucou`. Tool events
 // take matcher groups, lifecycle events take handlers directly; timeouts are
 // in seconds. Merge and removal come from #298 (kobaltgit). The relay answers
-// PreToolUse with "{}" — no decision — never with an allow: Antigravity's own
-// permission rules stay in charge.
+// PreToolUse with "ask" — Antigravity's own rules and prompt decide — unless
+// Approve commands from the notch is on and the island shows the command
+// (agy_approvals.rs): only a click on Allow there answers "allow". PreToolUse
+// gets 120 s so a card can wait for that click; it answers in a moment
+// otherwise. Hooks written with the old 10 s must be installed again.
 
 const ANTIGRAVITY_TOOL_EVENTS: &[&str] = &["PreToolUse", "PostToolUse"];
 const ANTIGRAVITY_LIFECYCLE_EVENTS: &[&str] = &["PreInvocation", "PostInvocation", "Stop"];
 
 fn antigravity_block(relay: &Relay) -> Value {
     let handler = |event: &str| {
+        let timeout = if event == "PreToolUse" { crate::agy_approvals::HOOK_TIMEOUT } else { 10 };
         json!({
             "type": "command",
             "command": relay.command(Shell::Cmd, &format!("--agent antigravity {event}")),
-            "timeout": 10,
+            "timeout": timeout,
         })
     };
     let mut block = Map::new();
@@ -1170,6 +1174,13 @@ mod tests {
             let cmd = ours[event][0]["hooks"][0]["command"].as_str().unwrap();
             assert!(cmd.ends_with(&format!("--agent antigravity {event}")), "{cmd}");
         }
+        // PreToolUse may wait for a click on the island's card (agy_approvals.rs).
+        assert_eq!(ours["PreToolUse"][0]["hooks"][0]["timeout"], 120);
+        assert_eq!(ours["PostToolUse"][0]["hooks"][0]["timeout"], 10);
+        // And Settings reads it back as hooks that can wait.
+        let file = Agent::Antigravity.files(&home)[0].clone();
+        std::fs::write(&file, installed.to_string()).unwrap();
+        assert_eq!(crate::agy_approvals::pre_tool_timeout(&home), Some(120));
         for event in ANTIGRAVITY_LIFECYCLE_EVENTS {
             assert_eq!(ours[event][0]["timeout"], 10);
             assert!(ours[event][0]["command"].as_str().unwrap().contains(MARKER));

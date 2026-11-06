@@ -10,7 +10,7 @@ import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
 import { State, type ApprovalInfo, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
-import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
+import { agentColor, agentName, takesCard, validateAgent } from "./agents";
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
@@ -170,6 +170,8 @@ interface HookPayload {
   coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** "agy_pre_tool": an Antigravity command Coucou may show on the card (agents.ts). */
+  coucou_kind?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
@@ -600,9 +602,10 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PermissionRequest": {
       // Only Claude Code and the agents the relay can answer for (Codex, Copilot
-      // CLI, Muse Code — same as the Mac) get a card. Anyone else's request is
-      // declined at once, so the agent asks in its own terminal.
-      if (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!)) {
+      // CLI, Muse Code, and Antigravity's commands when that is turned on — same
+      // as the Mac) get a card. Anyone else's request is declined at once, so the
+      // agent asks in its own terminal.
+      if (isExternalAgent && !takesCard(validAgent, payload.coucou_kind)) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }

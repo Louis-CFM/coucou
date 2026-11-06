@@ -557,6 +557,10 @@ function buildApproval(actions: ViewActions): ViewHost {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
+  const inTerminal = () => {
+    if (performance.now() - shownAt < CLICK_GUARD_MS) return;
+    actions.answerInTerminal();
+  };
   return {
     el,
     sync() {
@@ -571,16 +575,21 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once. Rebuilding them between a mouse-down and a
-      // mouse-up would swallow the click, and there is nothing left to vary:
-      // "Always" is gone until the remembered-rules list exists to back it.
-      if (rowKey === "built") return;
-      rowKey = "built";
+      // Two buttons, built once per kind of card. Rebuilding them between a
+      // mouse-down and a mouse-up would swallow the click. "Always" is gone until
+      // the remembered-rules list exists to back it. Antigravity waits on the card:
+      // a third button hands the command back to its own prompt in the terminal,
+      // where its "Always allow" lives (as on the Mac).
+      const agy = State.pendingApproval?.pillId === "agent_antigravity";
+      const key = agy ? "agy" : "built";
+      if (rowKey === key) return;
+      rowKey = key;
       clear(row);
       row.append(
         btn(tl("Deny"), "secondary", guarded("deny"), "N"),
         btn(tl("Allow"), "primary", guarded("allow"), "Y"),
       );
+      if (agy) row.append(btn(tl("Reply in terminal"), "secondary", inTerminal));
     },
   };
 }

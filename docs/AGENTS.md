@@ -169,6 +169,13 @@ Shift+Tab, *Always proceed*), so with the setting on, Auto mode also asks about 
 Antigravity would have run on its own. Other tools (file edits, URLs, MCP) are left to
 Antigravity.
 
+Windows and Linux do the same (Settings → Agents → Antigravity, same strings, same rule files
+under `%USERPROFILE%\.gemini` or `~/.gemini`, same replies): the rules reader is
+`windows/src-tauri/src/agy_rules.rs` (a port of `AgyPermissionRules.swift` with the same
+tests), the gate `agy_approvals.rs`, and the relay `coucou-hook` reads `ask`, or `pending`
+then `allow` / `deny` / `ask`, from the app. A command longer than the 2,000 characters the
+relay forwards gets no card.
+
 ### GitHub Copilot CLI (macOS)
 
 Coucou supports Copilot CLI out of the box via **Settings → GitHub Copilot CLI Hooks → Install hooks**.
