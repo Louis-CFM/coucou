@@ -260,8 +260,39 @@ enum FilePart {
     Text(String),
 }
 
-/// Images → image_url data URL, text/code → inline text. PDFs and other binary
-/// files go by name only (there is no portable document part).
+/// Extracts all text from a PDF file using lopdf, bounded by MAX_INLINE_TEXT.
+/// Returns None if the document cannot be loaded or contains no extractable text.
+fn extract_pdf_text(path: &str) -> Option<String> {
+    let doc = lopdf::Document::load(path).ok()?;
+    let mut numbers: Vec<u32> = doc.get_pages().keys().copied().collect();
+    numbers.sort_unstable();
+    let mut full = String::new();
+    for n in numbers {
+        if let Ok(text) = doc.extract_text(&[n]) {
+            let trimmed = text.trim();
+            if !trimmed.is_empty() {
+                if !full.is_empty() {
+                    full.push('\n');
+                }
+                full.push_str(trimmed);
+            }
+        }
+        if full.len() as u64 > MAX_INLINE_TEXT {
+            full.truncate(MAX_INLINE_TEXT as usize);
+            full.push_str("\n... [truncated]");
+            break;
+        }
+    }
+    let trimmed = full.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+/// Images → image_url data URL, text/code/PDF → inline text. Larger files and
+/// binary files without extractable text go by name only.
 fn file_part(path: &str) -> Option<FilePart> {
     let ext = std::path::Path::new(path)
         .extension()
@@ -284,7 +315,13 @@ fn file_part(path: &str) -> Option<FilePart> {
         let url = format!("data:{media};base64,{}", crate::claude::base64_for(&bytes));
         return Some(FilePart::Image(json!({ "type": "image_url", "image_url": { "url": url } })));
     }
-    if ext == "pdf" || len > MAX_INLINE_TEXT {
+    if ext == "pdf" {
+        if len > MAX_IMAGE {
+            return None;
+        }
+        return extract_pdf_text(path).map(FilePart::Text);
+    }
+    if len > MAX_INLINE_TEXT {
         return None;
     }
     std::fs::read_to_string(path).ok().map(FilePart::Text)
@@ -416,5 +453,55 @@ mod tests {
     #[test]
     fn an_unknown_answer_gives_an_empty_list() {
         assert!(parse_models(p("openai"), &json!({"nope":true})).is_empty());
+    }
+    #[test]
+    fn a_pdf_with_text_is_inlined_as_file_contents() {
+        use lopdf::content::{Content, Operation};
+        use lopdf::{dictionary, Document, Object, Stream};
+
+        let dir = std::env::temp_dir().join(format!("coucou-pdf-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let pdf_path = dir.join("exercises.pdf");
+
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let font_id = doc.add_object(dictionary! {
+            "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica",
+        });
+        let resources_id = doc.add_object(dictionary! { "Font" => dictionary! { "F1" => font_id } });
+        let content = Content {
+            operations: vec![
+                Operation::new("BT", vec![]),
+                Operation::new("Tf", vec!["F1".into(), 12.into()]),
+                Operation::new("Td", vec![50.into(), 700.into()]),
+                Operation::new("Tj", vec![Object::string_literal("Solve: 2 + 2 = ?")]),
+                Operation::new("ET", vec![]),
+            ],
+        };
+        let content_id = doc.add_object(Stream::new(dictionary! {}, content.encode().unwrap()));
+        let page_id = doc.add_object(dictionary! {
+            "Type" => "Page", "Parent" => pages_id, "Contents" => content_id,
+        });
+        let pages = dictionary! {
+            "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1, "Resources" => resources_id,
+            "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
+        };
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let catalog = dictionary! { "Type" => "Catalog", "Pages" => pages_id };
+        let catalog_id = doc.add_object(catalog);
+        doc.trailer.set("Root", catalog_id);
+        doc.save(&pdf_path).unwrap();
+
+        let ctx = ChatContext::File {
+            name: "exercises.pdf".into(),
+            path: pdf_path.to_string_lossy().into(),
+        };
+        let msg = user_message(true, Some(&ctx), "Please answer");
+        let content = msg["content"].as_str().unwrap();
+        assert!(content.contains("File: exercises.pdf\nFile contents:\n"));
+        assert!(content.contains("Solve: 2 + 2 = ?"));
+        assert!(content.ends_with("\n\nPlease answer"));
+
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
