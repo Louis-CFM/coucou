@@ -101993,6 +101993,208 @@
           }
         }
       }
+    },
+    "drop.session.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أو داخل جلسة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অথবা একটি সেশনে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oder in eine Sitzung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Or into a session"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O en una sesión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ou dans une session"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "या किसी सत्र में"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atau ke sebuah sesi"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "またはセッションへ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "또는 세션으로"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ou em uma sessão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Или в сессию"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หรือใส่ในเซสชัน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya da bir oturuma"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或放进一个会话"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或放進一個工作階段"
+          }
+        }
+      }
+    },
+    "drop.session.copied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم النسخ: ألصقه في الجلسة بـ ⌘V (يحتاج Coucou إلى إذن تسهيلات الاستخدام ليفعل ذلك عنك)."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কপি হয়েছে: ⌘V দিয়ে সেশনে পেস্ট করুন (Coucou-কে নিজে করতে Accessibility অনুমতি লাগবে)।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiert: füge es mit ⌘V in die Sitzung ein (dafür braucht Coucou die Bedienungshilfen)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied: paste it in the session with ⌘V (Coucou needs Accessibility to do it for you)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado: pégalo en la sesión con ⌘V (Coucou necesita Accesibilidad para hacerlo por ti)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copié : colle-le dans la session avec ⌘V (Coucou a besoin de l'Accessibilité pour le faire à ta place)."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कॉपी हो गया: ⌘V से सत्र में चिपकाएँ (Coucou को यह खुद करने के लिए Accessibility अनुमति चाहिए)।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tersalin: tempel di sesi dengan ⌘V (Coucou perlu izin Aksesibilitas untuk melakukannya untukmu)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コピーしました：⌘V でセッションに貼り付けてください（Coucou が代わりに行うにはアクセシビリティが必要です）。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "복사됨: ⌘V로 세션에 붙여 넣으세요 (Coucou가 대신하려면 손쉬운 사용 권한이 필요합니다)."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado: cole na sessão com ⌘V (o Coucou precisa da Acessibilidade para fazer isso por você)."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано: вставьте в сессию через ⌘V (чтобы Coucou делал это сам, нужен доступ к Универсальному доступу)."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คัดลอกแล้ว: วางในเซสชันด้วย ⌘V (Coucou ต้องได้สิทธิ์การช่วยการเข้าถึงจึงจะทำแทนคุณได้)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopyalandı: oturuma ⌘V ile yapıştır (Coucou'nun bunu senin yerine yapması için Erişilebilirlik izni gerekir)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已拷贝：用 ⌘V 粘贴到会话中（Coucou 需要辅助功能权限才能代你完成）。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已拷貝：用 ⌘V 貼到工作階段中（Coucou 需要輔助使用權限才能代你完成）。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

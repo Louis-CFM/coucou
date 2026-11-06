@@ -2297,6 +2297,21 @@
    "ko": "복사 완료 · 붙여넣으려면 손쉬운 사용을 허용해 주세요",
    "ja": "コピー済み · ペーストするにはアクセシビリティを許可"
   },
+  "Copied: paste it in the session with ⌘V (Coucou needs Accessibility to do it for you).": {
+   "zh-Hans": "已拷贝：用 ⌘V 粘贴到会话中（Coucou 需要辅助功能权限才能代你完成）。",
+   "hi": "कॉपी हो गया: ⌘V से सत्र में चिपकाएँ (Coucou को यह खुद करने के लिए Accessibility अनुमति चाहिए)।",
+   "es": "Copiado: pégalo en la sesión con ⌘V (Coucou necesita Accesibilidad para hacerlo por ti).",
+   "ar": "تم النسخ: ألصقه في الجلسة بـ ⌘V (يحتاج Coucou إلى إذن تسهيلات الاستخدام ليفعل ذلك عنك).",
+   "fr": "Copié : colle-le dans la session avec ⌘V (Coucou a besoin de l'Accessibilité pour le faire à ta place).",
+   "bn": "কপি হয়েছে: ⌘V দিয়ে সেশনে পেস্ট করুন (Coucou-কে নিজে করতে Accessibility অনুমতি লাগবে)।",
+   "pt-BR": "Copiado: cole na sessão com ⌘V (o Coucou precisa da Acessibilidade para fazer isso por você).",
+   "ru": "Скопировано: вставьте в сессию через ⌘V (чтобы Coucou делал это сам, нужен доступ к Универсальному доступу).",
+   "id": "Tersalin: tempel di sesi dengan ⌘V (Coucou perlu izin Aksesibilitas untuk melakukannya untukmu).",
+   "de": "Kopiert: füge es mit ⌘V in die Sitzung ein (dafür braucht Coucou die Bedienungshilfen).",
+   "tr": "Kopyalandı: oturuma ⌘V ile yapıştır (Coucou'nun bunu senin yerine yapması için Erişilebilirlik izni gerekir).",
+   "ko": "복사됨: ⌘V로 세션에 붙여 넣으세요 (Coucou가 대신하려면 손쉬운 사용 권한이 필요합니다).",
+   "ja": "コピーしました：⌘V でセッションに貼り付けてください（Coucou が代わりに行うにはアクセシビリティが必要です）。"
+  },
   "Copy": {
    "zh-Hans": "复制",
    "hi": "कॉपी",
@@ -7426,6 +7441,21 @@
    "tr": "Terminalini projede açar, Claude Code ve senin sözlerinle.",
    "ko": "프로젝트에서 터미널을 열고 Claude Code에 내 말을 전합니다.",
    "ja": "プロジェクトでターミナルを開き、Claude Code にあなたの言葉を渡します。"
+  },
+  "Or into a session": {
+   "zh-Hans": "或放进一个会话",
+   "hi": "या किसी सत्र में",
+   "es": "O en una sesión",
+   "ar": "أو داخل جلسة",
+   "fr": "Ou dans une session",
+   "bn": "অথবা একটি সেশনে",
+   "pt-BR": "Ou em uma sessão",
+   "ru": "Или в сессию",
+   "id": "Atau ke sebuah sesi",
+   "de": "Oder in eine Sitzung",
+   "tr": "Ya da bir oturuma",
+   "ko": "또는 세션으로",
+   "ja": "またはセッションへ"
   },
   "Other apps": {
    "zh-Hans": "其他 App",

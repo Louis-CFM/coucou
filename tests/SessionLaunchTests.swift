@@ -30,6 +30,10 @@ enum SessionLaunchTests {
         var many: [String] = []
         for i in 0..<15 { many = LaunchScript.remember("/p/\(i)", in: many, home: "/h") }
         precondition(many.count == 10 && many.first == "/p/14", "ten at most")
+        precondition(LaunchScript.dropText(["/tmp/Screenshot 2026-11-06 at 14.03.22.png"]) == "/tmp/Screenshot\\ 2026-11-06\\ at\\ 14.03.22.png ",
+                     "spaces escaped like a terminal drag, then a space")
+        precondition(LaunchScript.dropText(["/a/b.txt", "/c/it's (1).md"]) == "/a/b.txt /c/it\\'s\\ \\(1\\).md ",
+                     "several files, quotes and parentheses escaped")
         print("SessionLaunch: all tests passed")
     }
 }

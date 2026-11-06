@@ -48,6 +48,17 @@ enum LaunchScript {
         return TerminalTarget.knownTerminals.first { running.contains($0) && way(for: $0) != nil } ?? "com.apple.Terminal"
     }
 
+    /// What a file dropped on a session types into its prompt: the paths as a terminal writes
+    /// them when you drag files onto it (a backslash before spaces and shell characters), then a
+    /// space. Claude Code takes them as files, an image path as the image.
+    static func dropText(_ paths: [String]) -> String {
+        let special = Set(" ()'\"\\&;|<>*?[]{}$`!#~")
+        let escaped = paths.map { path in
+            path.map { special.contains($0) ? "\\\($0)" : String($0) }.joined()
+        }
+        return escaped.joined(separator: " ") + " "
+    }
+
     /// Projects, most recent first: the folders sessions ran in, without the home folder or /.
     static func remember(_ folder: String, in list: [String], home: String, max: Int = 10) -> [String] {
         var path = folder
