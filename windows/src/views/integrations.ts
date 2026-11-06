@@ -1,9 +1,7 @@
 // Integration cards shown in the overview's left card — DOM ports of
 // IntegrationCardView and friends from IslandViewContent.swift.
-//
-// Cal.com is the one simplification: macOS shows a three-level calendar
-// (month → day → booking); here it is the list of upcoming bookings.
 
+import { calendarDetail } from "./calendar";
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
@@ -348,7 +346,7 @@ function notionCard(): HTMLElement {
 
 // ── Cal.com ───────────────────────────────────────────────────────────────────
 
-function calcomCard(): HTMLElement {
+function calcomCard(_openDetail: () => void): HTMLElement {
   return buildCalcomCard(readBookings(arr("integration_calcom", "bookings")));
 }
 
@@ -491,7 +489,7 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
     case "integration_notion":
       return notionCard();
     case "integration_calcom":
-      return calcomCard();
+      return hooks.detailOpen ? calendarDetail(get(task.id), hooks.closeDetail, () => void Bridge.openUrl(OPEN_URLS[task.id])) : calcomCard(hooks.openDetail);
     default:
       return idleCard(task, hooks.openSettings);
   }

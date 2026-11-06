@@ -2,7 +2,6 @@
 // only watches, it never swallows a key); the paste, through SendInput; and
 // the app in front, from the foreground window's program.
 
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -24,7 +23,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
-use super::logic::FlowKey;
+use super::logic::{is_modifier_code, Combo, ComboEdge};
 use super::KeyEvent;
 
 const VK_ESCAPE: u32 = 0x1B;
@@ -35,9 +34,13 @@ const VK_LSHIFT: u32 = 0xA0;
 const VK_RSHIFT: u32 = 0xA1;
 const VK_LCONTROL: u32 = 0xA2;
 const VK_RCONTROL: u32 = 0xA3;
+const VK_LMENU: u32 = 0xA4;
 const VK_RMENU: u32 = 0xA5;
 const VK_LWIN: u32 = 0x5B;
 const VK_RWIN: u32 = 0x5C;
+/// Unassigned: pressed and released by Coucou so a held Alt or Win, once let
+/// go, opens neither the app's menu bar nor the Start menu.
+const VK_MASK: u16 = 0xE8;
 
 /// Modifier keys never count as "another key": AltGr even sends a fake left
 /// Ctrl with every right Alt.
@@ -45,20 +48,53 @@ fn is_modifier(vk: u32) -> bool {
     matches!(vk, 0x10 | 0x11 | 0x12 | VK_LSHIFT..=VK_RMENU | VK_LWIN | VK_RWIN | 0x14)
 }
 
-static SINK: Mutex<Option<Sender<(KeyEvent, Instant)>>> = Mutex::new(None);
-static KEY: AtomicU8 = AtomicU8::new(0);
-/// For Ctrl + Win: which of the two is down (bit 0 Ctrl, bit 1 Win).
-static COMBO: AtomicU8 = AtomicU8::new(0);
-static HELD: AtomicU8 = AtomicU8::new(0);
-
-fn key_code(key: FlowKey) -> u8 {
-    match key {
-        FlowKey::RightCtrl => 0,
-        FlowKey::RightAlt => 1,
-        FlowKey::RightShift => 2,
-        FlowKey::LeftCtrlSuper => 3,
-    }
+/// A KeyboardEvent.code name → its virtual key.
+pub fn code_vk(code: &str) -> Option<u32> {
+    let vk = match code {
+        "ControlLeft" => VK_LCONTROL,
+        "ControlRight" => VK_RCONTROL,
+        "AltLeft" => VK_LMENU,
+        "AltRight" => VK_RMENU,
+        "ShiftLeft" => VK_LSHIFT,
+        "ShiftRight" => VK_RSHIFT,
+        "MetaLeft" => VK_LWIN,
+        "MetaRight" => VK_RWIN,
+        "Space" => 0x20,
+        "Backquote" => 0xC0,
+        "Insert" => 0x2D,
+        "Pause" => 0x13,
+        "ScrollLock" => 0x91,
+        "CapsLock" => 0x14,
+        "ContextMenu" => 0x5D,
+        _ => {
+            if let Some(c) = code.strip_prefix("Key").filter(|c| c.len() == 1) {
+                c.as_bytes()[0] as u32 // 'A'..'Z' are their own virtual keys
+            } else if let Some(d) = code.strip_prefix("Digit").filter(|d| d.len() == 1) {
+                d.as_bytes()[0] as u32 // '0'..'9' too
+            } else {
+                let n: u32 = code.strip_prefix('F')?.parse().ok()?;
+                if !(1..=24).contains(&n) {
+                    return None;
+                }
+                0x70 + n - 1
+            }
+        }
+    };
+    Some(vk)
 }
+
+/// The shortcut being watched: its keys' virtual keys, which are modifiers,
+/// and which are down.
+struct Watch {
+    vks: Vec<u32>,
+    modifier: Vec<bool>,
+    combo: Combo,
+    /// It holds Alt or Win: those are masked when it starts.
+    masks: bool,
+}
+
+static SINK: Mutex<Option<Sender<(KeyEvent, Instant)>>> = Mutex::new(None);
+static WATCH: Mutex<Option<Watch>> = Mutex::new(None);
 
 fn send(event: KeyEvent) {
     if let Some(tx) = SINK.lock().unwrap().as_ref() {
@@ -73,51 +109,63 @@ unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRE
         if info.flags.0 & LLKHF_INJECTED.0 == 0 {
             let down = matches!(wparam.0 as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
             let up = matches!(wparam.0 as u32, WM_KEYUP | WM_SYSKEYUP);
-            on_key(info.vkCode, down, up);
+            if on_key(info.vkCode, down, up) {
+                // A shortcut's own letter (Alt + Shift + F): the app in front
+                // never gets it, or it would act on it too.
+                return LRESULT(1);
+            }
         }
     }
     CallNextHookEx(None, code, wparam, lparam)
 }
 
-fn on_key(vk: u32, down: bool, up: bool) {
-    let key = KEY.load(Ordering::Relaxed);
-    let ours = match key {
-        0 => vk == VK_RCONTROL,
-        1 => vk == VK_RMENU,
-        2 => vk == VK_RSHIFT,
-        _ => false,
-    };
-    if key == 3 && matches!(vk, VK_LCONTROL | VK_LWIN) {
-        let bit = if vk == VK_LCONTROL { 1 } else { 2 };
-        let before = COMBO.load(Ordering::Relaxed);
-        let after = if down { before | bit } else if up { before & !bit } else { before };
-        COMBO.store(after, Ordering::Relaxed);
-        if before != 3 && after == 3 {
-            send(KeyEvent::Down);
-        } else if before == 3 && after != 3 {
-            send(KeyEvent::Up);
-        } else if after == 3 && down {
-            send(KeyEvent::Down); // repeat
+/// One key; true when the app in front must not get it.
+fn on_key(vk: u32, down: bool, up: bool) -> bool {
+    let mut guard = WATCH.lock().unwrap();
+    let Some(w) = guard.as_mut() else { return false };
+    if let Some(i) = w.vks.iter().position(|&k| k == vk) {
+        if !down && !up {
+            return false;
         }
-        return;
-    }
-    if ours {
-        if down {
-            HELD.store(1, Ordering::Relaxed);
-            send(KeyEvent::Down);
-        } else if up {
-            HELD.store(0, Ordering::Relaxed);
-            send(KeyEvent::Up);
+        let was_all = w.combo.all_held();
+        let edge = w.combo.key(i, down);
+        let masks = w.masks;
+        // A key that isn't a modifier is the shortcut's own while it is held:
+        // its press (the one that completes it), repeats and release.
+        let own = !w.modifier[i] && (matches!(edge, ComboEdge::Down | ComboEdge::Repeat) || (up && was_all));
+        drop(guard);
+        match edge {
+            ComboEdge::Down => {
+                // Not from inside the hook: Windows hands it injected keys of its own.
+                if masks {
+                    std::thread::spawn(mask_menu);
+                }
+                send(KeyEvent::Down);
+            }
+            ComboEdge::Repeat => send(KeyEvent::Down),
+            ComboEdge::Up => send(KeyEvent::Up),
+            ComboEdge::Part | ComboEdge::Outside => {}
         }
-        return;
+        return own;
     }
+    drop(guard);
     if !down {
-        return;
+        return false;
     }
     if vk == VK_ESCAPE {
         send(KeyEvent::Escape);
     } else if !is_modifier(vk) {
         send(KeyEvent::Other);
+    }
+    false
+}
+
+/// A key nobody uses, pressed and released: Windows then reads the held Alt or
+/// Win as part of a shortcut, so letting it go opens no menu.
+fn mask_menu() {
+    let inputs = [key_input(VK_MASK, false), key_input(VK_MASK, true)];
+    unsafe {
+        SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
     }
 }
 
@@ -136,12 +184,19 @@ impl Drop for KeyListener {
             let _ = t.join();
         }
         *SINK.lock().unwrap() = None;
+        *WATCH.lock().unwrap() = None;
     }
 }
 
-pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListener, String> {
-    KEY.store(key_code(key), Ordering::Relaxed);
-    COMBO.store(0, Ordering::Relaxed);
+/// Watches the keys `codes` (KeyboardEvent.code names), held together to dictate.
+pub fn listen(codes: &[String], tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListener, String> {
+    let vks: Vec<u32> = codes.iter().filter_map(|c| code_vk(c)).collect();
+    if vks.is_empty() || vks.len() != codes.len() {
+        return Err(format!("unknown keys: {codes:?}"));
+    }
+    let modifier: Vec<bool> = codes.iter().map(|c| is_modifier_code(c)).collect();
+    let masks = vks.iter().any(|&v| matches!(v, VK_LMENU | VK_LWIN | VK_RWIN));
+    *WATCH.lock().unwrap() = Some(Watch { combo: Combo::new(vks.len()), vks, modifier, masks });
     *SINK.lock().unwrap() = Some(tx);
     let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<u32, String>>();
     let thread = std::thread::Builder::new()
@@ -171,19 +226,14 @@ pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListen
     }
 }
 
-/// Waits (up to a second) until the dictation key is up, so the paste is a
+/// Waits (up to a second) until the dictation keys are up, so the paste is a
 /// plain Ctrl+V and not Ctrl+Alt+V or Ctrl+Shift+V.
-pub fn wait_key_released(key: FlowKey) {
-    let vk = match key {
-        FlowKey::RightCtrl => VK_RCONTROL,
-        FlowKey::RightAlt => VK_RMENU,
-        FlowKey::RightShift => VK_RSHIFT,
-        FlowKey::LeftCtrlSuper => VK_LWIN,
-    } as i32;
+pub fn wait_key_released(codes: &[String]) {
+    let vks: Vec<i32> = codes.iter().filter_map(|c| code_vk(c)).map(|v| v as i32).collect();
     let until = Instant::now() + Duration::from_secs(1);
     while Instant::now() < until {
-        let state = unsafe { GetAsyncKeyState(vk) } as u16;
-        if state & 0x8000 == 0 {
+        let held = vks.iter().any(|&vk| (unsafe { GetAsyncKeyState(vk) } as u16) & 0x8000 != 0);
+        if !held {
             return;
         }
         std::thread::sleep(Duration::from_millis(15));

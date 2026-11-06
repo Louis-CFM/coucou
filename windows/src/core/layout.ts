@@ -27,7 +27,8 @@ export type IslandViewName =
   | "capture"
   | "update"
   | "whatsNew"
-  | "clipboard";
+  | "clipboard"
+  | "launch";
 
 export type BotStateName =
   | "idle"
@@ -110,6 +111,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   whatsNew: { height: 222, botX: 62, botY: null, botDiameter: 58, agentMode: "none" },
   // The Clipboard tab: Mochi small on the left, a toolbar and a row of cards.
   clipboard: { height: 214, botX: 48, botY: 124, botDiameter: 40, agentMode: "none" },
+  // A new Claude Code session: Mochi on the left, the project and the prompt (Mac: .launch).
+  launch: { height: 160, botX: 58, botY: null, botDiameter: 52, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually

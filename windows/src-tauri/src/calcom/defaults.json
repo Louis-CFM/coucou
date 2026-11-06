@@ -1,0 +1,10 @@
+{
+  "url": "https://api.cal.com/v2/bookings",
+  "apiVersion": "2026-05-01",
+  "windowDays": 60,
+  "pageSize": 100,
+  "maxPages": 10,
+  "requestTimeoutSeconds": 10,
+  "refreshTimeoutSeconds": 45,
+  "maxResponseBytes": 2097152
+}

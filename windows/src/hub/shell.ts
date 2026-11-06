@@ -7,8 +7,8 @@ import "./hub.css";
 import { h, clear } from "../views/dom";
 import { t, onLanguageChange } from "../i18n/i18n";
 import { onEvent } from "../core/bridge";
-import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus } from "../core/flow";
-import { hero, liveMochi, setWindowShown } from "./hero";
+import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus, flowKeyId } from "../core/flow";
+import { hero, liveMochi, setVoiceLevel, setWindowShown } from "./hero";
 import { icon, keyLabel } from "./ui";
 import { searchSettings, type SettingsSearchHit } from "./search";
 
@@ -81,9 +81,9 @@ export interface HubOptions {
 
 const DEFAULT_STATUS: FlowStatus = {
   prefs: {
-    enabled: false, key: "right_ctrl", edge: "bottom", mic: "", keepDays: 30, cleanup: false,
-    defaultStyle: "natural", summaryEngine: "claude", openAtLaunch: true, voice: false, voiceOutput: "system", voiceGender: "female",
-    promptMode: false, translateTo: "",
+    enabled: false, key: "right_ctrl", keyCombo: [], edge: "bottom", mic: "", keepDays: 30, cleanup: false,
+    defaultStyle: "natural", summaryEngine: "claude", openAtLaunch: true, voice: false, voiceOutput: "system", voiceGender: "female", muteOthers: true,
+    oneTapHandsFree: false, promptMode: false, translateTo: "",
   },
   models: { parakeet: { state: "missing" }, downloadMb: 700 },
   keys: "ok",
@@ -99,6 +99,8 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   // The window is created hidden and only shown and hidden afterwards: its
   // canvases animate only while it is on screen (#792).
   await onEvent<boolean>("hub-visible", setWindowShown);
+  // While you dictate: the loudest of the pill's bands.
+  await onEvent<number[]>("flow-bands", (bands) => setVoiceLevel(Math.max(0, ...bands)));
   const shown = await FlowBridge.hubShown();
   if (shown !== null) setWindowShown(shown);
   let current: PageId = "dictation";
@@ -147,7 +149,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       text = t("Use the pill's microphone to dictate");
     } else {
       color = "#34d399";
-      text = t("Ready · hold {0}", { 0: keyLabel(status.keys === "wayland" ? "wayland" : status.prefs.key, status.platform) });
+      text = t("Ready · hold {0}", { 0: keyLabel(status.keys === "wayland" ? "wayland" : flowKeyId(status.prefs), status.platform) });
     }
     statusLine.append(h("i", { class: "dot", style: `background:${color}` }), h("span", { text }));
   }

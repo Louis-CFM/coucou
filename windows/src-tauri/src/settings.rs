@@ -126,6 +126,18 @@ pub struct Settings {
     pub laya_dir: String,
     /// Claude Code is sent back when it finishes with its tests failing. Off by default.
     pub fix_failing_tests: bool,
+    /// What the closed island shows at the top of the screen, where the Mac
+    /// has its notch: "mochi" (the Mac's island on a screen without a notch),
+    /// "time", "datetime", "claude" (the plan's usage), "music" (what plays),
+    /// "empty" (the black shape alone) or "hidden" (nothing; the top edge of
+    /// the screen wakes it). Kept as it comes, like `mochi_outfit`: the island
+    /// reads what it doesn't know as "mochi".
+    pub closed_island: String,
+    /// Settings → Agents → Antigravity → Approve commands from the notch: a shell command
+    /// none of Antigravity's rules covers waits for Allow / Deny on the island
+    /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
+    /// what a webview sends back is ignored. The Mac's key is the same.
+    pub agy_approvals_enabled: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -203,6 +215,8 @@ impl Default for Settings {
             laya_url: String::new(),
             laya_dir: String::new(),
             fix_failing_tests: false,
+            closed_island: "mochi".into(),
+            agy_approvals_enabled: false,
         }
     }
 }
@@ -510,7 +524,9 @@ mod tests {
   "testChecker": "local",
   "layaUrl": "http://127.0.0.1:8001",
   "layaDir": "D:\\Laya",
-  "fixFailingTests": true
+  "fixFailingTests": true,
+  "closedIsland": "music",
+  "agyApprovalsEnabled": true
 }"##;
 
     fn custom() -> Value {
@@ -1039,6 +1055,8 @@ mod tests {
                 "layaUrl",
                 "layaDir",
                 "fixFailingTests",
+                "closedIsland",
+                "agyApprovalsEnabled",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

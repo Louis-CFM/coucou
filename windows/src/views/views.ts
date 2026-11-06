@@ -24,6 +24,7 @@ import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
 import { buildWhatsNew } from "./whatsnew";
+import { buildLaunch } from "./launch";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
@@ -72,6 +73,8 @@ export interface ViewActions {
   keyboard(on: boolean): void;
   /** Something is being typed in a card: the island stays open until it is sent or cleared. */
   holdOpen(on: boolean): void;
+  /** A Claude Code session was started from the launch card: Mochi is pleased, the island folds. */
+  launched(): void;
 }
 
 export interface ViewHost {
@@ -126,13 +129,22 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 // ── Header ────────────────────────────────────────────────────────────────────
 
 export function buildHeader(actions: ViewActions): ViewHost {
-  const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
-  const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
-  const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
-  const tabClip = h("button", { class: "tab", title: tl("Clipboard"), onclick: () => go("clipboard") }, svg(ICONS.clipboard, 13, { stroke: 2 }));
+  const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 17));
+  const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubbleRound, 19));
+  const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 16));
+  // A new Claude Code session, in a project, from here (Mac: the terminal tab).
+  const tabLaunch = h(
+    "button",
+    { class: "tab", title: tl("New Claude Code session"), onclick: () => go("launch") },
+    svg(ICONS.terminal, 17, { stroke: 1.7 }),
+  );
 
-  const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
-  const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gearLine, 18, { stroke: 1.6 }));
+  const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerLine, 18, { stroke: 1.6 }));
+  // Folds back to the compact island now, without waiting for the timer (the
+  // Mac's ✕). A card waiting for an answer keeps the island open: no ✕ then.
+  const closeBtn = h("button", { class: "close", title: tl("Close"), onclick: () => actions.collapse() }, svg(ICONS.xmark, 17));
+  const tabClip = h("button", { class: "tab", title: tl("Clipboard"), onclick: () => go("clipboard") }, svg(ICONS.clipboard, 17, { stroke: 1.8 }));
   // Takes the island off the screen; pushing the pointer to the top edge
   // brings it back. A card waiting for an answer is kept (Island.minimize).
   const minimizeBtn = h(
@@ -145,7 +157,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
         actions.minimize();
       },
     },
-    svg(ICONS.minus, 14),
+    svg(ICONS.minus, 17, { stroke: 1.6 }),
   );
   // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
   const claudePill = buildPlanPill(false);
@@ -154,8 +166,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   let codexShown = false;
   // The icons drawn last: redrawing an unchanged one under a resting pointer
   // makes Windows set the cursor again, and it flickers against the app behind.
-  let gearIcon: string = ICONS.gear;
-  let soundIcon: string = ICONS.speakerOn;
+  let gearIcon = "";
+  let soundIcon = "";
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -165,8 +177,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabClip),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, minimizeBtn),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch, tabClip),
+    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, minimizeBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -177,22 +189,24 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
+      tabLaunch.classList.toggle("on", v === "launch");
       tabClip.classList.toggle("on", v === "clipboard");
       // Off in Settings: no tab.
       tabClip.style.display = State.settings.clipboardHistory === false ? "none" : "";
       gearBtn.classList.toggle("on", v === "settings");
-      const gear = v === "settings" ? ICONS.gearFill : ICONS.gear;
+      const gear = v === "settings" ? "fill" : "line";
       if (gear !== gearIcon) {
         gearIcon = gear;
         clear(gearBtn);
-        gearBtn.append(svg(gear, 14));
+        gearBtn.append(v === "settings" ? svg(ICONS.gearFill, 18) : svg(ICONS.gearLine, 18, { stroke: 1.6 }));
       }
-      const sound = State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff;
+      const sound = State.settings.soundEnabled ? ICONS.speakerLine : ICONS.speakerSlashLine;
       if (sound !== soundIcon) {
         soundIcon = sound;
         clear(soundBtn);
-        soundBtn.append(svg(sound, 14));
+        soundBtn.append(svg(sound, 18, { stroke: 1.6 }));
       }
+      closeBtn.style.display = State.pendingApproval ? "none" : "";
       syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },
@@ -237,7 +251,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   const jump = h(
     "button",
     { class: "icon-btn jump", title: tl("Open"), onclick: () => actions.openTarget() },
-    svg(ICONS.arrowUpRight, 8),
+    svg(ICONS.arrowUpRight, 12),
   );
   const left = card(null, leftBody, jump);
   const pills = h("div", { class: "pills" });
@@ -604,6 +618,10 @@ function buildApproval(actions: ViewActions): ViewHost {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
+  const inTerminal = () => {
+    if (performance.now() - shownAt < CLICK_GUARD_MS) return;
+    actions.answerInTerminal();
+  };
   return {
     el,
     sync() {
@@ -620,10 +638,13 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once. Rebuilding them between a mouse-down and a
-      // mouse-up would swallow the click, and there is nothing left to vary:
-      // "Always" is gone until the remembered-rules list exists to back it.
-      const kind = isPlan ? "plan" : "tool";
+      // Two or three buttons, built once per kind of card. Rebuilding them between
+      // a mouse-down and a mouse-up would swallow the click. "Always" is gone until
+      // the remembered-rules list exists to back it. A plan has its own three;
+      // Antigravity waits on the card, and a third button hands the command back to
+      // its own prompt in the terminal, where its "Always allow" lives (as on the Mac).
+      const agy = State.pendingApproval?.pillId === "agent_antigravity";
+      const kind = isPlan ? "plan" : agy ? "agy" : "tool";
       if (rowKey === kind) return;
       rowKey = kind;
       clear(row);
@@ -643,6 +664,7 @@ function buildApproval(actions: ViewActions): ViewHost {
           btn(tl("Deny"), "secondary", guarded("deny"), "N"),
           btn(tl("Allow"), "primary", guarded("allow"), "Y"),
         );
+        if (agy) row.append(btn(tl("Reply in terminal"), "secondary", inTerminal));
       }
     },
   };
@@ -952,6 +974,7 @@ export function buildViews(
   map.set("update", buildUpdate());
   map.set("whatsNew", buildWhatsNew());
   map.set("clipboard", buildClipboard());
+  map.set("launch", buildLaunch(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildSendMail(actions));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

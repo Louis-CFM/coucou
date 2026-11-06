@@ -18,6 +18,13 @@ export const ICONS = {
   // speaker.slash
   speakerOff: "M11 4.5 6.5 8.2H3.4v7.6h3.1L11 19.5v-15zm3.6 4.1 1.27-1.27 2.33 2.33 2.33-2.33 1.27 1.27L19.47 11l2.33 2.33-1.27 1.27-2.33-2.33-2.33 2.33-1.27-1.27L16.93 11 14.6 8.6z",
   // arrow.up.right
+  // The header's line icons, drawn with { stroke }: SF Symbols' gearshape,
+  // speaker.wave.2 and speaker.slash, as the Mac header shows them.
+  gearLine: "M18.93 9.39 L21.41 10.09 L21.41 13.91 L18.93 14.61 L18.74 15.05 L20.00 17.30 L17.30 20.00 L15.05 18.74 L14.61 18.93 L13.91 21.41 L10.09 21.41 L9.39 18.93 L8.95 18.74 L6.70 20.00 L4.00 17.30 L5.26 15.05 L5.07 14.61 L2.59 13.91 L2.59 10.09 L5.07 9.39 L5.26 8.95 L4.00 6.70 L6.70 4.00 L8.95 5.26 L9.39 5.07 L10.09 2.59 L13.91 2.59 L14.61 5.07 L15.05 5.26 L17.30 4.00 L20.00 6.70 L18.74 8.95Z M15.2 12a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0z",
+  speakerLine: "M3.8 9.4h3.4l4.6-3.9v13l-4.6-3.9H3.8zM15.4 9.1a4.2 4.2 0 0 1 0 5.8M18.3 6.4a8 8 0 0 1 0 11.2",
+  speakerSlashLine: "M3.8 9.4h3.4l4.6-3.9v13l-4.6-3.9H3.8zM15.5 9.5l5 5M20.5 9.5l-5 5",
+  // bubble.left.fill: a rounded box with its tail at the bottom left.
+  bubbleRound: "M8 4.2h8a5 5 0 0 1 5 5v3a5 5 0 0 1-5 5h-5.3l-4.4 3.2c-.5.4-1.2 0-1.1-.6l.5-2.9A5 5 0 0 1 3 12.2v-3a5 5 0 0 1 5-5z",
   arrowUpRight: "M8.5 7h8.5v8.5h-2V10.4l-7.1 7.1-1.4-1.4 7.1-7.1H8.5V7z",
   // arrow.clockwise (stroke)
   arrowClockwise: "M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5",
@@ -89,4 +96,10 @@ export const ICONS = {
   textLines: "M5 7h14M5 12h14M5 17h9",
   image: "M4.6 5.6h14.8v12.8H4.6zM4.6 15.4l4-4 3.4 3.4 2.4-2.4 5 5M15.2 9.4h.01",
   palette: "M12 3.8a8.2 8.2 0 1 0 0 16.4c1.2 0 1.6-.9 1.2-1.7-.5-.9.1-2 1.2-2h1.9a3.9 3.9 0 0 0 3.9-3.9c0-4.9-3.7-8.8-8.2-8.8zM7.6 11.2h.01M9.8 7.6h.01M14.2 7.6h.01",
+  // terminal (stroked): the header tab of a new Claude Code session
+  terminal: "M5 4.5h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2zM7.2 9.2 10 12l-2.8 2.8M12.5 15h4.3",
+  // folder
+  folder: "M3 6.6a2 2 0 0 1 2-2h4.3l2 2.2H19a2 2 0 0 1 2 2v8.6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.6z",
+  // chevron.down (stroked)
+  chevronDown: "M5.5 9 12 15.5 18.5 9",
 } as const;
