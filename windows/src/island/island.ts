@@ -21,7 +21,7 @@ import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
-import { USC, UploadSeq } from "../upload/sequence";
+import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
 import { dominantPct, planColor } from "../core/plan";
 import { language, tl } from "../i18n/i18n";
 import { claudeCompactPillVisible, closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
@@ -759,6 +759,10 @@ export class Island {
     if (since == null) return;
     const dur = State.uploadDuration;
     const p = Math.max(0, Math.min(1, (since - PRE_PROGRESS) / dur));
+
+    // The bar and the percentage follow the same eased curve as Mochi.
+    State.uploadProgress = uploadProgressCurve(p);
+    if (State.view === "uploading") this.views.get("uploading")?.sync();
 
     const tens = Math.floor(p * 10);
     if (tens > this.uploadTens && tens < 10) {
