@@ -821,6 +821,7 @@ final class HookServer: @unchecked Sendable {
             syncPill(agentId)
             let finished = board.poppedPill(pill: agentId, session: key) ?? agentId
             if !terminalInFront { SoundEngine.shared.play("finish") }
+            AppReview.noteFinished()
             if !terminalInFront && showsAlert(for: finished, focused: state.focusId == finished) {
                 expandIfNeeded(to: .finished)
             } else {

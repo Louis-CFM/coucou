@@ -124,7 +124,8 @@ final class IslandWindowController: NSWindowController {
 
         let hosting = NSHostingView(rootView: IslandRootView()
             .environmentObject(AppState.shared)
-            .environment(\.layoutDirection, .leftToRight))
+            .environment(\.layoutDirection, .leftToRight)
+            .modifier(AppReviewAsker()))
         hosting.frame = NSRect(origin: .zero, size: contentSize)
         hosting.autoresizingMask = [.width, .height]
 
