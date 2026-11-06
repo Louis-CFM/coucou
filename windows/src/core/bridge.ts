@@ -260,6 +260,22 @@ export const Bridge = {
   /** The Claude desktop app, for the Claude Desktop pill (Windows only). */
   openClaudeDesktop: () => call<boolean>("open_claude_desktop"),
 
+  /**
+   * A new Claude Code session: the user's terminal in `folder`, running
+   * Claude Code with the prompt (src-tauri/src/launch.rs). False when it couldn't.
+   */
+  launchSession: (folder: string, prompt: string) => call<boolean>("launch_session", { folder, prompt }),
+
+  /** The system's folder picker, `start` open in it; null when cancelled. */
+  pickFolder: (start: string | null) => call<string | null>("pick_folder", { start }),
+
+  /**
+   * A file dropped on a session: its window comes forward and the paths are
+   * pasted into it. "pasted", "copied" (on the clipboard only) or "failed".
+   */
+  dropIntoSession: (sessionId: string, path: string | null, paths: string[]) =>
+    call<"pasted" | "copied" | "failed">("drop_into_session", { sessionId, path, paths }),
+
   /** The diff card's ↗: an existing file, in VS Code; never launched by its type. */
   openFileInVSCode: (path: string) => call<boolean>("open_file_in_vscode", { path }),
 
@@ -638,6 +654,8 @@ export type BridgeEvent =
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";
   paths?: string[];
+  /** Where the pointer is, in physical pixels of the webview (Tauri's own drag events, Linux). */
+  position?: { x: number; y: number };
 }
 
 interface WebView2Bridge {
