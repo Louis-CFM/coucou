@@ -46,6 +46,7 @@ object Pills {
         PillDefinition("integration_spotify", "Spotify", "#1DB954", PillCategory.SERVICE),
         PillDefinition("integration_mail", "Mail", "#2F8CFF", PillCategory.SERVICE),
         PillDefinition("integration_whatsapp", "WhatsApp", "#25D366", PillCategory.SERVICE),
+        PillDefinition("integration_yandex_music", "Yandex Music", "#FFEE00", PillCategory.SERVICE),
     )
 
     fun byId(id: String): PillDefinition? = catalog.firstOrNull { it.id == id }
