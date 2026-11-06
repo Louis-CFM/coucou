@@ -504,6 +504,8 @@ final class PhoneLink {
 
     /// Set when the user taps "Review" on an approval notification.
     var reviewFingerprint: String?
+    /// Set when it's time to ask for an App Store review (HomeView asks, then clears it).
+    var askForAppReview = false
     /// When the notification of the request under review arrived: a request older than the
     /// Mac's 2-minute wait has expired rather than been answered.
     var reviewSince: Date?
@@ -523,6 +525,8 @@ final class PhoneLink {
             history.insert(DecisionLog(decision: decision, pillId: pillId, summary: summary, date: .now), at: 0)
             history = Array(history.prefix(50))
             DecisionLog.save(history)
+            // A few decisions sent from the phone: a good moment to ask for a review (ReviewPolicy).
+            if ReviewPolicy.note(needed: ReviewPolicy.phoneMoments) { askForAppReview = true }
             return true
         } catch {
             lastPong = "Decision failed: \(error.localizedDescription)"

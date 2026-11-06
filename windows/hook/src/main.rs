@@ -16,6 +16,11 @@
 //! * Only `PermissionRequest` waits for an answer, because approving from the
 //!   island is the whole point. No answer means no decision, and the agent asks
 //!   in its terminal exactly as if Coucou were not installed.
+//! * Antigravity's `PreToolUse` is the one exception: Antigravity has no
+//!   permission request and waits for this hook's decision instead. Coucou
+//!   answers `ask` at once, or `pending` when the island shows the command
+//!   (Approve commands from the notch) and then the click. 3 s for the first
+//!   line, 115 s for the click; anything else prints "ask" (reply.rs).
 //!
 //! Usage: `coucou-hook [--agent <name>] [<EventName>]` (the event name is also
 //! read from the JSON; `--agent` is absent for Claude Code), or
@@ -25,7 +30,7 @@
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value};
 
@@ -38,6 +43,15 @@ const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
 const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
+/// Antigravity's PreToolUse: how long Coucou has to say `ask` or `pending`, and how
+/// long a card may then wait for a click (Coucou gives up first, at 110 s; the hook
+/// is installed with 120 s). The Mac relay's numbers.
+const AGY_FIRST_LINE_BUDGET: Duration = Duration::from_secs(3);
+const AGY_DECISION_BUDGET: Duration = Duration::from_secs(115);
+/// What Coucou writes once the card is up.
+const PENDING: &str = "pending";
+/// How often a waiting relay checks that the process that ran it is still there.
+const PARENT_POLL: Duration = Duration::from_millis(100);
 
 /// Fields that are pointless to forward and can be enormous (a whole file read,
 /// a full command output). The island never shows them.
@@ -62,12 +76,12 @@ const MAX_DIFF_TOTAL: usize = 512 * 1024;
 #[cfg(windows)]
 mod win;
 #[cfg(windows)]
-use win::connect;
+use win::{connect, parent};
 
 #[cfg(target_os = "linux")]
 mod unix;
 #[cfg(target_os = "linux")]
-use unix::connect;
+use unix::{connect, parent};
 
 /// What the command line says: `--agent <name>` and the event name.
 struct Args {
@@ -119,22 +133,68 @@ fn main() {
 
     // Only an agent whose decisions the island can give waits for one; any other
     // would be held for nothing, its decision being thrown away (reply.rs).
-    let waits_for_answer = event.name == "PermissionRequest" && reply::takes_decisions(&args.agent);
-    let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
+    // Antigravity's PreToolUse always waits: briefly, or for the click once the
+    // card is up.
+    let agy = reply::waits_on_pre_tool(&args.agent, &event.name);
+    let waits_for_answer = agy || (event.name == "PermissionRequest" && reply::takes_decisions(&args.agent));
+    let (budget, extended) = match (agy, waits_for_answer) {
+        (true, _) => (AGY_FIRST_LINE_BUDGET, AGY_DECISION_BUDGET),
+        (false, true) => (DECISION_BUDGET, DECISION_BUDGET),
+        (false, false) => (FIRE_AND_FORGET_BUDGET, FIRE_AND_FORGET_BUDGET),
+    };
 
     // The worker owns every blocking call. If it overruns the budget we simply
     // stop listening and exit: the process dying takes the pipe handle with it.
     // (No catch_unwind here — the release profile is panic = "abort", so it would
     // be dead code. `talk` is written to have nothing to panic on instead.)
-    let (tx, rx) = mpsc::channel::<Option<String>>();
+    let (tx, rx) = mpsc::channel::<Msg>();
     let line = event.line.clone();
     std::thread::spawn(move || {
-        let _ = tx.send(talk(&line, waits_for_answer));
+        // Only Antigravity's card is ever `pending`; a permission request keeps its budget.
+        let pending = tx.clone();
+        let answer = talk(&line, waits_for_answer, &|| {
+            if agy {
+                let _ = pending.send(Msg::Pending);
+            }
+        });
+        let _ = tx.send(Msg::Answer(answer));
     });
 
-    let decision = rx.recv_timeout(budget).ok().flatten();
+    // Claude Code ends the relay when its prompt is answered in the terminal,
+    // and the app sees the pipe close at once. A shell between them (Git Bash,
+    // cmd) can be the one ended, leaving us orphaned: its going ends us too.
+    let parent = if waits_for_answer { parent() } else { None };
+    let decision = wait(&rx, budget, extended, || parent.as_ref().is_some_and(|p| p.gone()));
     print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
     std::process::exit(0);
+}
+
+/// What the worker tells the main thread.
+enum Msg {
+    /// Coucou shows a card: wait for the click (Antigravity).
+    Pending,
+    /// The worker is done: Coucou's answer, if any.
+    Answer(Option<String>),
+}
+
+/// The worker's answer, or None once the budget runs out or `gone()` says the
+/// process that ran us has gone. The budget is `budget`, or `extended` from the
+/// moment the worker says a card is up.
+fn wait(rx: &mpsc::Receiver<Msg>, budget: Duration, extended: Duration, gone: impl Fn() -> bool) -> Option<String> {
+    let mut deadline = Instant::now() + budget;
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        if left.is_zero() {
+            return None;
+        }
+        match rx.recv_timeout(left.min(PARENT_POLL)) {
+            Ok(Msg::Answer(decision)) => return decision,
+            Ok(Msg::Pending) => deadline = Instant::now() + extended,
+            Err(mpsc::RecvTimeoutError::Timeout) if gone() => return None,
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => return None,
+        }
+    }
 }
 
 fn print(line: Option<String>) {
@@ -187,6 +247,21 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     add_terminal_context(map, env);
 
+    // Antigravity's PreToolUse waits for Coucou (reply.rs): tagged so the app knows
+    // this relay reads its answer. A command too long to forward whole is flagged,
+    // so the island never asks about one nobody could read in full.
+    if reply::waits_on_pre_tool(&args.agent, &name) {
+        map.insert("coucou_kind".into(), Value::String("agy_pre_tool".into()));
+        let long = map
+            .get("tool_input")
+            .and_then(|i| i.get("command"))
+            .and_then(Value::as_str)
+            .is_some_and(|c| c.len() > MAX_FIELD_LEN);
+        if long {
+            map.insert("coucou_command_cut".into(), Value::Bool(true));
+        }
+    }
+
     // Kept whole: what goes back to Claude Code must be its own input, not the
     // shortened copy the island is shown.
     let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))
@@ -211,6 +286,10 @@ fn add_terminal_context(map: &mut Map<String, Value>, env: &dyn Fn(&str) -> Opti
         ("term_session_id", "TERM_SESSION_ID"),
         ("vscode_pid", "VSCODE_PID"),
         ("session_pid", "CLAUDE_CODE_SSE_PORT"),
+        // In WSL these reach the relay only when WSLENV names them.
+        ("herdr_pane", "HERDR_PANE_ID"),
+        ("herdr_bin", "HERDR_BIN_PATH"),
+        ("wsl_distro", "WSL_DISTRO_NAME"),
     ] {
         if !map.contains_key(key) {
             map.insert(key.into(), Value::String(env(var).unwrap_or_default()));
@@ -330,8 +409,10 @@ fn cut(s: &mut String, max: usize) -> bool {
     true
 }
 
-/// Connect, send, and — for a permission request — wait for the island's word.
-fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
+/// Connect, send, and — for a permission request or Antigravity's PreToolUse —
+/// wait for the island's word. `pending()` is called for each `pending` line
+/// (Antigravity's card is up), which is never the answer itself.
+fn talk(payload: &str, waits_for_answer: bool, pending: &dyn Fn()) -> Option<String> {
     let mut pipe = connect()?;
 
     if pipe.write_all(payload.as_bytes()).is_err() {
@@ -342,23 +423,31 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
     if !waits_for_answer {
         return None;
     }
+    read_answer(&mut pipe, pending)
+}
 
+/// The first line from Coucou that is not `pending`, trimmed; None when the
+/// connection ends without one.
+fn read_answer(pipe: &mut impl Read, pending: &dyn Fn()) -> Option<String> {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 1024];
     loop {
-        match pipe.read(&mut chunk) {
-            Ok(0) => break,
-            Ok(n) => {
-                buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') {
-                    break;
-                }
+        while let Some(end) = buf.iter().position(|b| *b == b'\n') {
+            let line: Vec<u8> = buf.drain(..=end).collect();
+            let answer = String::from_utf8_lossy(&line).trim().to_string();
+            if answer == PENDING {
+                pending();
+                continue;
             }
-            Err(_) => break,
+            return (!answer.is_empty()).then_some(answer);
+        }
+        match pipe.read(&mut chunk) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => buf.extend_from_slice(&chunk[..n]),
         }
     }
     let answer = String::from_utf8_lossy(&buf).trim().to_string();
-    (!answer.is_empty()).then_some(answer)
+    (!answer.is_empty() && answer != PENDING).then_some(answer)
 }
 
 #[cfg(test)]
@@ -404,6 +493,24 @@ mod tests {
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
         assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+    }
+
+    #[test]
+    fn a_herdr_pane_is_forwarded_with_its_binary_and_distro() {
+        let raw = r#"{"hook_event_name":"UserPromptSubmit","session_id":"s1"}"#;
+        let args = Args { agent: String::new(), event: String::new() };
+        let env = env_of(&[
+            ("HERDR_PANE_ID", "w1:pA"),
+            ("HERDR_BIN_PATH", "/usr/bin/herdr"),
+            ("WSL_DISTRO_NAME", "Ubuntu"),
+        ]);
+        let ev = prepare(raw.as_bytes(), &args, &env, "/").expect("forwarded");
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert_eq!(v["herdr_pane"], "w1:pA");
+        assert_eq!(v["herdr_bin"], "/usr/bin/herdr");
+        assert_eq!(v["wsl_distro"], "Ubuntu");
+        let (plain, _) = run(raw, "", "");
+        assert_eq!(plain["herdr_pane"], "");
     }
 
     #[test]
@@ -538,5 +645,91 @@ mod tests {
         truncate_payload(&mut multi, "PostToolUse");
         assert!(multi.to_string().len() < MAX_DIFF_TOTAL + 64 * 1024);
         assert_eq!(multi["coucou_diff_truncated"], serde_json::Value::Bool(true));
+    }
+
+    #[test]
+    fn a_waiting_relay_gives_up_as_soon_as_its_parent_is_gone() {
+        let (tx, rx) = mpsc::channel::<Msg>();
+        let started = Instant::now();
+        let checks = std::cell::Cell::new(0);
+        let gone = || {
+            checks.set(checks.get() + 1);
+            checks.get() >= 2
+        };
+        let five = Duration::from_secs(5);
+        assert_eq!(wait(&rx, five, five, gone), None);
+        assert!(started.elapsed() < Duration::from_secs(1), "{:?}", started.elapsed());
+        // An answer still wins while the parent is there.
+        tx.send(Msg::Answer(Some("allow".into()))).unwrap();
+        assert_eq!(wait(&rx, five, five, || false).as_deref(), Some("allow"));
+        // And the budget still ends a wait nobody answers.
+        let started = Instant::now();
+        let short = Duration::from_millis(150);
+        assert_eq!(wait(&rx, short, short, || false), None);
+        assert!(started.elapsed() >= Duration::from_millis(150));
+        drop(tx);
+    }
+
+    #[test]
+    fn a_card_on_screen_extends_the_wait_once_it_is_up() {
+        // No line within the short budget: Antigravity is answered at once.
+        let (_tx, rx) = mpsc::channel::<Msg>();
+        let started = Instant::now();
+        assert_eq!(wait(&rx, Duration::from_millis(100), Duration::from_secs(5), || false), None);
+        assert!(started.elapsed() < Duration::from_secs(1));
+        // "pending" moves the deadline: an answer after the short budget still counts.
+        let (tx, rx) = mpsc::channel::<Msg>();
+        std::thread::spawn(move || {
+            tx.send(Msg::Pending).unwrap();
+            std::thread::sleep(Duration::from_millis(250));
+            tx.send(Msg::Answer(Some("deny".into()))).unwrap();
+        });
+        assert_eq!(wait(&rx, Duration::from_millis(100), Duration::from_secs(5), || false).as_deref(), Some("deny"));
+        // And the longer budget still ends a card nobody answers.
+        let (tx, rx) = mpsc::channel::<Msg>();
+        tx.send(Msg::Pending).unwrap();
+        let started = Instant::now();
+        assert_eq!(wait(&rx, Duration::from_millis(50), Duration::from_millis(200), || false), None);
+        assert!(started.elapsed() >= Duration::from_millis(200));
+        drop(tx);
+    }
+
+    #[test]
+    fn pending_lines_are_never_the_answer() {
+        let count = std::cell::Cell::new(0);
+        let pending = || count.set(count.get() + 1);
+        let read = |bytes: &[u8]| read_answer(&mut std::io::Cursor::new(bytes.to_vec()), &pending);
+        assert_eq!(read(b"ask\n").as_deref(), Some("ask"));
+        assert_eq!(read(b"pending\nallow\n").as_deref(), Some("allow"));
+        assert_eq!(count.get(), 1);
+        // The card was up, then Coucou went: no answer, Antigravity asks.
+        assert_eq!(read(b"pending\n"), None);
+        assert_eq!(read(b"pending"), None);
+        assert_eq!(read(b""), None);
+        // A permission request's answer reads as before.
+        assert_eq!(read(b"deny\n").as_deref(), Some("deny"));
+        assert_eq!(read(b"{\"answers\":{}}").as_deref(), Some("{\"answers\":{}}"));
+    }
+
+    #[test]
+    fn antigravitys_pre_tool_use_is_tagged_for_the_app() {
+        let raw = r#"{"hook_event_name":"PreToolUse","toolCall":{"name":"run_command","args":{"CommandLine":"npm i"}}}"#;
+        let (v, ev) = run(raw, "antigravity", "PreToolUse");
+        assert_eq!(ev.name, "PreToolUse");
+        assert_eq!(v["coucou_kind"], "agy_pre_tool");
+        assert_eq!(v["tool_input"]["command"], "npm i");
+        assert!(v.get("coucou_command_cut").is_none());
+        // A command too long to forward whole is flagged, so no card asks about it.
+        let long = format!(
+            r#"{{"hook_event_name":"PreToolUse","toolCall":{{"name":"run_command","args":{{"CommandLine":"{}"}}}}}}"#,
+            "x".repeat(MAX_FIELD_LEN + 1)
+        );
+        let (v, _) = run(&long, "antigravity", "PreToolUse");
+        assert_eq!(v["coucou_command_cut"], true);
+        // Other events and agents are not tagged.
+        for (agent, event) in [("antigravity", "PostToolUse"), ("gemini", "PreToolUse"), ("", "PreToolUse")] {
+            let (v, _) = run(r#"{"tool_name":"run_command"}"#, agent, event);
+            assert!(v.get("coucou_kind").is_none(), "{agent} {event}");
+        }
     }
 }

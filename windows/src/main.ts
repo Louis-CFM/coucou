@@ -44,6 +44,8 @@ async function main() {
   }
 
   const island = new Island(root);
+  // The dev previews (dev/*.html) drive the island from the console.
+  if (import.meta.env.DEV) Object.assign(window, { __island: island, __state: State });
 
   const boot = await Bridge.boot();
   if (boot) {
@@ -63,6 +65,7 @@ async function main() {
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
+  await onEvent<null>("closed-hover", () => island.wakeFromClosed());
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {

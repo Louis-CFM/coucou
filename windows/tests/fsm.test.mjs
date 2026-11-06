@@ -316,25 +316,47 @@ test("open on hover off: hovering only peeks", () => {
   assert.equal(fsm.openedByHover, false);
 });
 
-test("open on hover: hovering opens, leaving folds after the short grace period", () => {
+test("open on hover: the closed island only peeks, resting on the compact one opens it", () => {
   fsm.openOnHover = true;
   fsm.mouseEntered();
+  assert.equal(fsm.state, "petit");
+  seconds(0.4);
+  assert.equal(fsm.state, "petit");
+  seconds(0.1);
   assert.equal(fsm.state, "home");
   assert.equal(fsm.openedByHover, true);
+});
+
+test("open on hover: passing over the closed island doesn't open it", () => {
+  fsm.openOnHover = true;
+  fsm.mouseEntered();
+  seconds(0.2);
+  fsm.mouseLeft();
+  seconds(5);
+  assert.equal(fsm.state, "petit");
+});
+
+test("open on hover: leaving folds after the short grace period, resting opens again", () => {
+  fsm.openOnHover = true;
+  fsm.mouseEntered();
+  seconds(0.5);
+  assert.equal(fsm.state, "home");
   fsm.mouseLeft();
   seconds(0.5);
   assert.equal(fsm.state, "home");
   seconds(0.1);
   assert.equal(fsm.state, "petit");
   assert.equal(fsm.openedByHover, false);
-  // From the compact island it opens again.
+  // From the compact island it opens again, once the pointer rests.
   fsm.mouseEntered();
+  seconds(0.5);
   assert.equal(fsm.state, "home");
 });
 
 test("open on hover: coming back before the grace period keeps it open", () => {
   fsm.openOnHover = true;
   fsm.mouseEntered();
+  seconds(0.5);
   fsm.mouseLeft();
   seconds(0.3);
   fsm.mouseEntered();
@@ -346,6 +368,7 @@ test("open on hover: a click inside makes it an ordinary open island", () => {
   fsm.openOnHover = true;
   fsm.homeToPetitDelay = 3;
   fsm.mouseEntered();
+  seconds(0.5);
   fsm.mouseLeft();
   fsm.userInteracted();          // the short countdown becomes the normal one
   seconds(1);

@@ -112,3 +112,18 @@ fn server_is_same_user(stream: &UnixStream) -> bool {
         && len as usize == std::mem::size_of::<libc::ucred>()
         && cred.uid == unsafe { libc::getuid() }
 }
+
+/// The process that ran the relay (Claude Code, or the shell it used).
+pub struct Parent(libc::pid_t);
+
+impl Parent {
+    /// True once it has exited: we were handed to another process (init or a
+    /// subreaper), so our parent is no longer the one we started with.
+    pub fn gone(&self) -> bool {
+        unsafe { libc::getppid() != self.0 }
+    }
+}
+
+pub fn parent() -> Option<Parent> {
+    Some(Parent(unsafe { libc::getppid() }))
+}

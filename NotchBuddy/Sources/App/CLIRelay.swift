@@ -86,6 +86,9 @@ struct CLIRequest: Sendable {
     /// Gemini CLI only: a policy file that denies its web tools (written by the runner).
     var noWebPolicy: URL?
     var timeout: TimeInterval
+    /// Claude Code only: false and the model answers straight away (Flow's clean-up has
+    /// nothing to think about, and every second counts).
+    var thinking = true
 }
 
 enum CLIFailure: LocalizedError, Equatable {
@@ -171,6 +174,11 @@ enum CLIRelay {
             if let model { out += ["--model", model] }
             return out
         }
+    }
+
+    /// What one run adds to the environment it inherits. Pure, so it can be tested.
+    static func environment(_ cli: SubscriptionCLI, _ r: CLIRequest) -> [String: String] {
+        cli == .claude && !r.thinking ? ["MAX_THINKING_TOKENS": "0"] : [:]
     }
 
     /// The answer's text, or why there is none.

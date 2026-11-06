@@ -3,7 +3,7 @@
 
 import { h } from "../views/dom";
 import { t } from "../i18n/i18n";
-import type { FlowKey } from "../core/flow";
+import type { FlowKeyId } from "../core/flow";
 
 /** Stroke icons on a 24×24 grid, standing in for the Mac's SF Symbols. */
 export const HUB_ICONS: Record<string, string> = {
@@ -128,13 +128,44 @@ export function select<T extends string>(options: [T, string][], value: T, onCha
   return el;
 }
 
-/** "Right Ctrl", "Ctrl + Win"… */
-export function keyLabel(key: FlowKey | "wayland" | "", platform: "windows" | "linux" = "windows"): string {
+/** One key of a shortcut, as it is printed on the keyboard. */
+export function codeLabel(code: string, platform: "windows" | "linux" = "windows"): string {
+  if (code.startsWith("Control")) return "Ctrl";
+  if (code.startsWith("Alt")) return "Alt";
+  if (code.startsWith("Shift")) return "Shift";
+  if (code.startsWith("Meta")) return platform === "windows" ? "Win" : "Super";
+  if (code.startsWith("Key")) return code.slice(3);
+  if (code.startsWith("Digit")) return code.slice(5);
+  const named: Record<string, string> = {
+    Space: t("Space"), Backquote: "`", Insert: "Inser", Pause: "Pause", ScrollLock: "Scroll Lock",
+    CapsLock: "Caps Lock", ContextMenu: "Menu",
+  };
+  return named[code] ?? code;
+}
+
+/** "Right Ctrl", "Ctrl + Win", "Alt + Shift + F"… */
+export function keyLabel(key: FlowKeyId, platform: "windows" | "linux" = "windows"): string {
+  if (key.startsWith("custom:")) {
+    const codes = key.slice(7).split("+").filter(Boolean);
+    if (codes.length === 0) return t("Right {0}", { 0: "Ctrl" });
+    // One modifier alone keeps its side, as the other choices do.
+    if (codes.length === 1 && /(Left|Right)$/.test(codes[0])) {
+      const side = codes[0].endsWith("Left") ? t("Left {0}", { 0: codeLabel(codes[0], platform) }) : t("Right {0}", { 0: codeLabel(codes[0], platform) });
+      return side;
+    }
+    return codes.map((c) => codeLabel(c, platform)).join(" + ");
+  }
   switch (key) {
     case "right_alt":
       return t("Right {0}", { 0: "Alt" });
     case "right_shift":
       return t("Right {0}", { 0: "Shift" });
+    case "left_ctrl":
+      return t("Left {0}", { 0: "Ctrl" });
+    case "left_alt":
+      return t("Left {0}", { 0: "Alt" });
+    case "left_shift":
+      return t("Left {0}", { 0: "Shift" });
     case "left_ctrl_super":
       return platform === "windows" ? "Ctrl + Win" : "Ctrl + Super";
     case "wayland":
@@ -146,9 +177,10 @@ export function keyLabel(key: FlowKey | "wayland" | "", platform: "windows" | "l
 }
 
 /** The key written as keycaps: "Right Ctrl" twice for hands-free. */
-export function keyKeycap(key: FlowKey | "wayland" | "", platform: "windows" | "linux", twice = false): HTMLElement {
+export function keyKeycap(key: FlowKeyId, platform: "windows" | "linux", twice = false): HTMLElement {
   const label = keyLabel(key, platform);
-  return keycap(twice ? `${label} ${label}` : label);
+  // A shortcut of several keys twice in a row reads better as "×2".
+  return keycap(twice ? (label.includes(" + ") ? `${label} ×2` : `${label} ${label}`) : label);
 }
 
 /** A number written the way the language writes it. */

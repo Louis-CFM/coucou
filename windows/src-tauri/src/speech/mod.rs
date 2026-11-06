@@ -338,6 +338,26 @@ pub struct Transcript {
 /// quietest, near this length.
 const MAX_CHUNK_SECONDS: f64 = 28.0;
 
+/// Silence given to the model before and after each stretch, in samples.
+///
+/// A dictation starts the moment the key goes down: the microphone opens with
+/// a little click and the first word is already under way. Parakeet, which
+/// guesses the language by itself, then often starts in English and keeps
+/// going ("Okay, that marche plutôt bien. Moi, le truc is that…"). Half a
+/// second of silence first, as a call always has, and it hears the language
+/// that is spoken (tests: `a_sudden_start_keeps_its_language`).
+const LEAD_SILENCE: usize = SAMPLE_RATE as usize / 2;
+const TAIL_SILENCE: usize = SAMPLE_RATE as usize * 3 / 10;
+
+/// `chunk` between the silences the model is given it with.
+pub fn padded(chunk: &[f32]) -> Vec<f32> {
+    let mut out = Vec::with_capacity(LEAD_SILENCE + chunk.len() + TAIL_SILENCE);
+    out.resize(LEAD_SILENCE, 0.0);
+    out.extend_from_slice(chunk);
+    out.resize(out.len() + TAIL_SILENCE, 0.0);
+    out
+}
+
 /// Transcribes 16 kHz mono audio.
 pub fn transcribe(samples: &[f32]) -> Option<Transcript> {
     let rec = recognizer()?;
@@ -347,11 +367,19 @@ pub fn transcribe(samples: &[f32]) -> Option<Transcript> {
             continue;
         }
         let stream = rec.create_stream();
-        stream.accept_waveform(SAMPLE_RATE as i32, chunk);
+        let audio = padded(chunk);
+        stream.accept_waveform(SAMPLE_RATE as i32, &audio);
         rec.decode(&stream);
         let Some(result) = stream.get_result() else { continue };
-        let start = offset as f64 / SAMPLE_RATE as f64;
-        let words = words_from_tokens(&result.tokens, result.timestamps.as_deref().unwrap_or(&[]), start, chunk.len() as f64 / SAMPLE_RATE as f64);
+        // The words' times count from the start of the silence: take it off.
+        let start = (offset as f64 - LEAD_SILENCE as f64) / SAMPLE_RATE as f64;
+        let mut words = words_from_tokens(&result.tokens, result.timestamps.as_deref().unwrap_or(&[]), start, audio.len() as f64 / SAMPLE_RATE as f64);
+        // A word the model places a hair into the silence starts with the audio.
+        let from = offset as f64 / SAMPLE_RATE as f64;
+        for w in &mut words {
+            w.start = w.start.max(from);
+            w.end = w.end.max(w.start);
+        }
         let text = result.text.trim();
         if !text.is_empty() {
             if !out.text.is_empty() {
@@ -459,6 +487,33 @@ mod tests {
 /// With the models downloaded: `COUCOU_TEST_WAV=… cargo test -- --ignored speech`.
 #[cfg(test)]
 mod with_models {
+    #[test]
+    fn the_model_hears_silence_around_the_words() {
+        let chunk = vec![0.5f32; 1000];
+        let audio = super::padded(&chunk);
+        assert_eq!(audio.len(), super::LEAD_SILENCE + 1000 + super::TAIL_SILENCE);
+        assert!(audio[..super::LEAD_SILENCE].iter().all(|&s| s == 0.0));
+        assert_eq!(&audio[super::LEAD_SILENCE..super::LEAD_SILENCE + 1000], &chunk[..]);
+        assert!(audio[super::LEAD_SILENCE + 1000..].iter().all(|&s| s == 0.0));
+    }
+
+    /// A dictation that starts with the microphone's click and the first word
+    /// already under way (a French one, from `COUCOU_SUDDEN_WAV`, 16 kHz):
+    /// Parakeet used to write half of it in English.
+    /// `cargo test -p coucou --lib a_sudden_start -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn a_sudden_start_keeps_its_language() {
+        let path = std::env::var("COUCOU_SUDDEN_WAV").expect("COUCOU_SUDDEN_WAV");
+        let samples = super::audio::read_wav(std::path::Path::new(&path)).unwrap();
+        let t = super::transcribe(&samples).expect("models");
+        println!("{}", t.text);
+        let english = ["that", "is", "for", "it", "when", "the"];
+        let words: Vec<String> = t.text.split(|c: char| !c.is_alphabetic()).map(str::to_lowercase).collect();
+        assert!(!words.iter().any(|w| english.contains(&w.as_str())), "{}", t.text);
+        assert!(t.words.first().is_some_and(|w| w.start >= 0.0));
+    }
+
     #[test]
     #[ignore]
     fn transcribes_a_recording() {

@@ -294,10 +294,48 @@ pub fn open_url(url: &str) {
     let _ = no_console(&mut cmd).spawn();
 }
 
+/// Whether a desktop app handles the URL scheme (`whatsapp`…): the default
+/// `x-scheme-handler` xdg-mime knows for it.
+pub fn handles_scheme(scheme: &str) -> bool {
+    let handler = format!("x-scheme-handler/{scheme}");
+    let mut cmd = Command::new("xdg-mime");
+    cmd.arg("query").arg("default").arg(&handler);
+    no_console(&mut cmd)
+        .output()
+        .is_ok_and(|out| out.status.success() && !String::from_utf8_lossy(&out.stdout).trim().is_empty())
+}
+
 pub fn reveal_folder(path: &str) {
     let mut cmd = Command::new("xdg-open");
     cmd.arg(path);
     let _ = no_console(&mut cmd).spawn();
+}
+
+/// "Choose a folder…" for a new Claude Code session: the desktop's own folder
+/// picker, through zenity (GNOME and most desktops) or kdialog (KDE). None
+/// when it was cancelled or neither is installed.
+pub fn pick_folder(_app: &AppHandle, start: Option<&str>, title: &str) -> Option<String> {
+    let start = start.map(str::to_string).unwrap_or_else(|| home_dir().to_string_lossy().to_string());
+    let pickers: [(&str, Vec<String>); 2] = [
+        (
+            "zenity",
+            vec!["--file-selection".into(), "--directory".into(), format!("--title={title}"), format!("--filename={start}/")],
+        ),
+        ("kdialog", vec!["--title".into(), title.into(), "--getexistingdirectory".into(), start.clone()]),
+    ];
+    for (name, args) in pickers {
+        let Some(program) = find_on_path(name) else { continue };
+        let mut cmd = Command::new(program);
+        cmd.args(&args);
+        let out = no_console(&mut cmd).output().ok()?;
+        // Cancelled: no other picker after it.
+        if !out.status.success() {
+            return None;
+        }
+        let path = String::from_utf8_lossy(&out.stdout).trim_end_matches(['\n', '\r']).to_string();
+        return (!path.is_empty()).then_some(path);
+    }
+    None
 }
 
 /// Our own `which`: the first executable file named `stem` on $PATH.
@@ -860,6 +898,11 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     }
     let g = monitor.geometry();
     Some((g.width() as f64, g.height() as f64))
+}
+
+/// Click-through on or off (Windows needs more; see platform/windows.rs).
+pub fn set_click_through(win: &WebviewWindow, ignore: bool) {
+    let _ = win.set_ignore_cursor_events(ignore);
 }
 
 #[cfg(test)]

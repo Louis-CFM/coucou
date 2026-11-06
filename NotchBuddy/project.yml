@@ -319,7 +319,7 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
-        CFBundleVersion: "20"
+        CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
         CFBundlePackageType: APPL
         LSRequiresIPhoneOS: YES
@@ -401,7 +401,7 @@ targets:
         CFBundleName: CoucouWidgets
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou.Widgets
-        CFBundleVersion: "20"
+        CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
         CFBundlePackageType: XPC!
         NSExtension:
@@ -446,7 +446,7 @@ targets:
         CFBundleName: CoucouNotificationContent
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou.NotificationContent
-        CFBundleVersion: "20"
+        CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
         CFBundlePackageType: XPC!
         NSExtension:

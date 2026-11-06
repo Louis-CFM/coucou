@@ -9,6 +9,7 @@
 // and are pasted. The thread sleeps on its channel while nothing happens.
 
 pub mod cleanup;
+pub mod hush;
 pub mod logic;
 pub mod paste;
 pub mod pill;
@@ -116,13 +117,15 @@ fn is_terminal(id: &str) -> bool {
 // ── Setup, on and off ─────────────────────────────────────────────────────────
 
 pub fn setup(app: &AppHandle) {
+    // Sound left muted by a Coucou that quit while listening comes back.
+    hush::setup();
     let flow = Arc::new(Flow { store: Mutex::new(Store::load()), running: Mutex::new(None) });
     app.manage(flow.clone());
     pill::setup(app);
     let prefs = flow.store.lock().unwrap().prefs.clone();
     pill::update(app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
-        s.key = key_id(prefs.key);
+        s.key = key_id(prefs.key, &prefs.key_combo);
     });
     if prefs.enabled {
         enable(app, &flow);
@@ -130,11 +133,14 @@ pub fn setup(app: &AppHandle) {
     crate::voice::sync(app);
 }
 
-/// The key as the pages write it ("right_ctrl"…), or "wayland" where the
-/// desktop holds the shortcut.
-fn key_id(key: logic::FlowKey) -> String {
+/// The key as the pages write it ("right_ctrl"…, "custom:AltLeft+ShiftLeft+KeyF"
+/// for a shortcut of one's own), or "wayland" where the desktop holds it.
+fn key_id(key: logic::FlowKey, combo: &[String]) -> String {
     if os::keys_supported() == Err("wayland") {
         return "wayland".into();
+    }
+    if key == logic::FlowKey::Custom {
+        return format!("custom:{}", key.codes(combo).join("+"));
     }
     serde_json::to_value(key).ok().and_then(|v| v.as_str().map(String::from)).unwrap_or_default()
 }
@@ -147,7 +153,7 @@ fn enable(app: &AppHandle, flow: &Arc<Flow>) {
     let prefs = flow.store.lock().unwrap().prefs.clone();
     let (tx, rx) = mpsc::channel::<(KeyEvent, Instant)>();
     let listener: Option<Box<dyn std::any::Any + Send>> = match os::keys_supported() {
-        Ok(()) => match os::listen(prefs.key, tx.clone()) {
+        Ok(()) => match os::listen(&prefs.key.codes(&prefs.key_combo), tx.clone()) {
             Ok(l) => Some(Box::new(l)),
             Err(err) => {
                 crate::log::line(format!("flow: the key can't be watched: {err}"));
@@ -171,7 +177,7 @@ fn enable(app: &AppHandle, flow: &Arc<Flow>) {
     drop(running);
     speech::preload();
     pill::update(app, |s| s.enabled = true);
-    crate::log::line(format!("flow dictation on ({})", prefs.key.label()));
+    crate::log::line(format!("flow dictation on ({})", prefs.key.label(&prefs.key_combo)));
 }
 
 fn disable(app: &AppHandle, flow: &Arc<Flow>) {
@@ -192,6 +198,8 @@ fn disable(app: &AppHandle, flow: &Arc<Flow>) {
 
 struct Listening {
     capture: audio::Capture,
+    /// The other apps are silent while Coucou listens (hush.rs); dropped with it.
+    _hush: Option<hush::Guard>,
     take: Arc<Mutex<audio::Take>>,
     started: Instant,
     app: Option<(String, String)>,
@@ -223,7 +231,11 @@ fn run(app: AppHandle, flow: Arc<Flow>, rx: mpsc::Receiver<(KeyEvent, Instant)>)
                 break;
             }
             Some((KeyEvent::Down, at)) => logic.key_down(secs(at)),
-            Some((KeyEvent::Up, at)) => logic.key_up(secs(at)),
+            Some((KeyEvent::Up, at)) => {
+                // Read at each release, so a change in the settings needs no restart of the keyboard hook.
+                logic.one_tap = flow.store.lock().unwrap().prefs.one_tap_hands_free;
+                logic.key_up(secs(at))
+            }
             Some((KeyEvent::Other, _)) => logic.other_key(),
             Some((KeyEvent::Escape, _)) => logic.escape(),
             Some((KeyEvent::HandsFree, _)) => {
@@ -289,6 +301,10 @@ fn run(app: AppHandle, flow: Arc<Flow>, rx: mpsc::Receiver<(KeyEvent, Instant)>)
         if let Some(l) = &listening {
             let levels = l.take.lock().unwrap().meter.levels;
             let _ = app.emit_to(pill::LABEL, "pill-bands", levels);
+            // The Coucou window's bands breathe with the voice while it is on screen.
+            if crate::hub_is_shown() {
+                let _ = app.emit_to(crate::HUB_LABEL, "flow-bands", levels);
+            }
         }
     }
     pill::update(&app, |s| s.phase = "idle".into());
@@ -324,7 +340,8 @@ fn begin(app: &AppHandle, flow: &Arc<Flow>) -> Option<Listening> {
         Ok(capture) => {
             let app_front = os::foreground_app().filter(|(id, _)| !is_shell(id));
             pill::update(app, |s| s.phase = "listening".into());
-            Some(Listening { capture, take, started: Instant::now(), app: app_front })
+            let quiet = flow.store.lock().unwrap().prefs.mute_others;
+            Some(Listening { capture, _hush: hush::hush(quiet), take, started: Instant::now(), app: app_front })
         }
         Err(err) => {
             crate::log::line(format!("flow: microphone: {err}"));
@@ -383,7 +400,7 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let (prepared, style, cleanup, words, key) = {
         let store = flow.store.lock().unwrap();
         let app_id = front.map(|(id, _)| id.as_str());
-        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key)
+        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key.codes(&store.prefs.key_combo))
     };
     let mut written = prepared.text.clone();
     if cleanup && style != store::Style::Verbatim && cleanup::has_key() {
@@ -396,7 +413,7 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let final_text = text::finish(&written, &prepared.snippets);
     crate::log::line(format!("flow: {} words in {:?}", text::word_count(&final_text), started.elapsed()));
 
-    os::wait_key_released(key);
+    os::wait_key_released(&key);
     let terminal = front.is_some_and(|(id, _)| is_terminal(id));
     let outcome = paste::paste(&final_text, terminal);
     let entry = {
@@ -489,9 +506,9 @@ pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
     };
     pill::update(&app, |s| {
         s.edge = pill::edge_name(prefs.edge).into();
-        s.key = key_id(prefs.key);
+        s.key = key_id(prefs.key, &prefs.key_combo);
     });
-    let restart = before.key != prefs.key;
+    let restart = before.key != prefs.key || before.key_combo != prefs.key_combo;
     if before.enabled && (!prefs.enabled || restart) {
         disable(&app, &flow);
     }
@@ -514,17 +531,17 @@ pub fn flow_history(flow: State<Arc<Flow>>) -> Vec<Entry> {
 }
 
 #[tauri::command]
-pub fn flow_delete(flow: State<Arc<Flow>>, id: String) {
-    flow.store.lock().unwrap().delete(&id);
+pub fn flow_delete(flow: State<Arc<Flow>>, id: String) -> Result<(), String> {
+    flow.store.lock().unwrap().delete(&id)
 }
 
 #[tauri::command]
-pub fn flow_clear(flow: State<Arc<Flow>>, everything: bool) {
+pub fn flow_clear(flow: State<Arc<Flow>>, everything: bool) -> Result<(), String> {
     let mut store = flow.store.lock().unwrap();
     if everything {
-        store.clear_everything();
+        store.clear_everything()
     } else {
-        store.clear_history();
+        store.clear_history()
     }
 }
 
@@ -588,10 +605,8 @@ pub fn flow_words(flow: State<Arc<Flow>>) -> Words {
 }
 
 #[tauri::command]
-pub fn flow_set_words(flow: State<Arc<Flow>>, words: Words) {
-    let mut store = flow.store.lock().unwrap();
-    store.words = words;
-    store.save_words();
+pub fn flow_set_words(flow: State<Arc<Flow>>, words: Words) -> Result<(), String> {
+    flow.store.lock().unwrap().set_words(words)
 }
 
 #[tauri::command]
@@ -600,10 +615,8 @@ pub fn flow_snippets(flow: State<Arc<Flow>>) -> Vec<Snippet> {
 }
 
 #[tauri::command]
-pub fn flow_set_snippets(flow: State<Arc<Flow>>, snippets: Vec<Snippet>) {
-    let mut store = flow.store.lock().unwrap();
-    store.snippets = snippets;
-    store.save_snippets();
+pub fn flow_set_snippets(flow: State<Arc<Flow>>, snippets: Vec<Snippet>) -> Result<(), String> {
+    flow.store.lock().unwrap().set_snippets(snippets)
 }
 
 #[tauri::command]
@@ -612,10 +625,8 @@ pub fn flow_styles(flow: State<Arc<Flow>>) -> Vec<AppStyle> {
 }
 
 #[tauri::command]
-pub fn flow_set_styles(flow: State<Arc<Flow>>, styles: Vec<AppStyle>) {
-    let mut store = flow.store.lock().unwrap();
-    store.app_styles = styles;
-    store.save_styles();
+pub fn flow_set_styles(flow: State<Arc<Flow>>, styles: Vec<AppStyle>) -> Result<(), String> {
+    flow.store.lock().unwrap().set_styles(styles)
 }
 
 #[derive(Serialize, Deserialize)]
