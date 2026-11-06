@@ -44,6 +44,16 @@ struct GitHubPR: Equatable {
     var ci: CIState
     var review: ReviewState
     var headSha: String? = nil   // oid of last commit; nil if not fetched
+    var headRef: String? = nil   // head branch name; ties the session's branch to its PR
+    var reviews: [GitHubReview] = []   // latest review of each reviewer
+}
+
+// MARK: - GitHubReview
+
+struct GitHubReview: Equatable {
+    var id: String
+    var state: String    // APPROVED, CHANGES_REQUESTED, COMMENTED, …
+    var author: String
 }
 
 // MARK: - GitHubRepoCI
@@ -54,6 +64,13 @@ struct GitHubRepoCI: Equatable {
     var branch: String
     var ci: CIState
     var headSha: String? = nil   // oid of HEAD commit; nil if not fetched
+    var link: String? = nil      // the session branch's failing job or commit page
+
+    /// Where a tap goes: `link` when set, the repo's Actions page otherwise.
+    var openURL: String {
+        if let link, !link.isEmpty { return link }
+        return url.hasSuffix("/") ? url + "actions" : url + "/actions"
+    }
 }
 
 // MARK: - GitHubDetailSection
@@ -67,6 +84,13 @@ enum GitHubEvent: Equatable {
     case ciPassed(prId: String)
     case mainFailed(repo: String)
     case reviewRequested(prId: String)
+    // The branch of the last Claude Code session (GitHubBranchCI)
+    case branchCIPassed(repo: String, branch: String)
+    case branchCIFailed(repo: String, branch: String)
+    // A new review on one of your PRs, by someone else
+    case reviewApproved(prId: String)
+    case changesRequested(prId: String)
+    case reviewCommented(prId: String)
 }
 
 // MARK: - GitHubPulse
@@ -77,16 +101,25 @@ struct GitHubPulse: Equatable {
     var toReview: [GitHubPR]
     var mainCI: [GitHubRepoCI]
     var fetchedAt: Date
+    /// CI of the branch checked out by the last Claude Code session; nil when
+    /// there is none, or its repository isn't on GitHub or visible to the token.
+    var branch: GitHubBranchCI? = nil
 
-    /// True when at least one PR CI or default-branch CI is pending — triggers 60 s poll cadence.
+    /// Pull requests nobody has touched in a month are abandoned, not "on the go".
+    static let staleAfter: TimeInterval = 30 * 86_400
+
+    /// True when at least one PR CI, default-branch CI or the session branch's CI
+    /// is pending — triggers 60 s poll cadence.
     var hasPending: Bool {
         myPRs.contains { $0.ci == .pending } ||
-        mainCI.contains { $0.ci == .pending }
+        mainCI.contains { $0.ci == .pending } ||
+        branch?.ci == .pending
     }
 
     // MARK: - Parse
 
-    static func parse(_ data: Data) -> GitHubPulse? {
+    /// `target` is the session's branch the query asked about (`sessionBranch`).
+    static func parse(_ data: Data, target: GitHubBranchRef? = nil, now: Date = Date()) -> GitHubPulse? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let dataNode = root["data"] as? [String: Any],
               let viewer = dataNode["viewer"] as? [String: Any] else { return nil }
@@ -98,12 +131,17 @@ struct GitHubPulse: Equatable {
         if let prConn = viewer["pullRequests"] as? [String: Any],
            let nodes = prConn["nodes"] as? [[String: Any]] {
             var seenPR = Set<String>()
+            let iso = ISO8601DateFormatter()
             for node in nodes {
                 guard let number = node["number"] as? Int,
                       let title  = node["title"]  as? String,
                       let url    = node["url"]     as? String,
                       let repoNode = node["repository"] as? [String: Any],
                       let repo  = repoNode["nameWithOwner"] as? String else { continue }
+                // Bots opening PRs under your name leave plenty of abandoned ones.
+                // A new review bumps updatedAt, so one coming back to life reappears.
+                if let updated = (node["updatedAt"] as? String).flatMap(iso.date(from:)),
+                   now.timeIntervalSince(updated) > staleAfter { continue }
                 let id = "\(repo)#\(number)"
                 guard seenPR.insert(id).inserted else { continue }   // skip duplicates
                 let isDraft = node["isDraft"] as? Bool ?? false
@@ -116,10 +154,17 @@ struct GitHubPulse: Equatable {
                     let rollup = commit["statusCheckRollup"] as? [String: Any]
                     return (rollup?["state"] as? String, commit["oid"] as? String)
                 }()
+                let reviewNodes = (node["latestReviews"] as? [String: Any])?["nodes"] as? [[String: Any]] ?? []
+                let reviews = reviewNodes.map { r in
+                    GitHubReview(id: r["id"] as? String ?? "",
+                                 state: r["state"] as? String ?? "",
+                                 author: (r["author"] as? [String: Any])?["login"] as? String ?? "")
+                }
                 myPRs.append(GitHubPR(
                     id: id, title: title, url: url, repo: repo, number: number,
                     isDraft: isDraft, ci: CIState(rawGitHub: ciRaw),
-                    review: ReviewState(rawGitHub: reviewDecision), headSha: headSha
+                    review: ReviewState(rawGitHub: reviewDecision), headSha: headSha,
+                    headRef: node["headRefName"] as? String, reviews: reviews
                 ))
             }
         }
@@ -172,8 +217,12 @@ struct GitHubPulse: Equatable {
             }
         }
 
+        let branch = target.flatMap {
+            GitHubBranchCI.parse(dataNode["sessionBranch"], target: $0, myPRs: myPRs)
+        }
+
         return GitHubPulse(login: login, myPRs: myPRs, toReview: toReview,
-                           mainCI: mainCI, fetchedAt: Date())
+                           mainCI: mainCI, fetchedAt: now, branch: branch)
     }
 
     // MARK: - Events
@@ -228,6 +277,35 @@ struct GitHubPulse: Equatable {
         for pr in new.toReview {
             if !oldReviewIds.contains(pr.id) {
                 result.append(.reviewRequested(prId: pr.id))
+            }
+        }
+
+        // The session's branch: same headSha logic as PRs, on the same repo and
+        // branch only. Switching to another branch or repo says nothing — that's
+        // old news, not something that just happened.
+        if let b = new.branch, b.pushed, let prev = old.branch,
+           prev.repo == b.repo, prev.branch == b.branch {
+            let finished: CIState? = prev.oid == b.oid
+                ? (prev.ci == .pending && b.ci != .pending ? b.ci : nil)
+                : b.ci
+            switch finished {
+            case .success: result.append(.branchCIPassed(repo: b.repo, branch: b.branch))
+            case .failure: result.append(.branchCIFailed(repo: b.repo, branch: b.branch))
+            default:       break   // still running: the next poll catches it
+            }
+        }
+
+        // New reviews on your PRs, by anyone but you. Only on PRs already seen,
+        // so a PR coming back into the list doesn't replay its old reviews.
+        let oldReviewsSeen = Set(old.myPRs.flatMap { $0.reviews.map(\.id) })
+        for pr in new.myPRs where oldPRmap[pr.id] != nil {
+            for r in pr.reviews where !r.id.isEmpty && r.author != new.login && !oldReviewsSeen.contains(r.id) {
+                switch r.state {
+                case "APPROVED":          result.append(.reviewApproved(prId: pr.id))
+                case "CHANGES_REQUESTED": result.append(.changesRequested(prId: pr.id))
+                case "COMMENTED":         result.append(.reviewCommented(prId: pr.id))
+                default:                  break
+                }
             }
         }
 

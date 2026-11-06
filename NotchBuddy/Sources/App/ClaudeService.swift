@@ -74,6 +74,9 @@ final class KeychainStore: @unchecked Sendable {
         "stripe-api-key",
         "calcom-api-key",
         "notion-api-key",
+        // Google Calendar: the user's own Desktop OAuth client, and the refresh
+        // token Google returns once they have consented.
+        "gcal-client-id", "gcal-client-secret", "gcal-refresh-token",
         "elevenlabs-api-key",
         // WhatsApp (local gateway): its address, credentials and the webhook's signing secret
         "whatsapp-url", "whatsapp-api-key", "whatsapp-webhook-secret",

@@ -796,21 +796,6 @@
       "ko": "사용자 지정 서버",
       "ja": "カスタムサーバー"
     },
-    "Default branch CI": {
-      "zh-Hans": "默认分支 CI",
-      "hi": "डिफ़ॉल्ट ब्रांच CI",
-      "es": "CI de la rama principal",
-      "ar": "CI للفرع الافتراضي",
-      "fr": "CI de la branche par défaut",
-      "bn": "ডিফল্ট ব্রাঞ্চ CI",
-      "pt-BR": "CI do branch padrão",
-      "ru": "CI основной ветки",
-      "id": "CI cabang utama",
-      "de": "CI des Standardbranches",
-      "tr": "Varsayılan dal CI durumu",
-      "ko": "기본 브랜치 CI",
-      "ja": "デフォルトブランチの CI"
-    },
     "Deployment": {
       "zh-Hans": "部署",
       "hi": "डिप्लॉयमेंट",

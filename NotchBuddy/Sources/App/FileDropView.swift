@@ -10,6 +10,8 @@ final class FileDropNSView: NSView {
     var onDragUpdated: ((CGPoint) -> Void)?
     var onDragExited:  (() -> Void)?
     var onFilesDropped: (([URL]) -> Void)?
+    /// A drop with no file in it (text, a link, a file promise): the drag is over all the same.
+    var onDropRejected: (() -> Void)?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -34,7 +36,10 @@ final class FileDropNSView: NSView {
         guard let urls = sender.draggingPasteboard.readObjects(
             forClasses: [NSURL.self],
             options: [.urlReadingFileURLsOnly: true]
-        ) as? [URL], !urls.isEmpty else { return false }
+        ) as? [URL], !urls.isEmpty else {
+            onDropRejected?()
+            return false
+        }
         onFilesDropped?(urls)
         return true
     }
