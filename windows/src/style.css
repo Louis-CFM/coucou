@@ -834,6 +834,49 @@ body {
   height: 6px;
 }
 
+/* What came in since the pill's card was last open (island/unread.ts): the
+   count, in the pill's colour, in place of the ✓. */
+.pill-badge.count {
+  width: auto;
+  min-width: 14px;
+  padding: 0 1px;
+  border-radius: 999px;
+}
+
+.pill-badge.count i {
+  width: auto;
+  min-width: 12px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  font: 700 8px/12px var(--font);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: #0b0c0e;
+}
+
+/* A short wiggle when that count grows, in the open island's pills and the
+   compact island's mini Mochis. */
+@keyframes pill-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-9deg); }
+  40% { transform: rotate(7deg); }
+  60% { transform: rotate(-5deg); }
+  80% { transform: rotate(3deg); }
+}
+
+.pill.wiggle,
+.mini.wiggle {
+  animation: pill-wiggle 0.6s ease-in-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill.wiggle,
+  .mini.wiggle {
+    animation: none;
+  }
+}
+
 /* ── Generic text blocks ────────────────────────────────────────────────── */
 
 .title {

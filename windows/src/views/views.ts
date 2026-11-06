@@ -32,6 +32,7 @@ import { buildMailCard } from "./mail";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
+import { grewAt, newSince, wiggling } from "../island/unread";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -429,7 +430,9 @@ function buildOverview(actions: ViewActions): ViewHost {
       shownSelection = State.cardSelection;
 
       const others = State.otherTasks.slice(0, 4);
-      const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
+      const pillKey = others
+        .map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}:${newSince(t.id)}:${grewAt(t.id)}`)
+        .join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
         clear(pills);
@@ -486,7 +489,16 @@ function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
     (pill.querySelector(".lbl") as HTMLElement).style.color = "";
   });
 
-  if (task.pillBadge) {
+  // What came in since its card was last open (island/unread.ts), in place of the ✓; a short
+  // wiggle when it just grew.
+  const count = newSince(task.id);
+  if (wiggling(task.id)) pill.classList.add("wiggle");
+  if (count > 0 && (task.pillBadge == null || task.pillBadge === "finished")) {
+    const inner = h("i", { style: `background:${task.color}`, text: count > 99 ? "99+" : String(count) });
+    const badge = h("div", { class: "pill-badge count" }, inner);
+    badge.style.boxShadow = `0 0 4px ${task.color}99`;
+    pill.append(badge);
+  } else if (task.pillBadge) {
     const colors = { approval: "#F5A524", finished: "#22C55E", error: "#F4505E" } as const;
     const icons = { approval: ICONS.bang, finished: ICONS.check, error: ICONS.xmark } as const;
     const inner = h("i", { style: `background:${colors[task.pillBadge]}` }, svg(icons[task.pillBadge], 6, { stroke: task.pillBadge === "finished" ? 3 : 0 }));

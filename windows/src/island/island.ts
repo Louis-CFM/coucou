@@ -29,6 +29,7 @@ import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../vie
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
+import { grewAt, wiggling } from "./unread";
 import { restoreAlertFocus } from "./hooks";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
@@ -1416,12 +1417,15 @@ export class Island {
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);
-      const key = others.map((t) => t.id).join("|");
+      // A pill whose count just grew (island/unread.ts) is redrawn to wiggle.
+      const key = others.map((t) => `${t.id}:${grewAt(t.id)}`).join("|");
       if (this.miniGrid.dataset.key !== key) {
         this.miniGrid.dataset.key = key;
         this.miniGrid.replaceChildren();
         for (const t of others) {
-          this.miniGrid.append(createMiniBot(t, 13));
+          const mini = createMiniBot(t, 13);
+          if (wiggling(t.id)) mini.classList.add("wiggle");
+          this.miniGrid.append(mini);
         }
         pruneMiniBots();
       }
