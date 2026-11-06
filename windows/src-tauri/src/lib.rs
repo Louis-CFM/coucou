@@ -1029,6 +1029,8 @@ pub fn run() {
             whatsapp::whatsapp_open,
             whatsapp::whatsapp_close,
             whatsapp::whatsapp_open_app,
+            whatsapp::whatsapp_contacts,
+            whatsapp::whatsapp_start,
             whatsapp::whatsapp_send,
             whatsapp::whatsapp_ignore,
             whatsapp::whatsapp_unignore,

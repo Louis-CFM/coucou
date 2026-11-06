@@ -7,6 +7,12 @@
 // Shift+Enter starts a new line, Escape goes back to the list. Nothing is sent without the user's
 // own Enter or click, and while a reply is being typed the island stays open.
 //
+// The magnifier finds someone, among the conversations and WhatsApp's address book, by name or
+// number; a click or Enter opens their conversation here, empty when it is new, with the same
+// reply field and the same rules (Rust only lets a new one start with someone in your contacts).
+// If Rust refuses, WhatsApp opens at their chat instead. The address book is kept only while the
+// search is open.
+//
 // Built once and synced in place: the field keeps its draft and the keyboard while messages arrive.
 
 import { h, svg, clear, dot } from "./dom";
@@ -14,8 +20,8 @@ import { ICONS } from "./icons";
 import { Bridge } from "../core/bridge";
 import { State } from "../core/state";
 import {
-  WHATSAPP_GREEN, WHATSAPP_ID, WhatsApp, canSend, initials, keyAction, lastMessages, linkColor, linkLabel,
-  preview, previewParts, sendErrorLabel, timeAgo, type WaConversation, type WaMessage,
+  WHATSAPP_GREEN, WHATSAPP_ID, WhatsApp, canSend, findContacts, initials, keyAction, lastMessages, linkColor,
+  linkLabel, preview, previewParts, sendErrorLabel, timeAgo, type WaContact, type WaConversation, type WaMessage,
 } from "../core/whatsapp";
 import { language, t, tl } from "../i18n/i18n";
 
@@ -53,7 +59,14 @@ function bubble(m: WaMessage, isGroup: boolean): HTMLElement {
 export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
   // ── The list ──
   const unreadTag = h("span", { class: "wa-unread" });
-  const head = h("div", { class: "int-head" }, dot(WHATSAPP_GREEN, 7), h("b", { text: "WhatsApp" }), unreadTag);
+  // The search, in the head: the magnifier, or the field and its ✕. Shown and hidden, never moved,
+  // so the field keeps the keyboard while messages arrive.
+  const searchBtn = h("button", { class: "wa-icon", title: tl("Search") }, svg(ICONS.magnifier, 10));
+  const findField = h("input", { class: "wa-search", type: "text", spellcheck: "false" }) as HTMLInputElement;
+  const closeSearch = h("button", { class: "wa-icon", title: tl("Close") }, svg(ICONS.xmark, 9));
+  const headSpacer = h("span", { class: "wa-spacer" });
+  const head = h("div", { class: "int-head wa-list-head" },
+    dot(WHATSAPP_GREEN, 7), h("b", { text: "WhatsApp" }), unreadTag, findField, headSpacer, searchBtn, closeSearch);
   const listBody = h("div", {});
   const listView = h("div", { class: "wa-list" }, head, listBody);
 
@@ -76,11 +89,86 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
   let ignoring: string | null = null;
   let listKey = "";
   let convoKey = "";
+  let searchOpen = false;
+  /** The address book while the search is open, forgotten when it closes; null until it arrives. */
+  let contacts: WaContact[] | null = null;
+  /** The highlighted result: ↓ and ↑ move it, Enter opens it. */
+  let picked = 0;
+  let token = 0;
 
   const current = (): WaConversation | undefined =>
     openChat ? WhatsApp.view.conversations.find((c) => c.id === openChat) : undefined;
 
+  const matches = (): WaContact[] => findContacts(findField.value, WhatsApp.view.conversations, contacts ?? []);
+
+  function setSearch(on: boolean) {
+    if (on === searchOpen) return;
+    searchOpen = on;
+    findField.value = "";
+    picked = 0;
+    contacts = null;
+    const mine = ++token;
+    if (on) {
+      void Bridge.whatsappContacts().then((list) => {
+        if (mine !== token) return;
+        contacts = list ?? [];
+        listKey = "";
+        sync();
+      });
+      host.keyboard(true);
+      window.setTimeout(() => findField.focus(), 80);
+    } else {
+      host.holdOpen(false);
+      host.keyboard(false);
+    }
+    listKey = "";
+    sync();
+  }
+
+  /** Someone picked: their conversation opens here, ready to type. Nothing is sent until Enter. */
+  async function pick(p: WaContact | undefined) {
+    if (!p) return;
+    setSearch(false);
+    if (!WhatsApp.view.conversations.some((c) => c.id === p.id)) {
+      const view = await Bridge.whatsappStart(p.id);
+      if (!view) {
+        // Refused (not in your contacts, or the gateway didn't answer): WhatsApp itself, at the chat.
+        void Bridge.whatsappOpenApp(p.id);
+        return;
+      }
+      WhatsApp.view = view;
+    }
+    open(p.id);
+  }
+
+  searchBtn.addEventListener("click", () => setSearch(true));
+  closeSearch.addEventListener("click", () => setSearch(false));
+  findField.addEventListener("input", () => {
+    picked = 0;
+    // While a name is being typed the island stays open, as for a reply.
+    host.holdOpen(findField.value.trim().length > 0);
+    sync();
+  });
+  findField.addEventListener("keydown", (e) => {
+    const key = (e as KeyboardEvent).key;
+    const found = matches();
+    if (key === "ArrowDown" || key === "ArrowUp") {
+      e.preventDefault();
+      if (found.length > 0) picked = (picked + (key === "ArrowDown" ? 1 : found.length - 1)) % found.length;
+      sync();
+    } else if (key === "Enter" && !(e as KeyboardEvent).isComposing) {
+      e.preventDefault();
+      void pick(found[Math.min(picked, found.length - 1)]);
+    } else if (key === "Escape") {
+      // Back to the list, not the island folding away.
+      e.preventDefault();
+      setSearch(false);
+    }
+    e.stopPropagation();
+  });
+
   function open(id: string) {
+    if (searchOpen) setSearch(false);
     openChat = id;
     ignoring = null;
     field.value = "";
@@ -134,11 +222,13 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     }
   });
 
-  // Leaving the card (another pill, another view, the island folded) closes the conversation.
+  // Leaving the card (another pill, another view, the island folded) closes the conversation, and
+  // the search with its copy of the address book.
   State.subscribe(() => {
-    if (openChat == null) return;
+    if (openChat == null && !searchOpen) return;
     if (State.mode !== "expanded" || State.view !== "overview" || State.focusTask?.id !== WHATSAPP_ID || !WhatsApp.view.on) {
       close();
+      setSearch(false);
     }
   });
 
@@ -182,10 +272,23 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     return r;
   }
 
+  /** A search result: the name and number; a click opens their chat in WhatsApp. */
+  function contactRow(p: WaContact, i: number): HTMLElement {
+    const r = h("button", { class: i === picked ? "int-row wa-row selected" : "int-row wa-row" },
+      avatar(p.name, false),
+      h("span", { class: "int-name wa-row-name", text: p.name }),
+      h("span", { class: "int-sub wa-preview", text: `+${p.id.split("@")[0]}` }),
+    );
+    r.addEventListener("click", () => void pick(p));
+    return r;
+  }
+
   function syncList() {
     const v = WhatsApp.view;
+    const query = searchOpen ? findField.value.trim() : "";
     const key = [
       language(), v.link.state, "detail" in v.link ? v.link.detail : "", v.unread, ignoring,
+      searchOpen, query, picked, contacts?.length ?? -1,
       // The ages move on a minute at a time.
       Math.floor(Date.now() / 60_000),
       ...v.conversations.map((c) => `${c.id}|${c.name}|${c.unread}|${c.lastActivity}|${c.messages[c.messages.length - 1]?.id ?? ""}`),
@@ -193,7 +296,12 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
     if (key === listKey) return;
     listKey = key;
     unreadTag.textContent = v.unread > 0 ? t("{0} unread", { 0: v.unread }) : "";
-    unreadTag.style.display = v.unread > 0 ? "" : "none";
+    unreadTag.style.display = v.unread > 0 && !searchOpen ? "" : "none";
+    findField.placeholder = t("Find a contact");
+    findField.style.display = searchOpen ? "" : "none";
+    closeSearch.style.display = searchOpen ? "" : "none";
+    headSpacer.style.display = searchOpen ? "none" : "";
+    searchBtn.style.display = !searchOpen && v.link.state === "connected" ? "" : "none";
     clear(listBody);
     if (v.link.state !== "connected") {
       listBody.append(
@@ -202,6 +310,10 @@ export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
           class: "link-btn wa-settings", text: t("Settings…"), onclick: () => host.openSettings(),
         })),
       );
+    } else if (query) {
+      const found = matches();
+      if (found.length > 0) listBody.append(h("div", { class: "int-rows wa-rows" }, ...found.map(contactRow)));
+      else listBody.append(h("div", { class: "wa-empty", text: contacts == null ? t("Loading…") : t("Nobody by that name") }));
     } else if (v.conversations.length === 0) {
       listBody.append(h("div", { class: "wa-empty", text: t("No new messages") }));
     } else {
