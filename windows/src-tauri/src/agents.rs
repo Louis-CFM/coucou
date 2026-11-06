@@ -1293,9 +1293,9 @@ mod tests {
     }
 
     #[test]
-    fn only_codex_copilot_and_muse_take_approvals() {
+    fn only_codex_copilot_muse_and_opencode_take_approvals() {
         let with: Vec<&str> = Agent::ALL.iter().filter(|a| a.approvals()).map(|a| a.id()).collect();
-        assert_eq!(with, ["codex", "copilot", "muse"]);
+        assert_eq!(with, ["codex", "copilot", "muse", "opencode"]);
     }
 
     #[test]

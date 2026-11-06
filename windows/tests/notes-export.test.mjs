@@ -17,6 +17,7 @@ registerHooks({ load(url, context, nextLoad) {
   }).outputText };
 } });
 document.addEventListener = () => {};
+window.addEventListener ??= () => {};
 document.documentElement = { lang: "en" };
 document.visibilityState = "hidden";
 globalThis.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };

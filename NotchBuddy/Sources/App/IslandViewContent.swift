@@ -1416,7 +1416,7 @@ struct MailView: View {
 // MARK: - Prompt (chat)
 
 /// The mic's right-click menu: Automatic (the user's languages) or one fixed language.
-private struct DictationLanguageMenu: View {
+struct DictationLanguageMenu: View {
     @Bindable var dictation: MacDictation
 
     var body: some View {
