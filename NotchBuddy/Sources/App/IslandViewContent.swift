@@ -457,7 +457,13 @@ struct ApprovalView: View {
                         let hideAlways = asking == "agent_codex"
                             || asking == "agent_copilot"
                             || asking == "agent_muse"
-                        if !hideAlways {
+                        if asking == "agent_antigravity" {
+                            // Antigravity waits on the card: this hands it back to its own
+                            // prompt in the terminal, where "Always allow" lives.
+                            SecondaryButton("Reply in terminal") {
+                                HookServer.shared.sendApprovalDecision("ask", for: shownId)
+                            }
+                        } else if !hideAlways {
                             SecondaryButton("Always") {
                                 HookServer.shared.sendApprovalDecision("always", for: shownId)
                             }

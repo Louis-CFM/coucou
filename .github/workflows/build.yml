@@ -57,6 +57,9 @@ jobs:
       - name: Test the settings search (accents, words, labels)
         run: bash scripts/test-settings-search.sh
 
+      - name: Test Antigravity permission rules
+        run: bash scripts/test-agy-permissions.sh
+
       - name: Test Flow dictation keys
         run: bash scripts/test-flow-keys.sh
 
