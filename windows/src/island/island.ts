@@ -16,6 +16,7 @@ import {
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
+import { WhatsApp, whatsappHeight } from "../core/whatsapp";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -163,7 +164,20 @@ export class Island {
     State.subscribe(() => {
       this.dirty = true;
       this.ensureRunning();
+      // The WhatsApp card came to the front, or a conversation opened or closed in it: the open
+      // island takes its new height (a view change resizes it by itself).
+      const wa = this.whatsappH();
+      if (wa !== this.lastWhatsappH) {
+        this.lastWhatsappH = wa;
+        if (State.mode === "expanded") this.animateGeometry(this.targetSize().h < this.height.value);
+      }
     });
+  }
+
+  private lastWhatsappH: number | null = null;
+
+  private whatsappH(): number | null {
+    return whatsappHeight(State.mode, State.view, State.focusTask?.id ?? null, WhatsApp.view.on, WhatsApp.reading);
   }
 
   /** The request has its answer: the card goes and the session carries on. */
@@ -771,6 +785,8 @@ export class Island {
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
+    // The WhatsApp card in front: taller, so it can be read.
+    h = this.whatsappH() ?? h;
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }

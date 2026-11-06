@@ -368,7 +368,10 @@ account only, because WhatsApp may restrict accounts that abuse it.
 
 - The island lists one row per conversation, with its initials, name, last
   message and unread count. Photos, voice messages and other media show as a
-  label; Coucou never downloads them.
+  label; Coucou never downloads them. With the WhatsApp card in front, the
+  open island is taller, so more conversations show.
+- An open conversation takes the whole island, as tall as the chat, with its
+  messages a size up; the other pills come back with ‹ or Escape.
 - Click a conversation for its last ten messages and a reply field. **Enter**
   sends, **Shift+Enter** starts a new line and **Escape** goes back. Nothing is
   ever sent without your Enter or click.
