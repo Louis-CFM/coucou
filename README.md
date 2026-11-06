@@ -43,7 +43,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 Since 0.4, Coucou has its own window and sits in the Dock. On the left, **Flow** — everything about your voice — and **Notch**, all the settings of the island. *(macOS, GitHub build)*
 
-- 🎙️ **Flow dictation** — hold a key anywhere on the Mac (right ⌥ by default, or fn, right ⌘ or right ⌃), speak, let go: your words are pasted where you type, in any app. Two quick taps for hands-free, Esc to cancel, ⌃⌘V to paste the last one again. Your clipboard gets back what it held.
+- 🎙️ **Flow dictation** — hold a key anywhere on the Mac (right ⌥ by default, or fn, right ⌘ or right ⌃), speak, let go: your words are pasted where you type, in any app. Two quick taps for hands-free (or one, with a setting), Esc to cancel, ⌃⌘V to paste the last one again. Your clipboard gets back what it held.
 - 💊 **The pill** — a small see-through pill at the bottom of the screen (or on its left or right edge). Hover it for a toolbar: dictate, record a call, open Coucou. While you speak, Mochi listens and nine dots follow your voice.
 - 🦜 **Parakeet, offline** — run NVIDIA's Parakeet on your Mac's Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio): more accurate, 25 languages, nothing leaves your Mac. One click to download (about 650 MB), Apple silicon only. Until then the Mac's own recognition is used.
 - ✍️ **Your words, your way** — a dictionary of names Coucou always spells right, replacements, snippets (say a short phrase, paste a whole text), and an optional clean-up by Claude, on your Claude plan through Claude Code or with your own key: as said, natural or polished, per app.

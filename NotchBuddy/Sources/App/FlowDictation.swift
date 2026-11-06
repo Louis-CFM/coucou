@@ -111,6 +111,13 @@ final class FlowDictation: ObservableObject {
             pill.setEdge(pillEdge)
         }
     }
+    /// One short press of the key starts hands-free dictation, instead of two.
+    @Published var oneTapHandsFree: Bool = UserDefaults.standard.bool(forKey: "flowOneTapHandsFree") {
+        didSet {
+            UserDefaults.standard.set(oneTapHandsFree, forKey: "flowOneTapHandsFree")
+            logic.oneTap = oneTapHandsFree
+        }
+    }
     /// Whether macOS lets Coucou watch the key and paste (System Settings → Privacy & Security → Accessibility).
     @Published private(set) var trusted: Bool = AXIsProcessTrusted()
 
@@ -134,6 +141,7 @@ final class FlowDictation: ObservableObject {
         pill = FlowPillController(bands: bands)
         // The pill's buttons, under the pointer.
         pill.setEdge(pillEdge)
+        logic.oneTap = oneTapHandsFree
         pill.model.keyLabel = key.label
         pill.model.dictate = { [weak self] in self?.startHandsFree() }
         pill.model.finishDictation = { [weak self] in self?.finishFromPill() }

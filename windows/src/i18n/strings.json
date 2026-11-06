@@ -3992,6 +3992,21 @@
    "ko": "핸즈프리",
    "ja": "ハンズフリー"
   },
+  "Hands-free with one press": {
+   "zh-Hans": "按一次即免手持",
+   "hi": "एक बार दबाकर हैंड्स-फ़्री",
+   "es": "Manos libres con una pulsación",
+   "ar": "دون استخدام اليدين بضغطة واحدة",
+   "fr": "Mains libres en une pression",
+   "bn": "এক চাপে হ্যান্ডস-ফ্রি",
+   "pt-BR": "Mãos livres com um toque",
+   "ru": "Без рук одним нажатием",
+   "id": "Tanpa tangan dengan sekali tekan",
+   "de": "Freihändig mit einem Druck",
+   "tr": "Tek basışla eller serbest",
+   "ko": "한 번 눌러 핸즈프리",
+   "ja": "1 回押すだけでハンズフリー"
+  },
   "He sweats when the processor is at full load, flushes when the Mac is hot, puffs up when memory is short and gets sleepy when the battery is low. Point at Mochi to see why. Read only while Mochi is on screen; nothing leaves your Mac.": {
    "zh-Hans": "处理器满载时他会流汗，Mac 发热时他会脸红，内存不足时他会鼓起来，电量低时他会犯困。把指针放到 Mochi 上就能看到原因。仅在 Mochi 显示时读取，所有数据都留在你的 Mac 上。",
    "hi": "प्रोसेसर पूरी तरह व्यस्त हो तो उसे पसीना आता है, Mac गर्म हो तो वह लाल हो जाता है, मेमोरी कम हो तो फूल जाता है और बैटरी कम हो तो उसे नींद आती है। वजह देखने के लिए मोची पर पॉइंटर रखें। सिर्फ़ तब पढ़ा जाता है जब मोची स्क्रीन पर हो; कुछ भी आपके Mac से बाहर नहीं जाता।",
@@ -10066,6 +10081,21 @@
    "tr": "Coucou ile konuş",
    "ko": "Coucou에게 말하기",
    "ja": "Coucou と話す"
+  },
+  "Tap once, speak as long as you like, tap again to paste.": {
+   "zh-Hans": "按一次，想说多久就说多久，再按一次即粘贴。",
+   "hi": "एक बार दबाएँ, जितना चाहें बोलें, चिपकाने के लिए फिर से दबाएँ।",
+   "es": "Pulsa una vez, habla lo que quieras y vuelve a pulsar para pegar.",
+   "ar": "اضغط مرة، وتحدّث كما تشاء، ثم اضغط مرة أخرى للصق.",
+   "fr": "Tape une fois, parle aussi longtemps que tu veux, tape encore pour coller.",
+   "bn": "একবার চাপুন, যতক্ষণ খুশি বলুন, পেস্ট করতে আবার চাপুন।",
+   "pt-BR": "Toque uma vez, fale o quanto quiser, toque de novo para colar.",
+   "ru": "Нажмите один раз, говорите сколько угодно, нажмите снова, чтобы вставить.",
+   "id": "Ketuk sekali, bicara sepuasnya, ketuk lagi untuk menempel.",
+   "de": "Einmal drücken, beliebig lange sprechen, erneut drücken zum Einfügen.",
+   "tr": "Bir kez bas, istediğin kadar konuş, yapıştırmak için tekrar bas.",
+   "ko": "한 번 탭하고 원하는 만큼 말한 다음, 다시 탭하면 붙여넣어져요.",
+   "ja": "1 回タップして好きなだけ話し、もう一度タップで貼り付けます。"
   },
   "Tap twice, speak as long as you like, tap once to paste.": {
    "zh-Hans": "连按两次，想说多久就说多久，再按一次即粘贴。",
