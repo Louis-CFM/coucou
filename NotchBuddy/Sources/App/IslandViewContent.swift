@@ -1064,12 +1064,6 @@ struct UploadView: View {
             }
             .padding(.leading, 196)
             .frame(maxWidth: .infinity, alignment: .leading)
-            #if !APPSTORE
-            // Or straight into a session's prompt.
-            SessionDropTargets(state: state)
-                .padding(.trailing, 22)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            #endif
         }
     }
 }
