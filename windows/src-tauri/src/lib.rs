@@ -2,6 +2,8 @@
 
 mod agent_hooks;
 mod agents;
+mod agy_approvals;
+mod agy_rules;
 mod chat;
 mod claude;
 mod claude_code;
@@ -12,11 +14,14 @@ mod desktop;
 mod files;
 mod flow;
 mod github;
+mod herdr;
 mod hooks;
 mod i18n;
 mod identity;
 mod integrations;
+mod calcom;
 mod island;
+mod launch;
 mod local_chat;
 mod log;
 mod mail;
@@ -41,6 +46,7 @@ mod update;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
+mod webview_memory;
 mod whatsapp;
 
 use std::process::Command;
@@ -114,6 +120,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay = current.phone_relay;
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
+        // Antigravity approvals: only their own switch changes them (agy_approvals.rs).
+        settings.agy_approvals_enabled = current.agy_approvals_enabled;
         *current = settings;
         (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -321,16 +329,18 @@ fn open_in_vscode(path: Option<String>) -> bool {
 
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
-/// folder in VS Code, as before.
+/// folder in VS Code, as before. A session in herdr also gets its pane selected,
+/// and never falls back to VS Code.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+    let in_herdr = session_id.as_deref().is_some_and(herdr::focus);
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return open_in_vscode(path);
+        return in_herdr || open_in_vscode(path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
     {
-        if platform::focus_session_window(&owners, &folder) {
+        if platform::focus_session_window(&owners, &folder) || in_herdr {
             return true;
         }
         open_in_vscode(path)
@@ -341,7 +351,7 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) {
+            if !platform::focus_session_window(&owners, &folder) && !in_herdr {
                 open_in_vscode(path);
             }
         });
@@ -770,6 +780,7 @@ fn create_settings_window(app: &AppHandle) {
                     api.prevent_close();
                     let _ = this.hide();
                     set_hub_shown(&this, false);
+                    webview_memory::set_low(&this, true);
                 }
                 // Minimised (a 0×0 resize on Windows) or back from it.
                 tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true) => {
@@ -778,6 +789,7 @@ fn create_settings_window(app: &AppHandle) {
                 }
                 _ => {}
             });
+            webview_memory::set_low(&win, true); // created hidden
         }
         Err(err) => log::line(format!("Coucou window failed: {err}")),
     }
@@ -822,6 +834,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
         let _ = app.run_on_main_thread(move || {
             create_settings_window(&handle);
             if let Some(win) = handle.get_webview_window(HUB_LABEL) {
+                webview_memory::set_low(&win, false);
                 let _ = win.show();
                 let _ = win.set_focus();
                 set_hub_shown(&win, true);
@@ -832,6 +845,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     if let Some(page) = page {
         let _ = win.emit("hub-page", page.to_string());
     }
+    webview_memory::set_low(&win, false);
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
@@ -913,6 +927,9 @@ pub fn run() {
             open_gitea_url,
             open_in_vscode,
             open_session,
+            launch::launch_session,
+            launch::pick_folder,
+            launch::drop_into_session,
             open_claude_desktop,
             open_file_in_vscode,
             quit_app,
@@ -930,6 +947,8 @@ pub fn run() {
             approval_answer,
             approval_ack,
             approval_decline,
+            agy_approvals::agy_approvals_status,
+            agy_approvals::agy_approvals_set_enabled,
             log_line,
             chat_send,
             chat_models,
@@ -1009,6 +1028,7 @@ pub fn run() {
             whatsapp::whatsapp_island,
             whatsapp::whatsapp_open,
             whatsapp::whatsapp_close,
+            whatsapp::whatsapp_open_app,
             whatsapp::whatsapp_send,
             whatsapp::whatsapp_ignore,
             whatsapp::whatsapp_unignore,
@@ -1064,6 +1084,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
+            secrets::warm_up();
             app.manage(phone_link::PhoneLink::new(handle.clone()));
             tray::build(&handle)?;
             // Before the island: see create_settings_window.

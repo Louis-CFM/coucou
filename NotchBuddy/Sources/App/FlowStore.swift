@@ -6,6 +6,9 @@ struct FlowEntry: Codable, Identifiable, Hashable, Sendable {
     var id = UUID()
     var date: Date
     var text: String
+    /// What was heard, when Claude rewrote it (clean-up, prompt mode, translation, speech level);
+    /// nil when the words went in as they were. Older entries have none.
+    var heard: String?
     /// The app it was pasted in ("Slack"), when known.
     var app: String?
     var words: Int
@@ -171,7 +174,7 @@ final class FlowStore: ObservableObject {
     /// When the history is not kept, the last dictation still waits here (memory only) for "paste again".
     private var lastUnkeptText: String?
 
-    func record(text: String, app: String?, seconds: Double) {
+    func record(text: String, heard: String? = nil, app: String?, seconds: Double) {
         let count = FlowText.wordCount(text)
         guard count > 0 else { return }
         let now = Date()
@@ -188,7 +191,7 @@ final class FlowStore: ObservableObject {
             lastUnkeptText = text
             return
         }
-        history.insert(FlowEntry(date: now, text: text, app: app, words: count, seconds: seconds), at: 0)
+        history.insert(FlowEntry(date: now, text: text, heard: heard, app: app, words: count, seconds: seconds), at: 0)
         prune()
         saveHistory()
     }

@@ -1464,6 +1464,143 @@ input[type="range"]::-webkit-slider-thumb {
   transform: scale(0.94);
 }
 
+/* ── New Claude Code session (views/launch.ts, Mac LaunchView) ─────────── */
+
+.launch-body {
+  padding: 4px 16px 4px 98px;
+  justify-content: center;
+  gap: 8px;
+}
+
+.launch-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.launch-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 600 14px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.launch-project {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 190px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #c9cdd4;
+  cursor: default;
+}
+
+.launch-project:hover,
+.launch-project.open {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.launch-project svg {
+  flex: 0 0 auto;
+}
+
+.launch-project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 11px var(--font);
+}
+
+.launch-send:disabled {
+  opacity: 0.4;
+}
+
+.launch-hint {
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.launch-hint.is-failed {
+  color: #f4505e;
+}
+
+.launch-menu {
+  display: none;
+  max-height: 72px;
+}
+
+.launch-body.choosing .launch-menu {
+  display: flex;
+}
+
+.launch-body.choosing .launch-bar,
+.launch-body.choosing .launch-hint {
+  display: none;
+}
+
+/* ── Sessions on the drop card (views/session-drop.ts, Mac SessionDropTargets) */
+
+#session-drop {
+  position: absolute;
+  inset: 0;
+  display: none;
+  pointer-events: none;
+}
+
+#session-drop.on {
+  display: block;
+}
+
+#session-drop .sd-title {
+  position: absolute;
+  font: 500 10.5px var(--font);
+  line-height: 14px;
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#session-drop .sd-row {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.07);
+  color: #d5d7db;
+  font: 400 11.5px var(--font);
+  transition: background 0.12s ease-out, color 0.12s ease-out, border-color 0.12s ease-out;
+}
+
+#session-drop .sd-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#session-drop .sd-row.over {
+  color: #34d399;
+  font-weight: 600;
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.7);
+}
+
 /* ── Drop zone ──────────────────────────────────────────────────────────── */
 
 .drop-card {
@@ -3107,6 +3244,45 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+.cal-booking {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.cal-booking:hover { background: #ffffff0a; }
+.cal-booking:focus-visible { outline: 2px solid #C9956A; outline-offset: 2px; }
+
+/* Cal.com detail: the card takes the island's height and only .cal-body scrolls, between the head
+   (with the month's navigation and weekday names) and the Open action. Day rows as on the Mac: 18 px, 1 px apart. */
+.int-card.cal-card {
+  height: 100%;
+  box-sizing: border-box;
+  padding-bottom: 8px;
+}
+.cal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.cal-body::-webkit-scrollbar { display: none; }
+.cal-weekdays,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px 3px;
+}
+.int-actions.cal-nav,
+.cal-weekdays { padding-top: 2px; }
+.cal-weekdays span { text-align: center; opacity: .65; font-size: 10px; }
+.cal-weekdays + .cal-body { padding-top: 1px; }
+.cal-day {
+  min-height: 18px;
+  border-radius: 5px;
+}
+
 
 /* ── Mail (classic Outlook) — MailViews.swift ─────────────────────────────── */
 .mail-card {

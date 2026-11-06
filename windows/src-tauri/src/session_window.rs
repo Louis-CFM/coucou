@@ -158,13 +158,13 @@ pub fn folder_name(path: &str) -> &str {
 /// that does on Windows, every ancestor on Linux. Empty for a session whose
 /// window could not be found, so it is not looked for on every event. Small:
 /// an old session is dropped once there are more than this many.
-const MAX_SESSIONS: usize = 64;
+pub(crate) const MAX_SESSIONS: usize = 64;
 
 static SESSIONS: Mutex<Vec<(String, Vec<u32>)>> = Mutex::new(Vec::new());
 
 /// A session ID arrives in a hook payload: only what Claude Code sends (a
 /// UUID) is kept, at most 128 characters.
-fn valid_session(id: &str) -> bool {
+pub(crate) fn valid_session(id: &str) -> bool {
     !id.is_empty() && id.len() <= 128 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 

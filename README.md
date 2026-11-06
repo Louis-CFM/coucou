@@ -43,10 +43,10 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 Since 0.4, Coucou has its own window and sits in the Dock. On the left, **Flow** — everything about your voice — and **Notch**, all the settings of the island. *(macOS, GitHub build)*
 
-- 🎙️ **Flow dictation** — hold a key anywhere on the Mac (right ⌥ by default, or fn, right ⌘ or right ⌃), speak, let go: your words are pasted where you type, in any app. Two quick taps for hands-free, Esc to cancel, ⌃⌘V to paste the last one again. Your clipboard gets back what it held.
+- 🎙️ **Flow dictation** — hold a key anywhere on the Mac (right ⌥ by default, or fn, right ⌘ or right ⌃), speak, let go: your words are pasted where you type, in any app. Two quick taps for hands-free (or one, with a setting), Esc to cancel, ⌃⌘V to paste the last one again. Your clipboard gets back what it held.
 - 💊 **The pill** — a small see-through pill at the bottom of the screen (or on its left or right edge). Hover it for a toolbar: dictate, record a call, open Coucou. While you speak, Mochi listens and nine dots follow your voice.
 - 🦜 **Parakeet, offline** — run NVIDIA's Parakeet on your Mac's Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio): more accurate, 25 languages, nothing leaves your Mac. One click to download (about 650 MB), Apple silicon only. Until then the Mac's own recognition is used.
-- ✍️ **Your words, your way** — a dictionary of names Coucou always spells right, replacements, snippets (say a short phrase, paste a whole text), and an optional clean-up by Claude with your own key: as said, natural or polished, per app.
+- ✍️ **Your words, your way** — a dictionary of names Coucou always spells right, replacements, snippets (say a short phrase, paste a whole text), and an optional clean-up by Claude, on your Claude plan through Claude Code or with your own key: as said, natural or polished, per app.
 - 📝 **Notetaker** — click Record a call: Coucou records your microphone and what your Mac plays, no bot joins the call. Then you get the transcript person by person, a summary, the key points and the to-dos, written by Claude with your key or by Apple Intelligence on your Mac. The audio is deleted once the transcript is written. Tell the people in the call that you record.
 - 📊 **Statistics** — words dictated, time saved, words per minute, days in a row and the apps you dictate in. Counted on your Mac, never sent anywhere.
 
@@ -279,11 +279,68 @@ rest of the differences.
 - **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
 - **Fedora / openSUSE**: `sudo dnf install ./Coucou-Linux-*.rpm`
 
-Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. On Arch Linux, build it with the [PKGBUILD](linux/arch/PKGBUILD).
+Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. On Arch Linux, build it with the [PKGBUILD](linux/arch/PKGBUILD); on NixOS, use the [flake](#nixos).
 
 The island sits on the top edge on compositors with layer-shell — COSMIC, KDE
 Plasma, Hyprland, Sway and other wlroots compositors. GNOME has no layer-shell,
 so there it runs through XWayland as a dock window at the top of the screen. See [`windows/README.md`](windows/README.md#linux).
+
+### NixOS
+
+Coucou has a Nix flake for `x86_64-linux` and `aarch64-linux`. It builds Coucou from source on your machine, so the first build takes a while (about 20 minutes on a laptop, mostly Rust).
+
+**Try it** without installing anything:
+
+```bash
+nix run github:Louis-CFM/coucou
+```
+
+Flakes not turned on yet? Add `--extra-experimental-features 'nix-command flakes'` after `nix`.
+
+**Install it** from your system flake:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    coucou.url = "github:Louis-CFM/coucou";
+  };
+
+  outputs = { nixpkgs, coucou, ... }: {
+    nixosConfigurations.my-machine = nixpkgs.lib.nixosSystem {
+      modules = [
+        ./configuration.nix
+        ({ pkgs, ... }: {
+          environment.systemPackages = [
+            coucou.packages.${pkgs.stdenv.hostPlatform.system}.default
+          ];
+        })
+      ];
+    };
+  };
+}
+```
+
+Then `sudo nixos-rebuild switch`. With Home Manager, the same package goes in `home.packages`. To build it against your own nixpkgs rather than the one pinned in Coucou's `flake.lock`, add `coucou.inputs.nixpkgs.follows = "nixpkgs";` (the flake is tested with nixos-unstable).
+
+**Or through the overlay**, as `pkgs.coucou`. Your nixpkgs then has to allow it (see *License* below):
+
+```nix
+nixpkgs.overlays = [ coucou.overlays.default ];
+nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "coucou" ];
+environment.systemPackages = [ pkgs.coucou ];
+```
+
+**Update** with `nix flake update coucou`, then rebuild. The input follows `main`; to stay on releases, point it at a tag instead, like `github:Louis-CFM/coucou/linux-v0.6.0` (from the first release that has the flake). Coucou's own update card only links to the release page on Linux, so it never touches your system.
+
+**Good to know**
+
+- **License.** The package is marked unfree: the code is MIT, but the name, Mochi, the icon and the sounds are not (see [LICENSE-ASSETS.md](LICENSE-ASSETS.md)). Building it for yourself is allowed, which is what the flake does; it also keeps Coucou off public binary caches. The flake's `packages` allow it on their own; with the overlay, your config decides.
+- **Claude Code hooks** work as on any Linux. Coucou copies its relay to `~/.local/share/coucou/bin/` at each launch, so the hooks in `~/.claude/settings.json` keep working across updates and garbage collections. **Start at login** and the shortcut commands in Settings use `coucou` from your `PATH`, for the same reason.
+- **API keys** go to the Secret Service. GNOME and Plasma have one; on Hyprland, Sway and other window managers, add `services.gnome.gnome-keyring.enable = true;`.
+- **On Wayland**, Flow dictation and global shortcuts go through `xdg-desktop-portal`, which the NixOS GNOME, Plasma and Hyprland modules turn on for you.
+- **The tray icon on GNOME** needs the AppIndicator extension: add `pkgs.gnomeExtensions.appindicator` and turn it on in Extensions. Without it, launch Coucou again to open its window.
+- **WhatsApp.** *Install WhatsApp* downloads GOWA's build for generic Linux. If it doesn't start (the dot stays grey and `~/.local/share/coucou/coucou.log` says `GOWA could not start`), add `programs.nix-ld.enable = true;` so programs built for other distributions can run.
 
 ### Build from source
 
@@ -320,6 +377,8 @@ npm install
 npm run pack                # AppImage, .deb and .rpm land in windows/release/
 ```
 
+On NixOS, `nix develop` gives you all of this: then `cd windows && npm ci && npm run tauri dev`.
+
 **Android** — requirements: JDK 17 and the Android SDK (platform 35).
 
 ```bash
@@ -337,7 +396,7 @@ On the Mac, open Coucou from the Dock or the menu bar: its window has every sett
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
 | **Claude plan** *(macOS, GitHub build)* | Plan usage gauge in the notch header | **Install relay** in Settings → Agents → Plan usage, then enable "Show in the notch" |
 | **Gemini CLI hooks** | Gemini CLI sessions in the island | **Install hooks** in Settings → Gemini CLI — backs up `~/.gemini/settings.json` |
-| **Antigravity (agy) hooks** | agy sessions in the island | **Install hooks** in Settings → Antigravity — backs up `~/.gemini/config/hooks.json` |
+| **Antigravity (agy) hooks** | agy sessions in the island, and *(macOS, optional)* its commands approved from the notch | **Install hooks** in Settings → Antigravity — backs up `~/.gemini/config/hooks.json`; then turn on **Approve commands from the notch** |
 | **Anthropic API key** | chat and questions about files | Settings → Anthropic API · Keychain / Windows Credential Manager / Secret Service |
 | **Google AI API key** *(macOS)* | chat with Google AI (Gemini) | Settings → Chat — other providers · Keychain |
 | **OpenAI API key** *(macOS)* | chat with OpenAI | Settings → Chat — other providers · Keychain |

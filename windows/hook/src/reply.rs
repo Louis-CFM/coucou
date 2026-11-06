@@ -9,10 +9,18 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI, Muse Code and Claude Desktop. Any decision
-/// for another agent is ignored here too, whatever the app sent.
+/// (no `--agent`), Codex, Copilot CLI, Muse Code, Claude Desktop and OpenCode. Any
+/// decision for another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse" | "claude-desktop")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "claude-desktop" | "opencode")
+}
+
+/// Antigravity's PreToolUse: Antigravity has no permission request and waits for
+/// this hook's decision instead, so the relay waits for Coucou's line (main.rs).
+/// Coucou only shows a card when Settings → Agents → Antigravity → Approve
+/// commands from the notch is on (src-tauri/src/agy_approvals.rs).
+pub fn waits_on_pre_tool(agent: &str, event: &str) -> bool {
+    agent.eq_ignore_ascii_case("antigravity") && event == "PreToolUse"
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -27,9 +35,15 @@ fn wants_json(agent: &str) -> bool {
 pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
     if event != "PermissionRequest" {
         // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
-        // (and the user's Always Allow): Coucou never allows a tool by itself.
-        if agent.eq_ignore_ascii_case("antigravity") && event == "PreToolUse" {
-            return Some(r#"{"decision":"ask"}"#.to_string());
+        // (and the user's Always Allow): Coucou never allows a tool by itself, only a
+        // click on the island's Allow does. The Mac relay's replies, key for key.
+        if waits_on_pre_tool(agent, event) {
+            let reply = match decision.map(str::trim) {
+                Some("allow" | "always") => r#"{"decision":"allow"}"#,
+                Some("deny") => r#"{"decision":"deny","reason":"Denied from Coucou"}"#,
+                _ => r#"{"decision":"ask"}"#,
+            };
+            return Some(reply.to_string());
         }
         return wants_json(agent).then(|| "{}".to_string());
     }
@@ -174,7 +188,8 @@ mod tests {
         for agent in AGENTS {
             for event in EVENTS.iter().filter(|e| **e != "PermissionRequest") {
                 if let Some(out) = stdout(agent, event, Some("allow"), None) {
-                    assert!(!allows(&out), "{agent:?} {event}: {out}");
+                    // Antigravity's PreToolUse is its permission request (see waits_on_pre_tool).
+                    assert_eq!(allows(&out), waits_on_pre_tool(agent, event), "{agent:?} {event}: {out}");
                 }
             }
             let out = stdout(agent, "PermissionRequest", Some("allow"), None);
@@ -186,13 +201,18 @@ mod tests {
     fn each_agent_gets_its_own_reply_shape() {
         let allow = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#;
         let deny = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#;
-        for agent in ["", "codex", "claude-desktop"] {
+        for agent in ["", "codex", "claude-desktop", "opencode"] {
             assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), allow);
             assert_eq!(stdout(agent, "PermissionRequest", Some("always"), None).unwrap(), allow);
             assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), deny);
             assert_eq!(stdout(agent, "PermissionRequest", None, None), None);
             assert_eq!(stdout(agent, "PreToolUse", None, None), None);
         }
+        // OpenCode shares Claude Code's hookSpecificOutput, and unlike Copilot it
+        // is not fail-closed: with no decision it stays silent and OpenCode asks
+        // in its own TUI. It never gets JSON on ordinary events either.
+        assert_eq!(stdout("opencode", "PermissionRequest", None, None), None);
+        assert_eq!(stdout("opencode", "PreToolUse", None, None), None);
         for agent in ["copilot", "muse"] {
             assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), r#"{"permissionDecision":"allow"}"#);
             assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), r#"{"permissionDecision":"deny"}"#);
@@ -204,6 +224,18 @@ mod tests {
         // Antigravity needs a decision on PreToolUse: "ask" leaves it to Antigravity's own prompt;
         // other lifecycle events receive "{}".
         assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"ask"}"#);
+        // With a click on the island's card: the Mac relay's replies. Reply in terminal,
+        // or anything that is not a click, hands it back to Antigravity's prompt.
+        assert_eq!(stdout("antigravity", "PreToolUse", Some("allow"), None).unwrap(), r#"{"decision":"allow"}"#);
+        assert_eq!(
+            stdout("antigravity", "PreToolUse", Some("deny"), None).unwrap(),
+            r#"{"decision":"deny","reason":"Denied from Coucou"}"#
+        );
+        for not_a_click in ["ask", "pending", "", "maybe", r#"{"permissionDecision":"allow"}"#] {
+            assert_eq!(stdout("antigravity", "PreToolUse", Some(not_a_click), None).unwrap(), r#"{"decision":"ask"}"#);
+        }
+        // Antigravity has no permission request of its own: nothing is relayed there.
+        assert_eq!(stdout("antigravity", "PermissionRequest", Some("allow"), None), None);
         for event in ["PostToolUse", "UserPromptSubmit", "Stop"] {
             assert_eq!(stdout("antigravity", event, None, None).unwrap(), "{}");
         }

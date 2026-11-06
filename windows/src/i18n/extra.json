@@ -2191,21 +2191,6 @@
       "ko": "질문",
       "ja": "質問"
     },
-    "Ready": {
-      "zh-Hans": "就绪",
-      "hi": "तैयार",
-      "es": "Listo",
-      "ar": "جاهز",
-      "fr": "Prêt",
-      "bn": "প্রস্তুত",
-      "pt-BR": "Pronto",
-      "ru": "Готово",
-      "id": "Siap",
-      "de": "Bereit",
-      "tr": "Hazır",
-      "ko": "준비 완료",
-      "ja": "準備完了"
-    },
     "Reinstall hooks…": {
       "zh-Hans": "重新安装 hooks…",
       "hi": "hooks फिर से इंस्टॉल करें…",
@@ -7533,6 +7518,21 @@
       "tr": "Coucou sizi dinlerken videolar, müzik ve aramalar susar, sonra geri gelir. Coucou'nun kendi sesleri çalmaya devam eder.",
       "ko": "Coucou가 듣는 동안 동영상, 음악, 통화 소리가 꺼졌다가 다시 돌아옵니다. Coucou 자체의 소리는 계속 납니다.",
       "ja": "Coucou が聞いている間は動画・音楽・通話の音が消え、終わると戻ります。Coucou 自身の音はそのまま鳴ります。"
+    },
+    "Copied: paste it into the session's terminal.": {
+      "zh-Hans": "已拷贝：请粘贴到会话的终端中。",
+      "hi": "कॉपी हो गया: इसे सत्र के टर्मिनल में चिपकाएँ।",
+      "es": "Copiado: pégalo en el terminal de la sesión.",
+      "ar": "تم النسخ: ألصقه في طرفية الجلسة.",
+      "fr": "Copié : colle-le dans le terminal de la session.",
+      "bn": "কপি হয়েছে: সেশনের টার্মিনালে পেস্ট করুন।",
+      "pt-BR": "Copiado: cole no terminal da sessão.",
+      "ru": "Скопировано: вставьте в терминал сессии.",
+      "id": "Tersalin: tempel di terminal sesi.",
+      "de": "Kopiert: füge es in das Terminal der Sitzung ein.",
+      "tr": "Kopyalandı: oturumun terminaline yapıştır.",
+      "ko": "복사됨: 세션의 터미널에 붙여 넣으세요.",
+      "ja": "コピーしました：セッションのターミナルに貼り付けてください。"
     }
   }
 }
