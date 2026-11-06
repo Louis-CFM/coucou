@@ -5,6 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { IS_TAURI } from "./bridge";
 import { t } from "../i18n/i18n";
+import { CARD_LIST_H, CARD_READ_H } from "./layout";
 
 export const MAIL_ID = "integration_mail";
 export const MAIL_BLUE = "#2F8CFF";
@@ -157,6 +158,21 @@ export const MailBridge = {
 
 /** The chat's Mail switch: off at each start, like the Mac's. */
 export const MailChat = { on: false };
+
+/** An email open in the island's card: it takes the whole island (mailHeight). */
+export const MailCard = { reading: false };
+
+/**
+ * The open island's height while the Mail card is in front, so mail can be read: taller for the
+ * list, and the chat view's height for an open email (which also takes the island's whole width).
+ * Null otherwise, or while Outlook isn't running: the usual height.
+ */
+export function mailHeight(
+  mode: string, view: string, focusId: string | null, running: boolean, reading: boolean,
+): number | null {
+  if (mode !== "expanded" || view !== "overview" || focusId !== MAIL_ID || !running) return null;
+  return reading ? CARD_READ_H : CARD_LIST_H;
+}
 
 export function messageId(m: MailMessage): string {
   return `${m.storeId}/${m.entryId}`;

@@ -4,6 +4,7 @@
 // chosen here, in the user's language. Nothing of a message is stored by the page either.
 
 import { N_, t } from "../i18n/i18n";
+import { CARD_LIST_H, CARD_READ_H } from "./layout";
 
 export const WHATSAPP_ID = "integration_whatsapp";
 /** WhatsApp's own green: the pill keeps it whatever, like the brand. */
@@ -65,7 +66,21 @@ export const IDLE_WHATSAPP: WaIslandView = {
 /** The page's copy of what Rust keeps. */
 export const WhatsApp = {
   view: { ...IDLE_WHATSAPP } as WaIslandView,
+  /** A conversation is open in the card: it takes the whole island (whatsappHeight). */
+  reading: false,
 };
+
+/**
+ * The open island's height while the WhatsApp card is in front, so it can be read: taller for the
+ * list, and the chat view's height for an open conversation (which also takes the island's whole
+ * width). Null otherwise: the usual height.
+ */
+export function whatsappHeight(
+  mode: string, view: string, focusId: string | null, on: boolean, reading: boolean,
+): number | null {
+  if (mode !== "expanded" || view !== "overview" || focusId !== WHATSAPP_ID || !on) return null;
+  return reading ? CARD_READ_H : CARD_LIST_H;
+}
 
 export type WaWebhook =
   | { state: "off" | "listening" | "registered" }
