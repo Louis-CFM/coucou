@@ -463,6 +463,8 @@ export const Bridge = {
   /** A conversation opened in the card: its latest messages, the receipt if Settings says so. */
   whatsappOpen: (chat: string) => call<void>("whatsapp_open", { chat }),
   whatsappClose: (chat: string) => call<void>("whatsapp_close", { chat }),
+  /** The card's ↗: WhatsApp Desktop at the open conversation, or WhatsApp Web without it. */
+  whatsappOpenApp: () => call<boolean>("whatsapp_open_app"),
   /** Enter or the send button only. True once the gateway took it. */
   whatsappSend: (chat: string, text: string) => call<boolean>("whatsapp_send", { chat, text }),
   /** A chat id, or (Settings) a phone number. */

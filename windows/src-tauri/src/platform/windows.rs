@@ -8,7 +8,7 @@ use std::process::Command;
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use ::windows::core::{w, BOOL, PWSTR};
+use ::windows::core::{w, BOOL, HSTRING, PCWSTR, PWSTR};
 use ::windows::Win32::Foundation::{
     CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT, RPC_E_CHANGED_MODE,
 };
@@ -22,6 +22,7 @@ use ::windows::Win32::System::Diagnostics::ToolHelp::{
 };
 use ::windows::Win32::System::Ole::RevokeDragDrop;
 use ::windows::Win32::System::Pipes::GetNamedPipeClientProcessId;
+use ::windows::Win32::System::Registry::{RegGetValueW, HKEY_CLASSES_ROOT, RRF_RT_REG_SZ};
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::Threading::{
     AttachThreadInput, GetCurrentProcess, GetCurrentThreadId, OpenProcessToken,
@@ -120,6 +121,18 @@ pub fn no_console(cmd: &mut Command) -> &mut Command {
 pub fn open_url(url: &str) {
     let _ = no_console(Command::new("rundll32.exe").args(["url.dll,FileProtocolHandler", url]))
         .spawn();
+}
+
+/// Whether an app on this computer registered the URL scheme (`whatsapp`…), so
+/// `open_url` on one of its links reaches that app instead of a "pick an app"
+/// prompt. Every registered scheme carries an empty "URL Protocol" value; a
+/// Microsoft Store app's is written there too, for as long as it is installed.
+pub fn handles_scheme(scheme: &str) -> bool {
+    let key = HSTRING::from(scheme);
+    unsafe {
+        RegGetValueW(HKEY_CLASSES_ROOT, PCWSTR(key.as_ptr()), w!("URL Protocol"), RRF_RT_REG_SZ, None, None, None)
+    }
+    .is_ok()
 }
 
 pub fn reveal_folder(path: &str) {

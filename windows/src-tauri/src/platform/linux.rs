@@ -294,6 +294,17 @@ pub fn open_url(url: &str) {
     let _ = no_console(&mut cmd).spawn();
 }
 
+/// Whether a desktop app handles the URL scheme (`whatsapp`…): the default
+/// `x-scheme-handler` xdg-mime knows for it.
+pub fn handles_scheme(scheme: &str) -> bool {
+    let handler = format!("x-scheme-handler/{scheme}");
+    let mut cmd = Command::new("xdg-mime");
+    cmd.arg("query").arg("default").arg(&handler);
+    no_console(&mut cmd)
+        .output()
+        .is_ok_and(|out| out.status.success() && !String::from_utf8_lossy(&out.stdout).trim().is_empty())
+}
+
 pub fn reveal_folder(path: &str) {
     let mut cmd = Command::new("xdg-open");
     cmd.arg(path);
