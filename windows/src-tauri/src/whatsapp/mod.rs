@@ -1049,6 +1049,26 @@ pub fn web_link(chat: Option<&str>) -> String {
     }
 }
 
+/// Someone in WhatsApp's address book, for the card's search.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Contact {
+    pub id: String,
+    pub name: String,
+}
+
+/// The address book as the search lists it: people with a number (a group or a hidden number has
+/// no `send?phone=` link to open), named, each once, by name.
+pub fn contact_list(raw: Vec<(String, String)>) -> Vec<Contact> {
+    let mut seen = HashSet::new();
+    let mut list: Vec<Contact> = raw
+        .into_iter()
+        .map(|(jid, name)| Contact { id: model::normalized(&jid), name: name.trim().to_string() })
+        .filter(|c| !c.name.is_empty() && phone_of(Some(&c.id)).is_some() && seen.insert(c.id.clone()))
+        .collect();
+    list.sort_by_cached_key(|c| c.name.to_lowercase());
+    list
+}
+
 /// WhatsApp Desktop when it is installed (the Microsoft Store app registers `whatsapp:`), at the
 /// chat; WhatsApp Web in the browser otherwise. True when it went to the app.
 fn open_in_whatsapp(chat: Option<&str>) -> bool {
@@ -1126,13 +1146,25 @@ pub fn whatsapp_close(window: WebviewWindow, chat: String) -> Result<(), String>
     Ok(())
 }
 
-/// The card's ↗: WhatsApp at the conversation open in the card (`open_in_whatsapp`). True when it
-/// went to WhatsApp Desktop rather than WhatsApp Web.
+/// The card's ↗, or someone picked in its search: WhatsApp at that chat, else at the conversation
+/// open in the card (`open_in_whatsapp`). Nothing is sent: WhatsApp opens, ready to type. True
+/// when it went to WhatsApp Desktop rather than WhatsApp Web.
 #[tauri::command]
-pub fn whatsapp_open_app(window: WebviewWindow) -> Result<bool, String> {
+pub fn whatsapp_open_app(window: WebviewWindow, chat: Option<String>) -> Result<bool, String> {
     only(&window, crate::island::WINDOW_LABEL)?;
-    let chat = ctl().open_chat.clone();
+    let chat = chat.or_else(|| ctl().open_chat.clone());
     Ok(open_in_whatsapp(chat.as_deref()))
+}
+
+/// The address book for the card's search, asked when the search opens: kept by the page only
+/// while it is open, never stored. Empty when WhatsApp isn't linked, or with OpenWA.
+#[tauri::command]
+pub async fn whatsapp_contacts(window: WebviewWindow) -> Result<Vec<Contact>, String> {
+    only(&window, crate::island::WINDOW_LABEL)?;
+    // The lock is let go before the gateway is asked.
+    let provider = ctl().provider.clone();
+    let Some(provider) = provider else { return Ok(vec![]) };
+    Ok(contact_list(provider.contacts().await.unwrap_or_default()))
 }
 
 /// Enter or the send button in the island's card: the only way a message leaves Coucou.
@@ -1356,6 +1388,23 @@ mod tests {
         assert_eq!(chat_from_entry("abc"), None);
         assert_eq!(chat_from_entry("a b@g.us"), None);
         assert_eq!(chat_from_entry(""), None);
+    }
+
+    #[test]
+    fn the_search_lists_people_with_a_number_once_by_name() {
+        let raw = vec![
+            ("447700900456@s.whatsapp.net".to_string(), "sam Example".to_string()),
+            ("447700900123:2@s.whatsapp.net".to_string(), " Alex Example ".to_string()),
+            ("447700900123@s.whatsapp.net".to_string(), "Alex again".to_string()),
+            ("120363012345678901@g.us".to_string(), "A group".to_string()),
+            ("123456789012345@lid".to_string(), "Hidden number".to_string()),
+            ("447700900789@s.whatsapp.net".to_string(), "  ".to_string()),
+        ];
+        let list = contact_list(raw);
+        let names: Vec<&str> = list.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(names, ["Alex Example", "sam Example"]);
+        assert_eq!(list[0].id, "447700900123@s.whatsapp.net");
+        assert_eq!(serde_json::to_value(&list[0]).unwrap()["name"], "Alex Example");
     }
 
     #[test]

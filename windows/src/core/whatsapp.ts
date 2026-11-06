@@ -219,6 +219,46 @@ export function lastMessages(c: WaConversation, count = 10): WaMessage[] {
   return c.messages.slice(-count);
 }
 
+/** Someone the card's search can open WhatsApp at: Contact in src-tauri/src/whatsapp/mod.rs. */
+export interface WaContact {
+  id: string;
+  name: string;
+}
+
+/** Lower case, without accents: "Élodie" is found as "elodie". */
+function folded(s: string): string {
+  return s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+/**
+ * The card's search: the people whose name has every word typed, or, when only digits are typed
+ * (three at least), whose number has them. The conversations in the card come first, then the
+ * address book; each person once, and only people with a number (a group or a hidden number has
+ * no chat to open WhatsApp at). `max` at most.
+ */
+export function findContacts(query: string, conversations: WaConversation[], contacts: WaContact[], max = 6): WaContact[] {
+  const words = folded(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  const digits = query.replace(/\D/g, "");
+  const byNumber = digits.length >= 3 && !/[^\d\s+()-]/.test(query);
+  const people: WaContact[] = [
+    ...conversations.filter((c) => !c.isGroup).map((c) => ({ id: c.id, name: c.name })),
+    ...contacts,
+  ];
+  const found: WaContact[] = [];
+  const seen = new Set<string>();
+  for (const p of people) {
+    if (found.length >= max) break;
+    const [number, server] = p.id.split("@");
+    if (server !== "s.whatsapp.net" || seen.has(p.id)) continue;
+    const name = folded(p.name);
+    if (byNumber ? !number.includes(digits) : !words.every((w) => name.includes(w))) continue;
+    seen.add(p.id);
+    found.push(p);
+  }
+  return found;
+}
+
 /** Enter sends, Shift+Enter is a new line; IME composition never sends. */
 export function keyAction(e: { key: string; shiftKey: boolean; isComposing?: boolean }): "send" | "newline" | "back" | null {
   if (e.key === "Escape") return "back";

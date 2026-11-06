@@ -9,7 +9,7 @@ import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { UpdateStatus } from "./update";
-import type { WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
+import type { WaContact, WaIslandView, WaSettingsView, WaTestResult } from "./whatsapp";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -484,8 +484,11 @@ export const Bridge = {
   /** A conversation opened in the card: its latest messages, the receipt if Settings says so. */
   whatsappOpen: (chat: string) => call<void>("whatsapp_open", { chat }),
   whatsappClose: (chat: string) => call<void>("whatsapp_close", { chat }),
-  /** The card's ↗: WhatsApp Desktop at the open conversation, or WhatsApp Web without it. */
-  whatsappOpenApp: () => call<boolean>("whatsapp_open_app"),
+  /** The card's ↗ (the open conversation) or someone picked in its search: WhatsApp Desktop at
+   *  that chat, ready to type, or WhatsApp Web without it. Nothing is sent. */
+  whatsappOpenApp: (chat: string | null = null) => call<boolean>("whatsapp_open_app", { chat }),
+  /** The address book for the card's search, asked when it opens. Island only. */
+  whatsappContacts: () => call<WaContact[]>("whatsapp_contacts"),
   /** Enter or the send button only. True once the gateway took it. */
   whatsappSend: (chat: string, text: string) => call<boolean>("whatsapp_send", { chat, text }),
   /** A chat id, or (Settings) a phone number. */
