@@ -333,6 +333,7 @@ this way. Linux has no Outlook: the pill is Windows only.
 | What you do | What happens |
 |---|---|
 | Open the Mail pill | Your newest messages, unread ones tinted, a ⚑ on the flagged ones. The magnifier searches every inbox: free words, `from:anne`, `subject:"May quote"`. Filters: All, Unread, Important, Today |
+| New mail while another card is open | The Mail pill counts the unread mail that came in since you last opened its card, and wiggles when the count grows. Opening the card clears it; mail that was already unread when Coucou started is not counted |
 | Click a message | Its sender, subject and the start of its text. **Open in Outlook**, **Reply** (Outlook's own window: nothing is sent from Coucou), **Mark as read**, **Important**, **Junk**, and in ⋯ **Always important (VIP)** or **Always ignore this sender** |
 | Coucou → Mail → Overview | **Sort new messages automatically** (off by default): only what arrives after you turn it on, each message once. VIPs are flagged, banned words send to Junk, then the first rule that matches acts. A journal of every action, each with **Undo** |
 | Coucou → Mail → Rules, Banned words, VIP | "If the sender / domain / subject / text / account contains … then Junk / important / read / move to a folder". Banned words are whole words: "sale" does not catch "Salesforce". A VIP is an address or a whole domain (`@client.com`) |
@@ -372,7 +373,10 @@ account only, because WhatsApp may restrict accounts that abuse it.
 - Click a conversation for its last ten messages and a reply field. **Enter**
   sends, **Shift+Enter** starts a new line and **Escape** goes back. Nothing is
   ever sent without your Enter or click.
-- On a new message Mochi smiles, with the "pop" sound if sounds are on.
+- On a new message Mochi smiles, with the "pop" sound if sounds are on. While
+  another card is open, the WhatsApp pill counts the messages that came in
+  since you last opened its card, and wiggles when one arrives; opening the
+  card clears the count.
 - Groups stay quiet unless you are mentioned. A right-click on a row ignores
   that chat.
 - Read receipts are sent only when you open a conversation, or only when you
