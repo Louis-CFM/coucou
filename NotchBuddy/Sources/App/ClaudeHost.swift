@@ -32,6 +32,7 @@ struct ClaudeHost: Equatable {
         "com.cmuxterm.app":           "cmux",    // sets TERM_PROGRAM=ghostty: the bundle id decides
         "com.stablyai.orca":          "Orca",
         "com.conductor.app":          "Conductor", // runs Claude Code with no TERM_PROGRAM
+        "com.t3tools.t3code": "T3 Code",
     ]
     private static let termPrograms: [String: String] = [
         "warpterminal":   "dev.warp.Warp-Stable",
