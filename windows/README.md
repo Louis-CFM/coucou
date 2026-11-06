@@ -60,6 +60,8 @@ You can also [build it yourself](#build-it-yourself).
 | Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
 | On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
+| Drag a file onto the island and let go on one of the sessions listed on the right ("Or into a session") | That session's terminal or editor comes forward and the file's path is pasted into Claude Code's prompt, as a drag onto the terminal would write it. When its window can't be found, the path is copied instead |
+| The terminal tab in the island's header | **New Claude Code session**: pick a project (the folders your sessions ran in, or **Choose a folder…**), type what Claude should do, and your terminal opens there running `claude` with it |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
 | Put a file named like one of Mochi's sounds (`finish.wav`, `approval.mp3`, `greet.m4a`…) in the sounds folder | It replaces that sound after **Settings → General → Reload sounds**. **Open sounds folder** shows the folder: `~/.config/coucou/sounds` on Linux, `%APPDATA%\Coucou\sounds` on Windows |
@@ -621,6 +623,22 @@ on; other agents and Claude Desktop ask in their own window.
   [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in
   the island, and reopened by clicking the island, Open in the tray or **Go to
   alert**.
+- **New Claude Code session** opens Windows Terminal (`wt.exe`) in the
+  project, or PowerShell in a console of its own without it; on Linux
+  `$TERMINAL`, `x-terminal-emulator`, GNOME Terminal, Ptyxis, Konsole, kitty,
+  Alacritty, WezTerm, foot or xterm, whichever is found first, with your login
+  shell. The prompt never goes into a command line: on Linux it is in
+  `COUCOU_PROMPT`, set on the terminal; on Windows it goes through a file in
+  your temp folder that PowerShell reads and deletes, since Windows Terminal
+  starts its tabs without wt.exe's environment. A double quote in it becomes a
+  single quote there (npm's `claude.cmd` would read it as the end of the
+  argument). **Choose a folder…** is the system's folder picker on Windows,
+  zenity or kdialog on Linux. There is no dictation button (the chat here
+  has none either) and no global shortcut yet: the header's terminal tab
+  opens it.
+- A file let go on a session in the drop card is pasted with `Ctrl+V` on
+  Windows and `Ctrl+Shift+V` on Linux, through Flow's paste (and its clipboard
+  restore), instead of the Mac's ⌘V with Accessibility.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
   is left out.
 - **Spotify** (Settings → Integrations) is read from the system media

@@ -311,6 +311,33 @@ pub fn reveal_folder(path: &str) {
     let _ = no_console(&mut cmd).spawn();
 }
 
+/// "Choose a folder…" for a new Claude Code session: the desktop's own folder
+/// picker, through zenity (GNOME and most desktops) or kdialog (KDE). None
+/// when it was cancelled or neither is installed.
+pub fn pick_folder(_app: &AppHandle, start: Option<&str>, title: &str) -> Option<String> {
+    let start = start.map(str::to_string).unwrap_or_else(|| home_dir().to_string_lossy().to_string());
+    let pickers: [(&str, Vec<String>); 2] = [
+        (
+            "zenity",
+            vec!["--file-selection".into(), "--directory".into(), format!("--title={title}"), format!("--filename={start}/")],
+        ),
+        ("kdialog", vec!["--title".into(), title.into(), "--getexistingdirectory".into(), start.clone()]),
+    ];
+    for (name, args) in pickers {
+        let Some(program) = find_on_path(name) else { continue };
+        let mut cmd = Command::new(program);
+        cmd.args(&args);
+        let out = no_console(&mut cmd).output().ok()?;
+        // Cancelled: no other picker after it.
+        if !out.status.success() {
+            return None;
+        }
+        let path = String::from_utf8_lossy(&out.stdout).trim_end_matches(['\n', '\r']).to_string();
+        return (!path.is_empty()).then_some(path);
+    }
+    None
+}
+
 /// Our own `which`: the first executable file named `stem` on $PATH.
 pub fn find_on_path(stem: &str) -> Option<PathBuf> {
     let dirs = std::env::var_os("PATH")?;
