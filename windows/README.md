@@ -525,7 +525,7 @@ Linux.
 | GitHub Copilot CLI | `.copilot\hooks\coucou.json` | Allow / Deny in the island |
 | Muse Code | `.config\muse\settings.json` | Allow / Deny in the island |
 | Gemini CLI | `.gemini\settings.json` | asked in Gemini CLI |
-| Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity |
+| Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity; or, with **Approve commands from the notch** on, Allow / Deny / Reply in terminal in the island for the shell commands none of its rules covers |
 | Cursor Agent | `.cursor\hooks.json` — Claude Code in Cursor's terminal also goes on the Cursor pill, through the Claude Code hooks | asked in Cursor |
 | Claude Desktop | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
 | OpenCode | plugin `.config\opencode\plugins\coucou.js` | asked in OpenCode |
@@ -539,6 +539,19 @@ answers each agent the way it expects. It never lets anything through on its
 own: with no click it prints no decision at all (`{}` for the agents that need
 JSON, `"ask"` for Copilot, which is fail-closed), so the agent asks in its own
 terminal exactly as without Coucou — including when Coucou is closed.
+
+**Antigravity** has no permission request: it runs its `PreToolUse` hook before
+its own permission check and waits for the hook's decision. The relay answers
+`{"decision":"ask"}`, so Antigravity's rules and prompt decide — unless
+**Approve commands from the notch** is on (Settings → Agents → Antigravity, off
+by default, shown once the hooks are installed). Then a `run_command` that none
+of Antigravity's `command(...)` rules covers waits on the island's card, as on
+the Mac: **Allow** prints `{"decision":"allow"}`, **Deny**
+`{"decision":"deny","reason":"Denied from Coucou"}`, and **Reply in terminal**,
+no click within 110 s, a full card or Coucou closed print `{"decision":"ask"}`.
+Coucou reads those rules from the files the Mac reads, under `.gemini`. The
+`PreToolUse` hook is installed with a 120 s timeout: hooks written by an older
+Coucou (10 s) must be installed again, and Settings says so.
 
 The plugins start the relay directly, with no shell in between, and never wait
 for it. Amp's steps appear as each tool finishes: its "before" hook must return
@@ -557,8 +570,8 @@ the same check as Settings → Agents (for Claude Code: a SessionStart hook
 running Coucou's relay; the Cursor pill also counts Claude Code's hooks).
 Coucou only reads these files, each time the island opens. Permission requests
 get the island's card for Claude Code (in any terminal, and in Cursor's),
-Codex, Copilot CLI and Muse Code; other agents and Claude Desktop ask in their
-own window.
+Codex, Copilot CLI and Muse Code, and Antigravity's commands when that is turned
+on; other agents and Claude Desktop ask in their own window.
 
 ## What's different from the Mac version
 

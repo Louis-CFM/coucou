@@ -289,6 +289,29 @@ test("an agent's permission request is declined, never shown as Claude Code's", 
   }
 });
 
+test("an Antigravity command Coucou puts on the card waits there on its own pill", () => {
+  State.focusId = CLAUDE;
+  // The event itself comes first, as for any agent; then the card (pipe.rs).
+  const payload = {
+    session_id: "s1", coucou_agent: "antigravity", coucou_kind: "agy_pre_tool",
+    tool_name: "run_command", tool_input: { command: "npm install" },
+  };
+  hook({ ...payload, hook_event_name: "PreToolUse" });
+  assert.equal(State.pendingApproval, null);
+  hook({ ...payload, hook_event_name: "PermissionRequest", request_id: "a1" });
+  assert.deepEqual(State.pendingApproval, {
+    requestId: "a1", sessionId: "s1", pillId: "agent_antigravity", tool: "run_command",
+    command: "run_command · npm install",
+  });
+  assert.deepEqual(sent("approval_ack"), [{ requestId: "a1" }]);
+  assert.deepEqual(sent("approval_decline"), []);
+  assert.equal(task("agent_antigravity").state, "approval");
+  assert.equal(State.focusId, "agent_antigravity");
+  // Antigravity gave up, or Coucou's wait ran out: the card goes.
+  emit("approval-expired", "a1");
+  assert.equal(State.pendingApproval, null);
+});
+
 test("Codex, Copilot CLI, Muse Code and OpenCode get the card on their own pill", () => {
   for (const agent of ["codex", "copilot", "muse", "opencode"]) {
     State.pendingApproval = null;

@@ -2,6 +2,8 @@
 
 mod agent_hooks;
 mod agents;
+mod agy_approvals;
+mod agy_rules;
 mod chat;
 mod claude;
 mod claude_code;
@@ -117,6 +119,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay = current.phone_relay;
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
+        // Antigravity approvals: only their own switch changes them (agy_approvals.rs).
+        settings.agy_approvals_enabled = current.agy_approvals_enabled;
         *current = settings;
         (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -939,6 +943,8 @@ pub fn run() {
             approval_answer,
             approval_ack,
             approval_decline,
+            agy_approvals::agy_approvals_status,
+            agy_approvals::agy_approvals_set_enabled,
             log_line,
             chat_send,
             chat_models,
