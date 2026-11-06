@@ -112,6 +112,29 @@ export function restoreAlertFocus(): void {
 /** Events after which a pending permission request of the same session is moot. */
 const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
 
+/**
+ * True when `name` (from `agentId`'s session) shows the pending card was
+ * settled somewhere else: the turn is over (interrupted, a new prompt, the
+ * session ended), or the very tool call it asked about has run, so it was
+ * allowed in the terminal or the Claude app. A tool result of another call (a
+ * subagent working alongside) does not count. The relay hanging up is the
+ * fastest sign of all; it arrives as `approval-expired`.
+ */
+export function settledElsewhere(
+  pending: ApprovalInfo,
+  name: string,
+  agentId: string,
+  sessionId: string,
+  tool: string | undefined,
+  input: Record<string, unknown> | undefined,
+): boolean {
+  if (pending.pillId !== agentId || pending.sessionId !== sessionId) return false;
+  if (TURN_OVER.has(name)) return true;
+  if (name !== "PostToolUse" && name !== "PostToolUseFailure") return false;
+  const t = tool ?? "Tool";
+  return t === pending.tool && approvalTarget(t, input ?? {}) === pending.command;
+}
+
 interface HookPayload {
   hook_event_name?: string;
   request_id?: string;
@@ -391,12 +414,7 @@ function handleHook(island: Island, payload: HookPayload) {
   // interrupted, or a new prompt — so the card would be lying. It goes, and the
   // relay is released without a decision. Same rule as the Mac.
   const pending = State.pendingApproval;
-  if (
-    pending &&
-    TURN_OVER.has(name) &&
-    pending.pillId === agentId &&
-    pending.sessionId === (payload.session_id ?? "")
-  ) {
+  if (pending && settledElsewhere(pending, name, agentId, sessionId, payload.tool_name, payload.tool_input)) {
     if (pending.requestId) void Bridge.approvalDecline(pending.requestId);
     dropPendingCard(island);
   }
