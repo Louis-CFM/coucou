@@ -621,7 +621,7 @@ fn wake_if_hovered(app: &AppHandle, gate: &PollGate) {
     let y = cy - origin.y as f64;
     if x >= 0.0 && y >= 0.0 && x <= size.width as f64 && y <= size.height as f64 + 2.0 {
         gate.ignoring.store(false, Ordering::Relaxed);
-        let _ = win.set_ignore_cursor_events(false);
+        platform::set_click_through(&win, false);
         let _ = win.emit("closed-hover", ());
     }
 }
