@@ -1,6 +1,1206 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "coucoudoro.hint" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عمل، ثم استراحة، ثم من جديد حتى تتوقف. فعّل حبة Coucoudoro."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কাজ, তারপর বিশ্রাম, থামানো পর্যন্ত আবার। Coucoudoro পিল চালু করো।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arbeit, dann Ruhe, und wieder, bis du stoppst. Schalte die Coucoudoro-Pille ein."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Work, then rest, on repeat, until you stop. Turn the Coucoudoro pill on to use it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trabajo, luego descanso, y otra vez, hasta que pares. Activa la píldora Coucoudoro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travail, puis repos, et de nouveau, jusqu’à ce que tu arrêtes. Active la pilule Coucoudoro pour t’en servir."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "काम, फिर आराम, और फिर से, जब तक तुम रोक न दो। Coucoudoro गोली चालू करो।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kerja, lalu istirahat, berulang sampai kamu berhenti. Nyalakan pil Coucoudoro."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "作業、それから休憩、止まるまで繰り返します。Coucoudoro のピルをオンにして使います。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "작업, 그다음 휴식, 멈출 때까지 반복해요. Coucoudoro 모찌를 켜세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trabalho, depois descanso, de novo, até você parar. Ative a pílula Coucoudoro."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работа, потом отдых, и снова, пока не остановишь. Включи пилюлю Coucoudoro."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "งาน แล้วพัก วนไปจนกว่าจะหยุด เปิดแถบ Coucoudoro เพื่อใช้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İş, sonra dinlenme, sen durana kadar. Coucoudoro kapsülünü aç."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "工作，然后休息，如此反复，直到你停止。打开 Coucoudoro 胶囊即可使用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "工作，然後休息，如此反覆，直到你停止。開啟 Coucoudoro 膠囊即可使用。"
+          }
+        }
+      }
+    },
+    "coucoudoro.work" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عمل"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কাজ"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arbeit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Work"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trabajo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travail"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "काम"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kerja"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "作業"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "작업"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trabalho"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работа"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "งาน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İş"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "工作"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "工作"
+          }
+        }
+      }
+    },
+    "coucoudoro.rest" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استراحة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "বিশ্রাম"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ruhe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descanso"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repos"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आराम"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Istirahat"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "休憩"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "휴식"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descanso"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отдых"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "พัก"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dinlenme"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "休息"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "休息"
+          }
+        }
+      }
+    },
+    "coucoudoro.unit" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "د"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "মি"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Min."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "min"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "min"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "min"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मि"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mnt"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "분"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "min"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "мин"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "นาที"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dk"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分钟"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分鐘"
+          }
+        }
+      }
+    },
+    "coucoudoro.pill.rest" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · استراحة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · বিশ্রাম"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Ruhe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Rest"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Descanso"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Repos"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · आराम"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Istirahat"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · 休憩"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · 휴식"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Descanso"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Отдых"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · พัก"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Dinlenme"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · 休息"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · 休息"
+          }
+        }
+      }
+    },
+    "coucoudoro.pill.work" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · عمل"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · কাজ"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Arbeit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Work"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Trabajo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Travail"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · काम"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Kerja"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · 作業"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · 작업"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Trabalho"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · Работа"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · งาน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · İş"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · 工作"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucoudoro · 工作"
+          }
+        }
+      }
+    },
+    "coucoudoro.start" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ابدأ"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "শুরু"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empezar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrer"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "शुरू"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mulai"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開始"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시작"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Começar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Старт"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เริ่ม"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Başlat"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開始"
+          }
+        }
+      }
+    },
+    "coucoudoro.stop" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أوقف"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "থামান"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopp"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "रोकें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Berhenti"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정지"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стоп"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หยุด"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durdur"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        }
+      }
+    },
+    "coucoudoro.pause" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إيقاف"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "বিরতি"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "विराम"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeda"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一時停止"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일시정지"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "พักชั่วคราว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duraklat"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暫停"
+          }
+        }
+      }
+    },
+    "coucoudoro.resume" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استئناف"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "চালু"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprendre"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जारी"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lanjut"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再開"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дальше"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทำต่อ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sürdür"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繼續"
+          }
+        }
+      }
+    },
+    "coucoudoro.ready" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جاهز"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "প্রস্তুত"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prêt"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "तैयार"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siap"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "準備完了"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "준비됨"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pronto"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "พร้อม"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hazır"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就绪"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就緒"
+          }
+        }
+      }
+    },
+    "coucoudoro.paused" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "متوقف"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "থামানো"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En pausa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En pause"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "रुका हुआ"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dijeda"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一時停止中"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일시정지"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На паузе"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หยุดชั่วคราว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duraklatıldı"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已暂停"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已暫停"
+          }
+        }
+      }
+    },
     "hub.mail.autosort" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -22637,97 +23837,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "كلاهما يستخدم Claude بمفتاحك: الكلمات فقط تذهب إلى Anthropic، وصوتك لا يغادر جهاز Mac. إذا لم يرد Claude في الوقت المناسب، تُلصق الكلمات كما سُمعت."
+            "value" : "كلاهما يستخدم Claude، باشتراكك عبر Claude Code أو بمفتاحك: الكلمات فقط تذهب إلى Anthropic، وصوتك لا يغادر جهاز Mac. إذا لم يرد Claude في الوقت المناسب، تُلصق الكلمات كما سُمعت. عبر Claude Code يستغرق الأمر وقتًا أطول قليلًا مما يستغرقه بالمفتاح."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "দুটোই আপনার নিজের কী দিয়ে Claude ব্যবহার করে: শুধু কথাগুলো Anthropic-এ যায়, আপনার কণ্ঠ কখনো নয়, সেটি আপনার Mac-এ থাকে। Claude সময়মতো উত্তর না দিলে কথাগুলো যেমন শোনা গেছে তেমনই পেস্ট হয়।"
+            "value" : "দুটোই Claude ব্যবহার করে, Claude Code দিয়ে আপনার প্ল্যানে অথবা আপনার নিজের কী দিয়ে: শুধু কথাগুলো Anthropic-এ যায়, আপনার কণ্ঠ কখনো নয়, সেটি আপনার Mac-এ থাকে। Claude সময়মতো উত্তর না দিলে কথাগুলো যেমন শোনা গেছে তেমনই পেস্ট হয়। Claude Code দিয়ে কী-এর চেয়ে একটু বেশি সময় লাগে।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beide nutzen Claude mit deinem eigenen Schlüssel: Nur der Text geht an Anthropic, niemals deine Stimme, die auf deinem Mac bleibt. Wenn Claude nicht rechtzeitig antwortet, werden deine Worte wie gehört eingefügt."
+            "value" : "Beide nutzen Claude, mit deinem Abo über Claude Code oder mit deinem eigenen Schlüssel: Nur der Text geht an Anthropic, niemals deine Stimme, die auf deinem Mac bleibt. Wenn Claude nicht rechtzeitig antwortet, werden deine Worte wie gehört eingefügt. Über Claude Code dauert es etwas länger als mit einem Schlüssel."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Both use Claude with your own key: only the words go to Anthropic, never your voice, which stays on your Mac. If Claude doesn't answer in time, the words are pasted as heard."
+            "value" : "Both use Claude, on your Claude plan through Claude Code or with your own key: only the words go to Anthropic, never your voice, which stays on your Mac. If Claude doesn't answer in time, the words are pasted as heard. Through Claude Code it takes a little longer than with a key."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ambos usan Claude con tu propia clave: solo las palabras van a Anthropic, nunca tu voz, que se queda en tu Mac. Si Claude no responde a tiempo, las palabras se pegan tal cual."
+            "value" : "Ambos usan Claude, con tu plan a través de Claude Code o con tu propia clave: solo las palabras van a Anthropic, nunca tu voz, que se queda en tu Mac. Si Claude no responde a tiempo, las palabras se pegan tal cual. Con Claude Code tarda un poco más que con una clave."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les deux passent par Claude avec ta propre clé : seuls les mots partent chez Anthropic, jamais ta voix, qui reste sur ton Mac. Si Claude ne répond pas à temps, les mots sont collés tels qu'entendus."
+            "value" : "Les deux passent par Claude, avec ton abonnement via Claude Code ou avec ta propre clé : seuls les mots partent chez Anthropic, jamais ta voix, qui reste sur ton Mac. Si Claude ne répond pas à temps, les mots sont collés tels qu'entendus. Via Claude Code, c'est un peu plus long qu'avec une clé."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "दोनों आपकी अपनी कुंजी से Claude का उपयोग करते हैं: सिर्फ़ शब्द Anthropic को जाते हैं, आपकी आवाज़ कभी नहीं, वह आपके Mac पर रहती है। अगर Claude समय पर जवाब न दे, तो शब्द जैसे सुने गए वैसे पेस्ट होते हैं।"
+            "value" : "दोनों Claude का उपयोग करते हैं, Claude Code के ज़रिए आपके प्लान पर या आपकी अपनी कुंजी से: सिर्फ़ शब्द Anthropic को जाते हैं, आपकी आवाज़ कभी नहीं, वह आपके Mac पर रहती है। अगर Claude समय पर जवाब न दे, तो शब्द जैसे सुने गए वैसे पेस्ट होते हैं। Claude Code के ज़रिए कुंजी की तुलना में थोड़ा ज़्यादा समय लगता है।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keduanya memakai Claude dengan kuncimu sendiri: hanya kata-kata yang dikirim ke Anthropic, suaramu tidak pernah, tetap di Mac-mu. Jika Claude tidak menjawab tepat waktu, kata-kata ditempel apa adanya."
+            "value" : "Keduanya memakai Claude, dengan paketmu lewat Claude Code atau dengan kuncimu sendiri: hanya kata-kata yang dikirim ke Anthropic, suaramu tidak pernah, tetap di Mac-mu. Jika Claude tidak menjawab tepat waktu, kata-kata ditempel apa adanya. Lewat Claude Code, prosesnya sedikit lebih lama daripada dengan kunci."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "どちらも自分のキーで Claude を使います。Anthropic に送られるのは言葉だけで、声は送られず Mac に残ります。Claude が時間内に応答しない場合は、聞き取ったとおりに貼り付けられます。"
+            "value" : "どちらも Claude を使います（Claude Code 経由のプラン、または自分のキー）。Anthropic に送られるのは言葉だけで、声は送られず Mac に残ります。Claude が時間内に応答しない場合は、聞き取ったとおりに貼り付けられます。Claude Code 経由だと、キーを使う場合より少し時間がかかります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "둘 다 내 키로 Claude를 사용해요. Anthropic으로는 단어만 가고, 음성은 보내지 않고 Mac에만 남아요. Claude가 제때 답하지 않으면 들린 그대로 붙여넣어요."
+            "value" : "둘 다 Claude를 사용해요. Claude Code로 내 요금제를 쓰거나 내 키를 써요. Anthropic으로는 단어만 가고, 음성은 보내지 않고 Mac에만 남아요. Claude가 제때 답하지 않으면 들린 그대로 붙여넣어요. Claude Code를 거치면 키를 쓸 때보다 조금 더 걸려요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Os dois usam o Claude com sua própria chave: só as palavras vão para a Anthropic, nunca sua voz, que fica no seu Mac. Se o Claude não responder a tempo, as palavras são coladas como foram ouvidas."
+            "value" : "Os dois usam o Claude, com seu plano pelo Claude Code ou com sua própria chave: só as palavras vão para a Anthropic, nunca sua voz, que fica no seu Mac. Se o Claude não responder a tempo, as palavras são coladas como foram ouvidas. Pelo Claude Code, leva um pouco mais de tempo do que com uma chave."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Оба режима используют Claude с вашим ключом: в Anthropic уходят только слова, а голос остаётся на вашем Mac. Если Claude не ответит вовремя, слова вставятся как услышаны."
+            "value" : "Оба режима используют Claude — по вашей подписке через Claude Code или с вашим ключом: в Anthropic уходят только слова, а голос остаётся на вашем Mac. Если Claude не ответит вовремя, слова вставятся как услышаны. Через Claude Code это чуть дольше, чем с ключом."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ทั้งสองโหมดใช้ Claude ด้วยคีย์ของคุณ โดยส่งเฉพาะข้อความไปยัง Anthropic ไม่ส่งเสียง ซึ่งยังคงอยู่บน Mac ของคุณ หาก Claude ไม่ตอบทันเวลา ระบบจะพิมพ์ข้อความตามที่ได้ยิน"
+            "value" : "ทั้งสองโหมดใช้ Claude ผ่านแพ็กเกจของคุณด้วย Claude Code หรือด้วยคีย์ของคุณ โดยส่งเฉพาะข้อความไปยัง Anthropic ไม่ส่งเสียง ซึ่งยังคงอยู่บน Mac ของคุณ หาก Claude ไม่ตอบทันเวลา ระบบจะพิมพ์ข้อความตามที่ได้ยิน ผ่าน Claude Code จะใช้เวลานานกว่าการใช้คีย์เล็กน้อย"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İkisi de kendi anahtarınla Claude'u kullanır: Anthropic'e yalnızca metin gönderilir; sesin her zaman Mac'inde kalır. Claude zamanında yanıt vermezse sözlerin duyulduğu gibi yapıştırılır."
+            "value" : "İkisi de Claude'u kullanır; Claude Code üzerinden planınla ya da kendi anahtarınla: Anthropic'e yalnızca metin gönderilir; sesin her zaman Mac'inde kalır. Claude zamanında yanıt vermezse sözlerin duyulduğu gibi yapıştırılır. Claude Code üzerinden, anahtarla olduğundan biraz daha uzun sürer."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "两者都通过你自己的密钥使用 Claude：只有文字会发送给 Anthropic，声音始终留在你的 Mac 上。如果 Claude 没有及时回复，就按听到的原文粘贴。"
+            "value" : "两者都使用 Claude：通过 Claude Code 使用你的套餐，或使用你自己的密钥。只有文字会发送给 Anthropic，声音始终留在你的 Mac 上。如果 Claude 没有及时回复，就按听到的原文粘贴。通过 Claude Code 会比用密钥稍慢一些。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "這兩項功能會使用你的金鑰呼叫 Claude；只會將文字傳送給 Anthropic，語音會留在 Mac 上。若 Claude 未及時回應，會貼上辨識到的原始文字。"
+            "value" : "這兩項功能都使用 Claude：透過 Claude Code 使用你的方案，或使用你的金鑰；只會將文字傳送給 Anthropic，語音會留在 Mac 上。若 Claude 未及時回應，會貼上辨識到的原始文字。透過 Claude Code 會比使用金鑰稍慢一些。"
           }
         }
       }
@@ -23637,6 +24837,410 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "擷取螢幕畫面給 Claude"
+          }
+        }
+      }
+    },
+    "shortcut.screenshot" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لقطة للشاشة كاملة، منسوخة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "পুরো স্ক্রিনের স্ক্রিনশট, কপি করা"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screenshot des ganzen Bildschirms, kopiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screenshot the whole screen, copied"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura de toda la pantalla, copiada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture de tout l'écran, copiée"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पूरी स्क्रीन का स्क्रीनशॉट, कॉपी किया हुआ"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tangkapan seluruh layar, tersalin"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面全体をスクリーンショットしてコピー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전체 화면 스크린샷, 복사됨"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura da tela inteira, copiada"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимок всего экрана в буфер обмена"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ภาพหน้าจอทั้งจอ คัดลอกไว้แล้ว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tüm ekranın görüntüsü, kopyalanmış"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截取整个屏幕并复制"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "擷取整個螢幕並拷貝"
+          }
+        }
+      }
+    },
+    "shortcut.group.screenshots" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لقطات الشاشة — الشاشة كاملة أو منطقة منها"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "স্ক্রিনশট — পুরো স্ক্রিন বা একটি অংশ"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildschirmfotos — der ganze Bildschirm oder ein Bereich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screenshots — the whole screen or a zone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de pantalla — toda la pantalla o una zona"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captures d'écran — tout l'écran ou une zone"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्क्रीनशॉट — पूरी स्क्रीन या एक हिस्सा"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tangkapan layar — seluruh layar atau satu area"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スクリーンショット — 画面全体または範囲"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스크린샷 — 전체 화면 또는 영역"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de tela — a tela inteira ou uma área"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимки экрана — весь экран или область"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ภาพหน้าจอ — ทั้งจอหรือบางส่วน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ekran görüntüleri — tüm ekran veya bir alan"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截屏 — 整个屏幕或一个区域"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截圖 — 整個螢幕或一個區域"
+          }
+        }
+      }
+    },
+    "shortcut.screenshot.detail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تُنسخ فورًا، وتظهر صورة مصغّرة في الزاوية السفلية اليمنى لتسحبها حيث تشاء."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সঙ্গে সঙ্গে কপি হয়, আর নিচে ডান কোণে একটি থাম্বনেইল আসে যা যেখানে খুশি টেনে নেওয়া যায়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sofort kopiert, dazu eine Miniatur unten rechts, die du ziehen kannst, wohin du willst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied right away, and a thumbnail in the bottom right corner to drag where you like."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se copia al instante, y aparece una miniatura abajo a la derecha para arrastrarla donde quieras."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiée tout de suite, et une miniature en bas à droite à glisser où tu veux."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "तुरंत कॉपी हो जाता है, और नीचे दाएँ कोने में एक थंबनेल आता है जिसे आप कहीं भी खींच सकते हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langsung tersalin, dan muncul gambar kecil di pojok kanan bawah untuk diseret ke mana saja."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すぐにコピーされ、右下にサムネイルが表示されます。好きな場所へドラッグできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "바로 복사되고, 오른쪽 아래에 원하는 곳으로 끌어 놓을 수 있는 썸네일이 나타납니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiada na hora, e uma miniatura no canto inferior direito para arrastar para onde quiser."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сразу копируется, а в правом нижнем углу появляется миниатюра, которую можно перетащить куда угодно."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คัดลอกทันที และมีภาพย่อที่มุมขวาล่างให้ลากไปวางที่ไหนก็ได้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hemen kopyalanır ve sağ alt köşede istediğin yere sürükleyebileceğin bir küçük resim çıkar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "立即复制，右下角出现缩略图，可拖到任意位置。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "立即拷貝，右下角出現縮圖，可拖到任何地方。"
+          }
+        }
+      }
+    },
+    "shortcut.capture.detail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختر منطقة (المسافة لنافذة): يأخذها Mochi إلى الجزيرة لتلصقها أو تعلّق عليها أو تسأل Claude."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "একটি অংশ বেছে নিন (উইন্ডোর জন্য Space): Mochi সেটি আইল্যান্ডে নিয়ে আসে, পেস্ট, টীকা বা Claude-কে জিজ্ঞেস করার জন্য।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle einen Bereich (Leertaste für ein Fenster): Mochi nimmt ihn in die Insel, zum Einfügen, Markieren oder um Claude zu fragen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a zone (Space for a window): Mochi takes it into the island to paste, annotate or ask Claude."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una zona (Espacio para una ventana): Mochi la lleva a la isla para pegarla, anotarla o preguntar a Claude."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis une zone (Espace pour une fenêtre) : Mochi la prend dans l'île pour la coller, l'annoter ou la montrer à Claude."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एक हिस्सा चुनें (विंडो के लिए Space): Mochi उसे आइलैंड में ले आता है, ताकि आप पेस्ट करें, नोट जोड़ें या Claude से पूछें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilih satu area (Spasi untuk jendela): Mochi membawanya ke island untuk ditempel, diberi anotasi, atau ditanyakan ke Claude."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "範囲を選択（ウインドウはスペースキー）：Mochi がアイランドに取り込み、ペースト・注釈・Claude への質問ができます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "영역을 고르세요(창은 스페이스): Mochi가 아일랜드로 가져가 붙여넣기, 주석, Claude에게 질문할 수 있어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha uma área (Espaço para uma janela): o Mochi leva para a ilha para colar, anotar ou perguntar ao Claude."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите область (пробел — окно): Mochi забирает её в остров, чтобы вставить, разметить или спросить Claude."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลือกพื้นที่ (กด Space เพื่อเลือกหน้าต่าง): Mochi จะพาเข้าไปในไอแลนด์ ให้วาง ใส่คำอธิบาย หรือถาม Claude"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir alan seç (pencere için Boşluk): Mochi onu adaya alır; yapıştırabilir, not ekleyebilir ya da Claude'a sorabilirsin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择一个区域（按空格选窗口）：Mochi 会把它放进岛中，可粘贴、标注或询问 Claude。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇一個區域（按空白鍵選視窗）：Mochi 會把它放進島中，可貼上、標註或詢問 Claude。"
           }
         }
       }
@@ -26956,6 +28560,309 @@
         }
       }
     },
+    "flow.ann.signed-out %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم تسجيل الخروج من %1$@: أُلصقت كلماتك كما سُمعت. لتسجيل الدخول مجددًا، شغّل في Terminal: %2$@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ থেকে সাইন আউট হয়ে গেছে: আপনার কথাগুলো যেমন শোনা গেছে তেমনই পেস্ট হয়েছে। আবার সাইন ইন করতে টার্মিনালে চালান: %2$@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ist abgemeldet: Deine Worte wurden wie gehört eingefügt. Um dich wieder anzumelden, führe im Terminal aus: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ is signed out: your words were pasted as heard. To sign in again, run this in Terminal: %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ cerró la sesión: tus palabras se pegaron tal cual. Para volver a iniciar sesión, ejecuta en la Terminal: %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ est déconnecté : tes mots ont été collés tels qu'entendus. Pour te reconnecter, lance dans le Terminal : %2$@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ से साइन आउट हो गया है: आपके शब्द जैसे सुने गए वैसे पेस्ट हुए। फिर से साइन इन करने के लिए टर्मिनल में चलाएँ: %2$@"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sudah keluar: kata-katamu ditempel apa adanya. Untuk masuk lagi, jalankan di Terminal: %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ からサインアウトしています。言葉は聞き取ったとおりに貼り付けました。もう一度サインインするには、ターミナルで実行してください: %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@에서 로그아웃되어 있어요. 들린 그대로 붙여넣었어요. 다시 로그인하려면 터미널에서 실행하세요: %2$@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O %1$@ saiu da conta: suas palavras foram coladas como foram ouvidas. Para entrar de novo, rode no Terminal: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ вышел из аккаунта: слова вставлены как услышаны. Чтобы войти снова, выполните в Терминале: %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ออกจากระบบแล้ว ระบบจึงวางข้อความตามที่ได้ยิน หากต้องการลงชื่อเข้าใช้อีกครั้ง ให้รันใน Terminal: %2$@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ oturumu kapalı: sözlerin duyulduğu gibi yapıştırıldı. Yeniden oturum açmak için Terminal'de çalıştır: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 已退出登录：已按听到的原文粘贴。要重新登录，请在终端里运行：%2$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 已登出：已貼上辨識到的原始文字。若要重新登入，請在終端機執行：%2$@"
+          }
+        }
+      }
+    },
+    "flow.ann.signed-out-key %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم تسجيل الخروج من %1$@: استُخدم مفتاح Claude الخاص بك بدلًا منه. لتسجيل الدخول مجددًا، شغّل في Terminal: %2$@"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ থেকে সাইন আউট হয়ে গেছে: এর বদলে আপনার Claude কী ব্যবহার হয়েছে। আবার সাইন ইন করতে টার্মিনালে চালান: %2$@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ist abgemeldet: Stattdessen wurde dein Claude-Schlüssel verwendet. Um dich wieder anzumelden, führe im Terminal aus: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ is signed out: your Claude key was used instead. To sign in again, run this in Terminal: %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ cerró la sesión: se usó tu clave de Claude en su lugar. Para volver a iniciar sesión, ejecuta en la Terminal: %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ est déconnecté : ta clé Claude a pris le relais. Pour te reconnecter, lance dans le Terminal : %2$@"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ से साइन आउट हो गया है: उसकी जगह आपकी Claude कुंजी इस्तेमाल हुई। फिर से साइन इन करने के लिए टर्मिनल में चलाएँ: %2$@"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sudah keluar: kunci Claude-mu dipakai sebagai gantinya. Untuk masuk lagi, jalankan di Terminal: %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ からサインアウトしているため、代わりに Claude のキーを使いました。もう一度サインインするには、ターミナルで実行してください: %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@에서 로그아웃되어 있어서 대신 Claude 키를 사용했어요. 다시 로그인하려면 터미널에서 실행하세요: %2$@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O %1$@ saiu da conta: sua chave do Claude foi usada no lugar. Para entrar de novo, rode no Terminal: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ вышел из аккаунта: вместо него сработал ваш ключ Claude. Чтобы войти снова, выполните в Терминале: %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ออกจากระบบแล้ว จึงใช้คีย์ Claude ของคุณแทน หากต้องการลงชื่อเข้าใช้อีกครั้ง ให้รันใน Terminal: %2$@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ oturumu kapalı: onun yerine Claude anahtarın kullanıldı. Yeniden oturum açmak için Terminal'de çalıştır: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 已退出登录：已改用你的 Claude 密钥。要重新登录，请在终端里运行：%2$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 已登出：已改用你的 Claude 金鑰。若要重新登入，請在終端機執行：%2$@"
+          }
+        }
+      }
+    },
+    "flow.ann.terminal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح Terminal"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "টার্মিনাল খুলুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Terminal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Terminal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir le Terminal"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "टर्मिनल खोलें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka Terminal"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ターミナルを開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "터미널 열기"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir o Terminal"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Терминал"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิด Terminal"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal'i aç"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开终端"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打開終端機"
+          }
+        }
+      }
+    },
     "flow.copied-noaccess" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -27053,6 +28960,208 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已複製 · 允許輔助使用即可貼上"
+          }
+        }
+      }
+    },
+    "flow.one-tap" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "دون استخدام اليدين بضغطة واحدة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এক চাপে হ্যান্ডস-ফ্রি"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freihändig mit einem Druck"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands-free with one press"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manos libres con una pulsación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mains libres en une pression"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एक बार दबाकर हैंड्स-फ़्री"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanpa tangan dengan sekali tekan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 回押すだけでハンズフリー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번 눌러 핸즈프리"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mãos livres com um toque"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без рук одним нажатием"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แฮนด์ฟรีด้วยการกดครั้งเดียว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tek basışla eller serbest"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一次即免手持"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一下即免按鍵"
+          }
+        }
+      }
+    },
+    "flow.one-tap-detail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اضغط مرة، وتحدّث كما تشاء، ثم اضغط مرة أخرى للصق."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "একবার চাপুন, যতক্ষণ খুশি বলুন, পেস্ট করতে আবার চাপুন।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einmal drücken, beliebig lange sprechen, erneut drücken zum Einfügen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap once, speak as long as you like, tap again to paste."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsa una vez, habla lo que quieras y vuelve a pulsar para pegar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tape une fois, parle aussi longtemps que tu veux, tape encore pour coller."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एक बार दबाएँ, जितना चाहें बोलें, चिपकाने के लिए फिर से दबाएँ।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ketuk sekali, bicara sepuasnya, ketuk lagi untuk menempel."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 回タップして好きなだけ話し、もう一度タップで貼り付けます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번 탭하고 원하는 만큼 말한 다음, 다시 탭하면 붙여넣어져요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toque uma vez, fale o quanto quiser, toque de novo para colar."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите один раз, говорите сколько угодно, нажмите снова, чтобы вставить."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แตะหนึ่งครั้งแล้วพูดได้นานตามต้องการ แตะอีกครั้งเพื่อวางข้อความ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir kez bas, istediğin kadar konuş, yapıştırmak için tekrar bas."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一次，想说多久就说多久，再按一次即粘贴。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一下後即可持續說話，再按一下即可貼上。"
           }
         }
       }
@@ -31002,97 +33111,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يستخدم التنقيح مفتاح Claude الخاص بك. أضفه في الإعدادات ← الدردشة."
+            "value" : "يستخدم التنقيح Claude: اشتراكك في Claude عبر Claude Code، أو مفتاح Claude الخاص بك. اضبط أحدهما في الإعدادات ← الدردشة."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "পরিষ্কার করতে আপনার Claude কী লাগে। সেটিংস → চ্যাট-এ যোগ করুন।"
+            "value" : "পরিষ্কার করতে Claude লাগে: Claude Code দিয়ে আপনার Claude প্ল্যান, অথবা আপনার Claude কী। সেটিংস → চ্যাট-এ যেকোনো একটি সেট করুন।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Überarbeitung nutzt deinen Claude-Schlüssel. Füge ihn unter Einstellungen → Chat hinzu."
+            "value" : "Die Überarbeitung nutzt Claude: dein Claude-Abo über Claude Code oder deinen Claude-Schlüssel. Richte eins davon unter Einstellungen → Chat ein."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The clean-up uses your Claude key. Add it in Settings → Chat."
+            "value" : "The clean-up uses Claude: your Claude plan through Claude Code, or your Claude key. Set one up in Settings → Chat."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La limpieza usa tu clave de Claude. Añádela en Ajustes → Chat."
+            "value" : "La limpieza usa Claude: tu plan de Claude con Claude Code, o tu clave de Claude. Configura uno de los dos en Ajustes → Chat."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le nettoyage utilise ta clé Claude. Ajoute-la dans Réglages → Chat."
+            "value" : "Le nettoyage passe par Claude : ton abonnement Claude via Claude Code, ou ta clé Claude. Règle l'un des deux dans Réglages → Chat."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सफ़ाई आपकी Claude कुंजी से होती है। इसे सेटिंग्स → चैट में जोड़ें।"
+            "value" : "सफ़ाई Claude से होती है: Claude Code के ज़रिए आपका Claude प्लान, या आपकी Claude कुंजी। सेटिंग्स → चैट में इनमें से एक सेट करें।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Perapian memakai kunci Claude-mu. Tambahkan di Pengaturan → Obrolan."
+            "value" : "Perapian memakai Claude: paket Claude-mu lewat Claude Code, atau kunci Claude-mu. Atur salah satunya di Pengaturan → Obrolan."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整える機能は Claude のキーを使います。設定 → チャットで追加してください。"
+            "value" : "整える機能は Claude を使います。Claude Code 経由の Claude プラン、または Claude のキーです。設定 → チャットでどちらかを設定してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다듬기에는 Claude 키가 필요해요. 설정 → 채팅에서 넣어 주세요."
+            "value" : "다듬기에는 Claude가 필요해요. Claude Code로 쓰는 Claude 요금제나 Claude 키 중 하나를 설정 → 채팅에서 설정해 주세요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A limpeza usa sua chave do Claude. Adicione-a em Ajustes → Chat."
+            "value" : "A limpeza usa o Claude: seu plano do Claude pelo Claude Code ou sua chave do Claude. Configure um dos dois em Ajustes → Chat."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Для чистки нужен ваш ключ Claude. Добавьте его в Настройки → Чат."
+            "value" : "Для чистки нужен Claude: ваша подписка Claude через Claude Code или ваш ключ Claude. Настройте одно из двух в Настройки → Чат."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "การปรับข้อความใช้คีย์ Claude ของคุณ เพิ่มคีย์ได้ที่ การตั้งค่า → แชต"
+            "value" : "การปรับข้อความใช้ Claude ผ่านแพ็กเกจ Claude ของคุณด้วย Claude Code หรือคีย์ Claude ของคุณ ตั้งค่าอย่างใดอย่างหนึ่งได้ที่ การตั้งค่า → แชต"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Düzenleme, Claude anahtarını kullanır. Ayarlar → Sohbet bölümünden ekle."
+            "value" : "Düzenleme Claude'u kullanır: Claude Code üzerinden Claude planın ya da Claude anahtarın. Birini Ayarlar → Sohbet bölümünden ayarla."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整理会使用你的 Claude 密钥。请在“设置”→“聊天”中添加。"
+            "value" : "整理会使用 Claude：通过 Claude Code 使用你的 Claude 套餐，或使用你的 Claude 密钥。请在“设置”→“聊天”中设置其中一个。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "文字整理使用你的 Claude 金鑰。請在「設定 → 聊天」中新增。"
+            "value" : "文字整理使用 Claude：透過 Claude Code 使用你的 Claude 方案，或使用你的 Claude 金鑰。請在「設定 → 聊天」中設定其中一項。"
           }
         }
       }
@@ -31103,97 +33212,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "عند تشغيل التنقيح يُرسل النص (وليس صوتك أبدًا) إلى Anthropic بمفتاح Claude الخاص بك. وعند إيقافه يبقى كل شيء على جهاز Mac."
+            "value" : "عند تشغيل التنقيح يُرسل النص (وليس صوتك أبدًا) إلى Anthropic، عبر Claude Code لديك أو بمفتاح Claude الخاص بك. عبر Claude Code يستغرق الأمر وقتًا أطول قليلًا مما يستغرقه بالمفتاح. وعند إيقافه يبقى كل شيء على جهاز Mac."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "পরিষ্কার চালু থাকলে লেখা (কখনো আপনার কণ্ঠ নয়) আপনার Claude কী দিয়ে Anthropic-এ যায়। বন্ধ থাকলে সব আপনার Mac-এই থাকে।"
+            "value" : "পরিষ্কার চালু থাকলে লেখা (কখনো আপনার কণ্ঠ নয়) আপনার Claude Code দিয়ে বা আপনার Claude কী দিয়ে Anthropic-এ যায়। Claude Code দিয়ে কী-এর চেয়ে একটু বেশি সময় লাগে। বন্ধ থাকলে সব আপনার Mac-এই থাকে।"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bei aktivierter Überarbeitung wird der Text mit deinem Claude-Schlüssel an Anthropic gesendet, niemals deine Stimme. Ist sie aus, bleibt alles auf deinem Mac."
+            "value" : "Bei aktivierter Überarbeitung wird der Text über dein Claude Code oder mit deinem Claude-Schlüssel an Anthropic gesendet, niemals deine Stimme. Über Claude Code dauert es etwas länger als mit einem Schlüssel. Ist sie aus, bleibt alles auf deinem Mac."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "With the clean-up on, the text (never your voice) goes to Anthropic with your Claude key. Off, everything stays on your Mac."
+            "value" : "With the clean-up on, the text (never your voice) goes to Anthropic, through your Claude Code or with your Claude key. Through Claude Code it takes a little longer than with a key. Off, everything stays on your Mac."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con la limpieza activada, el texto (nunca tu voz) va a Anthropic con tu clave de Claude. Desactivada, todo se queda en tu Mac."
+            "value" : "Con la limpieza activada, el texto (nunca tu voz) va a Anthropic, a través de tu Claude Code o con tu clave de Claude. Con Claude Code tarda un poco más que con una clave. Desactivada, todo se queda en tu Mac."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avec le nettoyage, le texte (jamais ta voix) part chez Anthropic avec ta clé Claude. Sans, tout reste sur ton Mac."
+            "value" : "Avec le nettoyage, le texte (jamais ta voix) part chez Anthropic, via ton Claude Code ou avec ta clé Claude. Via Claude Code, c'est un peu plus long qu'avec une clé. Sans, tout reste sur ton Mac."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सफ़ाई चालू होने पर टेक्स्ट (आपकी आवाज़ कभी नहीं) आपकी Claude कुंजी के साथ Anthropic को जाता है। बंद होने पर सब कुछ आपके Mac पर रहता है।"
+            "value" : "सफ़ाई चालू होने पर टेक्स्ट (आपकी आवाज़ कभी नहीं) आपके Claude Code के ज़रिए या आपकी Claude कुंजी के साथ Anthropic को जाता है। Claude Code के ज़रिए कुंजी की तुलना में थोड़ा ज़्यादा समय लगता है। बंद होने पर सब कुछ आपके Mac पर रहता है।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saat perapian aktif, teksnya (bukan suaramu) dikirim ke Anthropic dengan kunci Claude-mu. Saat mati, semuanya tetap di Mac-mu."
+            "value" : "Saat perapian aktif, teksnya (bukan suaramu) dikirim ke Anthropic lewat Claude Code-mu atau dengan kunci Claude-mu. Lewat Claude Code, prosesnya sedikit lebih lama daripada dengan kunci. Saat mati, semuanya tetap di Mac-mu."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整える機能がオンのとき、テキスト（声は送られません）があなたの Claude キーで Anthropic に送られます。オフならすべて Mac に残ります。"
+            "value" : "整える機能がオンのとき、テキスト（声は送られません）が Claude Code 経由、またはあなたの Claude キーで Anthropic に送られます。Claude Code 経由だと、キーを使う場合より少し時間がかかります。オフならすべて Mac に残ります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다듬기를 켜면 텍스트(음성은 전송되지 않아요)가 Claude 키와 함께 Anthropic으로 전송돼요. 끄면 모든 게 Mac에만 남아요."
+            "value" : "다듬기를 켜면 텍스트(음성은 전송되지 않아요)가 내 Claude Code를 거치거나 Claude 키와 함께 Anthropic으로 전송돼요. Claude Code를 거치면 키를 쓸 때보다 조금 더 걸려요. 끄면 모든 게 Mac에만 남아요."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Com a limpeza ligada, o texto (nunca sua voz) vai para a Anthropic com sua chave do Claude. Desligada, tudo fica no seu Mac."
+            "value" : "Com a limpeza ligada, o texto (nunca sua voz) vai para a Anthropic, pelo seu Claude Code ou com sua chave do Claude. Pelo Claude Code, leva um pouco mais de tempo do que com uma chave. Desligada, tudo fica no seu Mac."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Когда чистка включена, текст (но не голос) уходит в Anthropic с вашим ключом Claude. Когда выключена, всё остаётся на Mac."
+            "value" : "Когда чистка включена, текст (но не голос) уходит в Anthropic — через ваш Claude Code или с вашим ключом Claude. Через Claude Code это чуть дольше, чем с ключом. Когда выключена, всё остаётся на Mac."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "เมื่อเปิดใช้ ระบบจะส่งข้อความ (ไม่ใช่เสียง) ไปยัง Anthropic ด้วยคีย์ Claude ของคุณ เมื่อปิด ทุกอย่างจะอยู่บน Mac"
+            "value" : "เมื่อเปิดใช้ ระบบจะส่งข้อความ (ไม่ใช่เสียง) ไปยัง Anthropic ผ่าน Claude Code ของคุณหรือด้วยคีย์ Claude ของคุณ ผ่าน Claude Code จะใช้เวลานานกว่าการใช้คีย์เล็กน้อย เมื่อปิด ทุกอย่างจะอยู่บน Mac"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Düzenleme açıkken metin, Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Kapalıyken her şey Mac'inde kalır."
+            "value" : "Düzenleme açıkken metin, Claude Code'un üzerinden ya da Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Claude Code üzerinden, anahtarla olduğundan biraz daha uzun sürer. Kapalıyken her şey Mac'inde kalır."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "开启整理时，文字（绝不是你的声音）会用你的 Claude 密钥发送给 Anthropic。关闭时，一切都留在你的 Mac 上。"
+            "value" : "开启整理时，文字（绝不是你的声音）会通过你的 Claude Code 或用你的 Claude 密钥发送给 Anthropic。通过 Claude Code 会比用密钥稍慢一些。关闭时，一切都留在你的 Mac 上。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟文字整理時，會使用你的 Claude 金鑰將文字傳送至 Anthropic，不會傳送語音。關閉時，所有資料都留在 Mac 上。"
+            "value" : "開啟文字整理時，會透過你的 Claude Code 或使用你的 Claude 金鑰將文字傳送至 Anthropic，不會傳送語音。透過 Claude Code 會比使用金鑰稍慢一些。關閉時，所有資料都留在 Mac 上。"
           }
         }
       }
@@ -31295,6 +33404,208 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "複製"
+          }
+        }
+      }
+    },
+    "hub.history-heard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "كما سُمع"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "যেমন শোনা গেছে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie gehört"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As heard"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tal como se oyó"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tel qu’entendu"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जैसा सुना गया"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seperti yang terdengar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聞き取ったまま"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "들린 그대로"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como foi ouvido"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как услышано"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตามที่ได้ยิน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duyulduğu gibi"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "听到的原文"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽到的原文"
+          }
+        }
+      }
+    },
+    "hub.copy-heard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "نسخ كما سُمع"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "যেমন শোনা গেছে তেমন কপি"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie gehört kopieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy as heard"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar tal como se oyó"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier tel qu’entendu"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जैसा सुना वैसा कॉपी करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salin seperti yang terdengar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聞き取ったままコピー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "들린 그대로 복사"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar como foi ouvido"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать как услышано"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คัดลอกตามที่ได้ยิน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duyulduğu gibi kopyala"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拷贝听到的原文"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "複製聽到的原文"
           }
         }
       }
@@ -59294,6 +61605,406 @@
         }
       }
     },
+    "hooks.antigravity.approvals" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الموافقة على الأوامر من الشريط"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নচ থেকে কমান্ড অনুমোদন করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Befehle in der Notch bestätigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approve commands from the notch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobar comandos desde el notch"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approuver les commandes depuis le notch"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नॉच से कमांड स्वीकृत करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setujui perintah dari notch"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ノッチからコマンドを承認"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "노치에서 명령 승인"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprovar comandos pelo notch"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтверждать команды в notch"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุมัติคำสั่งจากแถบ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Komutları adadan onayla"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在刘海中批准命令"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在瀏海中核准指令"
+          }
+        }
+      }
+    },
+    "hooks.antigravity.approvals.off" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يطلب Antigravity الإذن في طرفيته كالمعتاد."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity আগের মতোই তার টার্মিনালে অনুমতি চায়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity fragt wie gewohnt in seinem Terminal nach der Berechtigung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity asks for permission in its terminal, as usual."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity pide permiso en su terminal, como siempre."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity demande l'autorisation dans son terminal, comme d'habitude."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity हमेशा की तरह अपने टर्मिनल में अनुमति मांगता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity meminta izin di terminalnya, seperti biasa."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity はいつも通りターミナルで許可を求めます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity는 평소처럼 터미널에서 권한을 묻습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Antigravity pede permissão no terminal dele, como de costume."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity, как обычно, запрашивает разрешение в своём терминале."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity จะขออนุญาตในเทอร์มินัลของตัวเองตามปกติ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity her zamanki gibi kendi terminalinde izin ister."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 照常在其终端中请求权限。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 照常在其終端機中請求權限。"
+          }
+        }
+      }
+    },
+    "hooks.antigravity.approvals.on" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "قبل أن يشغّل Antigravity أمر shell لا تغطيه أي من قواعده، يسألك الشريط أولاً: السماح أو رفض أو الرد في الطرفية. ينتظر Antigravity حتى دقيقتين، ثم يسأل في طرفيته. لا يرى Coucou وضع Antigravity، لذا في وضع Auto يسأل الشريط أيضاً عن أوامر كان Antigravity سيشغّلها بنفسه."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity এমন কোনো shell কমান্ড চালানোর আগে যা তার কোনো নিয়মে পড়ে না, নচ আগে আপনাকে জিজ্ঞাসা করে: অনুমতি দিন, প্রত্যাখ্যান বা টার্মিনালে উত্তর দিন। Antigravity ২ মিনিট পর্যন্ত অপেক্ষা করে, তারপর তার টার্মিনালে জিজ্ঞাসা করে। Coucou Antigravity-এর মোড দেখতে পায় না, তাই Auto মোডে নচ এমন কমান্ড সম্পর্কেও জিজ্ঞাসা করে যা Antigravity নিজেই চালাত।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bevor Antigravity einen Shell-Befehl ausführt, den keine seiner Regeln abdeckt, fragt dich zuerst die Notch: Zulassen, Ablehnen oder Im Terminal antworten. Antigravity wartet bis zu 2 Min. und fragt dann in seinem Terminal. Coucou sieht den Modus von Antigravity nicht: Im Auto-Modus fragt die Notch auch bei Befehlen, die Antigravity selbst ausgeführt hätte."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before Antigravity runs a shell command that none of its rules covers, the notch asks you first: Allow, Deny or Reply in terminal. Antigravity waits up to 2 min, then asks in its terminal. Coucou can't see Antigravity's mode, so in Auto mode the notch also asks about commands Antigravity would have run on its own."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes de que Antigravity ejecute un comando de shell que ninguna de sus reglas cubre, el notch te pregunta primero: Permitir, Denegar o Responder en terminal. Antigravity espera hasta 2 min y luego pregunta en su terminal. Coucou no ve el modo de Antigravity: en modo Auto, el notch también pregunta por comandos que Antigravity habría ejecutado por su cuenta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avant qu'Antigravity lance une commande shell qu'aucune de ses règles ne couvre, le notch te demande d'abord : Autoriser, Refuser ou Répondre dans le terminal. Antigravity attend jusqu'à 2 min, puis demande dans son terminal. Coucou ne voit pas le mode d'Antigravity : en mode Auto, le notch demande aussi pour les commandes qu'Antigravity aurait lancées seul."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity कोई ऐसा shell कमांड चलाने से पहले जो उसके किसी नियम में शामिल नहीं है, नॉच पहले आपसे पूछता है: अनुमति दें, अस्वीकार या टर्मिनल में उत्तर दें। Antigravity 2 मिनट तक प्रतीक्षा करता है, फिर अपने टर्मिनल में पूछता है। Coucou, Antigravity का मोड नहीं देख सकता, इसलिए Auto मोड में नॉच उन कमांड के बारे में भी पूछता है जिन्हें Antigravity खुद चला देता।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sebelum Antigravity menjalankan perintah shell yang tidak dicakup aturannya, notch bertanya dulu: Izinkan, Tolak, atau Balas di terminal. Antigravity menunggu hingga 2 menit, lalu bertanya di terminalnya. Coucou tidak dapat melihat mode Antigravity, jadi dalam mode Auto notch juga bertanya tentang perintah yang akan dijalankan Antigravity sendiri."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity が自分のルールにないシェルコマンドを実行する前に、ノッチがまず確認します：許可、拒否、またはターミナルで返答。Antigravity は最大 2 分待ち、その後ターミナルで尋ねます。Coucou には Antigravity のモードが見えないため、Auto モードでは Antigravity が自分で実行したはずのコマンドについてもノッチが確認します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity가 규칙에 없는 셸 명령을 실행하기 전에 노치가 먼저 묻습니다: 허용, 거부 또는 터미널에서 답하기. Antigravity는 최대 2분 기다린 뒤 터미널에서 묻습니다. Coucou는 Antigravity의 모드를 볼 수 없어서, Auto 모드에서는 Antigravity가 스스로 실행했을 명령도 노치가 묻습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes de o Antigravity executar um comando de shell que nenhuma das regras dele cobre, o notch pergunta primeiro: Permitir, Negar ou Responder no terminal. O Antigravity espera até 2 min e depois pergunta no terminal dele. O Coucou não vê o modo do Antigravity: no modo Auto, o notch também pergunta sobre comandos que o Antigravity teria executado sozinho."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прежде чем Antigravity выполнит shell-команду, которую не покрывает ни одно из его правил, notch сначала спросит тебя: Разрешить, Отклонить или Ответить в терминале. Antigravity ждёт до 2 мин, затем спрашивает в своём терминале. Coucou не видит режим Antigravity, поэтому в режиме Auto notch спрашивает и о командах, которые Antigravity выполнил бы сам."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ก่อนที่ Antigravity จะรันคำสั่ง shell ที่ไม่มีกฎใดครอบคลุม แถบจะถามคุณก่อน: อนุญาต ปฏิเสธ หรือตอบกลับในเทอร์มินัล Antigravity จะรอได้นานสุด 2 นาที แล้วจึงถามในเทอร์มินัลของตัวเอง Coucou มองไม่เห็นโหมดของ Antigravity ดังนั้นในโหมด Auto แถบจะถามถึงคำสั่งที่ Antigravity จะรันเองด้วย"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity, kurallarından hiçbirinin kapsamadığı bir kabuk komutunu çalıştırmadan önce ada sana sorar: İzin ver, Reddet veya Terminalde yanıtla. Antigravity en fazla 2 dk bekler, sonra kendi terminalinde sorar. Coucou, Antigravity'nin modunu göremez; Auto modunda ada, Antigravity'nin kendi başına çalıştıracağı komutları da sorar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 运行其规则未涵盖的 shell 命令前，刘海会先询问你：允许、拒绝或在终端回复。Antigravity 最多等待 2 分钟，然后在其终端中询问。Coucou 无法看到 Antigravity 的模式，因此在 Auto 模式下，刘海也会询问 Antigravity 本会自行运行的命令。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 執行其規則未涵蓋的 shell 指令前，瀏海會先詢問你：允許、拒絕或在終端機中回覆。Antigravity 最多等待 2 分鐘，之後在其終端機中詢問。Coucou 無法看到 Antigravity 的模式，因此在 Auto 模式下，瀏海也會詢問 Antigravity 原本會自行執行的指令。"
+          }
+        }
+      }
+    },
+    "hooks.antigravity.approvals.update" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "انقر على تثبيت الخطافات مرة أخرى، ثم أعِد تشغيل Antigravity: خطافات إصدار أقدم من Coucou لا تسمح له بانتظار إجابتك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "আবার হুক ইনস্টল করুন-এ ক্লিক করুন, তারপর Antigravity রিস্টার্ট করুন: Coucou-এর পুরোনো সংস্করণের হুক আপনার উত্তরের জন্য অপেক্ষা করতে দেয় না।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klicke noch einmal auf Hooks installieren und starte Antigravity neu: Hooks einer älteren Coucou-Version lassen es nicht auf deine Antwort warten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click Install hooks once more, then restart Antigravity: hooks from an older Coucou don't let it wait for your answer."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz clic otra vez en Instalar hooks y reinicia Antigravity: los hooks de una versión anterior de Coucou no le dejan esperar tu respuesta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clique encore une fois sur Installer les hooks, puis redémarre Antigravity : les hooks d'un ancien Coucou ne le laissent pas attendre ta réponse."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "हुक इंस्टॉल करें पर एक बार और क्लिक करें, फिर Antigravity रीस्टार्ट करें: Coucou के पुराने संस्करण के हुक उसे आपके उत्तर की प्रतीक्षा नहीं करने देते।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klik Pasang hooks sekali lagi, lalu mulai ulang Antigravity: hooks dari Coucou versi lama tidak membiarkannya menunggu jawaban Anda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もう一度「フックをインストール」をクリックしてから Antigravity を再起動してください。古い Coucou のフックでは返答を待てません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "후크 설치를 한 번 더 누른 뒤 Antigravity를 다시 시작하세요. 이전 Coucou의 후크로는 답을 기다릴 수 없습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clique em Instalar hooks mais uma vez e reinicie o Antigravity: os hooks de uma versão antiga do Coucou não o deixam esperar sua resposta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажми «Установить хуки» ещё раз и перезапусти Antigravity: хуки от старой версии Coucou не дают ему дождаться твоего ответа."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คลิก ติดตั้ง Hooks อีกครั้ง แล้วเริ่ม Antigravity ใหม่: Hooks จาก Coucou เวอร์ชันเก่าไม่ให้ Antigravity รอคำตอบของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hook'ları kur'a bir kez daha tıkla, ardından Antigravity'yi yeniden başlat: eski bir Coucou'nun hook'ları yanıtını beklemesine izin vermez."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请再点一次“安装 Hooks”，然后重启 Antigravity：旧版 Coucou 写入的 hooks 无法让它等待你的回答。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請再按一次「安裝 hooks」，然後重新啟動 Antigravity：舊版 Coucou 寫入的 hooks 無法讓它等待你的回答。"
+          }
+        }
+      }
+    },
     "hooks.antigravity.installed" : {
       "localizations" : {
         "ar" : {
@@ -72342,7 +75053,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "через %lld ч %lld мин"
+            "value" : "через %lld ч %lld"
           }
         },
         "th" : {
@@ -96234,6 +98945,107 @@
         }
       }
     },
+    "voice.tts-speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "سرعة الكلام"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কথার গতি"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprechtempo"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velocidad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitesse"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "बोलने की गति"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kecepatan bicara"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "話す速さ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "말하기 속도"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velocidade"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скорость речи"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ความเร็วในการพูด"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konuşma hızı"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语速"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語速"
+          }
+        }
+      }
+    },
     "voice.tts-system" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -100883,6 +103695,1015 @@
         }
       }
     },
+    "launch.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جلسة Claude Code جديدة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নতুন Claude Code সেশন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Claude Code-Sitzung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Claude Code session"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva sesión de Claude Code"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvelle session Claude Code"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नया Claude Code सत्र"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesi Claude Code baru"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しい Claude Code セッション"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 Claude Code 세션"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nova sessão do Claude Code"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая сессия Claude Code"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เซสชัน Claude Code ใหม่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni Claude Code oturumu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新的 Claude Code 会话"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新的 Claude Code 工作階段"
+          }
+        }
+      }
+    },
+    "launch.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ماذا يفعل Claude؟"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude কী করবে?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was soll Claude tun?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What should Claude do?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Qué debe hacer Claude?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Que doit faire Claude ?"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude क्या करे?"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apa yang harus dilakukan Claude?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude に何をしてもらいますか？"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude가 무엇을 할까요?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O que o Claude deve fazer?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что сделать Claude?"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ให้ Claude ทำอะไร?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude ne yapsın?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要 Claude 做什么？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要 Claude 做什麼？"
+          }
+        }
+      }
+    },
+    "launch.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يفتح الطرفية في المشروع مع Claude Code وكلماتك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "প্রজেক্টে আপনার টার্মিনাল খোলে, Claude Code আর আপনার কথা নিয়ে।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet dein Terminal im Projekt, mit Claude Code und deinen Worten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens your terminal in the project, with Claude Code and your words."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre tu terminal en el proyecto, con Claude Code y tus palabras."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre ton terminal dans le projet, avec Claude Code et tes mots."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "प्रोजेक्ट में आपका टर्मिनल खोलता है, Claude Code और आपके शब्दों के साथ।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Membuka terminal di proyek, dengan Claude Code dan kata-katamu."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プロジェクトでターミナルを開き、Claude Code にあなたの言葉を渡します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "프로젝트에서 터미널을 열고 Claude Code에 내 말을 전합니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre seu terminal no projeto, com o Claude Code e suas palavras."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откроет терминал в проекте с Claude Code и вашими словами."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดเทอร์มินัลในโปรเจกต์ พร้อม Claude Code และคำของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminalini projede açar, Claude Code ve senin sözlerinle."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在项目中打开终端，启动 Claude Code 并带上你的话。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在專案中開啟終端機，啟動 Claude Code 並帶上你的話。"
+          }
+        }
+      }
+    },
+    "launch.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر فتح الطرفية في هذا المجلد."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এই ফোল্ডারে টার্মিনাল খোলা গেল না।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Terminal konnte in diesem Ordner nicht geöffnet werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't open the terminal in this folder."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo abrir el terminal en esta carpeta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d'ouvrir le terminal dans ce dossier."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इस फ़ोल्डर में टर्मिनल नहीं खुल सका।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tidak bisa membuka terminal di folder ini."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このフォルダでターミナルを開けませんでした。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 폴더에서 터미널을 열 수 없습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir o terminal nesta pasta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось открыть терминал в этой папке."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดเทอร์มินัลในโฟลเดอร์นี้ไม่ได้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal bu klasörde açılamadı."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法在此文件夹中打开终端。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法在此資料夾中開啟終端機。"
+          }
+        }
+      }
+    },
+    "launch.choose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختيار"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "বেছে নিন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auswählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "चुनें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilih"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลือก"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seç"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇"
+          }
+        }
+      }
+    },
+    "launch.choose-folder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختيار مجلد…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ফোল্ডার বেছে নিন…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner auswählen …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a folder…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir una carpeta…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir un dossier…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फ़ोल्डर चुनें…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilih folder…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フォルダを選択…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴더 선택…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher uma pasta…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать папку…"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลือกโฟลเดอร์…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klasör seç…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择文件夹…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇資料夾⋯"
+          }
+        }
+      }
+    },
+    "launch.no-project" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختيار مشروع"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "প্রজেক্ট বেছে নিন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projekt auswählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a project"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir un proyecto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir un projet"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "प्रोजेक्ट चुनें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilih proyek"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プロジェクトを選択"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "프로젝트 선택"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher um projeto"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать проект"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลือกโปรเจกต์"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proje seç"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择项目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇專案"
+          }
+        }
+      }
+    },
+    "drop.session.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أو داخل جلسة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অথবা একটি সেশনে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oder in eine Sitzung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Or into a session"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O en una sesión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ou dans une session"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "या किसी सत्र में"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atau ke sebuah sesi"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "またはセッションへ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "또는 세션으로"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ou em uma sessão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Или в сессию"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หรือใส่ในเซสชัน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya da bir oturuma"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或放进一个会话"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或放進一個工作階段"
+          }
+        }
+      }
+    },
+    "drop.session.copied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم النسخ: ألصقه في الجلسة بـ ⌘V (يحتاج Coucou إلى إذن تسهيلات الاستخدام ليفعل ذلك عنك)."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কপি হয়েছে: ⌘V দিয়ে সেশনে পেস্ট করুন (Coucou-কে নিজে করতে Accessibility অনুমতি লাগবে)।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiert: füge es mit ⌘V in die Sitzung ein (dafür braucht Coucou die Bedienungshilfen)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied: paste it in the session with ⌘V (Coucou needs Accessibility to do it for you)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado: pégalo en la sesión con ⌘V (Coucou necesita Accesibilidad para hacerlo por ti)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copié : colle-le dans la session avec ⌘V (Coucou a besoin de l'Accessibilité pour le faire à ta place)."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कॉपी हो गया: ⌘V से सत्र में चिपकाएँ (Coucou को यह खुद करने के लिए Accessibility अनुमति चाहिए)।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tersalin: tempel di sesi dengan ⌘V (Coucou perlu izin Aksesibilitas untuk melakukannya untukmu)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コピーしました：⌘V でセッションに貼り付けてください（Coucou が代わりに行うにはアクセシビリティが必要です）。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "복사됨: ⌘V로 세션에 붙여 넣으세요 (Coucou가 대신하려면 손쉬운 사용 권한이 필요합니다)."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado: cole na sessão com ⌘V (o Coucou precisa da Acessibilidade para fazer isso por você)."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано: вставьте в сессию через ⌘V (чтобы Coucou делал это сам, нужен доступ к Универсальному доступу)."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คัดลอกแล้ว: วางในเซสชันด้วย ⌘V (Coucou ต้องได้สิทธิ์การช่วยการเข้าถึงจึงจะทำแทนคุณได้)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopyalandı: oturuma ⌘V ile yapıştır (Coucou'nun bunu senin yerine yapması için Erişilebilirlik izni gerekir)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已拷贝：用 ⌘V 粘贴到会话中（Coucou 需要辅助功能权限才能代你完成）。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已拷貝：用 ⌘V 貼到工作階段中（Coucou 需要輔助使用權限才能代你完成）。"
+          }
+        }
+      }
+    },
+    "Join" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "انضمام"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "যোগ দিন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beitreten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unirse"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rejoindre"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जुड़ें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gabung"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "参加"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "참가"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключиться"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เข้าร่วม"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katıl"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入"
+          }
+        }
+      }
+    },
     "integrations.github.ci-hint.appstore" : {
       "localizations" : {
         "ar" : {
@@ -100979,206 +104800,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "（Claude Code 工作階段所在分支的 CI 需要直接下載版：App Store 沙盒無法讀取專案的 .git 資料夾。）"
-          }
-        }
-      }
-    },
-    "Default branch CI" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI للفرع الافتراضي"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ডিফল্ট ব্রাঞ্চের CI"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI des Standard-Branches"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Default branch CI"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI de la rama principal"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI de la branche par défaut"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "डिफ़ॉल्ट ब्रांच का CI"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI branch default"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "デフォルトブランチの CI"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "기본 브랜치 CI"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI da branch padrão"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI основной ветки"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI ของ branch หลัก"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varsayılan dal CI"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "默认分支 CI"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "預設分支 CI"
-          }
-        }
-      }
-    },
-    "Google Cloud console" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "وحدة تحكم Google Cloud"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud কনসোল"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud Console"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud console"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Consola de Google Cloud"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Console Google Cloud"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud कंसोल"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konsol Google Cloud"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud コンソール"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud 콘솔"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Console do Google Cloud"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Консоль Google Cloud"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "คอนโซล Google Cloud"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud konsolu"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud 控制台"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Cloud 控制台"
           }
         }
       }
@@ -101283,6 +104904,106 @@
         }
       }
     },
+    "Disconnect" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "قطع الاتصال"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সংযোগ বিচ্ছিন্ন করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnect"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnecter"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डिस्कनेक्ट करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Putuskan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接続を解除"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결 해제"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отключить"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยกเลิกการเชื่อมต่อ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bağlantıyı kes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "断开连接"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中斷連線"
+          }
+        }
+      }
+    },
     "Google account not connected" : {
       "localizations" : {
         "ar" : {
@@ -101379,6 +105100,206 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未連接 Google 帳號"
+          }
+        }
+      }
+    },
+    "Default branch CI" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI للفرع الافتراضي"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডিফল্ট ব্রাঞ্চের CI"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI des Standard-Branches"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default branch CI"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI de la rama principal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI de la branche par défaut"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डिफ़ॉल्ट ब्रांच का CI"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI branch default"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デフォルトブランチの CI"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기본 브랜치 CI"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI da branch padrão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI основной ветки"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI ของ branch หลัก"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varsayılan dal CI"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认分支 CI"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設分支 CI"
+          }
+        }
+      }
+    },
+    "integrations.gcal.hint" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يملك Coucou خادمًا، لذا يسجّل الدخول باستخدام عميل OAuth الخاص بك: في Google Cloud، فعّل Google Calendar API، وأنشئ عميل OAuth من نوع تطبيق سطح المكتب، والصق معرّفه وسرّه هنا. ثم انشر شاشة الموافقة (قيد الإنتاج): سيحذّرك Google من أن التطبيق غير موثّق — إنه تطبيقك، تابع. إذا تركته في وضع الاختبار، فلن يتمكن من تسجيل الدخول إلا مستخدمو الاختبار المدرجون هناك، ويسجّل Google خروجهم كل 7 أيام. للقراءة فقط. يذكّرك Mochi في الأوقات التي تحددها تذكيرات Google لأحداثك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou-এর কোনো সার্ভার নেই, তাই এটি আপনার নিজের OAuth ক্লায়েন্ট দিয়ে সাইন ইন করে: Google Cloud-এ Google Calendar API চালু করুন, Desktop app ধরনের একটি OAuth ক্লায়েন্ট তৈরি করুন, এবং এর ID ও secret এখানে পেস্ট করুন। তারপর consent screen প্রকাশ করুন (In production): Google সতর্ক করবে যে অ্যাপটি যাচাই করা হয়নি — এটি আপনারই, চালিয়ে যান। Testing অবস্থায় রাখলে শুধু সেখানে তালিকাভুক্ত টেস্ট ব্যবহারকারীরা সাইন ইন করতে পারবেন, আর Google প্রতি 7 দিনে তাদের সাইন আউট করে দেয়। শুধু পড়ার জন্য। আপনার ইভেন্টগুলোর নিজস্ব Google রিমাইন্ডারের সময়েই Mochi আপনাকে মনে করিয়ে দেয়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou hat keinen Server und meldet sich deshalb mit deinem eigenen OAuth-Client an: Aktiviere in Google Cloud die Google Calendar API, erstelle einen OAuth-Client vom Typ Desktop-App und füge hier seine ID und sein Secret ein. Veröffentliche dann den Zustimmungsbildschirm (In Produktion): Google warnt, dass die App nicht überprüft ist – sie gehört dir, fahre fort. Bleibt er im Test, können sich nur die dort eingetragenen Testnutzer anmelden, und Google meldet sie alle 7 Tage ab. Nur Lesezugriff. Mochi erinnert dich zu den Zeiten, die die Google-Erinnerungen deiner Termine vorgeben."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou has no server, so it signs in with your own OAuth client: in Google Cloud, enable the Google Calendar API, create an OAuth client of type Desktop app, and paste its ID and secret here. Then publish the consent screen (In production): Google will warn that the app isn't verified — it's your own, continue. Left in Testing, only the test users listed there can sign in, and Google signs them out every 7 days. Read-only. Mochi reminds you at the times your events' own Google reminders say."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou no tiene servidor, así que inicia sesión con tu propio cliente OAuth: en Google Cloud, activa la API de Google Calendar, crea un cliente OAuth de tipo App de escritorio y pega aquí su ID y su secreto. Después publica la pantalla de consentimiento (En producción): Google avisará de que la app no está verificada; es la tuya, continúa. Si la dejas en Prueba, solo pueden iniciar sesión los usuarios de prueba que aparezcan allí, y Google cierra su sesión cada 7 días. Solo lectura. Mochi te avisa a las horas que marcan los propios recordatorios de Google de tus eventos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou n'a pas de serveur, il se connecte donc avec ton propre client OAuth : dans Google Cloud, active l'API Google Calendar, crée un client OAuth de type Application de bureau et colle ici son ID et son secret. Publie ensuite l'écran de consentement (En production) : Google préviendra que l'application n'est pas validée — c'est la tienne, continue. Laissé en Test, seuls les utilisateurs test listés peuvent se connecter, et Google les déconnecte tous les 7 jours. Lecture seule. Mochi te prévient aux heures fixées par les rappels Google de tes événements."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou का कोई सर्वर नहीं है, इसलिए यह आपके अपने OAuth क्लाइंट से साइन इन करता है: Google Cloud में Google Calendar API चालू करें, Desktop app प्रकार का OAuth क्लाइंट बनाएँ, और उसकी ID और secret यहाँ पेस्ट करें। फिर consent screen प्रकाशित करें (In production): Google चेतावनी देगा कि ऐप सत्यापित नहीं है — यह आपका अपना है, जारी रखें। Testing में छोड़ने पर केवल वहाँ सूचीबद्ध टेस्ट उपयोगकर्ता साइन इन कर सकते हैं, और Google उन्हें हर 7 दिन में साइन आउट कर देता है। केवल पढ़ने के लिए। Mochi आपको उन्हीं समयों पर याद दिलाता है जो आपके इवेंट्स के Google रिमाइंडर में तय हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou tidak punya server, jadi masuk dengan klien OAuth milik Anda sendiri: di Google Cloud, aktifkan Google Calendar API, buat klien OAuth berjenis Aplikasi desktop, lalu tempel ID dan rahasianya di sini. Kemudian publikasikan layar persetujuan (Dalam produksi): Google akan memperingatkan bahwa aplikasi belum diverifikasi — itu milik Anda, lanjutkan. Jika dibiarkan dalam Pengujian, hanya pengguna uji yang terdaftar di sana yang bisa masuk, dan Google mengeluarkan mereka setiap 7 hari. Hanya baca. Mochi mengingatkan Anda pada waktu yang ditentukan pengingat Google untuk acara Anda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou にはサーバーがないため、あなた自身の OAuth クライアントでサインインします。Google Cloud で Google Calendar API を有効にし、種類が「デスクトップアプリ」の OAuth クライアントを作成して、その ID とシークレットをここに貼り付けてください。次に同意画面を公開します（本番環境）。Google はアプリが未確認だと警告しますが、あなた自身のアプリなので続行してください。テストのままにすると、そこに登録したテストユーザーしかサインインできず、Google は 7 日ごとにサインアウトさせます。読み取り専用です。Mochi は予定ごとの Google のリマインダーと同じタイミングでお知らせします。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou에는 서버가 없어서 내 OAuth 클라이언트로 로그인해요. Google Cloud에서 Google Calendar API를 켜고, 데스크톱 앱 유형의 OAuth 클라이언트를 만든 뒤 ID와 보안 비밀을 여기에 붙여 넣으세요. 그다음 동의 화면을 게시하세요(프로덕션). Google이 확인되지 않은 앱이라고 경고하지만 내 앱이니 계속하면 돼요. 테스트 상태로 두면 거기 등록된 테스트 사용자만 로그인할 수 있고, Google이 7일마다 로그아웃시켜요. 읽기 전용이에요. 모찌는 일정에 설정된 Google 알림 시간에 맞춰 알려 줘요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Coucou não tem servidor, então ele entra com o seu próprio cliente OAuth: no Google Cloud, ative a API do Google Calendar, crie um cliente OAuth do tipo App para computador e cole aqui o ID e o segredo. Depois publique a tela de consentimento (Em produção): o Google vai avisar que o app não foi verificado — é o seu, continue. Se ficar em Teste, só os usuários de teste listados lá podem entrar, e o Google os desconecta a cada 7 dias. Somente leitura. O Mochi avisa você nos horários definidos pelos próprios lembretes do Google dos seus eventos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У Coucou нет сервера, поэтому вход выполняется через ваш собственный OAuth-клиент: в Google Cloud включите Google Calendar API, создайте OAuth-клиент типа «Приложение для компьютера» и вставьте сюда его ID и секрет. Затем опубликуйте экран согласия («В рабочем режиме»): Google предупредит, что приложение не проверено, — оно ваше, продолжайте. В режиме тестирования войти смогут только указанные там тестовые пользователи, и Google будет выводить их из аккаунта каждые 7 дней. Только чтение. Mochi напоминает о событиях в то время, которое задано в их собственных напоминаниях Google."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ไม่มีเซิร์ฟเวอร์ จึงลงชื่อเข้าใช้ด้วยไคลเอนต์ OAuth ของคุณเอง: ใน Google Cloud ให้เปิดใช้ Google Calendar API สร้างไคลเอนต์ OAuth ประเภทแอปเดสก์ท็อป แล้ววางรหัสและข้อมูลลับของไคลเอนต์ที่นี่ จากนั้นเผยแพร่หน้าจอขอความยินยอม (In production): Google จะเตือนว่าแอปยังไม่ได้รับการยืนยัน ซึ่งเป็นแอปของคุณเอง ให้ดำเนินการต่อ หากปล่อยไว้ในโหมด Testing จะมีเพียงผู้ใช้ทดสอบที่อยู่ในรายการเท่านั้นที่ลงชื่อเข้าใช้ได้ และ Google จะออกจากระบบทุก 7 วัน อ่านอย่างเดียว Mochi จะเตือนคุณตามเวลาที่ตั้งไว้ในการแจ้งเตือนของ Google สำหรับกิจกรรมของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou'nun sunucusu yok, bu yüzden kendi OAuth istemcinle oturum açar: Google Cloud'da Google Calendar API'yi etkinleştir, Masaüstü uygulaması türünde bir OAuth istemcisi oluştur ve kimliğini ve gizli anahtarını buraya yapıştır. Ardından izin ekranını yayınla (In production): Google uygulamanın doğrulanmadığı konusunda uyarır; uygulama senin, devam et. Test modunda bırakılırsa yalnızca orada listelenen test kullanıcıları oturum açabilir ve Google onların oturumunu 7 günde bir kapatır. Salt okunur. Mochi, etkinliklerinin kendi Google hatırlatıcılarının belirttiği zamanlarda sana hatırlatır."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 没有服务器，所以使用你自己的 OAuth 客户端登录：在 Google Cloud 中启用 Google Calendar API，创建一个“桌面应用”类型的 OAuth 客户端，并将其 ID 和密钥粘贴到这里。然后发布同意屏幕（正式版）：Google 会提示应用未经验证——这是你自己的应用，继续即可。如果保留在“测试”状态，只有其中列出的测试用户可以登录，而且 Google 每 7 天会让他们退出登录。只读。Mochi 会在你的活动自带的 Google 提醒时间提醒你。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 沒有伺服器，所以會使用你自己的 OAuth 用戶端登入：在 Google Cloud 中啟用 Google Calendar API，建立一個「桌面應用程式」類型的 OAuth 用戶端，並將其 ID 和密鑰貼到這裡。接著發布同意畫面（正式版）：Google 會提示應用程式未經驗證——這是你自己的應用程式，繼續即可。如果保留在「測試」狀態，只有列在其中的測試使用者可以登入，而且 Google 每 7 天會將他們登出。唯讀。Mochi 會在你活動自帶的 Google 提醒時間提醒你。"
           }
         }
       }
@@ -101583,306 +105504,6 @@
         }
       }
     },
-    "Disconnect" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "قطع الاتصال"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "সংযোগ বিচ্ছিন্ন করুন"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trennen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Disconnect"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Desconectar"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Déconnecter"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "डिस्कनेक्ट करें"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Putuskan"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "接続を解除"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "연결 해제"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Desconectar"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Отключить"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ยกเลิกการเชื่อมต่อ"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bağlantıyı kes"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "断开连接"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "中斷連線"
-          }
-        }
-      }
-    },
-    "integrations.gcal.hint" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "لا يملك Coucou خادمًا، لذا يسجّل الدخول باستخدام عميل OAuth الخاص بك: في Google Cloud، فعّل Google Calendar API، وأنشئ عميل OAuth من نوع تطبيق سطح المكتب، والصق معرّفه وسرّه هنا. ثم انشر شاشة الموافقة (قيد الإنتاج): سيحذّرك Google من أن التطبيق غير موثّق — إنه تطبيقك، تابع. إذا تركته في وضع الاختبار، فلن يتمكن من تسجيل الدخول إلا مستخدمو الاختبار المدرجون هناك، ويسجّل Google خروجهم كل 7 أيام. للقراءة فقط. يذكّرك Mochi في الأوقات التي تحددها تذكيرات Google لأحداثك."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou-এর কোনো সার্ভার নেই, তাই এটি আপনার নিজের OAuth ক্লায়েন্ট দিয়ে সাইন ইন করে: Google Cloud-এ Google Calendar API চালু করুন, Desktop app ধরনের একটি OAuth ক্লায়েন্ট তৈরি করুন, এবং এর ID ও secret এখানে পেস্ট করুন। তারপর consent screen প্রকাশ করুন (In production): Google সতর্ক করবে যে অ্যাপটি যাচাই করা হয়নি — এটি আপনারই, চালিয়ে যান। Testing অবস্থায় রাখলে শুধু সেখানে তালিকাভুক্ত টেস্ট ব্যবহারকারীরা সাইন ইন করতে পারবেন, আর Google প্রতি 7 দিনে তাদের সাইন আউট করে দেয়। শুধু পড়ার জন্য। আপনার ইভেন্টগুলোর নিজস্ব Google রিমাইন্ডারের সময়েই Mochi আপনাকে মনে করিয়ে দেয়।"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou hat keinen Server und meldet sich deshalb mit deinem eigenen OAuth-Client an: Aktiviere in Google Cloud die Google Calendar API, erstelle einen OAuth-Client vom Typ Desktop-App und füge hier seine ID und sein Secret ein. Veröffentliche dann den Zustimmungsbildschirm (In Produktion): Google warnt, dass die App nicht überprüft ist – sie gehört dir, fahre fort. Bleibt er im Test, können sich nur die dort eingetragenen Testnutzer anmelden, und Google meldet sie alle 7 Tage ab. Nur Lesezugriff. Mochi erinnert dich zu den Zeiten, die die Google-Erinnerungen deiner Termine vorgeben."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou has no server, so it signs in with your own OAuth client: in Google Cloud, enable the Google Calendar API, create an OAuth client of type Desktop app, and paste its ID and secret here. Then publish the consent screen (In production): Google will warn that the app isn't verified — it's your own, continue. Left in Testing, only the test users listed there can sign in, and Google signs them out every 7 days. Read-only. Mochi reminds you at the times your events' own Google reminders say."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou no tiene servidor, así que inicia sesión con tu propio cliente OAuth: en Google Cloud, activa la API de Google Calendar, crea un cliente OAuth de tipo App de escritorio y pega aquí su ID y su secreto. Después publica la pantalla de consentimiento (En producción): Google avisará de que la app no está verificada; es la tuya, continúa. Si la dejas en Prueba, solo pueden iniciar sesión los usuarios de prueba que aparezcan allí, y Google cierra su sesión cada 7 días. Solo lectura. Mochi te avisa a las horas que marcan los propios recordatorios de Google de tus eventos."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou n'a pas de serveur, il se connecte donc avec ton propre client OAuth : dans Google Cloud, active l'API Google Calendar, crée un client OAuth de type Application de bureau et colle ici son ID et son secret. Publie ensuite l'écran de consentement (En production) : Google préviendra que l'application n'est pas validée — c'est la tienne, continue. Laissé en Test, seuls les utilisateurs test listés peuvent se connecter, et Google les déconnecte tous les 7 jours. Lecture seule. Mochi te prévient aux heures fixées par les rappels Google de tes événements."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou का कोई सर्वर नहीं है, इसलिए यह आपके अपने OAuth क्लाइंट से साइन इन करता है: Google Cloud में Google Calendar API चालू करें, Desktop app प्रकार का OAuth क्लाइंट बनाएँ, और उसकी ID और secret यहाँ पेस्ट करें। फिर consent screen प्रकाशित करें (In production): Google चेतावनी देगा कि ऐप सत्यापित नहीं है — यह आपका अपना है, जारी रखें। Testing में छोड़ने पर केवल वहाँ सूचीबद्ध टेस्ट उपयोगकर्ता साइन इन कर सकते हैं, और Google उन्हें हर 7 दिन में साइन आउट कर देता है। केवल पढ़ने के लिए। Mochi आपको उन्हीं समयों पर याद दिलाता है जो आपके इवेंट्स के Google रिमाइंडर में तय हैं।"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou tidak punya server, jadi masuk dengan klien OAuth milik Anda sendiri: di Google Cloud, aktifkan Google Calendar API, buat klien OAuth berjenis Aplikasi desktop, lalu tempel ID dan rahasianya di sini. Kemudian publikasikan layar persetujuan (Dalam produksi): Google akan memperingatkan bahwa aplikasi belum diverifikasi — itu milik Anda, lanjutkan. Jika dibiarkan dalam Pengujian, hanya pengguna uji yang terdaftar di sana yang bisa masuk, dan Google mengeluarkan mereka setiap 7 hari. Hanya baca. Mochi mengingatkan Anda pada waktu yang ditentukan pengingat Google untuk acara Anda."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou にはサーバーがないため、あなた自身の OAuth クライアントでサインインします。Google Cloud で Google Calendar API を有効にし、種類が「デスクトップアプリ」の OAuth クライアントを作成して、その ID とシークレットをここに貼り付けてください。次に同意画面を公開します（本番環境）。Google はアプリが未確認だと警告しますが、あなた自身のアプリなので続行してください。テストのままにすると、そこに登録したテストユーザーしかサインインできず、Google は 7 日ごとにサインアウトさせます。読み取り専用です。Mochi は予定ごとの Google のリマインダーと同じタイミングでお知らせします。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou에는 서버가 없어서 내 OAuth 클라이언트로 로그인해요. Google Cloud에서 Google Calendar API를 켜고, 데스크톱 앱 유형의 OAuth 클라이언트를 만든 뒤 ID와 보안 비밀을 여기에 붙여 넣으세요. 그다음 동의 화면을 게시하세요(프로덕션). Google이 확인되지 않은 앱이라고 경고하지만 내 앱이니 계속하면 돼요. 테스트 상태로 두면 거기 등록된 테스트 사용자만 로그인할 수 있고, Google이 7일마다 로그아웃시켜요. 읽기 전용이에요. 모찌는 일정에 설정된 Google 알림 시간에 맞춰 알려 줘요."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Coucou não tem servidor, então ele entra com o seu próprio cliente OAuth: no Google Cloud, ative a API do Google Calendar, crie um cliente OAuth do tipo App para computador e cole aqui o ID e o segredo. Depois publique a tela de consentimento (Em produção): o Google vai avisar que o app não foi verificado — é o seu, continue. Se ficar em Teste, só os usuários de teste listados lá podem entrar, e o Google os desconecta a cada 7 dias. Somente leitura. O Mochi avisa você nos horários definidos pelos próprios lembretes do Google dos seus eventos."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "У Coucou нет сервера, поэтому вход выполняется через ваш собственный OAuth-клиент: в Google Cloud включите Google Calendar API, создайте OAuth-клиент типа «Приложение для компьютера» и вставьте сюда его ID и секрет. Затем опубликуйте экран согласия («В рабочем режиме»): Google предупредит, что приложение не проверено, — оно ваше, продолжайте. В режиме тестирования войти смогут только указанные там тестовые пользователи, и Google будет выводить их из аккаунта каждые 7 дней. Только чтение. Mochi напоминает о событиях в то время, которое задано в их собственных напоминаниях Google."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou ไม่มีเซิร์ฟเวอร์ จึงลงชื่อเข้าใช้ด้วยไคลเอนต์ OAuth ของคุณเอง: ใน Google Cloud ให้เปิดใช้ Google Calendar API สร้างไคลเอนต์ OAuth ประเภทแอปเดสก์ท็อป แล้ววางรหัสและข้อมูลลับของไคลเอนต์ที่นี่ จากนั้นเผยแพร่หน้าจอขอความยินยอม (In production): Google จะเตือนว่าแอปยังไม่ได้รับการยืนยัน ซึ่งเป็นแอปของคุณเอง ให้ดำเนินการต่อ หากปล่อยไว้ในโหมด Testing จะมีเพียงผู้ใช้ทดสอบที่อยู่ในรายการเท่านั้นที่ลงชื่อเข้าใช้ได้ และ Google จะออกจากระบบทุก 7 วัน อ่านอย่างเดียว Mochi จะเตือนคุณตามเวลาที่ตั้งไว้ในการแจ้งเตือนของ Google สำหรับกิจกรรมของคุณ"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou'nun sunucusu yok, bu yüzden kendi OAuth istemcinle oturum açar: Google Cloud'da Google Calendar API'yi etkinleştir, Masaüstü uygulaması türünde bir OAuth istemcisi oluştur ve kimliğini ve gizli anahtarını buraya yapıştır. Ardından izin ekranını yayınla (In production): Google uygulamanın doğrulanmadığı konusunda uyarır; uygulama senin, devam et. Test modunda bırakılırsa yalnızca orada listelenen test kullanıcıları oturum açabilir ve Google onların oturumunu 7 günde bir kapatır. Salt okunur. Mochi, etkinliklerinin kendi Google hatırlatıcılarının belirttiği zamanlarda sana hatırlatır."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou 没有服务器，所以使用你自己的 OAuth 客户端登录：在 Google Cloud 中启用 Google Calendar API，创建一个“桌面应用”类型的 OAuth 客户端，并将其 ID 和密钥粘贴到这里。然后发布同意屏幕（正式版）：Google 会提示应用未经验证——这是你自己的应用，继续即可。如果保留在“测试”状态，只有其中列出的测试用户可以登录，而且 Google 每 7 天会让他们退出登录。只读。Mochi 会在你的活动自带的 Google 提醒时间提醒你。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou 沒有伺服器，所以會使用你自己的 OAuth 用戶端登入：在 Google Cloud 中啟用 Google Calendar API，建立一個「桌面應用程式」類型的 OAuth 用戶端，並將其 ID 和密鑰貼到這裡。接著發布同意畫面（正式版）：Google 會提示應用程式未經驗證——這是你自己的應用程式，繼續即可。如果保留在「測試」狀態，只有列在其中的測試使用者可以登入，而且 Google 每 7 天會將他們登出。唯讀。Mochi 會在你活動自帶的 Google 提醒時間提醒你。"
-          }
-        }
-      }
-    },
-    "Join" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "انضمام"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "যোগ দিন"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beitreten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Join"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unirse"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rejoindre"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "जुड़ें"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gabung"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "参加"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "참가"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entrar"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Подключиться"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เข้าร่วม"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katıl"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加入"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加入"
-          }
-        }
-      }
-    },
     "Nothing on the calendar this week" : {
       "localizations" : {
         "ar" : {
@@ -101979,6 +105600,106 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "本週行事曆上沒有安排"
+          }
+        }
+      }
+    },
+    "Google Cloud console" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "وحدة تحكم Google Cloud"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud কনসোল"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud Console"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud console"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Consola de Google Cloud"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Console Google Cloud"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud कंसोल"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konsol Google Cloud"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud コンソール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud 콘솔"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Console do Google Cloud"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Консоль Google Cloud"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คอนโซล Google Cloud"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud konsolu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud 控制台"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud 控制台"
           }
         }
       }

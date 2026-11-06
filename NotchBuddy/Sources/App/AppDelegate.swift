@@ -376,6 +376,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ClaudeDesktopChatWatcher.shared.start()
         #endif
         CryptoController.shared.start()
+        CoucoudoroController.shared.start()
         PortfolioController.shared.start()
     }
 }

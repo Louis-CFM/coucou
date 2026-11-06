@@ -114,6 +114,8 @@ pub struct Prefs {
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
     pub voice_gender: String,
+    /// One short press of the key starts hands-free dictation, instead of two.
+    pub one_tap_hands_free: bool,
 }
 
 impl Default for Prefs {
@@ -133,6 +135,7 @@ impl Default for Prefs {
             mute_others: true,
             voice_output: "system".into(),
             voice_gender: "female".into(),
+            one_tap_hands_free: false,
         }
     }
 }

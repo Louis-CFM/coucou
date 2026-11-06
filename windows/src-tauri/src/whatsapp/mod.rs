@@ -1020,6 +1020,43 @@ pub fn chat_from_entry(raw: &str) -> Option<String> {
     (!digits.is_empty()).then(|| format!("{digits}@s.whatsapp.net"))
 }
 
+// ── WhatsApp itself ───────────────────────────────────────────────────────────
+
+/// The card's ↗ when no app on this computer opens `whatsapp:` links.
+const WEB_URL: &str = "https://web.whatsapp.com";
+
+/// A person's number, for WhatsApp's `send?phone=` links. None for a group, a chat whose number
+/// WhatsApp keeps hidden (`@lid`) or no chat at all: those open WhatsApp as it is.
+fn phone_of(chat: Option<&str>) -> Option<String> {
+    chat.map(model::normalized)
+        .and_then(|jid| jid.strip_suffix("@s.whatsapp.net").map(str::to_string))
+        .filter(|n| (6..=15).contains(&n.len()) && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// WhatsApp Desktop's own link: at a person's chat, or the app as it is.
+pub fn app_link(chat: Option<&str>) -> String {
+    match phone_of(chat) {
+        Some(n) => format!("whatsapp://send?phone={n}"),
+        None => "whatsapp://".into(),
+    }
+}
+
+/// WhatsApp Web's, in the browser: at a person's chat, or its home page.
+pub fn web_link(chat: Option<&str>) -> String {
+    match phone_of(chat) {
+        Some(n) => format!("{WEB_URL}/send?phone={n}"),
+        None => WEB_URL.into(),
+    }
+}
+
+/// WhatsApp Desktop when it is installed (the Microsoft Store app registers `whatsapp:`), at the
+/// chat; WhatsApp Web in the browser otherwise. True when it went to the app.
+fn open_in_whatsapp(chat: Option<&str>) -> bool {
+    let app = crate::platform::handles_scheme("whatsapp");
+    crate::platform::open_url(&if app { app_link(chat) } else { web_link(chat) });
+    app
+}
+
 // ── GOWA install ──────────────────────────────────────────────────────────────
 
 fn set_install(step: Step) {
@@ -1087,6 +1124,15 @@ pub fn whatsapp_close(window: WebviewWindow, chat: String) -> Result<(), String>
     only(&window, crate::island::WINDOW_LABEL)?;
     close(&chat);
     Ok(())
+}
+
+/// The card's ↗: WhatsApp at the conversation open in the card (`open_in_whatsapp`). True when it
+/// went to WhatsApp Desktop rather than WhatsApp Web.
+#[tauri::command]
+pub fn whatsapp_open_app(window: WebviewWindow) -> Result<bool, String> {
+    only(&window, crate::island::WINDOW_LABEL)?;
+    let chat = ctl().open_chat.clone();
+    Ok(open_in_whatsapp(chat.as_deref()))
 }
 
 /// Enter or the send button in the island's card: the only way a message leaves Coucou.
@@ -1310,6 +1356,21 @@ mod tests {
         assert_eq!(chat_from_entry("abc"), None);
         assert_eq!(chat_from_entry("a b@g.us"), None);
         assert_eq!(chat_from_entry(""), None);
+    }
+
+    #[test]
+    fn the_arrow_opens_a_persons_chat_in_whatsapp_and_anything_else_as_it_is() {
+        assert_eq!(app_link(Some("447700900123@s.whatsapp.net")), "whatsapp://send?phone=447700900123");
+        assert_eq!(app_link(Some("447700900123:3@s.whatsapp.net")), "whatsapp://send?phone=447700900123");
+        assert_eq!(app_link(Some("447700900123@c.us")), "whatsapp://send?phone=447700900123");
+        assert_eq!(app_link(Some("120363012345678901@g.us")), "whatsapp://", "a group has no number");
+        assert_eq!(app_link(Some("123456789012345@lid")), "whatsapp://", "a hidden number stays hidden");
+        assert_eq!(app_link(Some("12@s.whatsapp.net")), "whatsapp://");
+        assert_eq!(app_link(None), "whatsapp://");
+        // Without the app, WhatsApp Web at the same chat.
+        assert_eq!(web_link(Some("447700900123@s.whatsapp.net")), "https://web.whatsapp.com/send?phone=447700900123");
+        assert_eq!(web_link(Some("120363012345678901@g.us")), "https://web.whatsapp.com");
+        assert_eq!(web_link(None), "https://web.whatsapp.com");
     }
 
     #[test]

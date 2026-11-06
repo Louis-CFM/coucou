@@ -26,6 +26,9 @@ interface RelayRequest {
   dismissAfter?: number;   // "end" only: seconds the final state stays on the Lock Screen
 }
 
+const MAX_BODY_BYTES = 4096;
+const APNS_TIMEOUT_MS = 8000;
+
 const STATE_STRINGS = ["pillId", "agent", "color", "state", "statusText", "tone"] as const;
 const STATE_NUMBERS = ["stepIndex", "stepCount", "others"] as const;
 
@@ -38,13 +41,19 @@ export default {
     if (request.method !== "POST" || url.pathname !== "/v1/live-activity") {
       return text(404, "not found");
     }
-    if (Number(request.headers.get("content-length") ?? "0") > 4096) {
+    // Cheap early reject, but the header can be missing (chunked) or wrong,
+    // so the body is measured again after reading.
+    if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY_BYTES) {
       return text(413, "too large");
     }
 
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) {
+      return text(413, "too large");
+    }
     let body: RelayRequest;
     try {
-      body = await request.json();
+      body = JSON.parse(raw);
     } catch {
       return text(400, "bad json");
     }
@@ -54,21 +63,30 @@ export default {
     const payload = buildPayload(body);
     const host = body.env === "production" ? "api.push.apple.com" : "api.sandbox.push.apple.com";
     const jwt = await providerToken(env);
-    const apns = await fetch(`https://${host}/3/device/${body.token}`, {
-      method: "POST",
-      headers: {
-        authorization: `bearer ${jwt}`,
-        "apns-topic": env.APNS_TOPIC,
-        "apns-push-type": "liveactivity",
-        // 10 is limited by an iOS budget: only for start, end and waiting-for-you.
-        "apns-priority": body.urgent || body.event !== "update" ? "10" : "5",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    let apns: Response;
+    try {
+      apns = await fetch(`https://${host}/3/device/${body.token}`, {
+        method: "POST",
+        headers: {
+          authorization: `bearer ${jwt}`,
+          "apns-topic": env.APNS_TOPIC,
+          "apns-push-type": "liveactivity",
+          // 10 is limited by an iOS budget: only for start, end and waiting-for-you.
+          "apns-priority": body.urgent || body.event !== "update" ? "10" : "5",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(APNS_TIMEOUT_MS),
+      });
+    } catch {
+      return text(504, "apns unreachable");
+    }
     if (apns.status === 200) return text(200, "ok");
-    // 400 BadDeviceToken / 410 Unregistered: the Mac drops the token.
+    // Only 410 Unregistered keeps its status. Everything else is a 502 with
+    // Apple's reason in the body (e.g. BadDeviceToken), which the Mac reads.
     const reason = await apns.text();
+    // Apple says our cached provider token is too old: sign a fresh one next time.
+    if (apns.status === 403 && reason.includes("ExpiredProviderToken")) cached = null;
     return new Response(reason || "{}", {
       status: apns.status === 410 ? 410 : 502,
       headers: { "content-type": "application/json", "x-apns-status": String(apns.status) },

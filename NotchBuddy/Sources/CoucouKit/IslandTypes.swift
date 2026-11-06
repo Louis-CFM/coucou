@@ -17,6 +17,7 @@ enum IslandView: String, CaseIterable {
     case capture      // a screen capture just taken (⌃⌥X): paste, copy, annotate, ask Claude
     case update       // a new Coucou is out on GitHub: one click to install it (GitHub build)
     case whatsNew     // Coucou just updated itself: what the version brings, then your Coucou so far (GitHub build)
+    case launch       // a new Claude Code session: a prompt, a project, and the terminal opens (GitHub build)
 }
 
 // MARK: - Bot State
@@ -274,6 +275,7 @@ enum IslandConst {
         .voiceResult:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
         // Screen capture: Mochi on the left (he just swallowed it), the image and what to do with it
         .capture:      ViewLayout(height: 160, botX: 58,  botY: nil, botDiameter: 52, agentMode: .none),
+        .launch:       ViewLayout(height: 160, botX: 58,  botY: nil, botDiameter: 52, agentMode: .none),
         // New version: Mochi on the left, the version and Update now
         .update:       ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
         // After an update: taller, four items then the stats (like mail, it fills the height)
