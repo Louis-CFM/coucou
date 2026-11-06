@@ -235,6 +235,10 @@ fn add_terminal_context(map: &mut Map<String, Value>, env: &dyn Fn(&str) -> Opti
         ("term_session_id", "TERM_SESSION_ID"),
         ("vscode_pid", "VSCODE_PID"),
         ("session_pid", "CLAUDE_CODE_SSE_PORT"),
+        // In WSL these reach the relay only when WSLENV names them.
+        ("herdr_pane", "HERDR_PANE_ID"),
+        ("herdr_bin", "HERDR_BIN_PATH"),
+        ("wsl_distro", "WSL_DISTRO_NAME"),
     ] {
         if !map.contains_key(key) {
             map.insert(key.into(), Value::String(env(var).unwrap_or_default()));
@@ -428,6 +432,24 @@ mod tests {
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
         assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+    }
+
+    #[test]
+    fn a_herdr_pane_is_forwarded_with_its_binary_and_distro() {
+        let raw = r#"{"hook_event_name":"UserPromptSubmit","session_id":"s1"}"#;
+        let args = Args { agent: String::new(), event: String::new() };
+        let env = env_of(&[
+            ("HERDR_PANE_ID", "w1:pA"),
+            ("HERDR_BIN_PATH", "/usr/bin/herdr"),
+            ("WSL_DISTRO_NAME", "Ubuntu"),
+        ]);
+        let ev = prepare(raw.as_bytes(), &args, &env, "/").expect("forwarded");
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert_eq!(v["herdr_pane"], "w1:pA");
+        assert_eq!(v["herdr_bin"], "/usr/bin/herdr");
+        assert_eq!(v["wsl_distro"], "Ubuntu");
+        let (plain, _) = run(raw, "", "");
+        assert_eq!(plain["herdr_pane"], "");
     }
 
     #[test]
