@@ -1074,6 +1074,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
+            secrets::warm_up();
             app.manage(phone_link::PhoneLink::new(handle.clone()));
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
