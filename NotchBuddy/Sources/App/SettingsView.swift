@@ -115,6 +115,8 @@ struct SettingsView: View {
     @AppStorage(CryptoSettings.coinsKey)        private var cryptoCoins = CryptoSettings.defaultCoins
     @AppStorage(CryptoSettings.alertKey)        private var cryptoAlert = false
     @AppStorage(CryptoSettings.alertPercentKey) private var cryptoAlertPercent = 5.0
+    @AppStorage(CoucoudoroSettings.workKey)     private var coucoudoroWork = CoucoudoroSettings.defaultWork
+    @AppStorage(CoucoudoroSettings.restKey)     private var coucoudoroRest = CoucoudoroSettings.defaultRest
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1517,6 +1519,25 @@ struct SettingsView: View {
                 .onChange(of: cryptoExchange) { _, _ in CryptoController.shared.settingsChanged() }
                 .onChange(of: cryptoCurrency) { _, _ in CryptoController.shared.settingsChanged() }
 
+                // Coucoudoro: a local countdown. Lengths are minutes and apply to the next phase.
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#0EA5E9")).frame(width: 8, height: 8)
+                        Text(verbatim: "Coucoudoro").font(.system(size: 12, weight: .semibold))
+                    }
+                    coucoudoroMinutes(String(localized: "coucoudoro.work", defaultValue: "Work"),
+                                 value: $coucoudoroWork, bounds: CoucoudoroSettings.workBounds)
+                    coucoudoroMinutes(String(localized: "coucoudoro.rest", defaultValue: "Rest"),
+                                 value: $coucoudoroRest, bounds: CoucoudoroSettings.restBounds)
+                    Text(String(localized: "coucoudoro.hint", defaultValue: "Work, then rest, on repeat, until you stop. Turn the Coucoudoro pill on to use it."))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .onAppear { applyCoucoudoroSettings() }
+                .onChange(of: coucoudoroWork) { _, _ in applyCoucoudoroSettings() }
+                .onChange(of: coucoudoroRest) { _, _ in applyCoucoudoroSettings() }
+
                 #if !APPSTORE
                 // Portfolio: exchange accounts + wallets (GitHub build, like its pill).
                 PortfolioSettingsSection()
@@ -2269,6 +2290,40 @@ struct SettingsView: View {
         }
     }
     #endif
+
+    /// Pull each length into 1…60 minutes.
+    private func applyCoucoudoroSettings() {
+        let work = CoucoudoroSettings.clampWork(coucoudoroWork)
+        let rest = CoucoudoroSettings.clampRest(coucoudoroRest)
+        if coucoudoroWork != work { coucoudoroWork = work }
+        if coucoudoroRest != rest { coucoudoroRest = rest }
+        CoucoudoroController.shared.settingsChanged()
+    }
+
+    /// One minute per step, with the current length beside the slider. Same row as the volume slider.
+    private func coucoudoroMinutes(_ label: String, value: Binding<Int>, bounds: ClosedRange<Int>) -> some View {
+        let shown = min(max(value.wrappedValue, bounds.lowerBound), bounds.upperBound)
+        let minutes = Binding<Double>(
+            get: { Double(min(max(value.wrappedValue, bounds.lowerBound), bounds.upperBound)) },
+            set: { value.wrappedValue = Int($0.rounded()) }
+        )
+        let unit = String(localized: "coucoudoro.unit", defaultValue: "min")
+        return HStack(spacing: 8) {
+            Text(label)
+                .lineLimit(1)
+            Slider(value: minutes, in: Double(bounds.lowerBound)...Double(bounds.upperBound), step: 1)
+                .accessibilityLabel(Text(label))
+                .accessibilityValue(Text("\(shown) \(unit)"))
+            Text(verbatim: "\(shown)")
+                .monospacedDigit()
+                .foregroundColor(.secondary)
+                .frame(minWidth: 16, alignment: .trailing)
+            Text(unit)
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+        }
+        .font(.system(size: 11))
+    }
 
     private func saveIntegrations() {
         saveKey("resend-api-key",  value: resendKey)

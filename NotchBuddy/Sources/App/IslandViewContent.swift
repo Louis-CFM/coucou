@@ -181,8 +181,10 @@ struct OverviewView: View {
             // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
             #if !APPSTORE
             let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
+                || agent?.id == CoucoudoroController.pillId
             #else
             let hideJumpButton = showingN8nDetail || activeDiffId != nil
+                || agent?.id == CoucoudoroController.pillId
             #endif
             if !hideJumpButton {
                 Button(action: { openAgentTarget(agent) }) {
@@ -293,6 +295,8 @@ struct OverviewView: View {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
+        case "integration_coucoudoro":
+            break
         case "integration_crypto":
             let exchange = CryptoSettings.exchange
             if let first = CryptoSettings.coins.first,
@@ -2068,6 +2072,8 @@ struct IntegrationCardView: View {
             #endif
         case "integration_crypto":
             return true  // public market data: no key, nothing to set up
+        case "integration_coucoudoro":
+            return true  // a local countdown: nothing to connect
         case "integration_portfolio":
             return PortfolioSettings.hasAnyAccount
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil || AppState.shared.subscriptionReady(.anthropic)
@@ -2324,6 +2330,9 @@ struct IntegrationCardView: View {
         } else if task.id == "integration_crypto" {
             // Its own card in every state (loading, no coins, prices).
             CryptoCardView()
+                .transition(.opacity)
+        } else if task.id == CoucoudoroController.pillId {
+            CoucoudoroCardView()
                 .transition(.opacity)
         } else if task.id == "integration_portfolio" {
             PortfolioCardView()
@@ -4284,7 +4293,14 @@ struct AgentPillsView: View {
     @ViewBuilder
     private func pill(_ task: AgentTask) -> some View {
         #if !APPSTORE
-        if task.id == "integration_music" {
+        if task.id == CoucoudoroController.pillId {
+            CoucoudoroPill(task: task, state: state, swapping: $swapping) {
+                swapping = true
+                state.setFocus(task.id)
+                SoundEngine.shared.play("blip")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+            }
+        } else if task.id == "integration_music" {
             MusicPill(task: task, state: state, swapping: $swapping) {
                 swapping = true
                 state.setFocus(task.id)
@@ -4307,11 +4323,20 @@ struct AgentPillsView: View {
             }
         }
         #else
-        AgentPill(task: task, state: state, swapping: $swapping) {
-            swapping = true
-            state.setFocus(task.id)
-            SoundEngine.shared.play("blip")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+        if task.id == CoucoudoroController.pillId {
+            CoucoudoroPill(task: task, state: state, swapping: $swapping) {
+                swapping = true
+                state.setFocus(task.id)
+                SoundEngine.shared.play("blip")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+            }
+        } else {
+            AgentPill(task: task, state: state, swapping: $swapping) {
+                swapping = true
+                state.setFocus(task.id)
+                SoundEngine.shared.play("blip")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+            }
         }
         #endif
     }
