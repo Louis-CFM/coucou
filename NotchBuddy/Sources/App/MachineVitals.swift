@@ -138,6 +138,13 @@ final class MachineVitals: ObservableObject {
                 self.sample()
             }
         }
+        // The source fires only on changes, so a level left over from before Mochi hid would stick.
+        // Read the current one (1 normal, 2 warning, 4 critical).
+        var level: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        if sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0) == 0 {
+            memoryLevel = level >= 4 ? 1 : (level >= 2 ? 0.6 : 0)
+        }
         source.resume()
         memoryPressure = source
     }
