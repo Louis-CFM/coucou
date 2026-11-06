@@ -32,6 +32,7 @@ enum SessionDrop {
             .flatMap { id in apps.first { $0.bundleIdentifier == id } }
         state.fileDragOver = false
         state.dropSessionTarget = nil
+        UploadSequenceEngine.shared.exitZone()
         NotificationCenter.default.post(name: .islandCollapse, object: nil)
         appendAppLog("nb.log", "[Drop] \(urls.count) file(s) into \(task.name)")
         Task { @MainActor in
