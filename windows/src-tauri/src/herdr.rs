@@ -28,8 +28,12 @@ fn valid_name(value: &str) -> bool {
         && value.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, ':' | '.' | '_' | '-'))
 }
 
+/// An absolute path to a program named herdr: Coucou runs it, so nothing else.
 fn valid_bin(value: &str) -> bool {
-    value.starts_with('/') && value.len() <= 512 && !value.chars().any(char::is_control)
+    value.starts_with('/')
+        && value.len() <= 512
+        && !value.chars().any(char::is_control)
+        && value.rsplit('/').next() == Some("herdr")
 }
 
 pub fn from_payload(payload: &Value) -> Option<Pane> {
@@ -138,6 +142,14 @@ mod tests {
         let (program, args) = command_args(&pane.unwrap());
         assert_eq!(program, "/usr/bin/herdr");
         assert_eq!(args, ["agent", "focus", "w1:pA"]);
+    }
+
+    #[test]
+    fn only_a_program_named_herdr_is_run() {
+        for bin in ["/tmp/evil", "/usr/bin/herdr-x", "/usr/bin/sh", "herdr", "/usr/bin/herdr/"] {
+            assert!(from_payload(&payload("w1:pA", bin, "Ubuntu")).is_none(), "{bin}");
+        }
+        assert!(from_payload(&payload("w1:pA", "/home/me/.cargo/bin/herdr", "Ubuntu")).is_some());
     }
 
     #[test]

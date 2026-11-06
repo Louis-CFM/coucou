@@ -964,7 +964,7 @@ final class HookServer: @unchecked Sendable {
         } else {
             color = IslandConst.colorForProject(name)
         }
-        let task = AgentTask(id: id, name: name, color: color, state: .idle, steps: [], source: .agent)
+        var task = AgentTask(id: id, name: name, color: color, state: .idle, steps: [], source: .agent)
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let claudeIdx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) {
             state.tasks.insert(task, at: claudeIdx + 1)
@@ -3143,7 +3143,7 @@ def _fire(fields: dict) -> None:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,   # detach from process group
-                env={**os.environ, '__CFBundleIdentifier': 'com.nousresearch.hermes'},
+                env={'__CFBundleIdentifier': 'com.nousresearch.hermes', **os.environ},
             )
             p.stdin.write(json.dumps(fields).encode() + b'\\n')
             p.stdin.close()

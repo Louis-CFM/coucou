@@ -2,8 +2,8 @@ import Combine
 import Foundation
 
 /// Coucoudoro: work, then rest, then work again, until the user stops.
-/// The session is a deadline. A half-second timer only checks that deadline while a
-/// session is running and the pill is on; the card draws the clock from the deadline itself.
+/// The session is a deadline. One timer fires at that deadline (nothing ticks in between, so
+/// Coucou stays at 0 % CPU while hidden); the card and the pill draw the clock from the deadline.
 @MainActor
 final class CoucoudoroController: ObservableObject {
     static let shared = CoucoudoroController()
@@ -126,12 +126,18 @@ final class CoucoudoroController: ObservableObject {
         }
     }
 
+    /// One timer, at the running phase's deadline.
     private func ensureTimer() {
-        guard timer == nil else { return }
-        let t = Timer(timeInterval: 0.5, repeats: true) { _ in
-            MainActor.assumeIsolated { CoucoudoroController.shared.tick() }
+        timer?.invalidate()
+        timer = nil
+        guard snap.phase != .idle, !snap.paused, let deadline = snap.deadline else { return }
+        let t = Timer(fire: deadline.addingTimeInterval(0.05), interval: 0, repeats: false) { _ in
+            MainActor.assumeIsolated {
+                CoucoudoroController.shared.timer = nil
+                CoucoudoroController.shared.tick()
+            }
         }
-        t.tolerance = 0.15
+        t.tolerance = 0.1
         RunLoop.main.add(t, forMode: .common)
         timer = t
     }
@@ -144,10 +150,11 @@ final class CoucoudoroController: ObservableObject {
     private func tick() {
         guard isPillActive else { updatePolling(); return }
         let (next, events) = CoucoudoroEngine.tick(snap, config: CoucoudoroSettings.config, now: Date())
-        guard next != snap else { return }
+        guard next != snap else { ensureTimer(); return }
         snap = next
         publish()
         if let last = events.last { surface(last) }
+        ensureTimer()
     }
 
     private func publish() {

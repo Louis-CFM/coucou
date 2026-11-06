@@ -947,6 +947,21 @@
    "ko": "노치에서 승인",
    "ja": "ノッチから承認"
   },
+  "As heard": {
+   "zh-Hans": "听到的原文",
+   "hi": "जैसा सुना गया",
+   "es": "Tal como se oyó",
+   "ar": "كما سُمع",
+   "fr": "Tel qu’entendu",
+   "bn": "যেমন শোনা গেছে",
+   "pt-BR": "Como foi ouvido",
+   "ru": "Как услышано",
+   "id": "Seperti yang terdengar",
+   "de": "Wie gehört",
+   "tr": "Duyulduğu gibi",
+   "ko": "들린 그대로",
+   "ja": "聞き取ったまま"
+  },
   "As said": {
    "zh-Hans": "原样",
    "hi": "जैसा बोला",
@@ -2401,6 +2416,21 @@
    "tr": "Markdown olarak kopyala",
    "ko": "Markdown으로 복사",
    "ja": "Markdown としてコピー"
+  },
+  "Copy as heard": {
+   "zh-Hans": "拷贝听到的原文",
+   "hi": "जैसा सुना वैसा कॉपी करें",
+   "es": "Copiar tal como se oyó",
+   "ar": "نسخ كما سُمع",
+   "fr": "Copier tel qu’entendu",
+   "bn": "যেমন শোনা গেছে তেমন কপি",
+   "pt-BR": "Copiar como foi ouvido",
+   "ru": "Скопировать как услышано",
+   "id": "Salin seperti yang terdengar",
+   "de": "Wie gehört kopieren",
+   "tr": "Duyulduğu gibi kopyala",
+   "ko": "들린 그대로 복사",
+   "ja": "聞き取ったままコピー"
   },
   "Copy link": {
    "zh-Hans": "复制链接",

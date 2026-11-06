@@ -1,4 +1,4 @@
-// Memory of the webviews that nobody is looking at (this fork).
+// Memory of the webviews that nobody is looking at.
 //
 // Coucou keeps four WebView2 windows alive (the island, the Coucou window, the
 // pill, Mochi on the desktop): windows made later come up blank (see

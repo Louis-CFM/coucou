@@ -278,7 +278,10 @@ fn extract_pdf_text(path: &str) -> Option<String> {
             }
         }
         if full.len() as u64 > MAX_INLINE_TEXT {
-            full.truncate(MAX_INLINE_TEXT as usize);
+            // On a character boundary: a cut inside an accented letter would panic.
+            let mut cut = MAX_INLINE_TEXT as usize;
+            while !full.is_char_boundary(cut) { cut -= 1; }
+            full.truncate(cut);
             full.push_str("\n... [truncated]");
             break;
         }
