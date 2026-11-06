@@ -13,7 +13,7 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { State } from "../core/state";
 import {
-  MAIL_BLUE, MAIL_FILTERS, MAIL_ID, MailBridge, filterTitle, messageId, senderName,
+  MAIL_BLUE, MAIL_FILTERS, MAIL_ID, MailBridge, MailCard, filterTitle, messageId, senderName,
   type MailCardData, type MailFilter, type MailMessage,
 } from "../core/mail";
 import { timeAgo } from "./integrations";
@@ -276,6 +276,11 @@ export function buildMailCard(host: MailCardHost): MailCard {
 
   function sync() {
     el.classList.toggle("detail-open", open !== null);
+    // An email open: the island grows for it, the whole width and the chat's height (mailHeight).
+    if (MailCard.reading !== (open !== null)) {
+      MailCard.reading = open !== null;
+      State.notify();
+    }
     if (open) {
       // The open message, kept up to date when a refresh changes it.
       const fresh = displayed().find((x) => messageId(x) === messageId(open!));

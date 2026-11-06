@@ -3079,8 +3079,9 @@ input[type="range"]::-webkit-slider-thumb {
   color: #f4505e;
 }
 
-/* A conversation open (WhatsApp.reading): the card takes the island's whole width and the chat
-   view's height (whatsappHeight in core/whatsapp.ts), and its messages read a size up. */
+/* A WhatsApp conversation or an email open (WhatsApp.reading, MailCard.reading): the card takes
+   the island's whole width and the chat view's height (whatsappHeight, mailHeight), and its text
+   reads a size up. */
 .overview.wide > .left {
   flex: 1 1 auto;
   width: auto;
@@ -3127,6 +3128,30 @@ input[type="range"]::-webkit-slider-thumb {
 .overview.wide .wa-field {
   font-size: 12.5px;
   max-height: 64px;
+}
+
+/* The email: the sender and the whole subject a size up, then its text in all the room left
+   (28 px, two lines, in the small card), the actions underneath. */
+.overview.wide .mail-detail {
+  gap: 6px;
+  padding-bottom: 10px;
+}
+
+.overview.wide .mail-from {
+  font-size: 13px;
+}
+
+.overview.wide .mail-detail-subject {
+  font-size: 12.5px;
+  white-space: normal;
+}
+
+.overview.wide .mail-detail-text {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  font: 400 12.5px/1.45 var(--font);
+  color: #c5c8cd;
 }
 
 html[data-dir="rtl"] #views :is(.wa-text, .wa-field, .wa-preview) {

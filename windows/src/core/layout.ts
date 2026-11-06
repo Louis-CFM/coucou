@@ -109,10 +109,10 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 /** The question view with options to pick from: room for two rows of them. */
 export const QUESTION_PICKER_H = 200;
 
-/** The WhatsApp card in front of the open island: room for more conversations. */
-export const WHATSAPP_LIST_H = 240;
-/** A WhatsApp conversation open in it: the whole island, as tall as the chat view gets. */
-export const WHATSAPP_CHAT_H = 300;
+/** The WhatsApp or Mail card in front of the open island: room for more of its list. */
+export const CARD_LIST_H = 240;
+/** A conversation or an email open in it: the whole island, as tall as the chat view gets. */
+export const CARD_READ_H = 300;
 
 /** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
 export function chatPromptHeight(messageCount: number): number {

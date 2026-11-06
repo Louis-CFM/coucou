@@ -4,7 +4,7 @@
 // chosen here, in the user's language. Nothing of a message is stored by the page either.
 
 import { N_, t } from "../i18n/i18n";
-import { WHATSAPP_CHAT_H, WHATSAPP_LIST_H } from "./layout";
+import { CARD_LIST_H, CARD_READ_H } from "./layout";
 
 export const WHATSAPP_ID = "integration_whatsapp";
 /** WhatsApp's own green: the pill keeps it whatever, like the brand. */
@@ -79,7 +79,7 @@ export function whatsappHeight(
   mode: string, view: string, focusId: string | null, on: boolean, reading: boolean,
 ): number | null {
   if (mode !== "expanded" || view !== "overview" || focusId !== WHATSAPP_ID || !on) return null;
-  return reading ? WHATSAPP_CHAT_H : WHATSAPP_LIST_H;
+  return reading ? CARD_READ_H : CARD_LIST_H;
 }
 
 export type WaWebhook =

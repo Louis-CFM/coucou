@@ -1,11 +1,13 @@
-// The WhatsApp card made bigger to read (whatsappHeight in src/core/whatsapp.ts): taller in front,
-// and an open conversation takes the whole island.
+// The WhatsApp and Mail cards made bigger to read (whatsappHeight, mailHeight): taller in front,
+// and an open conversation or email takes the whole island.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { installFakeDom } from "./fakedom.mjs";
 import { IDLE_WHATSAPP, WHATSAPP_ID, WhatsApp, whatsappHeight } from "../src/core/whatsapp.ts";
-import { PANEL_H, WHATSAPP_CHAT_H, WHATSAPP_LIST_H } from "../src/core/layout.ts";
+import { CARD_LIST_H, CARD_READ_H, PANEL_H } from "../src/core/layout.ts";
+import { MAIL_ID, MailCard, mailHeight } from "../src/core/mail.ts";
+import { buildMailCard } from "../src/views/mail.ts";
 import { buildWhatsAppCard } from "../src/views/whatsapp.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
@@ -21,13 +23,13 @@ const conversation = {
 };
 
 test("in front, the card is taller; an open conversation takes the island's chat height", () => {
-  assert.equal(whatsappHeight("expanded", "overview", WHATSAPP_ID, true, false), WHATSAPP_LIST_H);
-  assert.equal(whatsappHeight("expanded", "overview", WHATSAPP_ID, true, true), WHATSAPP_CHAT_H);
+  assert.equal(whatsappHeight("expanded", "overview", WHATSAPP_ID, true, false), CARD_LIST_H);
+  assert.equal(whatsappHeight("expanded", "overview", WHATSAPP_ID, true, true), CARD_READ_H);
   assert.equal(whatsappHeight("expanded", "overview", "integration_claude", true, true), null, "another card in front");
   assert.equal(whatsappHeight("compact", "overview", WHATSAPP_ID, true, true), null, "folded");
   assert.equal(whatsappHeight("expanded", "approval", WHATSAPP_ID, true, true), null, "a permission card on top");
   assert.equal(whatsappHeight("expanded", "overview", WHATSAPP_ID, false, false), null, "WhatsApp turned off");
-  assert.ok(WHATSAPP_LIST_H < WHATSAPP_CHAT_H && WHATSAPP_CHAT_H <= PANEL_H, "it fits the island's window");
+  assert.ok(CARD_LIST_H < CARD_READ_H && CARD_READ_H <= PANEL_H, "it fits the island's window");
 });
 
 test("the card says when a conversation is open, and Escape or leaving the card takes it back", () => {
@@ -55,4 +57,36 @@ test("the card says when a conversation is open, and Escape or leaving the card 
   State.mode = "compact";
   State.notify();
   assert.equal(WhatsApp.reading, false, "folding the island closes it");
+});
+
+test("Mail: taller in front while Outlook runs; an open email takes the island", () => {
+  assert.equal(mailHeight("expanded", "overview", MAIL_ID, true, false), CARD_LIST_H);
+  assert.equal(mailHeight("expanded", "overview", MAIL_ID, true, true), CARD_READ_H);
+  assert.equal(mailHeight("expanded", "overview", MAIL_ID, false, false), null, "Outlook closed: just the hint, no room needed");
+  assert.equal(mailHeight("expanded", "overview", WHATSAPP_ID, true, true), null, "another card in front");
+  assert.equal(mailHeight("compact", "overview", MAIL_ID, true, true), null, "folded");
+
+  // The card says when an email is open, and Back takes it back.
+  State.settings = { ...DEFAULT_SETTINGS, activeIntegrations: [MAIL_ID] };
+  State.os = "windows";
+  State.tasks = [];
+  State.loadIntegrationTasks();
+  State.integrations[MAIL_ID] = {
+    data: {
+      running: true, windows: true, unread: 1, shown: 12, maxShown: 60,
+      messages: [{ entryId: "e1", storeId: "s1", account: "Work", senderName: "Sam Example", address: "sam@example.com",
+        subject: "Poster sizes", date: NOW, unread: true, flagged: false, local: "" }],
+    },
+    error: null, loaded: true, configured: true,
+  };
+  State.mode = "expanded";
+  State.view = "overview";
+  State.focusId = MAIL_ID;
+  const card = buildMailCard({ keyboard() {} });
+  card.sync();
+  assert.equal(MailCard.reading, false);
+  card.el.find(".mail-row")[0].fire("click");
+  assert.equal(MailCard.reading, true);
+  card.el.find(".mail-back")[0].fire("click");
+  assert.equal(MailCard.reading, false);
 });
