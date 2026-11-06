@@ -108,7 +108,9 @@ struct GaugeRowView: View {
             Text(label)
                 .font(.system(size: 11))
                 .foregroundColor(Color(hex: "#6B7079"))
-                .frame(width: 40, alignment: .leading)
+                .lineLimit(1)
+                // Fits the longest translation ("5 heures", 45.7 pt at 11 pt) and keeps the bars aligned.
+                .frame(width: 48, alignment: .leading)
             if let w = window {
                 let pct = ClaudePlanGauge.effectivePct(w)
                 let accent = Color(hex: ClaudePlanGauge.color(for: pct))
