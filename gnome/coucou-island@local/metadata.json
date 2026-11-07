@@ -1,0 +1,11 @@
+{
+  "uuid": "coucou-island@local",
+  "name": "Coucou Dynamic Island",
+  "description": "Coucou in the GNOME panel: agent status, clock and the original live mascot with synchronized colors, outfits and animations.",
+  "shell-version": [
+    "50"
+  ],
+  "version": 1,
+  "url": "https://github.com/Louis-CFM/coucou",
+  "gettext-domain": "coucou-island"
+}
