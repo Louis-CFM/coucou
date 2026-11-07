@@ -178,6 +178,19 @@ test("a terminal that couldn't open says so and keeps the words", async () => {
   assert.ok(!$(".launch-hint").classList.contains("is-failed"));
 });
 
+test("a missing selected CLI is explained and never falls back to another CLI", async () => {
+  Launch.folder = "/srv/site";
+  answers.launch_session = () => { throw new Error("selected_cli_missing"); };
+  const { view, did, $ } = card();
+  $(".chat-input").value = "add tests";
+  $(".launch-send").fire("click");
+  await flush();
+  assert.equal(did.launched, 0);
+  assert.equal($(".chat-input").value, "add tests");
+  assert.ok($(".launch-hint").classList.contains("is-failed"));
+  assert.equal($(".launch-hint").textContent, "The selected Claude Code command is not installed.");
+});
+
 test("without a project, sending asks for a folder first", async () => {
   Launch.projects = [];
   Launch.folder = null;

@@ -262,9 +262,10 @@ export const Bridge = {
 
   /**
    * A new Claude Code session: the user's terminal in `folder`, running
-   * Claude Code with the prompt (src-tauri/src/launch.rs). False when it couldn't.
+   * the selected Claude Code CLI with the prompt (src-tauri/src/launch.rs).
+   * False when the terminal could not open; rejects if that CLI is unavailable.
    */
-  launchSession: (folder: string, prompt: string) => call<boolean>("launch_session", { folder, prompt }),
+  launchSession: (folder: string, prompt: string) => callOrThrow<boolean>("launch_session", { folder, prompt }),
 
   /** The system's folder picker, `start` open in it; null when cancelled. */
   pickFolder: (start: string | null) => call<string | null>("pick_folder", { start }),
