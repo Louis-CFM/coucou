@@ -17,7 +17,7 @@ import Foundation
 
         let raw = "um please send ⟦1⟧ tomorrow"
         CodexTextService.reset(["Please send ⟦1⟧ tomorrow."])
-        let clean = await FlowCleanup.clean(raw, style: .natural, app: "Mail", words: ["Coucou"])
+        let clean = (await FlowCleanup.clean(raw, style: .natural, app: "Mail", words: ["Coucou"])).text
         assert(clean == "Please send ⟦1⟧ tomorrow.")
         assert(CodexTextService.requests[0].system.contains("Spell these words exactly like this: Coucou"))
         assert(CodexTextService.requests[0].system.contains("Mail"))
@@ -28,35 +28,76 @@ import Foundation
         assert(FlowText.keepsMarks(clean, snippets))
         assert(FlowText.finish(clean, snippets: snippets) == "Please send Exact Signature tomorrow.")
         let count = CodexTextService.requests.count
-        check(await FlowCleanup.clean(raw, style: .verbatim, app: nil, words: []) == raw)
-        check(await FlowCleanup.clean("hello", style: .natural, app: nil, words: []) == "hello")
+        check((await FlowCleanup.clean(raw, style: .verbatim, app: nil, words: [])).text == raw)
+        check((await FlowCleanup.clean("hello", style: .natural, app: nil, words: [])).text == "hello")
         assert(CodexTextService.requests.count == count)
 
         let language = FlowLanguage(code: "zh-TW", hint: "Traditional Chinese.")
         CodexTextService.reset(["請明天寄出 ⟦1⟧。"])
-        let translated = await FlowCleanup.transform(raw, prompt: false, language: language, style: .natural, app: nil, words: [])
+        let translated = (await FlowCleanup.transform(raw, prompt: false, language: language, style: .natural, app: nil, words: [])).text
         assert(translated == "請明天寄出 ⟦1⟧。")
         assert(CodexTextService.requests[0].system.contains("Traditional Chinese."))
         assert(CodexTextService.requests[0].timeout == 8)
         CodexTextService.reset(["Goal: Send the message tomorrow.\nConstraints: Keep ⟦1⟧."])
-        let shaped = await FlowCleanup.transform(raw, prompt: true, language: nil, style: .polished, app: nil, words: [])
+        let shaped = (await FlowCleanup.transform(raw, prompt: true, language: nil, style: .polished, app: nil, words: [])).text
         assert(shaped.hasPrefix("Goal:"))
         assert(CodexTextService.requests[0].timeout == 12)
         for invalid in ["", String(repeating: "invented ", count: 500)] {
             CodexTextService.reset([invalid])
-            check(await FlowCleanup.clean(raw, style: .natural, app: nil, words: []) == raw)
+            check((await FlowCleanup.clean(raw, style: .natural, app: nil, words: [])).text == raw)
             CodexTextService.reset([invalid])
-            check(await FlowCleanup.transform(raw, prompt: false, language: language, style: .natural, app: nil, words: []) == raw)
+            check((await FlowCleanup.transform(raw, prompt: false, language: language, style: .natural, app: nil, words: [])).text == raw)
         }
         CodexTextService.reset()
         CodexTextService.failure = CodexServiceError.timeout
-        check(await FlowCleanup.clean(raw, style: .natural, app: nil, words: []) == raw)
-        check(await FlowCleanup.transform(raw, prompt: true, language: nil, style: .natural, app: nil, words: []) == raw)
+        check((await FlowCleanup.clean(raw, style: .natural, app: nil, words: [])).text == raw)
+        check((await FlowCleanup.transform(raw, prompt: true, language: nil, style: .natural, app: nil, words: [])).text == raw)
         assert(keychain.reads == 0)
+        state.subscriptionEnabled = true
+        keychain.key = "unrelated-anthropic-key"
+        keychain.reads = 0
+        CodexTextService.reset()
+        CodexTextService.failure = CodexServiceError.timeout
+        check((await FlowCleanup.clean(raw, style: .natural, app: nil, words: [])).text == raw)
+        assert(keychain.reads == 0 && CLIRelay.requests.isEmpty)
+        state.subscriptionEnabled = false
+        keychain.key = nil
+        CodexTextService.reset(["Potential stale output"])
+        CodexTextService.onComplete = { state.chatProvider = .anthropic }
+        check((await FlowCleanup.clean(raw, style: .natural, app: nil, words: [])).text == raw)
+        assert(keychain.reads == 0 && CLIRelay.requests.isEmpty)
         state.chatProvider = .anthropic
+        state.subscriptionEnabled = true
+        CLIRelay.reply = "Please send ⟦1⟧ tomorrow."
+        CLIRelay.failure = nil
+        let claude = await FlowCleanup.clean(raw, style: .natural, app: nil, words: [])
+        assert(FlowCleanup.isAvailable && claude.text == CLIRelay.reply && claude.signedOut == nil)
+        assert(CLIRelay.requests.count == 1 && CLIRelay.requests[0].timeout == 10 && !CLIRelay.requests[0].web)
+        let previousNativeCalls = CodexTextService.requests.count
+        CLIRelay.onComplete = { state.chatProvider = .codex }
+        let switched = await FlowCleanup.clean(raw, style: .natural, app: nil, words: [])
+        assert(switched.text == raw && CodexTextService.requests.count == previousNativeCalls)
+        state.chatProvider = .anthropic
+        CLIRelay.delay = 1_000_000_000
+        keychain.key = "unrelated-anthropic-key"
+        keychain.reads = 0
+        let requestCount = CLIRelay.requests.count
+        let cancelledFlow = Task { @MainActor in await FlowCleanup.clean(raw, style: .natural, app: nil, words: []) }
+        for _ in 0..<1000 where CLIRelay.requests.count == requestCount { await Task.yield() }
+        assert(CLIRelay.requests.count == requestCount + 1)
+        cancelledFlow.cancel()
+        let cancelledResult = await cancelledFlow.value
+        assert(cancelledResult.text == raw && keychain.reads == 0)
+        CLIRelay.delay = 0
+        keychain.key = nil
+        CLIRelay.failure = CLIFailure.failed("signed out")
+        let denied = await FlowCleanup.clean(raw, style: .natural, app: nil, words: [])
+        assert(denied.text == raw && denied.signedOut == .claude && !denied.keyStoodIn)
+        state.subscriptionEnabled = false
+        CLIRelay.failure = nil
         assert(!FlowCleanup.isAvailable)
         CodexTextService.reset()
-        check(await FlowCleanup.clean(raw, style: .natural, app: nil, words: []) == raw)
+        check((await FlowCleanup.clean(raw, style: .natural, app: nil, words: [])).text == raw)
         assert(CodexTextService.requests.isEmpty)
         state.chatProvider = .codex
         keychain.reads = 0

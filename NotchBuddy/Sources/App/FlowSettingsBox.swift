@@ -4,6 +4,7 @@ import SwiftUI
 /// Settings → Voice: Flow dictation (hold a key, speak, the words are pasted where you type).
 struct FlowSettingsBox: View {
     @ObservedObject private var flow = FlowDictation.shared
+    @State private var editingShortcut = false
 
     var body: some View {
         GroupBox(String(localized: "flow.title")) {
@@ -21,15 +22,15 @@ struct FlowSettingsBox: View {
 
                 HStack(spacing: 8) {
                     Text(String(localized: "flow.key"))
-                    Picker(String(localized: "flow.key"), selection: $flow.key) {
-                        ForEach(FlowKey.allCases) { key in
-                            Text(verbatim: key.label).tag(key)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(maxWidth: 200)
+                    FlowKeyPicker(editing: $editingShortcut)
                 }
                 .disabled(!flow.isEnabled)
+
+                FlowCollapsible(isOpen: editingShortcut) {
+                    FlowShortcutEditor(active: editingShortcut) { _ in
+                        withAnimation(FlowMotion.fold) { editingShortcut = false }
+                    }
+                }
 
                 if flow.key == .fn {
                     Text(String(localized: "flow.fn-help"))

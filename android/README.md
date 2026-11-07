@@ -108,6 +108,20 @@ What to know when you try approvals from the phone:
 For testing without a cable once the phone has been connected by USB once: `adb tcpip 5555`, then
 `adb connect <phone address>:5555`. It resets when the phone restarts or its address changes.
 
+## Getting the phone link running on a Mac
+
+1. Use a Coucou for Mac that carries the Android phone link (the GitHub build; it is not in the App Store build). Update Coucou first if
+   Settings has no **Android phone** box.
+2. Settings > **Android phone** > turn **Link with Coucou for Android** on. It is off by default and listens on your local network only.
+   If macOS asks to find devices on your local network, allow it.
+3. **Show pairing code**, then scan the QR code with the app (or paste the link). The phone and the Mac must be on the same Wi-Fi.
+4. Optional, each with its own switch on the same page: session details, answers to Claude Code's questions, plan usage. Chat, file
+   changes, services, the weekly recap and the relay are not available from a Mac yet.
+
+Allow still asks for your fingerprint or screen lock on the phone, and only the request still waiting on the Mac can be answered.
+Turning the switch off stops the listener and the announcement at once. As on Windows, Claude Code must be in a mode that asks for
+permission, or nothing reaches the phone.
+
 ## Security rules the tests guard
 
 Certificate pinning and the pairing token; approval fingerprints, 120 s expiry and decide-once; the biometric gate for Allow;

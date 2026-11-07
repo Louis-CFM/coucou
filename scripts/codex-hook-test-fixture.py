@@ -165,7 +165,13 @@ final class HookServer: @unchecked Sendable {
     @MainActor func claudeHostName(pill: String) -> String { "VS Code" }
     @MainActor func projectCodexDiffs(threadId: String, turnId: String) {}
     @MainActor func upsertWorkspaceTask(id: String) {}
-    @MainActor func upsertExternalAgent(id: String, name: String) {}
+    @MainActor func upsertExternalAgent(id: String, name: String, bundleId: String) {}
+    private static func agyApprovalGate(_ payload: [String: Any]) -> (command: String, waitSeconds: Double)? {
+        fatalError("Unexpected Antigravity approval gate")
+    }
+    @MainActor func processAgyApproval(fd: Int32, payload: [String: Any], command: String, waitSeconds: Double) {
+        fatalError("Unexpected Antigravity approval")
+    }
     @MainActor func processStatusLine(payload: [String: Any]) { fatalError("Unexpected statusline") }
     @MainActor func processEvent(name: String, payload: [String: Any]) { fatalError("Unexpected event") }
     @MainActor func processPermissionRequest(fd: Int32, payload: [String: Any]) {

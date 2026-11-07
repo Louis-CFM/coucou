@@ -1,12 +1,15 @@
 #if !APPSTORE
 import Foundation
 
-/// Optional dictation rewriting with the selected Codex account, or the existing Claude key.
-/// Any failure keeps the words as heard; Codex never falls back to another provider.
+/// Flow rewrites with the selected Codex account or the existing Claude subscription/key.
+/// Failures retain the original words.
 enum FlowCleanup {
     static let model = "claude-haiku-4-5"
     /// Past this, the words are pasted as heard rather than keeping you waiting.
     static let timeout: TimeInterval = 4
+    /// What Claude Code adds to the wait: it takes a moment just to start (10 s for a clean-up,
+    /// as on Windows and Linux).
+    static let toolStart: TimeInterval = 6
 
     static var hasKey: Bool {
         !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
@@ -14,24 +17,95 @@ enum FlowCleanup {
 
     @MainActor static var usesCodex: Bool { AppState.shared.chatProvider == .codex }
 
-    @MainActor static var isAvailable: Bool {
-        usesCodex ? CodexTextService.isAvailable : hasKey
+    /// The tool that answers Flow on the user's Claude plan: Claude's switch is on in
+    /// Settings → Chat and Claude Code is installed.
+    @MainActor static var tool: SubscriptionCLI? {
+        AppState.shared.usesSubscription(.anthropic) ? ChatProvider.anthropic.installedCLI : nil
     }
 
-    @MainActor static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> String {
-        guard style != .verbatim, FlowText.wordCount(text) >= 3 else { return text }
-        if usesCodex {
-            do {
-                let reply = try await CodexTextService.complete(
-                    system: system(style: style, app: app, words: words),
-                    user: "<dictation>\n\(text)\n</dictation>", model: AppState.shared.codexModel, timeout: timeout)
-                let cleaned = reply.replacingOccurrences(of: "<dictation>", with: "")
-                    .replacingOccurrences(of: "</dictation>", with: "")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                return plausible(cleaned, from: text) ? cleaned : text
-            } catch { return text }
+    /// Claude can answer Flow, through Claude Code or with the key.
+    @MainActor static var isAvailable: Bool { usesCodex ? CodexTextService.isAvailable : tool != nil || hasKey }
+
+    /// What a clean-up or a transform gives back.
+    struct Outcome: Sendable {
+        /// The words to paste: Claude's, or as heard.
+        var text: String
+        /// Claude Code could not answer: it is signed out.
+        var signedOut: SubscriptionCLI?
+        /// …and the key answered instead.
+        var keyStoodIn = false
+    }
+
+    @MainActor static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> Outcome {
+        guard style != .verbatim, FlowText.wordCount(text) >= 3 else { return Outcome(text: text) }
+        return await ask(text, system: system(style: style, app: app, words: words), wait: timeout, what: "clean-up") {
+            plausible($0, from: text)
         }
-        guard let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return text }
+    }
+
+    /// Prompt mode and translation: one call that cleans the words, shapes them as a prompt when
+    /// asked, and writes them in the chosen language. Like the clean-up, any problem and the words
+    /// are pasted as heard.
+    @MainActor static func transform(_ text: String, prompt: Bool, language: FlowLanguage?, style: FlowStyle,
+                          app: String?, words: [String]) async -> Outcome {
+        guard prompt || language != nil, FlowText.wordCount(text) >= 1 else { return Outcome(text: text) }
+        let system = transformSystem(prompt: prompt, language: language, style: style, app: app, words: words)
+        // A prompt takes a little longer to write than a clean-up.
+        return await ask(text, system: system, wait: prompt ? 12 : 8, what: "prompt or translation") {
+            plausibleTransform($0, from: text, prompt: prompt)
+        }
+    }
+
+    /// One call to Claude: through Claude Code when it answers Flow, else with the key. `wait` is
+    /// the key's; Claude Code gets `toolStart` more. When Claude Code fails early (signed out, no
+    /// answer), the key stands in with what is left of that time.
+    @MainActor private static func ask(_ text: String, system: String, wait: TimeInterval, what: String,
+                            accept: (String) -> Bool) async -> Outcome {
+        let user = "<dictation>\n\(text)\n</dictation>"
+        var outcome = Outcome(text: text)
+        let selection = (AppState.shared.chatProvider, AppState.shared.codexModel)
+        if selection.0 == .codex {
+            do {
+                let reply = try await CodexTextService.complete(system: system, user: user, model: selection.1, timeout: wait)
+                guard !Task.isCancelled, usesCodex, CodexTextService.isAvailable, AppState.shared.codexModel == selection.1 else { return outcome }
+                let out = unwrap(reply)
+                if accept(out) { outcome.text = out }
+            } catch { return outcome }
+            return outcome
+        }
+        guard !Task.isCancelled else { return outcome }
+        var left = wait
+        if let tool = Self.tool {
+            let started = Date()
+            let budget = wait + toolStart
+            let request = CLIRequest(model: model, system: system, prompt: user, web: false, readDir: nil,
+                                     noWebPolicy: nil, timeout: budget, thinking: false)
+            do {
+                let out = unwrap(try await CLIRelay.ask(tool, request))
+                guard !Task.isCancelled, AppState.shared.chatProvider == selection.0 else { return outcome }
+                return Outcome(text: accept(out) ? out : text)
+            } catch {
+                appendAppLog("nb.log", "[Flow] \(what) through \(tool.displayName) skipped: \(error.localizedDescription)")
+                if case CLIFailure.failed(let why) = error, CLIRelay.needsSignIn(why) { outcome.signedOut = tool }
+            }
+            left = min(wait, budget - Date().timeIntervalSince(started))
+        }
+        guard !Task.isCancelled, AppState.shared.chatProvider == selection.0,
+              left >= 1, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return outcome }
+        do {
+            let out = unwrap(try await askWithKey(key, system: system, user: user, timeout: left))
+            if !Task.isCancelled, AppState.shared.chatProvider == selection.0, accept(out) {
+                outcome.text = out
+                outcome.keyStoodIn = outcome.signedOut != nil
+            }
+        } catch {
+            appendAppLog("nb.log", "[Flow] \(what) skipped: \(error.localizedDescription)")
+        }
+        return outcome
+    }
+
+    /// Anthropic's Messages API, with the key from Settings → Chat.
+    private static func askWithKey(_ key: String, system: String, user: String, timeout: TimeInterval) async throws -> String {
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         request.httpMethod = "POST"
         request.timeoutInterval = timeout
@@ -42,75 +116,23 @@ enum FlowCleanup {
             "model": model,
             "max_tokens": 2048,
             "temperature": 0,
-            "system": system(style: style, app: app, words: words),
-            "messages": [["role": "user", "content": "<dictation>\n\(text)\n</dictation>"]],
+            "system": system,
+            "messages": [["role": "user", "content": user]],
         ]
-        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return text }
-        request.httpBody = data
-        do {
-            let (reply, response) = try await URLSession.shared.data(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200,
-                  let json = try? JSONSerialization.jsonObject(with: reply) as? [String: Any],
-                  let content = json["content"] as? [[String: Any]] else { return text }
-            let cleaned = content.compactMap { $0["text"] as? String }.joined()
-                .replacingOccurrences(of: "<dictation>", with: "")
-                .replacingOccurrences(of: "</dictation>", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return plausible(cleaned, from: text) ? cleaned : text
-        } catch {
-            appendAppLog("nb.log", "[Flow] clean-up skipped: \(error.localizedDescription)")
-            return text
-        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (reply, response) = try await URLSession.shared.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200,
+              let json = try? JSONSerialization.jsonObject(with: reply) as? [String: Any],
+              let content = json["content"] as? [[String: Any]] else { throw CLIFailure.failed("Anthropic answered \(status)") }
+        return content.compactMap { $0["text"] as? String }.joined()
     }
 
-    /// Prompt mode and translation: one call that cleans the words, shapes them as a prompt when
-    /// asked, and writes them in the chosen language. Like the clean-up, any problem and the words
-    /// are pasted as heard.
-    @MainActor static func transform(_ text: String, prompt: Bool, language: FlowLanguage?, style: FlowStyle,
-                          app: String?, words: [String]) async -> String {
-        guard prompt || language != nil, FlowText.wordCount(text) >= 1 else { return text }
-        if usesCodex {
-            do {
-                let reply = try await CodexTextService.complete(
-                    system: transformSystem(prompt: prompt, language: language, style: style, app: app, words: words),
-                    user: "<dictation>\n\(text)\n</dictation>", model: AppState.shared.codexModel, timeout: prompt ? 12 : 8)
-                let out = reply.replacingOccurrences(of: "<dictation>", with: "")
-                    .replacingOccurrences(of: "</dictation>", with: "")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                return plausibleTransform(out, from: text, prompt: prompt) ? out : text
-            } catch { return text }
-        }
-        guard let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return text }
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-        request.httpMethod = "POST"
-        // A prompt takes a little longer to write than a clean-up.
-        request.timeoutInterval = prompt ? 12 : 8
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 2048,
-            "temperature": 0,
-            "system": transformSystem(prompt: prompt, language: language, style: style, app: app, words: words),
-            "messages": [["role": "user", "content": "<dictation>\n\(text)\n</dictation>"]],
-        ]
-        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return text }
-        request.httpBody = data
-        do {
-            let (reply, response) = try await URLSession.shared.data(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200,
-                  let json = try? JSONSerialization.jsonObject(with: reply) as? [String: Any],
-                  let content = json["content"] as? [[String: Any]] else { return text }
-            let out = content.compactMap { $0["text"] as? String }.joined()
-                .replacingOccurrences(of: "<dictation>", with: "")
-                .replacingOccurrences(of: "</dictation>", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return plausibleTransform(out, from: text, prompt: prompt) ? out : text
-        } catch {
-            appendAppLog("nb.log", "[Flow] prompt or translation skipped: \(error.localizedDescription)")
-            return text
-        }
+    /// The reply without the tags it sometimes keeps.
+    private static func unwrap(_ reply: String) -> String {
+        reply.replacingOccurrences(of: "<dictation>", with: "")
+            .replacingOccurrences(of: "</dictation>", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Counted in characters, not words: Chinese or Japanese have no spaces, and a prompt is longer

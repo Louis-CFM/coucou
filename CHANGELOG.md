@@ -1,5 +1,72 @@
 # Changelog
 
+## 0.6.0 — Unreleased
+
+- **Start a Claude Code session from the notch** *(GitHub build)* — the terminal tab in the island's header, or ⌃⌥N: pick the project (the folders your sessions ran in, or any folder), type or dictate what Claude should do, and your terminal opens there with Claude Code and your words. Terminal, iTerm2, Ghostty, kitty, WezTerm and Alacritty; the prompt is never written into a command line
+- **Drop a file on a session** *(GitHub build)* — drag a file over the notch (a ⌘⇧2 thumbnail, a capture, anything from Finder) and let go on one of the sessions listed on the right of the drop card: its terminal comes forward and the file lands in its prompt, as if dropped on the terminal itself
+- **Screenshot of the whole screen, copied** *(GitHub build)* — ⌘⇧2 takes the whole screen the pointer is on, with the Mac's shutter sound. The picture is on the clipboard right away, so ⌘V pastes it into a chat (⌃V in Claude Code's terminal), and a thumbnail shows in the bottom right corner like macOS's own: drag it into a chat, a folder or a mail, click it to open it in Preview, swipe it to the right to put it away. It leaves by itself after a few seconds, and stays while the pointer is on it. Both screenshot shortcuts, the whole screen and a zone (⌘⇧S), now have their own Screenshots box at the top of Settings → Shortcuts, to change or turn each off (GitHub build; not in the App Store build)
+- **Approve Antigravity commands from the notch** *(GitHub build, optional)* — turn on Settings → Antigravity → **Approve commands from the notch**, and a shell command that none of your Antigravity rules covers waits for you on the approval card, as with Claude Code: **Allow**, **Deny**, or **Reply in terminal** for Antigravity's own prompt (and its *Always allow*). Commands your rules allow or deny are left to Antigravity, and with no answer in 2 min, or Coucou closed, Antigravity asks in its terminal as before. Coucou can't see Antigravity's mode, so in Auto mode the notch also asks about commands Antigravity would have run on its own. Install the Antigravity hooks once more, then restart Antigravity: its command hook now waits up to 2 min (#934 by @Brendon20011007)
+- **Android phone link** — Coucou for Android can now pair with your Mac, the way it already does with Windows and Linux (Settings → Android phone, off by default). Scan the QR code on the same Wi-Fi, see your agent sessions, and allow or deny a permission request from the phone; Allow still needs the phone's fingerprint or screen lock. Optional switches show session details, let the phone answer Claude Code's questions and show your plan usage. Coucou listens on your local network only while the switch is on, the certificate and the pairing code stay in the Keychain, and nothing runs while it is off (GitHub build; not in the App Store build)
+- **Coucoudoro** — a work and rest timer in the notch: start, pause and stop from its card, lengths in Settings (#1055 by @PeachyCad)
+- **Flow: one press starts hands-free** — a new setting: a short press of the dictation key starts hands-free, a hold stays push-to-talk (#1063 by @Brezinben, on Windows and Linux too)
+- **Flow on your Claude plan** — with Claude's subscription switch on, clean-up, prompt mode and translation go through your own Claude Code, no API key (#971 by @NikitaBulichev)
+- **Flow hears better on macOS 26** — the Mac's newer speech model when its languages are installed (#968 by @lovyestar); the history keeps what was heard beside the rewrite, with its own copy button (#952 by @lovyestar)
+- **Mochi gets sleepy** after long hours with the agents, and fresh again after a break (#970 by @lovyestar)
+- **Voice speed** — a Speed slider for Coucou's voice (#967 by @BilliamsFluster)
+- **App Store build: a review, once in a while** — after a good moment (a few finished sessions on the Mac, a few decisions sent from the iPhone), never in the first days and once per version, Apple's own review request; macOS and iOS show it at most three times a year
+
+Fixes:
+
+- **Open terminal, ↗, Spotify and Music bring their app forward again on macOS 14+** (#678 by @orrrrli)
+- **No approval card for Codex requests its own automatic reviewer handles** (#767 by @Danielweng0902)
+- **The step ticker keeps moving after 20 steps** (#722 by @Arochell)
+- **Claude plan gauge**: a stale session no longer moves the numbers back (#672), labels fit on one line in every language (#673), a shorter Russian reset label (#674), by @orrrrli
+- **The finished card goes away when a new prompt comes** (#587 by @rollecode) and **the GitHub week strip is graded against its own week** (#611 by @rollecode)
+- **Open terminal for external agents** such as Hermes reaches the right app (#991 by @liztim17); **T3 Code** is recognised as a terminal (#1030 by @rafahenrique-prime)
+- **Mochi reads the memory pressure** as soon as he comes back on screen (#795 by @orrrrli)
+- **iPhone link**: the relay is sturdier (#1035) and no longer retries a bad device token forever (#1036), by @hasnain-amir
+
+## Windows and Linux 0.6.0 — Unreleased
+
+- **Start a Claude Code session from the island** — the terminal tab in the island's header: pick the project (the folders your sessions ran in, or any folder), say what Claude should do, and your terminal opens there with Claude Code and your words. Windows Terminal or PowerShell on Windows; your own terminal on Linux. The prompt is never written into a command line
+- **Drop a file on a session** — drag a file over the island and let go on one of the sessions listed on the right of the drop card: its window comes forward and the file's path lands in its prompt
+- **Approve Antigravity commands from the island** *(optional)* — the Mac's setting comes to Windows and Linux: turn on Settings → Agents → Antigravity → **Approve commands from the notch**, and a shell command that none of your Antigravity rules covers waits for you on the approval card: **Allow**, **Deny**, or **Reply in terminal** for Antigravity's own prompt. Commands your rules allow or deny are left to Antigravity, and with no answer in 2 min, or Coucou closed, Antigravity asks in its terminal as before. Reinstall the Antigravity hooks once, then restart Antigravity: its command hook now waits up to 2 min
+- **Approve OpenCode from the island** — OpenCode's permission requests get Allow and Deny on the island; with no click, OpenCode asks as usual (#442 by @ValentinoMartz)
+- **A card answered in the terminal goes away** — allow or deny in the terminal (or Claude's app) and the island's card closes by itself (#740 by @arnavaggarwal-dev)
+- **Flow: one press starts hands-free** (#1063 by @Brezinben)
+- **« OK Coucou » with a Brazilian or a Spanish accent** (#828 by @afpruivo, #791 by @alexisrja)
+- **Cal.com bookings in detail** — month, day, then the booking (#1006 by @lazarevtill); **notes exported where you choose** *(Windows)* (#1007 by @lazarevtill)
+- **WhatsApp's ↗ opens WhatsApp Desktop** at the open chat, else WhatsApp Web (#1070 by @Joshuabarradas234)
+- **PDFs in the Google AI and OpenAI chats** — their text goes along; and the island leaves the drop card when a drag goes out (#1038 by @Ohualtex)
+- **Open terminal selects the session's herdr pane** (#1062 by @Brezinben)
+- **NixOS** — a Nix flake to build and run Coucou (#954 by @DurianTheWAV)
+
+Fixes:
+
+- **Less memory** from the windows nobody is looking at *(Windows)* (#1022 by @CODEX-cpp)
+- **The island and its overlays stay off the taskbar and Alt+Tab** *(Windows)*, the upload bar moves with Mochi, and a background task's notification no longer shows as the session's prompt (#726, #731, #735 by @arnavaggarwal-dev)
+- **Settings → General follows changes made from the island**, and a failed drop's note no longer reopens a folded island (#695, #696 by @mahach666)
+- **Instant page switches in Settings** *(Linux)* (#906 by @RomainBrocheton)
+- **The finished card goes away when a new prompt comes** (#587) and **the GitHub week strip is graded against its own week** (#611), by @rollecode
+
+## Android 0.4.0 — Unreleased
+
+- **The island sits in the middle again** when the screen resolution is set below the panel's (#900 by @pfTheTrial)
+- **Coucou for Android 0.4.0** — works with a Mac as well as with Windows and Linux: pair it the same way (Settings → Android phone on the Mac, then scan the QR code). The app itself does not change for this; the Mac speaks the same link as the PC. Needs the Mac release that carries the Android phone link
+
+## Windows and Linux 0.5.9 — November 3, 2026
+
+- **The island never disappears** — once closed, a small island stays at the top of the screen, as on a Mac without a notch: Mochi in it (he blinks and looks around), or the time, the date, your Claude usage or what's playing (Settings → General → Closed island shows). Hovering it brings the compact island, and it always wakes up again
+- **✕ folds the open island** — at the top right, as on the Mac, with the Mac's icons in the header; the Claude plan card fills its card again
+- **Dictation keeps your language** — it no longer starts in English and switches mid-sentence when you speak right away
+- **Your own dictation key** — Left Ctrl, Left Alt and Left Shift join the list, or record a shortcut of your own (Alt + Shift + F, F9…). On Windows its letter no longer reaches the app in front, and a held Alt or Win opens no menu
+- **Silence while you speak** *(Windows)* — videos, music and calls go quiet while Coucou listens to you, then come back (Flow → Settings → Microphone)
+- **The Coucou window comes alive on Windows** — the particles and the little Mochis of each page now show, on the deep black, and follow your voice while you dictate; thin scrollbars without arrows, one box for the settings search
+- **A forgotten call stops by itself** — the Notetaker stops recording after 15 minutes with nobody speaking, or after 4 hours
+- **Lighter on the processor** — the island no longer follows a cursor that is far from it, and the closed island polls nothing
+- **Claude API models** — the model picker lists your account's models and keeps your choice (#1000 by @lazarevtill)
+- **Flow keeps your edits** — a dictionary, snippet, style or history change that can't be saved says so and lets you retry (#1003 by @lazarevtill)
+
 ## 0.5.8 — October 31, 2026
 
 Fixes by @Ohualtex.

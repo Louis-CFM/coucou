@@ -36,6 +36,8 @@ export class IslandStateMachine {
   openOnHover = false;
   /** Grace period after the pointer leaves a hover-opened island, seconds. */
   hoverCloseDelay = 0.6;
+  /** How long the pointer rests on the compact island before Open on hover opens it, seconds. */
+  hoverOpenDelay = 0.5;
   /** Open because of a hover, until the user clicks inside it. */
   get openedByHover(): boolean {
     return this.byHover;
@@ -53,6 +55,7 @@ export class IslandStateMachine {
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
   private greetCollapse: number | null = null;
+  private hoverOpen: number | null = null;
 
   // ── Inputs ──────────────────────────────────────────────────────────────────
 
@@ -62,19 +65,18 @@ export class IslandStateMachine {
   }
 
   mouseEntered() {
-    if (this.openOnHover && (this.state === "hidden" || this.state === "petit") && !this.pinned) {
-      this.cancelTimers();
-      this.byHover = true;
-      this.transition("home");
-      return;
-    }
     switch (this.state) {
       case "hidden":
+        // The closed island only peeks: a PC has no notch, so the pointer
+        // lands on it far more often than on a Mac's, on its way elsewhere.
         this.cancelTimers();
         this.transition("petit");
+        if (this.openOnHover && !this.pinned) this.scheduleHoverOpen();
         break;
       case "petit":
         this.clear("petitHide");
+        // Open on hover: once the pointer rests on the compact island.
+        if (this.openOnHover && !this.pinned) this.scheduleHoverOpen();
         break;
       case "home":
         this.clear("homeCollapse");
@@ -86,6 +88,7 @@ export class IslandStateMachine {
   }
 
   mouseLeft() {
+    this.clear("hoverOpen");
     switch (this.state) {
       case "hidden":
         break;
@@ -183,6 +186,17 @@ export class IslandStateMachine {
     }, ms);
   }
 
+  private scheduleHoverOpen() {
+    this.clear("hoverOpen");
+    this.hoverOpen = window.setTimeout(() => {
+      this.hoverOpen = null;
+      if (this.state !== "petit" || this.pinned || !this.openOnHover) return;
+      this.cancelTimers();
+      this.byHover = true;
+      this.transition("home");
+    }, this.hoverOpenDelay * 1000);
+  }
+
   private scheduleGreetCollapse(delay: number) {
     this.clear("greetCollapse");
     this.greetCollapse = window.setTimeout(() => {
@@ -191,7 +205,7 @@ export class IslandStateMachine {
     }, delay * 1000);
   }
 
-  private clear(which: "petitHide" | "homeCollapse" | "greetCollapse") {
+  private clear(which: "petitHide" | "homeCollapse" | "greetCollapse" | "hoverOpen") {
     const id = this[which];
     if (id != null) window.clearTimeout(id);
     this[which] = null;
@@ -199,6 +213,7 @@ export class IslandStateMachine {
   }
 
   cancelTimers() {
+    this.clear("hoverOpen");
     this.clear("petitHide");
     this.clear("homeCollapse");
     this.clear("greetCollapse");

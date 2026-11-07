@@ -47,6 +47,7 @@ assert 'Text(actionLabel(action))' in shortcut_source
 start = shortcut_source.index('    private var globalActions:')
 end = shortcut_source.index('\n    @ViewBuilder', start)
 shortcuts += 'final class ShortcutsSettingsView {\n    let state: AppState\n    init(state: AppState) { self.state = state }\n'
+shortcuts += '#if !APPSTORE\n' + next(line for line in shortcut_source.splitlines() if 'static let screenshotActions:' in line) + '\n#endif\n'
 shortcuts += shortcut_source[start:end].replace('private ', '') + '\n}\n'
 Path(sys.argv[1]).write_text('''import Foundation
 enum AgentSource { case claudeCode, n8n, agent }
@@ -146,7 +147,8 @@ final class CodexChatService {
         #if APPSTORE
         assert(!shortcuts.globalActions.contains(.captureScreen), "App Store exposed the unsupported capture shortcut")
         #else
-        assert(shortcuts.globalActions.contains(.captureScreen))
+        assert(!shortcuts.globalActions.contains(.captureScreen))
+        assert(Set(ShortcutsSettingsView.screenshotActions) == Set([.quickScreenshot, .captureScreen]))
         #endif
         let screen = ScreenCaptureFixture()
         let image = URL(fileURLWithPath: "/tmp/coucou-capture-fixture.png")

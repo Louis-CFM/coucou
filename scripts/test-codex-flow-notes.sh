@@ -23,8 +23,8 @@ style = style_source[style_source.index('enum FlowStyle:'):style_source.index('/
 assert 'if (summaryEngine == .claude || summaryEngine == .codex), !note.lines.isEmpty' in source
 assert 'await correct(id)' in source and 'await summarize(id)' in source
 flow_caller = Path('NotchBuddy/Sources/App/FlowDictation.swift').read_text()
-assert 'FlowText.keepsMarks(shaped, prepared.snippets)' in flow_caller
-assert 'FlowText.keepsMarks(cleaned, prepared.snippets)' in flow_caller
+assert 'FlowText.keepsMarks(shaped.text, prepared.snippets)' in flow_caller
+assert 'FlowText.keepsMarks(cleaned.text, prepared.snippets)' in flow_caller
 for filename in ('FlowHubSettings.swift', 'FlowHubWords.swift'):
     ui = Path('NotchBuddy/Sources/App/' + filename).read_text()
     assert 'FlowCleanup.isAvailable' in ui and 'FlowCleanup.usesCodex' in ui
@@ -47,13 +47,34 @@ final class UserDefaults {
     func set(_ value: String, forKey key: String) { values[key] = value }
     func string(forKey key: String) -> String? { values[key] }
 }
-enum ChatProvider { case codex, anthropic, openai }
+enum SubscriptionCLI: Sendable { case claude; var displayName: String { "Claude Code" } }
+struct CLIRequest { var model: String; var system: String; var prompt: String; var web: Bool; var readDir: URL?; var noWebPolicy: String?; var timeout: TimeInterval; var thinking: Bool }
+enum CLIFailure: Error { case failed(String) }
+@MainActor enum CLIRelay {
+    static var reply = ""
+    static var failure: Error?
+    static var delay: UInt64 = 0
+    static var onComplete: (() -> Void)?
+    static var requests: [CLIRequest] = []
+    static func ask(_ tool: SubscriptionCLI, _ request: CLIRequest) async throws -> String {
+        requests.append(request)
+        if delay > 0 { try await Task.sleep(nanoseconds: delay) }
+        let callback = onComplete; onComplete = nil; callback?()
+        if let failure { throw failure }; return reply
+    }
+    nonisolated static func needsSignIn(_ text: String) -> Bool { text.contains("signed out") }
+}
+enum ChatProvider { case codex, anthropic, openai
+    var installedCLI: SubscriptionCLI? { self == .anthropic ? .claude : nil }
+}
 @MainActor final class AppState {
     static let shared = AppState()
     static let defaultClaudeModel = "claude-default"
     var chatProvider = ChatProvider.codex
     var codexModel = "native-model"
     var claudeModel = ""
+    var subscriptionEnabled = false
+    func usesSubscription(_ provider: ChatProvider) -> Bool { subscriptionEnabled && provider == .anthropic }
 }
 final class FlowStore {
     static let shared = FlowStore()

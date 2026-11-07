@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import StoreKit
 
 /// The tabs, in glass on iOS 26: the agents, the services, the decisions you
 /// took, and a search through every turn.
@@ -12,6 +13,7 @@ struct HomeView: View {
     @State private var servicesPath: [String] = []
     @State private var introDone = false
     @AppStorage("onboardingDone") private var onboardingDone = false
+    @Environment(\.requestReview) private var requestReview
 
     var body: some View {
         TabView(selection: $tab) {
@@ -26,6 +28,15 @@ struct HomeView: View {
             }
             Tab(value: CoucouTab.search, role: .search) {
                 SearchTab(link: link)
+            }
+        }
+        // A good moment (ReviewPolicy): Apple's own review request, a moment after the decision.
+        .onChange(of: link.askForAppReview) { _, ask in
+            guard ask else { return }
+            link.askForAppReview = false
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.5))
+                requestReview()
             }
         }
         // A widget tile was tapped: open that Mochi.

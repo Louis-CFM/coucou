@@ -32,7 +32,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>20</string>
+	<string>21</string>
 	<key>CoucouAPNsEnvironment</key>
 	<string>$(COUCOU_APNS_ENV)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

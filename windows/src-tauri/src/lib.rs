@@ -2,6 +2,8 @@
 
 mod agent_hooks;
 mod agents;
+mod agy_approvals;
+mod agy_rules;
 mod chat;
 mod claude;
 mod claude_code;
@@ -12,11 +14,14 @@ mod desktop;
 mod files;
 mod flow;
 mod github;
+mod herdr;
 mod hooks;
 mod i18n;
 mod identity;
 mod integrations;
+mod calcom;
 mod island;
+mod launch;
 mod local_chat;
 mod log;
 mod mail;
@@ -41,6 +46,7 @@ mod update;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
+mod webview_memory;
 mod whatsapp;
 
 use std::process::Command;
@@ -114,6 +120,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay = current.phone_relay;
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
+        // Antigravity approvals: only their own switch changes them (agy_approvals.rs).
+        settings.agy_approvals_enabled = current.agy_approvals_enabled;
         *current = settings;
         (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -129,7 +137,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     if screen_changed {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
-        island::apply_geometry(&app, &settings.screen, collapsed);
+        let size = *shared.gate.collapsed_size.lock().unwrap();
+        island::apply_geometry(&app, &settings.screen, collapsed.then_some(size));
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
@@ -165,11 +174,19 @@ fn language_changed(app: &AppHandle) {
 /// Hidden island → shrink the window to the invisible wake strip and park the
 /// cursor poll; anything else → full panel and 60 Hz polling.
 #[tauri::command]
-fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
+fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool, width: Option<f64>, height: Option<f64>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
-    island::apply_geometry(&app, &pref, collapsed);
-    // The wake strip must always take the mouse, and a resize invalidates the flag.
+    // An older page sends no size: the wake strip, as before.
+    let size = island::clamp_collapsed((width.unwrap_or(island::STRIP_W), height.unwrap_or(island::STRIP_H)));
+    *shared.gate.collapsed_size.lock().unwrap() = size;
+    // The poll stops first: a tick of it after this could make the closed
+    // island click-through again (see spawn_cursor_poll).
+    if collapsed {
+        shared.gate.set_active(false);
+    }
+    island::apply_geometry(&app, &pref, collapsed.then_some(size));
+    // The closed island must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
@@ -198,7 +215,8 @@ fn focus_window(app: AppHandle, focused: bool) {
 fn reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
-    island::apply_geometry(&app, &pref, collapsed);
+    let size = *shared.gate.collapsed_size.lock().unwrap();
+    island::apply_geometry(&app, &pref, collapsed.then_some(size));
 }
 
 /// The panel is laid out in CSS px against the window's own scale. If the webview
@@ -311,16 +329,18 @@ fn open_in_vscode(path: Option<String>) -> bool {
 
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
-/// folder in VS Code, as before.
+/// folder in VS Code, as before. A session in herdr also gets its pane selected,
+/// and never falls back to VS Code.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+    let in_herdr = session_id.as_deref().is_some_and(herdr::focus);
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return open_in_vscode(path);
+        return in_herdr || open_in_vscode(path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
     {
-        if platform::focus_session_window(&owners, &folder) {
+        if platform::focus_session_window(&owners, &folder) || in_herdr {
             return true;
         }
         open_in_vscode(path)
@@ -331,7 +351,7 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) {
+            if !platform::focus_session_window(&owners, &folder) && !in_herdr {
                 open_in_vscode(path);
             }
         });
@@ -560,6 +580,12 @@ async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<
     chat::models(&settings, &provider).await
 }
 
+/// The Claude API settings use their own key even when chat uses a CLI plan.
+#[tauri::command]
+async fn claude_api_models() -> Result<Vec<ModelInfo>, String> {
+    claude::available_models().await
+}
+
 /// Settings → Local models → Connect: does the server answer, and with which models?
 #[tauri::command]
 async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
@@ -754,6 +780,7 @@ fn create_settings_window(app: &AppHandle) {
                     api.prevent_close();
                     let _ = this.hide();
                     set_hub_shown(&this, false);
+                    webview_memory::set_low(&this, true);
                 }
                 // Minimised (a 0×0 resize on Windows) or back from it.
                 tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true) => {
@@ -762,6 +789,7 @@ fn create_settings_window(app: &AppHandle) {
                 }
                 _ => {}
             });
+            webview_memory::set_low(&win, true); // created hidden
         }
         Err(err) => log::line(format!("Coucou window failed: {err}")),
     }
@@ -777,6 +805,11 @@ fn set_hub_shown(win: &tauri::WebviewWindow, shown: bool) {
     if HUB_SHOWN.swap(shown, Ordering::Relaxed) != shown {
         let _ = win.emit_to(HUB_LABEL, "hub-visible", shown);
     }
+}
+
+/// Whether the Coucou window is on screen, for what only it shows.
+pub(crate) fn hub_is_shown() -> bool {
+    HUB_SHOWN.load(Ordering::Relaxed)
 }
 
 /// The page asks once at load, in case it missed the event.
@@ -801,8 +834,10 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
         let _ = app.run_on_main_thread(move || {
             create_settings_window(&handle);
             if let Some(win) = handle.get_webview_window(HUB_LABEL) {
+                webview_memory::set_low(&win, false);
                 let _ = win.show();
                 let _ = win.set_focus();
+                set_hub_shown(&win, true);
             }
         });
         return;
@@ -810,6 +845,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     if let Some(page) = page {
         let _ = win.emit("hub-page", page.to_string());
     }
+    webview_memory::set_low(&win, false);
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
@@ -891,6 +927,9 @@ pub fn run() {
             open_gitea_url,
             open_in_vscode,
             open_session,
+            launch::launch_session,
+            launch::pick_folder,
+            launch::drop_into_session,
             open_claude_desktop,
             open_file_in_vscode,
             quit_app,
@@ -908,9 +947,12 @@ pub fn run() {
             approval_answer,
             approval_ack,
             approval_decline,
+            agy_approvals::agy_approvals_status,
+            agy_approvals::agy_approvals_set_enabled,
             log_line,
             chat_send,
             chat_models,
+            claude_api_models,
             local_connect,
             local_set_key,
             chat_reset,
@@ -986,6 +1028,7 @@ pub fn run() {
             whatsapp::whatsapp_island,
             whatsapp::whatsapp_open,
             whatsapp::whatsapp_close,
+            whatsapp::whatsapp_open_app,
             whatsapp::whatsapp_send,
             whatsapp::whatsapp_ignore,
             whatsapp::whatsapp_unignore,
@@ -1041,6 +1084,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
+            secrets::warm_up();
             app.manage(phone_link::PhoneLink::new(handle.clone()));
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
@@ -1061,7 +1105,7 @@ pub fn run() {
                 platform::make_non_activating(&win);
                 #[cfg(windows)]
                 webview_drop::install(&handle);
-                island::apply_geometry(&handle, &loaded.screen, false);
+                island::apply_geometry(&handle, &loaded.screen, None);
                 let _ = win.show();
             }
             gate.collapsed.store(false, Ordering::Relaxed);

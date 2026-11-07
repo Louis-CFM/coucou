@@ -19,6 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if !APPSTORE
         CodexTextService.shutdown()
         NoteTaker.shared.shutdown()
+        // A dictation still listening never leaves the Mac muted.
+        SystemMute.shared.releaseNow()
         // The GOWA gateway Coucou started never outlives it.
         WhatsAppGOWAProcess.shared.stopNow()
         #endif
@@ -62,6 +64,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         #if PHONE_LINK
         CloudProbe.shared.startIfEnabled()
+        #endif
+        #if !APPSTORE
+        // Coucou for Android (off unless the user turned it on in Settings)
+        AndroidLinkService.shared.startIfEnabled()
         #endif
     }
 
@@ -379,6 +385,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ClaudeDesktopChatWatcher.shared.start()
         #endif
         CryptoController.shared.start()
+        CoucoudoroController.shared.start()
         PortfolioController.shared.start()
     }
 }
