@@ -30,7 +30,8 @@ import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../vie
 import { h, svg } from "../views/dom";
 import { buildSessionDropList, type SessionDropList } from "../views/session-drop";
 import { DROP_TEXT_RIGHT_WITH_LIST, dropTargetAt, dropTargets } from "../core/launch";
-import { inToolsZone } from "../core/layout";
+import { inShelfZone, inToolsZone } from "../core/layout";
+import { Kit } from "../core/kitstore";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { restoreAlertFocus } from "./hooks";
@@ -72,6 +73,11 @@ export class Island {
   private toolsZone = h("div", { id: "tools-zone" },
     svg("M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 3.5v5M12 15.5v5M3.5 12h5M15.5 12h5", 22, { stroke: 1.7 }),
     h("span", { text: tl("Convert & tools") }),
+  );
+  /** Under it, the Shelf tile: the files stay on the Kit's shelf (SHELF_ZONE). */
+  private shelfZone = h("div", { id: "shelf-zone" },
+    svg("M3.5 13.5h4.6l1.5 2.6h4.8l1.5-2.6h4.6M5.4 5h13.2l1.9 8.5v5.5h-17v-5.5z", 16, { stroke: 1.8 }),
+    h("span", { text: tl("Keep on the shelf") }),
   );
   /** The neon that runs around the edge when a notification comes (neon()). */
   private neonEl = h("div", { id: "neon" }, h("div", { class: "ring" }));
@@ -409,6 +415,7 @@ export class Island {
       this.closedEl,
       this.countdown,
       this.toolsZone,
+      this.shelfZone,
       this.neonEl,
     );
 
@@ -695,6 +702,19 @@ export class Island {
     if (!el.classList.contains("on")) el.classList.add("on");
   }
 
+  /**
+   * A Kit reminder went off (a focus round over, water, a task due): a sound,
+   * the neon, and the Kit opens on its page. A card waiting for an answer
+   * keeps the island: then only the sound and the neon.
+   */
+  kitAlert() {
+    if (State.paused) return;
+    Sound.play("pop");
+    this.neon("#38BDF8");
+    if (State.pendingApproval) return;
+    this.alert("kit");
+  }
+
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
     this.fsm.pinned = State.isPinned;
@@ -853,6 +873,7 @@ export class Island {
         if (State.fileDragOver) return;
         State.fileDragOver = true;
         this.toolsZone.classList.add("on");
+        this.shelfZone.classList.add("on");
         this.engine.animateMorph(1);
         // enterZone must run before the island expands, so the sequence is
         // already active by the time the view becomes `upload`.
@@ -865,6 +886,7 @@ export class Island {
         if (!State.fileDragOver) return;
         State.fileDragOver = false;
         this.toolsZone.classList.remove("on", "over");
+        this.shelfZone.classList.remove("on", "over");
         this.engine.animateMorph(0);
         // The island stays open briefly for recovery, but auto-exits upload mode
         // if the drop occurred outside or the drag was aborted.
@@ -886,6 +908,7 @@ export class Island {
       case "drop": {
         State.fileDragOver = false;
         this.toolsZone.classList.remove("on", "over");
+        this.shelfZone.classList.remove("on", "over");
         // Let go over one of the sessions on the drop card: into its prompt.
         const target = State.dropSessionTarget;
         State.dropSessionTarget = null;
@@ -901,6 +924,15 @@ export class Island {
           void Bridge.wheelOpen(e.paths ?? [path]);
           this.setView(State.defaultView());
           this.collapse();
+          return;
+        }
+        // On the Shelf tile: kept on the Kit's shelf, where they wait to be copied out.
+        if (path && inShelfZone(State.mouseInIsland.x, State.mouseInIsland.y)) {
+          this.engine.animateMorph(0);
+          UploadSeq.deactivate();
+          Kit.shelve(e.paths ?? [path]);
+          Sound.play("gulp");
+          this.setView("kit");
           return;
         }
         if (!path) {
@@ -1370,6 +1402,7 @@ export class Island {
     }
     if (State.fileDragOver) {
       this.toolsZone.classList.toggle("over", inToolsZone(State.mouseInIsland.x, State.mouseInIsland.y));
+      this.shelfZone.classList.toggle("over", inShelfZone(State.mouseInIsland.x, State.mouseInIsland.y));
     }
 
     const inIsland =
@@ -1787,7 +1820,7 @@ export class Island {
   /** The clock sits in the middle of the compact island, where the notch is on a Mac. */
   private updateClock() {
     this.updateClosed();
-    const on = State.mode === "compact" && State.settings.showClock;
+    const on = State.mode === "compact" && (State.settings.showClock || Kit.live() != null);
     this.clockEl.style.opacity = on ? "1" : "0";
     if (!on) return;
     // The plan's pill sits on the right: the clock ends where it starts.
@@ -1797,6 +1830,12 @@ export class Island {
     this.clockEl.style.right = `${right}px`;
     const room = this.width.value - 50 - right;
     const now = new Date();
+    // The focus timer, while it runs, takes the clock's place (Nusa's live activity).
+    const live = Kit.live(now.getTime());
+    if (live) {
+      if (this.clockEl.textContent !== live) this.clockEl.textContent = live;
+      return;
+    }
     const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const full = `${now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}  ${time}`;
     const short = `${now.toLocaleDateString([], { day: "numeric", month: "short" })}  ${time}`;
@@ -1825,7 +1864,8 @@ export class Island {
     this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
     // ponytail: one timer for the life of the window; a minute is the clock's finest tick.
-    this.clockTimer ??= window.setInterval(() => this.updateClock(), 10_000);
+    // Every second: the focus timer counts down there too (the clock only redraws when its text changes).
+    this.clockTimer ??= window.setInterval(() => this.updateClock(), 1000);
   }
 
   get panelSize() {

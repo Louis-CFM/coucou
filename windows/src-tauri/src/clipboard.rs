@@ -242,6 +242,11 @@ pub fn clipboard_clear(app: AppHandle) {
     publish(&app);
 }
 
+/// Files on the clipboard, as Explorer's Copy puts them (the Kit's shelf).
+pub fn copy_files(paths: &[String]) -> bool {
+    os::write(&Content::Files(paths.to_vec()))
+}
+
 // ── The clipboard itself ──────────────────────────────────────────────────────
 
 #[cfg(windows)]

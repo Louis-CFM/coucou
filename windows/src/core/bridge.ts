@@ -204,6 +204,15 @@ export interface PhoneAnswersStatus {
   enabled: boolean;
 }
 
+/** A shelf file as it is now (kit.rs). */
+export interface KitFileInfo {
+  path: string;
+  name: string;
+  size: number;
+  dir: boolean;
+  exists: boolean;
+}
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
@@ -435,6 +444,19 @@ export const Bridge = {
   // ── The wheel (src-tauri/src/wheel) ───────────────────────────────────────
   /** Files dropped on the Tools tile: the wheel opens around the pointer. */
   wheelOpen: (paths: string[]) => call<void>("wheel_open", { paths }),
+
+  // ── The Kit page (src-tauri/src/kit.rs) ───────────────────────────────────
+  kitLoad: () => call<unknown>("kit_load"),
+  kitSave: (data: unknown) => call<void>("kit_save", { data }),
+  kitFiles: (paths: string[]) => call<KitFileInfo[]>("kit_files", { paths }),
+  kitOpen: (path: string) => call<void>("kit_open", { path }),
+  kitReveal: (path: string) => call<void>("kit_reveal", { path }),
+  /** The files on the clipboard, ready for Ctrl+V in a chat, an email or a folder. */
+  kitCopyFiles: (paths: string[]) => call<boolean>("kit_copy_files", { paths }),
+
+  /** The song's lyrics from LRCLIB (lyrics.rs); null when it has none. */
+  lyricsGet: (title: string, artist: string, album: string, duration: number) =>
+    call<{ synced: string | null; plain: string | null; instrumental: boolean } | null>("lyrics_get", { title, artist, album, duration }),
 
   // ── The notch's Clipboard (src-tauri/src/clipboard.rs) ────────────────────
   clipboardItems: () => call<ClipItem[]>("clipboard_items"),

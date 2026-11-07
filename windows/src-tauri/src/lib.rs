@@ -7,6 +7,8 @@ mod agy_approvals;
 mod agy_rules;
 mod chat;
 mod clipboard;
+mod kit;
+mod lyrics;
 mod claude;
 mod claude_account;
 mod claude_plan;
@@ -1096,6 +1098,13 @@ pub fn run() {
             tests_check::laya_stop,
             tests_check::laya_remove,
             vitals::vitals_set_active,
+            lyrics::lyrics_get,
+            kit::kit_load,
+            kit::kit_save,
+            kit::kit_files,
+            kit::kit_open,
+            kit::kit_reveal,
+            kit::kit_copy_files,
             clipboard::clipboard_items,
             clipboard::clipboard_image,
             clipboard::clipboard_copy,

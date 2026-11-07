@@ -19,6 +19,9 @@ import { createMiniBot } from "../mochi/minibots";
 import { pillDefinition } from "../core/pills";
 import { N_, t } from "../i18n/i18n";
 
+/** The lyrics button (a speech bubble with lines). */
+export const LYRICS_ICON = "M4.5 5.5h15a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.2 3.2V17H4.5A1.5 1.5 0 0 1 3 15.5V7a1.5 1.5 0 0 1 1.5-1.5zM7 9.5h10M7 12.8h6.5";
+
 
 function lighter(hex: string, amount: number): string {
   const v = parseInt(hex.replace("#", ""), 16);
@@ -35,6 +38,11 @@ export function togglePlay() {
   Spotify.state = withPlaying(s, !s.playing, Date.now());
   State.notify();
   void Bridge.spotifyControl("playPause");
+}
+
+/** Jumps the song to `seconds` (the lyrics' lines use it). */
+export function seekTo(seconds: number) {
+  seek(seconds);
 }
 
 function seek(seconds: number) {
@@ -259,8 +267,12 @@ export interface SpotifyCardHost {
   sync(): void;
 }
 
-/** SpotifyCardView: now playing, or the idle card (not playing / not installed). */
-export function buildSpotifyCard(): SpotifyCardHost {
+/**
+ * SpotifyCardView: now playing, or the idle card (not playing / not installed).
+ * `onLyrics` adds the lyrics button (the music page and back); `onMusicPage`
+ * is the copy on that page, where the button is lit.
+ */
+export function buildSpotifyCard(onLyrics?: () => void, onMusicPage = false): SpotifyCardHost {
   const green = SPOTIFY_GREEN;
 
   // Now playing: artwork row, progress row, controls row.
@@ -306,8 +318,13 @@ export function buildSpotifyCard(): SpotifyCardHost {
     (f) => setVolume(f * 100),
   );
   const volumeBox = h("div", { class: "np-volume" }, volIcon, volume.el);
+  const lyricsBtn = onLyrics ? iconButton(LYRICS_ICON, 12, 1.9, onLyrics) : null;
+  if (lyricsBtn) {
+    lyricsBtn.classList.add("np-lyrics");
+    lyricsBtn.classList.toggle("on", onMusicPage);
+  }
   const controls = h("div", { class: "np-controls" },
-    h("div", { class: "np-buttons" }, shuffle, prev, play, next, repeat),
+    h("div", { class: "np-buttons" }, ...(lyricsBtn ? [lyricsBtn] : []), shuffle, prev, play, next, repeat),
     h("div", { class: "grow" }),
     volumeBox,
   );
@@ -344,11 +361,12 @@ export function buildSpotifyCard(): SpotifyCardHost {
 
   /** The position runs on its own clock, twice a second, only while it plays on screen. */
   function syncTimer() {
+    const onPage = () => State.view === (onMusicPage ? "music" : "overview");
     const run = Spotify.state.playing && showing === "playing" && el.isConnected &&
-      State.mode === "expanded" && State.view === "overview";
+      State.mode === "expanded" && onPage();
     if (run && timer == null) {
       timer = window.setInterval(() => {
-        if (!(Spotify.state.playing && el.isConnected && State.mode === "expanded" && State.view === "overview")) {
+        if (!(Spotify.state.playing && el.isConnected && State.mode === "expanded" && onPage())) {
           if (timer != null) window.clearInterval(timer);
           timer = null;
           return;
@@ -390,6 +408,7 @@ export function buildSpotifyCard(): SpotifyCardHost {
     repeat.style.color = s.repeat ? green : "#6B7079";
     retitle(repeat, s.repeat ? t("Repeat on") : t("Repeat off"));
     retitle(prev, t("Previous"));
+    if (lyricsBtn) retitle(lyricsBtn, onMusicPage ? t("Hide lyrics") : t("Lyrics"));
     retitle(next, t("Next"));
     if (playIcon !== s.playing) {
       playIcon = s.playing;

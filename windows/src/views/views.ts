@@ -31,6 +31,8 @@ import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { buildSendMail } from "./sendmail";
 import { buildClipboard } from "./clipboard";
+import { buildKit, KIT_ICONS } from "./kit";
+import { buildMusic } from "./music";
 import { MAIL_ID } from "../core/mail";
 import { buildMailCard } from "./mail";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
@@ -145,6 +147,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   // Mac's ✕). A card waiting for an answer keeps the island open: no ✕ then.
   const closeBtn = h("button", { class: "close", title: tl("Close"), onclick: () => actions.collapse() }, svg(ICONS.xmark, 17));
   const tabClip = h("button", { class: "tab", title: tl("Clipboard"), onclick: () => go("clipboard") }, svg(ICONS.clipboard, 17, { stroke: 1.8 }));
+  // The Kit: focus timer, water, to-do and the file shelf.
+  const tabKit = h("button", { class: "tab", title: tl("Kit: focus, water, to-do, shelf"), onclick: () => go("kit") }, svg(KIT_ICONS.kit, 16, { stroke: 1.8 }));
   // Takes the island off the screen; pushing the pointer to the top edge
   // brings it back. A card waiting for an answer is kept (Island.minimize).
   const minimizeBtn = h(
@@ -177,7 +181,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch, tabClip),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch, tabClip, tabKit),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, minimizeBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -191,6 +195,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabDrop.classList.toggle("on", v === "upload");
       tabLaunch.classList.toggle("on", v === "launch");
       tabClip.classList.toggle("on", v === "clipboard");
+      tabKit.classList.toggle("on", v === "kit");
       // Off in Settings: no tab.
       tabClip.style.display = State.settings.clipboardHistory === false ? "none" : "";
       gearBtn.classList.toggle("on", v === "settings");
@@ -261,7 +266,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let planTimer: number | null = null;
   // Spotify's card and pill are kept and updated in place: the progress bar
   // runs on, and a slider being dragged must not be rebuilt under the pointer.
-  const spotifyCard = buildSpotifyCard();
+  const spotifyCard = buildSpotifyCard(() => actions.setView("music"));
   let spotifyPill: SpotifyPillHost | null = null;
   // WhatsApp's card keeps its open conversation and draft across syncs.
   const whatsappCard = buildWhatsAppCard((on) => actions.setPinned(on));
@@ -974,6 +979,8 @@ export function buildViews(
   map.set("update", buildUpdate());
   map.set("whatsNew", buildWhatsNew());
   map.set("clipboard", buildClipboard());
+  map.set("kit", buildKit(actions));
+  map.set("music", buildMusic(actions));
   map.set("launch", buildLaunch(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildSendMail(actions));

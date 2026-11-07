@@ -28,7 +28,9 @@ export type IslandViewName =
   | "update"
   | "whatsNew"
   | "clipboard"
-  | "launch";
+  | "launch"
+  | "kit"
+  | "music";
 
 export type BotStateName =
   | "idle"
@@ -113,6 +115,10 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   clipboard: { height: 214, botX: 48, botY: 124, botDiameter: 40, agentMode: "none" },
   // A new Claude Code session: Mochi on the left, the project and the prompt (Mac: .launch).
   launch: { height: 160, botX: 58, botY: null, botDiameter: 52, agentMode: "none" },
+  // The Kit tab (focus timer, water, to-do, shelf): Mochi small on the left, as on the Clipboard.
+  kit: { height: 214, botX: 48, botY: 124, botDiameter: 40, agentMode: "none" },
+  // The music page: the Spotify card and the song's lyrics beside it.
+  music: { height: 200, botX: 46, botY: 121, botDiameter: 38, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually
@@ -197,12 +203,21 @@ export function botPosition(
 
 /**
  * Where a dragged file opens the wheel instead of being eaten (wheel/, the
- * Tools tile at the drop card's right end), in island coordinates.
+ * Tools tile at the drop card's right end), in island coordinates. Below it,
+ * the Shelf tile keeps the files on the Kit's shelf.
  */
-export const TOOLS_ZONE = { x: 478, y: 48, w: 146, h: 112 };
+export const TOOLS_ZONE = { x: 478, y: 48, w: 146, h: 64 };
+export const SHELF_ZONE = { x: 478, y: 118, w: 146, h: 42 };
+
+type Zone = { x: number; y: number; w: number; h: number };
+const inZone = (z: Zone, x: number, y: number) => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h;
 
 export function inToolsZone(x: number, y: number): boolean {
-  return x >= TOOLS_ZONE.x && x <= TOOLS_ZONE.x + TOOLS_ZONE.w && y >= TOOLS_ZONE.y && y <= TOOLS_ZONE.y + TOOLS_ZONE.h;
+  return inZone(TOOLS_ZONE, x, y);
+}
+
+export function inShelfZone(x: number, y: number): boolean {
+  return inZone(SHELF_ZONE, x, y);
 }
 
 /** The neon that runs around the island's edge when a notification comes, by kind. */

@@ -5,6 +5,8 @@ import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
+import { Kit } from "./core/kitstore";
+import { Spotify } from "./core/spotify";
 import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerPhoneLink } from "./island/phone-link";
@@ -73,6 +75,13 @@ async function main() {
   await onEvent<null>("capture-used", () => island.onCaptureUsed());
   await onEvent<boolean>("browser-foreground", (on) => island.setBrowserForeground(on));
   await onEvent<string | null>("front-exe", (exe) => { State.frontExe = exe; });
+  // The Kit (focus timer, water, to-do, shelf): its reminders open its page.
+  Kit.onAlert(() => island.kitAlert());
+  // "Pause music at prayer time": Spotify stops if it plays.
+  Kit.onPrayerTime(() => {
+    if (Spotify.state.playing) void Bridge.spotifyControl("playPause");
+  });
+  void Kit.load();
   // The notch's Clipboard: what was copied, newest first (clipboard.rs).
   await onEvent<ClipItem[]>("clipboard", (items) => {
     State.clipboard = items;
