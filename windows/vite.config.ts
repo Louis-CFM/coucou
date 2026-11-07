@@ -65,6 +65,9 @@ export default defineConfig({
         settings: resolve(__dirname, "settings.html"),
         mochi: resolve(__dirname, "mochi.html"),
         pill: resolve(__dirname, "pill.html"),
+        annotate: resolve(__dirname, "annotate.html"),
+        wheel: resolve(__dirname, "wheel.html"),
+        editor: resolve(__dirname, "editor.html"),
       },
       output: {
         // The interface's strings in every language (src/i18n/*.json) make a

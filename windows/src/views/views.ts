@@ -12,13 +12,14 @@ import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
-import { pillDefinition, sessionSubtitle } from "../core/pills";
+import { MAX_DECLARED, pillDefinition, sessionSubtitle } from "../core/pills";
 import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
+import { buildWorkCard } from "./work";
 import { lastTextStep } from "../core/diff";
-import { Bridge } from "../core/bridge";
+import { Bridge, type ApprovalDecision } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
@@ -28,6 +29,10 @@ import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spot
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
+import { buildSendMail } from "./sendmail";
+import { buildClipboard } from "./clipboard";
+import { buildKit, KIT_ICONS } from "./kit";
+import { buildMusic } from "./music";
 import { MAIL_ID } from "../core/mail";
 import { buildMailCard } from "./mail";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
@@ -39,6 +44,10 @@ export interface ViewActions {
   /** "Cancel" on a dropped file: forgets it and goes back home. */
   cancelDrop(): void;
   collapse(): void;
+  /** The capture card's buttons (CaptureCardView.swift). */
+  capture(what: "paste" | "copy" | "annotate" | "ask"): void;
+  /** The – button: off the screen until the pointer reaches the top edge. */
+  minimize(): void;
   /** Folds a waiting card to the compact island without answering it. */
   foldApproval(): void;
   setFocus(id: string): void;
@@ -46,7 +55,7 @@ export interface ViewActions {
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
   openUrl(url: string): void;
-  decide(d: "allow" | "deny"): void;
+  decide(d: ApprovalDecision): void;
   /** Answers the question Claude Code asked: question text → chosen label. */
   answer(answers: Record<string, string | string[]>): void;
   /** Hands the pending request back to the terminal. */
@@ -55,6 +64,8 @@ export interface ViewActions {
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
+  /** Keeps the open island from folding away (Ctrl+P), or lets it fold again. */
+  setPinned(on: boolean): void;
   blip(): void;
   /** Wardrobe click: keeps the outfit ("auto" and "none" included). */
   chooseOutfit(selection: OutfitSelection): void;
@@ -135,11 +146,32 @@ export function buildHeader(actions: ViewActions): ViewHost {
   // Folds back to the compact island now, without waiting for the timer (the
   // Mac's ✕). A card waiting for an answer keeps the island open: no ✕ then.
   const closeBtn = h("button", { class: "close", title: tl("Close"), onclick: () => actions.collapse() }, svg(ICONS.xmark, 17));
+  const tabClip = h("button", { class: "tab", title: tl("Clipboard"), onclick: () => go("clipboard") }, svg(ICONS.clipboard, 17, { stroke: 1.8 }));
+  // The Kit: focus timer, water, to-do and the file shelf.
+  const tabKit = h("button", { class: "tab", title: tl("Kit: focus, water, to-do, shelf"), onclick: () => go("kit") }, svg(KIT_ICONS.kit, 16, { stroke: 1.8 }));
+  // Takes the island off the screen; pushing the pointer to the top edge
+  // brings it back. A card waiting for an answer is kept (Island.minimize).
+  const minimizeBtn = h(
+    "button",
+    {
+      class: "minimize",
+      title: tl("Minimize"),
+      onclick: () => {
+        actions.blip();
+        actions.minimize();
+      },
+    },
+    svg(ICONS.minus, 17, { stroke: 1.6 }),
+  );
   // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
   const claudePill = buildPlanPill(false);
   const codexPill = buildPlanPill(true);
   const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
   let codexShown = false;
+  // The icons drawn last: redrawing an unchanged one under a resting pointer
+  // makes Windows set the cursor again, and it flickers against the app behind.
+  let gearIcon = "";
+  let soundIcon = "";
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -149,8 +181,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, closeBtn),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch, tabClip, tabKit),
+    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, minimizeBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -162,11 +194,23 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       tabLaunch.classList.toggle("on", v === "launch");
+      tabClip.classList.toggle("on", v === "clipboard");
+      tabKit.classList.toggle("on", v === "kit");
+      // Off in Settings: no tab.
+      tabClip.style.display = State.settings.clipboardHistory === false ? "none" : "";
       gearBtn.classList.toggle("on", v === "settings");
-      clear(gearBtn);
-      gearBtn.append(v === "settings" ? svg(ICONS.gearFill, 18) : svg(ICONS.gearLine, 18, { stroke: 1.6 }));
-      clear(soundBtn);
-      soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerLine : ICONS.speakerSlashLine, 18, { stroke: 1.6 }));
+      const gear = v === "settings" ? "fill" : "line";
+      if (gear !== gearIcon) {
+        gearIcon = gear;
+        clear(gearBtn);
+        gearBtn.append(v === "settings" ? svg(ICONS.gearFill, 18) : svg(ICONS.gearLine, 18, { stroke: 1.6 }));
+      }
+      const sound = State.settings.soundEnabled ? ICONS.speakerLine : ICONS.speakerSlashLine;
+      if (sound !== soundIcon) {
+        soundIcon = sound;
+        clear(soundBtn);
+        soundBtn.append(svg(sound, 18, { stroke: 1.6 }));
+      }
       closeBtn.style.display = State.pendingApproval ? "none" : "";
       syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
@@ -183,8 +227,9 @@ export function buildHeader(actions: ViewActions): ViewHost {
     headerActions.classList.toggle("both-plans", claudeOn && codexOn);
     if (claudeOn) claudePill.sync();
     if (codexOn) codexPill.sync();
-    // Codex is asked when its pill comes into view (stale answers only).
-    const shown = codexOn && State.mode === "expanded";
+    // Codex is asked when the overview opens with its pill turned on (stale
+    // answers only); the pill itself shows once Codex answered.
+    const shown = State.view === "overview" && State.settings.showCodexPlanInNotch && State.mode === "expanded";
     if (shown && !codexShown) refreshCodexPlanUsage();
     codexShown = shown;
   }
@@ -221,16 +266,12 @@ function buildOverview(actions: ViewActions): ViewHost {
   let planTimer: number | null = null;
   // Spotify's card and pill are kept and updated in place: the progress bar
   // runs on, and a slider being dragged must not be rebuilt under the pointer.
-  const spotifyCard = buildSpotifyCard();
+  const spotifyCard = buildSpotifyCard(() => actions.setView("music"));
   let spotifyPill: SpotifyPillHost | null = null;
-  // WhatsApp's card too: its reply field keeps the draft and the keyboard while messages arrive.
+  // WhatsApp's card keeps its open conversation and draft across syncs.
+  const whatsappCard = buildWhatsAppCard((on) => actions.setPinned(on));
   // Mail's card too (classic Outlook): the search field keeps its text and the keyboard.
   const mailCard = buildMailCard({ keyboard: (on) => actions.keyboard(on) });
-  const whatsappCard = buildWhatsAppCard({
-    openSettings: () => actions.openSettingsWindow(),
-    keyboard: (on) => actions.keyboard(on),
-    holdOpen: (on) => actions.holdOpen(on),
-  });
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -240,7 +281,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "mail" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "work" | "mail" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -340,6 +381,8 @@ function buildOverview(actions: ViewActions): ViewHost {
         cardKey = "";
       }
       syncPlanTimer(planOpen);
+      const tall = State.tallOverview;
+      el.classList.toggle("tall", tall != null);
 
       // A diff that has since been dropped (cap, expiry, session end) just closes.
       const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
@@ -352,6 +395,19 @@ function buildOverview(actions: ViewActions): ViewHost {
           mode = "plan";
         }
         plan.sync();
+      } else if (task && tall === "work") {
+        // An agent at work, seen whole: its steps, and the diff picked or its latest edit.
+        const diffs = State.sessionDiffs.get(task.id);
+        const shown = diff ?? diffs?.[diffs.length - 1] ?? null;
+        const key = ["work", language(), task.id, task.state, task.color, task.steps.join("|"), shown?.id ?? ""].join("~");
+        if (key !== cardKey) {
+          cardKey = key;
+          mode = "work";
+          clear(leftBody);
+          leftBody.append(buildWorkCard(task, shown, {
+            open: (path) => void Bridge.openFileInVSCode(path),
+          }));
+        }
       } else if (task && diff) {
         const key = `diff~${task.id}~${diff.id}`;
         if (key !== cardKey) {
@@ -406,7 +462,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
         mailCard.sync();
       } else if (task && task.id === WHATSAPP_ID) {
-        // Its own card in every state: not linked, no message, conversations, one open.
+        // Its own card in every state (not linked, no message, conversations).
         if (mode !== "whatsapp") {
           clear(leftBody);
           leftBody.append(whatsappCard.el);
@@ -438,7 +494,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       highlightRow(rows, State.cardSelection, State.cardSelection !== shownSelection);
       shownSelection = State.cardSelection;
 
-      const others = State.otherTasks.slice(0, 4);
+      const others = State.otherTasks.slice(0, MAX_DECLARED);
       const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
@@ -563,7 +619,7 @@ function buildApproval(actions: ViewActions): ViewHost {
   // moments after a new request appears are ignored.
   let shownFor: string | null = null;
   let shownAt = 0;
-  const guarded = (d: "allow" | "deny") => () => {
+  const guarded = (d: ApprovalDecision) => () => {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
@@ -580,26 +636,41 @@ function buildApproval(actions: ViewActions): ViewHost {
         shownAt = performance.now();
       }
       clear(who);
-      who.append(agentWho(State.focusTask, t("needs permission")));
+      // Claude Code's plan (ExitPlanMode): the terminal's plan dialog choices.
+      const isPlan = State.pendingApproval?.tool === "ExitPlanMode";
+      who.append(agentWho(State.focusTask, isPlan ? t("has a plan ready") : t("needs permission")));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once per kind of card. Rebuilding them between a
-      // mouse-down and a mouse-up would swallow the click. "Always" is gone until
-      // the remembered-rules list exists to back it. Antigravity waits on the card:
-      // a third button hands the command back to its own prompt in the terminal,
-      // where its "Always allow" lives (as on the Mac).
+      // Two or three buttons, built once per kind of card. Rebuilding them between
+      // a mouse-down and a mouse-up would swallow the click. "Always" is gone until
+      // the remembered-rules list exists to back it. A plan has its own three;
+      // Antigravity waits on the card, and a third button hands the command back to
+      // its own prompt in the terminal, where its "Always allow" lives (as on the Mac).
       const agy = State.pendingApproval?.pillId === "agent_antigravity";
-      const key = agy ? "agy" : "built";
-      if (rowKey === key) return;
-      rowKey = key;
+      const kind = isPlan ? "plan" : agy ? "agy" : "tool";
+      if (rowKey === kind) return;
+      rowKey = kind;
       clear(row);
-      row.append(
-        btn(tl("Deny"), "secondary", guarded("deny"), "N"),
-        btn(tl("Allow"), "primary", guarded("allow"), "Y"),
-      );
-      if (agy) row.append(btn(tl("Reply in terminal"), "secondary", inTerminal));
+      if (isPlan) {
+        row.append(
+          btn(tl("Change plan"), "secondary", () => {
+            if (performance.now() - shownAt < CLICK_GUARD_MS) return;
+            actions.decide("plan_change");
+            // The change is typed in the terminal: it comes to the front.
+            actions.openTerminal();
+          }, "N"),
+          btn(tl("Auto mode"), "primary", guarded("plan_auto"), "Y"),
+          btn(tl("Manual"), "secondary", guarded("plan_default")),
+        );
+      } else {
+        row.append(
+          btn(tl("Deny"), "secondary", guarded("deny"), "N"),
+          btn(tl("Allow"), "primary", guarded("allow"), "Y"),
+        );
+        if (agy) row.append(btn(tl("Reply in terminal"), "secondary", inTerminal));
+      }
     },
   };
 }
@@ -781,6 +852,31 @@ function buildNote(): ViewHost {
   };
 }
 
+// ── Screen capture (CaptureCardView.swift) ────────────────────────────────────
+
+function buildCapture(actions: ViewActions): ViewHost {
+  const thumb = h("img", { class: "capture-thumb", alt: "" }) as HTMLImageElement;
+  const pill = (label: Msg, what: "paste" | "copy" | "annotate" | "ask", primary = false) =>
+    btn(label, primary ? "primary" : "secondary", () => actions.capture(what));
+  const body = h("div", { class: "capture-card" },
+    thumb,
+    h("div", { class: "capture-text" },
+      h("div", { class: "title", text: tl("Captured. Mochi has it.") }),
+      h("div", { class: "hint", text: tl("Paste it into your prompt, annotate it, or ask Claude.") }),
+      h("div", { class: "actions capture-actions" },
+        pill(tl("Paste"), "paste", true), pill(tl("Copy"), "copy"), pill(tl("Annotate"), "annotate"), pill(tl("Ask Claude"), "ask"),
+      ),
+    ),
+  );
+  return {
+    el: h("div", { class: "view" }, card(null, body)),
+    sync() {
+      const src = State.capture?.dataUrl ?? "";
+      if (thumb.src !== src) thumb.src = src;
+    },
+  };
+}
+
 // ── In-island settings ────────────────────────────────────────────────────────
 
 function buildSettings(actions: ViewActions): ViewHost {
@@ -879,11 +975,15 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   map.set("recap", buildRecap(actions));
   map.set("wardrobe", buildWardrobe(actions));
+  map.set("capture", buildCapture(actions));
   map.set("update", buildUpdate());
   map.set("whatsNew", buildWhatsNew());
+  map.set("clipboard", buildClipboard());
+  map.set("kit", buildKit(actions));
+  map.set("music", buildMusic(actions));
   map.set("launch", buildLaunch(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
-  map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
+  map.set("mail", buildSendMail(actions));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));
   map.set("result", buildPlaceholder(tl("Result"), ""));
   return map;

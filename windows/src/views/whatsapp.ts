@@ -1,258 +1,298 @@
-// The WhatsApp card — a DOM port of WhatsAppCardView, WhatsAppRow, WhatsAppConversationView,
-// WhatsAppBubble and WhatsAppAvatar (WhatsAppViews.swift). Sizes, colours and wording are the Mac's.
+// The WhatsApp card — DOM port of WhatsAppCardView, WhatsAppRow,
+// WhatsAppConversationView, WhatsAppBubble and WhatsAppAvatar
+// (WhatsAppViews.swift). Sizes, colours and wording are the Mac's.
 //
-// The list: one row per conversation (never one per message) with initials, name, age, the last
-// message cut short and the unread count; when the gateway isn't linked, why, and a way to Settings.
-// A click on a row opens the conversation: its last ten messages and a reply field. Enter sends,
-// Shift+Enter starts a new line, Escape goes back to the list. Nothing is sent without the user's
-// own Enter or click, and while a reply is being typed the island stays open.
-//
-// Built once and synced in place: the field keeps its draft and the keyboard while messages arrive.
+// The list shows one row per conversation with new messages; a click opens it
+// with its last ten messages and a reply field. Enter sends, Shift+Enter starts
+// a new line, Escape goes back to the list. Nothing is sent without the user's
+// own Enter or click. What it shows comes from src-tauri/src/whatsapp through
+// island/whatsapp.ts; no photo or media is ever fetched.
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Bridge } from "../core/bridge";
 import { State } from "../core/state";
 import {
-  WHATSAPP_GREEN, WHATSAPP_ID, WhatsApp, canSend, initials, keyAction, lastMessages, linkColor, linkLabel,
-  preview, previewParts, sendErrorLabel, timeAgo, type WaConversation, type WaMessage,
+  WHATSAPP_GREEN, WhatsApp, displayNumber, initials, linkColor, linkLabel, previewKey, previewLine, timeAgo,
+  type WhatsAppConversation, type WhatsAppMessage,
 } from "../core/whatsapp";
-import { language, t, tl } from "../i18n/i18n";
+import { language, t } from "../i18n/i18n";
 
 export interface WhatsAppCardHost {
-  openSettings(): void;
-  /** The island takes the keyboard for the reply field, and gives it back. */
-  keyboard(on: boolean): void;
-  /** A reply is being typed: the island stays open until it is sent or cleared. */
-  holdOpen(on: boolean): void;
-}
-
-export interface WhatsAppCard {
   el: HTMLElement;
   sync(): void;
 }
 
+const GROUP_PATH = "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm7.5 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 19.5C2 16.5 5 14 9 14s7 2.5 7 5.5V20H2v-.5zm15.2.5v-.5c0-1.9-.8-3.6-2.1-4.9.6-.1 1.2-.1 1.9-.1 3.2 0 5.5 2 5.5 4.6v.9h-5.3z";
+
 /** Initials on WhatsApp green: no photo is ever fetched (they live on WhatsApp's servers). */
 function avatar(name: string, isGroup: boolean, size = 16): HTMLElement {
-  const letters = initials(name);
   const el = h("span", { class: "wa-avatar", style: `width:${size}px;height:${size}px;font-size:${size * 0.42}px` });
-  if (isGroup && letters === "#") el.append(svg(ICONS.stack, size * 0.6, { fill: WHATSAPP_GREEN }));
+  const letters = initials(name);
+  if (isGroup && letters === "#") el.append(svg(GROUP_PATH, Math.round(size * 0.62)));
   else el.textContent = letters;
   return el;
 }
 
-function bubble(m: WaMessage, isGroup: boolean): HTMLElement {
-  const { label, value } = previewParts(m);
-  const box = h("div", { class: m.fromMe ? "wa-bubble mine" : "wa-bubble" });
-  if (isGroup && !m.fromMe && m.senderName) box.append(h("div", { class: "wa-sender", text: m.senderName }));
-  if (label) box.append(h("div", { class: "wa-media", text: t(label) }));
-  if (value) box.append(h("div", { class: "wa-text", text: value }));
-  return h("div", { class: m.fromMe ? "wa-line mine" : "wa-line" }, box);
+function row(c: WhatsAppConversation, open: () => void): HTMLElement {
+  const unread = c.unread > 0;
+  const last = c.messages[c.messages.length - 1];
+  const el = h("button", { class: unread ? "wa-row unread" : "wa-row", onclick: open },
+    avatar(c.name, c.isGroup),
+    h("span", { class: "wa-name", text: c.name }),
+    h("span", { class: "wa-age", text: timeAgo(c.lastActivity) }),
+    last ? h("span", { class: "wa-preview", text: previewLine(last, c.isGroup) }) : null,
+    h("span", { class: "grow" }),
+    unread ? h("span", { class: "wa-count", text: c.unread > 99 ? "99+" : String(c.unread) }) : null,
+  );
+  // The Mac's context menu: right-click ignores the chat.
+  el.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    showIgnoreMenu(el, c.id, e.clientX, e.clientY);
+  });
+  return el;
 }
 
-export function buildWhatsAppCard(host: WhatsAppCardHost): WhatsAppCard {
-  // ── The list ──
-  const unreadTag = h("span", { class: "wa-unread" });
-  const head = h("div", { class: "int-head" }, dot(WHATSAPP_GREEN, 7), h("b", { text: "WhatsApp" }), unreadTag);
-  const listBody = h("div", {});
-  const listView = h("div", { class: "wa-list" }, head, listBody);
+let menu: HTMLElement | null = null;
 
-  // ── The conversation ──
-  const back = h("button", { class: "int-back wa-back", title: tl("Back") }, svg(ICONS.chevronLeft, 10, { stroke: 2.4 }));
-  const convoAvatar = h("span", {});
-  const convoName = h("b", { class: "wa-name" });
-  const convoHead = h("div", { class: "wa-head" }, back, convoAvatar, convoName);
-  const messages = h("div", { class: "wa-messages" });
-  const field = h("textarea", { class: "wa-field", rows: "1", spellcheck: "true" }) as HTMLTextAreaElement;
-  const sendBtn = h("button", { class: "wa-send", title: tl("Send") }, svg(ICONS.arrowUp, 12, { fill: "#0B0C0E" }));
-  const reply = h("div", { class: "wa-reply" }, field, sendBtn);
-  const note = h("div", { class: "wa-note" });
-  const convoView = h("div", { class: "wa-convo" }, convoHead, messages, reply, note);
+function closeMenu() {
+  menu?.remove();
+  menu = null;
+}
 
-  const el = h("div", { class: "int-card wa-card" }, listView, convoView);
-
-  let openChat: string | null = null;
-  /** The row whose "Ignore this chat" is showing (a right-click on it). */
-  let ignoring: string | null = null;
-  let listKey = "";
-  let convoKey = "";
-
-  const current = (): WaConversation | undefined =>
-    openChat ? WhatsApp.view.conversations.find((c) => c.id === openChat) : undefined;
-
-  function open(id: string) {
-    openChat = id;
-    ignoring = null;
-    field.value = "";
-    convoKey = "";
-    void Bridge.whatsappOpen(id);
-    host.keyboard(true);
-    window.setTimeout(() => field.focus(), 120);
-    sync();
-  }
-
-  function close() {
-    if (openChat == null) return;
-    void Bridge.whatsappClose(openChat);
-    openChat = null;
-    field.value = "";
-    host.holdOpen(false);
-    host.keyboard(false);
-    listKey = "";
-    sync();
-  }
-
-  async function send() {
-    const chat = openChat;
-    const text = field.value;
-    if (!chat || !canSend(text, WhatsApp.view.sending)) return;
-    const sent = await Bridge.whatsappSend(chat, text);
-    if (sent && openChat === chat && field.value === text) {
-      field.value = "";
-      host.holdOpen(false);
-      syncSendButton();
-    }
-    field.focus();
-  }
-
-  back.addEventListener("click", close);
-  sendBtn.addEventListener("click", () => void send());
-  field.addEventListener("input", () => {
-    host.holdOpen(field.value.trim().length > 0);
-    syncSendButton();
+function showIgnoreMenu(anchor: HTMLElement, chat: string, x: number, y: number) {
+  closeMenu();
+  const item = h("button", {
+    class: "wa-menu-item",
+    text: t("Ignore this chat"),
+    onclick: () => {
+      closeMenu();
+      void Bridge.whatsappIgnore(chat);
+    },
   });
-  field.addEventListener("keydown", (e) => {
-    const action = keyAction(e);
-    if (action === "send") {
+  menu = h("div", { class: "wa-menu", style: `left:${x}px;top:${y}px` }, item);
+  document.body.append(menu);
+  window.setTimeout(() => document.addEventListener("pointerdown", (e) => {
+    if (menu && !menu.contains(e.target as Node)) closeMenu();
+  }, { once: true }), 0);
+  void anchor;
+}
+
+function bubble(m: WhatsAppMessage, isGroup: boolean): HTMLElement {
+  const [key, value] = previewKey(m);
+  const body = h("div", { class: "wa-bubble" });
+  if (isGroup && !m.fromMe && m.senderName) body.append(h("div", { class: "wa-sender", text: m.senderName }));
+  if (key) body.append(h("div", { class: "wa-media", text: t(key) }));
+  if (value) body.append(h("div", { class: "wa-text", text: value }));
+  return h("div", { class: m.fromMe ? "wa-line mine" : "wa-line" }, body);
+}
+
+/** `pin`: the island's own pin (Ctrl+P), so a draft keeps it open. */
+export function buildWhatsAppCard(pin: (on: boolean) => void): WhatsAppCardHost {
+  const el = h("div", { class: "wa-card" });
+
+  // ── The list ──
+  const listEl = h("div", { class: "int-card wa-list-card" });
+  let listKey = "";
+
+  // ── One conversation ──
+  let openChat: string | null = null;
+  const back = h("button", { class: "wa-back" }, svg(ICONS.chevronLeft, 10, { stroke: 2.4 }));
+  const headAvatar = h("span");
+  const headName = h("span", { class: "wa-head-name" });
+  const head = h("div", { class: "wa-conv-head" }, back, headAvatar, headName);
+  const messagesEl = h("div", { class: "wa-messages" });
+  const draft = h("textarea", { class: "wa-draft", rows: "1", spellcheck: "true" }) as HTMLTextAreaElement;
+  const send = h("button", { class: "wa-send" }, svg(ICONS.arrowUp, 10, { stroke: 2.6 }));
+  const spinner = h("span", { class: "wa-spinner" });
+  const reply = h("div", { class: "wa-reply" }, draft, send, spinner);
+  const note = h("div", { class: "wa-note" });
+  const convEl = h("div", { class: "wa-conv" }, head, messagesEl, reply, note);
+  let convKey = "";
+  let lastShown = "";
+
+  /** `typing`: opened by a click, so the reply field takes the keyboard. A
+   * conversation opened by a message coming in leaves it where it is. */
+  function openConversation(id: string, typing = true) {
+    openChat = id;
+    draft.value = "";
+    WhatsApp.drafting = false;
+    convKey = "";
+    lastShown = "";
+    void Bridge.whatsappOpen(id);
+    if (typing) {
+      // The reply field needs the keyboard: the island lends it focus while open.
+      void Bridge.focusWindow(true);
+    }
+    sync();
+    if (typing) window.setTimeout(() => draft.focus(), 120);
+  }
+
+  function closeConversation() {
+    if (openChat) void Bridge.whatsappClose(openChat);
+    openChat = null;
+    draft.value = "";
+    setComposing(false);
+    void Bridge.focusWindow(false);
+    sync();
+  }
+
+  /** WhatsAppController.composing: a draft keeps the island open. Only a pin it set itself is lifted. */
+  let pinnedByDraft = false;
+  function setComposing(on: boolean) {
+    WhatsApp.drafting = on;
+    if (on && !State.isPinned) {
+      pin(true);
+      pinnedByDraft = true;
+    } else if (!on && pinnedByDraft) {
+      pinnedByDraft = false;
+      if (!State.pendingApproval) pin(false);
+    }
+  }
+
+  async function submit() {
+    const text = draft.value;
+    if (!openChat || !text.trim() || WhatsApp.state.sending) return;
+    const ok = await Bridge.whatsappSend(openChat, text);
+    if (ok) {
+      draft.value = "";
+      setComposing(false);
+      paintSend();
+    }
+    draft.focus();
+  }
+
+  function paintSend() {
+    const empty = !draft.value.trim();
+    send.style.opacity = empty ? "0.3" : "1";
+    (send as HTMLButtonElement).disabled = empty;
+    draft.style.height = "auto";
+    draft.style.height = `${Math.min(draft.scrollHeight, 44)}px`;
+  }
+
+  back.addEventListener("click", closeConversation);
+  send.addEventListener("click", () => void submit());
+  // Opened by a message: a click in the reply field asks for the keyboard.
+  draft.addEventListener("mousedown", () => void Bridge.focusWindow(true));
+  draft.addEventListener("input", () => {
+    WhatsApp.drafting = draft.value.trim() !== "";
+    setComposing(draft.value.trim() !== "");
+    paintSend();
+  });
+  draft.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
-      void send();
-    } else if (action === "back") {
+      void submit();
+    } else if (e.key === "Escape") {
       // Back to the list, not the island folding away.
       e.preventDefault();
       e.stopPropagation();
-      close();
+      closeConversation();
     }
   });
-
-  // Leaving the card (another pill, another view, the island folded) closes the conversation.
-  State.subscribe(() => {
-    if (openChat == null) return;
-    if (State.mode !== "expanded" || State.view !== "overview" || State.focusTask?.id !== WHATSAPP_ID || !WhatsApp.view.on) {
-      close();
-    }
-  });
-
-  function syncSendButton() {
-    const ok = canSend(field.value, WhatsApp.view.sending);
-    sendBtn.classList.toggle("ready", ok);
-    sendBtn.disabled = !ok;
-    field.disabled = WhatsApp.view.sending;
-  }
-
-  function row(c: WaConversation): HTMLElement {
-    const unread = c.unread > 0;
-    const r = h("button", { class: unread ? "int-row wa-row unread" : "int-row wa-row" },
-      avatar(c.name, c.isGroup),
-      h("span", { class: "int-name wa-row-name", text: c.name }),
-      h("span", { class: "int-ago", text: timeAgo(c.lastActivity) }),
-    );
-    const last = c.messages[c.messages.length - 1];
-    if (ignoring === c.id) {
-      r.append(h("span", { class: "wa-spacer" }), h("span", {
-        class: "link-btn wa-ignore",
-        text: t("Ignore this chat"),
-        onclick: (e: Event) => {
-          e.stopPropagation();
-          ignoring = null;
-          void Bridge.whatsappIgnore(c.id);
-        },
-      }));
-    } else {
-      if (last) r.append(h("span", { class: "int-sub wa-preview", text: preview(last, c.isGroup) }));
-      r.append(h("span", { class: "wa-spacer" }));
-      if (unread) r.append(h("span", { class: "wa-count", text: c.unread > 99 ? "99+" : String(c.unread) }));
-    }
-    r.addEventListener("click", () => open(c.id));
-    r.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      ignoring = ignoring === c.id ? null : c.id;
-      listKey = "";
-      sync();
-    });
-    return r;
-  }
 
   function syncList() {
-    const v = WhatsApp.view;
-    const key = [
-      language(), v.link.state, "detail" in v.link ? v.link.detail : "", v.unread, ignoring,
-      // The ages move on a minute at a time.
-      Math.floor(Date.now() / 60_000),
-      ...v.conversations.map((c) => `${c.id}|${c.name}|${c.unread}|${c.lastActivity}|${c.messages[c.messages.length - 1]?.id ?? ""}`),
-    ].join("~");
+    const s = WhatsApp.state;
+    const connected = s.link.state === "connected";
+    const key = [language(), s.link.state, JSON.stringify(s.link), s.unread,
+      s.conversations.map((c) => `${c.id}:${c.unread}:${c.lastActivity}:${c.name}:${c.messages.at(-1)?.id ?? ""}`).join("|"),
+      Math.floor(Date.now() / 60_000)].join("~");
     if (key === listKey) return;
     listKey = key;
-    unreadTag.textContent = v.unread > 0 ? t("{0} unread", { 0: v.unread }) : "";
-    unreadTag.style.display = v.unread > 0 ? "" : "none";
-    clear(listBody);
-    if (v.link.state !== "connected") {
-      listBody.append(
-        h("div", { class: "int-status" }, dot(linkColor(v.link), 5), h("span", { class: "wa-status-text", text: linkLabel(v.link) })),
-        h("div", { class: "int-actions" }, h("button", {
-          class: "link-btn wa-settings", text: t("Settings…"), onclick: () => host.openSettings(),
-        })),
-      );
-    } else if (v.conversations.length === 0) {
-      listBody.append(h("div", { class: "wa-empty", text: t("No new messages") }));
+    clear(listEl);
+    const header = h("div", { class: "int-head" }, dot(WHATSAPP_GREEN, 7), h("b", { text: "WhatsApp" }));
+    const unread = s.conversations.reduce((n, c) => n + c.unread, 0);
+    if (unread > 0) header.append(h("span", { class: "wa-unread", text: t("{0} unread", { 0: unread }) }));
+    listEl.append(header);
+    if (connected) {
+      if (s.conversations.length === 0) {
+        listEl.append(h("div", { class: "wa-empty", text: t("No new messages") }));
+      } else {
+        listEl.append(h("div", { class: "wa-rows" }, ...s.conversations.map((c) => row(c, () => openConversation(c.id)))));
+      }
     } else {
-      listBody.append(h("div", { class: "int-rows wa-rows" }, ...v.conversations.map(row)));
+      listEl.append(
+        h("div", { class: "int-status" }, dot(linkColor(s.link), 5), h("span", { class: "wa-status", text: linkLabel(s.link) })),
+        h("div", { class: "int-actions" },
+          h("button", { class: "link-btn", style: "color:#8E939C", text: t("Settings…"), onclick: () => void Bridge.openSettingsWindow() }),
+        ),
+      );
     }
   }
 
-  function syncConversation(c: WaConversation) {
-    const v = WhatsApp.view;
-    const shown = lastMessages(c);
-    const key = [language(), c.id, c.name, ...shown.map((m) => m.id)].join("~");
-    if (key !== convoKey) {
-      const wasAtBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 24;
-      const first = convoKey === "";
-      convoKey = key;
-      clear(convoAvatar);
-      convoAvatar.append(avatar(c.name, c.isGroup));
-      convoName.textContent = c.name;
-      convoName.title = c.id.split("@")[0];
-      clear(messages);
-      for (const m of shown) messages.append(bubble(m, c.isGroup));
-      // The newest at the bottom, in view.
-      if (first || wasAtBottom) messages.scrollTop = messages.scrollHeight;
+  function syncConversation(c: WhatsAppConversation) {
+    const s = WhatsApp.state;
+    const key = [language(), c.id, c.name, c.messages.map((m) => m.id).join("|")].join("~");
+    if (key !== convKey) {
+      convKey = key;
+      clear(headAvatar);
+      headAvatar.append(avatar(c.name, c.isGroup));
+      headName.textContent = c.name;
+      headName.title = displayNumber(c.id);
+      clear(messagesEl);
+      for (const m of c.messages) messagesEl.append(bubble(m, c.isGroup));
+      draft.placeholder = t("Reply…  (Shift+Enter: new line)");
+      const newest = c.messages.at(-1)?.id ?? "";
+      if (newest !== lastShown) {
+        lastShown = newest;
+        requestAnimationFrame(() => messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" }));
+      }
     }
-    field.placeholder = t("Reply…  (Shift+Enter: new line)");
-    note.className = "wa-note";
-    if (v.link.state !== "connected") {
-      note.textContent = linkLabel(v.link);
-      note.classList.add("warn");
-    } else if (v.sendError) {
-      note.textContent = sendErrorLabel(v.sendError);
-      note.classList.add("err");
+    draft.disabled = s.sending;
+    send.style.display = s.sending ? "none" : "";
+    spinner.style.display = s.sending ? "" : "none";
+    paintSend();
+    if (s.link.state !== "connected") {
+      note.textContent = linkLabel(s.link);
+      note.style.color = "#F5B83D";
+    } else if (s.sendError) {
+      note.textContent = s.sendError;
+      note.style.color = "#F4505E";
     } else {
       note.textContent = "";
     }
-    syncSendButton();
+    note.style.display = note.textContent ? "" : "none";
   }
 
   function sync() {
-    const c = current();
-    // Kept open through a missed check (the draft too): only gone when WhatsApp is off or the
-    // conversation left the list (ignored).
-    if (openChat != null && (!c || !WhatsApp.view.on)) {
-      close();
-      return;
+    const s = WhatsApp.state;
+    // A message just came in: its conversation, once it is in the list.
+    const wanted = WhatsApp.openRequest;
+    if (wanted && s.conversations.some((c) => c.id === wanted)) {
+      WhatsApp.openRequest = null;
+      if (openChat !== wanted) {
+        openConversation(wanted, false);
+        return;
+      }
     }
-    listView.style.display = c ? "none" : "";
-    convoView.style.display = c ? "" : "none";
-    if (c) syncConversation(c);
-    else syncList();
+    // Kept open through a missed check (the draft too): only gone when WhatsApp is off.
+    const conversation = openChat && s.link.state !== "off" ? s.conversations.find((c) => c.id === openChat) : undefined;
+    if (openChat && !conversation && s.link.state === "off") {
+      openChat = null;
+      setComposing(false);
+    }
+    if (conversation) {
+      if (el.firstChild !== convEl) {
+        clear(el);
+        el.append(convEl);
+      }
+      syncConversation(conversation);
+    } else {
+      if (el.firstChild !== listEl) {
+        clear(el);
+        el.append(listEl);
+        listKey = "";
+      }
+      syncList();
+    }
   }
+
+  // Leaving the card (another pill, the island folding) closes the conversation.
+  State.subscribe(() => {
+    if (!openChat) return;
+    const shown = State.mode === "expanded" && State.view === "overview" && State.focusTask?.id === "integration_whatsapp";
+    if (!shown) closeConversation();
+  });
 
   return { el, sync };
 }

@@ -42,7 +42,8 @@ pub struct Settings {
     /// Off by default; nothing is installed for it.
     pub show_codex_plan_in_notch: bool,
     /// Who the chat talks to: "anthropic", a cloud provider of
-    /// openai_compat.rs ("openai", "google", "openrouter"), or a model server
+    /// openai_compat.rs ("openai", "google", "openrouter", "deepseek", "qwen",
+    /// "moonshot"), or a model server
     /// of local_chat.rs ("ollama", "lmstudio", "custom"). Picked in the chat view.
     pub chat_provider: String,
     /// The model picked for each provider other than Anthropic (whose model is
@@ -106,8 +107,25 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// Mochi reacts to the computer: sweat at full processor load, a flush when
+    /// it is warm, puffed up when memory is short, sleepy on a low battery
+    /// (vitals.rs, the Mac's "Mochi and your Mac"). On by default, as there.
+    pub mochi_feels_computer: bool,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// The notch's Clipboard tab keeps the last things copied (clipboard.rs), in
+    /// memory only. On by default.
+    pub clipboard_history: bool,
+    /// A neon light runs around the island's edge when a notification comes. On by default.
+    pub neon_notifications: bool,
+    /// Double-check unclear test results: "off", "local" (Laya) or "cloud" (Jev).
+    pub test_checker: String,
+    /// Laya's address when it isn't the default one (tests_check.rs keeps it local).
+    pub laya_url: String,
+    /// A Laya already on this computer (its folder, with its .venv); empty: Coucou's own copy.
+    pub laya_dir: String,
+    /// Claude Code is sent back when it finishes with its tests failing. Off by default.
+    pub fix_failing_tests: bool,
     /// What the closed island shows at the top of the screen, where the Mac
     /// has its notch: "mochi" (the Mac's island on a screen without a notch),
     /// "time", "datetime", "claude" (the plan's usage), "music" (what plays),
@@ -189,7 +207,14 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            mochi_feels_computer: true,
             show_clock: false,
+            clipboard_history: true,
+            neon_notifications: true,
+            test_checker: "off".into(),
+            laya_url: String::new(),
+            laya_dir: String::new(),
+            fix_failing_tests: false,
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
         }
@@ -492,7 +517,14 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "mochiFeelsComputer": false,
   "showClock": true,
+  "clipboardHistory": false,
+  "neonNotifications": false,
+  "testChecker": "local",
+  "layaUrl": "http://127.0.0.1:8001",
+  "layaDir": "D:\\Laya",
+  "fixFailingTests": true,
   "closedIsland": "music",
   "agyApprovalsEnabled": true
 }"##;
@@ -1015,7 +1047,14 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "mochiFeelsComputer",
                 "showClock",
+                "clipboardHistory",
+                "neonNotifications",
+                "testChecker",
+                "layaUrl",
+                "layaDir",
+                "fixFailingTests",
                 "closedIsland",
                 "agyApprovalsEnabled",
             ]

@@ -142,8 +142,7 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // (src-tauri/src/mail). The new Outlook has none, and Linux has no Outlook.
   { id: "integration_mail", name: "Mail", color: "#2F8CFF", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
-  // WhatsApp (experimental) through a gateway on this computer (src-tauri/src/whatsapp): set up,
-  // linked and turned on in Settings → Integrations → WhatsApp, off until then.
+  // Experimental, through a local gateway (src-tauri/src/whatsapp).
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
 ];
@@ -151,8 +150,8 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
 /** The always-on pill unless the user picks another workspace tool. */
 export const DEFAULT_MAIN_PILL = "integration_claude";
 
-/** How many declared pills may sit next to the main one. */
-export const MAX_DECLARED = 4;
+/** How many declared pills may sit next to the main one (4 on the Mac; Windows has room for 5, so WhatsApp fits). */
+export const MAX_DECLARED = 5;
 
 /** The OS this page runs on. Only the Windows webview says "Windows". */
 export const HOST_OS: HostOs =

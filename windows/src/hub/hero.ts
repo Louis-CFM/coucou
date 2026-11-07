@@ -45,7 +45,7 @@ function loop(now: number) {
     window.clearTimeout(fallback);
     fallback = null;
   }
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   last = now;
   const t = (now - start) / 1000;
   stepVoice(dt, now);

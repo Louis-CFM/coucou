@@ -97,6 +97,11 @@ export function buildChoose(actions: ViewActions): ViewHost {
     }),
     h("button", {
       class: "btn secondary",
+      text: tl("Send by email"),
+      onclick: () => actions.setView("mail"),
+    }),
+    h("button", {
+      class: "btn secondary",
       text: tl("Cancel"),
       onclick: () => actions.cancelDrop(),
     }),

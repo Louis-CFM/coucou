@@ -78,6 +78,8 @@ pub struct PollGate {
     pub rect: Mutex<IslandRect>,
     /// Mirrors the window flag so we only call into the OS when it changes.
     ignoring: AtomicBool,
+    /// A web browser is the app in front (spawn_browser_watch).
+    pub browser_front: AtomicBool,
 }
 
 impl PollGate {
@@ -89,6 +91,7 @@ impl PollGate {
             collapsed_size: Mutex::new((STRIP_W, STRIP_H)),
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
+            browser_front: AtomicBool::new(false),
         }
     }
 
@@ -626,6 +629,75 @@ fn wake_if_hovered(app: &AppHandle, gate: &PollGate) {
     }
 }
 
+/// Web browsers, by the file name of their program. While one of them is in
+/// front, the island keeps out of the way of its tabs.
+const BROWSERS: &[&str] = &[
+    "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe",
+    "arc.exe", "chromium.exe", "iexplore.exe", "waterfox.exe", "librewolf.exe", "floorp.exe",
+    "zen.exe", "thorium.exe", "whale.exe", "comet.exe", "dia.exe", "yandex.exe",
+];
+
+pub fn is_browser(exe: &str) -> bool {
+    BROWSERS.contains(&exe)
+}
+
+/// Emits `browser-foreground` (true / false) whenever a web browser becomes, or
+/// stops being, the app in front. Four reads a second of the foreground window.
+pub fn spawn_browser_watch(app: AppHandle, gate: Arc<PollGate>) {
+    if !platform::CURSOR_POLL {
+        return;
+    }
+    std::thread::spawn(move || {
+        let mut last: Option<bool> = None;
+        let mut last_exe: Option<String> = None;
+        let mut ticks: u32 = 0;
+        loop {
+            let exe = platform::foreground_exe().map(|e| e.to_lowercase());
+            // The program in front, for a finish that stays quiet while its own
+            // window is (Mac #9e95732). Its name only, when it changes.
+            if exe != last_exe {
+                if let Some(win) = window(&app) {
+                    let _ = win.emit("front-exe", exe.clone());
+                }
+                last_exe = exe.clone();
+            }
+            let now = exe.as_deref().is_some_and(is_browser);
+            // Repeated every 2 s as well: the first report can go out before the
+            // page is listening.
+            ticks = ticks.wrapping_add(1);
+            if last != Some(now) {
+                gate.browser_front.store(now, Ordering::Relaxed);
+                // The hidden island's wake strip sits on the browser's tabs.
+                if gate.collapsed.load(Ordering::Relaxed) {
+                    refresh_click_through(&app, &gate);
+                }
+            }
+            if last != Some(now) || ticks % 8 == 0 {
+                last = Some(now);
+                if let Some(win) = window(&app) {
+                    let _ = win.emit("browser-foreground", now);
+                }
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+    });
+}
+
+#[cfg(test)]
+mod browser_tests {
+    use super::*;
+
+    #[test]
+    fn browsers_are_told_from_other_apps() {
+        assert!(is_browser("chrome.exe"));
+        assert!(is_browser("msedge.exe"));
+        assert!(is_browser("firefox.exe"));
+        assert!(!is_browser("claude.exe"));
+        assert!(!is_browser("windowsterminal.exe"));
+        assert!(!is_browser("code.exe"));
+    }
+}
+
 /// Re-applies click-through after the window or the island changed shape.
 ///
 /// With the cursor poll (Windows) the window takes the mouse again and the next
@@ -633,7 +705,11 @@ fn wake_if_hovered(app: &AppHandle, gate: &PollGate) {
 /// the island itself, or to the whole wake strip while collapsed.
 pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     if platform::CURSOR_POLL {
-        set_ignore_cursor(app, false);
+        // While hidden in front of a browser the wake strip lets clicks through
+        // to the tabs under it: the browser rule keeps the island asleep anyway.
+        let pass_through = gate.collapsed.load(Ordering::Relaxed)
+            && gate.browser_front.load(Ordering::Relaxed);
+        set_ignore_cursor(app, pass_through);
         gate.forget_ignore_state();
         return;
     }

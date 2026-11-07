@@ -127,8 +127,10 @@ export function parseCodexPlan(result: unknown, now = Date.now()): CodexPlanUsag
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
-/** What to show for a window: 0 once its reset time has passed. */
-export const effectivePct = (w: PlanWindow, now = Date.now()): number => (w.resetsAt <= now ? 0 : w.usedPct);
+/** What to show for a window: 0 once its reset time has passed. A reset time of
+ * 0 is unknown (the Claude desktop app's samples carry none): the number stands. */
+export const effectivePct = (w: PlanWindow, now = Date.now()): number =>
+  (w.resetsAt > 0 && w.resetsAt <= now ? 0 : w.usedPct);
 
 /** The higher of the two effective percentages; null when there are no windows. */
 export function dominantPct(u: PlanUsage | null | undefined, now = Date.now()): number | null {
@@ -160,6 +162,7 @@ export function ageLabel(updatedAt: number, now = Date.now()): string {
 
 /** "in 1 h 20" / "in 5 min" for the 5-hour window, "Mon 9:00" for the week. */
 export function resetLabel(w: PlanWindow, weekly: boolean, now = Date.now()): string {
+  if (w.resetsAt <= 0) return "";
   const secs = (w.resetsAt - now) / 1000;
   if (secs <= 0) return PLAN_TEXT.resetting;
   if (weekly) {

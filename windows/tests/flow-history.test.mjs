@@ -52,7 +52,8 @@ async function fixture(t, render) {
   const status = {
     prefs: { enabled: true, key: "right_ctrl", keepDays: 30, mic: "" },
     models: { parakeet: { state: "ready" }, downloadMb: 700 },
-    mics: [], keys: "ok", platform: "windows",
+    // A Claude key saved: the dictation page's "add your key" note stays out of the way.
+    mics: [], keys: "ok", platform: "windows", hasClaudeKey: true,
   };
   const ctx = { hero: root, status, refresh: async () => status, setPrefs: async change => change(status.prefs) };
   await render(page, ctx);

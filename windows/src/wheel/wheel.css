@@ -1,0 +1,361 @@
+/* The wheel, as Tangerine's on the Mac: a compact disc of liquid glass.
+   Milky frosted wedges with round corners and an even gap, dark labels, a thin
+   frosted rim, the file's picture in the hub and its name on a blue tag; the
+   wedge under the pointer in orange. What is behind is frosted and bent at
+   each piece's edges (wheel/glass.rs, wheel/lens.ts). */
+
+:root {
+  color-scheme: light;
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI", "Microsoft YaHei UI", sans-serif;
+  --ink: #3a3a3c;
+  --hot: #ff5a1f;
+  --hot-2: #ff7a3d;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--font);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#wheel {
+  position: relative;
+  width: 272px;
+  height: 300px;
+  opacity: 0;
+  transform: scale(0.86);
+  transform-origin: 136px 132px;
+  transition: opacity 0.16s ease-out, transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+#wheel.on {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* The glass: the screen behind the wheel (a picture taken as it opens:
+   wheel/glass.rs), bent at each piece's edges (wheel/lens.ts). */
+.glass {
+  position: absolute;
+  inset: 0;
+  width: 272px;
+  height: 300px;
+  pointer-events: none;
+}
+
+svg.ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+/* The disc under the wedges: a thin frosted rim around them, lit at its edge. */
+.backdrop {
+  fill: rgba(255, 255, 255, 0.3);
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.2;
+}
+
+/* A light across the top of the disc, over everything (but the clicks). */
+.sheen {
+  fill: url(#sheen);
+  pointer-events: none;
+}
+
+.wedge path {
+  fill: url(#glass);
+  stroke: url(#rim);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: fill 0.12s ease-out;
+}
+
+/* Each wedge comes in after the one before it (--i), from the hub, and lifts
+   a little outwards (--dx, --dy, set per wedge) under the pointer. */
+.wedge {
+  transform-box: view-box;
+  transform-origin: 136px 132px;
+  transition: transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+#wheel.on .wedge {
+  animation: pop 0.34s cubic-bezier(0.3, 1.5, 0.5, 1) backwards;
+  animation-delay: calc(var(--i) * 28ms + 40ms);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+}
+
+.wedge:hover,
+.wedge.hot {
+  transform: translate(var(--dx), var(--dy));
+}
+
+.wedge:hover path {
+  fill: rgba(255, 255, 255, 0.86);
+}
+
+.wedge text {
+  font: 700 11px var(--font);
+  fill: var(--ink);
+  letter-spacing: 0.02em;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.wedge.small text {
+  font-size: 6.8px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.wedge .icon {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.wedge.hot path {
+  fill: url(#hot);
+  stroke: rgba(255, 220, 200, 0.95);
+  filter: drop-shadow(0 0 6px rgba(255, 90, 31, 0.55));
+}
+
+.wedge.hot text {
+  fill: #fff;
+}
+
+.wedge.hot .icon {
+  stroke: #fff;
+}
+
+.ring.busy .wedge {
+  opacity: 0.5;
+}
+
+/* The hub: frosted glass holding the file's picture in a white ring. */
+.hub {
+  position: absolute;
+  left: 136px;
+  top: 132px;
+  width: 88px;
+  height: 88px;
+  margin: -44px 0 0 -44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9), 0 2px 10px rgba(0, 0, 0, 0.12);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.hub img {
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.hub .glyph {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: #8e8e93;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pill {
+  position: relative;
+  z-index: 1;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  color: var(--ink);
+  font: 700 9.5px var(--font);
+  white-space: nowrap;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* What the hub says while working, done, or with a choice to make. */
+.hub-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  color: var(--ink);
+  font: 700 9.5px/1.2 var(--font);
+}
+
+.hub-panel.on {
+  display: flex;
+}
+
+.hub-panel .big {
+  font-size: 10.5px;
+}
+
+.hub-panel .dim {
+  font-weight: 500;
+  font-size: 9.5px;
+  color: #6e6e73;
+  word-break: break-word;
+  max-width: 72px;
+}
+
+.hub-panel button {
+  border: 0;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font: 700 9.5px var(--font);
+  background: rgba(38, 32, 29, 0.08);
+  color: var(--ink);
+  cursor: default;
+}
+
+.hub-panel button:hover {
+  background: rgba(38, 32, 29, 0.16);
+}
+
+.hub-panel button.primary {
+  background: var(--hot);
+  color: #fff;
+}
+
+.hub-panel button.primary:hover {
+  background: var(--hot-2);
+}
+
+.hub-panel.error {
+  color: #b42318;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 90, 31, 0.2);
+  border-top-color: var(--hot);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: grid;
+  place-items: center;
+}
+
+.check svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The name, Finder-style, on the hub's lower edge. */
+.name-tag {
+  position: absolute;
+  left: 136px;
+  top: 166px;
+  transform: translateX(-50%);
+  max-width: 130px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #1d6ff2;
+  color: #fff;
+  font: 600 10.5px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 6px rgba(29, 111, 242, 0.35);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Convert · Tools · Actions: a frosted pill exactly where the window's shape leaves room. */
+.rings {
+  position: absolute;
+  left: 26px;
+  top: 270px;
+  width: 220px;
+  height: 26px;
+  box-sizing: border-box;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.rings button {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  font: 700 10px var(--font);
+  color: rgba(58, 58, 60, 0.75);
+  background: transparent;
+  cursor: default;
+}
+
+.rings button:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.rings button.on {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 4px rgba(0, 0, 0, 0.14);
+}
+
+.rings button:disabled {
+  opacity: 0.35;
+}
+
+.rings kbd {
+  font: 600 9px var(--font);
+  opacity: 0.5;
+  margin-left: 4px;
+}

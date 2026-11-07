@@ -59,6 +59,7 @@ let shown;
 let emotes;
 let collapsed;
 const host = {
+  neon: () => {},
   alert: (view) => shown.push(view),
   collapse: () => collapsed++,
   emote: (name) => emotes.push(name),

@@ -24,9 +24,13 @@ export type IslandViewName =
   | "greeting"
   | "recap"
   | "wardrobe"
+  | "capture"
   | "update"
   | "whatsNew"
-  | "launch";
+  | "clipboard"
+  | "launch"
+  | "kit"
+  | "music";
 
 export type BotStateName =
   | "idle"
@@ -71,6 +75,10 @@ export const EXPANDED_CORNER = 22;
 export const WAKE_STRIP_W = 240;
 export const WAKE_STRIP_H = 6;
 
+/** The overview grown tall: an agent at work (its steps and its file), or WhatsApp. */
+export type TallOverview = "work" | "whatsapp" | null;
+export const TALL_OVERVIEW_H = 264;
+
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
   empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
@@ -96,13 +104,21 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   // to the shared image.
   recap: { height: 184, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   wardrobe: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "none" },
+  // CaptureCardView.swift: Mochi on the left, the image, then what to do with it.
+  capture: { height: 160, botX: 52, botY: null, botDiameter: 46, agentMode: "none" },
   // New version: Mochi on the left, the version and Update now (Mac: .update).
   update: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "none" },
   // After an update: what the new version brings, then "Your Coucou so far".
   // Taller than a card, for two rows of items with their line.
   whatsNew: { height: 222, botX: 62, botY: null, botDiameter: 58, agentMode: "none" },
+  // The Clipboard tab: Mochi small on the left, a toolbar and a row of cards.
+  clipboard: { height: 214, botX: 48, botY: 124, botDiameter: 40, agentMode: "none" },
   // A new Claude Code session: Mochi on the left, the project and the prompt (Mac: .launch).
   launch: { height: 160, botX: 58, botY: null, botDiameter: 52, agentMode: "none" },
+  // The Kit tab (focus timer, water, to-do, shelf): Mochi small on the left, as on the Clipboard.
+  kit: { height: 214, botX: 48, botY: 124, botDiameter: 40, agentMode: "none" },
+  // The music page: the Spotify card and the song's lyrics beside it.
+  music: { height: 200, botX: 46, botY: 121, botDiameter: 38, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually
@@ -121,6 +137,7 @@ export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  tall: TallOverview = null,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
@@ -130,7 +147,11 @@ export function islandSize(
     case "compact":
       return { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
-      const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
+      const h = view === "prompt"
+        ? chatPromptHeight(chatCount)
+        : view === "overview" && tall
+          ? TALL_OVERVIEW_H
+          : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
     }
   }
@@ -149,6 +170,7 @@ export function botPosition(
   view: IslandViewName,
   islandH: number,
   uploadProgress = 0,
+  tall: TallOverview = null,
 ): BotPlacement {
   switch (mode) {
     case "hidden":
@@ -157,6 +179,8 @@ export function botPosition(
       return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
+      // The work card: Mochi at the top of its left column, the steps below him.
+      if (view === "overview" && tall === "work") return { cx: 58, cy: 84, diameter: 46, opacity: 1 };
       if (view === "uploading") {
         return {
           cx: 36 + uploadProgress * 526,
@@ -176,6 +200,35 @@ export function botPosition(
     }
   }
 }
+
+/**
+ * Where a dragged file opens the wheel instead of being eaten (wheel/, the
+ * Tools tile at the drop card's right end), in island coordinates. Below it,
+ * the Shelf tile keeps the files on the Kit's shelf.
+ */
+export const TOOLS_ZONE = { x: 478, y: 48, w: 146, h: 64 };
+export const SHELF_ZONE = { x: 478, y: 118, w: 146, h: 42 };
+
+type Zone = { x: number; y: number; w: number; h: number };
+const inZone = (z: Zone, x: number, y: number) => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h;
+
+export function inToolsZone(x: number, y: number): boolean {
+  return inZone(TOOLS_ZONE, x, y);
+}
+
+export function inShelfZone(x: number, y: number): boolean {
+  return inZone(SHELF_ZONE, x, y);
+}
+
+/** The neon that runs around the island's edge when a notification comes, by kind. */
+export const NEON = {
+  approval: "#F5A524",
+  question: "#A78BFA",
+  error: "#F4505E",
+  finished: "#34D399",
+  message: "#25D366",
+  update: "#60A5FA",
+} as const;
 
 export function botGlowColor(s: BotStateName): string {
   switch (s) {

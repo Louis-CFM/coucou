@@ -26,7 +26,7 @@ export async function stylesPage(page: HTMLElement, ctx: HubContext) {
     drawApps();
   };
 
-  const perApp = h("div", {});
+  const perApp = h("div", { class: "hub-applist" });
   const drawApps = () => {
     clear(perApp);
     perApp.classList.toggle("dimmed", !ctx.status.prefs.cleanup);

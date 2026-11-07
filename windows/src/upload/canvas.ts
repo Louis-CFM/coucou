@@ -7,6 +7,7 @@
 
 import { State } from "../core/state";
 import { SCRIPT_FONTS } from "../core/fonts";
+import { TOOLS_ZONE } from "../core/layout";
 import { N_, isRtl, t } from "../i18n/i18n";
 import {
   USC, eIn, eInOut, eOut, lerp, progressAt,
@@ -15,8 +16,8 @@ import {
 
 const FONT = `system-ui, "Segoe UI Variable Text", "Segoe UI", ${SCRIPT_FONTS}, sans-serif`;
 
-/** The card's inner right edge: no text runs past it. */
-const TEXT_RIGHT = USC.CARD_X + USC.CARD_W - 16;
+/** No text runs past here: the card's right end is the Tools tile (TOOLS_ZONE). */
+const TEXT_RIGHT = TOOLS_ZONE.x - 12;
 /** The two choose buttons, as drawn and as hit areas. */
 const ASK_BTN = { x: 114, w: 168 };
 const CANCEL_BTN = { x: 290, w: 120 };

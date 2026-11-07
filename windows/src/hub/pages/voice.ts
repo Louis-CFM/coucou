@@ -53,10 +53,12 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
     divider(),
     row(t("Parakeet, on your computer"), t("Hears « OK Coucou » here, without the internet."), modelsControl(ctx, () => ctx.navigate("voice"))),
   );
-  if (prefs.voice && !status.hasClaudeKey) {
-    main.append(h("div", { class: "hub-warn", text: t("Coucou answers with Claude: add your Claude key in Notch → Chat.") }));
+  if (prefs.voice && !status.voiceBrain) {
+    main.append(h("div", { class: "hub-warn", text: t("Coucou answers with Claude or Gemini: add a Claude or Google AI key in Notch → Chat.") }));
   } else if (prefs.voice && !ready) {
     main.append(h("div", { class: "hub-warn", text: t("Download the voice model so Coucou can hear you.") }));
+  } else if (status.voiceBrain === "gemini") {
+    main.append(h("div", { class: "hub-note", text: t("Coucou answers with Gemini, through your Google AI key.") }));
   }
   page.append(main);
 
