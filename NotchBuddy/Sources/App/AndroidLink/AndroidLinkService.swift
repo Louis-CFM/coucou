@@ -52,7 +52,9 @@ final class AndroidLinkAppHost: AndroidLinkHost, @unchecked Sendable {
 
     func answer(requestId: String, picks: [[String]]) {
         Task { @MainActor in
-            guard let entry = AppState.shared.waitingQuestions.first(where: { $0.id.uuidString == requestId }) else {
+            guard let entry = AppState.shared.waitingQuestions.first(where: { $0.id.uuidString == requestId }),
+                  let question = AndroidLinkService.question(from: [entry]),
+                  AndroidLinkHub.picksMatch(question.questions, picks: picks) else {
                 AndroidLinkService.log("answer for a question no longer waiting, ignored")
                 return
             }
@@ -192,7 +194,7 @@ final class AndroidLinkService: ObservableObject {
             s.$pendingApproval.map { _ in () }.eraseToAnyPublisher(),
             s.$waitingQuestions.map { _ in () }.eraseToAnyPublisher(),
             s.$claudePlanUsage.map { _ in () }.eraseToAnyPublisher(),
-            s.$codexPlanUsage.map { _ in () }.eraseToAnyPublisher(),
+            CodexAgentsInfo.shared.$planUsage.map { _ in () }.eraseToAnyPublisher(),
         ]
         // @Published sends before the property changes: the debounce lets the value settle, and it is read back.
         cancellable = Publishers.MergeMany(sources)
@@ -240,6 +242,7 @@ final class AndroidLinkService: ObservableObject {
     /// The first waiting question that fits what a phone can show whole; the others stay on the Mac.
     static func question(from waiting: [QueuedQuestion]) -> AndroidQuestionIn? {
         for entry in waiting {
+            guard !entry.question.questions.contains(where: \.isSecret) else { continue }
             let items = entry.question.questions.map { item in
                 AndroidQuestionItemIn(question: item.question,
                                       options: item.options.map { AndroidOptionIn(label: $0.label, description: $0.description) },

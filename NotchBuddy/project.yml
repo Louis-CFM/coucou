@@ -129,6 +129,9 @@ targets:
       - path: Resources/sounds
         buildPhase: resources
         type: folder
+      - path: Resources/CodexDesktopPlugin
+        buildPhase: resources
+        type: folder
       - path: Resources/Localizable.xcstrings
         buildPhase: resources
       # What's new after an update, once in the notch (WhatsNewViews.swift; GitHub build)
@@ -180,6 +183,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         ENABLE_SANDBOX: NO
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/App/CodexAccess.h
       configs:
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
@@ -217,6 +221,8 @@ targets:
           - "Phone/**"
           - "Widgets/**"
           - "NotificationContent/**"
+          - "App/CodexAccess.h"
+          - "App/CodexAccess.m"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -334,8 +340,8 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: NO
         NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
-        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for Claude Code."
-        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of an instruction for Claude Code."
+        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for your coding agent."
+        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of an instruction for your coding agent."
         NSSupportsLiveActivities: YES
         # Lets Mochi move at 120 Hz on ProMotion screens, like the Mac's notch.
         CADisableMinimumFrameDurationOnPhone: YES

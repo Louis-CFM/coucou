@@ -71,7 +71,7 @@ enum NotificationActions {
                                                   options: [.authenticationRequired],
                                                   icon: UNNotificationActionIcon(systemImageName: "arrowshape.turn.up.left"),
                                                   textInputButtonTitle: "Send",
-                                                  textInputPlaceholder: "Tell Claude what to do next…")
+                                                  textInputPlaceholder: "Tell your agent what to do next…")
         let doneReply = UNNotificationCategory(identifier: doneReplyCategory, actions: [reply],
                                                intentIdentifiers: [], options: [])
         let done = UNNotificationCategory(identifier: doneCategory, actions: [], intentIdentifiers: [], options: [])
@@ -84,7 +84,7 @@ enum NotificationActions {
     /// A category with one button per choice of this question; nil when it
     /// has several questions or allows several picks (answered in the app).
     @MainActor static func category(for payload: QuestionPayload) -> String? {
-        guard payload.items.count == 1, let item = payload.items.first, !item.multiSelect else { return nil }
+        guard payload.items.count == 1, let item = payload.items.first, !item.multiSelect, !payload.containsSecret else { return nil }
         let id = "COUCOU_Q_\(payload.fingerprint.prefix(16))"
         let actions = item.options.prefix(4).enumerated().map { index, option in
             UNNotificationAction(identifier: "\(pickPrefix)\(index)", title: option.label,
@@ -122,20 +122,16 @@ enum AgentNotifier {
 
     /// The event this new session record brings, if any.
     static func event(for session: SessionItem) -> Event? {
-        let key: String
-        switch session.state {
-        case .finished: key = "finished"
-        case .error: key = "error"
-        default: key = session.questionFingerprint.isEmpty ? session.state.rawValue : "q-\(session.questionFingerprint)"
-        }
+        let key = SessionInstructionIdentity.notificationKey(state: session.state.rawValue,
+            targetIdentity: session.instructionTargetIdentity, questionFingerprint: session.questionFingerprint)
         let before = lastSeen[session.id]
         lastSeen[session.id] = key
         guard before != key, Date().timeIntervalSince(session.updatedAt) < 600 else { return nil }
         if let payload = session.questionPayload, !session.questionFingerprint.isEmpty, key.hasPrefix("q-") {
             return .question(session, payload)
         }
-        if key == "finished" { return .finished(session) }
-        if key == "error" { return .failed(session) }
+        if session.state == .finished { return .finished(session) }
+        if session.state == .error { return .failed(session) }
         return nil
     }
 
@@ -152,7 +148,7 @@ enum AgentNotifier {
             content.sound = quiet ? nil : PhoneSettings.sound("finish")
             content.categoryIdentifier = session.acceptsInstructions
                 ? NotificationActions.doneReplyCategory : NotificationActions.doneCategory
-            content.userInfo = ["pillId": session.id, "kind": "done"]
+            content.userInfo = ["pillId": session.id, "kind": "done", "targetIdentity": session.instructionTargetIdentity]
             if quiet { content.interruptionLevel = .passive }
         case .failed(let session):
             guard PhoneSettings.notifyDone, !PhoneSettings.focusOnlyWaiting else { return }
@@ -161,7 +157,7 @@ enum AgentNotifier {
             content.sound = quiet ? nil : PhoneSettings.sound("error")
             content.categoryIdentifier = session.acceptsInstructions
                 ? NotificationActions.doneReplyCategory : NotificationActions.doneCategory
-            content.userInfo = ["pillId": session.id, "kind": "done"]
+            content.userInfo = ["pillId": session.id, "kind": "done", "targetIdentity": session.instructionTargetIdentity]
             if quiet { content.interruptionLevel = .passive }
         case .question(let session, let payload):
             // A question blocks the agent like an approval: it rings in the quiet hours too.

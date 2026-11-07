@@ -29,6 +29,7 @@ struct SessionItem: Identifiable {
     let approvalFingerprint: String
     /// The Mac runs instructions sent from here for this session (GitHub build, switch on).
     let acceptsInstructions: Bool
+    let instructionTargetIdentity: String
     let question: String
     /// The question's choices, when it can be answered from here.
     let questionPayload: QuestionPayload?
@@ -48,7 +49,10 @@ struct SessionItem: Identifiable {
         needsApproval = record["needsApproval"] as? Bool ?? false
         approvalCommand = record.encryptedValues["approvalCommand"] as? String ?? ""
         approvalFingerprint = record["approvalFingerprint"] as? String ?? ""
-        acceptsInstructions = record["acceptsInstructions"] as? Bool ?? false
+        instructionTargetIdentity = record["instructionTargetIdentity"] as? String ?? ""
+        acceptsInstructions = (record["acceptsInstructions"] as? Bool ?? false)
+            && (record["instructionIdentityVersion"] as? Int == SessionInstructionIdentity.version)
+            && !instructionTargetIdentity.isEmpty
         question = record.encryptedValues["question"] as? String ?? ""
         questionPayload = QuestionPayload.decode(record.encryptedValues["questionPayload"] as? String ?? "")
         questionFingerprint = record["questionFingerprint"] as? String ?? ""
@@ -411,6 +415,11 @@ final class PhoneLink {
     /// Answers the question a session waits on. The Mac takes it within ~2 s,
     /// only if it is still the same question and the picks are among its choices.
     func answer(fingerprint: String, pillId: String, selections: [[String]]) async -> Bool {
+        guard let session = sessions.first(where: { $0.id == pillId }), session.questionFingerprint == fingerprint,
+              let payload = session.questionPayload, payload.accepts(selections) else {
+            lastPong = "The question changed or ended. Refresh before answering."
+            return false
+        }
         let record = CKRecord(recordType: "Answer",
                               recordID: CKRecord.ID(recordName: "answer-\(UUID().uuidString)", zoneID: Self.zoneID))
         record["fingerprint"] = fingerprint
@@ -481,12 +490,20 @@ final class PhoneLink {
 
     /// Sends an instruction to continue a session on the Mac. The Mac takes it
     /// within ~15 s and deletes it; it never runs twice.
-    func sendInstruction(_ text: String, pillId: String) async -> Bool {
+    func sendInstruction(_ text: String, pillId: String, targetIdentity: String) async -> Bool {
+        guard let session = sessions.first(where: { $0.id == pillId }), session.acceptsInstructions,
+              SessionInstructionIdentity.accepts(targetIdentity, current: session.instructionTargetIdentity,
+                                                 createdAt: Date(), text: text, busy: false) else {
+            lastPong = "The session changed or can't take instructions. Refresh the session first."
+            return false
+        }
         let record = CKRecord(recordType: "Instruction",
                               recordID: CKRecord.ID(recordName: "instruction-\(UUID().uuidString)", zoneID: Self.zoneID))
         record["pillId"] = pillId
         record["createdAt"] = Date()
         record["deviceName"] = UIDevice.current.name
+        record["targetIdentity"] = targetIdentity
+        record["identityVersion"] = SessionInstructionIdentity.version
         record.encryptedValues["text"] = text
         do {
             _ = try await database.save(record)

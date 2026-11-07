@@ -350,6 +350,7 @@ private struct HubLineView: View {
 
 private struct HubNoteDetail: View {
     let note: Note
+    @ObservedObject private var codexChat = CodexChatService.shared
     @ObservedObject private var taker = NoteTaker.shared
     @State private var tab = 0
     @State private var title = ""
@@ -375,6 +376,12 @@ private struct HubNoteDetail: View {
                     failed
                 } else {
                     speakers
+                    if let error = taker.aiErrors[note.id] {
+                        Text(error)
+                            .font(.system(size: 12))
+                            .foregroundColor(HubTheme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Picker("", selection: $tab) {
                         Text("notes.summary").tag(0)
                         Text("notes.transcript").tag(1)
@@ -447,7 +454,7 @@ private struct HubNoteDetail: View {
                 if note.status == .ready {
                     Button(String(localized: "notes.export")) { taker.export(note) }
                     Button(String(localized: "notes.summarize-again")) { Task { await taker.summarize(note.id) } }
-                        .disabled(taker.summaryEngine == .off || note.lines.isEmpty)
+                        .disabled(!taker.canSummarize || note.lines.isEmpty || taker.working.contains(note.id))
                     Button(String(localized: "notes.correct-again")) { Task { await taker.correctAgain(note.id) } }
                         .disabled(!taker.canCorrect || note.lines.isEmpty || taker.working.contains(note.id))
                     Divider()
@@ -538,7 +545,7 @@ private struct HubNoteDetail: View {
                     HubSummaryEnginePicker()
                     Button(String(localized: "notes.summarize")) { Task { await taker.summarize(note.id) } }
                         .buttonStyle(HubButtonStyle(primary: true))
-                        .disabled(taker.summaryEngine == .off)
+                        .disabled(!taker.canSummarize || taker.working.contains(note.id))
                 }
             }
         } else {
@@ -700,19 +707,31 @@ private struct HubTodos: View {
     }
 }
 
-/// Who writes the summaries: Claude, Apple Intelligence, or nobody.
+/// Who writes the summaries: Claude, Codex, Apple Intelligence, or nobody.
 struct HubSummaryEnginePicker: View {
     @ObservedObject private var taker = NoteTaker.shared
+    @ObservedObject private var codexChat = CodexChatService.shared
 
     var body: some View {
-        HubRow(title: String(localized: "notes.engine")) {
-            Picker("", selection: $taker.summaryEngine) {
-                ForEach(NoteSummaryEngine.allCases) { engine in
-                    Text(engine.label).tag(engine)
+        VStack(alignment: .leading, spacing: 8) {
+            HubRow(title: String(localized: "notes.engine")) {
+                Picker("", selection: $taker.summaryEngine) {
+                    ForEach(NoteSummaryEngine.allCases) { engine in
+                        Text(engine.label).tag(engine)
+                    }
                 }
+                .labelsHidden()
+                .fixedSize()
             }
-            .labelsHidden()
-            .fixedSize()
+            if taker.summaryEngine == .codex {
+                Text(taker.canSummarize ? String(localized: "notes.codex-privacy") : CodexTextService.unavailableMessage)
+                    .font(.system(size: 12))
+                    .foregroundColor(HubTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .task(id: taker.summaryEngine) {
+            if taker.summaryEngine == .codex { await codexChat.refreshAuthentication() }
         }
     }
 }

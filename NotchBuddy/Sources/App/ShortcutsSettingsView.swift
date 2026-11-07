@@ -5,6 +5,7 @@ import AppKit
 
 /// "Shortcuts" section inside SettingsView.
 struct ShortcutsSettingsView: View {
+    @ObservedObject private var state = AppState.shared
     // Conflicts detected by HotKeyCenter (system already owns that combo)
     @State private var systemConflicts: Set<ShortcutAction> = []
     // Internal duplicates (two Coucou shortcuts share the same combo)
@@ -78,6 +79,12 @@ struct ShortcutsSettingsView: View {
         #endif
     }
 
+    private func actionLabel(_ action: ShortcutAction) -> String {
+        action == .captureScreen && state.chatProvider == .codex
+            ? String(localized: "shortcut.capture-codex")
+            : action.displayName
+    }
+
     @ViewBuilder
     private func shortcutRow(_ action: ShortcutAction, detail: String? = nil) -> some View {
         let isEnabled    = enabled[action] ?? action.enabledByDefault
@@ -95,7 +102,7 @@ struct ShortcutsSettingsView: View {
             .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(action.displayName)
+                Text(actionLabel(action))
                     .font(.system(size: 12))
                 if let detail {
                     Text(detail)

@@ -25,7 +25,11 @@ final class VoiceEngine: ObservableObject {
     // MARK: - Published state
 
     @Published var isEnabled: Bool = VoiceSettings.isEnabled {
-        didSet { VoiceSettings.isEnabled = isEnabled; handleEnabledChanged() }
+        didSet {
+            VoiceSettings.isEnabled = isEnabled
+            if oldValue && !isEnabled { ClaudeVoiceBrain.shared.reset() }
+            handleEnabledChanged()
+        }
     }
     @Published private(set) var isListeningForCommand: Bool = false
     @Published private(set) var commandTranscript: String = ""

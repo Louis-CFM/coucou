@@ -113,6 +113,16 @@ final class RecapStore {
         drafts[sessionId] = draft
     }
 
+    /// Native aggregate events are corrections of one turn, not additional edits.
+    func replaceCodexFileDiffs(sessionId: String, diffs: [FileDiff]) {
+        guard isEnabled, var draft = drafts[sessionId] else { return }
+        draft.lastEvent = .now
+        draft.changedPaths = Set(diffs.map(\.path))
+        draft.linesAdded = diffs.reduce(0) { $0 + $1.added }
+        draft.linesRemoved = diffs.reduce(0) { $0 + $1.removed }
+        drafts[sessionId] = draft
+    }
+
     /// Called when the user sends answers from the notch (not when the question is asked).
     func recordQuestionAnswered(sessionId: String) {
         guard isEnabled, var draft = drafts[sessionId] else { return }

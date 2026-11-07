@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         #if !APPSTORE
+        CodexTextService.shutdown()
         NoteTaker.shared.shutdown()
         // A dictation still listening never leaves the Mac muted.
         SystemMute.shared.releaseNow()
@@ -68,6 +69,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Coucou for Android (off unless the user turned it on in Settings)
         AndroidLinkService.shared.startIfEnabled()
         #endif
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -341,6 +346,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.fsm.launch()
         HookServer.shared.start()
         #if !APPSTORE
+        CodexEventAdapter.shared.start()
+        if AppState.shared.chatProvider == .codex
+            || UserDefaults.standard.string(forKey: NoteTaker.engineKey) == NoteSummaryEngine.codex.rawValue {
+            Task { await CodexChatService.shared.refreshAuthentication() }
+        }
         _ = VoiceEngine.shared  // registers system observers; starts mic only if the user enabled voice
         FlowDictation.shared.start()  // watches the dictation key only if Flow dictation is on
         #endif

@@ -35,7 +35,7 @@ struct SearchTab: View {
             List {
                 if allTurns.isEmpty {
                     ContentUnavailableView("No turn yet", systemImage: "text.magnifyingglass",
-                                           description: Text("What Claude does on your Mac shows up here, ready to search."))
+                                           description: Text("What your agents do on your Mac shows up here, ready to search."))
                 } else if hits.isEmpty {
                     ContentUnavailableView.search(text: query)
                 } else {

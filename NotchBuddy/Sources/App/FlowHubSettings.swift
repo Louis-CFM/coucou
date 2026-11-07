@@ -6,6 +6,8 @@ import SwiftUI
 struct HubSettingsPage: View {
     @ObservedObject private var flow = FlowDictation.shared
     @ObservedObject private var store = FlowStore.shared
+    @ObservedObject private var state = AppState.shared
+    @ObservedObject private var codexChat = CodexChatService.shared
     @AppStorage("dictationLanguage") private var language = MacDictation.automatic
     @State private var confirmClear = false
     @State private var showInDock = FlowHubController.showInDock
@@ -100,7 +102,7 @@ struct HubSettingsPage: View {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
                             .foregroundColor(HubTheme.accent)
-                        Text("hub.cleanup-key")
+                        Text(FlowCleanup.usesCodex ? CodexTextService.unavailableMessage : String(localized: "hub.cleanup-key"))
                             .font(.system(size: 12.5))
                             .foregroundColor(Color(hex: "#C7CAD0"))
                             .fixedSize(horizontal: false, vertical: true)
@@ -111,7 +113,7 @@ struct HubSettingsPage: View {
                         .buttonStyle(HubButtonStyle())
                     }
                 }
-                Text("flow.ai-privacy")
+                Text(FlowCleanup.usesCodex ? String(localized: "flow.codex-privacy") : String(localized: "flow.ai-privacy"))
                     .font(.system(size: 12))
                     .foregroundColor(HubTheme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -147,7 +149,7 @@ struct HubSettingsPage: View {
                 .settingsHeading("flow.summary")
             HubCard {
                 HubSummaryEnginePicker()
-                Text("notes.engine-detail")
+                Text("notes.engine-detail-providers")
                     .font(.system(size: 12))
                     .foregroundColor(HubTheme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
