@@ -195,6 +195,16 @@ function claudeSection(status: HookStatus): HTMLElement {
   };
 
   function draw() {
+    const cli = h("select", { "aria-label": t("New Claude Code session") }) as HTMLSelectElement;
+    cli.append(
+      h("option", { value: "claude", text: "claude" }),
+      h("option", { value: "fcc-claude", text: "fcc-claude" }),
+    );
+    cli.value = settings.claudeCli;
+    cli.addEventListener("change", () => {
+      settings.claudeCli = cli.value === "fcc-claude" ? "fcc-claude" : "claude";
+      void save();
+    });
     body.append(
       h("div", {
         class: "hint",
@@ -202,6 +212,10 @@ function claudeSection(status: HookStatus): HTMLElement {
           ? t("Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.")
           : t("Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing."),
       }),
+      h("div", { class: "row" },
+        h("label", { text: t("New Claude Code session") }),
+        cli,
+      ),
       h("div", { class: "row" },
         h("label", { text: "settings.json" }),
         h("span", { class: "path", text: status.settingsPath }),

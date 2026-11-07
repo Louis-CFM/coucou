@@ -61,7 +61,7 @@ You can also [build it yourself](#build-it-yourself).
 | On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | Drag a file onto the island and let go on one of the sessions listed on the right ("Or into a session") | That session's terminal or editor comes forward and the file's path is pasted into Claude Code's prompt, as a drag onto the terminal would write it. When its window can't be found, the path is copied instead |
-| The terminal tab in the island's header | **New Claude Code session**: pick a project (the folders your sessions ran in, or **Choose a folder…**), type what Claude should do, and your terminal opens there running `claude` with it |
+| The terminal tab in the island's header | **New Claude Code session**: pick a project (the folders your sessions ran in, or **Choose a folder…**), type what Claude should do, and your terminal opens there running the CLI selected in **Settings → Claude Code** |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
 | Put a file named like one of Mochi's sounds (`finish.wav`, `approval.mp3`, `greet.m4a`…) in the sounds folder | It replaces that sound after **Settings → General → Reload sounds**. **Open sounds folder** shows the folder: `~/.config/coucou/sounds` on Linux, `%APPDATA%\Coucou\sounds` on Windows |
@@ -174,6 +174,12 @@ Open **Settings… → Claude Code → Install hooks…**. You get the exact dif
 will change in `%USERPROFILE%\.claude\settings.json`, the path of the dated backup
 that will be taken, and nothing is written until you click. Your own hooks are
 never touched, and uninstalling removes only Coucou's entries.
+
+**Settings → Claude Code → New Claude Code session** selects `claude` or
+`fcc-claude`. The selection is stored in Coucou's own settings and is used for
+new sessions and the in-app Claude Code relay when chat uses that fallback.
+FCC mode does not pass Coucou's model override or suppress configured settings
+for `fcc-claude`; Coucou does not change FCC's API or credentials.
 
 The relay is a tiny executable, `coucou-hook.exe`, copied to
 `%LOCALAPPDATA%\Coucou\bin\` at launch. It is given 300 ms to reach Coucou and

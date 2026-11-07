@@ -6994,20 +6994,20 @@
       "ko": "WhatsApp 모찌를 띄우려면 다른 모찌를 꺼서 자리를 비워 주세요(최대 {max}개).",
       "ja": "WhatsApp の場所を作るため、ほかのピルをオフにしてください（最大 {max} 個）。"
     },
-    "Claude Code is not installed.": {
-      "zh-Hans": "未安装 Claude Code。",
-      "hi": "Claude Code इंस्टॉल नहीं है।",
-      "es": "Claude Code no está instalado.",
-      "ar": "Claude Code غير مثبّت.",
-      "fr": "Claude Code n'est pas installé.",
-      "bn": "Claude Code ইনস্টল করা নেই।",
-      "pt-BR": "O Claude Code não está instalado.",
-      "ru": "Claude Code не установлен.",
-      "id": "Claude Code belum terpasang.",
-      "de": "Claude Code ist nicht installiert.",
-      "tr": "Claude Code yüklü değil.",
-      "ko": "Claude Code가 설치되어 있지 않습니다.",
-      "ja": "Claude Code がインストールされていません。"
+    "The selected Claude Code command is not installed.": {
+      "zh-Hans": "未安装所选的 Claude Code 命令。",
+      "hi": "चुना गया Claude Code कमांड इंस्टॉल नहीं है।",
+      "es": "El comando de Claude Code seleccionado no está instalado.",
+      "ar": "أمر Claude Code المحدد غير مثبّت.",
+      "fr": "La commande Claude Code sélectionnée n'est pas installée.",
+      "bn": "নির্বাচিত Claude Code কমান্ডটি ইনস্টল করা নেই।",
+      "pt-BR": "O comando Claude Code selecionado não está instalado.",
+      "ru": "Выбранная команда Claude Code не установлена.",
+      "id": "Perintah Claude Code yang dipilih belum terpasang.",
+      "de": "Der ausgewählte Claude-Code-Befehl ist nicht installiert.",
+      "tr": "Seçilen Claude Code komutu yüklü değil.",
+      "ko": "선택한 Claude Code 명령이 설치되어 있지 않습니다.",
+      "ja": "選択した Claude Code コマンドがインストールされていません。"
     },
     "Could not start Claude Code: {error}": {
       "zh-Hans": "无法启动 Claude Code：{error}",

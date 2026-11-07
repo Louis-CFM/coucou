@@ -28,6 +28,8 @@ pub struct Settings {
     pub screen: String,
     pub autostart: bool,
     pub hooks_installed: bool,
+    /// CLI used for new sessions and as the in-app Claude Code relay.
+    pub claude_cli: String,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
     /// Show the Claude plan pill (5 h and weekly limits) in the island's header.
@@ -162,6 +164,7 @@ impl Default for Settings {
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
+            claude_cli: "claude".into(),
             model: default_model(),
             show_plan_in_notch: false,
             show_plan_in_compact_island: false,
@@ -465,6 +468,7 @@ mod tests {
   "screen": "cursor",
   "autostart": true,
   "hooksInstalled": true,
+  "claudeCli": "fcc-claude",
   "model": "some-model",
   "showPlanInNotch": true,
   "showPlanInCompactIsland": true,

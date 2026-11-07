@@ -1,15 +1,15 @@
 // A new Claude Code session from the island, and a file dropped on a session —
 // ports of LaunchScript.swift, SessionLauncher.swift and SessionDrop.swift.
 //
-// Launch: the user's terminal opens in the project with `claude` and the
+// Launch: the user's terminal opens in the project with the selected CLI and the
 // prompt. The prompt is never spliced into a command line:
 // - Linux: it travels in COUCOU_PROMPT, set on the terminal's process, and the
-//   user's login shell runs `claude "$COUCOU_PROMPT"` (as the Mac's script).
+//   user's login shell runs the selected CLI with "$COUCOU_PROMPT" (as the Mac's script).
 // - Windows: Windows Terminal starts its tabs with a fresh environment, not
 //   wt.exe's (microsoft/terminal#11094), so an environment variable set on
 //   wt.exe never reaches the tab. The prompt goes into a file of ours in the
 //   temp folder instead; PowerShell reads it into $env:COUCOU_PROMPT, deletes
-//   it, and runs claude with that variable. Only the file's path, which we
+//   it, and runs the selected CLI with that variable. Only the file's path, which we
 //   made, is in the command line.
 // The session then shows in the island like any other, through the hooks.
 //
@@ -24,7 +24,7 @@ use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
 
-use crate::{flow, herdr, platform, session_window};
+use crate::{claude_code, flow, herdr, platform, session_window};
 
 /// What to start: a program, its arguments, extra environment, its folder.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,12 +59,13 @@ pub fn sh_quote(s: &str) -> String {
     }
 }
 
-/// What the terminal runs: the user's login shell (so `claude` is found as in
-/// any terminal), Claude Code with the prompt from COUCOU_PROMPT, then the
+/// What the terminal runs: the user's login shell, the selected CLI with the
+/// prompt from COUCOU_PROMPT, then the
 /// shell again in the project once Claude Code quits.
 #[cfg_attr(windows, allow(dead_code))]
-pub fn shell_command(shell: &str, has_prompt: bool) -> Vec<String> {
-    let run = if has_prompt { r#"claude "$COUCOU_PROMPT""# } else { "claude" };
+pub fn shell_command(shell: &str, cli: &str, has_prompt: bool) -> Vec<String> {
+    let cli = sh_quote(cli);
+    let run = if has_prompt { format!(r#"{cli} "$COUCOU_PROMPT""#) } else { cli };
     vec![shell.to_string(), "-lic".to_string(), format!("{run}; exec {} -l", sh_quote(shell))]
 }
 
@@ -114,9 +115,9 @@ pub fn linux_terminal_args(terminal: &str, dir: &str, command: &[String]) -> Vec
 
 /// The whole launch on Linux, `terminal` being the one found.
 #[cfg_attr(windows, allow(dead_code))]
-pub fn linux_spawn(terminal: &str, shell: &str, folder: &str, prompt: &str) -> Spawn {
+pub fn linux_spawn(terminal: &str, shell: &str, folder: &str, prompt: &str, cli: &str) -> Spawn {
     let prompt = clean_prompt(prompt);
-    let command = shell_command(shell, !prompt.is_empty());
+    let command = shell_command(shell, cli, !prompt.is_empty());
     let env = if prompt.is_empty() { Vec::new() } else { vec![("COUCOU_PROMPT".to_string(), prompt)] };
     Spawn { program: terminal.to_string(), args: linux_terminal_args(terminal, folder, &command), env, dir: folder.to_string() }
 }
@@ -139,15 +140,14 @@ pub fn windows_prompt(prompt: &str) -> String {
 }
 
 /// What PowerShell runs. With a prompt: read the file into COUCOU_PROMPT,
-/// delete it, start Claude Code with it. `Get-Command -CommandType
-/// Application` takes claude.exe or claude.cmd, never npm's claude.ps1, which
-/// the default execution policy refuses to run. No double quote and nothing
-/// but the file's path, which is ours, is spelled out.
+/// delete it, then invoke the selected executable path with that value. Both
+/// paths are quoted as PowerShell literals; the prompt itself is never part of
+/// the command string.
 #[cfg_attr(not(windows), allow(dead_code))]
-pub fn powershell_script(prompt_file: Option<&str>) -> String {
-    let claude = "& (Get-Command claude -CommandType Application -TotalCount 1)";
+pub fn powershell_script(cli: &str, prompt_file: Option<&str>) -> String {
+    let claude = format!("& {}", ps_quote(cli));
     match prompt_file {
-        None => claude.to_string(),
+        None => claude,
         Some(file) => {
             let f = ps_quote(file);
             format!(
@@ -169,8 +169,8 @@ pub fn wt_escape(s: &str) -> String {
 /// is installed, else PowerShell in a console of its own (the caller gives it
 /// one). `shell` is pwsh.exe or powershell.exe.
 #[cfg_attr(not(windows), allow(dead_code))]
-pub fn windows_spawn(wt: Option<&str>, shell: &str, folder: &str, prompt_file: Option<&str>) -> Spawn {
-    let script = powershell_script(prompt_file);
+pub fn windows_spawn(wt: Option<&str>, shell: &str, folder: &str, cli: &str, prompt_file: Option<&str>) -> Spawn {
+    let script = powershell_script(cli, prompt_file);
     match wt {
         Some(wt) => Spawn {
             program: wt.to_string(),
@@ -247,7 +247,7 @@ fn start(spawn: &Spawn, new_console: bool) -> std::io::Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
+fn launch_here(folder: &str, prompt: &str, cli: &Path) -> Result<String, String> {
     let shell = std::env::var("SHELL").ok().filter(|s| Path::new(s).is_absolute()).unwrap_or_else(|| "/bin/bash".into());
     let env_terminal = std::env::var("TERMINAL").ok();
     for candidate in linux_candidates(env_terminal.as_deref()) {
@@ -258,7 +258,7 @@ fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
         }) else {
             continue;
         };
-        let spawn = linux_spawn(&path.to_string_lossy(), &shell, folder, prompt);
+        let spawn = linux_spawn(&path.to_string_lossy(), &shell, folder, prompt, &cli.to_string_lossy());
         match start(&spawn, false) {
             Ok(()) => return Ok(candidate),
             Err(err) => crate::log::line(format!("launch: {candidate} didn't start: {err}")),
@@ -268,7 +268,7 @@ fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
 }
 
 #[cfg(windows)]
-fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
+fn launch_here(folder: &str, prompt: &str, cli: &Path) -> Result<String, String> {
     let prompt = windows_prompt(prompt);
     let file = if prompt.is_empty() {
         None
@@ -286,36 +286,40 @@ fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
         });
         Some(path.to_string_lossy().to_string())
     };
-    // By name, found on %PATH% by the terminal: a full path would carry the
-    // spaces of "Program Files" through wt.exe's re-joined command line.
+    // Use the executable path selected by Coucou, not a possibly different
+    // `claude` found by the terminal's PATH.
     let shell = if platform::find_on_path("pwsh").is_some() { "pwsh.exe" } else { "powershell.exe" };
     if let Some(wt) = platform::windows_terminal() {
-        let spawn = windows_spawn(Some(&wt.to_string_lossy()), shell, folder, file.as_deref());
+        let spawn = windows_spawn(Some(&wt.to_string_lossy()), shell, folder, &cli.to_string_lossy(), file.as_deref());
         match start(&spawn, false) {
             Ok(()) => return Ok("Windows Terminal".into()),
             Err(err) => crate::log::line(format!("launch: Windows Terminal didn't start: {err}")),
         }
     }
-    let spawn = windows_spawn(None, shell, folder, file.as_deref());
+    let spawn = windows_spawn(None, shell, folder, &cli.to_string_lossy(), file.as_deref());
     start(&spawn, true).map(|()| "PowerShell".into()).map_err(|e| e.to_string())
 }
 
 /// Opens the user's terminal in `folder` with Claude Code and the prompt.
 /// False when the folder isn't one or no terminal could be started.
 #[tauri::command]
-pub fn launch_session(folder: String, prompt: String) -> bool {
+pub fn launch_session(folder: String, prompt: String) -> Result<bool, String> {
     if !valid_folder(&folder) {
-        return false;
+        return Ok(false);
     }
     let name = session_window::folder_name(&folder).to_string();
-    match launch_here(&folder, &prompt) {
+    let Some(cli) = claude_code::exe() else {
+        crate::log::line("launch: selected Claude Code CLI is not installed");
+        return Err("selected_cli_missing".into());
+    };
+    match launch_here(&folder, &prompt, &cli) {
         Ok(terminal) => {
             crate::log::line(format!("launch: Claude Code in {name} with {terminal}"));
-            true
+            Ok(true)
         }
         Err(err) => {
             crate::log::line(format!("launch: couldn't open a terminal in {name}: {err}"));
-            false
+            Ok(false)
         }
     }
 }
@@ -405,10 +409,14 @@ mod tests {
     #[test]
     fn the_shell_runs_claude_with_the_variable_never_the_prompt() {
         assert_eq!(
-            shell_command("/bin/zsh", true),
+            shell_command("/bin/zsh", "claude", true),
             s(&["/bin/zsh", "-lic", r#"claude "$COUCOU_PROMPT"; exec /bin/zsh -l"#])
         );
-        assert_eq!(shell_command("/usr/bin/fish", false), s(&["/usr/bin/fish", "-lic", "claude; exec /usr/bin/fish -l"]));
+        assert_eq!(shell_command("/usr/bin/fish", "claude", false), s(&["/usr/bin/fish", "-lic", "claude; exec /usr/bin/fish -l"]));
+        assert_eq!(
+            shell_command("/bin/zsh", "/opt/Free Claude/fcc-claude", true),
+            s(&["/bin/zsh", "-lic", r#"'/opt/Free Claude/fcc-claude' "$COUCOU_PROMPT"; exec /bin/zsh -l"#])
+        );
     }
 
     #[test]
@@ -445,14 +453,14 @@ mod tests {
     #[test]
     fn linux_hands_the_prompt_in_the_environment_only() {
         let nasty = r#"fix the "login" bug; rm -rf / && echo $HOME `id` $(id)"#;
-        let spawn = linux_spawn("/usr/bin/kitty", "/bin/zsh", "/home/me/p", nasty);
+        let spawn = linux_spawn("/usr/bin/kitty", "/bin/zsh", "/home/me/p", nasty, "claude");
         assert_eq!(spawn.program, "/usr/bin/kitty");
         assert_eq!(spawn.dir, "/home/me/p");
         assert_eq!(spawn.env, vec![("COUCOU_PROMPT".to_string(), nasty.to_string())]);
         assert!(spawn.args.iter().all(|a| !a.contains("login") && !a.contains("rm -rf")), "{:?}", spawn.args);
         assert_eq!(spawn.args.last().unwrap(), r#"claude "$COUCOU_PROMPT"; exec /bin/zsh -l"#);
 
-        let empty = linux_spawn("kitty", "/bin/zsh", "/home/me/p", "  \n ");
+        let empty = linux_spawn("kitty", "/bin/zsh", "/home/me/p", "  \n ", "claude");
         assert!(empty.env.is_empty());
         assert_eq!(empty.args.last().unwrap(), "claude; exec /bin/zsh -l");
     }
@@ -466,13 +474,14 @@ mod tests {
 
     #[test]
     fn powershell_reads_the_prompt_from_our_file() {
-        assert_eq!(powershell_script(None), "& (Get-Command claude -CommandType Application -TotalCount 1)");
-        let script = powershell_script(Some(r"C:\Temp\coucou-prompt-ab.txt"));
+        let cli = r"C:\Users\me\.local\bin\fcc-claude.exe";
+        assert_eq!(powershell_script(cli, None), "& 'C:\\Users\\me\\.local\\bin\\fcc-claude.exe'");
+        let script = powershell_script(cli, Some(r"C:\Temp\coucou-prompt-ab.txt"));
         assert_eq!(
             script,
             "$env:COUCOU_PROMPT = Get-Content -LiteralPath 'C:\\Temp\\coucou-prompt-ab.txt' -Raw -Encoding UTF8; \
              Remove-Item -LiteralPath 'C:\\Temp\\coucou-prompt-ab.txt'; \
-             & (Get-Command claude -CommandType Application -TotalCount 1) $env:COUCOU_PROMPT"
+             & 'C:\\Users\\me\\.local\\bin\\fcc-claude.exe' $env:COUCOU_PROMPT"
         );
         // wt.exe re-joins its arguments in quotes: none may be inside.
         assert!(!script.contains('"'));
@@ -481,18 +490,19 @@ mod tests {
     #[test]
     fn windows_terminal_or_a_powershell_console() {
         let file = Some(r"C:\Temp\p.txt");
-        let wt = windows_spawn(Some(r"C:\Users\me\AppData\Local\Microsoft\WindowsApps\wt.exe"), "pwsh.exe", r"C:\code\my app", file);
+        let cli = r"C:\Users\me\.local\bin\fcc-claude.exe";
+        let wt = windows_spawn(Some(r"C:\Users\me\AppData\Local\Microsoft\WindowsApps\wt.exe"), "pwsh.exe", r"C:\code\my app", cli, file);
         assert_eq!(wt.args[..3], s(&["-d", r"C:\code\my app", "pwsh.exe"]));
         assert_eq!(wt.args[3..6], s(&["-NoExit", "-NoLogo", "-Command"]));
         let script = &wt.args[6];
         assert!(script.contains(r"\;") && !script.replace(r"\;", "").contains(';'), "every semicolon escaped for wt: {script}");
-        assert_eq!(script.replace(r"\;", ";"), powershell_script(file));
+        assert_eq!(script.replace(r"\;", ";"), powershell_script(cli, file));
         assert_eq!(wt.dir, r"C:\code\my app");
         assert!(wt.env.is_empty());
 
-        let console = windows_spawn(None, "powershell.exe", r"C:\code", None);
+        let console = windows_spawn(None, "powershell.exe", r"C:\code", cli, None);
         assert_eq!(console.program, "powershell.exe");
-        assert_eq!(console.args, s(&["-NoExit", "-NoLogo", "-Command", &powershell_script(None)]));
+        assert_eq!(console.args, s(&["-NoExit", "-NoLogo", "-Command", &powershell_script(cli, None)]));
         assert_eq!(console.dir, r"C:\code");
     }
 

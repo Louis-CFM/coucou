@@ -50,6 +50,7 @@ export function buildLaunch(actions: ViewActions): ViewHost {
   const el = h("div", { class: "view" }, card);
 
   let failed = false;
+  let failureHint: string | null = null;
   let menuOpen = false;
   let busy = false;
 
@@ -92,6 +93,7 @@ export function buildLaunch(actions: ViewActions): ViewHost {
     actions.holdOpen(input.value.trim().length > 0);
     if (picked) Launch.choose(picked);
     failed = false;
+    failureHint = null;
     sync();
     if (State.view === "launch") {
       actions.keyboard(true);
@@ -107,8 +109,19 @@ export function buildLaunch(actions: ViewActions): ViewHost {
       return;
     }
     busy = true;
-    const ok = await Bridge.launchSession(folder, input.value);
-    busy = false;
+    failureHint = null;
+    let ok: boolean | null;
+    try {
+      ok = await Bridge.launchSession(folder, input.value);
+    } catch (err) {
+      ok = false;
+      const message = String(err).replace(/^Error:\s*/, "");
+      failureHint = message === "selected_cli_missing"
+        ? t("The selected Claude Code command is not installed.")
+        : t("Couldn't open the terminal in this folder.");
+    } finally {
+      busy = false;
+    }
     if (!ok) {
       failed = true;
       Sound.play("error");
@@ -117,6 +130,7 @@ export function buildLaunch(actions: ViewActions): ViewHost {
     }
     input.value = "";
     failed = false;
+    failureHint = null;
     actions.holdOpen(false);
     actions.launched();
   }
@@ -142,7 +156,7 @@ export function buildLaunch(actions: ViewActions): ViewHost {
     projectBtn.title = folder ?? "";
     projectBtn.classList.toggle("open", menuOpen);
     send.disabled = folder == null;
-    hint.textContent = failed ? t("Couldn't open the terminal in this folder.") : t("Opens your terminal in the project, with Claude Code and your words.");
+    hint.textContent = failed ? (failureHint ?? t("Couldn't open the terminal in this folder.")) : t("Opens your terminal in the project, with Claude Code and your words.");
     hint.classList.toggle("is-failed", failed);
   }
 
@@ -153,6 +167,7 @@ export function buildLaunch(actions: ViewActions): ViewHost {
     // field and not the menu.
     focus() {
       failed = false;
+      failureHint = null;
       if (menuOpen) {
         menuOpen = false;
         body.classList.remove("choosing");
