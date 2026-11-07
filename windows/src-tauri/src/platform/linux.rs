@@ -572,6 +572,33 @@ pub fn make_non_activating(win: &WebviewWindow) {
     crate::log::line("island is a layer-shell overlay");
 }
 
+/// Re-maps the island's surface: hide it, show it again, on the GTK thread.
+///
+/// WebKitGTK paints from the compositor's frame callbacks, and the compositor
+/// only repaints a surface that has damage. Once the island has sat still,
+/// the two can deadlock: the page's next animation frame waits for a callback
+/// that never comes, and it stays a frozen picture that still plays its
+/// sounds. The same deadlock is why a freshly mapped layer surface never
+/// paints its first frame (make_non_activating), and the cure is the same —
+/// unmap and map once, which paints without waiting for a callback.
+///
+/// Deferred one loop turn, so it lands after the resize and position requests
+/// apply_geometry has just queued and the fresh map commits the new size.
+pub fn remap_island_surface(win: &WebviewWindow) {
+    if !LAYER_SURFACE.load(Ordering::Relaxed) {
+        return;
+    }
+    let kick = win.clone();
+    let _ = win.run_on_main_thread(move || {
+        let Ok(gw) = kick.gtk_window() else { return };
+        gtk::glib::idle_add_local_once(move || {
+            gw.hide();
+            gw.show_all();
+            apply_input_region(&gw, *INPUT_REGION.lock().unwrap());
+        });
+    });
+}
+
 thread_local! {
     /// The island's GTK window, for the pointer watch (GTK main thread only).
     static ISLAND_GTK: std::cell::RefCell<Option<gtk::ApplicationWindow>> =

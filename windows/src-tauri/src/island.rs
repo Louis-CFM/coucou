@@ -10,7 +10,11 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, WebviewWindow};
+#[cfg(target_os = "linux")]
+use tauri::LogicalSize;
+#[cfg(not(target_os = "linux"))]
+use tauri::PhysicalSize;
 
 use crate::platform::{self, cursor_physical, left_button_down};
 
@@ -309,18 +313,23 @@ mod display_tests {
 }
 
 /// Calculates the zoom correction factor so that 1 CSS pixel equals 1 window logical pixel.
-/// If WebView2's devicePixelRatio differs from the window's scale factor (e.g. system text
-/// scaling or multi-monitor DPI mismatch), adjusting the webview zoom ensures the island
-/// canvas (PANEL_W / EXPANDED_W) fits within the window without clipping.
+/// If the webview's devicePixelRatio differs from the window's scale factor (system text
+/// scaling, multi-monitor DPI mismatch), adjusting the webview zoom keeps the island
+/// canvas (PANEL_W / EXPANDED_W) inside the window.
+///
+/// The target is absolute (`scale / dpr`), not an increment on the current zoom: dpr and
+/// scale only disagree while a window is moving between displays, and a correction made
+/// on such a reading has to un-do itself once they agree again. An increment stuck at
+/// the wrong zoom for the rest of the session.
 pub fn calculate_zoom_correction(current_zoom: f64, scale: f64, dpr: f64) -> Option<f64> {
     if dpr <= 0.0 || !dpr.is_finite() || scale <= 0.0 || !scale.is_finite() {
         return None;
     }
-    if (dpr - scale).abs() / scale < 0.02 {
+    let target = (scale / dpr).clamp(0.25, 4.0);
+    if (target - current_zoom).abs() < 0.02 {
         return None;
     }
-    let new_zoom = (current_zoom * (scale / dpr)).clamp(0.25, 4.0);
-    Some(new_zoom)
+    Some(target)
 }
 
 #[cfg(test)]
@@ -351,6 +360,15 @@ mod zoom_tests {
     }
 
     #[test]
+    fn a_correction_from_a_bad_reading_heals_back() {
+        // The dpr and the scale disagreed only while the window was moving
+        // between displays: once they agree again, the zoom returns to 1.
+        assert_eq!(calculate_zoom_correction(0.5, 1.0, 1.0), Some(1.0));
+        // Numbers that already agree churn nothing, whatever the zoom is.
+        assert_eq!(calculate_zoom_correction(0.8, 1.0, 1.25), None);
+    }
+
+    #[test]
     fn only_a_cursor_near_the_island_is_followed() {
         let size = (PANEL_W, PANEL_H);
         assert!(is_near(360.0, 10.0, size));
@@ -365,6 +383,19 @@ mod zoom_tests {
         assert_eq!(clamp_collapsed((5000.0, 900.0)), (PANEL_W, PANEL_H));
         assert_eq!(clamp_collapsed((0.0, -3.0)), (1.0, 1.0));
         assert_eq!(clamp_collapsed((f64::NAN, 26.0)), (PANEL_W, 26.0));
+    }
+
+    #[test]
+    fn the_closed_island_takes_the_mouse_where_it_is_drawn() {
+        // A window that shrank to the pill: the rect starts at its corner.
+        let r = |x: f64, w: f64| IslandRect { x, y: 0.0, w, h: 24.0 };
+        assert_eq!(closed_region(r(0.0, 80.0), (80.0, 24.0)), (0.0, 0.0, 80.0, 24.0));
+        // A window that stayed at panel size: the pill is centred, and the
+        // region must sit on it, not on the window's empty corner.
+        assert_eq!(closed_region(r(320.0, 80.0), (80.0, 24.0)), (320.0, 0.0, 80.0, 24.0));
+        // Nothing pushed yet, or a rect from another size: the corner.
+        assert_eq!(closed_region(IslandRect::default(), (80.0, 24.0)), (0.0, 0.0, 80.0, 24.0));
+        assert_eq!(closed_region(r(320.0, 288.0), (80.0, 24.0)), (0.0, 0.0, 80.0, 24.0));
     }
 
     #[test]
@@ -435,6 +466,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: Option<(f64, f64)>
 
     let (lw, lh) = collapsed.map(clamp_collapsed).unwrap_or((PANEL_W, PANEL_H));
     let pw = (lw * scale).round().max(1.0) as u32;
+    #[cfg(windows)]
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
     let y = mp.y + top_inset(&m);
@@ -444,18 +476,40 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: Option<(f64, f64)>
     // re-applies the config's `resizable: false` after the first configure, so
     // this is asked every time, just before the resize. Undecorated, the window
     // still offers the user nothing to resize it by. (Found by @YossiYad, #44.)
+    //
+    // Linux resizes in logical pixels. A physical request goes through the
+    // windowing library's own scale factor, which lags behind the display a
+    // layer surface just landed on: on mixed-DPI screens a 720-physical panel
+    // asked of a window still believing scale 2 came out a 360-logical window,
+    // half an island. A logical request is used as is, whatever the window
+    // believes. Windows keeps physical sizes; its conversion follows the
+    // window right away.
+    //
+    // KDE also keeps a mapped layer surface at its old size when the new size
+    // is smaller, so the window can stay panel-sized while the island is
+    // folded. That is fine: the window is transparent, and the input region
+    // follows the pill wherever the page drew it (refresh_click_through).
     #[cfg(target_os = "linux")]
     let _ = win.set_resizable(true);
+    #[cfg(target_os = "linux")]
+    let _ = win.set_size(LogicalSize::new(lw, lh));
+    #[cfg(not(target_os = "linux"))]
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     let (lx, ly) = logical_origin(&m);
     platform::pin_to_monitor(&win, lx, ly);
-    // Moving across displays can rescale the window: re-assert the physical size.
+    // Moving across displays can rescale the window: re-assert the size.
+    #[cfg(target_os = "linux")]
+    let _ = win.set_size(LogicalSize::new(lw, lh));
+    #[cfg(not(target_os = "linux"))]
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
 
     // On Windows, moving across displays or waking from the strip can clamp or lag
-    // the resize. If the physical inner size differs from what was requested, retry once.
+    // the resize. If the physical inner size differs from what was requested, retry
+    // once. Wayland skips this: the compositor answers a resize asynchronously, so
+    // the size read back right away is the old one and says nothing about failure.
+    #[cfg(windows)]
     if let Ok(got) = win.inner_size() {
         if got.width != pw || got.height != ph {
             crate::log::line(format!(
@@ -465,6 +519,23 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: Option<(f64, f64)>
             let _ = win.set_size(PhysicalSize::new(pw, ph));
             let _ = win.set_position(PhysicalPosition::new(x, y));
         }
+    }
+}
+
+/// Where the closed island takes the mouse, in window coordinates.
+///
+/// Normally the window *is* the closed island and the rect starts at the
+/// corner. But KDE never shrinks a mapped layer surface, so the window can
+/// stay panel-sized while the pill draws centred in it — an input region at
+/// the corner would then cover empty screen and the island would never hear
+/// the pointer. So use the rect the page pushed, as long as it matches the
+/// folded size; fall back to the corner when there is nothing to trust.
+fn closed_region(rect: IslandRect, collapsed: (f64, f64)) -> (f64, f64, f64, f64) {
+    let (w, h) = clamp_collapsed(collapsed);
+    if rect.w > 0.0 && (rect.w - w).abs() < 1.0 && (rect.h - h).abs() < 1.0 {
+        (rect.x, rect.y, rect.w, rect.h)
+    } else {
+        (0.0, 0.0, w, h)
     }
 }
 
@@ -642,8 +713,7 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
         // The closed island (or the wake strip) itself, never "the whole
         // window": if the window ever fails to shrink, the rest of it must not
         // swallow clicks meant for whatever sits under the top of the screen.
-        let (w, h) = clamp_collapsed(*gate.collapsed_size.lock().unwrap());
-        Some((0.0, 0.0, w, h))
+        Some(closed_region(*gate.rect.lock().unwrap(), *gate.collapsed_size.lock().unwrap()))
     } else {
         let r = *gate.rect.lock().unwrap();
         if r.w <= 0.0 {
