@@ -96,7 +96,7 @@ pub fn setup(app: &AppHandle) {
         let park = cfg!(windows);
         let mut builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
             .additional_browser_args(crate::BROWSER_ARGS)
-            .title("Coucou")
+            .title("NexIsland")
             .inner_size(BOTTOM.0, BOTTOM.1)
             .resizable(cfg!(target_os = "linux"))
             .decorations(false)

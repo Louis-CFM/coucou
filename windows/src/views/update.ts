@@ -48,7 +48,7 @@ export function buildUpdate(): ViewHost {
 
       if (Updates.asking) {
         title.textContent = t("Get new versions from the island?");
-        line.textContent = t("Mochi checks Coucou's releases on GitHub a few times a day and tells you when one is out. Nothing about you is sent.");
+        line.textContent = t("Splash checks NexIsland's releases on GitHub a few times a day and tells you when one is out. Nothing about you is sent.");
         buttons("ask", () => [
           btn(t("Yes, tell me"), "primary", () => Updates.answer(true)),
           btn(t("No thanks"), "secondary", () => Updates.answer(false)),
@@ -68,13 +68,13 @@ export function buildUpdate(): ViewHost {
       }
 
       if (!r) {
-        title.textContent = t("Coucou is up to date");
+        title.textContent = t("NexIsland is up to date");
         line.textContent = youHave;
         buttons("none", () => [btn(t("OK"), "secondary", () => Updates.dismiss())]);
         return;
       }
 
-      title.textContent = t("Coucou {version} is out", { version: r.version });
+      title.textContent = t("NexIsland {version} is out", { version: r.version });
       title.title = title.textContent;
       switch (phase.kind) {
         case "downloading": {
@@ -89,7 +89,7 @@ export function buildUpdate(): ViewHost {
           buttons("busy", () => []);
           return;
         case "installing":
-          line.textContent = t("Installing… Coucou closes and comes back by itself.");
+          line.textContent = t("Installing… NexIsland closes and comes back by itself.");
           buttons("busy", () => []);
           return;
         case "idle":

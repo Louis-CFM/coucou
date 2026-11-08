@@ -23,7 +23,7 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
   let words = data.words;
   let replacements: Replacement[] = data.replacements;
   const save = () => void FlowBridge.setWords({ words, replacements });
-  page.append(ctx.hero("dictionary", t("Dictionary"), t("Names and words Coucou must always spell right.")));
+  page.append(ctx.hero("dictionary", t("Dictionary"), t("Names and words NexIsland must always spell right.")));
 
   // ── Words ──
   const chips = h("div", { class: "hub-chips" });
@@ -39,7 +39,7 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
   const drawWords = () => {
     clear(chips);
     if (words.length === 0) {
-      chips.append(h("div", { class: "hub-note", text: t("No word yet. Add the names, brands and jargon Coucou gets wrong.") }));
+      chips.append(h("div", { class: "hub-note", text: t("No word yet. Add the names, brands and jargon NexIsland gets wrong.") }));
       return;
     }
     for (const w of words) {
@@ -58,7 +58,7 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
   drawWords();
 
   // ── Replacements ──
-  page.append(label(t("Replacements")), h("div", { class: "hub-note", style: "margin-top:-10px", text: t("When Coucou hears the words on the left, it writes the ones on the right.") }));
+  page.append(label(t("Replacements")), h("div", { class: "hub-note", style: "margin-top:-10px", text: t("When NexIsland hears the words on the left, it writes the ones on the right.") }));
   const list = h("div", {});
   const from = input(t("Heard, e.g. cloud code"));
   const to = input(t("Written, e.g. Claude Code"), () => addReplacement());
@@ -96,12 +96,12 @@ export async function dictionaryPage(page: HTMLElement, ctx: HubContext) {
 export async function snippetsPage(page: HTMLElement, ctx: HubContext) {
   let snippets: Snippet[] = (await FlowBridge.snippets()) ?? [];
   const save = () => void FlowBridge.setSnippets(snippets);
-  page.append(ctx.hero("snippets", t("Snippets"), t("Say the trigger while dictating: Coucou pastes the whole text in its place.")));
+  page.append(ctx.hero("snippets", t("Snippets"), t("Say the trigger while dictating: NexIsland pastes the whole text in its place.")));
 
   let editing: Snippet | null = null;
   const formTitle = h("div", { style: "font:700 14px var(--font)" });
   const trigger = h("input", { class: "hub-input", placeholder: t("What you say, e.g. my signature") }) as HTMLInputElement;
-  const text = h("textarea", { class: "hub-textarea", placeholder: t("The text Coucou pastes") }) as HTMLTextAreaElement;
+  const text = h("textarea", { class: "hub-textarea", placeholder: t("The text NexIsland pastes") }) as HTMLTextAreaElement;
   const cancel = button(t("Cancel"), () => edit(null));
   const saveButton = button(t("Save"), () => {
     const tr = trigger.value.trim();

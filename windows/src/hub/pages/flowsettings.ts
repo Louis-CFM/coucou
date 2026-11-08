@@ -88,10 +88,10 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
   if (status.keys === "wayland") {
     keysCard.append(h("div", {
       class: "hub-warn",
-      text: t("On Wayland, the desktop holds the dictation key for Coucou: Ctrl+Alt+V, or the keys you picked when it asked. The first paste asks once to let Coucou type for you."),
+      text: t("On Wayland, the desktop holds the dictation key for NexIsland: Ctrl+Alt+V, or the keys you picked when it asked. The first paste asks once to let NexIsland type for you."),
     }));
   } else if (status.keys !== "ok") {
-    keysCard.append(h("div", { class: "hub-warn", text: t("Coucou can't watch the keyboard here: use the pill's microphone to dictate.") }));
+    keysCard.append(h("div", { class: "hub-warn", text: t("NexIsland can't watch the keyboard here: use the pill's microphone to dictate.") }));
   }
   page.append(keysCard);
 
@@ -99,7 +99,7 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
   page.append(label(t("Microphone")));
   const mics: [string, string][] = [["", t("System default")], ...status.mics.map((m): [string, string] => [m.name, m.name])];
   if (prefs.mic && !mics.some(([id]) => id === prefs.mic)) mics.push([prefs.mic, prefs.mic]);
-  page.append(card(row(t("Microphone"), t("The one Coucou listens to for dictation and calls."), select(mics, prefs.mic, (mic) => void ctx.setPrefs((p) => (p.mic = mic))))));
+  page.append(card(row(t("Microphone"), t("The one NexIsland listens to for dictation and calls."), select(mics, prefs.mic, (mic) => void ctx.setPrefs((p) => (p.mic = mic))))));
 
   // ── Recognition ──
   page.append(label(t("Recognition")));
@@ -120,7 +120,7 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
   // ── App ──
   page.append(label(t("App")));
   page.append(card(
-    row(t("Open this window when you open Coucou"), t("Not when Coucou starts with the computer."), toggle(prefs.openAtLaunch, (on) => void ctx.setPrefs((p) => (p.openAtLaunch = on)))),
+    row(t("Open this window when you open NexIsland"), t("Not when NexIsland starts with the computer."), toggle(prefs.openAtLaunch, (on) => void ctx.setPrefs((p) => (p.openAtLaunch = on)))),
   ));
 
   // ── Privacy ──
@@ -149,6 +149,6 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
     row(t("Keep the history"), null, select(keep, String(prefs.keepDays), (v) => void ctx.setPrefs((p) => (p.keepDays = Number(v))))),
     divider(),
     confirmRow,
-    h("div", { class: "hub-note", text: t("The history, the statistics and your notes stay on this computer, in Coucou's folder. Dictations are never saved as audio; a call's audio is deleted as soon as its transcript is written.") }),
+    h("div", { class: "hub-note", text: t("The history, the statistics and your notes stay on this computer, in NexIsland's folder. Dictations are never saved as audio; a call's audio is deleted as soon as its transcript is written.") }),
   ));
 }

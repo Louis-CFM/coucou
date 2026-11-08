@@ -1,13 +1,13 @@
 [package]
-name = "coucou"
-description = "Coucou for Windows and Linux — Mochi lives at the top of your screen"
-authors = ["Louis Raille"]
+name = "nexisland"
+description = "NexIsland for Windows and Linux — Splash the dolphin lives at the top of your screen"
+authors = ["Louis Raille (Original Coucou)", "NexSz"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [lib]
-name = "coucou_lib"
+name = "nexisland_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

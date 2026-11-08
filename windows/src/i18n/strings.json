@@ -5072,6 +5072,19 @@
    "de": "Codex öffnen",
    "tr": "Codex'i aç"
   },
+  "Open NexIsland": {
+   "zh-Hans": "打开 NexIsland",
+   "hi": "NexIsland खोलें",
+   "es": "Abrir NexIsland",
+   "ar": "فتح NexIsland",
+   "fr": "Ouvrir NexIsland",
+   "bn": "NexIsland খুলুন",
+   "pt-BR": "Abrir NexIsland",
+   "ru": "Открыть NexIsland",
+   "id": "Buka NexIsland",
+   "de": "NexIsland öffnen",
+   "tr": "NexIsland'ı aç"
+  },
   "Open Coucou": {
    "zh-Hans": "打开 Coucou",
    "hi": "Coucou खोलें",
@@ -7879,6 +7892,32 @@
    "id": "Sampai Parakeet diunduh, Coucou memakai pengenalan suara Mac.",
    "de": "Bis Parakeet heruntergeladen ist, nutzt Coucou die Spracherkennung deines Mac.",
    "tr": "Parakeet indirilene kadar Coucou, Mac'inin konuşma tanıma özelliğini kullanır."
+  },
+  "Update NexIsland to {version}…": {
+   "zh-Hans": "更新 NexIsland 至 {version}…",
+   "hi": "NexIsland को {version} में अपडेट करें…",
+   "es": "Actualizar NexIsland a {version}…",
+   "ar": "تحديث NexIsland إلى {version}…",
+   "fr": "Mettre à jour NexIsland vers {version}…",
+   "bn": "NexIsland-কে {version}-এ আপডেট করুন…",
+   "pt-BR": "Atualizar o NexIsland para {version}…",
+   "ru": "Обновить NexIsland до {version}…",
+   "id": "Perbarui NexIsland ke {version}…",
+   "de": "NexIsland auf {version} aktualisieren…",
+   "tr": "NexIsland'ı {version} sürümüne güncelle…"
+  },
+  "Update NexIsland to {0}…": {
+   "zh-Hans": "更新 NexIsland 至 {0}…",
+   "hi": "NexIsland को {0} में अपडेट करें…",
+   "es": "Actualizar NexIsland a {0}…",
+   "ar": "تحديث NexIsland إلى {0}…",
+   "fr": "Mettre à jour NexIsland vers {0}…",
+   "bn": "NexIsland-কে {0}-এ আপডেট করুন…",
+   "pt-BR": "Atualizar o NexIsland para {0}…",
+   "ru": "Обновить NexIsland до {0}…",
+   "id": "Perbarui NexIsland ke {0}…",
+   "de": "NexIsland auf {0} aktualisieren…",
+   "tr": "NexIsland'ı {0} sürümüne güncelle…"
   },
   "Update Coucou to {0}…": {
    "zh-Hans": "将 Coucou 更新到 {0}…",

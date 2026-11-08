@@ -15,7 +15,7 @@ use crate::island::WINDOW_LABEL;
 /// The menu's items, id and English label, in order. The labels are shown in
 /// the interface language (i18n.rs) and follow it when it changes.
 const ITEMS: [(&str, &str); 6] = [
-    ("open", n_("Open Coucou")),
+    ("open", n_("Open NexIsland")),
     ("recap", n_("Weekly recap")),
     ("wardrobe", n_("Wardrobe…")),
     ("settings", n_("Settings…")),
@@ -26,7 +26,7 @@ const ITEMS: [(&str, &str); 6] = [
 /// Kept so a language change relabels the menu without rebuilding the tray.
 struct Items(Vec<(&'static str, MenuItem<Wry>)>);
 
-/// "Update Coucou to X…": in the menu only while `version` is set.
+/// "Update NexIsland to X…": in the menu only while `version` is set.
 struct UpdateItem {
     menu: Menu<Wry>,
     item: MenuItem<Wry>,
@@ -34,7 +34,7 @@ struct UpdateItem {
 }
 
 fn update_label(version: &str) -> String {
-    tf("Update Coucou to {version}…", &[("version", version)])
+    tf("Update NexIsland to {version}…", &[("version", version)])
 }
 
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
@@ -52,8 +52,8 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
     let update = MenuItem::with_id(app, "update", "", true, None::<&str>)?;
     app.manage(UpdateItem { menu: menu.clone(), item: update, version: Mutex::new(None) });
 
-    let mut builder = TrayIconBuilder::with_id("coucou")
-        .tooltip("Coucou")
+    let mut builder = TrayIconBuilder::with_id("nexisland")
+        .tooltip("NexIsland")
         .menu(&menu)
         .on_menu_event(|app: &AppHandle, event| match event.id.as_ref() {
             "quit" => app.exit(0),

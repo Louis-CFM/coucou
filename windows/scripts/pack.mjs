@@ -27,22 +27,22 @@ const PACKAGES = {
     {
       dir: "nsis",
       suffix: "-setup.exe",
-      names: [`Coucou-Windows-${version}-setup.exe`, "Coucou-Windows-setup.exe"],
+      names: [`NexIsland-Windows-${version}-setup.exe`, "NexIsland-Windows-setup.exe"],
     },
     {
       dir: "msi",
       suffix: ".msi",
-      names: [`Coucou-Windows-${version}.msi`, "Coucou-Windows.msi"],
+      names: [`NexIsland-Windows-${version}.msi`, "NexIsland-Windows.msi"],
     },
   ],
   linux: [
     {
       dir: "appimage",
       suffix: ".AppImage",
-      names: [`Coucou-Linux-${version}-${arch}.AppImage`, `Coucou-Linux-${arch}.AppImage`],
+      names: [`NexIsland-Linux-${version}-${arch}.AppImage`, `NexIsland-Linux-${arch}.AppImage`],
     },
-    { dir: "deb", suffix: ".deb", names: [`Coucou-Linux-${version}-${debArch}.deb`] },
-    { dir: "rpm", suffix: ".rpm", names: [`Coucou-Linux-${version}-${arch}.rpm`] },
+    { dir: "deb", suffix: ".deb", names: [`NexIsland-Linux-${version}-${debArch}.deb`] },
+    { dir: "rpm", suffix: ".rpm", names: [`NexIsland-Linux-${version}-${arch}.rpm`] },
   ],
 };
 
@@ -73,8 +73,8 @@ const written = [];
 for (const { dir, suffix, names } of packages) {
   const built = newest(join(bundleRoot, dir), suffix);
   if (!built) {
-    console.error(`No *${suffix} in ${join(bundleRoot, dir)} — run \`npm run tauri build\` first.`);
-    process.exit(1);
+    console.warn(`Note: No *${suffix} in ${join(bundleRoot, dir)} (toolchain may be absent for this format).`);
+    continue;
   }
   for (const name of names) {
     for (const targetDir of outDirs) {
