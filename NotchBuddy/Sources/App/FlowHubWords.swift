@@ -8,6 +8,11 @@ struct HubDictionaryPage: View {
     @State private var newWord = ""
     @State private var from = ""
     @State private var to = ""
+    @State private var showingImport = false
+    @State private var importWords = ""
+    @State private var importReplacements = ""
+    @State private var importTab = 0
+    @State private var importFeedback: String?
 
     var body: some View {
         HubPageScaffold(title: String(localized: "hub.page.dictionary"),
@@ -18,6 +23,14 @@ struct HubDictionaryPage: View {
                     Button(String(localized: "hub.add"), action: addWord)
                         .buttonStyle(HubButtonStyle(primary: true))
                         .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button(String(localized: "hub.import-bulk")) { showingImport = true }
+                        .buttonStyle(HubButtonStyle())
+                    HubIconButton(symbol: "doc.on.doc", help: String(localized: "hub.export"), action: exportDictionary)
+                }
+                if let importFeedback {
+                    Text(importFeedback)
+                        .font(.system(size: 12))
+                        .foregroundColor(HubTheme.secondary)
                 }
                 if store.words.isEmpty {
                     HubEmptyState(text: String(localized: "hub.words-empty"), state: .idle, color: "#A78BFA")
@@ -65,6 +78,7 @@ struct HubDictionaryPage: View {
                 }
             }
         }
+        .sheet(isPresented: $showingImport) { importSheet }
     }
 
     private func addWord() {
@@ -76,6 +90,162 @@ struct HubDictionaryPage: View {
         store.addReplacement(from: from, to: to)
         from = ""
         to = ""
+    }
+
+    // MARK: - Bulk import
+
+    /// Words and replacements pasted at once: {"words": [...], "replacements": [{"from": ..., "to": ...}]}
+    private struct ImportedWords: Codable {
+        var words: [String]?
+        var replacements: [FlowReplacement]?
+    }
+
+    private var importSheet: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Picker("", selection: $importTab) {
+                Text(String(localized: "hub.words")).tag(0)
+                Text(String(localized: "hub.replacements")).tag(1)
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            TextEditor(text: importTab == 0 ? $importWords : $importReplacements)
+                .font(.system(size: 13))
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 160)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(HubTheme.field))
+                .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Color.white.opacity(0.1)))
+                .overlay(alignment: .topLeading) {
+                    if (importTab == 0 ? importWords : importReplacements).isEmpty {
+                        Text(importTab == 0 ? String(localized: "hub.import-words-hint") : String(localized: "hub.import-replacements-hint"))
+                            .font(.system(size: 13))
+                            .foregroundColor(HubTheme.muted)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 8)
+                            .allowsHitTesting(false)
+                    }
+                }
+            HStack {
+                Text(importPreview)
+                    .font(.system(size: 12))
+                    .foregroundColor(HubTheme.secondary)
+                Spacer()
+                Button(String(localized: "hub.cancel")) { showingImport = false }
+                    .buttonStyle(HubButtonStyle())
+                Button(String(localized: "hub.import-bulk"), action: importPasted)
+                    .buttonStyle(HubButtonStyle(primary: true))
+                    .disabled(importCount == 0)
+            }
+        }
+        .padding(18)
+        .frame(width: 420)
+    }
+
+    /// How many entries the pasted text would add right now.
+    private var importCount: Int {
+        importTab == 0 ? parsedWords.count : parsedReplacements.count
+    }
+
+    private var importPreview: String {
+        String(format: String(localized: "hub.import-count %lld"), Int64(importCount))
+    }
+
+    /// The pasted words, one per line, without the empty lines and the ones already there (words
+    /// or JSON {"words": [...]}).
+    private var parsedWords: [String] {
+        if let data = importWords.data(using: .utf8),
+           let file = try? JSONDecoder().decode(ImportedWords.self, from: data), file.words != nil {
+            var seen = Set(store.words.map { $0.lowercased() })
+            return file.words!.compactMap { word in
+                let w = word.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !w.isEmpty, seen.insert(w.lowercased()).inserted else { return nil }
+                return w
+            }
+        }
+        var seen = Set(store.words.map { $0.lowercased() })
+        return importWords.split(whereSeparator: \.isNewline).compactMap { line in
+            let w = line.trimmingCharacters(in: .whitespaces)
+            guard !w.isEmpty, seen.insert(w.lowercased()).inserted else { return nil }
+            return w
+        }
+    }
+
+    /// The pasted replacements: a line is "heard -> written" (also "→", "=>"), or "heard, written";
+    /// or the JSON {"replacements": [{"from": ..., "to": ...}]} of words.json.
+    private var parsedReplacements: [(from: String, to: String)] {
+        var pairs: [(from: String, to: String)] = []
+        if let data = importReplacements.data(using: .utf8),
+           let file = try? JSONDecoder().decode(ImportedWords.self, from: data), file.replacements != nil {
+            pairs = file.replacements!.compactMap { replacement in
+                let f = replacement.from.trimmingCharacters(in: .whitespacesAndNewlines)
+                let t = replacement.to.trimmingCharacters(in: .whitespacesAndNewlines)
+                return f.isEmpty || t.isEmpty ? nil : (f, t)
+            }
+        } else {
+            for line in importReplacements.split(whereSeparator: \.isNewline) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.isEmpty else { continue }
+                // The arrow when there is one, the first comma otherwise.
+                let separators = [" -> ", "->", "→", "=>"]
+                var split: (String, String)?
+                for separator in separators {
+                    if let range = trimmed.range(of: separator) {
+                        split = (String(trimmed[..<range.lowerBound]), String(trimmed[range.upperBound...]))
+                        break
+                    }
+                }
+                if split == nil, let range = trimmed.range(of: ",") {
+                    split = (String(trimmed[..<range.lowerBound]), String(trimmed[range.upperBound...]))
+                }
+                guard let split else { continue }
+                let f = split.0.trimmingCharacters(in: .whitespaces)
+                let t = split.1.trimmingCharacters(in: .whitespaces)
+                guard !f.isEmpty, !t.isEmpty else { continue }
+                pairs.append((f, t))
+            }
+        }
+        // The last one wins when the same words are heard twice, like addReplacement does.
+        var seen = Set<String>()
+        return pairs.reversed().filter { seen.insert($0.from.lowercased()).inserted }.reversed()
+    }
+
+    private func importPasted() {
+        var words = 0, replacements = 0
+        for word in parsedWords {
+            store.addWord(word)
+            words += 1
+        }
+        for replacement in parsedReplacements {
+            store.addReplacement(from: replacement.from, to: replacement.to)
+            replacements += 1
+        }
+        importWords = ""
+        importReplacements = ""
+        showingImport = false
+        showImportFeedback(String(format: String(localized: "hub.import-added %lld %lld"), Int64(words), Int64(replacements)))
+    }
+
+    /// The number of entries just added, shown for a few seconds like a toast.
+    private func showImportFeedback(_ text: String) {
+        importFeedback = text
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(4))
+            if importFeedback == text { importFeedback = nil }
+        }
+    }
+
+    /// Puts the whole dictionary on the clipboard as JSON, ready to be pasted back or shared.
+    private func exportDictionary() {
+        struct Export: Encodable {
+            var words: [String]
+            var replacements: [FlowReplacement]
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(Export(words: store.words, replacements: store.replacements)),
+           let json = String(data: data, encoding: .utf8) {
+            NSPasteboard.copyText(json)
+            showImportFeedback(String(localized: "hub.export-copied"))
+        }
     }
 }
 
