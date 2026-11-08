@@ -1,12 +1,12 @@
 [package]
-name = "coucou-hook"
-description = "Relays Claude Code hook events to Coucou over a named pipe (Windows) or a Unix socket (Linux)"
+name = "ml7a-hook"
+description = "Relays Claude Code hook events to ml7a over a named pipe (Windows) or a Unix socket (Linux)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "coucou-hook"
+name = "ml7a-hook"
 path = "src/main.rs"
 
 [dependencies]

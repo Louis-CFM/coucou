@@ -70,7 +70,7 @@ static COUNTER: AtomicU64 = AtomicU64::new(1);
 pub fn pipe_name() -> String {
     let key = crate::platform::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
-    format!(r"\\.\pipe\coucou-{key}")
+    format!(r"\\.\pipe\ml7a-{key}")
 }
 
 #[cfg(windows)]

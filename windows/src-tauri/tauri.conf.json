@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Coucou",
+  "productName": "ml7a",
   "version": "0.5.9",
-  "identifier": "fr.louisraille.coucou",
+  "identifier": "com.ml7a.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -18,7 +18,7 @@
     "windows": [
       {
         "label": "island",
-        "title": "Coucou",
+        "title": "ml7a",
         "url": "index.html",
         "width": 240,
         "height": 6,
@@ -48,11 +48,11 @@
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
-    "resources": { "../target/release/coucou-hook.exe": "coucou-hook.exe" },
+    "resources": { "../target/release/ml7a-hook.exe": "ml7a-hook.exe" },
     "copyright": "© Louis Raille",
     "category": "DeveloperTool",
     "shortDescription": "Mochi lives at the top of your screen",
-    "longDescription": "Coucou puts Mochi at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
+    "longDescription": "ml7a puts Mochi at the top of your screen: it shows your AI agent sessions and integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
     "windows": {
       "nsis": {
         "installMode": "currentUser",

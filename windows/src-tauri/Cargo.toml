@@ -1,6 +1,6 @@
 [package]
-name = "coucou"
-description = "Coucou for Windows and Linux — Mochi lives at the top of your screen"
+name = "ml7a"
+description = "ml7a for Windows — Mochi lives at the top of your screen"
 authors = ["Louis Raille"]
 version.workspace = true
 edition.workspace = true
