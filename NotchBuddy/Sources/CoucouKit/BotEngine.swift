@@ -74,17 +74,17 @@ enum BadgeType {
     case arrow(CGColor)
 }
 
-// MARK: - Mochi track constants (from PISTES.mochi)
+// MARK: - Splash Dolphin track constants (NexIsland)
 
 enum MochiConst {
     static let eyeW: CGFloat  = 0.25
     static let eyeH: CGFloat  = 0.27
     static let eyeSp: CGFloat = 0.37
     static let eyeP: CGFloat  = -0.12
-    static let baseTop    = CGColor(red: 0.929, green: 0.929, blue: 0.937, alpha: 1)  // #EDEDEF
-    static let baseBottom = CGColor(red: 0.769, green: 0.773, blue: 0.792, alpha: 1)  // #C4C5CA
-    static let ink        = CGColor(red: 0.102, green: 0.082, blue: 0.071, alpha: 1)  // #1A1412
-    static let miniInk    = CGColor(red: 0.063, green: 0.075, blue: 0.102, alpha: 1)  // #10131A
+    static let baseTop    = CGColor(red: 0.545, green: 0.784, blue: 0.949, alpha: 1)  // #8BC8F2
+    static let baseBottom = CGColor(red: 0.290, green: 0.604, blue: 0.886, alpha: 1)  // #4A9AE2
+    static let ink        = CGColor(red: 0.071, green: 0.082, blue: 0.102, alpha: 1)  // #12151A
+    static let miniInk    = CGColor(red: 0.051, green: 0.063, blue: 0.082, alpha: 1)  // #0D1015
 }
 
 // MARK: - Bot state configs
@@ -1455,14 +1455,27 @@ final class BotEngine: ObservableObject {
             // Mini bots: flat solid fill — no gradient, no reflection, no highlight
             ctx.fill(path, with: .color(Color(cgColor: bc)))
         } else {
-            // Main bot: linear gradient body
-            let top: Color = pumpkinColors ? Color(hex: "#FFA94D") : Color(red: 0.929, green: 0.929, blue: 0.937)
-            let bot: Color = pumpkinColors ? Color(hex: "#E8590C") : Color(red: 0.769, green: 0.773, blue: 0.792)
+            // Main bot: linear gradient body (Sky Blue Dolphin Palette)
+            let top: Color = pumpkinColors ? Color(hex: "#FFA94D") : Color(red: 0.545, green: 0.784, blue: 0.949)
+            let bot: Color = pumpkinColors ? Color(hex: "#E8590C") : Color(red: 0.290, green: 0.604, blue: 0.886)
             ctx.fill(path, with: .linearGradient(
                 Gradient(colors: [top, bot]),
                 startPoint: CGPoint(x: rx*0.7, y: -ry*0.85),
                 endPoint: CGPoint(x: -rx*0.8, y: ry*0.9)
             ))
+
+            // White pearl underbelly & throat contour
+            let bellyPath = Path { p in
+                p.addEllipse(in: CGRect(x: -rx * 0.72, y: -ry * 0.05, width: rx * 1.44, height: ry * 0.95))
+            }
+            var bellyCtx = ctx
+            bellyCtx.clip(to: path)
+            bellyCtx.fill(bellyPath, with: .linearGradient(
+                Gradient(colors: [Color.white.opacity(0.95), Color(red: 0.94, green: 0.97, blue: 1.0, opacity: 0.82)]),
+                startPoint: CGPoint(x: 0, y: -ry * 0.05),
+                endPoint: CGPoint(x: 0, y: ry * 0.9)
+            ))
+
             // State tint — fades out as morph increases (mailbox has no tint)
             let effectiveTint = tint * (1 - morph)
             if effectiveTint > 0.01 {
@@ -1485,15 +1498,25 @@ final class BotEngine: ObservableObject {
                 ]),
                 center: .zero, startRadius: R*0.15, endRadius: R*1.25
             ))
-            // Highlight
+            // Specular Vinyl 3D Highlights on Forehead / Melon
             ctx.fill(path, with: .radialGradient(
                 Gradient(stops: [
-                    .init(color: Color.white.opacity(0.55), location: 0),
+                    .init(color: Color.white.opacity(0.68), location: 0),
                     .init(color: .clear, location: 1)
                 ]),
                 center: CGPoint(x: rx*0.34, y: -ry*0.46),
                 startRadius: 0,
                 endRadius: R*0.42
+            ))
+            // Secondary gloss rim
+            ctx.fill(path, with: .radialGradient(
+                Gradient(stops: [
+                    .init(color: Color.white.opacity(0.38), location: 0),
+                    .init(color: .clear, location: 1)
+                ]),
+                center: CGPoint(x: -rx*0.25, y: -ry*0.55),
+                startRadius: 0,
+                endRadius: R*0.25
             ))
         }
     }
@@ -1567,6 +1590,13 @@ final class BotEngine: ObservableObject {
             p.addRoundedRect(in: CGRect(x: -w/2, y: -hh/2, width: w, height: hh),
                              cornerSize: CGSize(width: min(w/2, hh/2), height: min(w/2, hh/2)))
             ctx.fill(p, with: .color(ink))
+            // Specular glint on glossy dolphin eye
+            if open > 0.6 {
+                let glint1 = Path(ellipseIn: CGRect(x: w*0.06, y: -hh*0.32, width: w*0.28, height: w*0.28))
+                ctx.fill(glint1, with: .color(.white))
+                let glint2 = Path(ellipseIn: CGRect(x: -w*0.22, y: hh*0.12, width: w*0.14, height: w*0.14))
+                ctx.fill(glint2, with: .color(Color.white.opacity(0.8)))
+            }
 
         case .dot:
             var p = Path()

@@ -61,16 +61,16 @@ interface Particle {
   age: number; life: number; rot: number; size: number;
 }
 
-// ── Constants (MochiConst / PISTES.mochi) ─────────────────────────────────────
+// ── Constants (Splash Dolphin / NexIsland) ────────────────────────────────────
 
 const EYE_W = 0.25;
 const EYE_H = 0.27;
 const EYE_SP = 0.37;
 const EYE_P = -0.12;
-const BASE_TOP: RGB = [0.929, 0.929, 0.937]; // #EDEDEF
-const BASE_BOTTOM: RGB = [0.769, 0.773, 0.792]; // #C4C5CA
-const INK = "rgb(26,20,18)"; // #1A1412
-const MINI_INK = "rgb(16,19,26)"; // #10131A
+const BASE_TOP: RGB = [0.545, 0.784, 0.949]; // #8BC8F2 Sky Blue
+const BASE_BOTTOM: RGB = [0.290, 0.604, 0.886]; // #4A9AE2 Ocean Blue
+const INK = "rgb(18,21,26)"; // #12151A
+const MINI_INK = "rgb(13,16,21)"; // #0D1015
 
 const C = {
   idle: [0.902, 0.914, 0.933] as RGB,
@@ -900,6 +900,18 @@ export class BotEngine {
       g.addColorStop(1, rgba(BASE_BOTTOM));
       x.fillStyle = g;
       x.fill(body);
+
+      // Pearl white underbelly
+      x.save();
+      x.clip(body);
+      x.beginPath();
+      x.ellipse(0, ry * 0.45, rx * 0.75, ry * 0.5, 0, 0, Math.PI * 2);
+      const bg = x.createLinearGradient(0, -ry * 0.05, 0, ry * 0.9);
+      bg.addColorStop(0, "rgba(255, 255, 255, 0.92)");
+      bg.addColorStop(1, "rgba(235, 245, 255, 0.80)");
+      x.fillStyle = bg;
+      x.fill();
+      x.restore();
     }
     x.save();
     if (pumpkin > 0.001) {
@@ -992,6 +1004,18 @@ export class BotEngine {
         const hh = Math.max(h * this.open, w * 0.3);
         roundRectPath(x, -w / 2, -hh / 2, w, hh, Math.min(w / 2, hh / 2));
         x.fill();
+        if (this.open > 0.6) {
+          x.save();
+          x.fillStyle = "rgba(255, 255, 255, 0.95)";
+          x.beginPath();
+          x.arc(w * 0.12, -hh * 0.22, w * 0.14, 0, Math.PI * 2);
+          x.fill();
+          x.fillStyle = "rgba(255, 255, 255, 0.75)";
+          x.beginPath();
+          x.arc(-w * 0.18, hh * 0.16, w * 0.08, 0, Math.PI * 2);
+          x.fill();
+          x.restore();
+        }
         break;
       }
       case "dot":

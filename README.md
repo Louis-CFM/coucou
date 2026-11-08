@@ -1,17 +1,18 @@
 <div align="center">
 
-<img src="NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="96" alt="Coucou icon">
+<img src="NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="96" alt="NexIsland icon">
 
-# Coucou
+# NexIsland
 
-**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows and Linux — and keeps an eye on your AI coding agent sessions. And now on your phone too: iPhone and Android.**
+**An aquatic friend that lives in your Mac's notch — or at the top of your screen on Windows and Linux — and keeps an eye on your AI coding agent sessions. And now on your phone too: iPhone and Android.**
 
-Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing. Walk away from your Mac and Mochi follows you to your iPhone: Lock Screen, Dynamic Island, widgets, Siri.
+Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing. Walk away from your Mac and Splash the dolphin follows you to your phone: Lock Screen, Dynamic Island, widgets, Siri.
 
-**New in 0.4: Coucou is a real Mac app.** Hold a key anywhere, speak, let go: your words are pasted where you type, like Wispr Flow — free, open source, and offline with Parakeet. Record your calls without a bot in the meeting and get the transcript, the summary and the to-dos.
+> **Forked & Reimagined from [Coucou](https://github.com/Louis-CFM/coucou)**  
+> **Original Creator & Architect:** [Louis-CFM](https://github.com/Louis-CFM)  
+> **Modified & Maintained by:** [NexSz](https://github.com/Snzy09) (New 3D Dolphin Mascot, Aquatic Audio, Icons & Theme)  
 
-[![Version](https://img.shields.io/github/v/release/Louis-CFM/coucou?filter=v*&label=version&color=0A84FF)](https://github.com/Louis-CFM/coucou/releases)
-![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
+[![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)](https://github.com/Snzy09/NexIsland)
 ![iOS 18+](https://img.shields.io/badge/iOS-18%2B-black?logo=apple)
 ![Android 11+](https://img.shields.io/badge/Android-11%2B-3DDC84?logo=android&logoColor=white)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
@@ -20,18 +21,18 @@ Approve permissions, watch your agents work, drop a file, chat with Claude — a
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
 ![Code: MIT](https://img.shields.io/badge/code-MIT-green)
-![GitHub stars](https://img.shields.io/github/stars/Louis-CFM/coucou?style=social)
-
-<img src="docs/media/demo.gif" width="760" alt="Coucou in action">
 
 </div>
 
 ---
 
-## Why
+## Credits & Attribution
 
-Some studios showed off gorgeous notch companions… and never let anyone use them.
-**Coucou is the open version.** Every line of code is open source under the MIT License: read it, fork it, learn from it. The Coucou name, Mochi and the sounds stay © Louis Raillé (see [License](#license)).
+NexIsland is built on top of the open-source architecture created by **Louis-CFM** ([Coucou](https://github.com/Louis-CFM/coucou)).
+- **Original Architecture & Code:** Louis-CFM (Louis Raillé)
+- **NexIsland Modifications & Mascot:** NexSz (New 3D Dolphin Mascot, 29 Aquatic Sound Effects, Universal Icon Suite, Rebranding)
+
+See [CREDITS.md](CREDITS.md) and [PLAN_NEXISLAND.md](PLAN_NEXISLAND.md) for full details.
 
 Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment Claude Code needs you.
 

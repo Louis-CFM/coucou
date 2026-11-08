@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Coucou",
+  "productName": "NexIsland",
   "version": "0.5.3",
-  "identifier": "fr.louisraille.coucou",
+  "identifier": "com.nexsz.nexisland",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -18,7 +18,7 @@
     "windows": [
       {
         "label": "island",
-        "title": "Coucou",
+        "title": "NexIsland",
         "url": "index.html",
         "width": 240,
         "height": 6,
@@ -49,10 +49,10 @@
       "icons/icon.ico"
     ],
     "resources": { "../target/release/coucou-hook.exe": "coucou-hook.exe" },
-    "copyright": "© Louis Raille",
+    "copyright": "© Louis Raille (Original Coucou) · Modified by NexSz",
     "category": "DeveloperTool",
-    "shortDescription": "Mochi lives at the top of your screen",
-    "longDescription": "Coucou puts Mochi at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
+    "shortDescription": "Splash lives at the top of your screen",
+    "longDescription": "NexIsland puts Splash the dolphin at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
     "windows": {
       "nsis": {
         "installMode": "currentUser",
