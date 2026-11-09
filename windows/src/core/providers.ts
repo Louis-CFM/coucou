@@ -1,12 +1,12 @@
 // Who the chat can talk to — the island's side of chat.rs. The Mac's
-// ChatProvider (IslandTypes.swift) plus OpenRouter and any OpenAI-compatible
+// ChatProvider (IslandTypes.swift) plus OpenRouter, Requesty and any OpenAI-compatible
 // server. Pure data and helpers, so they can be tested without a webview.
 
 import type { Settings } from "./state";
 import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
-  | "anthropic" | "openai" | "google" | "openrouter"
+  | "anthropic" | "openai" | "google" | "openrouter" | "requesty"
   | "ollama" | "lmstudio" | "custom"
   | "cursor" | "copilot";
 
@@ -29,6 +29,7 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "google", name: "Google", accent: "#4285F4", key: "google-api-key", urlField: null, defaultModel: "gemini-2.0-flash", prefer: "flash" },
   { id: "openai", name: "OpenAI", accent: "#10A37F", key: "openai-api-key", urlField: null, defaultModel: "gpt-4o", prefer: "mini" },
   { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, defaultModel: "openrouter/auto", prefer: null },
+  { id: "requesty", name: "Requesty", accent: "#0EA5E9", key: "requesty-api-key", urlField: null, defaultModel: "gpt-5.4-mini", prefer: null },
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
