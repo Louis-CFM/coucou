@@ -59,6 +59,25 @@ test("quotes, rules and paragraphs that stop at the next block", () => {
   assert.deepEqual(parseMarkdown(""), []);
 });
 
+test("fenced math blocks parse $$ and \\[", () => {
+  assert.deepEqual(parseMarkdown("$$\nE = mc^2\n$$"), [
+    { kind: "math", math: "E = mc^2", display: true },
+  ]);
+  assert.deepEqual(parseMarkdown("$$\\int_0^1 x dx$$"), [
+    { kind: "math", math: "\\int_0^1 x dx", display: true },
+  ]);
+  assert.deepEqual(parseMarkdown("\\[\n\\frac{a}{b}\n\\]"), [
+    { kind: "math", math: "\\frac{a}{b}", display: true },
+  ]);
+  assert.deepEqual(parseMarkdown("\\[x = 1\\]"), [
+    { kind: "math", math: "x = 1", display: true },
+  ]);
+  // An unclosed math block runs to the end, as while an answer is streaming.
+  assert.deepEqual(parseMarkdown("$$\nlet x"), [
+    { kind: "math", math: "let x", display: true },
+  ]);
+});
+
 // ── Inline ────────────────────────────────────────────────────────────────────
 
 test("inline code, bold, italic and links nest as a tree", () => {
@@ -84,6 +103,26 @@ test("snake_case words and code spans are not italics", () => {
   assert.deepEqual(parseInline("call my_long_name now"), [{ kind: "text", text: "call my_long_name now" }]);
   assert.deepEqual(parseInline("`a *b* c`"), [{ kind: "code", text: "a *b* c" }]);
   assert.deepEqual(parseInline("2 * 3 * 4"), [{ kind: "text", text: "2 * 3 * 4" }]);
+});
+
+test("inline math parses $...$ and \\(...\\) without corrupting underscores or asterisks", () => {
+  assert.deepEqual(parseInline("Let $E = mc^2$ and $x_1 + x_2$ with \\(y \\in \\mathbb{R}\\)."), [
+    { kind: "text", text: "Let " },
+    { kind: "math", math: "E = mc^2", display: false },
+    { kind: "text", text: " and " },
+    { kind: "math", math: "x_1 + x_2", display: false },
+    { kind: "text", text: " with " },
+    { kind: "math", math: "y \\in \\mathbb{R}", display: false },
+    { kind: "text", text: "." },
+  ]);
+  assert.deepEqual(parseInline("Formula $a * b * c$."), [
+    { kind: "text", text: "Formula " },
+    { kind: "math", math: "a * b * c", display: false },
+    { kind: "text", text: "." },
+  ]);
+  assert.deepEqual(parseInline("It costs $5 or $10."), [
+    { kind: "text", text: "It costs $5 or $10." },
+  ]);
 });
 
 test("only http and https addresses become links", () => {
@@ -124,6 +163,21 @@ test("each block becomes its own element", () => {
   assert.equal(root.children.length, 1);
 });
 
+test("math formulas are rendered into native MathML DOM nodes without innerHTML", () => {
+  const root = dom.root();
+  renderMarkdown(root, "Formula:\n\n$$\\frac{a}{b}$$\n\nInline $x_1 + x_2$.");
+  const mathBlocks = root.find(".md-math-block");
+  assert.equal(mathBlocks.length, 1);
+  const inlineMath = root.find(".md-math-inline");
+  assert.equal(inlineMath.length, 1);
+  const mathElements = root.find("MATH");
+  assert.equal(mathElements.length, 2);
+  const fracElements = root.find("MFRAC");
+  assert.equal(fracElements.length, 1);
+  const subElements = root.find("MSUB");
+  assert.equal(subElements.length, 2);
+});
+
 test("a web link opens through Rust; anything else is plain text", () => {
   const root = dom.root();
   renderMarkdown(root, "See [the docs](https://example.com/docs) or [this](file:///etc/passwd).");
@@ -134,4 +188,14 @@ test("a web link opens through Rust; anything else is plain text", () => {
   assert.equal(event.defaultPrevented, true);
   assert.deepEqual(sent("open_url"), [{ url: "https://example.com/docs" }]);
   assert.match(root.textContent, /or this\.$/);
+});
+
+test("complex LaTeX structures render properly into MathML (matrices, roots, primes, vectors)", () => {
+  const root = dom.root();
+  renderMarkdown(root, "Matrix:\n\n$$\\vec{v} = \\begin{pmatrix} x \\\\ y \\end{pmatrix}$$\n\nDiff: $y' = \\sqrt{x} + \\pi$.");
+  assert.equal(root.find("MTABLE").length, 1);
+  assert.equal(root.find("MTR").length, 2);
+  assert.equal(root.find("MSQRT").length, 1);
+  assert.equal(root.find("MOVER").length, 1); // vector \vec{v}
+  assert.match(root.textContent, /π/);
 });
