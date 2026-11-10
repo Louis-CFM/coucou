@@ -8,6 +8,7 @@
 // ~/.local/share/coucou/Models (Linux). From then on everything runs offline.
 
 pub mod audio;
+mod idle;
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -266,9 +267,9 @@ pub fn remove(app: &AppHandle) {
 
 // ── Recognition ───────────────────────────────────────────────────────────────
 
-fn recognizer_slot() -> &'static Mutex<Option<Arc<OfflineRecognizer>>> {
-    static R: OnceLock<Mutex<Option<Arc<OfflineRecognizer>>>> = OnceLock::new();
-    R.get_or_init(|| Mutex::new(None))
+fn recognizer_slot() -> &'static Mutex<idle::IdleCache<OfflineRecognizer>> {
+    static R: OnceLock<Mutex<idle::IdleCache<OfflineRecognizer>>> = OnceLock::new();
+    R.get_or_init(|| Mutex::new(idle::IdleCache::new()))
 }
 
 /// Serialises loading: two callers never load the 650 MB model twice.
@@ -283,14 +284,14 @@ fn threads() -> i32 {
 
 /// The loaded recognizer, loading it on first use (about 2 s).
 pub fn recognizer() -> Option<Arc<OfflineRecognizer>> {
-    if let Some(r) = recognizer_slot().lock().unwrap().clone() {
+    if let Some(r) = recognizer_slot().lock().unwrap().get(Instant::now()) {
         return Some(r);
     }
     if !PARAKEET.is_present() {
         return None;
     }
     let _guard = load_lock().lock().unwrap();
-    if let Some(r) = recognizer_slot().lock().unwrap().clone() {
+    if let Some(r) = recognizer_slot().lock().unwrap().get(Instant::now()) {
         return Some(r);
     }
     let mut config = OfflineRecognizerConfig::default();
@@ -308,13 +309,13 @@ pub fn recognizer() -> Option<Arc<OfflineRecognizer>> {
         Some(_) => crate::log::line(format!("Parakeet loaded in {:?}", started.elapsed())),
         None => crate::log::line("Parakeet could not be loaded"),
     }
-    *recognizer_slot().lock().unwrap() = r.clone();
+    recognizer_slot().lock().unwrap().set(r.clone(), Instant::now());
     r
 }
 
 /// Loads the model in the background, so the first dictation is not slowed down.
 pub fn preload() {
-    if !PARAKEET.is_present() || recognizer_slot().lock().unwrap().is_some() {
+    if !PARAKEET.is_present() || recognizer_slot().lock().unwrap().is_loaded() {
         return;
     }
     std::thread::spawn(|| {
@@ -324,7 +325,17 @@ pub fn preload() {
 
 /// Frees the model's memory (dictation turned off, models removed).
 pub fn unload() {
-    *recognizer_slot().lock().unwrap() = None;
+    let removed = recognizer_slot().lock().unwrap().take();
+    drop(removed);
+}
+
+/// Drop only the cache's owner, outside its mutex. Active voice, dictation and
+/// recordings keep it warm; inference owners also prevent idle eviction.
+pub fn unload_if_idle(busy: bool) -> bool {
+    let removed = recognizer_slot().lock().unwrap().take_if_idle(Instant::now(), busy);
+    let unloaded = removed.is_some();
+    drop(removed);
+    unloaded
 }
 
 /// What was said, and each word with its place in the audio.
