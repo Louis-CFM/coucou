@@ -352,6 +352,10 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
     // below: every shortcut unsupported, and Settings shows the commands to
     // bind by hand.
     #[cfg(target_os = "linux")]
+    if blocked == Some("wayland") {
+        hyprland_binds(stored, &plan);
+    }
+    #[cfg(target_os = "linux")]
     if blocked == Some("wayland") && wayland::bind(app, stored, &plan) {
         return;
     }
@@ -392,6 +396,59 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
         *registry.portal.lock().unwrap() = None;
     }
     let _ = app.emit("shortcuts-status", status(app));
+}
+
+/// Hyprland's portal only fires shortcuts that have a `global` bind, so Coucou
+/// writes them to ~/.config/hypr/coucou-binds.lua from Settings and reloads.
+/// hyprland.lua loads it once: `pcall(dofile, <that path>)`.
+#[cfg(target_os = "linux")]
+fn hyprland_binds(stored: &Bindings, plan: &[(&'static ActionDef, Result<Shortcut, ActionStatus>)]) {
+    if !std::env::var("XDG_CURRENT_DESKTOP").is_ok_and(|d| d.to_lowercase().contains("hyprland")) {
+        return;
+    }
+    let Some(home) = std::env::var_os("HOME") else { return };
+    let path = std::path::Path::new(&home).join(".config/hypr/coucou-binds.lua");
+    let mut lua = String::from("-- Written by Coucou (Settings → Shortcuts). Edits here are overwritten.\n");
+    for (def, outcome) in plan {
+        if outcome.is_ok() {
+            if let Some(keys) = hyprland_keys(&effective(def, stored).keys) {
+                lua += &format!(
+                    "hl.bind(\"{keys}\", hl.dsp.global(\"fr.louisraille.coucou:{id}\"), {{ description = \"[Coucou] {d}\" }})\n",
+                    id = def.id,
+                    d = description(def.id),
+                );
+            }
+        }
+    }
+    // Flow's hold-to-talk key has an id of its own (flow/wayland.rs) and a fixed key.
+    lua += &format!(
+        "hl.bind(\"CTRL + ALT + V\", hl.dsp.global(\"fr.louisraille.coucou:{}\"), {{ description = \"[Coucou] Hold to dictate\" }})\n",
+        crate::flow::wayland::SHORTCUT_ID,
+    );
+    if std::fs::read_to_string(&path).is_ok_and(|old| old == lua) {
+        return;
+    }
+    if std::fs::write(&path, lua).is_ok() {
+        let _ = std::process::Command::new("hyprctl").arg("reload").status();
+    }
+}
+
+/// "Ctrl+Alt+Right" → "CTRL + ALT + Right".
+#[cfg(target_os = "linux")]
+fn hyprland_keys(keys: &str) -> Option<String> {
+    let parts: Vec<String> = keys
+        .split('+')
+        .map(|p| match p.trim().to_lowercase().as_str() {
+            "ctrl" | "control" => "CTRL".into(),
+            "alt" | "option" => "ALT".into(),
+            "shift" => "SHIFT".into(),
+            "super" | "meta" | "win" | "cmd" | "command" => "SUPER".into(),
+            k if k.len() == 1 => k.to_uppercase(),
+            _ => p.trim().to_string(),
+        })
+        .filter(|p| !p.is_empty())
+        .collect();
+    (parts.len() > 1).then(|| parts.join(" + "))
 }
 
 /// Lets go of every shortcut while a new one is being recorded in Settings,
@@ -687,6 +744,15 @@ mod wayland {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn hyprland_keys_are_spelt_the_way_hyprland_wants() {
+        assert_eq!(hyprland_keys("Ctrl+Alt+N").as_deref(), Some("CTRL + ALT + N"));
+        assert_eq!(hyprland_keys("ctrl+alt+Right").as_deref(), Some("CTRL + ALT + Right"));
+        assert_eq!(hyprland_keys("N"), None);
+        assert_eq!(hyprland_keys(""), None);
+    }
 
     const MAC_IDS: [&str; 10] = [
         "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
