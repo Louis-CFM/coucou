@@ -49,6 +49,14 @@ Fixes:
 - **Instant page switches in Settings** *(Linux)* (#906 by @RomainBrocheton)
 - **The finished card goes away when a new prompt comes** (#587) and **the GitHub week strip is graded against its own week** (#611), by @rollecode
 
+## Android 0.5.0 — Unreleased
+
+- **Coucou for Android 0.5.0**, by @Rhytam23 (versionCode 5)
+  - **A steadier link through your own relay** — the connection no longer drops after a quiet moment (from #554 by @rollecode)
+  - **Swipe the island up to put it away** — it goes back into the camera hole and stays there while the same thing goes on (the same agent working, the same request); anything new brings it back down. TalkBack has a *Dismiss the island* action for it
+  - **Nothing is lost with the swipe** — a finish, an error, a usage limit or a question becomes a quiet notification, and a permission request keeps its own notification with Deny and Allow
+  - **The island fits again** when the phone is rotated or the screen resolution or font size changes while it is open
+
 ## Android 0.4.0 — Unreleased
 
 - **The island sits in the middle again** when the screen resolution is set below the panel's (#900 by @pfTheTrial)
