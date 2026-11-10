@@ -170,6 +170,7 @@
     <string name="notif_question">Bir sorusu var</string>
     <string name="notif_ratelimit">Kullanım sınırına ulaştı</string>
     <string name="island_answer_on_pc">Coucou\'yu açmak için dokun veya bilgisayarında yanıtla</string>
+    <string name="island_dismiss">Adayı kapat</string>
     <string name="state_ready">Hazır</string>
     <string name="state_working">Çalışıyor</string>
     <string name="state_thinking">Düşünüyor</string>

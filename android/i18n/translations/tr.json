@@ -169,6 +169,7 @@
     "notif_question": "Bir sorusu var",
     "notif_ratelimit": "Kullanım sınırına ulaştı",
     "island_answer_on_pc": "Coucou'yu açmak için dokun veya bilgisayarında yanıtla",
+    "island_dismiss": "Adayı kapat",
     "state_ready": "Hazır",
     "state_working": "Çalışıyor",
     "state_thinking": "Düşünüyor",
