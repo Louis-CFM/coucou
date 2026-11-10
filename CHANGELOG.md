@@ -34,6 +34,7 @@ Fixes:
 - **Approve OpenCode from the island** — OpenCode's permission requests get Allow and Deny on the island; with no click, OpenCode asks as usual (#442 by @ValentinoMartz)
 - **A card answered in the terminal goes away** — allow or deny in the terminal (or Claude's app) and the island's card closes by itself (#740 by @arnavaggarwal-dev)
 - **Flow: one press starts hands-free** (#1063 by @Brezinben)
+- **Flow: hide the pill until you dictate** *(optional, off by default)* — Flow → Settings → **Hide the pill until I dictate**: the pill shows only while you dictate, record a call or get a message, and the dictation key still works (by @Rhytam23)
 - **« OK Coucou » with a Brazilian or a Spanish accent** (#828 by @afpruivo, #791 by @alexisrja)
 - **Cal.com bookings in detail** — month, day, then the booking (#1006 by @lazarevtill); **notes exported where you choose** *(Windows)* (#1007 by @lazarevtill)
 - **WhatsApp's ↗ opens WhatsApp Desktop** at the open chat, else WhatsApp Web (#1070 by @Joshuabarradas234)
