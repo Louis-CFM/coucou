@@ -147,6 +147,8 @@
     "approval_hint": "Autoriser sur le téléphone demande l'empreinte ou le verrouillage d'écran. Refuser, non.",
     "overlay_title": "Afficher Mochi par-dessus les autres apps",
     "overlay_hint": "Une île descend du haut de l'écran pendant qu'un agent travaille, puis remonte.",
+    "overlay_dnd_title": "Masquer l'île en mode Ne pas déranger",
+    "overlay_dnd_hint": "Tant que Ne pas déranger est activé, rien ne descend du haut de l'écran. Les demandes arrivent toujours en notification.",
     "msg_overlay_permission": "Autorise « l'affichage par-dessus les autres apps » pour Coucou, puis reviens.",
     "settings_title": "Réglages",
     "settings_sound": "Sons de Mochi",

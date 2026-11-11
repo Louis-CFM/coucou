@@ -153,6 +153,8 @@ internal object TextIds {
         "approval_hint" to R.string.approval_hint,
         "overlay_title" to R.string.overlay_title,
         "overlay_hint" to R.string.overlay_hint,
+        "overlay_dnd_title" to R.string.overlay_dnd_title,
+        "overlay_dnd_hint" to R.string.overlay_dnd_hint,
         "msg_overlay_permission" to R.string.msg_overlay_permission,
         "settings_title" to R.string.settings_title,
         "settings_sound" to R.string.settings_sound,
