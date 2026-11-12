@@ -856,6 +856,11 @@ What changes on Linux:
   - **KDE Plasma on Wayland**: a few lines of KWin script, loaded over D-Bus
     from `$XDG_RUNTIME_DIR`, activate the window by process ID and are unloaded
     right after; Plasma 5 and 6.
+  - **niri**: `niri msg --json windows` lists every window with its process ID,
+    native Wayland ones included (Zed, kitty, Alacritty, foot…); the nearest
+    ancestor's window gets a `niri msg action focus-window`, which scrolls to it
+    and switches to its workspace. `niri` must be on the `PATH` of Coucou's
+    session.
   - **kitty**, anywhere: its tab is selected too when remote control listens on
     a socket (`allow_remote_control` and `listen_on` in kitty.conf).
   - **GNOME on Wayland** and other Wayland compositors let no app bring another
