@@ -57,6 +57,7 @@ Fixes:
   - **Nothing is lost with the swipe** — a finish, an error, a usage limit or a question becomes a quiet notification, and a permission request keeps its own notification with Deny and Allow
   - **Hide the island in Do Not Disturb** *(optional, off by default)* — Settings → **Hide the island in Do Not Disturb**: while the phone is in Do Not Disturb, nothing drops from the top of the screen; requests still arrive as notifications, which Android handles by its own Do Not Disturb rules
   - **The island fits again** when the phone is rotated or the screen resolution or font size changes while it is open
+  - **Six more languages** — German, Japanese, Korean, Traditional Chinese and Thai (from #1043 to #1047 by @Ohualtex) and Italian (from #974 by @roccordx); the app now has 16 translations
 
 ## Android 0.4.0 — Unreleased
 
