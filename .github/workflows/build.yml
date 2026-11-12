@@ -33,6 +33,9 @@ jobs:
       - name: Test island placement (notch and the four corners)
         run: bash scripts/test-island-placement.sh
 
+      - name: Test system HUD keys (decode, routing, steps)
+        run: bash scripts/test-system-hud.sh
+
       - name: Test parallel Claude Code sessions
         run: bash scripts/test-session-registry.sh
 
