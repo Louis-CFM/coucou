@@ -25,6 +25,7 @@ class ApprovalAlertsTest {
     @Test fun theDefaultsAreTodaysBehaviour() {
         val d = UserSettings()
         assertFalse("the screen wakes as before", d.keepScreenOff)
+        assertFalse("the island shows in Do Not Disturb as before", d.hideIslandInDnd)
         assertEquals(VibrationChoice.STANDARD, d.vibration)
         assertArrayEquals("the pattern is the one the app always had", longArrayOf(0, 500, 150, 500), VibrationChoice.STANDARD.pattern)
         assertEquals(d, UserSettings.load(MapStore()))
@@ -32,9 +33,10 @@ class ApprovalAlertsTest {
 
     @Test fun theChoicesAreSavedAndRead() {
         val store = MapStore()
-        UserSettings.save(store, UserSettings(keepScreenOff = true, vibration = VibrationChoice.SHORT))
+        UserSettings.save(store, UserSettings(keepScreenOff = true, vibration = VibrationChoice.SHORT, hideIslandInDnd = true))
         val back = UserSettings.load(store)
         assertTrue(back.keepScreenOff)
+        assertTrue(back.hideIslandInDnd)
         assertEquals(VibrationChoice.SHORT, back.vibration)
         assertArrayEquals(longArrayOf(0, 200), back.vibration.pattern)
         UserSettings.save(store, back.copy(vibration = VibrationChoice.OFF))

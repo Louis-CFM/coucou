@@ -8,6 +8,8 @@
 // people should be told it is recorded.
 
 pub mod builder;
+#[cfg(windows)]
+mod export;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -337,8 +339,24 @@ fn spawn_live(
     stop: Arc<AtomicBool>,
 ) {
     std::thread::spawn(move || {
+        let started = std::time::Instant::now();
+        let mut last_words = std::time::Instant::now();
         while !stop.load(Ordering::Relaxed) {
             std::thread::sleep(Duration::from_secs(1));
+            // A call left recording by mistake keeps the microphone and the
+            // voice model busy for hours, then takes as long again to write:
+            // it stops by itself after a long silence, or a very long call.
+            if let Some(why) = auto_stop(started.elapsed(), last_words.elapsed()) {
+                crate::log::line(format!("notes: stopped by itself ({why:?})"));
+                // `stop` here is the live loop's flag: the module's function.
+                crate::notes::stop(&app);
+                let text = match why {
+                    AutoStop::Silence => t("Nobody has spoken for 15 minutes: Coucou stopped recording the call."),
+                    AutoStop::Length => t("The call has been recorded for 4 hours: Coucou stopped recording it."),
+                };
+                pill::announce(&app, "mic", "#F7B32B", text, None, 30);
+                break;
+            }
             let mut channels = vec![(mic.clone(), builder::ME)];
             if let Some(s) = &system {
                 channels.push((s.clone(), "others"));
@@ -351,6 +369,7 @@ fn spawn_live(
                 if text.is_empty() || stop.load(Ordering::Relaxed) {
                     continue;
                 }
+                last_words = std::time::Instant::now();
                 let end = start + samples.len() as f64 / speech::SAMPLE_RATE as f64;
                 taker.change(&app, &id, |n| {
                     n.lines.push(Line { id: crate::flow::text::new_id(), speaker: speaker.into(), start, end, text });
@@ -359,6 +378,27 @@ fn spawn_live(
             }
         }
     });
+}
+
+/// Why a call stopped recording by itself.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum AutoStop {
+    Silence,
+    Length,
+}
+
+/// Longest stretch with nobody speaking, and longest call.
+const SILENCE_LIMIT: Duration = Duration::from_secs(15 * 60);
+const LENGTH_LIMIT: Duration = Duration::from_secs(4 * 3600);
+
+fn auto_stop(recording: Duration, since_words: Duration) -> Option<AutoStop> {
+    if recording >= LENGTH_LIMIT {
+        Some(AutoStop::Length)
+    } else if since_words >= SILENCE_LIMIT {
+        Some(AutoStop::Silence)
+    } else {
+        None
+    }
 }
 
 pub fn stop(app: &AppHandle) {
@@ -692,12 +732,11 @@ pub fn notes_markdown(taker: State<Arc<NoteTaker>>, id: String) -> Option<String
     taker.note(&id).map(|n| markdown(&n))
 }
 
-/// Saves the note as Markdown in Documents (or the home folder) and shows it.
+/// Windows asks where to save; cancelling the native dialog writes nothing.
 #[tauri::command]
-pub fn notes_export(taker: State<Arc<NoteTaker>>, id: String) -> Result<String, String> {
+pub async fn notes_export(window: tauri::WebviewWindow, taker: State<'_, Arc<NoteTaker>>, id: String) -> Result<Option<String>, String> {
+    if window.label() != crate::HUB_LABEL { return Err("Open the note in Coucou to export it.".into()); }
     let note = taker.note(&id).ok_or("no such note")?;
-    let home = crate::platform::home_dir();
-    let dir = [home.join("Documents"), home.clone()].into_iter().find(|d| d.is_dir()).unwrap_or(home);
     let safe: String = note
         .title
         .chars()
@@ -706,13 +745,41 @@ pub fn notes_export(taker: State<Arc<NoteTaker>>, id: String) -> Result<String, 
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
-    let mut path = dir.join(format!("{}.md", if safe.is_empty() { "Coucou notes".to_string() } else { safe.clone() }));
-    let mut n = 2;
-    while path.exists() {
-        path = dir.join(format!("{} ({n}).md", if safe.is_empty() { "Coucou notes" } else { &safe }));
-        n += 1;
+    let name = if safe.is_empty() { "Coucou notes" } else { &safe };
+    #[cfg(windows)]
+    {
+        let owner = window.hwnd().map_err(|error| error.to_string())?.0 as isize;
+        let selected = export::choose_path(owner, format!("{name}.md")).await?;
+        let content = markdown(&note);
+        tauri::async_runtime::spawn_blocking(move || export::write_selected(selected, &content))
+            .await.map_err(|error| error.to_string())?
     }
-    std::fs::write(&path, markdown(&note)).map_err(|e| e.to_string())?;
-    crate::platform::reveal_folder(&dir.to_string_lossy());
-    Ok(path.to_string_lossy().to_string())
+    #[cfg(not(windows))]
+    {
+        let home = crate::platform::home_dir();
+        let dir = [home.join("Documents"), home.clone()].into_iter().find(|d| d.is_dir()).unwrap_or(home);
+        let mut path = dir.join(format!("{name}.md"));
+        let mut n = 2;
+        while path.exists() {
+            path = dir.join(format!("{name} ({n}).md"));
+            n += 1;
+        }
+        std::fs::write(&path, markdown(&note)).map_err(|e| e.to_string())?;
+        crate::platform::reveal_folder(&dir.to_string_lossy());
+        Ok(Some(path.to_string_lossy().to_string()))
+    }
+}
+
+#[cfg(test)]
+mod auto_stop_tests {
+    use super::*;
+
+    #[test]
+    fn a_forgotten_call_stops_by_itself() {
+        let min = |m: u64| Duration::from_secs(m * 60);
+        assert_eq!(auto_stop(min(60), min(2)), None);
+        assert_eq!(auto_stop(min(60), min(15)), Some(AutoStop::Silence));
+        assert_eq!(auto_stop(min(240), min(1)), Some(AutoStop::Length));
+        assert_eq!(auto_stop(min(14), min(14)), None);
+    }
 }

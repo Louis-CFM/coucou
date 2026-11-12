@@ -96,7 +96,7 @@ export async function startRelay(options: { port?: number; host?: string; access
         peer.ws.send(PEER_ONLINE);
       }
 
-      ws.on("message", async (data, isBinary) => {
+      const onMessage = async (data: WebSocket.RawData, isBinary: boolean) => {
         if ((await accessGeneration(accessKey)) !== me.gen || !me.gen) return ws.close(1008, "access key changed");
         if (!isBinary) {
           if (data.toString() === "ping") return ws.send("pong"); // the platform's auto-response in the Worker
@@ -108,6 +108,11 @@ export async function startRelay(options: { port?: number; host?: string; access
         const other = room[otherRole(me.role)];
         if (!other || other.replaced || other.ws.readyState !== other.ws.OPEN) return ws.send(PEER_OFFLINE);
         other.ws.send(frame, { binary: true });
+      };
+      // One message at a time: the await above would otherwise let a burst overtake itself, which the Worker never does.
+      let turn: Promise<void> = Promise.resolve();
+      ws.on("message", (data, isBinary) => {
+        turn = turn.then(() => onMessage(data, isBinary)).catch(() => {});
       });
 
       const left = () => {

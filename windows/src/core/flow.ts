@@ -20,14 +20,30 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
   return invoke<T>(cmd, args);
 }
 
-export type FlowKey = "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super";
+export type FlowKey =
+  | "right_ctrl" | "right_alt" | "right_shift" | "left_ctrl_super" | "left_ctrl" | "left_alt" | "left_shift"
+  /** A shortcut of one's own: the keys in `keyCombo`. */
+  | "custom";
+
+/** A key as the pages write it: a FlowKey, "custom:AltLeft+ShiftLeft+KeyF" for
+ *  a shortcut of one's own, "wayland" where the desktop holds it, "" unknown. */
+export type FlowKeyId = FlowKey | `custom:${string}` | "wayland" | "";
+
+/** The key of `prefs` as the pages write it. */
+export function flowKeyId(prefs: { key: FlowKey; keyCombo?: string[] }): FlowKeyId {
+  return prefs.key === "custom" ? `custom:${(prefs.keyCombo ?? []).join("+")}` : prefs.key;
+}
 export type Edge = "bottom" | "bottom-left" | "bottom-right" | "left" | "right";
 export type Style = "verbatim" | "natural" | "polished";
 
 export interface FlowPrefs {
   enabled: boolean;
   key: FlowKey;
+  /** The keys of a shortcut of one's own (KeyboardEvent.code names), when `key` is "custom". */
+  keyCombo: string[];
   edge: Edge;
+  /** Hide the pill until a dictation, a call or a message needs it. */
+  hidePill: boolean;
   mic: string;
   keepDays: number;
   cleanup: boolean;
@@ -38,6 +54,10 @@ export interface FlowPrefs {
   voice: boolean;
   voiceOutput: VoiceOutput;
   voiceGender: "female" | "male";
+  /** The other apps go quiet while Coucou listens to you (Windows). */
+  muteOthers: boolean;
+  /** One short press of the key starts hands-free dictation, instead of two. */
+  oneTapHandsFree: boolean;
 }
 
 export type ModelState =
@@ -166,7 +186,7 @@ export interface PillState {
   phase: "idle" | "listening" | "thinking" | "locked" | "copied" | "failed" | "pastedAgain";
   edge: Edge;
   /** "wayland" where the desktop holds the shortcut. */
-  key: FlowKey | "wayland" | "";
+  key: FlowKeyId;
   noteStartedAt: number | null;
   announcement: Announcement | null;
   enabled: boolean;
@@ -188,15 +208,15 @@ export const FlowBridge = {
   hubShown: () => call<boolean>("hub_shown"),
   setPrefs: (prefs: FlowPrefs) => call<void>("flow_set_prefs", { prefs }),
   history: () => call<FlowEntry[]>("flow_history"),
-  deleteEntry: (id: string) => call<void>("flow_delete", { id }),
-  clear: (everything: boolean) => call<void>("flow_clear", { everything }),
+  deleteEntry: (id: string) => callOrThrow<void>("flow_delete", { id }),
+  clear: (everything: boolean) => callOrThrow<void>("flow_clear", { everything }),
   stats: () => call<FlowStats>("flow_stats"),
   words: () => call<{ words: string[]; replacements: Replacement[] }>("flow_words"),
-  setWords: (words: { words: string[]; replacements: Replacement[] }) => call<void>("flow_set_words", { words }),
+  setWords: (words: { words: string[]; replacements: Replacement[] }) => callOrThrow<void>("flow_set_words", { words }),
   snippets: () => call<Snippet[]>("flow_snippets"),
-  setSnippets: (snippets: Snippet[]) => call<void>("flow_set_snippets", { snippets }),
+  setSnippets: (snippets: Snippet[]) => callOrThrow<void>("flow_set_snippets", { snippets }),
   styles: () => call<AppStyle[]>("flow_styles"),
-  setStyles: (styles: AppStyle[]) => call<void>("flow_set_styles", { styles }),
+  setStyles: (styles: AppStyle[]) => callOrThrow<void>("flow_set_styles", { styles }),
   runningApps: () => call<{ id: string; name: string }[]>("flow_running_apps"),
   copy: (text: string) => call<boolean>("flow_copy", { text }),
   pasteAgain: () => call<void>("flow_paste_again"),
@@ -213,7 +233,7 @@ export const FlowBridge = {
   summarize: (id: string) => call<void>("notes_summarize", { id }),
   retryNote: (id: string) => call<void>("notes_retry", { id }),
   markdown: (id: string) => call<string>("notes_markdown", { id }),
-  exportNote: (id: string) => callOrThrow<string>("notes_export", { id }),
+  exportNote: (id: string) => callOrThrow<string | null>("notes_export", { id }),
 
   pillState: () => call<PillState>("pill_state"),
   pillHot: (rects: [number, number, number, number][]) => call<void>("pill_hot", { rects }),

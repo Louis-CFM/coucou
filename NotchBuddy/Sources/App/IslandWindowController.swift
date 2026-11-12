@@ -124,7 +124,8 @@ final class IslandWindowController: NSWindowController {
 
         let hosting = NSHostingView(rootView: IslandRootView()
             .environmentObject(AppState.shared)
-            .environment(\.layoutDirection, .leftToRight))
+            .environment(\.layoutDirection, .leftToRight)
+            .modifier(AppReviewAsker()))
         hosting.frame = NSRect(origin: .zero, size: contentSize)
         hosting.autoresizingMask = [.width, .height]
 
@@ -148,15 +149,22 @@ final class IslandWindowController: NSWindowController {
                 NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(1))
             }
         }
-        dropView.onDragUpdated = { [weak self] loc in
+        dropView.onDragUpdated = { [weak self, weak container] loc in
             Task { @MainActor in
                 let iLoc = self?.windowToIsland(loc) ?? CGPoint(x: 320, y: 88)
                 UploadSequenceEngine.shared.updateCursor(x: iLoc.x, y: iLoc.y)
+                #if !APPSTORE
+                // Over one of the sessions on the drop card: that session takes the file.
+                let top = CGPoint(x: loc.x, y: (container?.bounds.height ?? 0) - loc.y)
+                let target = SessionDrop.hit(top, state: AppState.shared)
+                if AppState.shared.dropSessionTarget != target { AppState.shared.dropSessionTarget = target }
+                #endif
             }
         }
         dropView.onDragExited = {
             Task { @MainActor in
                 AppState.shared.fileDragOver = false
+                AppState.shared.dropSessionTarget = nil
                 // Do NOT collapse — drag session still active; island stays open.
                 NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
                 UploadSequenceEngine.shared.exitZone()
@@ -174,6 +182,11 @@ final class IslandWindowController: NSWindowController {
                 // The mail card prepared by voice (Claude) is open: the file is its attachment.
                 if AppState.shared.voiceMailDraft != nil, AppState.shared.view == .mail, let url = urls.first {
                     self?.attachToVoiceMailCard(url)
+                    return
+                }
+                // Dropped on a session: into its prompt.
+                if let target = AppState.shared.dropSessionTarget {
+                    SessionDrop.send(urls, to: target, state: AppState.shared)
                     return
                 }
                 #endif
@@ -201,7 +214,7 @@ final class IslandWindowController: NSWindowController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newView in
                 guard let self else { return }
-                if newView == .prompt {
+                if newView == .prompt || newView == .launch {
                     self.islandPanel.makeKey()
                 }
             }
@@ -759,6 +772,19 @@ final class IslandWindowController: NSWindowController {
             #if !APPSTORE
             appendAppLog("nb.log", "[Capture] shortcut pressed")
             ScreenCapture.shared.begin()
+            #endif
+
+        case .newSession:
+            #if !APPSTORE
+            islandPanel.makeKey()
+            fsm.openedExternally()
+            expand(to: .launch)
+            #endif
+
+        case .quickScreenshot:
+            #if !APPSTORE
+            appendAppLog("nb.log", "[Screenshot] shortcut pressed")
+            QuickScreenshot.shared.take()
             #endif
         }
     }

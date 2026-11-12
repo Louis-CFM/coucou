@@ -425,11 +425,10 @@ final class SpotifyController: ObservableObject {
     }
 
     func openSpotify() {
-        if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == Self.bundleId }) {
-            app.activate()
-        } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.bundleId) {
-            NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
-        }
+        // openApplication also brings a running Spotify forward. NSRunningApplication.activate()
+        // is ignored since macOS 14 when called from an app that is not active, and the island never is.
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.bundleId) else { return }
+        NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
     }
 
     func openDownloadPage() {

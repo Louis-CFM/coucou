@@ -275,6 +275,10 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
                 RowDivider()
                 SettingSwitch(stringResource(R.string.overlay_title), stringResource(R.string.overlay_hint), model.overlayOn, onOverlay)
                 RowDivider()
+                SettingSwitch(stringResource(R.string.overlay_dnd_title), stringResource(R.string.overlay_dnd_hint), s.hideIslandInDnd) {
+                    model.updateSettings(s.copy(hideIslandInDnd = it))
+                }
+                RowDivider()
                 ChoiceRow(
                     stringResource(R.string.settings_motion),
                     listOf(

@@ -286,7 +286,7 @@ enum CapturePaste {
         return true
     }
 
-    @MainActor private static func snapshot(_ board: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {
+    @MainActor static func snapshot(_ board: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {
         (board.pasteboardItems ?? []).map { item in
             var out: [NSPasteboard.PasteboardType: Data] = [:]
             for type in item.types { if let data = item.data(forType: type) { out[type] = data } }

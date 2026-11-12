@@ -148,6 +148,8 @@
     <string name="approval_hint">Autoriser sur le téléphone demande l\'empreinte ou le verrouillage d\'écran. Refuser, non.</string>
     <string name="overlay_title">Afficher Mochi par-dessus les autres apps</string>
     <string name="overlay_hint">Une île descend du haut de l\'écran pendant qu\'un agent travaille, puis remonte.</string>
+    <string name="overlay_dnd_title">Masquer l\'île en mode Ne pas déranger</string>
+    <string name="overlay_dnd_hint">Tant que Ne pas déranger est activé, rien ne descend du haut de l\'écran. Les demandes arrivent toujours en notification.</string>
     <string name="msg_overlay_permission">Autorise « l\'affichage par-dessus les autres apps » pour Coucou, puis reviens.</string>
     <string name="settings_title">Réglages</string>
     <string name="settings_sound">Sons de Mochi</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">A une question</string>
     <string name="notif_ratelimit">A atteint une limite d\'utilisation</string>
     <string name="island_answer_on_pc">Touche pour ouvrir Coucou, ou réponds sur ton ordinateur</string>
+    <string name="island_dismiss">Fermer l\'îlot</string>
     <string name="state_ready">Prêt</string>
     <string name="state_working">Au travail</string>
     <string name="state_thinking">Réfléchit</string>

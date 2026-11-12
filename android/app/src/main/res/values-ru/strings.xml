@@ -148,6 +148,8 @@
     <string name="approval_hint">Для «Разрешить» на телефоне нужен отпечаток или блокировка экрана. Для «Отклонить» не нужны.</string>
     <string name="overlay_title">Показывать Mochi поверх других приложений</string>
     <string name="overlay_hint">Пока агент работает, сверху экрана опускается «остров», а потом поднимается обратно.</string>
+    <string name="overlay_dnd_title">Скрывать остров в режиме «Не беспокоить»</string>
+    <string name="overlay_dnd_hint">Пока включён режим «Не беспокоить», сверху экрана ничего не опускается. Запросы по-прежнему приходят уведомлениями.</string>
     <string name="msg_overlay_permission">Разреши Coucou «отображение поверх других приложений» и вернись.</string>
     <string name="settings_title">Настройки</string>
     <string name="settings_sound">Звуки Mochi</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">У него вопрос</string>
     <string name="notif_ratelimit">Достиг лимита использования</string>
     <string name="island_answer_on_pc">Нажми, чтобы открыть Coucou, или ответь на компьютере</string>
+    <string name="island_dismiss">Скрыть остров</string>
     <string name="state_ready">Готов</string>
     <string name="state_working">Работает</string>
     <string name="state_thinking">Думает</string>
