@@ -148,6 +148,8 @@
     <string name="approval_hint">ফোনে অনুমতি দিতে আঙুলের ছাপ বা স্ক্রিন লক লাগে। প্রত্যাখ্যানে লাগে না।</string>
     <string name="overlay_title">অন্য অ্যাপের উপরে Mochi দেখান</string>
     <string name="overlay_hint">কোনো এজেন্ট কাজ করার সময় স্ক্রিনের উপর থেকে একটি আইল্যান্ড নেমে আসে, তারপর আবার উঠে যায়।</string>
+    <string name="overlay_dnd_title">ডু নট ডিস্টার্বে আইল্যান্ড লুকান</string>
+    <string name="overlay_dnd_hint">ডু নট ডিস্টার্ব চালু থাকলে স্ক্রিনের উপর থেকে কিছু নেমে আসে না। অনুরোধ তবুও নোটিফিকেশন হিসেবে আসে।</string>
     <string name="msg_overlay_permission">Coucou-র জন্য \"অন্য অ্যাপের উপরে দেখান\" অনুমতি দিন, তারপর ফিরে আসুন।</string>
     <string name="settings_title">সেটিংস</string>
     <string name="settings_sound">Mochi-র শব্দ</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">একটি প্রশ্ন আছে</string>
     <string name="notif_ratelimit">ব্যবহারের সীমায় পৌঁছেছে</string>
     <string name="island_answer_on_pc">Coucou খুলতে ট্যাপ করুন, বা কম্পিউটারে উত্তর দিন</string>
+    <string name="island_dismiss">আইল্যান্ড সরান</string>
     <string name="state_ready">প্রস্তুত</string>
     <string name="state_working">কাজ করছে</string>
     <string name="state_thinking">ভাবছে</string>

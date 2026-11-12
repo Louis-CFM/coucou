@@ -146,4 +146,13 @@ class IslandPlanTest {
         val f = IslandPlan.flash(BotState.WORKING, s("a", BotState.FINISHED, "Bash"), settings, noon, true, name)!!
         assertEquals("Running a command", f.text)
     }
+
+    @Test fun whatTheSwipedIslandShowedGoesToTheNotificationShade() {
+        assertEquals(IslandPlan.Shade.STATUS_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.FINISHED))
+        assertEquals(IslandPlan.Shade.STATUS_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.ERROR))
+        assertEquals(IslandPlan.Shade.STATUS_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.RATELIMIT))
+        assertEquals(IslandPlan.Shade.STATUS_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.QUESTION))
+        assertEquals("a request keeps its Deny and Allow notification", IslandPlan.Shade.REQUEST_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.APPROVAL))
+        assertEquals(IslandPlan.Shade.ONGOING, IslandPlan.shadeFor(IslandSpec.Kind.WORKING))
+    }
 }

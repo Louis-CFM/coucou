@@ -147,4 +147,75 @@ class IslandTimelineTest {
         assertEquals(working, t.current)
         assertTrue(t.nextDeadline() == null)
     }
+
+    @Test fun aSwipeUpSendsTheIslandBackIntoTheNotch() {
+        t.setActive(working)
+        t.swipeAway()
+        assertEquals(Phase.RETRACTING, t.phase)
+        advance(IslandTimeline.RETRACT_MS)
+        assertEquals(Phase.HIDDEN, t.phase)
+    }
+
+    @Test fun theSameThingGoingOnDoesNotBringItBack() {
+        t.setActive(working)
+        t.swipeAway()
+        advance(IslandTimeline.RETRACT_MS)
+        // The strip's text changes with every step; it is still the same agent working.
+        t.setActive(working.copy(text = "Reads a file"))
+        assertEquals(Phase.HIDDEN, t.phase)
+        assertNull("nothing is scheduled while it stays away", t.nextDeadline())
+    }
+
+    @Test fun somethingNewBringsItBackDown() {
+        t.setActive(working)
+        t.swipeAway()
+        advance(IslandTimeline.RETRACT_MS)
+        t.setActive(approval.copy(fingerprint = "abc"))
+        assertEquals(Phase.OPEN, t.phase)
+        assertEquals("abc", t.current!!.fingerprint)
+    }
+
+    @Test fun anotherAgentStartingWorkBringsItBack() {
+        t.setActive(working)
+        t.swipeAway()
+        advance(IslandTimeline.RETRACT_MS)
+        t.setActive(working.copy(pillId = "agent_codex", agent = "Codex"))
+        assertEquals(Phase.OPEN, t.phase)
+    }
+
+    @Test fun aFinishAfterTheSwipeIsShown() {
+        t.setActive(working)
+        t.swipeAway()
+        advance(IslandTimeline.RETRACT_MS)
+        t.setActive(null)
+        t.flash(finished)
+        assertEquals(Phase.OPEN, t.phase)
+        assertEquals(finished, t.current)
+    }
+
+    @Test fun workStartingAgainAfterAPauseComesBack() {
+        t.setActive(working)
+        t.swipeAway()
+        advance(IslandTimeline.RETRACT_MS)
+        t.setActive(null)
+        t.setActive(working)
+        assertEquals(Phase.OPEN, t.phase)
+    }
+
+    @Test fun aSwipedRequestIsNotShownOnTheIslandAnyMore() {
+        // The notification and the sheet still carry it: the overlay asks isShowingRequest, which needs OPEN.
+        t.setActive(approval.copy(fingerprint = "abc"))
+        t.swipeAway()
+        assertTrue(t.phase != Phase.OPEN)
+        advance(IslandTimeline.RETRACT_MS)
+        t.setActive(approval.copy(fingerprint = "abc"))
+        assertEquals(Phase.HIDDEN, t.phase)
+    }
+
+    @Test fun aSwipeWhileHiddenDoesNothing() {
+        t.swipeAway()
+        assertEquals(Phase.HIDDEN, t.phase)
+        t.setActive(working)
+        assertEquals("a swipe that hit nothing is not remembered", Phase.OPEN, t.phase)
+    }
 }
