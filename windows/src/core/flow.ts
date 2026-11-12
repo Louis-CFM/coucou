@@ -42,6 +42,8 @@ export interface FlowPrefs {
   /** The keys of a shortcut of one's own (KeyboardEvent.code names), when `key` is "custom". */
   keyCombo: string[];
   edge: Edge;
+  /** Hide the pill until a dictation, a call or a message needs it. */
+  hidePill: boolean;
   mic: string;
   keepDays: number;
   cleanup: boolean;
