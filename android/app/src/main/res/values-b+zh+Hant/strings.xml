@@ -148,6 +148,8 @@
     <string name="approval_hint">在手機上允許操作時，需要指紋驗證或解除螢幕鎖定；拒絕則不需要。</string>
     <string name="overlay_title">在其他應用程式上方顯示 Mochi</string>
     <string name="overlay_hint">代理程式工作時，動態島會從螢幕頂端出現，之後再收回。</string>
+    <string name="overlay_dnd_title">零打擾時隱藏動態島</string>
+    <string name="overlay_dnd_hint">零打擾開啟時，螢幕頂端不會出現任何東西。請求仍會以通知送達。</string>
     <string name="msg_overlay_permission">請允許 Coucou「顯示在其他應用程式上層」，然後返回。</string>
     <string name="settings_title">設定</string>
     <string name="settings_sound">Mochi 的音效</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">有個問題</string>
     <string name="notif_ratelimit">已達使用上限</string>
     <string name="island_answer_on_pc">輕觸以開啟 Coucou，或在電腦上回應</string>
+    <string name="island_dismiss">關閉動態島</string>
     <string name="state_ready">就緒</string>
     <string name="state_working">工作中</string>
     <string name="state_thinking">思考中</string>

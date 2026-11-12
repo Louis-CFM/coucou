@@ -148,6 +148,8 @@
     <string name="approval_hint">„Zulassen“ auf dem Telefon erfordert den Fingerabdruck oder die Bildschirmsperre. „Ablehnen“ nicht.</string>
     <string name="overlay_title">Mochi über anderen Apps anzeigen</string>
     <string name="overlay_hint">Während ein Agent arbeitet, erscheint eine Insel am oberen Bildschirmrand und verschwindet danach wieder.</string>
+    <string name="overlay_dnd_title">Insel bei „Bitte nicht stören“ ausblenden</string>
+    <string name="overlay_dnd_hint">Solange „Bitte nicht stören“ aktiv ist, erscheint nichts am oberen Bildschirmrand. Anfragen kommen weiterhin als Benachrichtigungen an.</string>
     <string name="msg_overlay_permission">Erlaube Coucou „Über anderen Apps einblenden“ und kehre dann zurück.</string>
     <string name="settings_title">Einstellungen</string>
     <string name="settings_sound">Mochis Klänge</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">Hat eine Frage</string>
     <string name="notif_ratelimit">Nutzungslimit erreicht</string>
     <string name="island_answer_on_pc">Tippe, um Coucou zu öffnen, oder antworte auf deinem Computer</string>
+    <string name="island_dismiss">Insel schließen</string>
     <string name="state_ready">Bereit</string>
     <string name="state_working">Arbeitet</string>
     <string name="state_thinking">Denkt nach</string>

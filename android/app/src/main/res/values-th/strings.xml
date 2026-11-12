@@ -148,6 +148,8 @@
     <string name="approval_hint">การอนุญาตบนโทรศัพท์ต้องใช้ลายนิ้วมือหรือการปลดล็อกหน้าจอ แต่การปฏิเสธไม่ต้องใช้</string>
     <string name="overlay_title">แสดง Mochi เหนือแอปอื่น</string>
     <string name="overlay_hint">แถบไอส์แลนด์จะเลื่อนลงจากด้านบนของหน้าจอขณะเอเจนต์ทำงาน แล้วเลื่อนกลับขึ้นไป</string>
+    <string name="overlay_dnd_title">ซ่อนไอส์แลนด์เมื่อเปิดห้ามรบกวน</string>
+    <string name="overlay_dnd_hint">ขณะที่เปิดโหมดห้ามรบกวน จะไม่มีอะไรเลื่อนลงมาจากด้านบนของหน้าจอ คำขอยังคงมาเป็นการแจ้งเตือน</string>
     <string name="msg_overlay_permission">อนุญาตให้ Coucou “แสดงทับแอปอื่น” แล้วกลับมาที่นี่</string>
     <string name="settings_title">การตั้งค่า</string>
     <string name="settings_sound">เสียงของ Mochi</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">มีคำถาม</string>
     <string name="notif_ratelimit">ถึงขีดจำกัดการใช้งานแล้ว</string>
     <string name="island_answer_on_pc">แตะเพื่อเปิด Coucou หรือตอบบนคอมพิวเตอร์</string>
+    <string name="island_dismiss">ปิดไอส์แลนด์</string>
     <string name="state_ready">พร้อม</string>
     <string name="state_working">กำลังทำงาน</string>
     <string name="state_thinking">กำลังคิด</string>
