@@ -59,7 +59,7 @@ class LanguagesTest {
         assertEquals("fr", Languages.match("fr-CA"))
         assertEquals("pt-BR", Languages.match("pt-PT"))
         assertEquals("pt-BR", Languages.match("PT-br"))
-        assertEquals(Languages.SYSTEM, Languages.match("it"))
+        assertEquals(Languages.SYSTEM, Languages.match("nl"))
         assertEquals(Languages.SYSTEM, Languages.match(""))
         assertEquals(Languages.SYSTEM, Languages.match(null))
     }
