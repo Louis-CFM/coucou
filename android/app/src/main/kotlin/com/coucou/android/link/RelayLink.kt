@@ -88,6 +88,8 @@ class RelayConnector(
         }
         try {
             val session = handshake(ws, key)
+            // The stream keeps its own read timeout; the handshake's would end it after any quiet stretch.
+            ws.setReadTimeout(0)
             issue = RelayIssue.NONE
             return RelayStreamSocket(ws, session)
         } catch (e: Throwable) {
