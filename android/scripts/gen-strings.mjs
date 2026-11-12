@@ -37,6 +37,7 @@ export const LANGUAGES = [
   { tag: "ko", qualifier: "ko", name: "한국어", plural: ["other"] },
   { tag: "zh-Hant", qualifier: "b+zh+Hant", name: "繁體中文", plural: ["other"] },
   { tag: "th", qualifier: "th", name: "ภาษาไทย", plural: ["other"] },
+  { tag: "it", qualifier: "it", name: "Italiano", plural: ["one", "many", "other"] },
 ];
 const ENGLISH_PLURAL = ["one", "other"];
 

@@ -17,7 +17,7 @@ class LanguagesTest {
     private val translations = File("../i18n/translations").listFiles { f -> f.extension == "json" }.orEmpty().map { it.nameWithoutExtension }.sorted()
 
     @Test fun theGeneratorKnowsTheSupportedLanguages() {
-        assertEquals(listOf("fr", "es", "pt-BR", "zh-Hans", "hi", "bn", "ru", "id", "ar", "tr", "de", "ja", "ko", "zh-Hant", "th"), table.map { it.first })
+        assertEquals(listOf("fr", "es", "pt-BR", "zh-Hans", "hi", "bn", "ru", "id", "ar", "tr", "de", "ja", "ko", "zh-Hant", "th", "it"), table.map { it.first })
     }
 
     @Test fun thePickerOffersExactlyTheLanguagesThatAreTranslated() {
@@ -126,6 +126,13 @@ class LanguagesTest {
             assertEquals(tag, "th", Languages.match(tag))
         }
         assertEquals("ภาษาไทย", Languages.ALL.single { it.tag == "th" }.name)
+    }
+
+    @Test fun italianRegionalLocalesSelectItalian() {
+        for (tag in listOf("it", "it-IT", "it-CH", "it_IT", "IT-it")) {
+            assertEquals(tag, "it", Languages.match(tag))
+        }
+        assertEquals("Italiano", Languages.ALL.single { it.tag == "it" }.name)
     }
 
     @Test fun layoutsMirrorForRightToLeftLanguages() {
