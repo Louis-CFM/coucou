@@ -1,4 +1,5 @@
 import { defineConfig, type Plugin } from "vite";
+import react from "@vitejs/plugin-react";
 import { existsSync, mkdirSync, readdirSync, copyFileSync, createReadStream } from "node:fs";
 import { resolve, join, extname } from "node:path";
 
@@ -43,7 +44,7 @@ function sharedSounds(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [sharedSounds()],
+  plugins: [react(), sharedSounds()],
   clearScreen: false,
   server: {
     port: 1420,

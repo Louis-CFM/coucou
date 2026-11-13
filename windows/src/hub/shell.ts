@@ -4,7 +4,7 @@
 // its coloured band. Port of FlowHub.swift.
 
 import "./hub.css";
-import { animate, stagger } from "motion";
+import { animate, stagger, MACOS_JELLY, jellySquashStretch } from "./motion";
 import { h, clear } from "../views/dom";
 import { t, onLanguageChange } from "../i18n/i18n";
 import { onEvent } from "../core/bridge";
@@ -75,6 +75,7 @@ export type FlowPageRenderer = (container: HTMLElement, ctx: HubContext) => void
 
 export interface HubOptions {
   version: string;
+  initialPage?: PageId;
   flowPages: Partial<Record<PageId, FlowPageRenderer>>;
   /** Draws the island's settings for one of the Notch pages into `container`. */
   renderNotch(page: PageId, container: HTMLElement): Promise<void>;
@@ -96,11 +97,6 @@ const DEFAULT_STATUS: FlowStatus = {
   deviceName: "MADHAN",
 };
 
-const MACOS_SPRINGS = {
-  snappy: { type: "spring" as const, stiffness: 450, damping: 32, mass: 0.8 },
-  smooth: { type: "spring" as const, stiffness: 320, damping: 28, mass: 1 },
-};
-
 export async function startHub(root: HTMLElement, opts: HubOptions) {
   document.body.classList.add("hub-window");
   // The window is created hidden and only shown and hidden afterwards: its
@@ -110,7 +106,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   await onEvent<number[]>("flow-bands", (bands) => setVoiceLevel(Math.max(0, ...bands)));
   const shown = await FlowBridge.hubShown();
   if (shown !== null) setWindowShown(shown);
-  let current: PageId = "dictation";
+  let current: PageId = opts.initialPage ?? "general";
   let activeAnchor: string | null = null;
   let searchHits: SettingsSearchHit[] = [];
   let status: FlowStatus = (await FlowBridge.status()) ?? DEFAULT_STATUS;
@@ -124,6 +120,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   groupsContainer.append(navIndicator);
   let rendering = 0;
   let indicatorInitialized = false;
+  let lastIndicatorY = 0;
 
   function updateNavIndicator(animated = true) {
     const activeBtn = items.get(current);
@@ -135,12 +132,25 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       navIndicator.style.transform = `translateY(${targetY}px)`;
       navIndicator.style.opacity = "1";
       indicatorInitialized = true;
+      lastIndicatorY = targetY;
       return;
     }
-    animate(navIndicator, {
-      y: targetY,
-      opacity: 1,
-    }, MACOS_SPRINGS.snappy);
+
+    // High-inertia dynamic squash & stretch based on travel distance
+    const dy = targetY - lastIndicatorY;
+    lastIndicatorY = targetY;
+    const deformation = jellySquashStretch(dy);
+
+    animate(
+      navIndicator,
+      {
+        y: targetY,
+        opacity: 1,
+        scaleY: deformation.scaleY,
+        scaleX: deformation.scaleX,
+      },
+      MACOS_JELLY.indicator
+    );
   }
 
   const ctx: HubContext = {
@@ -213,23 +223,33 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     clear(scroll);
     scroll.append(page_);
 
-    // Hardware-accelerated macOS Liquid Glass spring transitions
+    // Hardware-accelerated macOS Liquid Glass buttery jelly spring transitions
     page_.style.willChange = "transform, opacity";
     animate(
       page_,
-      { opacity: [0, 1], y: [8, 0], scale: [0.995, 1] },
-      MACOS_SPRINGS.smooth
+      {
+        opacity: [0, 1],
+        y: [20, -1.5, 0.5, 0],
+        scale: [0.985, 1.006, 0.998, 1],
+      },
+      MACOS_JELLY.page
     );
 
-    const cards = Array.from(
-      page_.querySelectorAll<HTMLElement>(".hub-hero, .hub-card, #settings-root > section, .hub-stat-grid, .hub-action-card")
-    );
+    const cards = typeof page_.querySelectorAll === "function"
+      ? Array.from(
+          page_.querySelectorAll<HTMLElement>(".hub-hero, .hub-card, #settings-root > section, .hub-stat-grid, .hub-action-card")
+        )
+      : [];
     if (cards.length > 0) {
       for (const card of cards) card.style.willChange = "transform, opacity";
       animate(
         cards,
-        { opacity: [0, 1], y: [12, 0], scale: [0.99, 1] },
-        { delay: stagger(0.03), ...MACOS_SPRINGS.smooth }
+        {
+          opacity: [0, 1],
+          y: [26, -2, 0.6, 0],
+          scale: [0.978, 1.01, 0.996, 1],
+        },
+        { delay: stagger(0.035), ...MACOS_JELLY.card }
       );
     }
 
@@ -240,7 +260,11 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
         el.classList.remove("hub-card-glowing");
         void el.offsetWidth;
         el.classList.add("hub-card-glowing");
-        animate(el, { scale: [1, 1.015, 1] }, { duration: 0.5, ...MACOS_SPRINGS.snappy });
+        animate(
+          el,
+          { scale: [1, 1.035, 0.985, 1.01, 1] },
+          MACOS_JELLY.bouncy
+        );
       } else {
         scroll.scrollTop = 0;
       }
@@ -251,6 +275,56 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
 
   // ── The sidebar ──
   const side = h("nav", { class: "hub-side" });
+
+  // macOS Window Chrome: authentic traffic lights (Close, Minimize, Zoom)
+  const trafficClose = h("button", {
+    class: "macos-traffic-dot close",
+    title: t("Close"),
+    "aria-label": t("Close"),
+    type: "button",
+  }, h("span", { class: "macos-traffic-glyph", text: "×" }));
+
+  const trafficMinimize = h("button", {
+    class: "macos-traffic-dot minimize",
+    title: "Minimize",
+    "aria-label": "Minimize",
+    type: "button",
+  }, h("span", { class: "macos-traffic-glyph", text: "−" }));
+
+  const trafficZoom = h("button", {
+    class: "macos-traffic-dot zoom",
+    title: "Zoom",
+    "aria-label": "Zoom",
+    type: "button",
+  }, h("span", { class: "macos-traffic-glyph", text: "+" }));
+
+  trafficClose.addEventListener("click", () => {
+    if (typeof window !== "undefined") {
+      if (window.location.pathname.endsWith("index.html") || window.location.pathname === "/") {
+        window.close();
+      } else {
+        window.location.href = "/index.html";
+      }
+    }
+  });
+
+  trafficMinimize.addEventListener("click", () => {
+    animate(side, { opacity: [1, 0.75, 1], scale: [1, 0.985, 1] }, MACOS_JELLY.snappy);
+  });
+
+  trafficZoom.addEventListener("click", () => {
+    if (typeof document !== "undefined") {
+      if (!document.fullscreenElement) {
+        void document.documentElement.requestFullscreen?.().catch(() => {});
+      } else {
+        void document.exitFullscreen?.().catch(() => {});
+      }
+    }
+  });
+
+  const trafficLights = h("div", { class: "macos-traffic-lights" }, trafficClose, trafficMinimize, trafficZoom);
+  side.append(trafficLights);
+
   const logo = h("canvas", {});
   side.append(h("div", { class: "hub-brand" }, logo, h("span", { text: "Coucou" })));
   liveMochi(logo as HTMLCanvasElement);
@@ -302,6 +376,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     searchRows.clear();
     const query = searchInput.value.trim();
     if (!query) {
+      searchClear.classList.remove("visible");
       searchClear.style.display = "none";
       resultsContainer.style.display = "none";
       groupsContainer.style.display = "";
@@ -309,7 +384,16 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       updateNavIndicator(false);
       return;
     }
+    const wasVisible = searchClear.classList.contains("visible");
+    searchClear.classList.add("visible");
     searchClear.style.display = "";
+    if (!wasVisible) {
+      animate(
+        searchClear,
+        { scale: [0, 1.28, 0.94, 1], opacity: [0, 1] },
+        MACOS_JELLY.bouncy
+      );
+    }
     groupsContainer.style.display = "none";
     resultsContainer.style.display = "";
     searchHits = searchSettings(query, (pageId) => ALL.find((p) => p.id === pageId)?.title() ?? pageId);
@@ -317,6 +401,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       resultsContainer.append(h("div", { class: "hub-search-empty", text: t("No setting found") }));
       return;
     }
+    const rowElements: HTMLElement[] = [];
     for (const hit of searchHits) {
       const pageDef = ALL.find((p) => p.id === hit.entry.page);
       const row = h("button", { class: "hub-search-row" });
@@ -338,17 +423,27 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
         void show(hit.entry.page, hit.entry.id);
       });
       searchRows.set(hit.entry.id, row);
+      rowElements.push(row);
       resultsContainer.append(row);
+    }
+    if (rowElements.length > 0) {
+      animate(
+        rowElements,
+        { opacity: [0, 1], y: [10, 0] },
+        { delay: stagger(0.02), ...MACOS_JELLY.snappy }
+      );
     }
   }
 
   searchInput.addEventListener("focus", () => {
-    animate(searchBox, { scale: [1, 1.015, 1] }, MACOS_SPRINGS.snappy);
+    animate(searchBox, { scale: [1, 1.025, 0.99, 1] }, MACOS_JELLY.snappy);
   });
   searchInput.addEventListener("input", renderSearchResults);
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       searchInput.value = "";
+      searchClear.classList.remove("visible");
+      searchClear.style.display = "none";
       renderSearchResults();
     } else if (e.key === "Enter") {
       if (searchHits.length > 0) {
@@ -358,14 +453,18 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   });
 
   searchClear.addEventListener("click", () => {
-    searchInput.value = "";
-    renderSearchResults();
-    searchInput.focus();
+    animate(searchClear, { scale: 0.6, opacity: 0 }, { duration: 0.12, ease: "easeOut" }).then(() => {
+      searchInput.value = "";
+      searchClear.classList.remove("visible");
+      searchClear.style.display = "none";
+      renderSearchResults();
+      searchInput.focus();
+    });
   });
 
   onLanguageChange(() => {
     searchInput.placeholder = t("Search settings");
-    if (searchInput.value.trim()) renderSearchResults();
+    if (searchInput.value?.trim()) renderSearchResults();
   });
 
   side.append(h("div", { class: "spacer" }), statusLine, h("div", { class: "hub-version", text: `Coucou ${opts.version}` }));
@@ -374,7 +473,9 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   root.append(side, h("main", { class: "hub-panel" }, scroll));
   drawStatus();
   await show(current);
-  updateNavIndicator(false);
+  requestAnimationFrame(() => {
+    updateNavIndicator(false);
+  });
 
   void onEvent<string>("hub-page", (page) => {
     let id = page as PageId;

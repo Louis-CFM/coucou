@@ -24,6 +24,7 @@ import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
 import { buildWhatsNew } from "./whatsnew";
 import { buildLaunch } from "./launch";
+import { buildFileShelf } from "./fileshelf";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
@@ -122,6 +123,7 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 17));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubbleRound, 19));
+  const tabShelf = h("button", { class: "tab", title: "File Shelf", onclick: () => go("fileshelf") }, svg(ICONS.folder, 17));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 16));
   // A new Claude Code session, in a project, from here (Mac: the terminal tab).
   const tabLaunch = h(
@@ -149,7 +151,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabShelf, tabDrop, tabLaunch),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -160,6 +162,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       const v = State.view;
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
+      tabShelf.classList.toggle("on", v === "fileshelf");
       tabDrop.classList.toggle("on", v === "upload");
       tabLaunch.classList.toggle("on", v === "launch");
       gearBtn.classList.toggle("on", v === "settings");
@@ -796,13 +799,13 @@ function buildSettings(actions: ViewActions): ViewHost {
   const claudeBadge = h("button", {
     class: "status-badge link-btn",
     style: "cursor:pointer;background:none;border:none;padding:0;color:inherit;font:inherit;display:inline-flex;align-items:center;gap:6px",
-    title: tl("Claude Code settings"),
+    title: tl("Settings…"),
     onclick: () => actions.openSettingsWindow("claude"),
   });
   const apiBadge = h("button", {
     class: "status-badge link-btn",
     style: "cursor:pointer;background:none;border:none;padding:0;color:inherit;font:inherit;display:inline-flex;align-items:center;gap:6px",
-    title: tl("Chat and API settings"),
+    title: tl("Settings…"),
     onclick: () => actions.openSettingsWindow("chat"),
   });
 
@@ -893,6 +896,7 @@ export function buildViews(
   map.set("update", buildUpdate());
   map.set("whatsNew", buildWhatsNew());
   map.set("launch", buildLaunch(actions));
+  map.set("fileshelf", buildFileShelf(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

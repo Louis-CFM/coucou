@@ -13,7 +13,7 @@ import {
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { closedIsland } from "../core/closed";
 import type { UpdateStatus } from "../core/update";
-import { SOUND_NAMES } from "../core/sound";
+import { Sound, SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
@@ -60,10 +60,13 @@ function pickColor(next: Record<string, string>) {
 // ── Reusable bits ─────────────────────────────────────────────────────────────
 
 function toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement {
-  const el = h("button", { class: on ? "switch on" : "switch", "aria-pressed": on });
+  const el = h("button", { class: on ? "switch on" : "switch", "aria-pressed": on, type: "button" });
   el.addEventListener("click", () => {
     const next = !el.classList.contains("on");
     el.classList.toggle("on", next);
+    el.setAttribute("aria-pressed", String(next));
+    Sound.resume();
+    Sound.play("tick");
     onChange(next);
   });
   return el;
@@ -1015,8 +1018,22 @@ function generalSection(): HTMLElement {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
   }) as HTMLInputElement;
+
+  const updateVolumeFill = () => {
+    const min = Number(volume.min) || 0;
+    const max = Number(volume.max) || 0.2;
+    const val = Number(volume.value) || 0;
+    const pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+    volume.style.setProperty("--pct", `${pct}%`);
+  };
+  updateVolumeFill();
+
   volume.addEventListener("input", () => {
+    updateVolumeFill();
     settings.soundVolume = Number(volume.value);
+    Sound.setVolume(settings.soundVolume);
+    Sound.resume();
+    Sound.play("tick");
     void save();
   });
 
@@ -1092,8 +1109,10 @@ function generalSection(): HTMLElement {
     setSwitch(sound, settings.soundEnabled);
     setSwitch(openOnHover, settings.openOnHover);
     setSwitch(autostart, settings.autostart);
-    // A field being edited keeps what is in it; it catches up when it is left.
-    if (document.activeElement !== volume) volume.value = String(settings.soundVolume);
+    if (document.activeElement !== volume) {
+      volume.value = String(settings.soundVolume);
+      updateVolumeFill();
+    }
     if (document.activeElement !== autoClose) {
       autoClose.value = String(Math.round(settings.autoCloseInterval));
     }
@@ -1458,8 +1477,22 @@ async function main() {
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
   applyDirection();
+
+  const resolveTarget = (raw: string | null | undefined): PageId => {
+    if (!raw) return "general";
+    if (raw === "claude") return "agents";
+    if (raw === "api") return "chat";
+    if (raw === "settings") return "general";
+    if (raw === "flowsettings") return "flowsettings";
+    return raw as PageId;
+  };
+
+  const initialTarget = (await Bridge.targetHubPage()) || (window.location.hash ? window.location.hash.replace(/^#/, "") : null);
+  const initialPage = resolveTarget(initialTarget);
+
   hub = await startHub(windowRoot, {
     version,
+    initialPage,
     flowPages: FLOW_PAGE_RENDERERS,
     renderNotch: async (page, container) => {
       notchPage = page;
@@ -1471,19 +1504,9 @@ async function main() {
   const applyHash = () => {
     if (window.location.hash) {
       const raw = window.location.hash.replace(/^#/, "");
-      const target = raw === "claude" ? "agents" : raw === "api" ? "chat" : raw === "settings" ? "general" : raw;
-      void hub?.show(target as PageId);
+      void hub?.show(resolveTarget(raw));
     }
   };
-
-  const initialTarget = await Bridge.targetHubPage();
-  if (initialTarget) {
-    const raw = initialTarget;
-    const target = raw === "claude" ? "agents" : raw === "api" ? "chat" : raw === "settings" ? "general" : raw;
-    void hub?.show(target as PageId);
-  } else {
-    applyHash();
-  }
   window.addEventListener("hashchange", applyHash);
 
   if (!Bridge.boot) {
@@ -1493,11 +1516,23 @@ async function main() {
     const backBtn = h("a", {
       href: "/index.html",
       class: "hub-back-to-notch",
-      style: "position:fixed;bottom:18px;right:18px;background:rgba(255,255,255,0.12);color:#fff;padding:8px 14px;border-radius:999px;font:500 12px var(--font);text-decoration:none;z-index:9999;backdrop-filter:blur(12px);border:2px solid rgba(255,255,255,0.2);display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.5);transition:background 0.15s ease",
+      style: "position:fixed;bottom:18px;right:18px;background:rgba(255,255,255,0.12);color:#fff;padding:8px 14px;border-radius:999px;font:500 12px var(--font);text-decoration:none;z-index:9999;backdrop-filter:blur(12px);border:2px solid rgba(255,255,255,0.2);display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.5);transition:transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease",
       text: "← Back to Notch",
     });
-    backBtn.addEventListener("mouseenter", () => { backBtn.style.background = "rgba(255,255,255,0.2)"; });
-    backBtn.addEventListener("mouseleave", () => { backBtn.style.background = "rgba(255,255,255,0.12)"; });
+    backBtn.addEventListener("mouseenter", () => {
+      backBtn.style.background = "rgba(255,255,255,0.22)";
+      backBtn.style.transform = "scale(1.05)";
+    });
+    backBtn.addEventListener("mouseleave", () => {
+      backBtn.style.background = "rgba(255,255,255,0.12)";
+      backBtn.style.transform = "scale(1)";
+    });
+    backBtn.addEventListener("mousedown", () => {
+      backBtn.style.transform = "scale(0.95)";
+    });
+    backBtn.addEventListener("mouseup", () => {
+      backBtn.style.transform = "scale(1.05)";
+    });
     document.body.append(backBtn);
   }
 

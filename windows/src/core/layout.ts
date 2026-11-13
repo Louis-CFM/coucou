@@ -26,7 +26,8 @@ export type IslandViewName =
   | "wardrobe"
   | "update"
   | "whatsNew"
-  | "launch";
+  | "launch"
+  | "fileshelf";
 
 export type BotStateName =
   | "idle"
@@ -103,6 +104,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   whatsNew: { height: 222, botX: 62, botY: null, botDiameter: 58, agentMode: "none" },
   // A new Claude Code session: Mochi on the left, the project and the prompt (Mac: .launch).
   launch: { height: 160, botX: 58, botY: null, botDiameter: 52, agentMode: "none" },
+  // File Shelf: Staging dock for parked files and folders
+  fileshelf: { height: 240, botX: 46, botY: 80, botDiameter: 0, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually
@@ -157,6 +160,9 @@ export function botPosition(
       return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
+      if (layout.botDiameter === 0) {
+        return { cx: layout.botX, cy: layout.botY ?? 0, diameter: 0, opacity: 0 };
+      }
       if (view === "uploading") {
         return {
           cx: 36 + uploadProgress * 526,

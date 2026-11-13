@@ -1,0 +1,67 @@
+/* ── Coucou Dark Palette & Typography Harmonization for Glisse ────────────── */
+
+:root,
+body,
+.hub-window {
+  --lg-fill: var(--hub-accent, #fb923c) !important;
+  --lg-on: var(--hub-green, #34d399) !important;
+  --lg-glass: rgba(255, 255, 255, 0.08) !important;
+  --lg-glass-active: rgba(255, 255, 255, 0.14) !important;
+  --lg-edge: rgba(255, 255, 255, 0.12) !important;
+  --lg-segment-track: rgba(255, 255, 255, 0.06) !important;
+  --lg-segment-thumb: rgba(255, 255, 255, 0.22) !important;
+  --lg-foreground: #ffffff !important;
+  --lg-muted: rgba(255, 255, 255, 0.5) !important;
+  --lg-surface: rgba(24, 25, 28, 0.92) !important;
+  --lg-surface-edge: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Ensure Inter font applies to all Glisse controls */
+.glisse-switch-host *,
+.glisse-button-host *,
+.glisse-segmented-host *,
+.glisse-slider-host *,
+.glisse-search-host * {
+  font-family: var(--font-sub, "Inter", sans-serif) !important;
+}
+
+.glisse-switch-host {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.glisse-button-host {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.glisse-button-host.small button {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  height: 28px !important;
+}
+
+.glisse-segmented-host {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.glisse-slider-host {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  max-width: 220px;
+  vertical-align: middle;
+}
+
+.glisse-search-host {
+  width: 100%;
+}
+
+.glisse-glass-host {
+  width: 100%;
+  border-radius: 14px;
+}

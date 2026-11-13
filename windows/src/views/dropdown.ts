@@ -15,6 +15,8 @@
 
 import "./dropdown.css";
 import { h } from "./dom";
+import { animate, stagger, MACOS_JELLY } from "../hub/motion";
+import { Sound } from "../core/sound";
 
 /** A regular item in the menu. */
 export interface DropdownItem {
@@ -112,18 +114,26 @@ function closeActive() {
     activeTrigger = null;
   }
   if (activePanel) {
-    activePanel.style.opacity = "0";
-    activePanel.style.transform = "scale(0.96) translateY(-4px)";
     const panel = activePanel;
-    setTimeout(() => panel.remove(), 150);
     activePanel = null;
+    animate(
+      panel,
+      { opacity: 0, scale: 0.94, y: -4 },
+      { duration: 0.14, ease: [0.32, 0, 0.67, 0] }
+    ).then(() => {
+      panel.remove();
+    });
   }
 }
 
 /** Creates and returns a dropdown menu controller. */
 export function dropdown(items: DropdownEntry[]) {
+  const hasAnyCheck = items.some(
+    (entry) => entry.type !== "separator" && entry.type !== "label" && (entry as DropdownItem).checked !== undefined,
+  );
+
   function buildPanel(): HTMLElement {
-    const panel = h("div", { class: "dd-panel", role: "menu" });
+    const panel = h("div", { class: `dd-panel ${hasAnyCheck ? "has-checks" : "no-checks"}`, role: "menu" });
 
     for (const entry of items) {
       if (entry.type === "separator") {
@@ -140,19 +150,24 @@ export function dropdown(items: DropdownEntry[]) {
       const btn = h("button", {
         class: ["dd-item", item.danger ? "dd-danger" : "", item.disabled ? "dd-disabled" : ""].filter(Boolean).join(" "),
         role: "menuitem",
+        type: "button",
         ...(item.disabled ? { "aria-disabled": "true" } : {}),
         onclick: () => {
           if (!item.disabled) {
+            Sound.resume();
+            Sound.play("tick");
             closeActive();
             item.onClick();
           }
         },
       });
 
-      // Check indicator column (always present for alignment; visible when checked).
-      const checkCol = h("span", { class: "dd-check-col", "aria-hidden": "true" });
-      if (item.checked) checkCol.append(checkSvg());
-      btn.append(checkCol);
+      // Check indicator column (only present when the menu has checkable items).
+      if (hasAnyCheck) {
+        const checkCol = h("span", { class: "dd-check-col", "aria-hidden": "true" });
+        if (item.checked) checkCol.append(checkSvg());
+        btn.append(checkCol);
+      }
 
       // Optional icon.
       if (item.icon) {
@@ -185,45 +200,89 @@ export function dropdown(items: DropdownEntry[]) {
 
     activeTrigger = anchor;
     anchor.classList.add("open");
+    Sound.resume();
+    Sound.play("open");
 
     const panel = buildPanel();
-    panel.style.opacity = "0";
-    panel.style.transform = "scale(0.96) translateY(-4px)";
     document.body.append(panel);
     activePanel = panel;
 
     // Position: below the anchor by default, flip up if near bottom edge.
     const rect = anchor.getBoundingClientRect();
-    const panelW = 220;
+    const actualW = panel.offsetWidth || 140;
     let left = rect.left;
     let top = rect.bottom + 6;
+    let isFlipped = false;
 
     // Flip left if overflows right edge.
-    if (left + panelW > window.innerWidth - 8) left = rect.right - panelW;
+    if (left + actualW > window.innerWidth - 8) left = rect.right - actualW;
     if (left < 8) left = 8;
 
     // Flip up if overflows bottom.
-    const panelH = items.length * 36;
-    if (top + panelH > window.innerHeight - 8) top = rect.top - panelH - 6;
+    const actualH = panel.offsetHeight || items.length * 30;
+    if (top + actualH > window.innerHeight - 8) {
+      top = rect.top - actualH - 6;
+      isFlipped = true;
+    }
 
     panel.style.left = `${left}px`;
     panel.style.top = `${top}px`;
+    panel.style.transformOrigin = isFlipped ? "bottom left" : "top left";
+    panel.style.willChange = "transform, opacity";
 
-    // Animate in.
-    requestAnimationFrame(() => {
-      panel.style.opacity = "1";
-      panel.style.transform = "scale(1) translateY(0)";
-    });
+    // macOS Liquid Glass jelly bloom entrance
+    animate(
+      panel,
+      {
+        opacity: [0, 1],
+        scale: [0.90, 1.035, 0.992, 1],
+        y: [isFlipped ? 8 : -8, isFlipped ? -2 : 2, 0],
+      },
+      MACOS_JELLY.dropdownOpen
+    );
 
-    // Close on outside click / Escape.
+    // Stagger items micro-ripple
+    const itemElements = Array.from(panel.querySelectorAll<HTMLElement>(".dd-item"));
+    if (itemElements.length > 0) {
+      for (const el of itemElements) el.style.willChange = "transform, opacity";
+      animate(
+        itemElements,
+        {
+          opacity: [0, 1],
+          x: [-6, 1, 0],
+        },
+        { delay: stagger(0.016), ...MACOS_JELLY.dropdownItem }
+      );
+    }
+
+    // Close on outside click / Escape / Keyboard navigation
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { closeActive(); cleanup(); }
+      if (e.key === "Escape") { closeActive(); cleanup(); return; }
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const btns = Array.from(panel.querySelectorAll<HTMLElement>(".dd-item:not(.dd-disabled)"));
+        if (btns.length === 0) return;
         const idx = btns.indexOf(document.activeElement as HTMLElement);
         const next = e.key === "ArrowDown" ? (idx + 1) % btns.length : (idx - 1 + btns.length) % btns.length;
         btns[next]?.focus();
+        return;
+      }
+      if (e.key === "Enter" || e.key === " ") {
+        const focused = document.activeElement as HTMLElement | null;
+        if (focused && panel.contains(focused) && focused.classList.contains("dd-item")) {
+          e.preventDefault();
+          focused.click();
+          return;
+        }
+      }
+      // macOS typeahead search: jump to option starting with typed character
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        const char = e.key.toLowerCase();
+        const btns = Array.from(panel.querySelectorAll<HTMLElement>(".dd-item:not(.dd-disabled)"));
+        const match = btns.find((btn) => btn.textContent?.trim().toLowerCase().startsWith(char));
+        if (match) {
+          match.focus();
+        }
       }
     };
     const onDown = (e: MouseEvent) => {
@@ -314,6 +373,36 @@ export function dropdownSelect<T extends string = string>(
   chevron.append(cp);
   btn.append(chevron);
 
+  // Hidden native <select> so tests & form interactions can query options and fire change
+  const hiddenSelect = h("select", {
+    style: "display:none;position:absolute;opacity:0;pointer-events:none",
+    tabIndex: -1,
+    "aria-hidden": "true",
+  }) as HTMLSelectElement;
+
+  const updateHiddenSelect = () => {
+    while (hiddenSelect.firstChild) hiddenSelect.removeChild(hiddenSelect.firstChild);
+    for (const [id, label] of currentOptions) {
+      const opt = h("option", { value: id, text: label }) as HTMLOptionElement;
+      if (id === currentValue) opt.selected = true;
+      hiddenSelect.append(opt);
+    }
+    hiddenSelect.value = currentValue;
+  };
+  updateHiddenSelect();
+
+  hiddenSelect.addEventListener("change", () => {
+    const next = hiddenSelect.value as T;
+    if (next !== currentValue) {
+      currentValue = next;
+      const found = currentOptions.find(([id]) => id === next);
+      labelSpan.textContent = found ? found[1] : String(next);
+      onChange?.(next);
+      if (typeof btn.dispatchEvent === "function") btn.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
+  btn.append(hiddenSelect);
+
   btn.addEventListener("click", () => {
     if (isDisabled) return;
     const menu = dropdown(
@@ -323,9 +412,10 @@ export function dropdownSelect<T extends string = string>(
         onClick: () => {
           if (currentValue !== id) {
             currentValue = id;
+            hiddenSelect.value = id;
             labelSpan.textContent = label;
             onChange?.(id);
-            btn.dispatchEvent(new Event("change", { bubbles: true }));
+            if (typeof btn.dispatchEvent === "function") btn.dispatchEvent(new Event("change", { bubbles: true }));
           }
         },
       })),
@@ -339,6 +429,7 @@ export function dropdownSelect<T extends string = string>(
     },
     set(v: T) {
       currentValue = v;
+      hiddenSelect.value = v;
       const found = currentOptions.find(([id]) => id === v);
       labelSpan.textContent = found ? found[1] : String(v);
     },
@@ -351,6 +442,7 @@ export function dropdownSelect<T extends string = string>(
     },
     set(d: boolean) {
       isDisabled = d;
+      hiddenSelect.disabled = d;
       btn.classList.toggle("dd-disabled", d);
       if (d) btn.setAttribute("disabled", "true");
       else btn.removeAttribute("disabled");
@@ -360,11 +452,13 @@ export function dropdownSelect<T extends string = string>(
 
   btn.setOptions = (nextOptions: [T, string][]) => {
     currentOptions = [...nextOptions];
+    updateHiddenSelect();
     const found = currentOptions.find(([id]) => id === currentValue);
     if (found) {
       labelSpan.textContent = found[1];
     } else if (currentOptions.length > 0) {
       currentValue = currentOptions[0][0];
+      hiddenSelect.value = currentValue;
       labelSpan.textContent = currentOptions[0][1];
     } else {
       labelSpan.textContent = "";

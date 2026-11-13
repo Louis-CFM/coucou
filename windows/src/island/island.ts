@@ -47,7 +47,7 @@ const BOT_SIDE = 24;
 const HIT_MARGIN = 14;
 
 /** The views with a text field: the island takes the keyboard while one is on. */
-const TYPING_VIEWS: ReadonlySet<IslandViewName> = new Set(["prompt", "launch"]);
+const TYPING_VIEWS: ReadonlySet<IslandViewName> = new Set(["prompt", "launch", "fileshelf"]);
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);

@@ -7,24 +7,23 @@
 /* ── Panel (the floating popup) ── */
 .dd-panel {
   position: fixed;
-  z-index: 9999;
-  min-width: 200px;
+  z-index: 100000;
+  isolation: isolate;
+  pointer-events: auto;
+  min-width: 125px;
   max-width: 280px;
-  padding: 5px;
-  background: rgba(28, 29, 32, 0.78);
+  padding: 4px;
+  background: rgba(22, 23, 26, 0.92);
   backdrop-filter: blur(32px) saturate(200%) brightness(1.08);
   -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.08);
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 8px 32px rgba(0, 0, 0, 0.55),
-    0 2px 8px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  transition:
-    opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: top left;
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 12px 32px rgba(0, 0, 0, 0.65),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  /* Framer Motion manages jelly spring transforms & opacity */
   overflow: hidden;
   outline: none;
   /* Ensure Inter for all dropdown text */
@@ -54,17 +53,17 @@
 .dd-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   width: 100%;
-  min-height: 32px;
-  padding: 0 9px;
+  min-height: 28px;
+  padding: 0 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   color: rgba(255, 255, 255, 0.88);
   font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 400;
+  font-size: 12.5px;
+  font-weight: 450;
   letter-spacing: -0.01em;
   line-height: 1;
   text-align: start;
@@ -72,19 +71,22 @@
   outline: none;
   transition:
     background 0.1s ease,
-    color 0.1s ease;
+    color 0.1s ease,
+    transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
   -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
 }
 
 .dd-item:hover,
 .dd-item:focus {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
+  transform: translateX(1.5px);
 }
 
 .dd-item:active {
   background: rgba(255, 255, 255, 0.07);
-  transform: scale(0.99);
+  transform: scale(0.97);
 }
 
 /* Danger variant (Quit, Delete, Remove…) */
@@ -113,7 +115,7 @@
   width: 14px;
   height: 14px;
   flex: 0 0 14px;
-  color: rgba(110, 86, 207, 1);
+  color: var(--hub-accent, #fb923c);
 }
 
 /* ── Icon column ── */
@@ -121,11 +123,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
   color: rgba(255, 255, 255, 0.55);
   transition: color 0.1s ease;
+}
+
+.dd-icon-col svg {
+  width: 13px;
+  height: 13px;
 }
 
 .dd-item:hover .dd-icon-col,
@@ -171,53 +178,71 @@
 }
 
 /* ── Pre-wired trigger button ── */
-.dd-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px 0 11px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  border-radius: 9px;
-  color: rgba(255, 255, 255, 0.85);
-  font-family: var(--font-sub, "Inter", sans-serif);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: default;
-  outline: none;
-  transition: all 0.15s ease;
-  -webkit-font-smoothing: antialiased;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+.dd-trigger,
+button.dd-trigger,
+button.hub-select.dd-trigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  height: 32px !important;
+  padding: 0 12px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-family: var(--font-sub, "Inter", sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  -webkit-font-smoothing: antialiased !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
 }
 
-.dd-trigger:hover {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+.dd-trigger:hover,
+button.dd-trigger:hover,
+button.hub-select.dd-trigger:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  transform: none !important;
 }
 
-.dd-trigger:focus-visible {
-  border-color: rgba(110, 86, 207, 0.75);
-  box-shadow: 0 0 0 3px rgba(110, 86, 207, 0.25);
+.dd-trigger:focus-visible,
+button.dd-trigger:focus-visible,
+button.hub-select.dd-trigger:focus-visible,
+.dd-trigger.open,
+button.dd-trigger.open,
+button.hub-select.dd-trigger.open {
+  border-color: rgba(251, 146, 60, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
-.dd-trigger:active {
-  background: rgba(255, 255, 255, 0.05);
-  transform: scale(0.98);
+.dd-trigger:active,
+button.dd-trigger:active,
+button.hub-select.dd-trigger:active {
+  background: rgba(255, 255, 255, 0.05) !important;
+  transform: scale(0.96) !important;
 }
 
 .dd-trigger svg {
-  opacity: 0.55;
-  transition: opacity 0.15s ease, transform 0.2s ease;
+  opacity: 0.65;
+  transition: opacity 0.15s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  flex-shrink: 0;
 }
 
 .dd-trigger:hover svg {
-  opacity: 0.85;
+  opacity: 0.95;
 }
 
-/* Rotate chevron when open (add .open class via JS if needed). */
+/* Rotate chevron when open with elastic spring scale */
 .dd-trigger.open svg:last-child {
-  transform: rotate(180deg);
+  transform: rotate(180deg) scale(1.1) !important;
 }

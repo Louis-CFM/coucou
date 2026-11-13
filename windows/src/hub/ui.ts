@@ -3,7 +3,9 @@
 
 import { h } from "../views/dom";
 import { dropdownSelect, type DropdownSelect } from "../views/dropdown";
+import { animate, MACOS_JELLY } from "./motion";
 import { t } from "../i18n/i18n";
+import { Sound } from "../core/sound";
 import type { FlowKeyId } from "../core/flow";
 
 /** Stroke icons on a 24×24 grid, standing in for the Mac's SF Symbols. */
@@ -96,28 +98,128 @@ export function button(text: string, onclick: () => void, kind: "" | "primary" |
   }) as HTMLButtonElement;
 }
 
-/** The settings window's switch, so both windows look alike. */
+/** The settings window's switch, matching Apple spring physics. */
 export function toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement {
-  const el = h("button", { class: on ? "switch on" : "switch", "aria-pressed": on });
+  const el = h("button", { class: on ? "switch on" : "switch", "aria-pressed": on, type: "button" });
   el.addEventListener("click", () => {
     const next = !el.classList.contains("on");
     el.classList.toggle("on", next);
     el.setAttribute("aria-pressed", String(next));
+    Sound.resume();
+    Sound.play("tick");
     onChange(next);
   });
   return el;
 }
 
+/**
+ * Apple-grade Liquid Glass Segmented Control with buttery smooth jelly physics
+ * and a sliding specular thumb indicator matching macOS Sequoia System Settings.
+ */
 export function segmented<T extends string>(options: [T, string][], value: T, onChange: (v: T) => void): HTMLElement {
-  const el = h("div", { class: "hub-segmented" });
+  const el = h("div", { class: "hub-segmented", role: "radiogroup" });
+  const indicator = h("div", { class: "hub-segmented-indicator" });
+  el.append(indicator);
+
+  const buttons = new Map<T, HTMLButtonElement>();
+  let currentValue = value;
+  let initialized = false;
+  let lastX = 0;
+
+  function updateIndicator(animated = true) {
+    const activeBtn = buttons.get(currentValue);
+    if (!activeBtn) return;
+
+    const targetX = activeBtn.offsetLeft;
+    const targetW = activeBtn.offsetWidth;
+
+    // In mock DOM / non-visual test environments where layout hasn't computed
+    if (typeof targetW !== "number" || targetW <= 0) {
+      return;
+    }
+
+    el.classList.add("has-indicator");
+    indicator.style.width = `${targetW}px`;
+
+    if (!initialized || !animated) {
+      indicator.style.transform = `translateX(${targetX}px)`;
+      indicator.style.opacity = "1";
+      initialized = true;
+      lastX = targetX;
+      return;
+    }
+
+    const dx = targetX - lastX;
+    lastX = targetX;
+
+    // Dynamic horizontal inertia squash & stretch
+    const stretch = Math.min(1.16, 1 + Math.abs(dx) * 0.0009);
+    const squish = Math.max(0.91, 1 - Math.abs(dx) * 0.0005);
+
+    animate(
+      indicator,
+      {
+        x: targetX,
+        width: targetW,
+        scaleX: dx !== 0 ? [1, stretch, 0.985, 1] : 1,
+        scaleY: dx !== 0 ? [1, squish, 1.015, 1] : 1,
+        opacity: 1,
+      },
+      MACOS_JELLY.indicator
+    );
+
+    // Subtle tactile pop on active text
+    animate(
+      activeBtn,
+      { scale: [0.97, 1.03, 1] },
+      MACOS_JELLY.snappy
+    );
+  }
+
   for (const [id, text] of options) {
-    const b = h("button", { class: id === value ? "on" : "", text });
+    const isCurrent = id === value;
+    const b = h("button", {
+      class: `hub-segmented-item ${isCurrent ? "on" : ""}`,
+      text,
+      type: "button",
+      role: "radio",
+      "aria-checked": String(isCurrent),
+    }) as HTMLButtonElement;
+
     b.addEventListener("click", () => {
-      for (const other of el.querySelectorAll("button")) other.classList.toggle("on", other === b);
+      if (currentValue === id) return;
+      currentValue = id;
+      for (const other of el.querySelectorAll("button")) {
+        const active = other === b;
+        other.classList.toggle("on", active);
+        other.setAttribute("aria-checked", String(active));
+      }
+      updateIndicator(true);
+      Sound.resume();
+      Sound.play("blip");
       onChange(id);
     });
+
+    buttons.set(id, b);
     el.append(b);
   }
+
+  // Initial layout synchronization
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => {
+      updateIndicator(false);
+      setTimeout(() => updateIndicator(false), 50);
+    });
+  }
+
+  // Recalibrate on container resize to stay pixel-locked
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => {
+      if (initialized) updateIndicator(false);
+    });
+    ro.observe(el);
+  }
+
   return el;
 }
 
