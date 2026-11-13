@@ -712,6 +712,10 @@ pub fn forget_request(app: &AppHandle, request_id: &str) {
 }
 
 pub fn record_decision(app: &AppHandle, request_id: &str, decision: &str) {
+    // MCP tool approvals are the chat's, not an agent's: not in the recap.
+    if crate::mcp::approval::is_mcp(request_id) {
+        return;
+    }
     if let Some(store) = app.try_state::<Store>() {
         store.lock().record_decision(request_id, decision, now());
     }

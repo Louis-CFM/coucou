@@ -911,6 +911,7 @@ pub fn run() {
             mcp: mcp_registry,
         })
         .manage(Pending::default())
+        .manage(mcp::approval::Approvals::default())
         .manage(Chat::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())

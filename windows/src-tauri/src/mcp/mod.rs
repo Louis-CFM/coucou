@@ -1,3 +1,5 @@
+pub mod approval;
+pub mod gate;
 pub mod http;
 pub mod jsonrpc;
 pub mod models;

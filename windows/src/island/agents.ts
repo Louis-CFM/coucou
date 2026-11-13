@@ -18,6 +18,7 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
   amp: { name: "Amp", color: "#F59E0B" },
   hermes: { name: "Hermes", color: "#C084FC" },
   "claude-desktop": { name: "Claude Desktop", color: "#D97757" },
+  mcp: { name: "MCP tools", color: "#94A3B8" },
 };
 
 /**
@@ -35,10 +36,19 @@ export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "claude-desk
  */
 export const AGY_CARD_KIND = "agy_pre_tool";
 
+/**
+ * A tool of the user's MCP servers that the chat's model wants to run and that
+ * changes things: Rust asks for it with this kind, as agent `mcp`
+ * (src-tauri/src/mcp/approval.rs). It runs only on Allow; anything else refuses it.
+ */
+export const MCP_AGENT = "mcp";
+export const MCP_CARD_KIND = "mcp_tool";
+
 /** Whether the island shows a card for this agent's permission request. */
 export function takesCard(agent: string | null, kind: unknown): boolean {
   if (agent === null) return true; // Claude Code
   if (APPROVAL_AGENTS.has(agent)) return true;
+  if (agent === MCP_AGENT) return kind === MCP_CARD_KIND;
   return agent === "antigravity" && kind === AGY_CARD_KIND;
 }
 

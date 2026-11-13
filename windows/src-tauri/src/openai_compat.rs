@@ -3,8 +3,9 @@
 // OpenRouter. One table describes them; one client talks to all three.
 //
 // Same contract as claude.rs: the key never leaves the credential store and
-// file bytes never cross the IPC boundary. Chat only — no tools are sent, so
-// the model can answer but never act on the machine.
+// file bytes never cross the IPC boundary. The tools of the user's MCP servers
+// are offered to the model; one that changes things runs only after an Allow on
+// the island's card (mcp/approval.rs), and never from the phone's chat.
 
 use std::time::Duration;
 
@@ -151,8 +152,10 @@ fn status_error(p: &Provider, status: u16, detail: &str) -> String {
     }
 }
 
-/// One chat turn with a cloud provider.
+/// One chat turn with a cloud provider. `app` is the window to ask for MCP tool
+/// approvals on; without one, only read-only tools can run.
 pub async fn send(
+    app: Option<&tauri::AppHandle>,
     chat: &Chat,
     p: &'static Provider,
     model: &str,
@@ -203,13 +206,20 @@ pub async fn send(
                 let args_str = tc.pointer("/function/arguments").and_then(Value::as_str).unwrap_or("{}");
                 let args_map: std::collections::HashMap<String, Value> = serde_json::from_str(args_str).unwrap_or_default();
 
-                let tool_res = mcp.execute_tool(fn_name, &args_map).await;
+                let content = match mcp.get_tool(fn_name).await {
+                    None => format!("Unknown MCP tool: {fn_name}"),
+                    Some(tool) if !crate::mcp::approval::allowed(app, &tool, &args_map).await => {
+                        "The user did not approve this tool call, so it was not run.".to_string()
+                    }
+                    Some(_) => mcp.execute_tool(fn_name, &args_map).await.content,
+                };
                 follow_up_messages.push(json!({
                     "role": "tool",
                     "tool_call_id": call_id,
-                    "content": tool_res.content,
+                    "content": content,
                 }));
             }
+            crate::mcp::approval::finish(app);
 
             body["messages"] = Value::Array(follow_up_messages);
             let follow_up_resp = net::client(&endpoint, Duration::from_secs(90))?

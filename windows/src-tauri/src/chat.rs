@@ -220,7 +220,7 @@ pub async fn send(
         return claude::send(chat, &model, query, context).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
-        return openai_compat::send(chat, p, &model, mcp, query, context).await;
+        return openai_compat::send(Some(app), chat, p, &model, mcp, query, context).await;
     }
     if let Some(server) = local_chat::server(settings, provider) {
         return local_chat::send(app, chat, &server, &model, query, context).await;
@@ -247,7 +247,8 @@ pub async fn send_for_phone(
         return claude::send(chat, model, query, None).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
-        return openai_compat::send(chat, p, model, mcp, query, None).await;
+        // No island to ask on: tools that change things are refused (mcp/approval.rs).
+        return openai_compat::send(None, chat, p, model, mcp, query, None).await;
     }
     if let Some(server) = local_chat::server(settings, provider) {
         return local_chat::send_with(chat, &server, model, query, None, on_delta).await;
