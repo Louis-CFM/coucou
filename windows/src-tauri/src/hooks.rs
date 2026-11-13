@@ -64,6 +64,10 @@ pub struct HookPreview {
 }
 
 pub fn settings_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(root) = tests::test_root() {
+        return root.join(".claude").join("settings.json");
+    }
     claude_dir(std::env::var_os("CLAUDE_CONFIG_DIR"), &platform::home_dir()).join("settings.json")
 }
 
@@ -249,11 +253,19 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 
 /// Where the user's own status line waits while the relay stands in for it.
 pub fn status_line_previous_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(root) = tests::test_root() {
+        return root.join("data").join("statusline-previous.json");
+    }
     settings::local_dir().join("statusline-previous.json")
 }
 
 /// Where releases up to 0.5.7 kept it: in bin/, which the uninstaller wipes.
 fn legacy_status_line_previous_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(root) = tests::test_root() {
+        return root.join("data").join("bin").join("statusline-previous.json");
+    }
     settings::hook_exe_path().with_file_name("statusline-previous.json")
 }
 
@@ -357,6 +369,54 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
     Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
 }
 
+/// Uninstalls Claude Code hooks and the plan relay. Inspect settings strictly:
+/// an unreadable file cannot safely be treated as an unconfigured installation.
+pub fn uninstall_all() -> Result<bool, String> {
+    let Some(bytes) = config_file::read(&settings_path())? else { return Ok(false) };
+    let current = config_file::parse_json(Some(&bytes), "settings.json")?;
+    let installed = current.get("hooks")
+        .and_then(Value::as_object)
+        .is_some_and(|hooks| hooks.values().filter_map(Value::as_array).flatten().any(entry_is_ours));
+    let relay_installed = plan_relay_installed(&current);
+    if !installed && !relay_installed {
+        return Ok(false);
+    }
+    // Prefer the copy outside bin/, as the relay does, but support old installs
+    // that have not yet migrated. Read both strictly before changing anything.
+    let saved = if relay_installed {
+        [status_line_previous_path(), legacy_status_line_previous_path()]
+            .into_iter()
+            .map(|path| config_file::read(&path).map(|bytes| (path, bytes)))
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        Vec::new()
+    };
+    let previous = saved.iter().find_map(|(_, bytes)| bytes.as_deref())
+        .map(|bytes| config_file::parse_json(Some(bytes), "statusline-previous.json"))
+        .transpose()?;
+    let mut expected = config_file::fingerprint(&bytes);
+    let mut edits = vec![FileEdit {
+        path: settings_path(),
+        edit: config_file::json_edit("settings.json".into(), move |current| {
+            let cleaned = without_ours(current)?;
+            Ok(Some(status_line_settings(&cleaned, false, previous.as_ref())?))
+        }),
+    }];
+    for (path, bytes) in saved {
+        // Check and back up every snapshot before changing any file. Remove both
+        // copies so the stale legacy one cannot become the fallback later.
+        expected.push(':');
+        expected.push_str(&bytes.as_deref()
+            .map(config_file::fingerprint).unwrap_or_else(|| "none".into()));
+        edits.push(FileEdit {
+            path,
+            edit: config_file::text_edit("statusline-previous.json".into(), |_| Ok(None)),
+        });
+    }
+    config_file::apply(&edits, &expected)?;
+    Ok(true)
+}
+
 fn save_status_line_previous(status_line: &Value) -> std::io::Result<()> {
     let path = status_line_previous_path();
     if let Some(dir) = path.parent() {
@@ -453,6 +513,60 @@ fn install_relay(src: &Path, dest: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
+
+    // Filesystem tests must isolate both the home config and the local-data
+    // backup, without changing process-wide HOME, LOCALAPPDATA or XDG variables.
+    thread_local! {
+        static TEST_ROOT: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
+    }
+
+    pub(super) fn test_root() -> Option<PathBuf> {
+        TEST_ROOT.with(|root| root.borrow().clone())
+    }
+
+    struct TestPaths(PathBuf);
+
+    impl TestPaths {
+        fn new() -> Self {
+            assert!(test_root().is_none(), "test paths are already installed");
+            let nonce = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+            let root = std::env::temp_dir()
+                .join(format!("coucou-hooks-{}-{nonce}", std::process::id()));
+            std::fs::create_dir(&root).unwrap();
+            TEST_ROOT.with(|slot| *slot.borrow_mut() = Some(root.clone()));
+            Self(root)
+        }
+    }
+
+    impl Drop for TestPaths {
+        fn drop(&mut self) {
+            TEST_ROOT.with(|slot| *slot.borrow_mut() = None);
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn filesystem_paths_are_thread_local_and_restored_after_a_panic() {
+        let outside = (settings_path(), status_line_previous_path(), legacy_status_line_previous_path());
+        let paths = TestPaths::new();
+        let root = paths.0.clone();
+        assert!(settings_path().starts_with(&root));
+        assert!(status_line_previous_path().starts_with(&root));
+        assert!(legacy_status_line_previous_path().starts_with(&root));
+        let other_thread = std::thread::spawn(|| (settings_path(), status_line_previous_path(), legacy_status_line_previous_path()))
+            .join().unwrap();
+        assert_eq!(other_thread, outside);
+
+        let result = std::panic::catch_unwind(move || {
+            let _paths = paths;
+            panic!("exercise test-path cleanup during unwinding");
+        });
+        assert!(result.is_err());
+        assert_eq!((settings_path(), status_line_previous_path(), legacy_status_line_previous_path()), outside);
+        assert!(!root.exists());
+    }
 
     #[test]
     fn a_saved_status_line_moves_out_of_bin_without_replacing_a_newer_one() {
@@ -470,6 +584,68 @@ mod tests {
         assert_eq!(std::fs::read(&new).unwrap(), b"{\"command\":\"old\"}");
         assert!(legacy.exists());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn uninstall_restores_a_legacy_status_line_and_clears_both_copies() {
+        let _paths = TestPaths::new();
+        let path = settings_path();
+        let new = status_line_previous_path();
+        let legacy = legacy_status_line_previous_path();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        let current = status_line_settings(&json!({ "model": "keep" }), true, None).unwrap();
+        let old = json!({ "type": "command", "command": "old-line", "padding": 2 });
+        std::fs::write(&path, config_file::pretty(&current)).unwrap();
+        std::fs::write(&legacy, config_file::pretty(&old)).unwrap();
+        assert!(!new.exists());
+        assert!(uninstall_all().unwrap());
+        let cleaned: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(cleaned["statusLine"], old);
+        assert_eq!(cleaned["model"], "keep");
+        assert!(!legacy.exists());
+
+        // The newer copy takes precedence, and the stale one must not survive
+        // to be picked up by the relay on a later install.
+        let newer = json!({ "type": "command", "command": "new-line", "padding": 4 });
+        std::fs::write(&path, config_file::pretty(&current)).unwrap();
+        std::fs::write(&legacy, config_file::pretty(&old)).unwrap();
+        std::fs::write(&new, config_file::pretty(&newer)).unwrap();
+        assert!(uninstall_all().unwrap());
+        let cleaned: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(cleaned["statusLine"], newer);
+        assert_eq!(cleaned["model"], "keep");
+        assert!(!new.exists());
+        assert!(!legacy.exists());
+        assert!(!uninstall_all().unwrap());
+    }
+
+    #[test]
+    fn uninstall_refuses_an_unreadable_or_corrupt_legacy_backup() {
+        let _paths = TestPaths::new();
+        let path = settings_path();
+        let new = status_line_previous_path();
+        let legacy = legacy_status_line_previous_path();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        let current = status_line_settings(&json!({ "model": "keep" }), true, None).unwrap();
+        let original = config_file::pretty(&current);
+        std::fs::write(&path, &original).unwrap();
+        std::fs::write(&legacy, b"{ broken backup").unwrap();
+        assert!(uninstall_all().is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        assert_eq!(std::fs::read(&legacy).unwrap(), b"{ broken backup");
+
+        // A valid new copy does not make a read failure in the legacy location
+        // safe to ignore: cleanup must preserve all files on a preflight error.
+        std::fs::remove_file(&legacy).unwrap();
+        std::fs::create_dir(&legacy).unwrap();
+        let saved = config_file::pretty(&json!({ "type": "command", "command": "new-line" }));
+        std::fs::write(&new, &saved).unwrap();
+        assert!(uninstall_all().is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        assert_eq!(std::fs::read_to_string(&new).unwrap(), saved);
+        assert!(legacy.is_dir());
     }
 
     #[test]
@@ -547,8 +723,7 @@ mod tests {
         assert!(after["hooks"]["SomeEventWeDoNotTouch"].is_array());
 
         // Installing twice still leaves one entry of ours per event. (Compared
-        // by count: another test points HOME elsewhere meanwhile, which moves
-        // the relay path.)
+        // by count so the check is independent of the relay's absolute path.)
         let twice = merged(&after).unwrap();
         assert_eq!(twice["hooks"]["PreToolUse"].as_array().unwrap().iter().filter(|e| entry_is_ours(e)).count(), 1);
 
@@ -580,19 +755,18 @@ mod tests {
         assert_eq!(claude_dir(Some("E:/Claude/data".into()), home), PathBuf::from("E:/Claude/data"));
     }
 
-    /// Everything filesystem-shaped lives in one test on purpose: it points
-    /// the home directory at a temp directory, and that is process-wide.
+    /// All writes, including the saved status line and dated backups, stay in
+    /// this test's temporary directory. The guard also cleans up on panic.
     #[test]
     fn writing_backs_up_preserves_and_refuses_a_changed_file() {
-        let tmp = std::env::temp_dir().join(format!("coucou-hooks-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&tmp);
-        std::fs::create_dir_all(tmp.join(".claude")).unwrap();
-        std::env::set_var(platform::HOME_VAR, &tmp);
-        // A moved Claude folder would point outside the temp directory.
-        std::env::remove_var("CLAUDE_CONFIG_DIR");
-
+        let paths = TestPaths::new();
+        let tmp = &paths.0;
         let path = settings_path();
-        assert!(path.starts_with(&tmp), "the test must not touch the real home");
+        let saved = status_line_previous_path();
+        assert!(path.starts_with(tmp), "the test must not touch the real home");
+        assert!(saved.starts_with(tmp), "the test must not touch the real local data");
+        assert!(legacy_status_line_previous_path().starts_with(tmp), "the test must not touch legacy local data");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
 
         // A real-shaped file, written the way PowerShell 5 would: UTF-8 with BOM.
         let original = r#"{"model":"claude-opus-5","theme":"dark","tui":{"x":1},"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"other-tool.exe"}]}]}}"#;
@@ -617,6 +791,17 @@ mod tests {
         assert!(pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("other-tool.exe")));
         assert!(status().installed);
 
+        // Cleanup is repeatable and leaves the other tool's hooks in place.
+        assert!(uninstall_all().unwrap());
+        assert!(!status().installed);
+        assert_eq!(serde_json::from_slice::<Value>(&std::fs::read(&path).unwrap()).unwrap(),
+            serde_json::from_str::<Value>(original).unwrap());
+        assert!(!uninstall_all().unwrap());
+
+        // Reinstall so the stale preview test below has something to uninstall
+        let plan = preview(true).unwrap();
+        write(true, &plan.fingerprint).unwrap();
+
         // A file that moved since the preview is refused, and left alone.
         let stale = preview(false).unwrap();
         std::fs::write(&path, br#"{"model":"someone-else-edited-this"}"#).unwrap();
@@ -630,7 +815,54 @@ mod tests {
         assert!(preview(true).is_err());
         assert!(write(true, "whatever").is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
+        assert!(uninstall_all().is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
 
-        let _ = std::fs::remove_dir_all(&tmp);
+        // A read failure must not be mistaken for an installation with no hooks.
+        std::fs::remove_file(&path).unwrap();
+        std::fs::create_dir(&path).unwrap();
+        assert!(uninstall_all().is_err());
+        assert!(path.is_dir());
+        std::fs::remove_dir(&path).unwrap();
+
+        // Refuse a corrupt saved status line before removing any hooks.
+        let theirs = json!({ "type": "command", "command": "~/bin/my-line", "padding": 2 });
+        let mut with_line = serde_json::from_str::<Value>(original).unwrap();
+        with_line["statusLine"] = theirs.clone();
+        std::fs::write(&path, config_file::pretty(&with_line)).unwrap();
+        let plan = preview(true).unwrap();
+        write(true, &plan.fingerprint).unwrap();
+        let plan = status_line_preview(true).unwrap();
+        status_line_write(true, &plan.fingerprint).unwrap();
+        let before_cleanup = std::fs::read(&path).unwrap();
+        let saved = status_line_previous_path();
+        let saved_bytes = std::fs::read(&saved).unwrap();
+        std::fs::write(&saved, b"{ broken backup").unwrap();
+        assert!(uninstall_all().is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), before_cleanup);
+        assert_eq!(std::fs::read(&saved).unwrap(), b"{ broken backup");
+        std::fs::write(&saved, saved_bytes).unwrap();
+        assert!(uninstall_all().unwrap());
+        let cleaned: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(cleaned, with_line);
+        assert_eq!(cleaned["statusLine"], theirs);
+        assert!(!saved.exists());
+        assert!(!uninstall_all().unwrap());
+
+        // An apply/backup failure is returned, with settings left untouched.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let plan = preview(true).unwrap();
+            write(true, &plan.fingerprint).unwrap();
+            let original = std::fs::read(&path).unwrap();
+            let dir = path.parent().unwrap();
+            let permissions = std::fs::metadata(dir).unwrap().permissions();
+            std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o500)).unwrap();
+            let result = uninstall_all();
+            std::fs::set_permissions(dir, permissions).unwrap();
+            assert!(result.is_err());
+            assert_eq!(std::fs::read(&path).unwrap(), original);
+        }
     }
 }

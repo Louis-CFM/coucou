@@ -1,16 +1,22 @@
-; Uninstall hooks for the NSIS installer.
-;
-; The app stages coucou-hook.exe into %LOCALAPPDATA%\Coucou\bin at launch, so the
-; installer never recorded it and the default uninstaller leaves it behind. The
-; inbox and the log live in the same place and are ours too.
-;
-; Claude Code's own settings.json is deliberately NOT touched here: it belongs to
-; the user, it may contain hooks from other tools, and rewriting somebody's
-; config from an uninstaller with no diff and no consent is exactly what the rest
-; of this app goes out of its way not to do. A relay that is gone exits 0 without
-; printing anything, so a leftover entry costs nothing beyond a dead path.
+; Clean up agent hooks before removing Coucou or its staged relay.
+; If cleanup fails, keep the binaries so configured hooks can still run.
 
 !macro NSIS_HOOK_PREUNINSTALL
+  Push $0
+  ClearErrors
+  IfFileExists "$INSTDIR\Coucou.exe" 0 coucou_cleanup_failed
+  ExecWait '"$INSTDIR\Coucou.exe" --uninstall-hooks' $0
+  IfErrors coucou_cleanup_failed
+  StrCmp $0 "0" coucou_cleanup_done
+
+coucou_cleanup_failed:
+  Pop $0
+  SetErrorLevel 2
+  MessageBox MB_OK|MB_ICONSTOP "Coucou could not remove its agent hooks. Uninstallation has stopped to keep the app and hook relay available. Reinstall Coucou or remove its hooks in Settings, then try again." /SD IDOK
+  Abort
+
+coucou_cleanup_done:
+  Pop $0
   RMDir /r "$LOCALAPPDATA\Coucou\bin"
   RMDir /r "$LOCALAPPDATA\Coucou\inbox"
   Delete "$LOCALAPPDATA\Coucou\coucou.log"
