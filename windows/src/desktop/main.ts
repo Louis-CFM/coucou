@@ -201,8 +201,9 @@ class DesktopMochi {
     engine.setOutfit(this.snap.outfit, true);
     if (!this.asleep) {
       // Windows: the global cursor. Linux: only while the pointer is over him.
+      const eyesFollow = this.snap.eyesFollowPointer !== false;
       const fresh = this.mode === "poll" || now - this.lastPointer < 1500;
-      const g = this.cursor && fresh ? gaze(lookOrigin(0, 0), this.cursor) : { lookX: 0, lookY: 0 };
+      const g = eyesFollow && this.cursor && fresh ? gaze(lookOrigin(0, 0), this.cursor) : { lookX: 0, lookY: 0 };
       engine.lookX = g.lookX;
       engine.lookY = g.lookY;
     }
