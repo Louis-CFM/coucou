@@ -1148,7 +1148,45 @@ fn parse_notion_page(obj: &Value) -> Option<Value> {
 
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct N8nExecution {
+    id: String,
+    workflow: String,
+    status: String,
+    detail: Option<String>,
+}
+
+static N8N_LAST: std::sync::LazyLock<Mutex<Option<N8nExecution>>> =
+    std::sync::LazyLock::new(|| Mutex::new(None));
+
+/// An n8n URL or API key changed: forget the previously seen execution so the
+/// next poll runs immediately with the new credentials.
+pub fn n8n_credentials_changed(app: &AppHandle) {
+    SEEN.0.lock().unwrap().remove("n8n");
+    *N8N_LAST.lock().unwrap() = None;
+    emit(app, IntegrationUpdate { id: "integration_n8n", data: json!({}), error: None, event: None });
+    if !PAUSED.load(Ordering::Relaxed) && enabled(app, "integration_n8n") {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            poll_n8n(app).await;
+        });
+    }
+}
+
+fn extract_n8n_workflow_name(json: &Value) -> Option<String> {
+    json.get("workflowData")
+        .and_then(|w| w.get("name"))
+        .and_then(Value::as_str)
+        .or_else(|| json.get("workflowName").and_then(Value::as_str))
+        .or_else(|| json.get("name").and_then(Value::as_str))
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
 async fn poll_n8n(app: AppHandle) {
+    if PAUSED.load(Ordering::Relaxed) || !enabled(&app, "integration_n8n") {
+        return;
+    }
     let (Some(key), Some(raw_base)) = (secrets::get("n8n-api-key"), secrets::get("n8n-url")) else {
         return;
     };
@@ -1162,14 +1200,21 @@ async fn poll_n8n(app: AppHandle) {
     ];
 
     let mut items: Option<Vec<Value>> = None;
+    let mut last_status: Option<u16> = None;
+    let mut last_err: Option<String> = None;
     for url in &list_urls {
-        let Ok(response) = http.get(url).header("X-N8N-API-KEY", &key).header("Accept", "application/json").send().await
-        else {
-            continue;
+        let response = http.get(url).header("X-N8N-API-KEY", &key).header("Accept", "application/json").send().await;
+        let response = match response {
+            Ok(r) => r,
+            Err(e) => {
+                last_err = Some(e.to_string());
+                continue;
+            }
         };
         if !response.status().is_success() {
             // Only the status: a self-hosted base URL can carry credentials.
             log::line(format!("n8n list HTTP {}", response.status()));
+            last_status = Some(response.status().as_u16());
             continue;
         }
         let Ok(json) = response.json::<Value>().await else { continue };
@@ -1183,49 +1228,75 @@ async fn poll_n8n(app: AppHandle) {
         }
     }
 
-    let Some(first) = items.as_deref().and_then(find_terminal_execution) else { return };
+    let Some(list) = items else {
+        let error = match (last_status, last_err) {
+            (Some(code), _) => status_error(code, &crate::i18n::t("Key lacks access")),
+            (None, Some(err)) => crate::i18n::tf("No connection: {error}", &[("error", &err)]),
+            (None, None) => crate::i18n::tf("API error {code}", &[("code", "?")]),
+        };
+        emit(&app, IntegrationUpdate { id: "integration_n8n", data: json!({}), error: Some(error), event: None });
+        return;
+    };
+
+    let Some(first) = find_terminal_execution(&list) else {
+        // Seed SEEN so the first future execution is not treated as the initial load.
+        let _ = is_new("n8n", "");
+        *N8N_LAST.lock().unwrap() = None;
+        emit(&app, IntegrationUpdate { id: "integration_n8n", data: json!({}), error: None, event: None });
+        return;
+    };
     let Some(id) = parse_execution_id(first) else { return };
 
     let status = first.get("status").and_then(Value::as_str).unwrap_or("");
-    if !is_new("n8n", &id) {
-        return;
-    }
+    let fresh = is_new("n8n", &id);
     let success = status == "success";
 
-    let detail_urls = [
-        format!("{base}/api/v1/executions/{id}?includeData=true"),
-        format!("{base}/api/v1/executions/{id}"),
-        format!("{base}/rest/executions/{id}?includeData=true"),
-        format!("{base}/rest/executions/{id}"),
-    ];
-    let mut name = crate::i18n::t("Workflow");
-    let mut detail = None;
-    for url in &detail_urls {
-        let Ok(response) = http.get(url).header("X-N8N-API-KEY", &key).header("Accept", "application/json").send().await
-        else {
-            continue;
-        };
-        if !response.status().is_success() {
-            continue;
-        }
-        let Ok(json) = response.json::<Value>().await else { continue };
-        name = json
-            .get("workflowData")
-            .and_then(|w| w.get("name"))
-            .and_then(Value::as_str)
-            .or_else(|| json.get("name").and_then(Value::as_str))
-            .map(str::to_string)
-            .unwrap_or_else(|| crate::i18n::t("Workflow"));
-        detail = n8n_detail(&json, success);
-        break;
-    }
+    let cached = {
+        let guard = N8N_LAST.lock().unwrap();
+        guard.as_ref().filter(|prev| prev.id == id && prev.status == status).cloned()
+    };
 
-    log::line(format!("n8n execution {id} {status} · {name}"));
+    let (name, detail) = if let Some(prev) = cached.filter(|_| !fresh) {
+        (prev.workflow, prev.detail)
+    } else {
+        let detail_urls = [
+            format!("{base}/api/v1/executions/{id}?includeData=true"),
+            format!("{base}/api/v1/executions/{id}"),
+            format!("{base}/rest/executions/{id}?includeData=true"),
+            format!("{base}/rest/executions/{id}"),
+        ];
+        let mut name = extract_n8n_workflow_name(first).unwrap_or_else(|| crate::i18n::t("Workflow"));
+        let mut detail = None;
+        for url in &detail_urls {
+            let Ok(response) = http.get(url).header("X-N8N-API-KEY", &key).header("Accept", "application/json").send().await
+            else {
+                continue;
+            };
+            if !response.status().is_success() {
+                continue;
+            }
+            let Ok(json) = response.json::<Value>().await else { continue };
+            name = extract_n8n_workflow_name(&json).unwrap_or_else(|| name.clone());
+            detail = n8n_detail(&json, success);
+            break;
+        }
+        *N8N_LAST.lock().unwrap() = Some(N8nExecution {
+            id: id.clone(),
+            workflow: name.clone(),
+            status: status.to_string(),
+            detail: detail.clone(),
+        });
+        (name, detail)
+    };
+
+    if fresh {
+        log::line(format!("n8n execution {id} {status} · {name}"));
+    }
     emit(&app, IntegrationUpdate {
         id: "integration_n8n",
-        data: json!({ "workflow": name, "status": status }),
+        data: json!({ "id": id, "workflow": name, "status": status, "detail": detail }),
         error: None,
-        event: Some(IntegrationEvent { success, label: name, detail }),
+        event: fresh.then(|| IntegrationEvent { success, label: name, detail }),
     });
 }
 
@@ -1449,5 +1520,33 @@ mod tests {
         assert_eq!(parse_execution_id(&json!({ "id": "abc-123" })), Some("abc-123".to_string()));
         assert_eq!(parse_execution_id(&json!({ "id": 42 })), Some("42".to_string()));
         assert_eq!(parse_execution_id(&json!({ "foo": "bar" })), None);
+    }
+
+    #[test]
+    fn extract_n8n_workflow_name_reads_workflow_data_or_fallbacks() {
+        assert_eq!(
+            extract_n8n_workflow_name(&json!({ "workflowData": { "name": "Deploy" } })),
+            Some("Deploy".to_string())
+        );
+        assert_eq!(
+            extract_n8n_workflow_name(&json!({ "workflowName": "Sync" })),
+            Some("Sync".to_string())
+        );
+        assert_eq!(
+            extract_n8n_workflow_name(&json!({ "name": "Backup" })),
+            Some("Backup".to_string())
+        );
+        assert_eq!(extract_n8n_workflow_name(&json!({ "name": "" })), None);
+    }
+
+    #[test]
+    fn is_new_after_empty_seed_marks_first_execution_as_new() {
+        let key = "test_n8n_empty_seed";
+        SEEN.0.lock().unwrap().remove(key);
+        assert_eq!(is_new(key, ""), false);
+        assert_eq!(is_new(key, "101"), true);
+        assert_eq!(is_new(key, "101"), false);
+        assert_eq!(is_new(key, "102"), true);
+        SEEN.0.lock().unwrap().remove(key);
     }
 }
