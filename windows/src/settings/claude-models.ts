@@ -1,6 +1,7 @@
 import { Bridge, type ModelInfo } from "../core/bridge";
-import { h, clear } from "../views/dom";
+import { h } from "../views/dom";
 import { t } from "../i18n/i18n";
+import { dropdownSelect } from "../views/dropdown";
 
 // Verified against Anthropic's catalog. Account discovery replaces these
 // choices when a key is present; never replace a saved model automatically.
@@ -12,7 +13,12 @@ export const CLAUDE_MODELS: ModelInfo[] = [
 ];
 
 export function claudeModelControl(saved: () => string, save: (id: string) => Promise<void>) {
-  const select = h("select", { "aria-label": t("Model") }) as HTMLSelectElement;
+  const select = dropdownSelect(
+    CLAUDE_MODELS.map((m) => [m.id, m.label]),
+    saved(),
+    undefined,
+    { ariaLabel: t("Model") },
+  );
   const refresh = h("button", { text: t("Refresh") }) as HTMLButtonElement;
   const feedback = h("div", { class: "hint", role: "status" });
   const element = h("div", {}, h("div", { class: "row" }, h("label", { text: t("Model") }), select, refresh), feedback);
@@ -26,11 +32,10 @@ export function claudeModelControl(saved: () => string, save: (id: string) => Pr
     feedback.textContent = saveError || loadError || (loading ? t("Loading models…") : "");
   }
   function render() {
-    clear(select);
     const choices = new Map(models.map(model => [model.id, model.label]));
     const current = saved();
     if (current && !choices.has(current)) choices.set(current, current);
-    for (const [id, label] of choices) select.append(h("option", { value: id, text: label }));
+    select.setOptions(Array.from(choices.entries()));
     select.value = current;
     controls();
   }

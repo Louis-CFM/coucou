@@ -10,6 +10,7 @@ import {
 } from "../core/whatsapp";
 import { h } from "../views/dom";
 import { t } from "../i18n/i18n";
+import { dropdownSelect } from "../views/dropdown";
 
 type Toggle = (on: boolean, onChange: (v: boolean) => void) => HTMLElement;
 
@@ -50,10 +51,10 @@ export function whatsappSection(host: WhatsAppSettingsHost): HTMLElement {
   // Advanced
   const advancedBtn = h("button", { text: t("Advanced: your own gateway") });
   const advanced = h("div", { style: "display:flex;flex-direction:column;gap:10px" });
-  const gatewaySelect = h("select", {},
-    h("option", { value: "gowa", text: "GOWA" }),
-    h("option", { value: "openwa", text: "OpenWA" }),
-  ) as HTMLSelectElement;
+  const gatewaySelect = dropdownSelect([
+    ["gowa", "GOWA"],
+    ["openwa", "OpenWA"],
+  ], "gowa");
   const urlInput = h("input", { type: "text", autocomplete: "off", spellcheck: "false", style: "flex:1 1 auto;min-width:0" }) as HTMLInputElement;
   const credentialInput = h("input", { type: "password", autocomplete: "off", spellcheck: "false", style: "flex:1 1 auto;min-width:0" }) as HTMLInputElement;
   const credentialRemove = h("button", { class: "danger", text: t("Remove") });

@@ -291,7 +291,7 @@ foreach ($a in $ns.Accounts) { $rows += [pscustomobject]@{ name = [string]$a.Dis
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(not(windows), allow(dead_code))]
+#[allow(dead_code)]
 pub enum RunError {
     /// Outlook is not open (or is the new Outlook, which has no COM objects).
     NotRunning,

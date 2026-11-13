@@ -190,7 +190,19 @@ async function main() {
   // In a plain browser there is no wake strip behind the cursor: make the whole
   // page wake the island so the visuals can be checked with `npm run dev`.
   if (!IS_TAURI) {
-    document.addEventListener("click", () => Sound.resume(), { once: true });
+    document.documentElement.style.background = "#0c0d12";
+    document.body.style.background = "#0c0d12";
+    document.addEventListener("click", () => {
+      Sound.resume();
+      if (State.mode === "hidden") {
+        island.wakeFromClosed();
+      }
+    });
+
+    // Auto-wake island in browser mode so it is immediately visible
+    window.setTimeout(() => {
+      if (State.mode === "hidden") island.wakeFromClosed();
+    }, 150);
   }
 }
 

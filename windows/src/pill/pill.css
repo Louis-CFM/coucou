@@ -1,3 +1,8 @@
+@import "@fontsource/bricolage-grotesque/500.css";
+@import "@fontsource/bricolage-grotesque/600.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+
 /* Flow dictation's pill (FlowPill.swift): a see-through capsule resting on an
    edge of the screen, black once open, and a bubble beside it. */
 
@@ -16,7 +21,7 @@ body {
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
-  font: 500 12.5px system-ui, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", sans-serif;
+  font: 500 12.5px "Bricolage Grotesque", system-ui, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", sans-serif;
   color: #fff;
 }
 

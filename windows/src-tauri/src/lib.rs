@@ -818,6 +818,13 @@ fn hub_shown() -> bool {
     HUB_SHOWN.load(Ordering::Relaxed)
 }
 
+static TARGET_HUB_PAGE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+#[tauri::command]
+fn target_hub_page() -> Option<String> {
+    TARGET_HUB_PAGE.lock().ok().and_then(|mut g| g.take())
+}
+
 pub fn show_settings_window(app: &AppHandle) {
     show_hub(app, Some("general"));
 }
@@ -825,30 +832,52 @@ pub fn show_settings_window(app: &AppHandle) {
 /// Shows the Coucou window, on `page` when given ("dictation", "notes",
 /// "settings", "general", "shortcuts"…).
 pub fn show_hub(app: &AppHandle, page: Option<&str>) {
+    if let Some(target) = page {
+        if let Ok(mut g) = TARGET_HUB_PAGE.lock() {
+            *g = Some(target.to_string());
+        }
+    }
     let Some(win) = app.get_webview_window(HUB_LABEL) else {
         // Creating it at startup can fail on some machines (WebView2
         // 0x80070578, #775): try again now, on the main thread, where
         // window creation can't deadlock a command.
         log::line("Coucou window missing, creating it again");
         let handle = app.clone();
+        let target_page = page.map(str::to_string);
         let _ = app.run_on_main_thread(move || {
             create_settings_window(&handle);
             if let Some(win) = handle.get_webview_window(HUB_LABEL) {
+                if let Some(p) = target_page {
+                    let _ = handle.emit("hub-page", p.clone());
+                    let _ = win.emit_to(HUB_LABEL, "hub-page", p.clone());
+                    let _ = win.emit("hub-page", p);
+                }
                 webview_memory::set_low(&win, false);
+                let _ = win.unminimize();
                 let _ = win.show();
                 let _ = win.set_focus();
+                #[cfg(windows)]
+                if let Ok(hwnd) = win.hwnd() {
+                    platform::bring_forward(hwnd.0 as isize);
+                }
                 set_hub_shown(&win, true);
             }
         });
         return;
     };
     if let Some(page) = page {
+        let _ = app.emit("hub-page", page.to_string());
+        let _ = win.emit_to(HUB_LABEL, "hub-page", page.to_string());
         let _ = win.emit("hub-page", page.to_string());
     }
     webview_memory::set_low(&win, false);
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+    #[cfg(windows)]
+    if let Ok(hwnd) = win.hwnd() {
+        platform::bring_forward(hwnd.0 as isize);
+    }
     set_hub_shown(&win, true);
 }
 
@@ -967,6 +996,7 @@ pub fn run() {
             github_refresh,
             open_n8n,
             open_settings_window,
+            target_hub_page,
             set_paused,
             shortcuts_status,
             shortcuts_suspend,

@@ -4,6 +4,7 @@
 // its coloured band. Port of FlowHub.swift.
 
 import "./hub.css";
+import { animate, stagger } from "motion";
 import { h, clear } from "../views/dom";
 import { t, onLanguageChange } from "../i18n/i18n";
 import { onEvent } from "../core/bridge";
@@ -91,6 +92,13 @@ const DEFAULT_STATUS: FlowStatus = {
   mics: [],
   platform: navigator.userAgent.includes("Windows") ? "windows" : "linux",
   autostarted: false,
+  userName: "Madhan",
+  deviceName: "MADHAN",
+};
+
+const MACOS_SPRINGS = {
+  snappy: { type: "spring" as const, stiffness: 450, damping: 32, mass: 0.8 },
+  smooth: { type: "spring" as const, stiffness: 320, damping: 28, mass: 1 },
 };
 
 export async function startHub(root: HTMLElement, opts: HubOptions) {
@@ -111,7 +119,29 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   const searchRows = new Map<string, HTMLElement>();
   const statusLine = h("div", { class: "hub-status" });
   const scroll = h("div", { class: "hub-scroll" });
+  const groupsContainer = h("div", { class: "hub-groups" });
+  const navIndicator = h("div", { class: "hub-nav-indicator" });
+  groupsContainer.append(navIndicator);
   let rendering = 0;
+  let indicatorInitialized = false;
+
+  function updateNavIndicator(animated = true) {
+    const activeBtn = items.get(current);
+    if (!activeBtn) return;
+    const targetY = activeBtn.offsetTop;
+    const targetH = activeBtn.offsetHeight || 32;
+    navIndicator.style.height = `${targetH}px`;
+    if (!indicatorInitialized || !animated) {
+      navIndicator.style.transform = `translateY(${targetY}px)`;
+      navIndicator.style.opacity = "1";
+      indicatorInitialized = true;
+      return;
+    }
+    animate(navIndicator, {
+      y: targetY,
+      opacity: 1,
+    }, MACOS_SPRINGS.snappy);
+  }
 
   const ctx: HubContext = {
     get status() {
@@ -166,6 +196,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     current = def.id;
     activeAnchor = targetAnchor ?? null;
     for (const [id, el] of items) el.classList.toggle("on", id === current);
+    updateNavIndicator(true);
     updateSearchRowHighlights();
     const token = ++rendering;
     const page_ = h("div", { class: "hub-page" });
@@ -181,6 +212,27 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     if (token !== rendering) return;
     clear(scroll);
     scroll.append(page_);
+
+    // Hardware-accelerated macOS Liquid Glass spring transitions
+    page_.style.willChange = "transform, opacity";
+    animate(
+      page_,
+      { opacity: [0, 1], y: [8, 0], scale: [0.995, 1] },
+      MACOS_SPRINGS.smooth
+    );
+
+    const cards = Array.from(
+      page_.querySelectorAll<HTMLElement>(".hub-hero, .hub-card, #settings-root > section, .hub-stat-grid, .hub-action-card")
+    );
+    if (cards.length > 0) {
+      for (const card of cards) card.style.willChange = "transform, opacity";
+      animate(
+        cards,
+        { opacity: [0, 1], y: [12, 0], scale: [0.99, 1] },
+        { delay: stagger(0.03), ...MACOS_SPRINGS.smooth }
+      );
+    }
+
     if (targetAnchor) {
       const el = page_.querySelector(`[data-anchor="${targetAnchor}"]`) as HTMLElement | null;
       if (el) {
@@ -188,6 +240,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
         el.classList.remove("hub-card-glowing");
         void el.offsetWidth;
         el.classList.add("hub-card-glowing");
+        animate(el, { scale: [1, 1.015, 1] }, { duration: 0.5, ...MACOS_SPRINGS.snappy });
       } else {
         scroll.scrollTop = 0;
       }
@@ -224,7 +277,6 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   searchBox.querySelector("svg")?.classList.add("hub-search-icon");
   side.append(searchBox);
 
-  const groupsContainer = h("div", { class: "hub-groups" });
   const resultsContainer = h("div", { class: "hub-search-results", style: "display:none" });
   side.append(groupsContainer, resultsContainer);
 
@@ -254,6 +306,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       resultsContainer.style.display = "none";
       groupsContainer.style.display = "";
       searchHits = [];
+      updateNavIndicator(false);
       return;
     }
     searchClear.style.display = "";
@@ -289,6 +342,9 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     }
   }
 
+  searchInput.addEventListener("focus", () => {
+    animate(searchBox, { scale: [1, 1.015, 1] }, MACOS_SPRINGS.snappy);
+  });
   searchInput.addEventListener("input", renderSearchResults);
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
@@ -318,9 +374,13 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   root.append(side, h("main", { class: "hub-panel" }, scroll));
   drawStatus();
   await show(current);
+  updateNavIndicator(false);
 
   void onEvent<string>("hub-page", (page) => {
-    const id = (page === "settings" ? "flowsettings" : page) as PageId;
+    let id = page as PageId;
+    if (page === "claude") id = "agents" as PageId;
+    else if (page === "api") id = "chat" as PageId;
+    else if (page === "settings") id = "general" as PageId;
     if (ALL.some((p) => p.id === id)) void show(id);
   });
   void onEvent<FlowPrefs>("flow-prefs", (prefs) => {
@@ -339,8 +399,10 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       }
       notchGroup.textContent = t("Notch");
       drawStatus();
+      updateNavIndicator(false);
       void show(current);
     },
     current: () => current,
+    show: (page: PageId, targetAnchor?: string) => show(page, targetAnchor),
   };
 }

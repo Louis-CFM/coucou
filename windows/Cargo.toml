@@ -1,5 +1,6 @@
 [workspace]
 members = ["src-tauri", "hook"]
+default-members = ["src-tauri"]
 resolver = "2"
 
 [workspace.package]

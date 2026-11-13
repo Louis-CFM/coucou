@@ -29,6 +29,7 @@ import { WHATSAPP_ID } from "../core/whatsapp";
 import { updateRows, updatesListener } from "./updates";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
+import { dropdownSelect } from "../views/dropdown";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
 } from "../i18n/i18n";
@@ -44,7 +45,7 @@ let version = "";
 const windowRoot = document.getElementById("hub")!;
 /** Where the Notch page being shown draws its sections. */
 let root: HTMLElement = windowRoot;
-let hub: { redraw(): void; current(): PageId } | null = null;
+let hub: { redraw(): void; current(): PageId; show(page: PageId, targetAnchor?: string): Promise<void> } | null = null;
 
 async function save() {
   await Bridge.saveSettings(settings);
@@ -508,10 +509,9 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
  */
 function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   const slots = h("div", { class: "hint" });
-  const main = h("select", {}) as HTMLSelectElement;
-  for (const def of mainPillChoices()) main.append(h("option", { value: def.id, text: def.name }));
-  main.addEventListener("change", () => {
-    const next = chooseMainPill(settings, main.value);
+  const pillChoices: [string, string][] = mainPillChoices().map((def) => [def.id, def.name]);
+  const main = dropdownSelect(pillChoices, settings.mainPill, (chosenId) => {
+    const next = chooseMainPill(settings, chosenId);
     if (!next) return;
     settings.mainPill = next.mainPill;
     settings.activeIntegrations = next.activeIntegrations;
@@ -1046,30 +1046,31 @@ function generalSection(): HTMLElement {
   });
 
   // The closed island (core/closed.ts): what stays at the top of the screen.
-  const closed = h("select", {}) as HTMLSelectElement;
-  closed.append(
-    h("option", { value: "mochi", text: t("Mochi, as on a Mac without a notch") }),
-    h("option", { value: "time", text: t("The time") }),
-    h("option", { value: "datetime", text: t("The date and the time") }),
-    h("option", { value: "claude", text: t("Claude usage") }),
-    h("option", { value: "music", text: t("What's playing") }),
-    h("option", { value: "empty", text: t("Nothing, just the island") }),
-    h("option", { value: "hidden", text: t("Hide the island") }),
-  );
-  closed.value = closedIsland(settings.closedIsland);
-  closed.addEventListener("change", () => {
-    settings.closedIsland = closed.value;
+  const closedOptions: [string, string][] = [
+    ["mochi", t("Mochi, as on a Mac without a notch")],
+    ["time", t("The time")],
+    ["datetime", t("The date and the time")],
+    ["claude", t("Claude usage")],
+    ["music", t("What's playing")],
+    ["empty", t("Nothing, just the island")],
+    ["hidden", t("Hide the island")],
+  ];
+  const closed = dropdownSelect(closedOptions, closedIsland(settings.closedIsland), (v) => {
+    settings.closedIsland = v;
     void save();
   });
 
-  const screen = h("select", {}) as HTMLSelectElement;
-  screen.append(
-    h("option", { value: "primary", text: t("Main display") }),
-    h("option", { value: "cursor", text: t("Display under the cursor") }),
-  );
-  screen.value = settings.screen;
+  const screenOptions: [string, string][] = [
+    ["primary", t("Main display")],
+    ["cursor", t("Display under the cursor")],
+  ];
+  const screen = dropdownSelect(screenOptions, settings.screen, (v) => {
+    settings.screen = v;
+    void save();
+  });
   void Bridge.listMonitors().then((list) => {
-    for (const m of list ?? []) screen.append(h("option", { value: m.key, text: m.label }));
+    const extra: [string, string][] = (list ?? []).map((m) => [m.key, m.label]);
+    screen.setOptions([...screenOptions, ...extra]);
     // Set again now the option exists. A display saved under an older key (moved,
     // resized, or saved before names were kept) is shown by its place or its
     // name; one that is gone shows as the main one.
@@ -1082,10 +1083,6 @@ function generalSection(): HTMLElement {
       (name ? keys.find((k) => k.split("|")[1] === name) : undefined) ??
       saved;
     if (!screen.value) screen.value = "primary";
-  });
-  screen.addEventListener("change", () => {
-    settings.screen = screen.value;
-    void save();
   });
 
   const sound = toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); });
@@ -1160,12 +1157,13 @@ function generalSection(): HTMLElement {
  * Both windows and the tray switch in place, without a restart.
  */
 function languageRow(): HTMLElement {
-  const select = h("select", {}) as HTMLSelectElement;
-  select.append(h("option", { value: "", text: t("System") }));
-  for (const { code, name } of LANGUAGES) select.append(h("option", { value: code, text: name, lang: code }));
-  select.value = LANGUAGES.some((l) => l.code === settings.language) ? settings.language : "";
-  select.addEventListener("change", () => {
-    settings.language = select.value;
+  const langOptions: [string, string][] = [
+    ["", t("System")],
+    ...LANGUAGES.map((l) => [l.code, l.name] as [string, string]),
+  ];
+  const currentLang = LANGUAGES.some((l) => l.code === settings.language) ? settings.language : "";
+  const select = dropdownSelect(langOptions, currentLang, (v) => {
+    settings.language = v;
     void save();
     applyLanguage();
   });
@@ -1469,6 +1467,40 @@ async function main() {
       await render();
     },
   });
+
+  const applyHash = () => {
+    if (window.location.hash) {
+      const raw = window.location.hash.replace(/^#/, "");
+      const target = raw === "claude" ? "agents" : raw === "api" ? "chat" : raw === "settings" ? "general" : raw;
+      void hub?.show(target as PageId);
+    }
+  };
+
+  const initialTarget = await Bridge.targetHubPage();
+  if (initialTarget) {
+    const raw = initialTarget;
+    const target = raw === "claude" ? "agents" : raw === "api" ? "chat" : raw === "settings" ? "general" : raw;
+    void hub?.show(target as PageId);
+  } else {
+    applyHash();
+  }
+  window.addEventListener("hashchange", applyHash);
+
+  if (!Bridge.boot) {
+    // fallback check
+  }
+  if (typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window)) {
+    const backBtn = h("a", {
+      href: "/index.html",
+      class: "hub-back-to-notch",
+      style: "position:fixed;bottom:18px;right:18px;background:rgba(255,255,255,0.12);color:#fff;padding:8px 14px;border-radius:999px;font:500 12px var(--font);text-decoration:none;z-index:9999;backdrop-filter:blur(12px);border:2px solid rgba(255,255,255,0.2);display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.5);transition:background 0.15s ease",
+      text: "← Back to Notch",
+    });
+    backBtn.addEventListener("mouseenter", () => { backBtn.style.background = "rgba(255,255,255,0.2)"; });
+    backBtn.addEventListener("mouseleave", () => { backBtn.style.background = "rgba(255,255,255,0.12)"; });
+    document.body.append(backBtn);
+  }
+
   onLanguageChange(() => {
     applyDirection();
     hub?.redraw();

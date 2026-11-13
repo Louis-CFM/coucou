@@ -486,7 +486,7 @@ pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
     first_with_window(ancestors).into_iter().collect()
 }
 
-fn bring_forward(raw: isize) -> bool {
+pub fn bring_forward(raw: isize) -> bool {
     let hwnd = HWND(raw as *mut _);
     unsafe {
         if !IsWindow(Some(hwnd)).as_bool() {

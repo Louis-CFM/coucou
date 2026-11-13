@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import { DEFAULT_SETTINGS, type Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { UpdateStatus } from "./update";
@@ -206,11 +206,35 @@ export interface PhoneAnswersStatus {
 }
 
 export const Bridge = {
-  boot: () => call<BootInfo>("boot"),
+  boot: async (): Promise<BootInfo | null> => {
+    if (!IS_TAURI) {
+      let storedSettings: Settings = { ...DEFAULT_SETTINGS };
+      try {
+        const raw = localStorage.getItem("coucou_settings");
+        if (raw) storedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      } catch {}
+      return {
+        settings: storedSettings,
+        screen: { x: 0, y: 0, width: window.innerWidth || 1920, height: window.innerHeight || 1080, scale: window.devicePixelRatio || 1 },
+        version: "0.5.9",
+        hookPath: "",
+        cursorPoll: false,
+      };
+    }
+    return call<BootInfo>("boot");
+  },
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
   setSystemLanguages: (languages: string[]) => call<void>("set_system_languages", { languages }),
 
-  saveSettings: (settings: Settings) => call<void>("save_settings", { settings }),
+  saveSettings: async (settings: Settings): Promise<void | null> => {
+    if (!IS_TAURI) {
+      try {
+        localStorage.setItem("coucou_settings", JSON.stringify(settings));
+      } catch {}
+      return null;
+    }
+    return call<void>("save_settings", { settings });
+  },
 
   /** Shrink the window down to the invisible wake strip (hidden) or back to full. */
   /** Folds the window to `width`×`height` (the closed island) or grows it back to the panel. */
@@ -283,7 +307,23 @@ export const Bridge = {
 
   quit: () => call<void>("quit_app"),
 
-  openSettingsWindow: () => call<void>("open_settings_window"),
+  openSettingsWindow: (page?: string) => {
+    if (!IS_TAURI) {
+      const url = `/settings.html${page ? `#${page}` : ""}`;
+      try {
+        const w = window.open(url, "_blank");
+        if (!w || w.closed || typeof w.closed === "undefined") {
+          window.location.href = url;
+        }
+      } catch {
+        window.location.href = url;
+      }
+      return Promise.resolve(null);
+    }
+    return call<void>("open_settings_window", { page: page ?? null });
+  },
+
+  targetHubPage: () => call<string>("target_hub_page"),
 
   /** Writes to %LOCALAPPDATA%\Coucou\coucou.log, next to the Rust lines. */
   log: (message: string) => call<void>("log_line", { message }),

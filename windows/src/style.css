@@ -1,15 +1,25 @@
+@import "@fontsource/bricolage-grotesque/400.css";
+@import "@fontsource/bricolage-grotesque/500.css";
+@import "@fontsource/bricolage-grotesque/600.css";
+@import "@fontsource/bricolage-grotesque/700.css";
+@import "@fontsource/bricolage-grotesque/800.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+
 /* Coucou for Windows — same palette, sizes and type scale as the macOS island.
    Every colour below is copied from the Swift views. */
 
 :root {
   color-scheme: dark;
 
-  /* After the Latin fonts: the scripts of the other interface languages —
-     Devanagari and Bengali (Nirmala UI), Simplified Chinese (Microsoft YaHei)
-     on Windows, the Noto families on Linux. Arabic and Cyrillic are in Segoe UI. */
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Segoe UI Emoji", "Nirmala UI",
+  /* Bricolage Grotesque primary font, then system fallbacks. */
+  --font: "Bricolage Grotesque", system-ui, "Segoe UI Variable Text", "Segoe UI", "Segoe UI Emoji", "Nirmala UI",
     "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
     "Noto Sans Arabic", "Noto Sans CJK SC", "Noto Sans SC", "Droid Sans Fallback", sans-serif;
+  /* Inter for subtitles, descriptions, hints and small detail typography */
+  --font-sub: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-desc: var(--font-sub);
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
 
   --ink: #f5f6f8;        /* primary text */
@@ -186,7 +196,7 @@ body {
   align-items: center;
   gap: 4px;
   padding: 3px 7px;
-  border: 1px solid color-mix(in srgb, var(--plan) 14%, transparent);
+  border: 2px solid color-mix(in srgb, var(--plan) 14%, transparent);
   border-radius: 999px;
   background: #0e0f11;
   color: var(--dim-3);
@@ -398,7 +408,7 @@ body {
   height: 100%;
   border-radius: 20px;
   background: var(--card);
-  border: 1px solid var(--hairline);
+  border: 2px solid var(--hairline);
   overflow: hidden;
 }
 
@@ -466,11 +476,11 @@ body {
 }
 
 .btn.primary .kbd {
-  border: 1px solid rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(0, 0, 0, 0.4);
 }
 
 .btn.secondary .kbd {
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.4);
 }
 
 .link-btn {
@@ -777,7 +787,7 @@ body {
   height: 28px;
   border-radius: 999px;
   background: var(--card-flat);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.14);
   display: flex;
   align-items: center;
   cursor: default;
@@ -849,12 +859,12 @@ body {
 }
 
 .sub {
-  font: 400 13px var(--font);
+  font: 400 13px/1.4 var(--font-sub);
   color: var(--dim);
 }
 
 .detail {
-  font: 400 12px var(--font);
+  font: 400 12px/1.4 var(--font-sub);
   color: var(--red-text);
 }
 
@@ -862,20 +872,39 @@ body {
   display: flex;
   align-items: center;
   gap: 7px;
-  font: 400 12px var(--font);
+  font: 400 12px var(--font-sub);
   color: var(--dim-2);
 }
 
 .who-row .n {
-  font: 600 12px var(--font);
+  font: 600 12px var(--font-sub);
   color: var(--ink);
+}
+
+/* General descriptions, subtitles, hints, details, and small text */
+.sub,
+.subtitle,
+.desc,
+.description,
+.hint,
+.detail,
+.footnote,
+.meta,
+.caption,
+.launch-hint,
+.prompt-hint,
+.picker-status,
+.status-badge,
+.np-sub,
+small {
+  font-family: var(--font-sub);
 }
 
 .code {
   font: 400 12px var(--mono);
   color: #e8e9ec;
   background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   padding: 5px 10px;
   max-width: 100%;
@@ -950,7 +979,7 @@ body {
   background: rgba(255, 255, 255, 0.15);
   flex: 0 0 32px;
   transition: background 0.18s;
-  cursor: default;
+  cursor: pointer;
   border: 0;
 }
 
@@ -981,6 +1010,7 @@ input[type="range"] {
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.2);
   width: 72px;
+  cursor: pointer;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -989,6 +1019,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 11px;
   border-radius: 50%;
   background: #fff;
+  cursor: pointer;
 }
 
 .seg {
@@ -998,13 +1029,13 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .seg button {
-  font: 400 11px var(--font);
+  font: 400 11px var(--font-sub);
   padding: 3px 7px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--dim-3);
-  cursor: default;
+  cursor: pointer;
 }
 
 .seg button.on {
@@ -1154,7 +1185,7 @@ input[type="range"]::-webkit-slider-thumb {
   align-items: flex-start;
   gap: 8px;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: #0d0e12;
 }
@@ -1222,7 +1253,7 @@ input[type="range"]::-webkit-slider-thumb {
 .md-rule {
   width: 100%;
   border: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid rgba(255, 255, 255, 0.3);
   opacity: 0.3;
 }
 
@@ -1308,7 +1339,7 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 10px;
   border-radius: 12px;
   background: #16171b;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.06);
 }
 
 .chat-body.picking .picker {
@@ -1332,7 +1363,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 5px;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.06);
   font: 400 11.5px var(--font);
   color: #c8cdd4;
@@ -1580,7 +1611,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 6px;
   padding: 0 9px;
   border-radius: 999px;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   background: rgba(255, 255, 255, 0.07);
   color: #d5d7db;
   font: 400 11.5px var(--font);
@@ -1989,7 +2020,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 5px;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   color: var(--dim-3);
   cursor: default;
   max-width: 100%;
@@ -2104,7 +2135,7 @@ input[type="range"]::-webkit-slider-thumb {
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  border: 1px solid color-mix(in srgb, var(--plan) 14%, transparent);
+  border: 2px solid color-mix(in srgb, var(--plan) 14%, transparent);
   border-radius: 999px;
   background: #0e0f11;
   color: var(--dim-3);
@@ -2544,7 +2575,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 30px;
   padding: 0;
   border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.06);
   display: grid;
   place-items: center;
@@ -2715,7 +2746,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 20px;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   background: var(--card-flat);
   color: var(--dim-3);
   display: grid;
@@ -3451,7 +3482,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  border: 1px solid #4d5159;
+  border: 2px solid #4d5159;
   box-sizing: border-box;
   flex: 0 0 auto;
 }
@@ -3559,7 +3590,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   right: 0;
   flex-direction: column;
   background: #1d1f23;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 4px;
   z-index: 5;
@@ -3616,7 +3647,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   padding: 7px 9px;
   border-radius: 8px;
   background: rgba(47, 140, 255, 0.08);
-  border: 1px solid rgba(47, 140, 255, 0.25);
+  border: 2px solid rgba(47, 140, 255, 0.25);
 }
 
 .mail-plan .plan-title {

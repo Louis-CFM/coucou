@@ -471,6 +471,8 @@ pub struct FlowStatus {
     autostarted: bool,
     /// The user's first name, for "Hello Louis".
     user_name: Option<String>,
+    /// Device / computer name (e.g. "MADHAN").
+    device_name: Option<String>,
 }
 
 #[tauri::command]
@@ -488,7 +490,12 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
         autostarted: crate::launched_at_login(),
         user_name: crate::platform::user_full_name()
             .and_then(|n| n.split_whitespace().next().map(String::from))
+            .or_else(|| std::env::var("USERNAME").ok().and_then(|u| u.split_whitespace().next().map(String::from)))
             .filter(|n| !n.is_empty()),
+        device_name: std::env::var("COMPUTERNAME")
+            .or_else(|_| std::env::var("HOSTNAME"))
+            .ok()
+            .filter(|n| !n.trim().is_empty()),
     }
 }
 

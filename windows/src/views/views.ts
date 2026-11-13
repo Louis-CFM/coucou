@@ -54,7 +54,7 @@ export interface ViewActions {
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
-  openSettingsWindow(): void;
+  openSettingsWindow(page?: string): void;
   blip(): void;
   /** Wardrobe click: keeps the outfit ("auto" and "none" included). */
   chooseOutfit(selection: OutfitSelection): void;
@@ -227,7 +227,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   // Mail's card too (classic Outlook): the search field keeps its text and the keyboard.
   const mailCard = buildMailCard({ keyboard: (on) => actions.keyboard(on) });
   const whatsappCard = buildWhatsAppCard({
-    openSettings: () => actions.openSettingsWindow(),
+    openSettings: () => actions.openSettingsWindow("integrations"),
     keyboard: (on) => actions.keyboard(on),
     holdOpen: (on) => actions.holdOpen(on),
   });
@@ -276,7 +276,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       cardKey = "";
       State.notify();
     },
-    openSettings: () => actions.openSettingsWindow(),
+    openSettings: () => actions.openSettingsWindow("integrations"),
   };
 
   /** The countdowns move every 30 s while a card is open, and only then. */
@@ -793,8 +793,18 @@ function buildSettings(actions: ViewActions): ViewHost {
   const segButtons = [10, 15, 30].map((s) =>
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
-  const claudeBadge = h("span", { class: "status-badge" });
-  const apiBadge = h("span", { class: "status-badge" });
+  const claudeBadge = h("button", {
+    class: "status-badge link-btn",
+    style: "cursor:pointer;background:none;border:none;padding:0;color:inherit;font:inherit;display:inline-flex;align-items:center;gap:6px",
+    title: tl("Claude Code settings"),
+    onclick: () => actions.openSettingsWindow("claude"),
+  });
+  const apiBadge = h("button", {
+    class: "status-badge link-btn",
+    style: "cursor:pointer;background:none;border:none;padding:0;color:inherit;font:inherit;display:inline-flex;align-items:center;gap:6px",
+    title: tl("Chat and API settings"),
+    onclick: () => actions.openSettingsWindow("chat"),
+  });
 
   const rows = h(
     "div",
@@ -815,9 +825,9 @@ function buildSettings(actions: ViewActions): ViewHost {
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
-        style: "color:#8e939c;font-size:11.5px",
+        style: "color:#8e939c;font-size:11.5px;cursor:pointer",
         text: tl("Settings…"),
-        onclick: () => actions.openSettingsWindow(),
+        onclick: () => actions.openSettingsWindow("general"),
       }),
     ),
   );
@@ -840,7 +850,8 @@ function buildSettings(actions: ViewActions): ViewHost {
         h("span", { text: "Claude Code" }),
       );
       clear(apiBadge);
-      apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      const apiColor = s.model ? "#22C55E" : "#F4505E";
+      apiBadge.append(dot(apiColor, 6), h("span", { text: "API" }));
     },
   };
 }

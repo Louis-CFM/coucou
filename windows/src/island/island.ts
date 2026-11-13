@@ -271,6 +271,7 @@ export class Island {
       toggleSound: () => {
         State.settings.soundEnabled = !State.settings.soundEnabled;
         Sound.setEnabled(State.settings.soundEnabled);
+        if (State.settings.soundEnabled) Sound.play("pop");
         void Bridge.saveSettings(State.settings);
         State.notify();
       },
@@ -283,10 +284,14 @@ export class Island {
       setAutoClose: (s) => {
         State.settings.autoCloseInterval = s;
         this.fsm.homeToPetitDelay = s;
+        Sound.play("blip");
         void Bridge.saveSettings(State.settings);
         State.notify();
       },
-      openSettingsWindow: () => void Bridge.openSettingsWindow(),
+      openSettingsWindow: (page?: string) => {
+        Sound.play("blip");
+        void Bridge.openSettingsWindow(page);
+      },
       blip: () => Sound.play("blip"),
       chooseOutfit: (selection) => {
         if (parseOutfit(State.settings.mochiOutfit) === selection) return;

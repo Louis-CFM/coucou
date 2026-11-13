@@ -5,13 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:browser": "vite --open",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node --import ./tests/setup.mjs --test \"tests/**/*.test.mjs\"",
     "icons": "node scripts/gen-icons.mjs",
     "tauri": "tauri",
-    "predev": "cargo build --release -p coucou-hook",
-    "prebuild": "cargo build --release -p coucou-hook",
     "pack": "tauri build && node scripts/pack.mjs"
   },
   "devDependencies": {
@@ -20,6 +19,9 @@
     "vite": "^6"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2"
+    "@fontsource/bricolage-grotesque": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@tauri-apps/api": "^2",
+    "motion": "^14.13.0"
   }
 }

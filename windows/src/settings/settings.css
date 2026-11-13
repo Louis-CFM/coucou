@@ -1,3 +1,12 @@
+@import "@fontsource/bricolage-grotesque/400.css";
+@import "@fontsource/bricolage-grotesque/500.css";
+@import "@fontsource/bricolage-grotesque/600.css";
+@import "@fontsource/bricolage-grotesque/700.css";
+@import "@fontsource/bricolage-grotesque/800.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+
 /* Settings window — same palette as the island, laid out as a normal window. */
 
 :root {
@@ -5,10 +14,12 @@
      the <select> popup is white text on white. */
   color-scheme: dark;
 
-  /* Then the scripts of the other interface languages (see src/style.css). */
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI", "Microsoft YaHei UI",
+  /* Bricolage Grotesque primary font, then system fallbacks. */
+  --font: "Bricolage Grotesque", system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI", "Microsoft YaHei UI",
     "Microsoft YaHei", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Arabic",
     "Noto Sans CJK SC", "Noto Sans SC", "Droid Sans Fallback", sans-serif;
+  --font-sub: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-desc: var(--font-sub);
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
   --ink: #f5f6f8;
   --dim: #9398a1;
@@ -50,14 +61,14 @@ h1 {
 }
 
 h1 .version {
-  font: 400 12px var(--font);
+  font: 400 12px var(--font-sub);
   color: var(--dim-2);
   margin-left: 8px;
 }
 
 section {
   background: var(--card);
-  border: 1px solid var(--hairline);
+  border: 2px solid var(--hairline);
   border-radius: 14px;
   padding: 16px 18px;
   display: flex;
@@ -73,8 +84,21 @@ section > h2 {
 }
 
 .hint {
-  font: 400 12px var(--font);
+  font: 400 12px/1.45 var(--font-sub);
   color: var(--dim);
+}
+
+.hint,
+.subhead,
+.sub,
+.subtitle,
+.desc,
+.description,
+.meta,
+.caption,
+.footnote,
+small {
+  font-family: var(--font-sub);
 }
 
 .row {
@@ -150,32 +174,47 @@ code,
 
 .switch {
   position: relative;
-  width: 36px;
-  height: 20px;
-  border-radius: 10px;
+  width: 38px;
+  height: 22px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.15);
-  flex: 0 0 36px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  flex: 0 0 38px;
   padding: 0;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .switch.on {
-  background: var(--green);
+  background: var(--green, #34d399);
+  border-color: rgba(52, 211, 153, 0.4);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.35);
 }
 
 .switch::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 1px;
+  left: 1px;
   width: 16px;
   height: 16px;
   border-radius: 50%;
   background: #fff;
-  transition: transform 0.18s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.18s ease;
+}
+
+.switch:active::after {
+  width: 19px;
 }
 
 .switch.on::after {
   transform: translateX(16px);
+}
+
+.switch.on:active::after {
+  transform: translateX(13px);
 }
 
 input[type="range"] {
@@ -196,22 +235,22 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 input[type="number"],
-input[type="text"],
+input[type="text"]:not(.hub-search-input),
 input[type="password"],
 select {
   font: 400 12.5px var(--font);
   background: rgba(255, 255, 255, 0.07);
-  border: 1px solid var(--hairline);
+  border: 2px solid var(--hairline);
   border-radius: 8px;
   color: var(--ink);
   padding: 5px 8px;
 }
 
-input::placeholder {
+input:not(.hub-search-input)::placeholder {
   color: var(--dim-2);
 }
 
-input:focus,
+input:not(.hub-search-input):focus,
 select:focus {
   outline: none;
   border-color: rgba(255, 255, 255, 0.28);
@@ -227,7 +266,7 @@ select option {
 .diff {
   font: 400 11.5px/1.5 var(--mono);
   background: #08090b;
-  border: 1px solid var(--hairline);
+  border: 2px solid var(--hairline);
   border-radius: 10px;
   padding: 10px 12px;
   max-height: 260px;
@@ -276,7 +315,7 @@ select option {
   flex-direction: column;
   gap: 8px;
   padding-top: 10px;
-  border-top: 1px solid var(--hairline);
+  border-top: 2px solid var(--hairline);
 }
 
 .pill-group > h3 {
@@ -314,7 +353,7 @@ select option {
   gap: 7px;
   padding: 8px 10px;
   background: var(--card);
-  border: 1px solid var(--hairline);
+  border: 2px solid var(--hairline);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
@@ -386,7 +425,7 @@ select option {
   padding: 5px 10px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.07);
-  border: 1px solid var(--hairline);
+  border: 2px solid var(--hairline);
   color: var(--ink);
   text-align: center;
   flex: 0 0 auto;

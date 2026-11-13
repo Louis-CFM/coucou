@@ -1,5 +1,6 @@
 [package]
 name = "coucou"
+default-run = "coucou"
 description = "Coucou for Windows and Linux — Mochi lives at the top of your screen"
 authors = ["Louis Raille"]
 version.workspace = true

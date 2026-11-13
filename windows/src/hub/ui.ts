@@ -2,6 +2,7 @@
 // switches, segmented controls. Same look as the Mac's (FlowHub.swift).
 
 import { h } from "../views/dom";
+import { dropdownSelect, type DropdownSelect } from "../views/dropdown";
 import { t } from "../i18n/i18n";
 import type { FlowKeyId } from "../core/flow";
 
@@ -120,12 +121,8 @@ export function segmented<T extends string>(options: [T, string][], value: T, on
   return el;
 }
 
-export function select<T extends string>(options: [T, string][], value: T, onChange: (v: T) => void): HTMLSelectElement {
-  const el = h("select", { class: "hub-select" }) as HTMLSelectElement;
-  for (const [id, text] of options) el.append(h("option", { value: id, text }));
-  el.value = value;
-  el.addEventListener("change", () => onChange(el.value as T));
-  return el;
+export function select<T extends string>(options: [T, string][], value: T, onChange: (v: T) => void): DropdownSelect<T> {
+  return dropdownSelect(options, value, onChange, { class: "hub-select" });
 }
 
 /** One key of a shortcut, as it is printed on the keyboard. */

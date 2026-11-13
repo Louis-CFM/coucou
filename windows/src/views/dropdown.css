@@ -1,0 +1,223 @@
+/* ── Liquid Glass Dropdown Menu ──────────────────────────────────────────────
+   Platform-native macOS dark dropdown feel: frosted glass panel, subtle
+   borders, smooth spring animations, and keyboard navigation support.
+   Used via src/views/dropdown.ts — no React, no Tailwind required.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Panel (the floating popup) ── */
+.dd-panel {
+  position: fixed;
+  z-index: 9999;
+  min-width: 200px;
+  max-width: 280px;
+  padding: 5px;
+  background: rgba(28, 29, 32, 0.78);
+  backdrop-filter: blur(32px) saturate(200%) brightness(1.08);
+  -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.08);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 13px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 8px 32px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition:
+    opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top left;
+  overflow: hidden;
+  outline: none;
+  /* Ensure Inter for all dropdown text */
+  font-family: var(--font-sub, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+}
+
+/* ── Separator ── */
+.dd-separator {
+  height: 1.5px;
+  margin: 5px 2px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+/* ── Section label ── */
+.dd-label {
+  padding: 7px 11px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  user-select: none;
+}
+
+/* ── Menu item button ── */
+.dd-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  text-align: start;
+  cursor: default;
+  outline: none;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dd-item:hover,
+.dd-item:focus {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.dd-item:active {
+  background: rgba(255, 255, 255, 0.07);
+  transform: scale(0.99);
+}
+
+/* Danger variant (Quit, Delete, Remove…) */
+.dd-item.dd-danger {
+  color: rgba(255, 90, 80, 0.9);
+}
+
+.dd-item.dd-danger:hover,
+.dd-item.dd-danger:focus {
+  background: rgba(255, 69, 58, 0.14);
+  color: #ff5a50;
+}
+
+/* Disabled state */
+.dd-item.dd-disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Checkmark column (always present for alignment) ── */
+.dd-check-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: rgba(110, 86, 207, 1);
+}
+
+/* ── Icon column ── */
+.dd-icon-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.1s ease;
+}
+
+.dd-item:hover .dd-icon-col,
+.dd-item:focus .dd-icon-col {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dd-item.dd-danger .dd-icon-col {
+  color: rgba(255, 90, 80, 0.75);
+}
+
+.dd-item.dd-danger:hover .dd-icon-col,
+.dd-item.dd-danger:focus .dd-icon-col {
+  color: #ff5a50;
+}
+
+/* ── Item label (flex: 1 to push shortcut right) ── */
+.dd-item-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Keyboard shortcut hint ── */
+.dd-shortcut {
+  flex-shrink: 0;
+  font-family: var(--font-sub, "Inter", sans-serif);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.dd-item:hover .dd-shortcut,
+.dd-item:focus .dd-shortcut {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Pre-wired trigger button ── */
+.dd-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 11px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-sub, "Inter", sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: default;
+  outline: none;
+  transition: all 0.15s ease;
+  -webkit-font-smoothing: antialiased;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.dd-trigger:hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dd-trigger:focus-visible {
+  border-color: rgba(110, 86, 207, 0.75);
+  box-shadow: 0 0 0 3px rgba(110, 86, 207, 0.25);
+}
+
+.dd-trigger:active {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(0.98);
+}
+
+.dd-trigger svg {
+  opacity: 0.55;
+  transition: opacity 0.15s ease, transform 0.2s ease;
+}
+
+.dd-trigger:hover svg {
+  opacity: 0.85;
+}
+
+/* Rotate chevron when open (add .open class via JS if needed). */
+.dd-trigger.open svg:last-child {
+  transform: rotate(180deg);
+}

@@ -81,6 +81,7 @@ export interface FlowStatus {
   platform: "windows" | "linux";
   autostarted: boolean;
   userName?: string | null;
+  deviceName?: string | null;
 }
 
 export interface FlowEntry {

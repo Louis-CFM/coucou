@@ -121,7 +121,7 @@ function buildPicker(onChange: () => void): Picker {
         h("button", {
           class: "picker-link",
           text: tl(STRINGS.openSettings),
-          onclick: () => void Bridge.openSettingsWindow(),
+          onclick: () => void Bridge.openSettingsWindow("chat"),
         }),
       );
     }

@@ -18,6 +18,7 @@ import {
 } from "../core/mail";
 import { timeAgo } from "./integrations";
 import { language, t, tl } from "../i18n/i18n";
+import { dropdown } from "./dropdown";
 
 export interface MailCardHost {
   /** The island takes the keyboard for the search field, and gives it back. */
@@ -252,14 +253,12 @@ export function buildMailCard(host: MailCardHost): MailCard {
       h("button", { class: "link-btn dim", text: t("Junk"), onclick: () => void act(m, "junk") }),
     );
     // ⋯: Always important (VIP), Always ignore this sender.
-    const more = h("div", { class: "mail-more-menu" });
-    const dots = h("button", { class: "link-btn dim mail-dots", text: "⋯" });
-    dots.addEventListener("click", () => more.classList.toggle("on"));
-    more.append(
-      h("button", { text: t("Always important (VIP)"), onclick: () => void act(m, "vip") }),
-      h("button", { text: t("Always ignore this sender"), onclick: () => void act(m, "ignore") }),
-    );
-    actions.append(h("span", { class: "mail-dots-wrap" }, dots, more));
+    const mailMenu = dropdown([
+      { label: t("Always important (VIP)"), icon: "star", onClick: () => void act(m, "vip") },
+      { label: t("Always ignore this sender"), icon: "x", danger: true, onClick: () => void act(m, "ignore") },
+    ]);
+    const dots = h("button", { class: "link-btn dim mail-dots", text: "⋯", onclick: () => mailMenu.open(dots) });
+    actions.append(dots);
     detailView.append(
       h("div", { class: "mail-detail-head" },
         back,
