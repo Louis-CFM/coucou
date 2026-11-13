@@ -336,6 +336,17 @@ test("an MCP tool the chat wants to run waits on the card, and its pill goes aft
   assert.equal(task("agent_mcp"), undefined);
 });
 
+test("a paused island declines an MCP tool request, so the tool does not run", () => {
+  State.paused = true;
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "mcp-3", session_id: "mcp",
+    coucou_agent: "mcp", coucou_kind: "mcp_tool", tool_name: "GitHub: create_issue",
+  });
+  assert.deepEqual(sent("approval_decline"), [{ requestId: "mcp-3" }]);
+  assert.deepEqual(sent("approval_ack"), []);
+  assert.equal(State.pendingApproval, null);
+});
+
 test("an MCP request without its kind gets no card", () => {
   hook({ hook_event_name: "PermissionRequest", request_id: "mcp-2", coucou_agent: "mcp", tool_name: "x" });
   assert.deepEqual(sent("approval_decline"), [{ requestId: "mcp-2" }]);

@@ -140,4 +140,38 @@ mod tests {
         tx.try_send(Reply::Answer { allow: true, at: Instant::now() + LONG + Duration::from_secs(1) }).unwrap();
         assert!(!block_on(wait(&mut rx, ACK, LONG)));
     }
+
+    #[test]
+    fn a_decline_after_the_ack_is_a_refusal() {
+        let (tx, mut rx) = mpsc::channel(4);
+        tx.try_send(Reply::Ack).unwrap();
+        tx.try_send(Reply::Decline).unwrap();
+        assert!(!block_on(wait(&mut rx, ACK, LONG)));
+    }
+
+    #[test]
+    fn a_late_allow_after_repeated_acks_is_refused() {
+        let (tx, mut rx) = mpsc::channel(4);
+        tx.try_send(Reply::Ack).unwrap();
+        tx.try_send(Reply::Ack).unwrap();
+        tx.try_send(Reply::Answer { allow: true, at: Instant::now() + LONG + Duration::from_secs(1) }).unwrap();
+        assert!(!block_on(wait(&mut rx, ACK, LONG)));
+    }
+
+    #[test]
+    fn acks_that_keep_coming_do_not_stretch_the_deadline() {
+        let (tx, mut rx) = mpsc::channel(64);
+        tx.try_send(Reply::Ack).unwrap();
+        let acker = std::thread::spawn(move || {
+            for _ in 0..50 {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                if tx.try_send(Reply::Ack).is_err() { break; }
+            }
+        });
+        let started = std::time::Instant::now();
+        assert!(!block_on(wait(&mut rx, ACK, LONG)));
+        assert!(started.elapsed() < LONG + Duration::from_millis(300));
+        drop(rx);
+        acker.join().unwrap();
+    }
 }
