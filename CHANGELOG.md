@@ -51,7 +51,7 @@ Fixes:
 - **Instant page switches in Settings** *(Linux)* (#906 by @RomainBrocheton)
 - **The finished card goes away when a new prompt comes** (#587) and **the GitHub week strip is graded against its own week** (#611), by @rollecode
 
-## Android 0.5.0 — Unreleased
+## Android 0.5.0 — November 13, 2026
 
 - **Coucou for Android 0.5.0**, by @Rhytam23 (versionCode 5)
   - **A steadier link through your own relay** — the connection no longer drops after a quiet moment (from #554 by @rollecode), and the phone reconnects at once when the computer comes back instead of waiting on a dead connection (from #1041 by @lazarevtill). The relay settings are still hidden on Windows and Linux, so this is for testers for now (see Windows and Linux 0.6.0)
@@ -61,7 +61,7 @@ Fixes:
   - **The island fits again** when the phone is rotated or the screen resolution or font size changes while it is open
   - **Six more languages** — German, Japanese, Korean, Traditional Chinese and Thai (from #1043 to #1047 by @Ohualtex) and Italian (from #974 by @roccordx); the app now has 16 translations
 
-## Android 0.4.0 — Unreleased
+## Android 0.4.0 — November 3, 2026
 
 - **The island sits in the middle again** when the screen resolution is set below the panel's (#900 by @pfTheTrial)
 - **Coucou for Android 0.4.0** — works with a Mac as well as with Windows and Linux: pair it the same way (Settings → Android phone on the Mac, then scan the QR code). The app itself does not change for this; the Mac speaks the same link as the PC. Needs the Mac release that carries the Android phone link
