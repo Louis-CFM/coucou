@@ -100,6 +100,7 @@ const DAY_NAMES = [N_("Sunday"), N_("Monday"), N_("Tuesday"), N_("Wednesday"), N
  *  terminal here, so its pill reads "Claude Code" rather than "VS Code". */
 const AGENT_NAMES: Record<string, string> = {
   integration_claude: "Claude Code",
+  agent_vscode: "Visual Studio Code",
   agent_cursor: "Cursor",
   agent_antigravity: "Antigravity",
   agent_codex: "Codex",
