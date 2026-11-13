@@ -379,6 +379,11 @@ account only, because WhatsApp may restrict accounts that abuse it.
   that chat.
 - Read receipts are sent only when you open a conversation, or only when you
   reply if you turn that setting off.
+- The magnifier finds someone by name or number, among the conversations and
+  your WhatsApp contacts (GOWA's address book). Click them, or pick them with
+  **↓ ↑** and **Enter**, and WhatsApp opens at their chat, ready to type
+  (WhatsApp Web without the app). Nothing is sent from the search, and the
+  contacts are kept only while it is open.
 
 **Your own gateway**
 

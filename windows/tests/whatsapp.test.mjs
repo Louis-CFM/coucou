@@ -4,10 +4,10 @@
 
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { emit, sent } from "./tauri.mjs";
+import { emit, internals, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
 import {
-  IDLE_WHATSAPP, WHATSAPP_ID, WhatsApp, canSend, duration, initials, installError, installFailure, installStepLabel,
+  IDLE_WHATSAPP, WHATSAPP_ID, WhatsApp, canSend, duration, findContacts, initials, installError, installFailure, installStepLabel,
   keyAction, lastMessages, linkColor, linkLabel, preview, sendErrorLabel, showsLinkState, testResultLabel, timeAgo,
   webhookLine,
 } from "../src/core/whatsapp.ts";
@@ -320,4 +320,81 @@ test("the conversation closes when WhatsApp is turned off or the island folds", 
   WhatsApp.view = { ...IDLE_WHATSAPP };
   c.sync();
   assert.equal(sent("whatsapp_close").length, closes + 2);
+});
+
+// ── The search: find someone, open their chat in WhatsApp ─────────────────────
+
+test("the search: every word of the name, or the digits of the number; conversations first, people only", () => {
+  const convos = [
+    conversation({ id: "447700900123@s.whatsapp.net", name: "Sam Example" }),
+    conversation({ id: "1203@g.us", name: "Sam's group", isGroup: true }),
+  ];
+  const book = [
+    { id: "447700900123@s.whatsapp.net", name: "Samuel Example" },
+    { id: "447700900456@s.whatsapp.net", name: "Élodie Exemple" },
+    { id: "123456789012345@lid", name: "Sam Hidden" },
+  ];
+  const names = (q, max) => findContacts(q, convos, book, max).map((p) => p.name);
+  assert.deepEqual(names("sam"), ["Sam Example"], "each person once, no group, no hidden number");
+  assert.deepEqual(names("elodie ex"), ["Élodie Exemple"], "every word, accents or not");
+  assert.deepEqual(names("0900456"), ["Élodie Exemple"]);
+  assert.deepEqual(names("+44 7700"), ["Sam Example", "Élodie Exemple"]);
+  assert.deepEqual(names("   "), []);
+  assert.equal(names("e", 1).length, 1);
+});
+
+test("the magnifier finds someone and opens their chat in WhatsApp; nothing is sent from it", async () => {
+  const c = card();
+  const realInvoke = internals.invoke;
+  internals.invoke = async (cmd, args) => cmd === "whatsapp_contacts"
+    ? [{ id: "447700900456@s.whatsapp.net", name: "Alex Example" }, { id: "447700900789@s.whatsapp.net", name: "Alexis Example" }]
+    : realInvoke(cmd, args);
+  const typed = (field, text) => {
+    field.value = text;
+    for (const fn of field.listeners.get("input")) fn({});
+  };
+  try {
+    WhatsApp.view = connected({ unread: 1, conversations: [conversation()] });
+    State.mode = "expanded";
+    State.view = "overview";
+    State.focusId = WHATSAPP_ID;
+    c.sync();
+    const magnifier = c.el.find(".wa-icon")[0];
+    magnifier.fire("click");
+    assert.deepEqual(c.calls.keyboard, [true], "the island takes the keyboard for the field");
+    await new Promise((r) => setTimeout(r, 0));
+    const field = c.el.find("INPUT")[0];
+    typed(field, "alex");
+    assert.deepEqual(c.calls.hold, [true], "the island stays open while a name is typed");
+    const rows = c.el.find(".wa-row");
+    assert.equal(rows.length, 2);
+    assert.match(rows[0].textContent, /Alex Example.*\+447700900456/);
+    assert.ok(rows[0].classList.contains("selected"));
+    key(field, "ArrowDown");
+    assert.ok(c.el.find(".wa-row")[1].classList.contains("selected"));
+    const sends = sent("whatsapp_send").length;
+    assert.equal(key(field, "Enter").defaultPrevented, true);
+    assert.deepEqual(sent("whatsapp_open_app").at(-1), { chat: "447700900789@s.whatsapp.net" });
+    assert.equal(sent("whatsapp_send").length, sends);
+    // Closed: the conversations again, the keyboard given back.
+    assert.equal(c.el.find(".wa-row").length, 1);
+    assert.deepEqual(c.calls.keyboard, [true, false]);
+    assert.equal(c.calls.hold.at(-1), false);
+
+    // Nobody by that name; Escape goes back to the list, not the island folding away.
+    magnifier.fire("click");
+    await new Promise((r) => setTimeout(r, 0));
+    typed(field, "zz");
+    assert.match(c.el.textContent, /Nobody by that name/);
+    assert.equal(key(field, "Escape").propagationStopped, true);
+    assert.equal(c.el.find(".wa-row").length, 1);
+
+    // Leaving the card closes the search.
+    magnifier.fire("click");
+    State.mode = "compact";
+    State.notify();
+    assert.equal(c.calls.keyboard.at(-1), false);
+  } finally {
+    internals.invoke = realInvoke;
+  }
 });
