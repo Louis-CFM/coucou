@@ -305,31 +305,16 @@ input[type="range"]:active::-moz-range-thumb {
     inset 0 1px 0 #ffffff;
 }
 
-/* ── macOS Floating Overlay Scrollbar ── */
+/* ── Clean Hidden Scrollbars (Full scroll function remains active) ── */
 #settings-root {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 #settings-root::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-
-#settings-root::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-#settings-root::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  border: 1.5px solid transparent;
-  background-clip: padding-box;
-  transition: background 0.2s ease;
-}
-
-#settings-root::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.38);
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 input[type="number"],

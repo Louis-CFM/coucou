@@ -242,6 +242,20 @@ button.hub-select.dd-trigger:active {
   opacity: 0.95;
 }
 
+.dd-trigger-text {
+  flex: 1;
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+button.hub-select.dd-trigger {
+  min-width: 175px;
+  max-width: 280px;
+}
+
 /* Rotate chevron when open with elastic spring scale */
 .dd-trigger.open svg:last-child {
   transform: rotate(180deg) scale(1.1) !important;

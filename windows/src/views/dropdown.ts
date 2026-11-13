@@ -381,24 +381,39 @@ export function dropdownSelect<T extends string = string>(
   }) as HTMLSelectElement;
 
   const updateHiddenSelect = () => {
-    while (hiddenSelect.firstChild) hiddenSelect.removeChild(hiddenSelect.firstChild);
-    for (const [id, label] of currentOptions) {
-      const opt = h("option", { value: id, text: label }) as HTMLOptionElement;
-      if (id === currentValue) opt.selected = true;
-      hiddenSelect.append(opt);
+    if (typeof hiddenSelect.replaceChildren === "function") {
+      hiddenSelect.replaceChildren(
+        ...currentOptions.map(([id, label]) => {
+          const opt = h("option", { value: id, text: label }) as HTMLOptionElement;
+          if (id === currentValue) opt.selected = true;
+          return opt;
+        }),
+      );
+    } else {
+      while (hiddenSelect.firstChild) hiddenSelect.removeChild(hiddenSelect.firstChild);
+      for (const [id, label] of currentOptions) {
+        const opt = h("option", { value: id, text: label }) as HTMLOptionElement;
+        if (id === currentValue) opt.selected = true;
+        hiddenSelect.append(opt);
+      }
     }
     hiddenSelect.value = currentValue;
   };
   updateHiddenSelect();
 
   hiddenSelect.addEventListener("change", () => {
+    if (hiddenSelect.disabled || isDisabled) return;
     const next = hiddenSelect.value as T;
     if (next !== currentValue) {
       currentValue = next;
       const found = currentOptions.find(([id]) => id === next);
       labelSpan.textContent = found ? found[1] : String(next);
       onChange?.(next);
-      if (typeof btn.dispatchEvent === "function") btn.dispatchEvent(new Event("change", { bubbles: true }));
+      if (typeof btn.dispatchEvent === "function") {
+        btn.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (typeof (btn as unknown as { fire?: (t: string) => void }).fire === "function") {
+        (btn as unknown as { fire: (t: string) => void }).fire("change");
+      }
     }
   });
   btn.append(hiddenSelect);
@@ -415,7 +430,11 @@ export function dropdownSelect<T extends string = string>(
             hiddenSelect.value = id;
             labelSpan.textContent = label;
             onChange?.(id);
-            if (typeof btn.dispatchEvent === "function") btn.dispatchEvent(new Event("change", { bubbles: true }));
+            if (typeof btn.dispatchEvent === "function") {
+              btn.dispatchEvent(new Event("change", { bubbles: true }));
+            } else if (typeof (btn as unknown as { fire?: (t: string) => void }).fire === "function") {
+              (btn as unknown as { fire: (t: string) => void }).fire("change");
+            }
           }
         },
       })),

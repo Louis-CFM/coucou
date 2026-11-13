@@ -36,70 +36,6 @@ body.hub-window {
   background: radial-gradient(circle at 10% 10%, rgba(35, 38, 45, 0.45), transparent 45%), #0c0d0f;
 }
 
-/* ── macOS Traffic Lights ─────────────────────────────────────────────────── */
-
-.macos-traffic-lights {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 4px 10px;
-  margin-bottom: 2px;
-}
-
-.macos-traffic-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  padding: 0;
-  margin: 0;
-  border: 0.5px solid transparent;
-  position: relative;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  outline: none;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25);
-  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.12s ease;
-  box-sizing: border-box;
-}
-
-.macos-traffic-dot.close {
-  background: #ff5f56;
-  border-color: #e0443e;
-}
-
-.macos-traffic-dot.minimize {
-  background: #ffbd2e;
-  border-color: #dea123;
-}
-
-.macos-traffic-dot.zoom {
-  background: #27c93f;
-  border-color: #1aab29;
-}
-
-.macos-traffic-glyph {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1;
-  color: rgba(0, 0, 0, 0.65);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  user-select: none;
-  pointer-events: none;
-}
-
-.macos-traffic-lights:hover .macos-traffic-glyph {
-  opacity: 1;
-}
-
-.macos-traffic-dot:active {
-  filter: brightness(0.85);
-  transform: scale(0.9);
-}
-
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
 
 .hub-side {
@@ -108,7 +44,7 @@ body.hub-window {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 16px 12px 12px;
+  padding: 20px 12px 12px;
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -494,41 +430,24 @@ body.hub-window {
   padding: 24px 28px 28px;
 }
 
-/* ── macOS Floating Overlay Scrollbar ── */
+/* ── Clean Hidden Scrollbars (Full scroll function remains active) ── */
 .hub-scroll,
 .hub-side,
-.hub-search-results {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+.hub-search-results,
+.hub-panel,
+#settings-root {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 .hub-scroll::-webkit-scrollbar,
 .hub-side::-webkit-scrollbar,
-.hub-search-results::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-
-.hub-scroll::-webkit-scrollbar-track,
-.hub-side::-webkit-scrollbar-track,
-.hub-search-results::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.hub-scroll::-webkit-scrollbar-thumb,
-.hub-side::-webkit-scrollbar-thumb,
-.hub-search-results::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  border: 1.5px solid transparent;
-  background-clip: padding-box;
-  transition: background 0.2s ease;
-}
-
-.hub-scroll::-webkit-scrollbar-thumb:hover,
-.hub-side::-webkit-scrollbar-thumb:hover,
-.hub-search-results::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.38);
+.hub-search-results::-webkit-scrollbar,
+.hub-panel::-webkit-scrollbar,
+#settings-root::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .hub-page {
@@ -1656,30 +1575,9 @@ small {
   flex: 0 0 auto;
 }
 
-/* Scrollbars as on the Mac: a thin rounded thumb that floats on the page, no
-   arrows and no track. (Chromium ignores these once scrollbar-width or
-   scrollbar-color is set on the element, so those stay unset.) */
+/* ── Global Scrollbars: Clean & Hidden (Scroll function active) ── */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-  background: transparent;
-}
-::-webkit-scrollbar-track,
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-::-webkit-scrollbar-button {
-  display: none;
-  width: 0;
-  height: 0;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
-  border: 3px solid transparent;
-  border-radius: 999px;
-  background-clip: padding-box;
-  min-height: 36px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

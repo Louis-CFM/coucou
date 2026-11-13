@@ -1,6 +1,7 @@
 import { Bridge, type ModelInfo } from "../core/bridge";
-import { h, clear } from "../views/dom";
+import { h } from "../views/dom";
 import { t } from "../i18n/i18n";
+import { dropdownSelect } from "../views/dropdown";
 
 // Verified against Anthropic's catalog. Account discovery replaces these
 // choices when a key is present; never replace a saved model automatically.
@@ -12,7 +13,32 @@ export const CLAUDE_MODELS: ModelInfo[] = [
 ];
 
 export function claudeModelControl(saved: () => string, save: (id: string) => Promise<void>) {
-  const select = h("select", { "aria-label": t("Model"), class: "hub-select" }) as HTMLSelectElement;
+  const initialChoices: [string, string][] = CLAUDE_MODELS.map(model => [model.id, model.label]);
+  const current = saved();
+  if (current && !initialChoices.some(([id]) => id === current)) {
+    initialChoices.push([current, current]);
+  }
+
+  const select = dropdownSelect<string>(
+    initialChoices,
+    current,
+    async (next) => {
+      if (saving || !next || next === saved()) return;
+      saving = true;
+      saveError = "";
+      controls();
+      try {
+        await save(next);
+      } catch (error) {
+        saveError = String(error).replace(/^Error:\s*/, "");
+      } finally {
+        saving = false;
+        render();
+      }
+    },
+    { ariaLabel: t("Model"), class: "hub-select" },
+  );
+
   const refresh = h("button", { text: t("Refresh") }) as HTMLButtonElement;
   const feedback = h("div", { class: "hint", role: "status" });
   const element = h("div", {}, h("div", { class: "row" }, h("label", { text: t("Model") }), select, refresh), feedback);
@@ -25,15 +51,16 @@ export function claudeModelControl(saved: () => string, save: (id: string) => Pr
     refresh.disabled = !hasKey || loading || saving;
     feedback.textContent = saveError || loadError || (loading ? t("Loading models…") : "");
   }
+
   function render() {
-    clear(select);
     const choices = new Map(models.map(model => [model.id, model.label]));
-    const current = saved();
-    if (current && !choices.has(current)) choices.set(current, current);
-    for (const [id, label] of choices) select.append(h("option", { value: id, text: label }));
-    select.value = current;
+    const cur = saved();
+    if (cur && !choices.has(cur)) choices.set(cur, cur);
+    select.setOptions(Array.from(choices.entries()));
+    select.value = cur;
     controls();
   }
+
   async function reload(present = hasKey) {
     hasKey = present;
     const request = ++generation;
@@ -54,17 +81,7 @@ export function claudeModelControl(saved: () => string, save: (id: string) => Pr
       if (request === generation) { loading = false; if (!saving) render(); controls(); }
     }
   }
-  select.addEventListener("change", async () => {
-    if (saving) return;
-    const next = select.value;
-    if (!next || next === saved()) return;
-    saving = true;
-    saveError = "";
-    controls();
-    try { await save(next); }
-    catch (error) { saveError = String(error).replace(/^Error:\s*/, ""); }
-    finally { saving = false; render(); }
-  });
+
   refresh.addEventListener("click", () => { if (!refresh.disabled) void reload(); });
   render();
   return { element, reload };

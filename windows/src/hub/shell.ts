@@ -276,55 +276,6 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   // ── The sidebar ──
   const side = h("nav", { class: "hub-side" });
 
-  // macOS Window Chrome: authentic traffic lights (Close, Minimize, Zoom)
-  const trafficClose = h("button", {
-    class: "macos-traffic-dot close",
-    title: t("Close"),
-    "aria-label": t("Close"),
-    type: "button",
-  }, h("span", { class: "macos-traffic-glyph", text: "×" }));
-
-  const trafficMinimize = h("button", {
-    class: "macos-traffic-dot minimize",
-    title: "Minimize",
-    "aria-label": "Minimize",
-    type: "button",
-  }, h("span", { class: "macos-traffic-glyph", text: "−" }));
-
-  const trafficZoom = h("button", {
-    class: "macos-traffic-dot zoom",
-    title: "Zoom",
-    "aria-label": "Zoom",
-    type: "button",
-  }, h("span", { class: "macos-traffic-glyph", text: "+" }));
-
-  trafficClose.addEventListener("click", () => {
-    if (typeof window !== "undefined") {
-      if (window.location.pathname.endsWith("index.html") || window.location.pathname === "/") {
-        window.close();
-      } else {
-        window.location.href = "/index.html";
-      }
-    }
-  });
-
-  trafficMinimize.addEventListener("click", () => {
-    animate(side, { opacity: [1, 0.75, 1], scale: [1, 0.985, 1] }, MACOS_JELLY.snappy);
-  });
-
-  trafficZoom.addEventListener("click", () => {
-    if (typeof document !== "undefined") {
-      if (!document.fullscreenElement) {
-        void document.documentElement.requestFullscreen?.().catch(() => {});
-      } else {
-        void document.exitFullscreen?.().catch(() => {});
-      }
-    }
-  });
-
-  const trafficLights = h("div", { class: "macos-traffic-lights" }, trafficClose, trafficMinimize, trafficZoom);
-  side.append(trafficLights);
-
   const logo = h("canvas", {});
   side.append(h("div", { class: "hub-brand" }, logo, h("span", { text: "Coucou" })));
   liveMochi(logo as HTMLCanvasElement);
