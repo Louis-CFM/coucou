@@ -121,6 +121,9 @@ export class UploadCanvas {
   private ctx: CanvasRenderingContext2D | null;
   private overlay: HTMLElement;
   private sizedFor = 0;
+  /** Where the drop text stops: sooner while the sessions are listed on the right. */
+  textRight: number = TEXT_RIGHT;
+  readonly defaultTextRight: number = TEXT_RIGHT;
 
   constructor(actions: UploadCanvasActions) {
     this.canvas = document.createElement("canvas");
@@ -223,7 +226,7 @@ export class UploadCanvas {
   private drawDropText(ctx: CanvasRenderingContext2D, f: UploadFrame) {
     ctx.save();
     ctx.globalAlpha = f.textAlpha;
-    const title = fitted(ctx, t("Drop your files here"), TEXT_RIGHT - USC.TEXT_X, 500, 13);
+    const title = fitted(ctx, t("Drop your files here"), this.textRight - USC.TEXT_X, 500, 13);
     text(ctx, title.s, USC.TEXT_X, USC.TEXT_Y - 4, title.font, "#D5D7DB");
 
     // The macOS port measures chips the same rough way, so the row lines up; a
@@ -236,7 +239,7 @@ export class UploadCanvas {
     };
     let ws = widths();
     const rowW = () => ws.reduce((a, b) => a + b, 0) + 6 * (ws.length - 1);
-    while (rowW() > TEXT_RIGHT - USC.TEXT_X && chipPx > 8.5) {
+    while (rowW() > this.textRight - USC.TEXT_X && chipPx > 8.5) {
       chipPx -= 0.5;
       ws = widths();
     }

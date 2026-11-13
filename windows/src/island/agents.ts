@@ -25,7 +25,22 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
  * Must match `takes_decisions` in the relay (hook/src/reply.rs): any other
  * agent's request is handed straight back to its terminal.
  */
-export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "claude-desktop"]);
+export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "claude-desktop", "opencode"]);
+
+/**
+ * Antigravity has no permission request: Coucou itself turns a command it is about
+ * to run into one, tagged with this kind, when Settings → Agents → Antigravity →
+ * Approve commands from the notch is on (src-tauri/src/agy_approvals.rs). Its card
+ * has Deny, Allow and Reply in terminal, as on the Mac.
+ */
+export const AGY_CARD_KIND = "agy_pre_tool";
+
+/** Whether the island shows a card for this agent's permission request. */
+export function takesCard(agent: string | null, kind: unknown): boolean {
+  if (agent === null) return true; // Claude Code
+  if (APPROVAL_AGENTS.has(agent)) return true;
+  return agent === "antigravity" && kind === AGY_CARD_KIND;
+}
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
 export function validateAgent(raw: string | undefined): string | null {

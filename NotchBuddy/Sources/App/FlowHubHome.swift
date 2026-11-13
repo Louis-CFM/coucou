@@ -132,6 +132,7 @@ private struct HubDayGroup: Identifiable {
 private struct HubEntryRow: View {
     let entry: FlowEntry
     @State private var copied = false
+    @State private var copiedHeard = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 18) {
@@ -150,14 +151,39 @@ private struct HubEntryRow: View {
                 }
             }
             .frame(width: 70, alignment: .leading)
-            Text(entry.text)
-                .font(.system(size: 14))
-                .lineSpacing(3)
-                .foregroundColor(HubTheme.body)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 9) {
+                Text(entry.text)
+                    .font(.system(size: 14))
+                    .lineSpacing(3)
+                    .foregroundColor(HubTheme.body)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let heard = entry.heard, !heard.isEmpty {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("hub.history-heard")
+                            .font(.system(size: 11))
+                            .foregroundColor(HubTheme.muted)
+                        Text(heard)
+                            .font(.system(size: 13))
+                            .lineSpacing(2)
+                            .foregroundColor(HubTheme.secondary)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 4) {
+                if let heard = entry.heard, !heard.isEmpty {
+                    HubIconButton(symbol: copiedHeard ? "checkmark" : "text.quote", help: String(localized: "hub.copy-heard")) {
+                        NSPasteboard.copyText(heard)
+                        copiedHeard = true
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .seconds(1.2))
+                            copiedHeard = false
+                        }
+                    }
+                }
                 HubIconButton(symbol: copied ? "checkmark" : "doc.on.doc", help: String(localized: "hub.copy")) {
                     NSPasteboard.copyText(entry.text)
                     copied = true

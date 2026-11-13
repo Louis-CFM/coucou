@@ -10,11 +10,12 @@ import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
 import { State, type ApprovalInfo, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
-import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
+import { agentColor, agentName, takesCard, validateAgent } from "./agents";
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
+import { Launch } from "../core/launch";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -112,6 +113,48 @@ export function restoreAlertFocus(): void {
 /** Events after which a pending permission request of the same session is moot. */
 const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
 
+/**
+ * True when `name` (from `agentId`'s session) shows the pending card was
+ * settled somewhere else: the turn is over (interrupted, a new prompt, the
+ * session ended), or the very tool call it asked about has run, so it was
+ * allowed in the terminal or the Claude app. A tool result of another call (a
+ * subagent working alongside) does not count. The relay hanging up is the
+ * fastest sign of all; it arrives as `approval-expired`.
+ */
+export function settledElsewhere(
+  pending: ApprovalInfo,
+  name: string,
+  agentId: string,
+  sessionId: string,
+  tool: string | undefined,
+  input: Record<string, unknown> | undefined,
+): boolean {
+  if (pending.pillId !== agentId || pending.sessionId !== sessionId) return false;
+  if (TURN_OVER.has(name)) return true;
+  if (name !== "PostToolUse" && name !== "PostToolUseFailure") return false;
+  const t = tool ?? "Tool";
+  return t === pending.tool && approvalTarget(t, input ?? {}) === pending.command;
+}
+
+/**
+ * A prompt as the session's step line. Claude Code also submits text the
+ * user never typed (a background task's `<task-notification>`, system
+ * reminders, slash-command echoes): those show as their summary or command,
+ * or not at all, never as raw tags.
+ */
+export function promptStep(raw: string): string | null {
+  const tag = (name: string) => raw.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1]?.trim();
+  if (raw.includes("<task-notification>")) return tag("summary") ?? null;
+  const command = tag("command-name");
+  if (command) return command;
+  const text = raw
+    .replace(/<(system-reminder|local-command-\w+)>[\s\S]*?<\/\1>/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? text.slice(0, 60) : null;
+}
+
 interface HookPayload {
   hook_event_name?: string;
   request_id?: string;
@@ -128,6 +171,8 @@ interface HookPayload {
   coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** "agy_pre_tool": an Antigravity command Coucou may show on the card (agents.ts). */
+  coucou_kind?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
@@ -391,12 +436,7 @@ function handleHook(island: Island, payload: HookPayload) {
   // interrupted, or a new prompt — so the card would be lying. It goes, and the
   // relay is released without a decision. Same rule as the Mac.
   const pending = State.pendingApproval;
-  if (
-    pending &&
-    TURN_OVER.has(name) &&
-    pending.pillId === agentId &&
-    pending.sessionId === (payload.session_id ?? "")
-  ) {
+  if (pending && settledElsewhere(pending, name, agentId, sessionId, payload.tool_name, payload.tool_input)) {
     if (pending.requestId) void Bridge.approvalDecline(pending.requestId);
     dropPendingCard(island);
   }
@@ -404,6 +444,9 @@ function handleHook(island: Island, payload: HookPayload) {
   // Read after the card above is dropped: its pill may have handed the front
   // back to the pill you were on.
   const focused = State.focusId === agentId;
+
+  // Each Claude Code session teaches the launch card a project (Mac: SessionLauncher.remember).
+  if ((name === "SessionStart" || name === "UserPromptSubmit") && !payload.coucou_agent && cwd) Launch.remember(cwd);
 
   switch (name) {
     case "SessionStart":
@@ -423,8 +466,10 @@ function handleHook(island: Island, payload: HookPayload) {
       clearFinalLine(agentId);
       State.updateTask(agentId, "thinking");
       // The field is `prompt`; reading `message` meant this step was always blank.
-      const asked = payload.prompt ?? payload.message;
-      if (asked) State.appendStep(agentId, asked.slice(0, 60));
+      const asked = promptStep(payload.prompt ?? payload.message ?? "");
+      if (asked) State.appendStep(agentId, asked);
+      // A new turn: the finished card would show the prompt as if it were the answer.
+      if (State.mode === "expanded" && State.view === "finished" && State.focusId === agentId) island.setView("overview");
       surface("overview", false);
       break;
     }
@@ -561,9 +606,10 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PermissionRequest": {
       // Only Claude Code and the agents the relay can answer for (Codex, Copilot
-      // CLI, Muse Code — same as the Mac) get a card. Anyone else's request is
-      // declined at once, so the agent asks in its own terminal.
-      if (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!)) {
+      // CLI, Muse Code, and Antigravity's commands when that is turned on — same
+      // as the Mac) get a card. Anyone else's request is declined at once, so the
+      // agent asks in its own terminal.
+      if (isExternalAgent && !takesCard(validAgent, payload.coucou_kind)) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }

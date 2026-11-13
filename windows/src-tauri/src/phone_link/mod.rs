@@ -390,6 +390,14 @@ pub struct RelayStatus {
     /// An access key is stored. The key itself is never sent back to the window.
     pub has_access: bool,
     pub state: relay_client::State,
+    /// The "Away from home Wi-Fi" block is shown in Settings. It stays hidden until a relay is ready to use, except for
+    /// testers who start Coucou with `COUCOU_RELAY_SETTINGS=1`, and for a relay that is already turned on.
+    pub shown: bool,
+}
+
+/// Testers start Coucou with `COUCOU_RELAY_SETTINGS=1` to see the relay settings (docs/RELAY_DEPLOY.md).
+fn relay_settings_for_testers() -> bool {
+    std::env::var("COUCOU_RELAY_SETTINGS").map(|v| v == "1").unwrap_or(false)
 }
 
 fn relay_status_of(link: &PhoneLink, shared: &Shared) -> RelayStatus {
@@ -399,6 +407,7 @@ fn relay_status_of(link: &PhoneLink, shared: &Shared) -> RelayStatus {
         url: s.phone_relay_url.clone(),
         has_access: relay_client::access_key(&*link.store).is_some(),
         state: link.relay.lock().unwrap().as_ref().map_or(relay_client::State::Off, |h| h.state()),
+        shown: relay_settings_for_testers() || s.phone_relay,
     }
 }
 

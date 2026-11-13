@@ -2,9 +2,12 @@
 //
 // Windows: the named pipe `\\.\pipe\coucou-<sid>`, one instance per connection.
 // Linux: the Unix socket `$XDG_RUNTIME_DIR/coucou.sock`. Every hook event is
-// forwarded to the island as a `hook` event. `PermissionRequest` is the only one
-// that keeps its connection open: it waits for the island's decision and writes
-// it back on the same connection, which is how approving from the island works.
+// forwarded to the island as a `hook` event. `PermissionRequest` keeps its
+// connection open: it waits for the island's decision and writes it back on the
+// same connection, which is how approving from the island works. Antigravity's
+// `PreToolUse` (tagged `agy_pre_tool`) is the other one: it is answered `ask` at
+// once, or `pending` and then the click when its command is put on the card
+// (agy_pre_tool below, agy_approvals.rs).
 //
 // Claude Code is never blocked by us. Three things guarantee it:
 //   * coucou-hook gives the connection 300 ms and exits cleanly if we are closed;
@@ -32,6 +35,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::sync::mpsc;
 
+use crate::agy_approvals;
 use crate::island::WINDOW_LABEL;
 use crate::log;
 use crate::session_window;
@@ -217,8 +221,15 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .to_string();
 
     note_session_window(&pipe, &payload, &event);
+    crate::herdr::observe(&payload, &event);
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
+
+    // Antigravity's PreToolUse: its relay waits for one line (agy_approvals.rs).
+    if event == "PreToolUse" && payload.get("coucou_kind").and_then(Value::as_str) == Some(agy_approvals::KIND) {
+        agy_pre_tool(app, pipe, payload).await;
+        return;
+    }
 
     if event != "PermissionRequest" {
         // The status line relay calls in with every Claude Code update: not log-worthy.
@@ -241,7 +252,17 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    // Answered in the terminal (or the app) instead: Claude Code ends the relay,
+    // its end of the connection closes, and the island must drop the card at
+    // once rather than keep offering a question that is already settled.
+    let decision = tokio::select! {
+        d = wait_for_decision(&id, &mut rx) => d,
+        () = client_gone(&mut pipe) => {
+            log::line(format!("hook id={id} answered elsewhere"));
+            crate::recap::forget_request(&app, &id);
+            None
+        }
+    };
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
@@ -258,6 +279,108 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         }
     }
     pipe.finish();
+}
+
+/// Antigravity is about to run a tool and its relay waits for a line. The island always
+/// gets the event, as for any agent. Then, when Approve commands from the notch is on and
+/// none of Antigravity's rules covers the command, the card comes up as a permission
+/// request: once the island says it is on screen the relay is told `pending` (it then
+/// waits for the click instead of a few seconds), and Allow, Deny or Reply in terminal
+/// (`ask`) follow. Anything else — no card, no ack, no click in time — is `ask`, and
+/// Antigravity shows its own prompt. The same flow as the Mac's processAgyApproval.
+async fn agy_pre_tool(app: AppHandle, mut pipe: impl Relay, payload: Value) {
+    let enabled = app.state::<crate::Shared>().settings.lock().unwrap().agy_approvals_enabled;
+    let gate = agy_approvals::gate(&payload, enabled, &crate::platform::home_dir());
+    log::line("hook PreToolUse");
+    let _ = app.emit_to(WINDOW_LABEL, "hook", payload.clone());
+    let Some(gate) = gate else {
+        reply_line(&mut pipe, "ask").await;
+        pipe.finish();
+        return;
+    };
+
+    let id = format!("{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+    let (tx, mut rx) = mpsc::channel::<Reply>(4);
+    app.state::<Pending>().0.lock().unwrap().insert(id.clone(), tx);
+    crate::recap::note_request(&app, &id, &payload);
+    let mut card = payload;
+    card["hook_event_name"] = json!("PermissionRequest");
+    card["request_id"] = json!(id);
+    card["tool_input"]["command"] = json!(gate.command);
+    log::line(format!("hook Antigravity command waits for the island id={id}"));
+    let _ = app.emit_to(WINDOW_LABEL, "hook", card);
+
+    // The relay hung up (Antigravity stopped waiting, or the turn was cancelled): the
+    // card goes, nothing is written.
+    let first = tokio::select! {
+        r = tokio::time::timeout(ACK_TIMEOUT, rx.recv()) => r.ok().flatten(),
+        () = client_gone(&mut pipe) => {
+            agy_settled(&app, &id, "answered elsewhere");
+            return;
+        }
+    };
+    let decision = match first {
+        Some(Reply::Ack) => {
+            reply_line(&mut pipe, "pending").await;
+            tokio::select! {
+                r = tokio::time::timeout(gate.wait, rx.recv()) => match r {
+                    Ok(Some(Reply::Decision(d))) => Some(d),
+                    Ok(Some(_)) | Ok(None) => None,
+                    Err(_) => {
+                        log::line(format!("hook id={id} timed out — Antigravity asks"));
+                        None
+                    }
+                },
+                () = client_gone(&mut pipe) => {
+                    agy_settled(&app, &id, "answered elsewhere");
+                    return;
+                }
+            }
+        }
+        // A click that beats the ack is still a click.
+        Some(Reply::Decision(d)) => Some(d),
+        Some(Reply::Decline) | None => None,
+    };
+    app.state::<Pending>().0.lock().unwrap().remove(&id);
+    // Only a click on Allow or Deny is a decision; `ask` hands the command back to
+    // Antigravity's own prompt, where its Always allow lives.
+    let word = match decision.as_deref() {
+        Some("allow") => "allow",
+        Some("deny") => "deny",
+        _ => "ask",
+    };
+    log::line(format!("hook id={id} answered {word}"));
+    if word == "ask" {
+        crate::recap::forget_request(&app, &id);
+        let _ = app.emit_to(WINDOW_LABEL, "approval-expired", &id);
+    }
+    reply_line(&mut pipe, word).await;
+    pipe.finish();
+}
+
+/// The relay left before an answer: forget the request, take the card down.
+fn agy_settled(app: &AppHandle, id: &str, why: &str) {
+    log::line(format!("hook id={id} {why}"));
+    app.state::<Pending>().0.lock().unwrap().remove(id);
+    crate::recap::forget_request(app, id);
+    let _ = app.emit_to(WINDOW_LABEL, "approval-expired", id);
+}
+
+async fn reply_line(pipe: &mut impl Relay, word: &str) {
+    let _ = pipe.write_all(format!("{word}\n").as_bytes()).await;
+    let _ = pipe.flush().await;
+}
+
+/// Resolves once the relay has gone (end of stream or a broken pipe). It sends
+/// nothing after its one line, so any read result means it is done.
+async fn client_gone(pipe: &mut impl Relay) {
+    let mut probe = [0u8; 64];
+    loop {
+        match pipe.read(&mut probe).await {
+            Ok(0) | Err(_) => return,
+            Ok(_) => {}
+        }
+    }
 }
 
 /// Finds, once per session, the window it runs in — see session_window.rs.
@@ -369,4 +492,30 @@ pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<Stri
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();
     send(app, request_id, Reply::Decision(line), false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    impl Relay for tokio::io::DuplexStream {}
+
+    fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    /// The card's fast exit: the relay hanging up (Claude Code ended it because
+    /// the prompt was answered in the terminal) is seen at once, and a relay
+    /// that is still waiting is not mistaken for one that left.
+    #[test]
+    fn a_relay_that_hangs_up_is_seen_at_once() {
+        block_on(async {
+            let (mut ours, theirs) = tokio::io::duplex(64);
+            let waiting = tokio::time::timeout(Duration::from_millis(50), client_gone(&mut ours)).await;
+            assert!(waiting.is_err(), "a live relay must not count as gone");
+            drop(theirs);
+            let gone = tokio::time::timeout(Duration::from_millis(50), client_gone(&mut ours)).await;
+            assert!(gone.is_ok(), "a closed relay must be seen within the poll");
+        });
+    }
 }

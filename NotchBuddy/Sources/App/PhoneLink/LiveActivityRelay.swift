@@ -309,7 +309,8 @@ final class LiveActivityRelay {
     /// Sends one push through the relay. Returns true when Apple accepted it.
     @discardableResult
     private func post(event: String, token: String, env: String, state: MochiActivityState,
-                      urgent: Bool = false, dismissAfter: Int? = nil, phoneID: String) async -> Bool {
+                      urgent: Bool = false, dismissAfter: Int? = nil, phoneID: String,
+                      triedOtherEnv: Bool = false) async -> Bool {
         guard let url = relayURL else { return false }
         var state = state
         if state.since == nil { state.since = activitySince }
@@ -332,11 +333,14 @@ final class LiveActivityRelay {
                 // builds run from Xcode, production for TestFlight and the App Store).
                 // Try the other one once and keep it if it works.
                 let other = env == "production" ? "development" : "production"
-                if phones[phoneID]?.env == env {
+                // Only once per push: a token that is bad on both servers would
+                // otherwise bounce between them forever.
+                if !triedOtherEnv, phones[phoneID]?.env == env {
                     phones[phoneID]?.env = other
                     log("relay \(event): token not valid on \(env), trying \(other)")
                     return await post(event: event, token: token, env: other, state: state,
-                                      urgent: urgent, dismissAfter: dismissAfter, phoneID: phoneID)
+                                      urgent: urgent, dismissAfter: dismissAfter, phoneID: phoneID,
+                                      triedOtherEnv: true)
                 }
             }
             if status == 410 {

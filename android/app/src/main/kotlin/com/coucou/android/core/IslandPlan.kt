@@ -13,6 +13,19 @@ object IslandPlan {
     fun allowed(overlayOn: Boolean, permitted: Boolean, appInForeground: Boolean) =
         OverlayPolicy.shouldShow(overlayOn, permitted, appInForeground)
 
+    /** What stays in the notification shade when the user swipes the island up: it goes there instead of vanishing. */
+    enum class Shade { STATUS_NOTE, REQUEST_NOTE, ONGOING }
+
+    /**
+     * A finished, failed, rate-limited or asked-a-question island becomes a quiet notice; a request keeps its
+     * (quiet) request notification, with Deny and Allow; an agent at work is already in the ongoing notification.
+     */
+    fun shadeFor(kind: IslandSpec.Kind): Shade = when (kind) {
+        IslandSpec.Kind.FINISHED, IslandSpec.Kind.ERROR, IslandSpec.Kind.RATELIMIT, IslandSpec.Kind.QUESTION -> Shade.STATUS_NOTE
+        IslandSpec.Kind.APPROVAL -> Shade.REQUEST_NOTE
+        IslandSpec.Kind.WORKING -> Shade.ONGOING
+    }
+
     private val WORKING = setOf(BotState.WORKING, BotState.THINKING, BotState.SEARCHING)
 
     /**

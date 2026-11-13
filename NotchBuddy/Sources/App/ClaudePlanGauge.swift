@@ -47,6 +47,24 @@ enum ClaudePlanGauge {
         return PlanWindow(usedPct: pct, resetsAt: Date(timeIntervalSince1970: rawEpoch))
     }
 
+    /// Every Claude Code session relays its own copy of rate_limits, and some copies are
+    /// older or partial. Merge per window so a stale session never moves the gauge back:
+    /// a newer window wins, the same window keeps the higher %, a missing window is kept.
+    static func merge(_ current: PlanUsage?, with incoming: PlanUsage) -> PlanUsage {
+        PlanUsage(fiveHour: latest(current?.fiveHour, incoming.fiveHour),
+                  sevenDay: latest(current?.sevenDay, incoming.sevenDay),
+                  updatedAt: incoming.updatedAt)
+    }
+
+    private static func latest(_ current: PlanWindow?, _ incoming: PlanWindow?) -> PlanWindow? {
+        guard let current else { return incoming }
+        guard let incoming else { return current }
+        if incoming.resetsAt != current.resetsAt {
+            return incoming.resetsAt > current.resetsAt ? incoming : current
+        }
+        return incoming.usedPct >= current.usedPct ? incoming : current
+    }
+
     /// Effective % for display: 0 if the reset time is in the past.
     static func effectivePct(_ w: PlanWindow) -> Double {
         w.resetsAt <= Date() ? 0 : w.usedPct

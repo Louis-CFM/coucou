@@ -110,6 +110,16 @@ class IslandPlanTest {
         assertTrue(left.centerOffsetX >= -maxOffset)
     }
 
+    @Test fun onAScaledDownScreenTheCutoutsXIsNotTrusted() {
+        // Galaxy S20 set to FHD+ (1080 px on a 1440 px panel), Android 13: the centred hole is reported at
+        // Rect(690, 0 - 750, 78), its centre still in panel pixels. Trusted, the island sat 78 px to the right.
+        val s20 = PxRect(690, 0, 750, 78)
+        assertTrue(IslandGeometry.place(1080, 3f, s20, statusBarH = 78).centerOffsetX > 0)
+        val box = IslandGeometry.place(1080, 3f, s20, statusBarH = 78, displayScaled = true)
+        assertEquals(0, box.centerOffsetX)
+        assertEquals("content still starts under the hole", 78, box.topInset)
+    }
+
     @Test fun withoutACutoutItHangsFromTheStatusBarAtTheCentre() {
         val box = IslandGeometry.place(1080, 3f, null, statusBarH = 72)
         assertEquals(0, box.centerOffsetX)
@@ -135,5 +145,14 @@ class IslandPlanTest {
         assertEquals("Asking a question", w.text)
         val f = IslandPlan.flash(BotState.WORKING, s("a", BotState.FINISHED, "Bash"), settings, noon, true, name)!!
         assertEquals("Running a command", f.text)
+    }
+
+    @Test fun whatTheSwipedIslandShowedGoesToTheNotificationShade() {
+        assertEquals(IslandPlan.Shade.STATUS_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.FINISHED))
+        assertEquals(IslandPlan.Shade.STATUS_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.ERROR))
+        assertEquals(IslandPlan.Shade.STATUS_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.RATELIMIT))
+        assertEquals(IslandPlan.Shade.STATUS_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.QUESTION))
+        assertEquals("a request keeps its Deny and Allow notification", IslandPlan.Shade.REQUEST_NOTE, IslandPlan.shadeFor(IslandSpec.Kind.APPROVAL))
+        assertEquals(IslandPlan.Shade.ONGOING, IslandPlan.shadeFor(IslandSpec.Kind.WORKING))
     }
 }

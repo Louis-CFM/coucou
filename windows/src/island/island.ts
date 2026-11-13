@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, type DragDropPayload } from "../core/bridge";
 import {
   CLOSED_BOT_D, CLOSED_H, closedContent, closedIsland, closedWidth, type ClosedContent,
 } from "../core/closed";
@@ -21,12 +21,14 @@ import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
-import { USC, UploadSeq } from "../upload/sequence";
+import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
 import { dominantPct, planColor } from "../core/plan";
-import { language, tl } from "../i18n/i18n";
+import { language, t, tl } from "../i18n/i18n";
 import { claudeCompactPillVisible, closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { buildSessionDropList, type SessionDropList } from "../views/session-drop";
+import { DROP_TEXT_RIGHT_WITH_LIST, dropTargetAt, dropTargets } from "../core/launch";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { restoreAlertFocus } from "./hooks";
@@ -43,6 +45,9 @@ const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+
+/** The views with a text field: the island takes the keyboard while one is on. */
+const TYPING_VIEWS: ReadonlySet<IslandViewName> = new Set(["prompt", "launch"]);
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -91,6 +96,8 @@ export class Island {
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
   private uploadCanvas!: UploadCanvas;
+  /** The sessions listed on the drop card while a file is over it. */
+  private sessionDrop!: SessionDropList;
 
   private width = new Tracked(NOTCH_W);
   private height = new Tracked(0);
@@ -144,6 +151,7 @@ export class Island {
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
+  private dragLeaveTimer: number | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -224,13 +232,13 @@ export class Island {
           integration_stripe: "https://dashboard.stripe.com/payments",
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
-          // No WhatsApp app to bring forward here as on the Mac: WhatsApp Web, in the browser.
-          integration_whatsapp: "https://web.whatsapp.com",
         };
         if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
         else if (task.id === "integration_claude" || task.sessionId) {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
+        // WhatsApp Desktop at the open conversation; WhatsApp Web when it isn't installed.
+        else if (task.id === "integration_whatsapp") void Bridge.whatsappOpenApp();
         else if (task.id === "integration_gitea") void Bridge.openGitea();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
@@ -293,9 +301,14 @@ export class Island {
         State.notify();
       },
       keyboard: (on) => {
-        // The chat view manages the keyboard on its own.
+        // The chat and launch views manage the keyboard on their own.
         if (on) void Bridge.focusWindow(true);
-        else if (State.view !== "prompt" && State.mode === "expanded") void Bridge.focusWindow(false);
+        else if (!TYPING_VIEWS.has(State.view) && State.mode === "expanded") void Bridge.focusWindow(false);
+      },
+      launched: () => {
+        Sound.play("send");
+        this.engine.triggerEmote("happy");
+        this.collapse();
       },
       holdOpen: (on) => {
         if (this.holdingOpen === on) return;
@@ -357,6 +370,8 @@ export class Island {
       },
       cancel: () => this.discardDrop(),
     });
+    this.sessionDrop = buildSessionDropList();
+    this.uploadCanvas.el.append(this.sessionDrop.el);
 
     this.clipEl = h(
       "div",
@@ -640,9 +655,20 @@ export class Island {
 
   // ── File drop ───────────────────────────────────────────────────────────────
 
-  private onDragDrop(e: { type: string; paths?: string[] }) {
+  private onDragDrop(e: DragDropPayload) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
     if (State.paused) return;
+    if (this.dragLeaveTimer != null && e.type !== "leave") {
+      window.clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
+    // Tauri's own drag events say where the pointer is (Linux, where the page
+    // hears no mouse during a drag); Windows has the cursor poll (onCursor).
+    if (e.position && e.type !== "leave") {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = this.islandRect();
+      this.updateDropTarget(e.position.x / dpr - rect.x, e.position.y / dpr - rect.y);
+    }
     switch (e.type) {
       case "enter":
       case "over": {
@@ -656,16 +682,36 @@ export class Island {
         break;
       }
       case "leave": {
+        State.dropSessionTarget = null;
         if (!State.fileDragOver) return;
         State.fileDragOver = false;
         this.engine.animateMorph(0);
-        // The island deliberately stays open: the drag session is still alive.
+        // The island stays open briefly for recovery, but auto-exits upload mode
+        // if the drop occurred outside or the drag was aborted.
         UploadSeq.exitZone();
         State.notify();
+        if (this.dragLeaveTimer != null) window.clearTimeout(this.dragLeaveTimer);
+        this.dragLeaveTimer = window.setTimeout(() => {
+          this.dragLeaveTimer = null;
+          if (!State.fileDragOver && State.view === "upload") {
+            this.engine.animateMorph(0);
+            this.setView(State.defaultView());
+            if (!this.wasInIsland) {
+              this.fsm.mouseLeft();
+            }
+          }
+        }, 800);
         break;
       }
       case "drop": {
         State.fileDragOver = false;
+        // Let go over one of the sessions on the drop card: into its prompt.
+        const target = State.dropSessionTarget;
+        State.dropSessionTarget = null;
+        if (target && e.paths?.length) {
+          this.dropIntoSession(target, e.paths);
+          return;
+        }
         const path = e.paths?.[0];
         if (!path) {
           this.engine.animateMorph(0);
@@ -676,6 +722,42 @@ export class Island {
         break;
       }
     }
+  }
+
+  /** The session pill under the pointer on the drop card (island points), if any. */
+  private updateDropTarget(x: number, y: number) {
+    const targets = State.view === "upload" && State.fileDragOver && !UploadSeq.dropped ? dropTargets(State.tasks) : [];
+    const i = targets.length > 0 ? dropTargetAt(x, y, targets.length) : null;
+    State.dropSessionTarget = i == null ? null : targets[i].id;
+  }
+
+  /**
+   * A file let go over a session on the drop card (SessionDrop.send): the
+   * island folds, Rust brings the session's window forward and pastes the
+   * paths there. When it can only copy them, a note says so.
+   */
+  private dropIntoSession(taskId: string, paths: string[]) {
+    const task = State.tasks.find((x) => x.id === taskId);
+    UploadSeq.deactivate();
+    this.engine.animateMorph(0);
+    this.setView(State.defaultView());
+    this.collapse();
+    if (!task?.sessionId) return;
+    void Bridge.log(`drop: ${paths.length} file(s) into ${task.name}`);
+    void Bridge.dropIntoSession(task.sessionId, task.sessionCwd ?? null, paths).then((outcome) => {
+      if (outcome === "pasted") {
+        Sound.play("send");
+        this.engine.triggerEmote("happy");
+        return;
+      }
+      Sound.play("error");
+      if (outcome !== "copied") return;
+      State.noteMessage = t("Copied: paste it into the session's terminal.");
+      this.alert("note");
+      window.setTimeout(() => {
+        if (State.mode === "expanded" && State.view === "note") this.collapse();
+      }, 4000);
+    });
   }
 
   /**
@@ -718,7 +800,11 @@ export class Island {
         this.engine.animateMorph(0);
         this.setView("note");
         Sound.play("error");
-        window.setTimeout(() => this.setView(State.defaultView()), 2400);
+        window.setTimeout(() => {
+          // Only the note still on screen: setView would reopen a folded island
+          // and replace a view the user opened since.
+          if (State.mode === "expanded" && State.view === "note") this.setView(State.defaultView());
+        }, 2400);
       });
   }
 
@@ -738,6 +824,10 @@ export class Island {
     if (since == null) return;
     const dur = State.uploadDuration;
     const p = Math.max(0, Math.min(1, (since - PRE_PROGRESS) / dur));
+
+    // The bar and the percentage follow the same eased curve as Mochi.
+    State.uploadProgress = uploadProgressCurve(p);
+    if (State.view === "uploading") this.views.get("uploading")?.sync();
 
     const tens = Math.floor(p * 10);
     if (tens > this.uploadTens && tens < 10) {
@@ -1051,6 +1141,7 @@ export class Island {
     // fed from the Win32 cursor poll instead — it runs throughout the drag.
     if (UploadSeq.isActive && !UploadSeq.dropped) {
       UploadSeq.updateCursor(State.mouseInIsland.x, State.mouseInIsland.y);
+      this.updateDropTarget(State.mouseInIsland.x, State.mouseInIsland.y);
     }
 
     const inIsland =
@@ -1196,6 +1287,10 @@ export class Island {
     }
 
     const uploadActive = this.uploadActive;
+    // A file over the drop card: the sessions it could go to, on the right.
+    const listing = uploadActive && State.view === "upload" && State.fileDragOver && !UploadSeq.dropped;
+    this.sessionDrop.sync(listing);
+    this.uploadCanvas.textRight = listing && dropTargets(State.tasks).length > 0 ? DROP_TEXT_RIGHT_WITH_LIST : this.uploadCanvas.defaultTextRight;
     if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
@@ -1398,14 +1493,15 @@ export class Island {
       if (on) view.sync();
     }
 
-    // The chat is the only view with a text field, so it is the only time the
-    // island is allowed to take keyboard focus.
+    // The chat and the launch card are the views with a text field, so they
+    // are the only time the island is allowed to take keyboard focus.
     if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView === "prompt";
+      const wasChat = this.lastSyncedView != null && TYPING_VIEWS.has(this.lastSyncedView);
       this.lastSyncedView = State.view;
-      if (State.view === "prompt") {
+      if (TYPING_VIEWS.has(State.view)) {
+        const view = State.view;
         void Bridge.focusWindow(true);
-        window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
+        window.setTimeout(() => this.views.get(view)?.focus?.(), 120);
       } else if (wasChat) {
         void Bridge.focusWindow(false);
       }
