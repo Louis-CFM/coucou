@@ -6,7 +6,7 @@ through your computer's AI providers.
 
 The name, the Mochi character, the icon and the sounds are © Louis Raillé and used with permission (see
 [PERMISSION.md](PERMISSION.md)). The Android code is © Rhytam Biswas under the MIT License (see [LICENSE](LICENSE)). The app is free: no ads, no billing, no analytics.
-It speaks English, French, Spanish, Brazilian Portuguese, Simplified Chinese, Hindi, Bengali, Russian, Indonesian and Arabic (Settings > Language, or Android 13's own per-app language screen); the look is dark or light (Settings > Theme). Download the signed APK from the [Releases](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0) (Android 11 or later; it needs Coucou 0.4.0 or later on Windows or Linux).
+It speaks English, French, Spanish, Brazilian Portuguese, Simplified Chinese, Hindi, Bengali, Russian, Indonesian and Arabic (Settings > Language, or Android 13's own per-app language screen); the look is dark or light (Settings > Theme). Download the signed APK from the [Releases](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.5.0) (Android 11 or later; it needs Coucou 0.4.0 or later on Windows or Linux).
 
 ## Screenshots
 

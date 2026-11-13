@@ -132,7 +132,7 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 - 🧩 **Home-screen widgets** — nine of them, from a tiny Mochi to a big card with plan usage and quick buttons. Orange when something waits for you, blue while it works, green when it's done. Read-only: a request is always decided in the app.
 - 🔒 **Local and private** — the phone talks straight to your computer on your Wi-Fi, paired with a QR code and a pinned certificate. The phone link is **off by default**, and nothing listens until you turn it on.
 
-**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. Download the signed APK from the [latest Android release](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
+**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. Download the signed APK from the [latest Android release](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.5.0). Android needs Coucou on **Windows or Linux**, or Coucou 0.6.0 or later on the **Mac** (GitHub build), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
 
 <table>
 <tr>
@@ -201,6 +201,8 @@ Coucou for Android, by [@Rhytam23](https://github.com/Rhytam23), is released und
 
 | Android | Date | Highlights |
 |---------|------|------------|
+| [0.5.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.5.0) | Nov 13, 2026 | Swipe the island up to put it away, nothing lost with the swipe (quiet notifications), hide the island in Do Not Disturb, six more languages (16 translations), a steadier relay link for testers |
+| [0.4.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.4.0) | Nov 3, 2026 | Works with a Mac as well as with Windows and Linux; the island sits in the middle again at a lower screen resolution |
 | [0.3.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0) | Oct 22, 2026 | A light theme and your phone's colours, nine more languages (Arabic right to left), quick actions, a Team widget, Share to Coucou, the weekly recap, a per-agent mute |
 | [0.2.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0) | Oct 13, 2026 | Nine home-screen widgets: Mochi, your agents, plan usage and quick buttons, coloured by state |
 | [0.1.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) | Oct 11, 2026 | First release: your agents, approvals with your fingerprint, answers and chat, linked to Windows or Linux |
@@ -231,7 +233,7 @@ Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md
 
 ### Android
 
-1. **Download** `Coucou-Android-0.3.0.apk` from the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0) on your phone (Android 11 or later) and open it. Android asks once to allow installs from your browser or file manager. You can also [build it from source](#build-from-source).
+1. **Download** `Coucou-Android-0.5.0.apk` from the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.5.0) on your phone (Android 11 or later) and open it. Android asks once to allow installs from your browser or file manager. You can also [build it from source](#build-from-source).
 2. **On your computer**, install Coucou **0.4.0 or later** for [Windows](#windows) or [Linux](#linux): **Settings → Android phone**, turn on **Phone link**. If Windows asks about the firewall, allow Coucou on private networks.
 3. **Show pairing code** and scan it with the app. The phone and the computer must be on the same Wi-Fi.
 
