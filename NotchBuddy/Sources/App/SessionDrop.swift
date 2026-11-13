@@ -10,7 +10,8 @@ import SwiftUI
 enum SessionDrop {
     /// The sessions offered while a file is dragged over the island: three at most.
     static func targets(_ state: AppState) -> [AgentTask] {
-        Array(state.tasks.filter { !$0.isIntegration && $0.sessionBundleId != nil }.prefix(3))
+        // shortcut: Codex drops need an identity-bound target before global paste can be used.
+        Array(state.tasks.filter { !$0.isIntegration && $0.pill != "agent_codex" && $0.sessionBundleId != nil }.prefix(3))
     }
 
     /// Where each target sits, in the island's hosting view (top-left origin).
@@ -23,8 +24,8 @@ enum SessionDrop {
         return frames.first { ids.contains($0.key) && $0.value.insetBy(dx: -4, dy: -4).contains(point) }?.key
     }
 
-    static func send(_ urls: [URL], to taskId: String, state: AppState) {
-        guard let task = state.tasks.first(where: { $0.id == taskId }) else { return }
+    static func send(_ urls: [URL], to taskId: String, state: AppState) -> Bool {
+        guard let task = targets(state).first(where: { $0.id == taskId }) else { return false }
         let text = LaunchScript.dropText(urls.map(\.path))
         let apps = NSWorkspace.shared.runningApplications
         let running = Set(apps.compactMap(\.bundleIdentifier))
@@ -46,6 +47,7 @@ enum SessionDrop {
                 NotificationCenter.default.post(name: .hookExpand, object: IslandView.note)
             }
         }
+        return true
     }
 
     /// Types the text with ⌘V, then gives the clipboard back. False without the Accessibility

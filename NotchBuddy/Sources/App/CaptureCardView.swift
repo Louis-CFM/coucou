@@ -6,6 +6,7 @@ import SwiftUI
 struct CaptureCardView: View {
     @ObservedObject private var capture = ScreenCapture.shared
     @ObservedObject private var flow = FlowDictation.shared
+    @ObservedObject private var state = AppState.shared
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -24,7 +25,7 @@ struct CaptureCardView: View {
                         PrimaryButton(verbatim: String(localized: "capture.paste")) { capture.pasteIntoPrompt() }
                         SecondaryButton(verbatim: String(localized: "capture.copy")) { capture.copy() }
                         SecondaryButton(verbatim: String(localized: "capture.annotate")) { capture.annotate() }
-                        SecondaryButton(verbatim: String(localized: "capture.ask")) { capture.askClaude() }
+                        SecondaryButton(verbatim: askLabel) { capture.askClaude() }
                     }
                 }
             }
@@ -44,11 +45,19 @@ struct CaptureCardView: View {
         }
     }
 
+    private var askLabel: String {
+        state.chatProvider == .codex
+            ? String(localized: "capture.ask-codex")
+            : String(localized: "capture.ask")
+    }
+
     /// "Hold fn and talk: the image and your words go in together." when Flow is on.
     private var hint: String {
         flow.isEnabled
             ? String(format: String(localized: "capture.flow-hint %@"), flow.key.label)
-            : String(localized: "capture.hint")
+            : (state.chatProvider == .codex
+                ? String(localized: "capture.hint-codex")
+                : String(localized: "capture.hint"))
     }
 }
 #endif

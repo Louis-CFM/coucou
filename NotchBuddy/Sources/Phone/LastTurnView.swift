@@ -105,11 +105,11 @@ struct LastTurnView: View {
 
     @ViewBuilder private var answerCard: some View {
         if !turn.finalMessage.isEmpty {
-            card(title: "Claude's answer") {
+            card(title: "Agent answer") {
                 ExpandableText(text: turn.finalMessage, collapsedLines: 10, markdown: true)
             }
         } else if working || turn.endedAt == nil {
-            card(title: "Claude's answer") {
+            card(title: "Agent answer") {
                 HStack(spacing: 8) {
                     ProgressView()
                     Text("Still working…").font(.callout).foregroundStyle(.secondary)

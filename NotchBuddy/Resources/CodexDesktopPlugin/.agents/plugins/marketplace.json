@@ -1,0 +1,20 @@
+{
+  "name": "coucou-local",
+  "interface": {
+    "displayName": "Coucou Local"
+  },
+  "plugins": [
+    {
+      "name": "coucou-desktop",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -75,11 +75,11 @@ The Mac relay, `nb-hook`, uses another socket when `COUCOU_SOCKET` is set. That 
 
 ## Supported events
 
-All standard Claude Code hook events are supported, **except `PermissionRequest`**:
-approval cards are not yet implemented for third-party agents (only Claude Code gets
-one). A `PermissionRequest` from an external agent is answered immediately with no
-decision, so the relay writes nothing and the agent re-asks in its terminal.
-Approval support for other agents will be added with Codex support.
+Canonical hook events route to the named agent's pill. On macOS, the blocking relay
+supports permission cards for Claude Code, Codex, Copilot CLI and Muse Code.
+Codex hook decisions are **Allow / Deny**; the relay does not send Claude-specific
+permission updates to Codex. Display-only integrations such as Amp and OpenCode do
+not gain blocking approvals merely by forwarding a `PermissionRequest` event.
 
 The pill lifecycle:
 
@@ -95,6 +95,30 @@ The pill lifecycle:
 | `SessionEnd` | Active declared pills (catalog + checked in Settings) reset to idle — all others are removed |
 | `SubagentStart` / `SubagentStop` | Step added to ticker |
 
+### Codex Desktop questions through the local plugin
+
+The GitHub Mac build can export **Coucou Desktop** from Settings → Agents → Codex → Export desktop plugin. Install and enable that local plugin in Codex Desktop, then invoke `$coucou-question` in the original conversation. Its `ask_question` MCP tool sends choices or a free-form prompt to the existing Coucou question card; the user's answer returns through that same tool call. To enter a new question or instruction, ask the skill to open a free-form input prompt.
+
+This adds a transport for plugin-routed questions; it does not intercept built-in Codex questions. Official Coucou 0.3.0 and the App Store build do not contain this bridge. Python 3 and the updated GitHub Mac app must run on the same machine and user account. The exported README covers marketplace registration and installing/enabling the plugin. Exporting does not modify Codex settings or hooks.
+
+The plugin uses the existing same-user Unix socket, one live question per bridge, bounded JSON messages and a 120-second total deadline. A request is bound to its waiting socket and displayed request ID. Cancellation, timeout, disconnect or replacement releases that request and its temporary registry session. Switching views keeps it queued; reopening the island shows the pending card again. An unanswered or busy request returns an explicit tool error so Codex can ask in its own interface; it is never treated as user consent. Native thread identity and transport ownership are not inferred from a project path.
+
+Completion controls use the observed source: **Open Codex** for Desktop (including the ChatGPT host), **Continue chat** for Coucou-managed chat, and **Open editor** for IDE sessions. Unknown sources show an unavailable-source note. Plugin question headers/return actions capture their own Desktop source even when another Codex session owns the shared pill.
+
+## Managed Codex plan and changes
+
+In a Coucou-created native conversation, the plan button shows Codex's plan text and
+pending, in-progress and completed steps. It shows progress only; approval cards
+continue to request permissions separately.
+
+Mac diff cards consume both completed file changes and cumulative turn snapshots.
+Repeated or corrected snapshots replace the current turn's data, preserving file
+IDs and other sessions. A later edit remains visible as another chunk until the
+next cumulative snapshot corrects the exact net counts. The file menu exposes up
+to 50 files, including renames and empty-file operations. External sessions keep
+their existing hook transport; an aggregate notification does not take ownership
+of them.
+
 ## Declared pills
 
 A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabled in **Settings → Active pills**. When a session ends for a declared pill, the pill stays visible and resets to idle instead of disappearing.
@@ -105,11 +129,50 @@ The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigr
 GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`),
 Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
-the main pill; session support is coming in a future version.
+the main pill. Live sessions still arrive when a different workspace, such as VS Code,
+is the Main tool.
 
 Claude Desktop (`agent_claude-desktop`, every build) is there as well. Claude Code sessions started from the Claude desktop app's Code tab carry `CLAUDE_CODE_ENTRYPOINT=claude-desktop`; the relay tags them `coucou_agent: claude-desktop` on its own (an explicit `--agent` still wins), so nothing extra is installed. Declare the pill to keep it after the session ends; the ↗ button opens the Claude app.
 
 ## Real-world examples
+
+### Codex in VS Code, the CLI or the Codex app (macOS, GitHub build)
+
+1. Install the OpenAI Codex extension in VS Code, or the Codex CLI, and open a project.
+2. Open **Settings → Agents → Codex hooks → Install hooks** in Coucou. Review the
+   preview, then confirm. Coucou merges into `~/.codex/hooks.json` after making a backup.
+3. In the Codex client that runs your session, enable and trust Coucou's hooks using
+   `/hooks` or its Hooks settings. **Done** requires all required hooks to be enabled
+   and trusted; modified, disabled, incomplete and unknown states remain distinct.
+4. Start a new turn. The relay uses `--agent codex`; Coucou retains the working
+   directory and available source application identity. Codex appears on its own pill
+   rather than replacing Claude Code's VS Code pill.
+
+The installed hook events are `SessionStart`, `UserPromptSubmit`, `PreToolUse`,
+`PermissionRequest`, `PostToolUse`, `Stop`, `SubagentStart`, `SubagentStop`,
+`Interrupt` and `SessionEnd`. Codex has a different hook payload and event set from
+Claude Code; forwarding a Claude-only event does not make Codex emit it.
+
+For Coucou-managed Codex threads, the native app-server connection also handles
+question choices, free-form answers, available session approvals, completed file
+changes, turn failures and search events. Responses retain thread, turn, item and
+request identity and return through the original connection. Hook and native events
+for a managed turn are combined without counting the same action twice. An external
+IDE thread remains owned by that IDE; creating a new app-server does not attach to
+its pending questions. See [Codex app-server](https://learn.chatgpt.com/docs/app-server).
+
+Agents shows the CLI version used for Coucou's native connection and the newest
+installed Codex extension found in the standard local VS Code, Insiders and
+VSCodium folders. Installed versions do not prove which profile/version is running;
+custom and remote extension folders are not detected. A client may bundle a different
+CLI. Verify its hook settings when CLI diagnostics succeed but no IDE events arrive.
+
+When an external hook supplies an explicit `thread_id`, Coucou can read that
+thread's token usage after `thread/read` confirms its ID and project directory.
+If account breakdown is unavailable, only the confirmed native rollout path with
+matching session metadata is read. Missing or mismatched identity remains unavailable;
+the session root ID is never assumed to be the current child thread. These reads do
+not resume the external thread or grant it phone continuation/approval ownership.
 
 ### Gemini CLI (macOS)
 

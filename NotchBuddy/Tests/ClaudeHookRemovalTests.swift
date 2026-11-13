@@ -19,7 +19,7 @@ func check(_ name: String, _ groups: [[String: Any]],
            expectEmpty: Bool = false) {
     var ok = expectEmpty ? groups.isEmpty : true
     if !expectEmpty {
-        let data = (try? JSONSerialization.data(withJSONObject: groups, options: [.sortedKeys])) ?? Data()
+        let data = (try? JSONSerialization.data(withJSONObject: groups, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()
         let json = String(data: data, encoding: .utf8) ?? ""
         for needle in contains where !json.contains(needle) { ok = false }
         for needle in notContains where json.contains(needle) { ok = false }
@@ -86,7 +86,7 @@ check("4. uninstall drops coucou-only groups entirely",
       expectEmpty: true)
 
 // 5. Uninstall keeps a user hook whose path mentions NotchBuddy but not nb-hook
-let nbish = [["hooks": [["type": "command", "command": "/opt/NotchBuddy/something-else", "timeout": 5]]] as [String: Any]
+let nbish = [["hooks": [["type": "command", "command": "/opt/NotchBuddy/something-else", "timeout": 5]]] as [String: Any]]
 check("5. uninstall keeps a /opt/NotchBuddy path that is not our hook",
       removeNbHookEntries(from: nbish),
       contains: ["/opt/NotchBuddy/something-else"])

@@ -1,13 +1,8 @@
 #if !APPSTORE
 import Foundation
 
-/// The clean-up of Flow dictation: Claude removes the "euh", the repeats and the corrections said
-/// on the way ("at 3, no, at 4" → "at 4"), fixes the punctuation and writes in the app's style.
-/// Only when it is turned on in the Coucou Flow window and Claude can answer: through the user's own
-/// Claude Code when Claude's switch is on in Settings → Chat → Your AI subscriptions (CLIRelay.swift),
-/// else with the Claude key set there. The words then go to Anthropic that way, and nowhere else.
-/// Any problem (no network, slow answer, odd reply) and the words are pasted as they were heard;
-/// with Claude Code signed out, the key stands in when there is one and the pill says how to sign in.
+/// Flow rewrites with the selected Codex account or the existing Claude subscription/key.
+/// Failures retain the original words.
 enum FlowCleanup {
     static let model = "claude-haiku-4-5"
     /// Past this, the words are pasted as heard rather than keeping you waiting.
@@ -20,6 +15,8 @@ enum FlowCleanup {
         !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
     }
 
+    @MainActor static var usesCodex: Bool { AppState.shared.chatProvider == .codex }
+
     /// The tool that answers Flow on the user's Claude plan: Claude's switch is on in
     /// Settings → Chat and Claude Code is installed.
     @MainActor static var tool: SubscriptionCLI? {
@@ -27,7 +24,7 @@ enum FlowCleanup {
     }
 
     /// Claude can answer Flow, through Claude Code or with the key.
-    @MainActor static var isAvailable: Bool { tool != nil || hasKey }
+    @MainActor static var isAvailable: Bool { usesCodex ? CodexTextService.isAvailable : tool != nil || hasKey }
 
     /// What a clean-up or a transform gives back.
     struct Outcome: Sendable {
@@ -39,7 +36,7 @@ enum FlowCleanup {
         var keyStoodIn = false
     }
 
-    static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> Outcome {
+    @MainActor static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> Outcome {
         guard style != .verbatim, FlowText.wordCount(text) >= 3 else { return Outcome(text: text) }
         return await ask(text, system: system(style: style, app: app, words: words), wait: timeout, what: "clean-up") {
             plausible($0, from: text)
@@ -49,7 +46,7 @@ enum FlowCleanup {
     /// Prompt mode and translation: one call that cleans the words, shapes them as a prompt when
     /// asked, and writes them in the chosen language. Like the clean-up, any problem and the words
     /// are pasted as heard.
-    static func transform(_ text: String, prompt: Bool, language: FlowLanguage?, style: FlowStyle,
+    @MainActor static func transform(_ text: String, prompt: Bool, language: FlowLanguage?, style: FlowStyle,
                           app: String?, words: [String]) async -> Outcome {
         guard prompt || language != nil, FlowText.wordCount(text) >= 1 else { return Outcome(text: text) }
         let system = transformSystem(prompt: prompt, language: language, style: style, app: app, words: words)
@@ -62,18 +59,30 @@ enum FlowCleanup {
     /// One call to Claude: through Claude Code when it answers Flow, else with the key. `wait` is
     /// the key's; Claude Code gets `toolStart` more. When Claude Code fails early (signed out, no
     /// answer), the key stands in with what is left of that time.
-    private static func ask(_ text: String, system: String, wait: TimeInterval, what: String,
+    @MainActor private static func ask(_ text: String, system: String, wait: TimeInterval, what: String,
                             accept: (String) -> Bool) async -> Outcome {
         let user = "<dictation>\n\(text)\n</dictation>"
         var outcome = Outcome(text: text)
+        let selection = (AppState.shared.chatProvider, AppState.shared.codexModel)
+        if selection.0 == .codex {
+            do {
+                let reply = try await CodexTextService.complete(system: system, user: user, model: selection.1, timeout: wait)
+                guard !Task.isCancelled, usesCodex, CodexTextService.isAvailable, AppState.shared.codexModel == selection.1 else { return outcome }
+                let out = unwrap(reply)
+                if accept(out) { outcome.text = out }
+            } catch { return outcome }
+            return outcome
+        }
+        guard !Task.isCancelled else { return outcome }
         var left = wait
-        if let tool = await MainActor.run(body: { Self.tool }) {
+        if let tool = Self.tool {
             let started = Date()
             let budget = wait + toolStart
             let request = CLIRequest(model: model, system: system, prompt: user, web: false, readDir: nil,
                                      noWebPolicy: nil, timeout: budget, thinking: false)
             do {
                 let out = unwrap(try await CLIRelay.ask(tool, request))
+                guard !Task.isCancelled, AppState.shared.chatProvider == selection.0 else { return outcome }
                 return Outcome(text: accept(out) ? out : text)
             } catch {
                 appendAppLog("nb.log", "[Flow] \(what) through \(tool.displayName) skipped: \(error.localizedDescription)")
@@ -81,10 +90,11 @@ enum FlowCleanup {
             }
             left = min(wait, budget - Date().timeIntervalSince(started))
         }
-        guard left >= 1, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return outcome }
+        guard !Task.isCancelled, AppState.shared.chatProvider == selection.0,
+              left >= 1, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return outcome }
         do {
             let out = unwrap(try await askWithKey(key, system: system, user: user, timeout: left))
-            if accept(out) {
+            if !Task.isCancelled, AppState.shared.chatProvider == selection.0, accept(out) {
                 outcome.text = out
                 outcome.keyStoodIn = outcome.signedOut != nil
             }

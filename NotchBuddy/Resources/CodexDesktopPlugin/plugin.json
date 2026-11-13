@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "coucou-desktop",
+  "version": "0.1.0",
+  "description": "Ask questions in Coucou and return the user's answer to this Codex conversation.",
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "Coucou Desktop",
+        "shortDescription": "Answer Codex questions in the Coucou island"
+      }
+    }
+  }
+}

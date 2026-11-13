@@ -12,6 +12,9 @@ struct AskQuestionItem: Equatable {
     var header: String      // ≤12 chars; used as section label
     var options: [AskQuestionOption]   // 2–4 choices
     var multiSelect: Bool
+    var id: String? = nil
+    var isOther: Bool = true
+    var isSecret: Bool = false
 }
 
 /// Island height of the pending question, readable from the nonisolated `islandSize`. Written on the main actor only.
@@ -26,6 +29,56 @@ extension AskQuestionItem {
 
 struct AskQuestion: Equatable {
     var questions: [AskQuestionItem]   // 1–4 questions
+    var pillId: String? = nil
+    var sessionId: String? = nil
+    var threadId: String? = nil
+    var turnId: String? = nil
+    var requestId: String? = nil
+    var isCodexPlugin = false
+    var projectName: String? = nil
+
+    static func parseCodex(_ params: [String: Any], requestId: String) -> AskQuestion? {
+        guard let thread = params["threadId"] as? String, !thread.isEmpty,
+              let turn = params["turnId"] as? String, !turn.isEmpty,
+              let rawQuestions = params["questions"] as? [[String: Any]],
+              let items = parseCodexQuestions(rawQuestions) else { return nil }
+        return AskQuestion(questions: items, pillId: "agent_codex", threadId: thread, turnId: turn, requestId: requestId)
+    }
+
+    static func parseCodexPlugin(_ toolInput: [String: Any]) -> AskQuestion? {
+        guard let questions = toolInput["questions"] as? [[String: Any]],
+              let items = parseCodexQuestions(questions) else { return nil }
+        // The waiting socket owns the answer; a plugin is not a native thread owner.
+        return AskQuestion(questions: items, pillId: "agent_codex", isCodexPlugin: true)
+    }
+
+    private static func parseCodexQuestions(_ rawQuestions: [[String: Any]]) -> [AskQuestionItem]? {
+        guard !rawQuestions.isEmpty, rawQuestions.count <= 4 else { return nil }
+        var items: [AskQuestionItem] = []
+        var ids = Set<String>()
+        for raw in rawQuestions {
+            guard let id = raw["id"] as? String, !id.isEmpty, id.utf8.count <= 512, ids.insert(id).inserted,
+                  let prompt = raw["question"] as? String ?? raw["prompt"] as? String,
+                  !prompt.isEmpty, prompt.utf8.count <= 32_768 else { return nil }
+            let rawOptions: [[String: Any]]
+            if let value = raw["options"], !(value is NSNull) {
+                guard let options = value as? [[String: Any]] else { return nil }
+                rawOptions = options
+            } else { rawOptions = [] }
+            guard rawOptions.count <= 9 else { return nil }
+            let options = rawOptions.compactMap { option -> AskQuestionOption? in
+                guard let label = option["label"] as? String, !label.isEmpty, label.utf8.count <= 4096 else { return nil }
+                let description = option["description"] as? String ?? ""
+                guard description.utf8.count <= 8192 else { return nil }
+                return AskQuestionOption(label: label, description: description)
+            }
+            guard options.count == rawOptions.count else { return nil }
+            items.append(AskQuestionItem(question: prompt, header: String((raw["header"] as? String ?? "").prefix(12)), options: options,
+                         multiSelect: false, id: id, isOther: raw["isOther"] as? Bool ?? false,
+                         isSecret: raw["isSecret"] as? Bool ?? false))
+        }
+        return items
+    }
 
     /// Island height that fits the tallest question without truncation (rough estimate, text wraps at ~500 pt).
     var estimatedIslandHeight: CGFloat {
@@ -46,7 +99,7 @@ struct AskQuestion: Equatable {
             if item.multiSelect { h += 34 }
             return h
         }.max() ?? 160
-        return min(max(tallest, 160), 560)
+        return min(max(tallest + (projectName == nil ? 0 : 18), 160), 560)
     }
 
     // MARK: - Parse from tool_input dict
@@ -81,7 +134,9 @@ struct AskQuestion: Equatable {
         var answers: [String: Any] = [:]
         for (i, item) in questions.enumerated() {
             guard i < selections.count, !selections[i].isEmpty else { continue }
-            if item.multiSelect {
+            if let id = item.id {
+                answers[id] = ["answers": selections[i]]
+            } else if item.multiSelect {
                 answers[item.question] = selections[i]          // array for multi-select
             } else {
                 answers[item.question] = selections[i][0]       // string for single-select

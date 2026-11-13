@@ -265,7 +265,7 @@ struct SessionMenu: View {
             Button {
                 UIPasteboard.general.string = answer
             } label: {
-                Label("Copy Claude's answer", systemImage: "text.quote")
+                Label("Copy agent answer", systemImage: "text.quote")
             }
         }
         Button {
