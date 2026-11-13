@@ -7,23 +7,27 @@ final class MCPChatCoordinator {
 
     static let shared = MCPChatCoordinator()
 
+    /// What the model reads back when a tool did not run.
+    static let refusal = "The user did not approve this tool call, so it was not run."
+
     private init() {}
 
-    /// Executes an MCP tool, prompting for approval in the Notch if mutating.
+    /// Executes an MCP tool. One that changes things runs only after an Allow on the notch;
+    /// with no notch to ask on (the iPhone), it never runs.
     func executeWithApproval(tool: MCPTool, arguments: [String: AnyCodable]) async -> MCPToolResult {
-        let isApproved: Bool
+        let approval: Bool?
         if tool.isReadOnly {
-            isApproved = true
+            approval = nil
         } else {
             #if os(macOS)
-            isApproved = await MCPApprovalManager.shared.requestApproval(tool: tool, arguments: arguments)
+            approval = await MCPApprovalManager.shared.requestApproval(tool: tool, arguments: arguments)
             #else
-            isApproved = true
+            approval = nil
             #endif
         }
 
-        guard isApproved else {
-            return MCPToolResult(content: "User rejected permission to run this tool.", isError: true)
+        guard tool.mayRun(approval: approval) else {
+            return MCPToolResult(content: Self.refusal, isError: true)
         }
 
         return await MCPToolRegistry.shared.execute(qualifiedToolID: tool.id, arguments: arguments)

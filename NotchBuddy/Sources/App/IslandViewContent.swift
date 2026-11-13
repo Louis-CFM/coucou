@@ -454,11 +454,13 @@ struct ApprovalView: View {
                         PrimaryButton("Allow") {
                             HookServer.shared.sendApprovalDecision("allow", for: shownId)
                         }
-                        // Codex, Copilot CLI and Muse Code do not support updatedPermissions
+                        // Codex, Copilot CLI and Muse Code do not support updatedPermissions;
+                        // an MCP tool of the chat is asked for every time.
                         let asking = PillCatalog.basePillId(approval?.pillId ?? "")
                         let hideAlways = asking == "agent_codex"
                             || asking == "agent_copilot"
                             || asking == "agent_muse"
+                            || asking == QueuedApproval.mcpPill
                         if asking == "agent_antigravity" {
                             // Antigravity waits on the card: this hands it back to its own
                             // prompt in the terminal, where "Always allow" lives.

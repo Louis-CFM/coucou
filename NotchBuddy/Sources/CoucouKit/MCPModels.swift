@@ -213,6 +213,12 @@ struct MCPTool: Codable, Identifiable, Equatable, Sendable {
     let inputSchema: [String: AnyCodable]
     /// Whether this tool is non-mutating (safe to execute without prompt).
     let isReadOnly: Bool
+
+    /// Fail closed: a read-only tool runs; any other only when a human approved it.
+    /// `approval` is nil when there was nobody to ask (no notch, as on the iPhone): a refusal.
+    func mayRun(approval: Bool?) -> Bool {
+        isReadOnly || approval == true
+    }
 }
 
 /// An execution request directed to an MCP tool.

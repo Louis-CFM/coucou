@@ -31,6 +31,12 @@ enum MCPChatCoordinatorTests {
         check(readTool.isReadOnly, "read-only tool marked safe")
         check(!writeTool.isReadOnly, "mutating tool marked unsafe")
 
+        // Fail closed: a mutating tool runs only when a human approved it
+        check(readTool.mayRun(approval: nil), "read-only tool runs with nobody to ask")
+        check(writeTool.mayRun(approval: true), "mutating tool runs on Allow")
+        check(!writeTool.mayRun(approval: false), "mutating tool refused on Deny / timeout / late Allow")
+        check(!writeTool.mayRun(approval: nil), "mutating tool refused with nobody to ask (iPhone)")
+
         // MARK: - OpenAI Tool Call Parsing & Routing
         let toolCallJSON: [String: Any] = [
             "id": "call_abc123",

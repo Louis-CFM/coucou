@@ -63,6 +63,29 @@ enum ApprovalQueueTests {
         _ = same.enqueue(entry(1)); _ = same.enqueue(entry(2, tool: "Edit"))
         precondition(!same.hasMixedSources)
 
+        // MCP tool approvals wait in the same line, with no socket behind them
+        let mcp = QueuedApproval.mcp(tool: "GitHub: create_issue", command: "{}", inputKey: "srv__create_issue",
+                                     deadline: Date().addingTimeInterval(108))
+        precondition(mcp.isMCP && mcp.fd == -1 && mcp.pillId == "agent_mcp" && mcp.deadline != nil)
+        precondition(!entry(1).isMCP && entry(1).deadline == nil)
+        var line = ApprovalQueue()
+        for n in 1..<ApprovalQueue.maxPending { precondition(line.enqueue(entry(n)) == .accepted) }
+        precondition(line.enqueue(mcp) == .accepted && line.head != mcp)  // behind the others, FIFO
+        precondition(line.enqueue(QueuedApproval.mcp(tool: "t", command: "", inputKey: "",
+                                                     deadline: Date())) == .rejectedFull)
+        precondition(line.remove(id: mcp.id) == mcp && line.count == ApprovalQueue.maxPending - 1)
+
+        // Only an Allow (or Always) clicked strictly before the deadline approves
+        let deadline = Date(timeIntervalSince1970: 1_000)
+        let before = deadline.addingTimeInterval(-0.001)
+        precondition(ApprovalQueue.approves(decision: "allow", at: before, deadline: deadline))
+        precondition(ApprovalQueue.approves(decision: "always", at: before, deadline: deadline))
+        precondition(!ApprovalQueue.approves(decision: "allow", at: deadline, deadline: deadline))
+        precondition(!ApprovalQueue.approves(decision: "allow", at: deadline.addingTimeInterval(1), deadline: deadline))
+        for refusal in ["deny", "ask", "plan_auto", "plan_default", "plan_change", ""] {
+            precondition(!ApprovalQueue.approves(decision: refusal, at: before, deadline: deadline), refusal)
+        }
+
         print("pass")
     }
 }
