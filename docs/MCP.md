@@ -11,19 +11,20 @@ Following the philosophy of PR #400 (where local AI backends are automatically d
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                      Coucou Conversation & Voice                       │
-│    (Dynamic Island / Chat / ClaudeVoiceBrain / FoundationModels)      │
+│              (Island chat: ClaudeService / openai_compat.rs)          │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ Tool definitions & tool_calls
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │                         MCPChatCoordinator                             │
-│       - Intercepts tool calls from LLM (Chat & Voice brains)           │
+│       - Intercepts tool calls from the chat's model                   │
 │       - Dispatches read-only vs mutating calls                         │
 └─────────────────────┬───────────────────────────┬──────────────────────┘
                       │ Mutating (Approval)       │ Read-Only (Safe)
 ┌─────────────────────▼─────────────────────┐ ┌───▼──────────────────────┐
 │            MCPApprovalManager             │ │     MCPToolRegistry      │
-│  - Integrates with unified ApprovalQueue  │ │  - Dispatches calls      │
-│  - Notch Card (1/N, project, Allow/Deny)  │ │  - Formats OpenAI schema │
+│  - Entry in HookServer's ApprovalQueue    │ │  - Dispatches calls      │
+│  - Notch card (1/N, Allow/Deny), fails    │ │  - Formats OpenAI schema │
+│    closed (timeout, Deny, late Allow)     │ │                          │
 └───────────────────────────────────────────┘ └───┬──────────────────────┘
                                                   │
                               ┌───────────────────┴───────────────────┐
@@ -38,16 +39,18 @@ Following the philosophy of PR #400 (where local AI backends are automatically d
 
 ## 2. Zero-Config Discovery (`MCPScanner.swift`)
 
-Coucou automatically reads existing configurations from standard developer tools on macOS and Linux:
+Coucou automatically reads existing configurations from standard developer tools on macOS, Windows and Linux (Windows and Linux: `windows/src-tauri/src/mcp/scanner.rs`):
 
 | Tool | Monitored Locations | Configuration Key |
 | :--- | :--- | :--- |
-| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json`<br>`~/.config/Claude/claude_desktop_config.json` | `mcpServers` |
-| **Claude Code** | `~/.claude.json`<br>`<project>/.mcp.json` | `mcpServers`<br>`projects[*].mcpServers` |
+| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)<br>`%APPDATA%\Claude\claude_desktop_config.json` (Windows)<br>`$XDG_CONFIG_HOME/Claude/claude_desktop_config.json`, default `~/.config` (Linux) | `mcpServers` |
+| **Claude Code** | `~/.claude.json` | `mcpServers`<br>`projects[*].mcpServers` |
 | **Cursor** | `~/.cursor/mcp.json` | `mcpServers` |
-| **VS Code** | `~/Library/Application Support/Code/User/mcp.json`<br>`~/.config/Code/User/mcp.json` | `servers`<br>`mcpServers` |
+| **VS Code** | `~/Library/Application Support/Code/User/mcp.json` (macOS)<br>`%APPDATA%\Code\User\mcp.json` (Windows)<br>`$XDG_CONFIG_HOME/Code/User/mcp.json` (Linux) | `servers`<br>`mcpServers` |
 | **Windsurf** | `~/.codeium/windsurf/mcp_config.json` | `mcpServers` |
-| **OpenCode** | `~/.config/opencode/opencode.json`<br>`~/.config/opencode/mcp.json` | `mcp`<br>`mcpServers` |
+| **OpenCode** | `$XDG_CONFIG_HOME/opencode/opencode.json` and `…/mcp.json`, default `~/.config` (macOS)<br>`%OPENCODE_CONFIG_DIR%\opencode.json`, `%OPENCODE_CONFIG_DIR%\mcp.json`, `%APPDATA%\opencode\opencode.json` (Windows)<br>`$XDG_CONFIG_HOME/opencode/opencode.json` (Linux) | `mcp`<br>`mcpServers` |
+
+`~` is the user's home folder (`%USERPROFILE%` on Windows).
 
 ### Normalization Rules
 1. **Variable expansion:** Normalizes syntax across formats:
@@ -94,33 +97,38 @@ Coucou strictly regulates tool execution to prevent unintended side effects:
   * *Action:* Execute immediately and show an active working state.
 * **Mutating / Side-Effect Tools:**
   * Any tool with keywords like `write`, `delete`, `send`, `post`, `update`, `create`, `execute`, `run`, `edit`.
-  * *Action:* Triggers the native **Approval** card in the Notch via the unified `ApprovalQueue`.
+  * *Action:* Waits for an **Allow** on the approval card, in the same line as the agents' permission requests.
 
-### Unified Approval Queue (Coucou PR #563 Pattern)
-Mutating tool requests no longer overwrite each other or get clobbered by external agent hook approvals (Claude Code, Cursor):
-1. `MCPApprovalManager` captures execution state with a unique request `UUID` and enqueues it into `ApprovalQueue`.
-2. The Notch displays requests in strict FIFO order:
-   * Header indicates current position in queue (e.g. `1/3`) and asking context (`MCP: PostgreSQL`).
-   * Tool arguments summarized in a formatted code block.
-   * `Allow` / `Always` / `Deny` action buttons bound strictly to the currently displayed request `UUID`.
-3. Answering or clicking on a request settles only that specific `UUID`. Subsequent waiting tool calls are promoted automatically.
-4. If the user dismisses the Notch or the 115s safety watchdog elapses, the tool execution fails closed without side effects.
+### Approval card, failing closed
+A tool that changes things runs only after an **Allow** clicked on its card before the request's deadline. Everything else refuses the call, and the model is told: `The user did not approve this tool call, so it was not run.`
+
+**macOS** (`MCPApprovalManager.swift` → `HookServer.enqueueMCPApproval`):
+1. The request becomes an entry of HookServer's `ApprovalQueue`, the queue that Claude Code's and the other agents' requests wait in. It joins the end of the line and never replaces or cancels another request.
+2. The card shows the oldest request first, with its position (`1/3`), `<server>: <tool>` and the arguments (sorted, cut to 300 characters), on an `MCP tools` pill. Its buttons are **Deny** and **Allow**; there is no **Always**, so every call is asked for.
+3. A click answers only the request on screen.
+4. Refusals: Deny, no click within 108 s, a card dropped without an answer, a line already holding 5 requests, or an Allow clicked at or after the deadline.
+
+**Windows and Linux** (`windows/src-tauri/src/mcp/approval.rs`, decision rule in `mcp/gate.rs`):
+1. The request goes to the island as a `PermissionRequest` from agent `mcp`, kind `mcp_tool`, with an id `mcp-N`. It waits in the island's line with the agents' requests and shows on an `MCP tools` pill.
+2. The island must confirm within 800 ms that the card is up. The deadline is fixed when the request starts (108 s), and each click is stamped when it reaches Coucou.
+3. Refusals: no confirmation in time, a paused island, a full line, Deny, no click before the deadline, or an Allow stamped at or after it.
+
+**The phone's chat and the iPhone app** have no card to ask on: tools that change things never run there; read-only tools still do.
+
+MCP decisions are not counted in the weekly recap.
 
 ---
 
-## 5. Chat & Voice Brain Integration
+## 5. Chat Integration
 
-MCP tools are available to both text-based island conversations and Coucou's voice assistant:
+MCP tools are offered to the island's text chat. The voice assistant does not use them.
 
 1. **Schema Generation:** `MCPToolRegistry` formats all active tools as standard function definitions (`mcp__<serverID>__<toolName>`).
-2. **Text Chat (`ClaudeService.swift`):**
+2. **macOS (`ClaudeService.swift`):**
    * Tools are injected into the `/chat/completions` payload.
-   * `MCPChatCoordinator` executes tool calls returned by the model and feeds the results back for contextual follow-up turns.
-3. **Voice Brain (`ClaudeVoiceBrain.swift` & `VoiceBrain.swift`):**
-   * Dynamic MCP tools augment Coucou's built-in voice tools (`pills`, `service_info`, `open_app`, `prepare_email`).
-   * When Claude or FoundationModels invokes an MCP tool via voice:
-     * Read-only tools fetch data seamlessly to answer the user's spoken question.
-     * Mutating tools open the native Notch approval card with sound before performing any action.
+   * `MCPChatCoordinator` executes tool calls returned by the model, after approval when needed, and feeds the results back for the follow-up turn.
+3. **Windows and Linux (`openai_compat.rs`):**
+   * The OpenAI-compatible providers (OpenAI, Google AI, OpenRouter) receive the tools; each tool call goes through `mcp::approval::allowed` before it runs.
 
 ---
 
@@ -129,5 +137,7 @@ MCP tools are available to both text-based island conversations and Coucou's voi
 All MCP modules are validated using standalone Swift test harnesses:
 * `scripts/test-mcp-scanner.sh`: Tests config parsing, normalization, secret masking, and deduplication.
 * `scripts/test-mcp-client.sh`: Tests JSON-RPC 2.0 protocol encoding, response parsing, and AnyCodable serde.
-* `scripts/test-mcp-coordinator.sh`: Tests safety classification, tool routing, and approval handling.
+* `scripts/test-mcp-coordinator.sh`: Tests safety classification, tool routing, and the fail-closed run rule.
+* `scripts/test-approval-queue.sh`: Tests MCP entries in the approval line and the deadline rule (an Allow at or after the deadline is a refusal).
+* Windows and Linux: `cargo test` covers `mcp/gate.rs` (ack, Deny, timeout, late Allow) and `mcp/approval.rs`; `npm test` covers the island's MCP card.
 * `scripts/test-mcp-http.sh`: Tests remote HTTP client payload framing and response parsing.
