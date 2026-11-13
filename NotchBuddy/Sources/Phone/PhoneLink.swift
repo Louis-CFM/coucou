@@ -17,7 +17,7 @@ struct PingItem: Identifiable {
 }
 
 /// An agent session published by the Mac (SessionPublisher), as seen by the iPhone.
-struct SessionItem: Identifiable {
+struct SessionItem: Identifiable, Codable, Equatable {
     let id: String          // pill ID
     let name: String
     let color: String
@@ -60,6 +60,37 @@ struct SessionItem: Identifiable {
 
     var pillName: String { PillCatalog.definition(for: id)?.name ?? id }
     var currentStep: String? { steps.indices.contains(stepIndex) ? steps[stepIndex] : steps.last }
+}
+
+private struct ZoneCache: Codable {
+    var tokenData: Data?
+    var sessions: [SessionItem] = []
+    var services: [String: ServiceSnapshot] = [:]
+    var serviceDetails: [String: ServiceDetail] = [:]
+    var turns: [String: TurnSnapshot] = [:]
+
+    private static var fileURL: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("phone-link-cache.json")
+    }
+
+    static func load() -> ZoneCache? {
+        guard let url = fileURL, let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(ZoneCache.self, from: data)
+    }
+
+    func save() {
+        guard let url = Self.fileURL else { return }
+        let dir = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        try? data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    static func clear() {
+        guard let url = fileURL else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
 }
 
 @MainActor
@@ -110,6 +141,22 @@ final class PhoneLink {
     @ObservationIgnored private var fetching = false
     /// Things to notify once the fetch is done (finished, failed, questions).
     @ObservationIgnored private var events: [AgentNotifier.Event] = []
+
+    private init() {
+        guard let cache = ZoneCache.load(),
+              let tokenData = cache.tokenData,
+              let token = try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: tokenData) else {
+            return
+        }
+        changeToken = token
+        sessions = cache.sessions
+        services = cache.services
+        serviceDetails = cache.serviceDetails
+        turns = cache.turns
+        firstFetchDone = true
+        status = .ready
+        firstSyncDone = true
+    }
 
     func start() async {
         // The fetch starts right away, not after the notification prompt: the
@@ -219,13 +266,14 @@ final class PhoneLink {
         do {
             var more = true
             while more {
+                var pageGotNew = false
                 let changes = try await database.recordZoneChanges(inZoneWith: Self.zoneID, since: changeToken)
                 for (_, result) in changes.modificationResultsByID {
-                    if case .success(let mod) = result, add(mod.record) { gotNew = true }
+                    if case .success(let mod) = result, add(mod.record) { pageGotNew = true }
                 }
                 for deletion in changes.deletions where deletion.recordType == "Session" {
                     sessions.removeAll { "session-\($0.id)" == deletion.recordID.recordName }
-                    gotNew = true
+                    pageGotNew = true
                 }
                 for deletion in changes.deletions where deletion.recordType == TurnSnapshot.recordType {
                     if let id = TurnSnapshot.pillId(fromRecordName: deletion.recordID.recordName) { turns[id] = nil }
@@ -236,19 +284,42 @@ final class PhoneLink {
                 for deletion in changes.deletions where deletion.recordType == ServiceSnapshot.recordType {
                     if let id = ServiceSnapshot.pillId(fromRecordName: deletion.recordID.recordName) {
                         services[id] = nil
-                        gotNew = true
+                        pageGotNew = true
                     }
                 }
                 changeToken = changes.changeToken
                 more = changes.moreComing
+                // Mark ready and persist the token as soon as the first page succeeds
+                // so launches never stay stuck on "Connecting to iCloud" during follow-up pages.
+                firstFetchDone = true
+                status = .ready
+                firstSyncDone = true
+                if pageGotNew {
+                    gotNew = true
+                    updateWidgets()
+                }
+                let tokenData = changeToken.flatMap {
+                    try? NSKeyedArchiver.archivedData(withRootObject: $0, requiringSecureCoding: true)
+                }
+                ZoneCache(
+                    tokenData: tokenData,
+                    sessions: sessions,
+                    services: services,
+                    serviceDetails: serviceDetails,
+                    turns: turns
+                ).save()
             }
-            firstFetchDone = true
-            status = .ready
-            if gotNew { updateWidgets() }
         } catch let error as CKError where error.code == .zoneNotFound || error.code == .userDeletedZone {
+            resetZoneCache()
             status = .zoneMissing
         } catch let error as CKError where error.code == .changeTokenExpired {
-            changeToken = nil
+            let hadToken = changeToken != nil
+            resetZoneCache()
+            if hadToken {
+                fetching = false
+                return await fetchChanges()
+            }
+            status = .failed(error.localizedDescription)
         } catch let error as CKError where error.code == .notAuthenticated {
             status = .noAccount(error.localizedDescription)
         } catch {
@@ -257,6 +328,16 @@ final class PhoneLink {
         pings.sort { $0.sentAt > $1.sentAt }
         firstSyncDone = true
         return gotNew
+    }
+
+    private func resetZoneCache() {
+        changeToken = nil
+        ZoneCache.clear()
+        sessions = []
+        services = [:]
+        serviceDetails = [:]
+        turns = [:]
+        firstFetchDone = false
     }
 
     private func add(_ record: CKRecord) -> Bool {
