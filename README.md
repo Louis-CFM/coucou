@@ -31,7 +31,7 @@ Approve permissions, watch your agents work, drop a file, chat with Claude — a
 ## Why
 
 Some studios showed off gorgeous notch companions… and never let anyone use them.
-**Coucou is the open version.** Every line of code is open source under the MIT License: read it, fork it, learn from it. The Coucou name, Mochi and the sounds stay © Louis Raillé (see [License](#license)).
+**Coucou is the open version.** Every line of code is open source under the MIT License: read it, fork it, learn from it. The Coucou name, Mochi and the sounds stay © Madhan Kumar (see [License](#license)).
 
 Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment Claude Code needs you.
 
@@ -550,7 +550,7 @@ Want to add or improve a translation? Open a PR with changes to `NotchBuddy/Reso
 
 ## Credits
 
-Built by [Louis Raillé](https://louisraille.fr) with Claude Code.
+Built by Madhan Kumar with Claude Code.
 Coucou for Android and the phone link by [Rhytam Biswas (@Rhytam23)](https://github.com/Rhytam23).
 Thanks to everyone who sent a pull request — see [contributors](https://github.com/Louis-CFM/coucou/graphs/contributors).
 Inspired by the notch-companion concepts shared by design studios — this project is independent and not affiliated with any of them.
@@ -558,7 +558,7 @@ Inspired by the notch-companion concepts shared by design studios — this proje
 ## License
 
 - **Code:** [MIT](LICENSE) — use it, fork it, learn from it, just keep the copyright notice. The Android app and the phone link are © Rhytam Biswas, also under MIT ([android/LICENSE](android/LICENSE)).
-- **Name, Mochi character, icon, sounds and media:** © Louis Raillé, all rights reserved — see [LICENSE-ASSETS.md](LICENSE-ASSETS.md). Shipping your own fork? Give it your own name and character.
+- **Name, Mochi character, icon, sounds and media:** © Madhan Kumar, all rights reserved — see [LICENSE-ASSETS.md](LICENSE-ASSETS.md). Shipping your own fork? Give it your own name and character.
 
 <div align="center">
 

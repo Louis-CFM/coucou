@@ -242,4 +242,4 @@ cargo clean
 
 ---
 
-*Authored for the Coucou project — Built with TypeScript, Vite, Tailwind-free custom CSS, Framer Motion, Rust, and Tauri v2.*
+*Maintained by Madhan Kumar — Built with TypeScript, Vite, Tailwind-free custom CSS, Framer Motion, Rust, and Tauri v2.*

@@ -2,7 +2,7 @@
 name = "coucou"
 default-run = "coucou"
 description = "Coucou for Windows and Linux — Mochi lives at the top of your screen"
-authors = ["Louis Raille"]
+authors = ["Madhan Kumar"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true

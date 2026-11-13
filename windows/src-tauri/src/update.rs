@@ -29,9 +29,9 @@ use tauri::{AppHandle, Emitter};
 use crate::i18n::t;
 use crate::island::WINDOW_LABEL;
 
-pub const RELEASES_URL: &str = "https://api.github.com/repos/Louis-CFM/coucou/releases?per_page=30";
+pub const RELEASES_URL: &str = "https://api.github.com/repos/Dev-Madhan/coucou/releases?per_page=30";
 /// Where "What's new" goes when no release is known.
-pub const RELEASES_PAGE: &str = "https://github.com/Louis-CFM/coucou/releases";
+pub const RELEASES_PAGE: &str = "https://github.com/Dev-Madhan/coucou/releases";
 
 /// This platform's release tags: `windows-vX.Y.Z` / `linux-vX.Y.Z`. Never the
 /// rolling `windows-latest` / `linux-latest`, nor the Mac's `v…` or Android's.

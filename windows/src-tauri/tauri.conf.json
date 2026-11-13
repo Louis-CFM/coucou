@@ -49,7 +49,7 @@
       "icons/icon.ico"
     ],
     "resources": { "../target/release/coucou-hook.exe": "coucou-hook.exe" },
-    "copyright": "© Louis Raille",
+    "copyright": "© Madhan Kumar",
     "category": "DeveloperTool",
     "shortDescription": "Mochi lives at the top of your screen",
     "longDescription": "Coucou puts Mochi at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
