@@ -340,6 +340,9 @@ this way. Linux has no Outlook: the pill is Windows only.
 | Coucou → Mail → Rules, Banned words, VIP | "If the sender / domain / subject / text / account contains … then Junk / important / read / move to a folder". Banned words are whole words: "sale" does not catch "Salesforce". A VIP is an address or a whole domain (`@client.com`) |
 | Turn on **Mail** next to the model in the chat | The AI gets your 40 newest messages (text and attachments for the newest and for the ones you name) and may answer with a plan: sort, reply drafts, sends, a mail merge that gives each recipient their page of a PDF, saving attachments. The plan shows as a card: the mails to send, the ones that can't be sent in red, **Send me a test**, and **Run**, which waits 5 seconds (Cancel) before anything happens |
 
+With the Mail card in front while Outlook runs, the open island is taller, so more messages
+show; an open message takes the whole island, with its text a size up and in all the room left.
+
 Coucou never deletes a message, and never sends one without your click on Run. Your mail
 goes only to the chat's AI you picked (your key or your subscription), and only while the
 chat's Mail switch is on. On some company PCs, Outlook may ask whether to let a program use
@@ -370,7 +373,10 @@ account only, because WhatsApp may restrict accounts that abuse it.
 
 - The island lists one row per conversation, with its initials, name, last
   message and unread count. Photos, voice messages and other media show as a
-  label; Coucou never downloads them.
+  label; Coucou never downloads them. With the WhatsApp card in front, the
+  open island is taller, so more conversations show.
+- An open conversation takes the whole island, as tall as the chat, with its
+  messages a size up; the other pills come back with ‹ or Escape.
 - Click a conversation for its last ten messages and a reply field. **Enter**
   sends, **Shift+Enter** starts a new line and **Escape** goes back. Nothing is
   ever sent without your Enter or click.

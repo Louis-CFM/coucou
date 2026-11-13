@@ -27,8 +27,8 @@ import { buildLaunch } from "./launch";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
-import { WHATSAPP_ID } from "../core/whatsapp";
-import { MAIL_ID } from "../core/mail";
+import { WHATSAPP_ID, WhatsApp } from "../core/whatsapp";
+import { MAIL_ID, MailCard } from "../core/mail";
 import { buildMailCard } from "./mail";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
@@ -430,6 +430,9 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
+      // A WhatsApp conversation or an email open: its card takes the island's whole width (the
+      // pills step aside until it closes), with its text a size up.
+      el.classList.toggle("wide", (mode === "whatsapp" && WhatsApp.reading) || (mode === "mail" && MailCard.reading));
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];

@@ -16,6 +16,8 @@ import {
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
+import { WhatsApp, whatsappHeight } from "../core/whatsapp";
+import { MAIL_ID, MailCard, mailHeight } from "../core/mail";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -171,7 +173,24 @@ export class Island {
     State.subscribe(() => {
       this.dirty = true;
       this.ensureRunning();
+      // The WhatsApp or Mail card came to the front, or a conversation or an email opened or
+      // closed in it: the open island takes its new height (a view change resizes it by itself).
+      const card = this.cardH();
+      if (card !== this.lastCardH) {
+        this.lastCardH = card;
+        if (State.mode === "expanded") this.animateGeometry(this.targetSize().h < this.height.value);
+      }
     });
+  }
+
+  private lastCardH: number | null = null;
+
+  /** The WhatsApp or Mail card's height in front of the open island, so it can be read. */
+  private cardH(): number | null {
+    const focus = State.focusTask?.id ?? null;
+    const outlook = (State.integrations[MAIL_ID]?.data as { running?: unknown } | undefined)?.running === true;
+    return whatsappHeight(State.mode, State.view, focus, WhatsApp.view.on, WhatsApp.reading)
+      ?? mailHeight(State.mode, State.view, focus, outlook, MailCard.reading);
   }
 
   /** The request has its answer: the card goes and the session carries on. */
@@ -861,6 +880,8 @@ export class Island {
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
+    // The WhatsApp or Mail card in front: taller, so it can be read.
+    h = this.cardH() ?? h;
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
