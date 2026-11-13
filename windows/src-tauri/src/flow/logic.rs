@@ -2,13 +2,14 @@
 // FlowKeyLogic.swift.
 //
 // - Hold the key: Coucou listens. Release it: the words are pasted where you type.
-// - Two quick taps: hands-free, until the next tap.
+// - Two quick taps: hands-free, until the next tap. With `one_tap` (a Flow
+//   setting), one short press is enough.
 // - Esc, or another key pressed while the key is held (a shortcut such as
 //   Ctrl+C), cancels.
 //
 // Listening starts on the first press, so a word said right away is not lost; a
-// press too short to be a hold waits a moment for the second tap, and is
-// dropped if none comes.
+// press too short to be a hold waits a moment for the second tap (without
+// `one_tap`), and is dropped if none comes.
 
 use serde::{Deserialize, Serialize};
 
@@ -43,11 +44,12 @@ pub const DOUBLE_TAP_WINDOW: f64 = 0.40;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct KeyLogic {
     phase: Phase,
+    pub one_tap: bool,
 }
 
 impl Default for KeyLogic {
     fn default() -> Self {
-        Self { phase: Phase::Idle }
+        Self { phase: Phase::Idle, one_tap: false }
     }
 }
 
@@ -90,6 +92,10 @@ impl KeyLogic {
         if t - since >= HOLD_THRESHOLD {
             self.phase = Phase::Idle;
             return Action::Finish;
+        }
+        if self.one_tap {
+            self.phase = Phase::Locked;
+            return Action::Lock;
         }
         self.phase = Phase::TapWait { until: t + DOUBLE_TAP_WINDOW };
         Action::None
@@ -384,6 +390,24 @@ mod tests {
         k.key_down(0.0);
         k.key_up(0.1);
         assert_eq!(k.key_down(2.0), Action::Restart);
+    }
+
+    #[test]
+    fn with_one_tap_a_short_press_goes_hands_free() {
+        let mut k = KeyLogic { one_tap: true, ..Default::default() };
+        assert_eq!(k.key_down(0.0), Action::Start);
+        assert_eq!(k.key_up(0.1), Action::Lock);
+        assert_eq!(k.phase(), Phase::Locked);
+        assert_eq!(k.key_down(5.0), Action::Finish);
+        assert_eq!(k.key_up(5.1), Action::None);
+        assert!(!k.is_active());
+        // A hold stays push-to-talk.
+        assert_eq!(k.key_down(6.0), Action::Start);
+        assert_eq!(k.key_up(7.0), Action::Finish);
+        // A shortcut while the key is held still cancels.
+        k.key_down(8.0);
+        assert_eq!(k.other_key(), Action::Cancel);
+        assert!(!k.is_active());
     }
 
     #[test]

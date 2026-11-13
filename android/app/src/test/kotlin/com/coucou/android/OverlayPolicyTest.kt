@@ -21,6 +21,8 @@ class OverlayPolicyTest {
         assertTrue(OverlayPolicy.blocker(true, false, false)!!.contains("not allowed"))
         assertEquals("the app is on screen", OverlayPolicy.blocker(true, true, true))
         assertEquals(null, OverlayPolicy.blocker(true, true, false))
+        assertEquals("Do Not Disturb is on", OverlayPolicy.blocker(true, true, false, silenced = true))
+        assertEquals("the reasons before it still come first", "switch is off", OverlayPolicy.blocker(false, true, false, silenced = true))
     }
 
     private class Memory : WishStore {
@@ -77,5 +79,15 @@ class OverlayPolicyTest {
         assertFalse(OverlayPolicy.tapAccepted(shownAtMs = 1_000.0, nowMs = 1_599.0))
         assertTrue(OverlayPolicy.tapAccepted(shownAtMs = 1_000.0, nowMs = 1_600.0))
         assertTrue(OverlayPolicy.tapAccepted(shownAtMs = 1_000.0, nowMs = 9_000.0))
+    }
+
+    @Test fun inDoNotDisturbTheIslandStaysAwayOnlyWhenTheUserAskedForIt() {
+        assertFalse("the choice is off: today's behaviour", OverlayPolicy.silenced(hideInDnd = false, dndOn = true))
+        assertFalse(OverlayPolicy.silenced(hideInDnd = true, dndOn = false))
+        assertTrue(OverlayPolicy.silenced(hideInDnd = true, dndOn = true))
+        assertFalse(OverlayPolicy.shouldShow(enabled = true, permitted = true, appInForeground = false, silenced = true))
+        assertTrue(OverlayPolicy.shouldShow(enabled = true, permitted = true, appInForeground = false, silenced = false))
+        // The request is then announced by its notification, which Android silences or not by its own Do Not Disturb rules.
+        assertEquals(OverlayPolicy.ApprovalAlert.HEADS_UP, OverlayPolicy.approvalAlert(pillShown = false))
     }
 }

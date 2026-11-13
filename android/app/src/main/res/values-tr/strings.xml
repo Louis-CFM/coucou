@@ -148,6 +148,8 @@
     <string name="approval_hint">Telefonda izin vermek için parmak izi veya ekran kilidi doğrulaması gerekir. Reddetmek için gerekmez.</string>
     <string name="overlay_title">Mochi\'yi diğer uygulamaların üzerinde göster</string>
     <string name="overlay_hint">Bir ajan çalışırken ekranın üstünden bir ada iner, ardından geri çıkar.</string>
+    <string name="overlay_dnd_title">Rahatsız Etme modunda adayı gizle</string>
+    <string name="overlay_dnd_hint">Rahatsız Etme açıkken ekranın üstünden hiçbir şey inmez. İstekler yine bildirim olarak gelir.</string>
     <string name="msg_overlay_permission">Coucou için “diğer uygulamaların üzerinde gösterme” iznini ver, ardından geri dön.</string>
     <string name="settings_title">Ayarlar</string>
     <string name="settings_sound">Mochi\'nin sesleri</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">Bir sorusu var</string>
     <string name="notif_ratelimit">Kullanım sınırına ulaştı</string>
     <string name="island_answer_on_pc">Coucou\'yu açmak için dokun veya bilgisayarında yanıtla</string>
+    <string name="island_dismiss">Adayı kapat</string>
     <string name="state_ready">Hazır</string>
     <string name="state_working">Çalışıyor</string>
     <string name="state_thinking">Düşünüyor</string>

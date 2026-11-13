@@ -16,9 +16,9 @@ import Speech
 @Observable
 final class MacDictation: @unchecked Sendable {
     static let automatic = "auto"
-    private static let languageKey = "dictationLanguage"
+    static let languageKey = "dictationLanguage"
     /// The language that won the last automatic dictation: shown first next time.
-    private static let lastHeardKey = "dictationLastLocale"
+    static let lastHeardKey = "dictationLastLocale"
     private static let maxCandidates = 3
 
     var isRecording = false

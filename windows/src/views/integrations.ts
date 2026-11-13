@@ -1,9 +1,7 @@
 // Integration cards shown in the overview's left card — DOM ports of
 // IntegrationCardView and friends from IslandViewContent.swift.
-//
-// Cal.com is the one simplification: macOS shows a three-level calendar
-// (month → day → booking); here it is the list of upcoming bookings.
 
+import { calendarDetail } from "./calendar";
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
@@ -347,7 +345,7 @@ function notionCard(): HTMLElement {
 
 // ── Cal.com ───────────────────────────────────────────────────────────────────
 
-function calcomCard(): HTMLElement {
+function calcomCard(openDetail: () => void): HTMLElement {
   const bookings = arr("integration_calcom", "bookings")
     .slice()
     .sort((a, b) => new Date(String(a.start)).getTime() - new Date(String(b.start)).getTime());
@@ -369,7 +367,8 @@ function calcomCard(): HTMLElement {
       ),
     );
   }
-  return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), rows);
+  return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), rows,
+    h("div", { class: "int-actions" }, h("button", { class: "link-btn", text: t("Details"), onclick: openDetail })));
 }
 
 // ── n8n ───────────────────────────────────────────────────────────────────────
@@ -511,7 +510,7 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
     case "integration_notion":
       return notionCard();
     case "integration_calcom":
-      return calcomCard();
+      return hooks.detailOpen ? calendarDetail(get(task.id), hooks.closeDetail, () => void Bridge.openUrl(OPEN_URLS[task.id])) : calcomCard(hooks.openDetail);
     default:
       return idleCard(task, hooks.openSettings);
   }

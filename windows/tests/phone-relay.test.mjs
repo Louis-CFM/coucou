@@ -33,3 +33,14 @@ test("the bridge never asks Rust for the access key", () => {
   assert.match(status.slice(0, 400), /hasAccess: boolean/);
   assert.ok(!/access: string/.test(status.slice(0, 400)));
 });
+
+test("the relay block shows only for testers (COUCOU_RELAY_SETTINGS=1) or when a relay is already on", () => {
+  const src = readFileSync(new URL("../src/settings/phone.ts", import.meta.url), "utf8");
+  assert.ok(!/SHOW_RELAY_SETTINGS/.test(src), "no hard-coded switch left");
+  const slot = src.slice(src.indexOf("function relaySlot"), src.indexOf("export function phoneSection"));
+  assert.match(slot, /status\?\.shown/);
+  assert.match(src, /relaySlot\(makeToggle/);
+  const rust = readFileSync(new URL("../src-tauri/src/phone_link/mod.rs", import.meta.url), "utf8");
+  assert.match(rust, /env::var\("COUCOU_RELAY_SETTINGS"\)\.map\(\|v\| v == "1"\)\.unwrap_or\(false\)/);
+  assert.match(rust, /shown: relay_settings_for_testers\(\) \|\| s\.phone_relay/);
+});

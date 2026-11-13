@@ -51,17 +51,26 @@ jobs:
       - name: Test the chat on your subscription (Claude Code, Antigravity, Gemini, Codex, Cursor, Copilot)
         run: bash scripts/test-cli-relay.sh
 
+      - name: Test a subscription run on stand-in tools (stdin, no thinking, signed out, time limit)
+        run: bash scripts/test-cli-relay-run.sh
+
       - name: Test Mail triage (rules, banned words, VIPs, search)
         run: bash scripts/test-mail-triage.sh
 
       - name: Test the settings search (accents, words, labels)
         run: bash scripts/test-settings-search.sh
 
+      - name: Test Antigravity permission rules
+        run: bash scripts/test-agy-permissions.sh
+
       - name: Test Flow dictation keys
         run: bash scripts/test-flow-keys.sh
 
       - name: Test Flow text (snippets, dictionary, numbers)
         run: bash scripts/test-flow-text.sh
+
+      - name: Test the work streak (Mochi sleepy after long work, fresh after a break)
+        run: bash scripts/test-work-streak.sh
 
       - name: Test Notetaker transcript (speakers, echo, summary, Markdown)
         run: bash scripts/test-notetaker.sh
@@ -140,6 +149,12 @@ jobs:
       - name: Test ask question
         run: bash scripts/test-ask-question.sh
 
+      - name: Test the App Store review moments
+        run: bash scripts/test-review-policy.sh
+
+      - name: Test the new-session launcher
+        run: bash scripts/test-session-launch.sh
+
       - name: Test the Android link (pairing, framing, admission, approvals, certificate)
         run: bash scripts/test-android-link.sh
 
@@ -172,6 +187,9 @@ jobs:
 
       - name: Conversation context tests
         run: bash scripts/test-conversation-context.sh
+
+      - name: Codex automatic-review filter tests
+        run: bash scripts/test-codex-auto-review.sh
 
       - name: Build
         run: |

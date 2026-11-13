@@ -60,6 +60,8 @@ You can also [build it yourself](#build-it-yourself).
 | Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
 | On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
+| Drag a file onto the island and let go on one of the sessions listed on the right ("Or into a session") | That session's terminal or editor comes forward and the file's path is pasted into Claude Code's prompt, as a drag onto the terminal would write it. When its window can't be found, the path is copied instead |
+| The terminal tab in the island's header | **New Claude Code session**: pick a project (the folders your sessions ran in, or **Choose a folder…**), type what Claude should do, and your terminal opens there running `claude` with it |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
 | Put a file named like one of Mochi's sounds (`finish.wav`, `approval.mp3`, `greet.m4a`…) in the sounds folder | It replaces that sound after **Settings → General → Reload sounds**. **Open sounds folder** shows the folder: `~/.config/coucou/sounds` on Linux, `%APPDATA%\Coucou\sounds` on Windows |
@@ -142,7 +144,7 @@ against its SHA-256, kept in Coucou's data folder under `Models`).
 | What you do | What happens |
 |---|---|
 | Hold **right Ctrl** anywhere, speak, let go | Your words are pasted where you type. Pick another key in Flow → Settings: right Alt, right Shift, Ctrl + Win (Ctrl + Super on Linux) |
-| Tap the key twice | Hands-free: speak as long as you like, tap once to paste. `Esc` cancels |
+| Tap the key twice (once with **Hands-free with one press** on, in Flow → Settings) | Hands-free: speak as long as you like, tap once to paste. `Esc` cancels |
 | Hover the pill at the bottom of the screen | Dictate, record a call, open Coucou. Put the pill on the left or right edge in Flow → Settings |
 | Click **Record a call** | Your microphone and what the computer plays, transcribed live, then written person by person with a summary and to-dos by Claude (your key). The audio is deleted once the transcript is written |
 | Say **« OK Coucou »**, then ask | Claude (your key) answers in the pill and out loud: pills, Spotify, your services' numbers, your agents, web search, open an app, an email prepared in your mail app. Turn it on in Notch → OK Coucou |
@@ -397,8 +399,10 @@ API key), and change the port of Coucou's webhook (47823).
 
 - There is no macOS Focus to follow, so "Stay quiet during a Focus" is not
   offered.
-- The card's ↗ opens WhatsApp Web, as there is no WhatsApp app here to bring
-  forward.
+- The card's ↗ opens WhatsApp Desktop (the Microsoft Store app) at the
+  conversation open in the card, when it is a person's. Without an app for
+  `whatsapp:` links (on Linux, the default `x-scheme-handler/whatsapp`), it
+  opens WhatsApp Web in the browser, at the same chat.
 - You type the path to your own GOWA binary instead of picking it.
 
 ## New versions
@@ -523,7 +527,7 @@ Linux.
 | GitHub Copilot CLI | `.copilot\hooks\coucou.json` | Allow / Deny in the island |
 | Muse Code | `.config\muse\settings.json` | Allow / Deny in the island |
 | Gemini CLI | `.gemini\settings.json` | asked in Gemini CLI |
-| Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity |
+| Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity; or, with **Approve commands from the notch** on, Allow / Deny / Reply in terminal in the island for the shell commands none of its rules covers |
 | Cursor Agent | `.cursor\hooks.json` — Claude Code in Cursor's terminal also goes on the Cursor pill, through the Claude Code hooks | asked in Cursor |
 | Claude Desktop | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
 | OpenCode | plugin `.config\opencode\plugins\coucou.js` | asked in OpenCode |
@@ -537,6 +541,19 @@ answers each agent the way it expects. It never lets anything through on its
 own: with no click it prints no decision at all (`{}` for the agents that need
 JSON, `"ask"` for Copilot, which is fail-closed), so the agent asks in its own
 terminal exactly as without Coucou — including when Coucou is closed.
+
+**Antigravity** has no permission request: it runs its `PreToolUse` hook before
+its own permission check and waits for the hook's decision. The relay answers
+`{"decision":"ask"}`, so Antigravity's rules and prompt decide — unless
+**Approve commands from the notch** is on (Settings → Agents → Antigravity, off
+by default, shown once the hooks are installed). Then a `run_command` that none
+of Antigravity's `command(...)` rules covers waits on the island's card, as on
+the Mac: **Allow** prints `{"decision":"allow"}`, **Deny**
+`{"decision":"deny","reason":"Denied from Coucou"}`, and **Reply in terminal**,
+no click within 110 s, a full card or Coucou closed print `{"decision":"ask"}`.
+Coucou reads those rules from the files the Mac reads, under `.gemini`. The
+`PreToolUse` hook is installed with a 120 s timeout: hooks written by an older
+Coucou (10 s) must be installed again, and Settings says so.
 
 The plugins start the relay directly, with no shell in between, and never wait
 for it. Amp's steps appear as each tool finishes: its "before" hook must return
@@ -555,8 +572,8 @@ the same check as Settings → Agents (for Claude Code: a SessionStart hook
 running Coucou's relay; the Cursor pill also counts Claude Code's hooks).
 Coucou only reads these files, each time the island opens. Permission requests
 get the island's card for Claude Code (in any terminal, and in Cursor's),
-Codex, Copilot CLI and Muse Code; other agents and Claude Desktop ask in their
-own window.
+Codex, Copilot CLI and Muse Code, and Antigravity's commands when that is turned
+on; other agents and Claude Desktop ask in their own window.
 
 ## What's different from the Mac version
 
@@ -594,11 +611,34 @@ own window.
   ancestor — conhost owns that window — so its folder opens in VS Code instead,
   as it does when `code` is on your `PATH` and nothing was found. Linux walks
   the same tree; what it can bring forward depends on the desktop (see Linux).
+- For a session in [herdr](https://herdr.dev), "Open terminal" also selects
+  the session's pane with `herdr agent focus`, and never falls back to VS
+  Code. The relay reads `HERDR_PANE_ID`, `HERDR_BIN_PATH` and, in WSL,
+  `WSL_DISTRO_NAME`. In WSL, a Windows program only sees the variables that
+  `WSLENV` names, so the hook command in the distro's
+  `~/.claude/settings.json` passes them on:
+  `WSLENV=$WSLENV:HERDR_PANE_ID:HERDR_BIN_PATH:WSL_DISTRO_NAME /mnt/c/Users/<you>/AppData/Local/Coucou/bin/coucou-hook.exe`.
 - Global keyboard shortcuts are hot keys on Windows, key grabs on Linux under
   X11, and go through the desktop's GlobalShortcuts portal under Wayland (see
   [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in
   the island, and reopened by clicking the island, Open in the tray or **Go to
   alert**.
+- **New Claude Code session** opens Windows Terminal (`wt.exe`) in the
+  project, or PowerShell in a console of its own without it; on Linux
+  `$TERMINAL`, `x-terminal-emulator`, GNOME Terminal, Ptyxis, Konsole, kitty,
+  Alacritty, WezTerm, foot or xterm, whichever is found first, with your login
+  shell. The prompt never goes into a command line: on Linux it is in
+  `COUCOU_PROMPT`, set on the terminal; on Windows it goes through a file in
+  your temp folder that PowerShell reads and deletes, since Windows Terminal
+  starts its tabs without wt.exe's environment. A double quote in it becomes a
+  single quote there (npm's `claude.cmd` would read it as the end of the
+  argument). **Choose a folder…** is the system's folder picker on Windows,
+  zenity or kdialog on Linux. There is no dictation button (the chat here
+  has none either) and no global shortcut yet: the header's terminal tab
+  opens it.
+- A file let go on a session in the drop card is pasted with `Ctrl+V` on
+  Windows and `Ctrl+Shift+V` on Linux, through Flow's paste (and its clipboard
+  restore), instead of the Mac's ⌘V with Accessibility.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
   is left out.
 - **Spotify** (Settings → Integrations) is read from the system media

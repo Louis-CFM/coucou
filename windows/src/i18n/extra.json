@@ -1000,7 +1000,11 @@
       "bn": "এডিটর কমান্ড",
       "pt-BR": "Comando do editor",
       "ru": "Команда редактора",
-      "id": "Perintah editor"
+      "id": "Perintah editor",
+      "de": "Editor-Befehl",
+      "tr": "Düzenleyici komutu",
+      "ko": "편집기 명령",
+      "ja": "エディタコマンド"
     },
     "code (or $VISUAL / $EDITOR)": {
       "zh-Hans": "code（或 $VISUAL / $EDITOR）",
@@ -1011,7 +1015,11 @@
       "bn": "code (বা $VISUAL / $EDITOR)",
       "pt-BR": "code (ou $VISUAL / $EDITOR)",
       "ru": "code (или $VISUAL / $EDITOR)",
-      "id": "code (atau $VISUAL / $EDITOR)"
+      "id": "code (atau $VISUAL / $EDITOR)",
+      "de": "code (oder $VISUAL / $EDITOR)",
+      "tr": "code (veya $VISUAL / $EDITOR)",
+      "ko": "code (또는 $VISUAL / $EDITOR)",
+      "ja": "code（または $VISUAL / $EDITOR）"
     },
     "e.g. cursor, zed, code": {
       "zh-Hans": "如 cursor, zed, code",
@@ -1022,7 +1030,11 @@
       "bn": "যেমন cursor, zed, code",
       "pt-BR": "ex.: cursor, zed, code",
       "ru": "напр. cursor, zed, code",
-      "id": "mis. cursor, zed, code"
+      "id": "mis. cursor, zed, code",
+      "de": "z. B. cursor, zed, code",
+      "tr": "örn. cursor, zed, code",
+      "ko": "예: cursor, zed, code",
+      "ja": "例: cursor, zed, code"
     },
     "Error": {
       "zh-Hans": "错误",
@@ -2223,21 +2235,6 @@
       "tr": "Sorular",
       "ko": "질문",
       "ja": "質問"
-    },
-    "Ready": {
-      "zh-Hans": "就绪",
-      "hi": "तैयार",
-      "es": "Listo",
-      "ar": "جاهز",
-      "fr": "Prêt",
-      "bn": "প্রস্তুত",
-      "pt-BR": "Pronto",
-      "ru": "Готово",
-      "id": "Siap",
-      "de": "Bereit",
-      "tr": "Hazır",
-      "ko": "준비 완료",
-      "ja": "準備完了"
     },
     "Reinstall hooks…": {
       "zh-Hans": "重新安装 hooks…",
@@ -7566,6 +7563,51 @@
       "tr": "Coucou sizi dinlerken videolar, müzik ve aramalar susar, sonra geri gelir. Coucou'nun kendi sesleri çalmaya devam eder.",
       "ko": "Coucou가 듣는 동안 동영상, 음악, 통화 소리가 꺼졌다가 다시 돌아옵니다. Coucou 자체의 소리는 계속 납니다.",
       "ja": "Coucou が聞いている間は動画・音楽・通話の音が消え、終わると戻ります。Coucou 自身の音はそのまま鳴ります。"
+    },
+    "Copied: paste it into the session's terminal.": {
+      "zh-Hans": "已拷贝：请粘贴到会话的终端中。",
+      "hi": "कॉपी हो गया: इसे सत्र के टर्मिनल में चिपकाएँ।",
+      "es": "Copiado: pégalo en el terminal de la sesión.",
+      "ar": "تم النسخ: ألصقه في طرفية الجلسة.",
+      "fr": "Copié : colle-le dans le terminal de la session.",
+      "bn": "কপি হয়েছে: সেশনের টার্মিনালে পেস্ট করুন।",
+      "pt-BR": "Copiado: cole no terminal da sessão.",
+      "ru": "Скопировано: вставьте в терминал сессии.",
+      "id": "Tersalin: tempel di terminal sesi.",
+      "de": "Kopiert: füge es in das Terminal der Sitzung ein.",
+      "tr": "Kopyalandı: oturumun terminaline yapıştır.",
+      "ko": "복사됨: 세션의 터미널에 붙여 넣으세요.",
+      "ja": "コピーしました：セッションのターミナルに貼り付けてください。"
+    },
+    "Hide the pill until I dictate": {
+      "zh-Hans": "听写前隐藏胶囊",
+      "hi": "बोलने तक पिल छिपाएँ",
+      "es": "Ocultar la píldora hasta que dicte",
+      "ar": "إخفاء الكبسولة حتى أبدأ الإملاء",
+      "fr": "Masquer la pastille jusqu'à ce que je dicte",
+      "bn": "বলা শুরু না করা পর্যন্ত পিল লুকান",
+      "pt-BR": "Ocultar a pílula até eu ditar",
+      "ru": "Скрывать капсулу, пока я не диктую",
+      "id": "Sembunyikan pil sampai saya mendikte",
+      "de": "Pille ausblenden, bis ich diktiere",
+      "tr": "Ben dikte edene kadar hapı gizle",
+      "ko": "받아쓰기할 때까지 필 숨기기",
+      "ja": "音声入力するまでピルを隠す"
+    },
+    "It shows only while you dictate, record a call or get a message. The dictation key still works.": {
+      "zh-Hans": "仅在听写、录制通话或收到消息时显示。听写键仍然有效。",
+      "hi": "यह केवल बोलते, कॉल रिकॉर्ड करते या संदेश आने पर दिखता है। डिक्टेशन कुंजी पहले की तरह काम करती है।",
+      "es": "Solo aparece cuando dictas, grabas una llamada o recibes un mensaje. La tecla de dictado sigue funcionando.",
+      "ar": "تظهر فقط عند الإملاء أو تسجيل مكالمة أو وصول رسالة. يظل مفتاح الإملاء يعمل.",
+      "fr": "Elle n'apparaît que quand tu dictes, enregistres un appel ou reçois un message. La touche de dictée fonctionne toujours.",
+      "bn": "এটি শুধু বলার সময়, কল রেকর্ড করার সময় বা বার্তা এলে দেখা যায়। ডিক্টেশন কী আগের মতোই কাজ করে।",
+      "pt-BR": "Aparece só quando você dita, grava uma chamada ou recebe uma mensagem. A tecla de ditado continua funcionando.",
+      "ru": "Показывается только при диктовке, записи звонка или сообщении. Клавиша диктовки по-прежнему работает.",
+      "id": "Hanya muncul saat Anda mendikte, merekam panggilan, atau menerima pesan. Tombol dikte tetap berfungsi.",
+      "de": "Sie erscheint nur beim Diktieren, bei einer Anrufaufnahme oder einer Nachricht. Die Diktiertaste funktioniert weiterhin.",
+      "tr": "Yalnızca dikte ederken, bir görüşmeyi kaydederken veya mesaj gelince görünür. Dikte tuşu yine çalışır.",
+      "ko": "받아쓰기하거나 통화를 녹음하거나 메시지가 올 때만 표시됩니다. 받아쓰기 키는 그대로 작동합니다.",
+      "ja": "音声入力中、通話の録音中、メッセージが届いたときだけ表示されます。音声入力キーはそのまま使えます。"
     }
   }
 }

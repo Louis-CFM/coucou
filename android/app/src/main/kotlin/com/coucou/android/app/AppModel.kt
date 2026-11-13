@@ -164,6 +164,7 @@ class AppModel(private val context: Context) : LinkListener {
 
     fun updateSettings(next: UserSettings) {
         val relayChanged = next.useRelay != settings.useRelay
+        val dndChoiceChanged = next.hideIslandInDnd != settings.hideIslandInDnd
         settings = next
         UserSettings.save(kv, next)
         applySound()
@@ -171,6 +172,47 @@ class AppModel(private val context: Context) : LinkListener {
         com.coucou.android.core.MotionState.choice = settings.motion
         // Switching the relay on or off rebuilds the connection with the right routes.
         if (relayChanged) currentPairing?.let { restartLink(it) }
+        if (dndChoiceChanged) {
+            watchDnd()
+            refreshIsland()
+        }
+    }
+
+    // ── Do Not Disturb ──────────────────────────────────────────────────────────
+    // "Hide the island in Do Not Disturb": the island follows the phone's mode. The system tells us when the mode
+    // changes, and only while the user wants this: nothing is registered, and nothing runs, otherwise.
+
+    private val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
+
+    /** The phone is in Do Not Disturb: any mode but "all interruptions". An unknown mode counts as off. */
+    private fun dndOn(): Boolean = when (notificationManager?.currentInterruptionFilter) {
+        android.app.NotificationManager.INTERRUPTION_FILTER_PRIORITY,
+        android.app.NotificationManager.INTERRUPTION_FILTER_ALARMS,
+        android.app.NotificationManager.INTERRUPTION_FILTER_NONE -> true
+        else -> false
+    }
+
+    private val dndChanged = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context?, intent: android.content.Intent?) { main.post { refreshIsland() } }
+    }
+    private var watchingDnd = false
+
+    /** Listens for Do Not Disturb turning on or off while the choice is on, and stops when it is off. */
+    private fun watchDnd() {
+        val want = settings.hideIslandInDnd
+        if (want == watchingDnd) return
+        runCatching {
+            if (want) {
+                androidx.core.content.ContextCompat.registerReceiver(
+                    context, dndChanged,
+                    android.content.IntentFilter(android.app.NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED),
+                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+                )
+            } else {
+                context.unregisterReceiver(dndChanged)
+            }
+            watchingDnd = want
+        }
     }
 
     private fun applySound() {
@@ -182,6 +224,7 @@ class AppModel(private val context: Context) : LinkListener {
         applySound()
         notifier.applyApprovalSettings(settings.vibration, settings.keepScreenOff)
         com.coucou.android.core.MotionState.choice = settings.motion
+        watchDnd()
     }
 
     /** What the computer says Mochi wears ("auto" or an outfit); the last one it told, kept for when it is away. */
@@ -334,7 +377,19 @@ class AppModel(private val context: Context) : LinkListener {
         onAllow = { notifier.openAllow(it) },
         onDeny = { decide(it, allow = false) },
         onOpen = { notifier.openApp() },
+        onSwiped = { shadeAfterSwipe(it) },
     )
+
+    /** The island went up: leave what it showed in the notification shade (quietly), so nothing is lost with the swipe. */
+    private fun shadeAfterSwipe(spec: com.coucou.android.core.IslandSpec) {
+        when (IslandPlan.shadeFor(spec.kind)) {
+            IslandPlan.Shade.STATUS_NOTE -> notifier.showStatus(spec.pillId, spec.agent, spec.state, spec.text)
+            IslandPlan.Shade.REQUEST_NOTE ->
+                approvals.firstOrNull { it.fingerprint == spec.fingerprint }
+                    ?.let { notifier.showApproval(it, agentName(it.pillId), OverlayPolicy.ApprovalAlert.QUIET) }
+            IslandPlan.Shade.ONGOING -> Unit // the ongoing notification already says who is working
+        }
+    }
 
     fun overlayPermitted() = overlay.permitted()
 
@@ -353,7 +408,8 @@ class AppModel(private val context: Context) : LinkListener {
 
     private fun islandAllowed(): Boolean {
         val connected = mode != Mode.PAIRED || linkState == LinkState.CONNECTED
-        val why = OverlayPolicy.blocker(choice.wished, overlay.permitted(), inForeground)
+        val silenced = OverlayPolicy.silenced(settings.hideIslandInDnd, settings.hideIslandInDnd && dndOn())
+        val why = OverlayPolicy.blocker(choice.wished, overlay.permitted(), inForeground, silenced)
             ?: if (!connected) "not connected to a computer" else null
         if (why != null) Log.d("CoucouOverlay", "no island: $why")
         return why == null
