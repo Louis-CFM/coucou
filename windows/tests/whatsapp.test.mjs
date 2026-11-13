@@ -4,10 +4,10 @@
 
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { emit, sent } from "./tauri.mjs";
+import { emit, internals, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
 import {
-  IDLE_WHATSAPP, WHATSAPP_ID, WhatsApp, canSend, duration, initials, installError, installFailure, installStepLabel,
+  IDLE_WHATSAPP, WHATSAPP_ID, WhatsApp, canSend, duration, findContacts, initials, installError, installFailure, installStepLabel,
   keyAction, lastMessages, linkColor, linkLabel, preview, sendErrorLabel, showsLinkState, testResultLabel, timeAgo,
   webhookLine,
 } from "../src/core/whatsapp.ts";
@@ -320,4 +320,117 @@ test("the conversation closes when WhatsApp is turned off or the island folds", 
   WhatsApp.view = { ...IDLE_WHATSAPP };
   c.sync();
   assert.equal(sent("whatsapp_close").length, closes + 2);
+});
+
+// ── The search: find someone, open their chat in WhatsApp ─────────────────────
+
+test("the search: every word of the name, or the digits of the number; conversations first, people only", () => {
+  const convos = [
+    conversation({ id: "447700900123@s.whatsapp.net", name: "Sam Example" }),
+    conversation({ id: "1203@g.us", name: "Sam's group", isGroup: true }),
+  ];
+  const book = [
+    { id: "447700900123@s.whatsapp.net", name: "Samuel Example" },
+    { id: "447700900456@s.whatsapp.net", name: "Élodie Exemple" },
+    { id: "123456789012345@lid", name: "Sam Hidden" },
+  ];
+  const names = (q, max) => findContacts(q, convos, book, max).map((p) => p.name);
+  assert.deepEqual(names("sam"), ["Sam Example"], "each person once, no group, no hidden number");
+  assert.deepEqual(names("elodie ex"), ["Élodie Exemple"], "every word, accents or not");
+  assert.deepEqual(names("0900456"), ["Élodie Exemple"]);
+  assert.deepEqual(names("+44 7700"), ["Sam Example", "Élodie Exemple"]);
+  assert.deepEqual(names("   "), []);
+  assert.equal(names("e", 1).length, 1);
+});
+
+test("the magnifier finds someone, and their conversation opens here to write to; nothing is sent before Enter", async () => {
+  const c = card();
+  const realInvoke = internals.invoke;
+  const alex = "447700900456@s.whatsapp.net";
+  const alexis = "447700900789@s.whatsapp.net";
+  /** What Rust's whatsapp_start answers: the card's copy, or null when it refuses. */
+  let started = null;
+  internals.invoke = async (cmd, args) => {
+    if (cmd === "whatsapp_contacts") return [{ id: alex, name: "Alex Example" }, { id: alexis, name: "Alexis Example" }];
+    const reply = await realInvoke(cmd, args);
+    return cmd === "whatsapp_start" ? started : reply;
+  };
+  const typed = (field, text) => {
+    field.value = text;
+    for (const fn of field.listeners.get("input")) fn({});
+  };
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const search = async (text) => {
+    c.el.find(".wa-icon")[0].fire("click");
+    await settle();
+    typed(c.el.find("INPUT")[0], text);
+    return c.el.find("INPUT")[0];
+  };
+  try {
+    WhatsApp.view = connected({ unread: 1, conversations: [conversation()] });
+    State.mode = "expanded";
+    State.view = "overview";
+    State.focusId = WHATSAPP_ID;
+    c.sync();
+    const find = await search("alex");
+    assert.deepEqual(c.calls.keyboard, [true], "the island takes the keyboard for the field");
+    assert.deepEqual(c.calls.hold, [true], "the island stays open while a name is typed");
+    const rows = c.el.find(".wa-row");
+    assert.equal(rows.length, 2);
+    assert.match(rows[0].textContent, /Alex Example.*\+447700900456/);
+    assert.ok(rows[0].classList.contains("selected"));
+    key(find, "ArrowDown");
+    assert.ok(c.el.find(".wa-row")[1].classList.contains("selected"));
+
+    // Someone new from your contacts: Rust starts an empty conversation, and the card opens it.
+    started = connected({
+      unread: 1,
+      conversations: [conversation({ id: alexis, name: "Alexis Example", messages: [], unread: 0 }), conversation()],
+    });
+    const sends = sent("whatsapp_send").length;
+    assert.equal(key(find, "Enter").defaultPrevented, true);
+    await settle();
+    assert.deepEqual(sent("whatsapp_start").at(-1), { chat: alexis });
+    assert.deepEqual(sent("whatsapp_open").at(-1), { chat: alexis });
+    assert.match(c.el.find(".wa-name")[0].textContent, /Alexis Example/);
+    assert.equal(sent("whatsapp_send").length, sends, "picking someone sends nothing");
+    const reply = c.el.find("TEXTAREA")[0];
+    typed(reply, "Hi Alexis");
+    key(reply, "Enter");
+    await Promise.resolve();
+    assert.deepEqual(sent("whatsapp_send").at(-1), { chat: alexis, text: "Hi Alexis" });
+    key(reply, "Escape");
+    assert.deepEqual(sent("whatsapp_close").at(-1), { chat: alexis });
+
+    // Refused (not in your contacts, or the gateway didn't answer): WhatsApp opens at the chat.
+    WhatsApp.view = connected({ unread: 1, conversations: [conversation()] });
+    c.sync();
+    started = null;
+    key(await search("alex"), "Enter");
+    await settle();
+    assert.deepEqual(sent("whatsapp_start").at(-1), { chat: alex });
+    assert.deepEqual(sent("whatsapp_open_app").at(-1), { chat: alex });
+
+    // Someone already in the card: their conversation, no new one.
+    const starts = sent("whatsapp_start").length;
+    key(await search("marie"), "Enter");
+    await settle();
+    assert.equal(sent("whatsapp_start").length, starts);
+    assert.deepEqual(sent("whatsapp_open").at(-1), { chat: "33612345678@s.whatsapp.net" });
+    key(c.el.find("TEXTAREA")[0], "Escape");
+
+    // Nobody by that name; Escape goes back to the list, not the island folding away.
+    const nobody = await search("zz");
+    assert.match(c.el.textContent, /Nobody by that name/);
+    assert.equal(key(nobody, "Escape").propagationStopped, true);
+    assert.equal(c.el.find(".wa-row").length, 1);
+
+    // Leaving the card closes the search.
+    c.el.find(".wa-icon")[0].fire("click");
+    State.mode = "compact";
+    State.notify();
+    assert.equal(c.calls.keyboard.at(-1), false);
+  } finally {
+    internals.invoke = realInvoke;
+  }
 });
