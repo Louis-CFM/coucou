@@ -4,7 +4,7 @@
 // While it is on, the microphone is open and a cheap energy detector cuts what
 // you say into stretches; only a stretch of speech goes to Parakeet, on this
 // computer, and only a stretch that starts with « OK Coucou » goes further:
-// what you said after it goes to Claude with your own key (brain.rs), never
+// what you said after it goes to Claude (your key or your Claude Code), never
 // the audio. Mochi shows it all in the pill at the bottom of the screen —
 // listening, thinking, then the answer, said out loud by the system's voice
 // (the pill's speechSynthesis) or ElevenLabs with your key.
@@ -53,9 +53,9 @@ fn pending() -> &'static Mutex<HashMap<u64, mpsc::Sender<String>>> {
 }
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
-/// Whether « OK Coucou » can run: the voice model and a Claude key.
+/// Whether « OK Coucou » can run: the voice model, and a Claude key or Claude Code.
 pub fn requirements_met() -> bool {
-    speech::is_ready() && crate::secrets::present(crate::claude::KEY)
+    speech::is_ready() && crate::claude::ready()
 }
 
 /// Starts or stops listening to follow the preference.
