@@ -117,6 +117,15 @@ pub struct Settings {
     pub closed_island: String,
     /// Smart notch behavior: full on desktop, tucked away over maximized apps.
     pub smart_notch: bool,
+    pub visibility: Option<String>,
+    pub notch_style: Option<String>,
+    pub notch_scale: Option<f64>,
+    pub show_battery: Option<bool>,
+    pub show_battery_percentage: Option<bool>,
+    pub show_tab_chat: Option<bool>,
+    pub show_tab_shelf: Option<bool>,
+    pub show_tab_drop: Option<bool>,
+    pub show_tab_launch: Option<bool>,
     /// Settings → Agents → Antigravity → Approve commands from the notch: a shell command
     /// none of Antigravity's rules covers waits for Allow / Deny on the island
     /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
@@ -194,6 +203,15 @@ impl Default for Settings {
             show_clock: false,
             closed_island: "mochi".into(),
             smart_notch: true,
+            visibility: Some("smart".into()),
+            notch_style: Some("notch".into()),
+            notch_scale: Some(1.0),
+            show_battery: Some(true),
+            show_battery_percentage: Some(true),
+            show_tab_chat: Some(true),
+            show_tab_shelf: Some(true),
+            show_tab_drop: Some(true),
+            show_tab_launch: Some(true),
             agy_approvals_enabled: false,
         }
     }

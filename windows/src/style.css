@@ -90,6 +90,23 @@ body {
   will-change: width, height, transform;
 }
 
+#island.style-island {
+  top: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+#island.style-island #island-clip {
+  border-radius: inherit;
+}
+
+#island.style-notch {
+  top: 0;
+  border-top: none;
+  box-shadow: none;
+}
+
 #island-clip {
   position: absolute;
   inset: 0;
@@ -248,44 +265,9 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Compact Claude plan gauge, next to the agent dots in the compact island. */
+/* Compact Claude plan gauge: removed from notch per user request. */
 #compact-plan {
-  --plan: #6b7079;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 7px;
-  border: 2px solid color-mix(in srgb, var(--plan) 14%, transparent);
-  border-radius: 999px;
-  background: #0e0f11;
-  color: var(--dim-3);
-  font: 600 10px var(--font);
-  font-variant-numeric: tabular-nums;
-  line-height: 12px;
-  white-space: nowrap;
-  cursor: pointer;
-  pointer-events: auto;
-  opacity: 0;
-  transition: opacity 0.25s ease-in-out, right 0.2s ease, background 0.18s, border-color 0.18s, color 0.18s;
-  user-select: none;
-  z-index: 2;
-}
-
-#compact-plan:hover {
-  background: color-mix(in srgb, var(--plan) 18%, transparent);
-  border-color: color-mix(in srgb, var(--plan) 55%, transparent);
-  color: color-mix(in srgb, var(--plan) 70%, white);
-}
-
-#compact-plan .compact-plan-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--plan);
-  flex-shrink: 0;
+  display: none !important;
 }
 
 /* Date and time in the middle of the compact island: removed per user request for minimal clean notch. */
@@ -322,6 +304,22 @@ body {
   transition: opacity 0.3s ease-out 0.12s;
 }
 
+#island.has-battery #island-closed {
+  padding-right: 78px;
+}
+
+#island.has-bot #island-closed {
+  padding-left: 36px;
+}
+
+#island.style-island.has-battery #island-closed {
+  padding-right: 86px;
+}
+
+#island.style-island.has-bot #island-closed {
+  padding-left: 44px;
+}
+
 #island-closed .text {
   white-space: nowrap;
   overflow: visible;
@@ -339,32 +337,132 @@ body {
   border-radius: 50%;
 }
 
-#island-closed .closed-clock {
+/* ── Dynamic Island Battery Indicator ─────────────────────────────────── */
+#island-battery {
   position: absolute;
   right: 14px;
   top: 0;
   bottom: 0;
   display: flex;
   align-items: center;
+  gap: 5px;
+  font-family: var(--font);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: rgba(245, 246, 248, 0.9);
-  white-space: nowrap;
-  opacity: 1;
-  transform: translateX(0);
-  transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
+  color: rgba(245, 246, 248, 0.95);
   user-select: none;
-  z-index: 3;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-#island-closed .closed-clock.hidden {
-  opacity: 0;
-  transform: translateX(24px);
-  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease-in;
-  pointer-events: none;
+#island.style-island #island-battery {
+  right: 18px;
+}
+
+#island.has-battery #island-battery {
+  opacity: 1;
+  display: flex;
+}
+
+#island.tucked #island-battery,
+#island-battery.hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  display: none !important;
+}
+
+.battery-capsule {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.battery-shell {
+  width: 25px;
+  height: 12.5px;
+  border: 1.2px solid rgba(255, 255, 255, 0.42);
+  border-radius: 4px;
+  padding: 1.5px;
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  transition: border-color 0.25s ease;
+}
+
+.battery-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: #ffffff;
+  min-width: 1.5px;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease;
+}
+
+.battery-nub {
+  width: 2px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.42);
+  border-radius: 0 1.5px 1.5px 0;
+  margin-left: 1.5px;
+  flex: 0 0 auto;
+  transition: background-color 0.25s ease;
+}
+
+.battery-bolt {
+  width: 8.5px;
+  height: 12px;
+  color: #34c759;
+  display: none;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 2px rgba(52, 199, 89, 0.45));
+}
+
+#island-battery.charging .battery-shell {
+  border-color: rgba(52, 199, 89, 0.7);
+}
+
+#island-battery.charging .battery-nub {
+  background-color: rgba(52, 199, 89, 0.7);
+}
+
+#island-battery.low .battery-shell {
+  border-color: rgba(255, 159, 10, 0.75);
+}
+
+#island-battery.low .battery-nub {
+  background-color: rgba(255, 159, 10, 0.75);
+}
+
+#island-battery.critical .battery-shell {
+  border-color: rgba(255, 69, 58, 0.85);
+  animation: battery-pulse 1.8s infinite ease-in-out;
+}
+
+#island-battery.critical .battery-nub {
+  background-color: rgba(255, 69, 58, 0.85);
+}
+
+@keyframes battery-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(0.97); }
+}
+
+.battery-pct {
+  font-family: var(--font), system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: rgba(245, 246, 248, 0.95);
+  line-height: 1;
+}
+
+#island.style-island .battery-pct {
+  font-size: 12px;
 }
 
 #island-closed.note::before {
@@ -396,6 +494,24 @@ body {
   color: #f5f6f8;
   text-align: center;
   margin: 0 auto;
+}
+
+/* Dynamic Island (floating pill) perfected padding and typography */
+#island.style-island #island-closed {
+  padding: 0 22px;
+  line-height: 1;
+}
+
+#island.style-island #island-closed .text {
+  font-size: 12.5px;
+  letter-spacing: 0.015em;
+  font-weight: 600;
+  line-height: 1;
+}
+
+#island.style-island #island-closed.with-bot {
+  padding-left: 44px;
+  padding-right: 22px;
 }
 
 #island-closed.welcome {
@@ -466,6 +582,7 @@ body {
 
 #island.tucked #island-closed,
 #island.tucked #bot-canvas,
+#island.tucked #island-battery,
 #island.tucked #compact-timer,
 #island.tucked #compact-plan,
 #island.tucked #island-clip {
@@ -494,15 +611,15 @@ body {
 }
 
 .smart-notch-card.active {
-  background: rgba(20, 26, 40, 0.9);
-  border-color: rgba(59, 130, 246, 0.55);
-  box-shadow: 0 0 16px rgba(59, 130, 246, 0.15), inset 0 0 0 1px rgba(59, 130, 246, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
 }
 
 .smart-notch-preview {
   display: flex;
   height: 96px;
-  background: #141b27;
+  background: #0e0f12;
   border-radius: 10px;
   overflow: hidden;
   position: relative;
@@ -518,7 +635,7 @@ body {
 }
 
 .preview-desktop {
-  background: #121824;
+  background: #0e0f12;
 }
 
 .preview-desktop .screen-edge {
@@ -554,14 +671,14 @@ body {
 .preview-desktop .notch-full::after { right: -6px; }
 
 .preview-maximized {
-  background: #0c1119;
+  background: #090a0c;
   padding: 14px 12px 0;
 }
 
 .max-app-window {
   width: 100%;
   height: 100%;
-  background: #1b2638;
+  background: #1c1d21;
   border-radius: 6px 6px 0 0;
   position: relative;
   display: flex;

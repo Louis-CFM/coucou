@@ -23,6 +23,7 @@ import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { claudeModelControl } from "./claude-models";
 import { agentsSection } from "./agents";
+import { appearanceSection } from "./appearance";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
@@ -329,7 +330,7 @@ function planSection(status: HookStatus): HTMLElement {
       }),
       h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
-      h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaudeCompact }), swCompact),
+      h("div", { class: "row", style: "display: none !important;" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaudeCompact }), swCompact),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),
         statusDot(status.planRelayInstalled),
@@ -1060,6 +1061,7 @@ function whatsappSections(): HTMLElement[] {
  * elsewhere (the island's own settings change sound, volume and auto-close).
  */
 let generalSync: (() => void) | null = null;
+let appearanceSync: (() => void) | null = null;
 
 function generalSection(): HTMLElement {
   const volume = h("input", {
@@ -1678,6 +1680,7 @@ async function main() {
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
     generalSync?.();
+    appearanceSync?.();
     for (const redraw of declaredViews) redraw();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
@@ -1732,9 +1735,11 @@ async function render() {
   localRedraw = null;
   shortcutsListener = null;
   generalSync = null;
+  appearanceSync = null;
   clear(root);
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
     general: () => [generalSection()],
+    appearance: () => [appearanceSection(settings, save, toggle, setSwitch, buildSmartNotchCard, (sync) => { appearanceSync = sync; })],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
     chat: () => [subscriptionsSection(), apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],

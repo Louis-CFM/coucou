@@ -5,7 +5,14 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import {
+  State,
+  type AgentTask,
+  resolveShowTabChat,
+  resolveShowTabShelf,
+  resolveShowTabDrop,
+  resolveShowTabLaunch,
+} from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -162,6 +169,28 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
+
+      const showChat = resolveShowTabChat(State.settings);
+      const showShelf = resolveShowTabShelf(State.settings);
+      const showDrop = resolveShowTabDrop(State.settings);
+      const showLaunch = resolveShowTabLaunch(State.settings);
+
+      tabChat.style.display = showChat ? "" : "none";
+      tabShelf.style.display = showShelf ? "" : "none";
+      tabDrop.style.display = showDrop ? "" : "none";
+      tabLaunch.style.display = showLaunch ? "" : "none";
+
+      // If user disables a tab they are currently viewing, gracefully fall back to overview
+      const isCurrentTabHidden =
+        (v === "prompt" && !showChat) ||
+        (v === "fileshelf" && !showShelf) ||
+        (v === "upload" && !showDrop) ||
+        (v === "launch" && !showLaunch);
+
+      if (isCurrentTabHidden) {
+        actions.setView("overview");
+      }
+
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabShelf.classList.toggle("on", v === "fileshelf");

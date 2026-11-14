@@ -107,11 +107,45 @@ To stop the dev app, press `Ctrl + C` in your terminal or right-click the system
 
 ## 4. Converting & Packaging into a Windows App (.exe / .msi)
 
-When you are ready to package the entire project into production executables and installers, follow these steps:
+When you are ready to convert your project into the Windows desktop application or package installers, choose one of the options below:
 
-### Option A: Complete One-Step Automated Packaging *(Recommended)*
+### ⚡ Quick Conversion into Windows Application (`coucou.exe`) *(Fastest)*
 
-Run the complete build & pack script:
+When you have made changes to the code or UI and want to compile the standalone Windows release application executable directly:
+
+```powershell
+# From the project root:
+pnpm --prefix windows run build
+powershell -Command "(Get-Item 'windows/src-tauri/src/main.rs').LastWriteTime = Get-Date; cargo build --release --manifest-path windows/src-tauri/Cargo.toml"
+
+# Or if you are inside the windows/ folder:
+pnpm run build
+powershell -Command "(Get-Item 'src-tauri/src/main.rs').LastWriteTime = Get-Date; cargo build --release --manifest-path src-tauri/Cargo.toml"
+```
+
+> **What this does**:
+> 1. Builds the latest frontend assets into `windows/dist/`.
+> 2. Touches `main.rs` to guarantee Tauri re-bundles the fresh frontend assets.
+> 3. Compiles the optimized Rust release binary to `windows/target/release/coucou.exe`.
+
+#### 🚀 How to Run the Compiled Application
+
+```powershell
+# If you are in the project root:
+.\windows\target\release\coucou.exe
+
+# If you are inside the windows/ folder:
+.\target\release\coucou.exe
+
+# Or using the full path from anywhere:
+& "D:\Madhan Kumar\Web Development Projects\coucou\windows\target\release\coucou.exe"
+```
+
+---
+
+### Option A: Complete One-Step Automated Packaging *(Recommended for Installers)*
+
+Run the complete build & pack script to build the app and generate installer bundles (`.exe` setup and `.msi`):
 ```powershell
 # From project root
 pnpm --prefix windows run pack
@@ -234,10 +268,12 @@ cargo clean
 | **Start Browser Dev Server** | `pnpm --prefix windows run dev` | `pnpm run dev` | Starts Vite on `http://127.0.0.1:1420/` |
 | **Open Dev Root in Browser** | `pnpm --prefix windows run dev:browser` | `pnpm run dev:browser` | Starts Vite & opens Island Notch |
 | **Install Packages** | `pnpm --prefix windows install` | `pnpm install` | Installs frontend dependencies |
-| **Run Native App in Dev Mode** | — | `pnpm tauri dev` | Starts desktop app with live Rust backend |
+| **Run Native App in Dev Mode** | — | `pnpm tauri dev` | Starts desktop app with live Rust backend & HMR |
+| **Convert into Windows App (`.exe`)** | `pnpm --prefix windows run build; powershell -Command "(Get-Item 'windows/src-tauri/src/main.rs').LastWriteTime = Get-Date; cargo build --release --manifest-path windows/src-tauri/Cargo.toml"` | `pnpm run build; powershell -Command "(Get-Item 'src-tauri/src/main.rs').LastWriteTime = Get-Date; cargo build --release --manifest-path src-tauri/Cargo.toml"` | **Compiles the standalone `coucou.exe` release binary** |
+| **Run Compiled Windows App** | `.\windows\target\release\coucou.exe` | `.\target\release\coucou.exe` | **Runs the compiled desktop notch application** |
+| **Package Windows Installers (.exe / .msi)** | `pnpm --prefix windows run pack` | `pnpm run pack` | Compiles & creates release setup installers in `windows/release/` |
 | **Verify Frontend Build** | `pnpm --prefix windows run build` | `pnpm run build` | Typechecks (`tsc`) & builds production JS/CSS |
 | **Verify Rust Code** | — | `cargo check` (in `src-tauri/`) | Checks Rust backend without building |
-| **Package Windows App (.exe / .msi)** | `pnpm --prefix windows run pack` | `pnpm run pack` | Compiles & creates release installers |
 | **Kill Running Coucou Instances** | `Stop-Process -Name "coucou*" -Force` | `Stop-Process -Name "coucou*" -Force` | Frees port 1420 & executable locks |
 
 ---

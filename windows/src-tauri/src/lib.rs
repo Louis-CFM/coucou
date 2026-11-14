@@ -32,6 +32,7 @@ mod openai_compat;
 mod phone_link;
 mod pipe;
 mod platform;
+mod power;
 #[cfg(target_os = "linux")]
 mod portal;
 mod presence;
@@ -1125,6 +1126,7 @@ pub fn run() {
             notifications::request_notification_access,
             presence::get_system_presence,
             smart_notch::get_foreground_window_state,
+            power::get_battery_status,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1137,6 +1139,7 @@ pub fn run() {
             desktop::setup(&handle);
             flow::setup(&handle);
             notes::setup(&handle);
+            power::setup(&handle);
 
             if let Some(win) = island::window(&handle) {
                 // Where Tauri takes the drop itself (Linux), its paths are the

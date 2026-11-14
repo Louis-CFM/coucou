@@ -4,17 +4,18 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop, onEvent, type DragDropPayload } from "../core/bridge";
 import {
-  CLOSED_BALANCED_W, CLOSED_BOT_D, CLOSED_H, closedContent, closedIsland, closedTime, closedWidth, type ClosedContent,
+  CLOSED_BALANCED_W, CLOSED_ISLAND_H, CLOSED_MAX_W, CLOSED_NOTCH_H, closedContent, closedIsland, type ClosedContent,
 } from "../core/closed";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, NOTCH_H, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type Settings, resolveNotchScale, resolveNotchStyle, resolveShowBattery, resolveShowBatteryPercentage } from "../core/state";
+import { createBatteryElement, updateBatteryElement, BatteryMonitor, type BatteryState } from "../islandcn";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -23,9 +24,8 @@ import { syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
-import { dominantPct, planColor } from "../core/plan";
 import { language, t, tl } from "../i18n/i18n";
-import { claudeCompactPillVisible, closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
+import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h, svg } from "../views/dom";
 import { buildSessionDropList, type SessionDropList } from "../views/session-drop";
@@ -82,7 +82,7 @@ export class Island {
   private closedEl!: HTMLElement;
   private closedDot!: HTMLElement;
   private closedText!: HTMLElement;
-  private closedClock!: HTMLElement;
+  private batteryEl!: HTMLElement;
   private closedKey = "";
   /** Width of the closed island for what it shows now. */
   private closedW = CLOSED_BALANCED_W;
@@ -342,8 +342,8 @@ export class Island {
     this.wakeStrip = h("div", { id: "wake-strip" });
     this.closedDot = h("span", { class: "dot" });
     this.closedText = h("span", { class: "text" });
-    this.closedClock = h("span", { class: "closed-clock" });
-    this.closedEl = h("div", { id: "island-closed" }, this.closedDot, this.closedText, this.closedClock);
+    this.closedEl = h("div", { id: "island-closed" }, this.closedDot, this.closedText);
+    this.batteryEl = createBatteryElement(BatteryMonitor.getState(), resolveShowBatteryPercentage(State.settings));
     const tuckChevron = svg("M6 9l6 6 6-6", 11, { stroke: 2.2 });
     tuckChevron.classList.add("tuck-icon");
     this.tuckEl = h("div", { id: "island-tuck" }, tuckChevron);
@@ -379,6 +379,7 @@ export class Island {
       {
         id: "compact-plan",
         title: tl("Claude plan usage"),
+        style: "display: none !important;",
         onmousedown: (e) => {
           e.stopPropagation();
         },
@@ -425,6 +426,7 @@ export class Island {
       this.clipEl,
       this.botGlow,
       this.botCanvas,
+      this.batteryEl,
       this.miniGrid,
       this.compactTimer,
       this.compactPlan,
@@ -459,8 +461,22 @@ export class Island {
       this.ensureRunning();
       this.syncDom();
     });
+    void BatteryMonitor.start();
+    BatteryMonitor.subscribe((state) => {
+      this.onBatteryStateChange(state);
+    });
     void onEvent<{ app: string; title?: string; body?: string }>("system-notification", (e) => {
       GlobalNotifications.push({ app: e.app, title: e.title, body: e.body });
+    });
+    void onEvent<Settings>("settings-changed", (s) => {
+      if (s) {
+        State.settings = s;
+        this.updateClosed();
+        this.dirty = true;
+        this.animateGeometry(false);
+        this.sendCollapsedSize(true);
+        this.ensureRunning();
+      }
     });
     void onEvent<{ status: string; away_minutes: number; user_name?: string }>("user-presence", (e) => {
       if (e.status === "returned") {
@@ -550,8 +566,8 @@ export class Island {
       this.updateClosed();
     } else {
       this.closedEl.classList.remove("on");
-      this.closedClock.classList.add("hidden");
     }
+    this.syncBatteryVisibility();
     this.scheduleClosedLife();
     this.updateWindowCollapsed();
     this.animateGeometry(modeOrder(mode) < modeOrder(prev));
@@ -935,40 +951,62 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
-  /** True when the Smart Notch feature should currently tuck the island away into a minimal tab over a maximized app. */
+  /** True when the Smart Notch feature should currently tuck the island away into a minimal tab. */
   get isSmartTucked(): boolean {
-    return (
-      State.settings.smartNotch &&
-      State.foregroundMaximized &&
-      !this.wasInIsland &&
-      !this.fsm.pinned &&
-      State.mode !== "expanded" &&
-      GlobalWelcomeMessages.active() == null &&
-      GlobalNotifications.active() == null
-    );
+    if (
+      this.wasInIsland ||
+      this.fsm.pinned ||
+      State.mode === "expanded" ||
+      GlobalWelcomeMessages.active() != null ||
+      GlobalNotifications.active() != null
+    ) {
+      return false;
+    }
+    const vis = State.settings.visibility ?? (State.settings.smartNotch ? "smart" : "always");
+    if (vis === "minimal") return true;
+    if (vis === "smart") return State.foregroundMaximized;
+    return false;
   }
 
   /** The closed island stays on screen (anything but "hidden"), or when a welcome/notification is active. */
   private get closedShows(): boolean {
-    return (
-      GlobalWelcomeMessages.active() != null ||
-      GlobalNotifications.active() != null ||
-      closedIsland(State.settings.closedIsland) !== "hidden"
-    );
+    if (GlobalWelcomeMessages.active() != null || GlobalNotifications.active() != null) {
+      return true;
+    }
+    const vis = State.settings.visibility ?? (closedIsland(State.settings.closedIsland) === "hidden" ? "hidden" : "always");
+    if (vis === "hidden") return false;
+    if (resolveShowBattery(State.settings)) return true;
+    return closedIsland(State.settings.closedIsland) !== "hidden";
+  }
+
+  private get isIslandStyle(): boolean {
+    return resolveNotchStyle(State.settings) === "island";
   }
 
   private targetSize(): { w: number; h: number; r: number } {
+    const scale = resolveNotchScale(State.settings);
+    const isIsland = this.isIslandStyle;
     if (this.isSmartTucked) {
       return { w: 44, h: 14, r: 8 };
     }
+    const baseH = isIsland ? CLOSED_ISLAND_H : CLOSED_NOTCH_H;
     if (State.mode === "hidden" && this.closedShows) {
-      return { w: this.closedW, h: CLOSED_H, r: 10 };
+      return {
+        w: Math.round(this.closedW * scale),
+        h: Math.round(baseH * scale),
+        r: isIsland ? 999 : 10,
+      };
     }
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    if (State.mode === "compact") {
+      const compactH = isIsland ? CLOSED_ISLAND_H : NOTCH_H;
+      w = Math.round(w * scale);
+      h = Math.round(compactH * scale);
+    }
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
-    const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
+    const r = State.mode === "expanded" ? (isIsland ? 28 : EXPANDED_CORNER) : (isIsland ? 999 : ROUNDED_CORNER);
     return { w, h, r };
   }
 
@@ -990,10 +1028,21 @@ export class Island {
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
+    const isIsland = this.isIslandStyle;
+    const topOffset = isIsland ? 10 : 0;
+
     this.islandEl.classList.toggle("tucked", this.isSmartTucked);
+    this.islandEl.classList.toggle("style-island", isIsland);
+    this.islandEl.classList.toggle("style-notch", !isIsland);
+    this.islandEl.style.top = `${topOffset}px`;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    if (isIsland) {
+      const pillRadius = State.mode === "expanded" ? 28 : Math.round(hh / 2);
+      this.islandEl.style.borderRadius = `${pillRadius}px`;
+    } else {
+      this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    }
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
@@ -1004,9 +1053,9 @@ export class Island {
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
     const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
-    const rect = { x: (viewportW - w) / 2, y: 0, w, h: hh };
+    const rect = { x: (viewportW - w) / 2, y: topOffset, w, h: hh };
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
+    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5 || Math.abs(p.y - rect.y) > 0.5) {
       this.pushedRect = rect;
       void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
     }
@@ -1016,8 +1065,10 @@ export class Island {
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
+    const isIsland = this.isIslandStyle;
+    const topOffset = isIsland ? 10 : 0;
     const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
-    return { x: (viewportW - w) / 2, y: 0, w, h: hh };
+    return { x: (viewportW - w) / 2, y: topOffset, w, h: hh };
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -1080,9 +1131,13 @@ export class Island {
 
   /** Tells Rust the folded window's size: the closed island's, tucked size, or none (the strip). */
   private sendCollapsedSize(force = false) {
+    const scale = resolveNotchScale(State.settings);
+    const isIsland = this.isIslandStyle;
+    const topOffset = isIsland ? 10 : 0;
+    const baseH = isIsland ? CLOSED_ISLAND_H : CLOSED_NOTCH_H;
     const size = this.isSmartTucked
-      ? { w: 44, h: 14 }
-      : (this.closedShows ? { w: this.closedW, h: CLOSED_H } : { w: 0, h: 0 });
+      ? { w: 44, h: 14 + topOffset }
+      : (this.closedShows ? { w: Math.round(this.closedW * scale), h: Math.round(baseH * scale) + topOffset } : { w: 0, h: 0 });
     if (!force && size.w === this.collapsedTo.w && size.h === this.collapsedTo.h) return;
     this.collapsedTo = size;
     if (size.w > 0) void Bridge.setCollapsed(true, size.w, size.h);
@@ -1139,22 +1194,6 @@ export class Island {
       this.engine.triggerEmote("happy");
     }
 
-    // Balanced Dynamic Island clock:
-    // Exclusively used for "mochi" style resting state in the closed notch.
-    // When an active welcome message or notification appears, the clock smoothly slides to the right and disappears.
-    // For all other closed island conditions ("datetime", "time", "claude", "music", "coucoudoro", "empty", "hidden"),
-    // closedClock is hidden so it never conflicts or causes double-clock collisions.
-    const hasMessage = activeWelcome != null || activeNotif != null;
-    if (shown && style === "mochi" && !hasMessage) {
-      this.closedClock.classList.remove("hidden");
-      const timeStr = closedTime(new Date(), language());
-      if (this.closedClock.textContent !== timeStr) {
-        this.closedClock.textContent = timeStr;
-      }
-    } else {
-      this.closedClock.classList.add("hidden");
-    }
-
     // closedText faithfully displays what closedContent provides for the selected condition
     // (e.g. "Sat, Nov 14  07:59 PM" for datetime, "07:59 PM" for time, Claude %, music, or welcome/notif).
     const textToShow = content?.text ?? "";
@@ -1166,19 +1205,91 @@ export class Island {
       this.closedDot.style.color = content.dot;
     }
 
+    const showBattery = resolveShowBattery(State.settings);
+    const showPct = resolveShowBatteryPercentage(State.settings);
+
+    // In resting hidden mode: battery is only present in mochi style (never in closed text pill like 01:09 AM)
+    const batteryVisibleInClosed = showBattery && style === "mochi" && !activeWelcome && !activeNotif && !this.isSmartTucked;
+
+    this.islandEl.classList.toggle("has-bot", content?.bot === true || (style === "mochi" && textToShow.length === 0));
+
+    this.syncBatteryVisibility();
+
     if (key === this.closedKey) return;
     this.closedKey = key;
 
     // Measured with unconstrained canvas metrics + DOM scrollWidth so text has generous breathing room.
-    const extras = (content?.bot ? 24 : 0) + (content?.dot ? 14 : 0) + (content?.note ? 18 : 0);
+    const isIsland = this.isIslandStyle;
     const textW = textToShow.length > 0 ? Math.max(this.measureTextWidth(textToShow), this.closedText.scrollWidth) : 0;
-    const w = (style === "mochi" && !hasMessage) ? CLOSED_BALANCED_W : closedWidth(textW, extras);
+
+    let targetW: number;
+    if (textToShow.length === 0) {
+      // Empty or Mochi resting notch: Mochi on left, Battery on right
+      if (batteryVisibleInClosed) {
+        targetW = isIsland ? (showPct ? 198 : 176) : (showPct ? 188 : 166);
+      } else {
+        targetW = isIsland ? 120 : 110;
+      }
+    } else {
+      // Closed notch showing text (datetime, time, music, coucoudoro, welcome, notification).
+      // Zero battery and zero percentage here. Clean, centered typography.
+      const leftPad = content?.bot ? (isIsland ? 38 : 32) : (content?.dot ? 20 : 16);
+      const rightPad = 16;
+      targetW = Math.max(isIsland ? 130 : 120, Math.ceil(textW + leftPad + rightPad + 16));
+    }
+    const w = Math.min(CLOSED_MAX_W, targetW);
+
     if (w !== this.closedW) {
       this.closedW = w;
       if (State.mode === "hidden") {
         this.animateGeometry(w < this.width.value);
         if (this.collapsed) this.sendCollapsedSize();
       }
+    }
+  }
+
+  private onBatteryStateChange(state: BatteryState) {
+    const showPct = resolveShowBatteryPercentage(State.settings);
+    updateBatteryElement(this.batteryEl, state, showPct);
+    this.syncBatteryVisibility();
+    if (State.mode === "hidden") {
+      this.updateClosed();
+    }
+  }
+
+  private syncBatteryVisibility() {
+    const showBattery = resolveShowBattery(State.settings);
+    const showPct = resolveShowBatteryPercentage(State.settings);
+    const style = closedIsland(State.settings.closedIsland);
+    const activeWelcome = GlobalWelcomeMessages.active() != null;
+    const activeNotif = GlobalNotifications.active() != null;
+
+    // 1. Closed notch (Image 2: 01:09 AM): ZERO battery, perfectly clean time pill.
+    const isClosedNotchActive = State.mode === "hidden" && style !== "mochi";
+
+    // 2. The notch where Mochi is (Image 1):
+    //    - In compact mode (State.mode === "compact"): Mochi is ALWAYS in the notch on the left.
+    //    - In resting mode when style === "mochi": Mochi is in the notch on the left.
+    //    In this notch, the battery percentage and icon MUST be visible on the right side!
+    const isMochiInNotch =
+      (State.mode === "compact" || (State.mode === "hidden" && style === "mochi")) &&
+      !activeWelcome &&
+      !activeNotif;
+
+    const batteryVisible =
+      showBattery &&
+      isMochiInNotch &&
+      !isClosedNotchActive &&
+      State.mode !== "expanded" &&
+      !this.isSmartTucked;
+
+    this.batteryEl.style.opacity = batteryVisible ? "1" : "0";
+    this.batteryEl.style.display = batteryVisible ? "flex" : "none";
+    this.batteryEl.classList.toggle("hidden", !batteryVisible);
+    this.islandEl.classList.toggle("has-battery", batteryVisible);
+
+    if (batteryVisible) {
+      updateBatteryElement(this.batteryEl, BatteryMonitor.getState(), showPct);
     }
   }
 
@@ -1557,19 +1668,23 @@ export class Island {
     const style = closedIsland(State.settings.closedIsland);
 
     if (State.mode === "hidden") {
+      const isIsland = this.isIslandStyle;
+      const botCx = isIsland ? 22 : 18;
+      const botD = isIsland ? 20 : 18;
+      const botCy = Math.round(this.height.value / 2);
       if (welcome != null) {
         // Active welcome companion message: Mochi on the left
-        p = { cx: 18, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 1 };
+        p = { cx: botCx, cy: botCy, diameter: botD, opacity: 1 };
       } else if (notif != null) {
         // Active notification: dot replaces Mochi on the left
-        p = { cx: 18, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 0 };
+        p = { cx: botCx, cy: botCy, diameter: botD, opacity: 0 };
       } else if (style === "mochi") {
         // Balanced Dynamic Island: Mochi on the left
-        p = { cx: 18, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 1 };
+        p = { cx: botCx, cy: botCy, diameter: botD, opacity: 1 };
       } else {
         // All other closed conditions (datetime, time, claude, music, coucoudoro, empty, hidden):
         // Mochi is hidden so the text/status or empty notch takes full center stage
-        p = { cx: 18, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 0 };
+        p = { cx: botCx, cy: botCy, diameter: botD, opacity: 0 };
       }
     }
     if (this.isSmartTucked) {
@@ -1772,18 +1887,12 @@ export class Island {
       this.compactTimerLabel.textContent = ctrl.clock();
     }
 
-    // Compact Claude plan indicator
-    const showPlan = claudeCompactPillVisible();
-    this.compactPlan.style.opacity = showPlan ? "1" : "0";
-    this.compactPlan.style.pointerEvents = showPlan ? "auto" : "none";
-    if (showPlan) {
-      this.compactPlan.style.right = showCompactTimer ? "80px" : "20px";
-      const pct = dominantPct(State.planUsage);
-      const color = planColor(pct);
-      this.compactPlan.style.setProperty("--plan", color);
-      this.compactPlanLabel.textContent = pct != null ? `${Math.round(pct)}%` : "—";
-    }
+    // Compact Claude plan indicator: removed from notch per user request
+    this.compactPlan.style.display = "none";
+    this.compactPlan.style.opacity = "0";
+    this.compactPlan.style.pointerEvents = "none";
 
+    this.syncBatteryVisibility();
     this.updateClock();
 
     syncMiniBotStates(State.tasks);

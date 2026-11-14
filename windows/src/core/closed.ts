@@ -19,18 +19,21 @@ export function closedIsland(value: unknown): ClosedIsland {
   return CLOSED_ISLANDS.includes(value as ClosedIsland) ? (value as ClosedIsland) : "mochi";
 }
 
-/** The closed island's size where there is nothing but Mochi, in CSS px: the
- *  Mac's resting island on a screen without a notch (IslandScreenGeometry). */
-export const CLOSED_H = 24;
-export const CLOSED_MIN_W = 88;
+/** Resting height for classic docked notch mode. */
+export const CLOSED_NOTCH_H = 28;
+/** Resting height for floating Dynamic Island pill mode (matching Apple hardware specifications). */
+export const CLOSED_ISLAND_H = 35;
+/** Default baseline resting height */
+export const CLOSED_H = CLOSED_ISLAND_H;
+export const CLOSED_MIN_W = 100;
 /** Balanced Dynamic Island resting width (Mochi on left + clean clock on right). */
-export const CLOSED_BALANCED_W = 150;
+export const CLOSED_BALANCED_W = 160;
 /** Mochi in it, as on that Mac: centred, a little smaller than the island is tall. */
-export const CLOSED_BOT_D = 18;
+export const CLOSED_BOT_D = 20;
 /** Widest: a generous limit so full dates/times or song titles have ample space without running across the screen. */
 export const CLOSED_MAX_W = 420;
 /** Room on each side of the text, generous to clear the curved corners. */
-export const CLOSED_PAD = 24;
+export const CLOSED_PAD = 22;
 
 export interface ClosedContent {
   text: string;

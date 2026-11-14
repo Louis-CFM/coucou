@@ -113,6 +113,10 @@ export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
   { id: "general.recap", page: "general", title: "Weekly recap", terms: ["Keep a history of my coding sessions", "Hide project names in shared images", "Clear history"] },
   { id: "general.language", page: "general", title: "Language", terms: ["Restart Coucou"] },
 
+  // Notch → Appearance
+  { id: "appearance.wardrobe", page: "appearance", title: "Wardrobe", terms: ["Mochi's outfit", "Outfits", "Party hat", "Santa hat", "Crown", "Follow the seasons"] },
+  { id: "appearance.notch", page: "appearance", title: "Notch appearance", terms: ["Style", "Notch", "Island", "Dynamic Island", "Size", "Smart notch", "Closed island shows", "Show clock in the island", "Open on hover", "Theme", "Display"] },
+
   // Notch → Pills, Agents, Chat, Integrations, Phone, Voice, Shortcuts
   { id: "pills.main", page: "pills", title: "settings.main-pill", terms: ["Active pills"] },
   { id: "agents.claude", page: "agents", title: "hooks.claude-code.title", terms: ["Answer questions and permissions from terminal sessions in the notch"] },

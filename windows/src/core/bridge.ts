@@ -571,7 +571,20 @@ export const Bridge = {
   /** Foreground window state (Smart Notch): whether the active foreground app is maximized or on desktop. */
   getForegroundWindowState: () =>
     call<{ isMaximized: boolean; isDesktop: boolean; app: string | null }>("get_foreground_window_state"),
+
+  // ── Power & Battery Status (src-tauri/src/power.rs) ────────────────────────
+  /** Hardware battery & power status from Windows Win32 API. */
+  getBatteryStatus: () => call<BatteryStatusDto>("get_battery_status"),
 };
+
+export interface BatteryStatusDto {
+  hasBattery: boolean;
+  level: number;
+  percent: number;
+  charging: boolean;
+  acConnected: boolean;
+  timeRemainingSeconds?: number;
+}
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
 
