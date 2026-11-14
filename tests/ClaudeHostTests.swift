@@ -41,6 +41,17 @@ enum ClaudeHostTests {
         UserDefaults.standard.removeObject(forKey: ClaudeHost.terminalCardsKey)
         check("off by default", ClaudeHost.terminalCardsEnabled == false)
 
+        print("ClaudeHost session focus helpers")
+        check("valid tty accepted", ClaudeHost.validatedTty("/dev/ttys003") == "/dev/ttys003")
+        check("injected tty rejected", ClaudeHost.validatedTty("/dev/ttys003\" ; evil") == nil)
+        check("non-tty path rejected", ClaudeHost.validatedTty("/tmp/foo") == nil)
+        check("iTerm uid extracted from w0t0p0 prefix", ClaudeHost.normalizedItermUniqueId("w0t1p0:ABC-123_def") == "ABC-123_def")
+        check("iTerm uid rejects quotes", ClaudeHost.normalizedItermUniqueId("w0t1p0:BAD\"ID") == nil)
+        check("Terminal script matches tty", ClaudeHost.focusTerminalScript(tty: "/dev/ttys003").contains("tty of t is \"/dev/ttys003\""))
+        check("iTerm script includes uid and tty",
+              ClaudeHost.focusItermScript(uniqueId: "ABC-123", tty: "/dev/ttys003")
+                  .contains("unique id of s is \"ABC-123\" or tty of s is \"/dev/ttys003\""))
+
         if failures > 0 {
             print("\n\(failures) test(s) failed."); exit(1)
         }

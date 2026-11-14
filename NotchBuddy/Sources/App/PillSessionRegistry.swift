@@ -44,6 +44,10 @@ struct PillSessionRegistry {
         var hostApp: String? = nil
         /// Bundle id of the client (VS Code, Cursor…) that sent the event.
         var bundleId: String = ""
+        /// TTY device path (e.g. `/dev/ttys003`), used to focus the exact tab/window.
+        var tty: String = ""
+        /// `ITERM_SESSION_ID` env value, used to focus the exact iTerm2 session.
+        var itermSessionId: String = ""
     }
 
     private struct Session {
@@ -51,6 +55,8 @@ struct PillSessionRegistry {
         var cwd: String
         var hostApp: String?
         var bundleId: String
+        var tty: String = ""
+        var itermSessionId: String = ""
         var isWorking: Bool
         var lastSeen: Date
         /// Last time the session was mid-turn or ended a turn. A stray notification
@@ -80,11 +86,14 @@ struct PillSessionRegistry {
         var session = p.sessions[display.session]
             ?? Session(projectName: display.projectName, cwd: display.cwd,
                        hostApp: display.hostApp, bundleId: display.bundleId,
+                       tty: display.tty, itermSessionId: display.itermSessionId,
                        isWorking: false, lastSeen: now)
         session.projectName = display.projectName
         if !display.cwd.isEmpty { session.cwd = display.cwd }
         if display.hostApp != nil { session.hostApp = display.hostApp }
         if !display.bundleId.isEmpty { session.bundleId = display.bundleId }
+        if !display.tty.isEmpty { session.tty = display.tty }
+        if !display.itermSessionId.isEmpty { session.itermSessionId = display.itermSessionId }
         if working { session.isWorking = true; session.lastWorked = now }
         session.lastSeen = now
         p.sessions[display.session] = session
@@ -138,7 +147,8 @@ struct PillSessionRegistry {
         }
         guard let id = working ?? lastWorked, let session = p.sessions[id] else { return nil }
         return Display(session: id, projectName: session.projectName, cwd: session.cwd,
-                       hostApp: session.hostApp, bundleId: session.bundleId)
+                       hostApp: session.hostApp, bundleId: session.bundleId,
+                       tty: session.tty, itermSessionId: session.itermSessionId)
     }
 
     /// Whether this session may write the pill's name and cwd. True when the
@@ -152,7 +162,8 @@ struct PillSessionRegistry {
     func display(pill: String, session: String) -> Display? {
         guard let s = pills[pill]?.sessions[session] else { return nil }
         return Display(session: session, projectName: s.projectName, cwd: s.cwd,
-                       hostApp: s.hostApp, bundleId: s.bundleId)
+                       hostApp: s.hostApp, bundleId: s.bundleId,
+                       tty: s.tty, itermSessionId: s.itermSessionId)
     }
 
     func liveCount(pill: String) -> Int { pills[pill]?.order.count ?? 0 }
