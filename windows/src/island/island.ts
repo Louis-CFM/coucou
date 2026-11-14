@@ -2,9 +2,9 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop, type DragDropPayload } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent, type DragDropPayload } from "../core/bridge";
 import {
-  CLOSED_BOT_D, CLOSED_H, closedContent, closedIsland, closedWidth, type ClosedContent,
+  CLOSED_BALANCED_W, CLOSED_BOT_D, CLOSED_H, closedContent, closedIsland, closedTime, closedWidth, type ClosedContent,
 } from "../core/closed";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
@@ -18,7 +18,8 @@ import { State } from "../core/state";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
-import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
+import { GlobalWorkStreak } from "../mochi/work-streak";
+import { syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
@@ -26,7 +27,7 @@ import { dominantPct, planColor } from "../core/plan";
 import { language, t, tl } from "../i18n/i18n";
 import { claudeCompactPillVisible, closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
-import { h } from "../views/dom";
+import { h, svg } from "../views/dom";
 import { buildSessionDropList, type SessionDropList } from "../views/session-drop";
 import { DROP_TEXT_RIGHT_WITH_LIST, dropTargetAt, dropTargets } from "../core/launch";
 import { IslandStateMachine } from "./fsm";
@@ -37,6 +38,10 @@ import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
 import { Updates } from "./update";
 import { UPDATE_BLUE, showsUpdateHint } from "../whats-new/whats-new";
+import { CoucoudoroController } from "../core/coucoudoro";
+import { COUCOUDORO_BLUE, COUCOUDORO_MINT, COUCOUDORO_AMBER } from "../views/coucoudoro";
+import { GlobalNotifications } from "../core/notifications";
+import { GlobalWelcomeMessages } from "../core/welcome";
 
 const BOT_OVERHANG = 40;
 const UPDATE_BLUE_RGB = hexToRGB(UPDATE_BLUE);
@@ -77,9 +82,10 @@ export class Island {
   private closedEl!: HTMLElement;
   private closedDot!: HTMLElement;
   private closedText!: HTMLElement;
+  private closedClock!: HTMLElement;
   private closedKey = "";
   /** Width of the closed island for what it shows now. */
-  private closedW = 120;
+  private closedW = CLOSED_BALANCED_W;
   /** Mochi's little life in the closed island: where he looks, and until when
    *  the loop runs for what he is doing (a blink, a glance). */
   private closedLook = { x: 0, y: 0 };
@@ -88,10 +94,15 @@ export class Island {
   /** The size the window was last folded to, so a new one is only sent on a change. */
   private collapsedTo = { w: 0, h: 0 };
   private countdown!: HTMLElement;
+  private compactTimer!: HTMLElement;
+  private compactTimerDot!: HTMLElement;
+  private compactTimerLabel!: HTMLElement;
   private compactPlan!: HTMLElement;
   private compactPlanDot!: HTMLElement;
   private compactPlanLabel!: HTMLElement;
+  private tuckEl!: HTMLElement;
   private wakeStrip!: HTMLElement;
+  private measureCtx: CanvasRenderingContext2D | null = null;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
@@ -331,13 +342,36 @@ export class Island {
     this.wakeStrip = h("div", { id: "wake-strip" });
     this.closedDot = h("span", { class: "dot" });
     this.closedText = h("span", { class: "text" });
-    this.closedEl = h("div", { id: "island-closed" }, this.closedDot, this.closedText);
+    this.closedClock = h("span", { class: "closed-clock" });
+    this.closedEl = h("div", { id: "island-closed" }, this.closedDot, this.closedText, this.closedClock);
+    const tuckChevron = svg("M6 9l6 6 6-6", 11, { stroke: 2.2 });
+    tuckChevron.classList.add("tuck-icon");
+    this.tuckEl = h("div", { id: "island-tuck" }, tuckChevron);
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.clockEl = h("div", { id: "island-clock" });
     this.countdown = h("div", { id: "countdown" });
+    this.compactTimerDot = h("i", { class: "compact-timer-dot" });
+    this.compactTimerLabel = h("span", { class: "compact-timer-label" });
+    this.compactTimer = h(
+      "button",
+      {
+        id: "compact-timer",
+        onmousedown: (e) => e.stopPropagation(),
+        onclick: (e) => {
+          e.stopPropagation();
+          const me = e as MouseEvent;
+          if (me.button === 0) {
+            actions.setFocus("integration_coucoudoro");
+            this.fsm.mouseEntered();
+          }
+        },
+      },
+      this.compactTimerDot,
+      this.compactTimerLabel,
+    );
     this.compactPlanDot = h("i", { class: "compact-plan-dot" });
     this.compactPlanLabel = h("span", { class: "compact-plan-label" });
     this.compactPlan = h(
@@ -392,9 +426,11 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.compactTimer,
       this.compactPlan,
       this.clockEl,
       this.closedEl,
+      this.tuckEl,
       this.countdown,
     );
 
@@ -406,6 +442,44 @@ export class Island {
 
     this.root.append(this.wakeStrip, this.islandEl);
     this.applyGeometry();
+    CoucoudoroController.shared.subscribe(() => {
+      this.dirty = true;
+      this.ensureRunning();
+      this.syncDom();
+    });
+    GlobalNotifications.subscribe(() => {
+      this.updateClosed();
+      this.dirty = true;
+      this.ensureRunning();
+      this.syncDom();
+    });
+    GlobalWelcomeMessages.subscribe(() => {
+      this.updateClosed();
+      this.dirty = true;
+      this.ensureRunning();
+      this.syncDom();
+    });
+    void onEvent<{ app: string; title?: string; body?: string }>("system-notification", (e) => {
+      GlobalNotifications.push({ app: e.app, title: e.title, body: e.body });
+    });
+    void onEvent<{ status: string; away_minutes: number; user_name?: string }>("user-presence", (e) => {
+      if (e.status === "returned") {
+        GlobalWelcomeMessages.onUserReturned(e.away_minutes, e.user_name);
+      }
+    });
+    void onEvent<{ isMaximized: boolean; isDesktop: boolean; app?: string }>("smart-notch-state", (e) => {
+      this.onForegroundStateChange(e.isMaximized, e.isDesktop, e.app ?? null);
+    });
+    void Bridge.getForegroundWindowState().then((st) => {
+      if (st) this.onForegroundStateChange(st.isMaximized, st.isDesktop, st.app);
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.altKey && e.code === "KeyM") {
+        this.onForegroundStateChange(!State.foregroundMaximized, State.foregroundMaximized, State.foregroundMaximized ? "desktop" : "chrome");
+      }
+    });
+    this.updateClosed();
+    this.clockTimer ??= window.setInterval(() => this.updateClock(), 1000);
   }
 
   // ── FSM ─────────────────────────────────────────────────────────────────────
@@ -471,9 +545,13 @@ export class Island {
       // nothing while hidden.
       UploadSeq.deactivate();
     }
-    // Folding all the way: the closed island's width for what it will show.
-    if (mode === "hidden") this.updateClosed();
-    else this.closedEl.classList.remove("on");
+    // Folding all the way to smaller closed notch: update closed line.
+    if (mode === "hidden") {
+      this.updateClosed();
+    } else {
+      this.closedEl.classList.remove("on");
+      this.closedClock.classList.add("hidden");
+    }
     this.scheduleClosedLife();
     this.updateWindowCollapsed();
     this.animateGeometry(modeOrder(mode) < modeOrder(prev));
@@ -565,6 +643,10 @@ export class Island {
   }
 
   reveal() {
+    if (State.mode === "hidden" && (GlobalWelcomeMessages.active() || GlobalNotifications.active())) {
+      this.updateClosed();
+      return;
+    }
     this.fsm.reveal();
   }
 
@@ -853,12 +935,32 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
-  /** The closed island stays on screen (anything but "hidden"). */
+  /** True when the Smart Notch feature should currently tuck the island away into a minimal tab over a maximized app. */
+  get isSmartTucked(): boolean {
+    return (
+      State.settings.smartNotch &&
+      State.foregroundMaximized &&
+      !this.wasInIsland &&
+      !this.fsm.pinned &&
+      State.mode !== "expanded" &&
+      GlobalWelcomeMessages.active() == null &&
+      GlobalNotifications.active() == null
+    );
+  }
+
+  /** The closed island stays on screen (anything but "hidden"), or when a welcome/notification is active. */
   private get closedShows(): boolean {
-    return closedIsland(State.settings.closedIsland) !== "hidden";
+    return (
+      GlobalWelcomeMessages.active() != null ||
+      GlobalNotifications.active() != null ||
+      closedIsland(State.settings.closedIsland) !== "hidden"
+    );
   }
 
   private targetSize(): { w: number; h: number; r: number } {
+    if (this.isSmartTucked) {
+      return { w: 44, h: 14, r: 8 };
+    }
     if (State.mode === "hidden" && this.closedShows) {
       return { w: this.closedW, h: CLOSED_H, r: 10 };
     }
@@ -888,6 +990,7 @@ export class Island {
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
+    this.islandEl.classList.toggle("tucked", this.isSmartTucked);
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
@@ -975,13 +1078,32 @@ export class Island {
     this.fsm.mouseEntered();
   }
 
-  /** Tells Rust the folded window's size: the closed island's, or none (the strip). */
+  /** Tells Rust the folded window's size: the closed island's, tucked size, or none (the strip). */
   private sendCollapsedSize(force = false) {
-    const size = this.closedShows ? { w: this.closedW, h: CLOSED_H } : { w: 0, h: 0 };
+    const size = this.isSmartTucked
+      ? { w: 44, h: 14 }
+      : (this.closedShows ? { w: this.closedW, h: CLOSED_H } : { w: 0, h: 0 });
     if (!force && size.w === this.collapsedTo.w && size.h === this.collapsedTo.h) return;
     this.collapsedTo = size;
     if (size.w > 0) void Bridge.setCollapsed(true, size.w, size.h);
     else void Bridge.setCollapsed(true);
+  }
+
+  /** Measures exact unconstrained text width using Canvas 2D to avoid flexbox / ellipsis clamping. */
+  private measureTextWidth(text: string): number {
+    if (!text) return 0;
+    try {
+      if (!this.measureCtx) {
+        const c = document.createElement("canvas");
+        this.measureCtx = c.getContext("2d");
+      }
+      if (this.measureCtx) {
+        this.measureCtx.font = "600 12px 'Bricolage Grotesque', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        const m = this.measureCtx.measureText(text);
+        return Math.ceil(m.width) + 8;
+      }
+    } catch {}
+    return text.length * 9;
   }
 
   /**
@@ -992,26 +1114,65 @@ export class Island {
   private updateClosed() {
     const style = closedIsland(State.settings.closedIsland);
     const track = Spotify.state.track;
-    const content: ClosedContent | null = State.mode === "hidden" || this.collapsed
+    const activeWelcome = GlobalWelcomeMessages.active();
+    const activeNotif = GlobalNotifications.active();
+    const isClosedNotch = State.mode === "hidden" || this.collapsed;
+    const content: ClosedContent | null = isClosedNotch
       ? closedContent(style, {
         now: new Date(),
         locale: language(),
         planUsage: State.planUsage,
         music: State.spotifyPlaying && track ? { title: track.title, artist: track.artist } : null,
+        notification: activeNotif ? { text: activeNotif.text, dot: activeNotif.color } : null,
+        welcome: activeWelcome ? { text: activeWelcome.text, bot: activeWelcome.bot } : null,
       })
       : null;
-    const key = content ? `${style}|${content.text}|${content.dot ?? ""}|${content.note}` : style;
+    const key = content
+      ? `${style}|${content.text}|${content.dot ?? ""}|${content.note}|${content.isNotification ?? false}|${content.bot ?? false}`
+      : `${style}|${State.mode}`;
     const shown = State.mode === "hidden" && this.closedShows;
-    this.closedEl.classList.toggle("on", shown && content != null);
-    if (key === this.closedKey) return;
-    this.closedKey = key;
-    this.closedText.textContent = content?.text ?? "";
+    this.closedEl.classList.toggle("on", shown);
+    this.closedEl.classList.toggle("notification", content?.isNotification === true);
+    this.closedEl.classList.toggle("with-bot", content?.bot === true);
+    this.closedEl.classList.toggle("welcome", content?.isWelcome === true);
+    if (content?.isWelcome) {
+      this.engine.triggerEmote("happy");
+    }
+
+    // Balanced Dynamic Island clock:
+    // Exclusively used for "mochi" style resting state in the closed notch.
+    // When an active welcome message or notification appears, the clock smoothly slides to the right and disappears.
+    // For all other closed island conditions ("datetime", "time", "claude", "music", "coucoudoro", "empty", "hidden"),
+    // closedClock is hidden so it never conflicts or causes double-clock collisions.
+    const hasMessage = activeWelcome != null || activeNotif != null;
+    if (shown && style === "mochi" && !hasMessage) {
+      this.closedClock.classList.remove("hidden");
+      const timeStr = closedTime(new Date(), language());
+      if (this.closedClock.textContent !== timeStr) {
+        this.closedClock.textContent = timeStr;
+      }
+    } else {
+      this.closedClock.classList.add("hidden");
+    }
+
+    // closedText faithfully displays what closedContent provides for the selected condition
+    // (e.g. "Sat, Nov 14  07:59 PM" for datetime, "07:59 PM" for time, Claude %, music, or welcome/notif).
+    const textToShow = content?.text ?? "";
+    this.closedText.textContent = textToShow;
     this.closedEl.classList.toggle("note", content?.note === true);
     this.closedDot.style.display = content?.dot ? "" : "none";
-    if (content?.dot) this.closedDot.style.background = content.dot;
-    // Measured as drawn: the font and the language decide the width.
-    const extras = (content?.dot ? 12 : 0) + (content?.note ? 16 : 0);
-    const w = closedWidth(content ? this.closedText.scrollWidth : 0, extras);
+    if (content?.dot) {
+      this.closedDot.style.background = content.dot;
+      this.closedDot.style.color = content.dot;
+    }
+
+    if (key === this.closedKey) return;
+    this.closedKey = key;
+
+    // Measured with unconstrained canvas metrics + DOM scrollWidth so text has generous breathing room.
+    const extras = (content?.bot ? 24 : 0) + (content?.dot ? 14 : 0) + (content?.note ? 18 : 0);
+    const textW = textToShow.length > 0 ? Math.max(this.measureTextWidth(textToShow), this.closedText.scrollWidth) : 0;
+    const w = (style === "mochi" && !hasMessage) ? CLOSED_BALANCED_W : closedWidth(textW, extras);
     if (w !== this.closedW) {
       this.closedW = w;
       if (State.mode === "hidden") {
@@ -1035,9 +1196,54 @@ export class Island {
       if (this.collapsed) wake();
     });
 
+    this.tuckEl.addEventListener("mouseenter", () => {
+      this.wasInIsland = true;
+      this.fsm.mouseEntered();
+      this.animateGeometry(false);
+      if (this.collapsed) this.sendCollapsedSize();
+    });
+    this.tuckEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.wasInIsland = true;
+      this.fsm.mouseEntered();
+      this.fsm.forceHome();
+      this.expand(this.openingView());
+    });
+
+    this.closedEl.addEventListener("click", (e) => {
+      const welcome = GlobalWelcomeMessages.active();
+      if (welcome) {
+        e.stopPropagation();
+        GlobalWelcomeMessages.dismiss();
+        return;
+      }
+      const notif = GlobalNotifications.active();
+      if (notif) {
+        e.stopPropagation();
+        if (notif.app.toLowerCase().includes("whatsapp")) {
+          void Bridge.whatsappOpenApp();
+        }
+        GlobalNotifications.dismiss();
+      }
+    });
+
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
+      if (State.mode === "hidden" && GlobalWelcomeMessages.active()) {
+        GlobalWelcomeMessages.dismiss();
+        e.stopPropagation();
+        return;
+      }
+      if (State.mode === "hidden" && GlobalNotifications.active()) {
+        const notif = GlobalNotifications.active();
+        if (notif?.app.toLowerCase().includes("whatsapp")) {
+          void Bridge.whatsappOpenApp();
+        }
+        GlobalNotifications.dismiss();
+        e.stopPropagation();
+        return;
+      }
       // A click makes a hover-opened island an ordinary open one.
       this.fsm.userInteracted();
       // A press on Mochi may become a drag out to the desktop.
@@ -1161,9 +1367,21 @@ export class Island {
     if (inIsland && !wasIn) {
       if (this.fsm.state === "coucou") this.greeting.hover();
       this.fsm.mouseEntered();
+      if (State.settings.smartNotch && State.foregroundMaximized) {
+        this.animateGeometry(false);
+        if (this.collapsed) this.sendCollapsedSize();
+      }
     }
     if (!inIsland && wasIn) {
       this.fsm.mouseLeft();
+      if (State.settings.smartNotch && State.foregroundMaximized) {
+        window.setTimeout(() => {
+          if (!this.wasInIsland && this.isSmartTucked) {
+            this.animateGeometry(true);
+            if (this.collapsed) this.sendCollapsedSize();
+          }
+        }, 600);
+      }
     }
 
     // Bot hover → love
@@ -1316,8 +1534,9 @@ export class Island {
       this.width.animating || this.height.animating || this.radius.animating;
     const botMoving = !this.botCx.settled || !this.botCy.settled || !this.botSize.settled;
     // Closed, only the folding — and Mochi reaching his place in the closed island.
+    const welcome = GlobalWelcomeMessages.active();
     const busy = State.mode === "hidden"
-      ? settling || (closedIsland(State.settings.closedIsland) === "mochi" &&
+      ? settling || welcome != null || (closedIsland(State.settings.closedIsland) === "mochi" &&
         (botMoving || nowMs < this.closedAwakeUntil))
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
@@ -1333,9 +1552,28 @@ export class Island {
 
   private updateBotTargets() {
     let p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
-    // The closed island with Mochi in it, as on a Mac without a notch.
-    if (State.mode === "hidden" && closedIsland(State.settings.closedIsland) === "mochi") {
-      p = { cx: this.width.value / 2, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 1 };
+    const welcome = GlobalWelcomeMessages.active();
+    const notif = GlobalNotifications.active();
+    const style = closedIsland(State.settings.closedIsland);
+
+    if (State.mode === "hidden") {
+      if (welcome != null) {
+        // Active welcome companion message: Mochi on the left
+        p = { cx: 18, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 1 };
+      } else if (notif != null) {
+        // Active notification: dot replaces Mochi on the left
+        p = { cx: 18, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 0 };
+      } else if (style === "mochi") {
+        // Balanced Dynamic Island: Mochi on the left
+        p = { cx: 18, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 1 };
+      } else {
+        // All other closed conditions (datetime, time, claude, music, coucoudoro, empty, hidden):
+        // Mochi is hidden so the text/status or empty notch takes full center stage
+        p = { cx: 18, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 0 };
+      }
+    }
+    if (this.isSmartTucked) {
+      p = { ...p, opacity: 0 };
     }
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
@@ -1428,6 +1666,8 @@ export class Island {
       focusId: State.focusTask?.id,
     }));
 
+    // Mochi gets sleepy after long hours with the agents, and fresh again after a break.
+    this.engine.tiredness = GlobalWorkStreak.tiredness(Date.now());
     this.engine.update(dt);
     // Cleared in device pixels, the whole canvas. At a fractional scale (150 %)
     // the canvas is a whole number of pixels but `hCss * dpr` is not: clearing
@@ -1512,20 +1752,24 @@ export class Island {
       }
     }
 
-    // Compact mini grid
-    const showGrid = State.mode === "compact";
-    this.miniGrid.style.opacity = showGrid ? "1" : "0";
-    if (showGrid) {
-      const others = State.otherTasks.slice(0, 4);
-      const key = others.map((t) => t.id).join("|");
-      if (this.miniGrid.dataset.key !== key) {
-        this.miniGrid.dataset.key = key;
-        this.miniGrid.replaceChildren();
-        for (const t of others) {
-          this.miniGrid.append(createMiniBot(t, 13));
-        }
-        pruneMiniBots();
-      }
+    // Active agents mini grid: removed from notch per user request.
+    this.miniGrid.style.display = "none";
+    this.miniGrid.style.opacity = "0";
+
+    // Compact Coucoudoro focus timer: shown in that position when timer is on
+    const ctrl = CoucoudoroController.shared;
+    const isTimerOn = ctrl.snapshot.phase !== "idle";
+    const showCompactTimer = State.mode === "compact" && isTimerOn;
+
+    this.compactTimer.style.display = showCompactTimer ? "inline-flex" : "none";
+    this.compactTimer.style.opacity = showCompactTimer ? "1" : "0";
+    this.compactTimer.style.pointerEvents = showCompactTimer ? "auto" : "none";
+    if (showCompactTimer) {
+      const snap = ctrl.snapshot;
+      const themeColor = snap.paused ? COUCOUDORO_AMBER : (snap.phase === "rest" ? COUCOUDORO_MINT : COUCOUDORO_BLUE);
+      this.compactTimer.style.setProperty("--cd-accent", themeColor);
+      this.compactTimerDot.className = `compact-timer-dot${snap.paused ? " paused" : (snap.phase === "rest" ? " rest" : "")}`;
+      this.compactTimerLabel.textContent = ctrl.clock();
     }
 
     // Compact Claude plan indicator
@@ -1533,8 +1777,7 @@ export class Island {
     this.compactPlan.style.opacity = showPlan ? "1" : "0";
     this.compactPlan.style.pointerEvents = showPlan ? "auto" : "none";
     if (showPlan) {
-      const others = State.otherTasks.slice(0, 4);
-      this.compactPlan.style.right = others.length > 0 ? "58px" : "20px";
+      this.compactPlan.style.right = showCompactTimer ? "80px" : "20px";
       const pct = dominantPct(State.planUsage);
       const color = planColor(pct);
       this.compactPlan.style.setProperty("--plan", color);
@@ -1547,17 +1790,11 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
-  /** The clock sits in the middle of the compact island, where the notch is on a Mac. */
+  /** Medium notch and closed notch time updates: updates the clean clock on the right. */
   private updateClock() {
     this.updateClosed();
-    const on = State.mode === "compact" && State.settings.showClock;
-    this.clockEl.style.opacity = on ? "1" : "0";
-    if (!on) return;
-    const now = new Date();
-    const date = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
-    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const text = `${date}  ${time}`;
-    if (this.clockEl.textContent !== text) this.clockEl.textContent = text;
+    this.clockEl.style.opacity = "0";
+    this.clockEl.style.display = "none";
   }
 
   /** Applies settings coming from Rust at boot. */
@@ -1565,7 +1802,8 @@ export class Island {
     // The closed island may have changed: what it shows, or whether it shows.
     this.closedKey = "";
     this.updateClosed();
-    if (State.mode === "hidden") {
+    this.updateBotTargets();
+    if (State.mode === "hidden" || this.isSmartTucked) {
       this.animateGeometry(true);
       if (this.collapsed) this.sendCollapsedSize();
     }
@@ -1574,9 +1812,25 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.dirty = true;
+    this.ensureRunning();
     State.notify();
     // ponytail: one timer for the life of the window; a minute is the clock's finest tick.
     this.clockTimer ??= window.setInterval(() => this.updateClock(), 10_000);
+  }
+
+  /** Foreground window maximized / fullscreen state changed (Smart Notch). */
+  private onForegroundStateChange(isMaximized: boolean, _isDesktop: boolean, app: string | null) {
+    const changed = State.foregroundMaximized !== isMaximized || State.foregroundApp !== app;
+    State.foregroundMaximized = isMaximized;
+    State.foregroundApp = app;
+    if (changed && State.settings.smartNotch && State.mode !== "expanded") {
+      this.dirty = true;
+      this.ensureRunning();
+      this.animateGeometry(this.isSmartTucked);
+      if (this.collapsed) this.sendCollapsedSize();
+      State.notify();
+    }
   }
 
   get panelSize() {

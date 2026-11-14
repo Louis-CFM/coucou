@@ -18,7 +18,7 @@ import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
-import { h, clear } from "../views/dom";
+import { h, clear, svg } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { claudeModelControl } from "./claude-models";
@@ -26,6 +26,7 @@ import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
+import { CoucoudoroController } from "../core/coucoudoro";
 import { updateRows, updatesListener } from "./updates";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
@@ -569,6 +570,10 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
       if (pills.length === 0) continue;
       groups.append(h("div", { class: "pill-group" }, h("h3", { text: t(cat.title) }), ...pills.map(row)));
     }
+    const timerPills = availablePills().filter((p) => p.id === "integration_coucoudoro");
+    if (timerPills.length > 0) {
+      groups.append(h("div", { class: "pill-group" }, h("h3", { text: t("Services") }), ...timerPills.map(row)));
+    }
   }
   declaredViews.push(draw);
   draw();
@@ -889,6 +894,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Local countdown: work, then rest, on repeat, until you stop (#1055).
+  { id: "integration_coucoudoro", name: "Coucoudoro", color: "#0EA5E9", fields: [],
+    hint: N_("Work, then rest, on repeat, until you stop. Turn the Coucoudoro pill on to use it.") },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -966,6 +974,46 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       void Bridge.spotifyInstalled().then((ok) => {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
+    }
+    if (def.id === "integration_coucoudoro") {
+      const ctrl = CoucoudoroController.shared;
+      ctrl.loadConfig();
+      const workInput = h("input", {
+        type: "number",
+        min: "1",
+        max: "60",
+        value: String(Math.round(ctrl.config.work / 60)),
+        style: "width:54px;padding:3px 6px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#fff;font-size:12px;text-align:center",
+      }) as HTMLInputElement;
+      const restInput = h("input", {
+        type: "number",
+        min: "1",
+        max: "60",
+        value: String(Math.round(ctrl.config.rest / 60)),
+        style: "width:54px;padding:3px 6px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#fff;font-size:12px;text-align:center",
+      }) as HTMLInputElement;
+      workInput.addEventListener("change", () => {
+        const val = Math.max(1, Math.min(60, parseInt(workInput.value, 10) || 25));
+        ctrl.config.work = val * 60;
+        workInput.value = String(val);
+        ctrl.saveConfig();
+      });
+      restInput.addEventListener("change", () => {
+        const val = Math.max(1, Math.min(60, parseInt(restInput.value, 10) || 5));
+        ctrl.config.rest = val * 60;
+        restInput.value = String(val);
+        ctrl.saveConfig();
+      });
+      rows.append(
+        h("div", { class: "row", style: "gap:8px;align-items:center;padding:2px 0" },
+          h("label", { style: "font-size:12px;color:rgba(255,255,255,0.8)", text: t("Work") }),
+          workInput,
+          h("span", { style: "font-size:11px;color:#8E939C", text: t("min") }),
+          h("label", { style: "font-size:12px;color:rgba(255,255,255,0.8);margin-left:10px", text: t("Rest") }),
+          restInput,
+          h("span", { style: "font-size:11px;color:#8E939C", text: t("min") }),
+        ),
+      );
     }
 
     list.append(
@@ -1069,6 +1117,7 @@ function generalSection(): HTMLElement {
     ["datetime", t("The date and the time")],
     ["claude", t("Claude usage")],
     ["music", t("What's playing")],
+    ["coucoudoro", t("Coucoudoro timer")],
     ["empty", t("Nothing, just the island")],
     ["hidden", t("Hide the island")],
   ];
@@ -1105,10 +1154,15 @@ function generalSection(): HTMLElement {
   const sound = toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); });
   const openOnHover = toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); });
   const autostart = toggle(settings.autostart, (v) => { settings.autostart = v; void save(); });
+
+  let smartCardSync: (() => void) | null = null;
+  const smartNotchCard = buildSmartNotchCard(settings, save, (sync) => { smartCardSync = sync; });
+
   generalSync = () => {
     setSwitch(sound, settings.soundEnabled);
     setSwitch(openOnHover, settings.openOnHover);
     setSwitch(autostart, settings.autostart);
+    smartCardSync?.();
     if (document.activeElement !== volume) {
       volume.value = String(settings.soundVolume);
       updateVolumeFill();
@@ -1151,6 +1205,7 @@ function generalSection(): HTMLElement {
       closed,
     ),
     h("div", { class: "hint", text: t("A PC has no notch: once closed, a small island stays at the top of the screen. Hover it to bring Coucou back. Hidden, move the pointer to the very top of the screen.") }),
+    smartNotchCard,
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
@@ -1187,6 +1242,81 @@ function languageRow(): HTMLElement {
     applyLanguage();
   });
   return h("div", { class: "row" }, h("label", { text: t("Language") }), select);
+}
+
+/**
+ * Settings → General → Smart Notch card:
+ * Full on the desktop; tucked away over maximized apps.
+ */
+function buildSmartNotchCard(
+  settings: Settings,
+  save: () => Promise<void>,
+  onRegisterSync: (sync: () => void) => void,
+): HTMLElement {
+  const switchEl = toggle(settings.smartNotch, (v) => {
+    settings.smartNotch = v;
+    syncCard();
+    void save();
+  });
+
+  const card = h(
+    "div",
+    {
+      class: `smart-notch-card${settings.smartNotch ? " active" : ""}`,
+      onclick: (e: Event) => {
+        if (!(e.target as HTMLElement).closest(".switch")) {
+          settings.smartNotch = !settings.smartNotch;
+          setSwitch(switchEl, settings.smartNotch);
+          syncCard();
+          Sound.resume();
+          Sound.play("tick");
+          void save();
+        }
+      },
+    },
+    h(
+      "div",
+      { class: "smart-notch-preview" },
+      h(
+        "div",
+        { class: "preview-pane preview-desktop" },
+        h("div", { class: "screen-edge" }),
+        h("div", { class: "notch-full" }),
+      ),
+      h(
+        "div",
+        { class: "preview-pane preview-maximized" },
+        h(
+          "div",
+          { class: "max-app-window" },
+          h(
+            "div",
+            { class: "notch-tucked" },
+            svg("M6 9l6 6 6-6", 9, { stroke: 2.2 }),
+          ),
+        ),
+      ),
+    ),
+    h(
+      "div",
+      { class: "smart-notch-info" },
+      h(
+        "div",
+        { class: "smart-notch-header" },
+        h("h4", { text: t("Smart") }),
+        switchEl,
+      ),
+      h("p", { class: "smart-notch-desc", text: t("Full on the desktop; tucked away over maximized apps.") }),
+    ),
+  );
+
+  function syncCard() {
+    card.classList.toggle("active", settings.smartNotch);
+    setSwitch(switchEl, settings.smartNotch);
+  }
+
+  onRegisterSync(syncCard);
+  return card;
 }
 
 // ── Shortcuts section ─────────────────────────────────────────────────────────

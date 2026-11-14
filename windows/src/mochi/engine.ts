@@ -249,6 +249,7 @@ export class BotEngine {
   permanentEye: EyeShape | null = null;
   permanentEmote: BotEmoteName | null = null;
   miniNextBehavior = 0;
+  tiredness = 0;
 
   badge: Badge | null = null;
   private badgeKey = "none";
@@ -939,6 +940,10 @@ export class BotEngine {
 
   private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
+    // Hours with agents and no break: Mochi gets sleepy eyes while waiting.
+    if (this.tiredness >= 0.7 && this.state === "idle" && !this.eyeOverride) {
+      shape = "tired";
+    }
     // Dancing: happy eyes in the calm states.
     if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
       shape = "happy";

@@ -17,6 +17,8 @@ import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
 import { WhatsNew } from "./whats-new/controller";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
+import { GlobalNotifications } from "./core/notifications";
+import { GlobalWelcomeMessages } from "./core/welcome";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
 function applyLanguage() {
@@ -43,7 +45,14 @@ async function main() {
 
   const island = new Island(root);
   // The dev previews (dev/*.html) drive the island from the console.
-  if (import.meta.env.DEV) Object.assign(window, { __island: island, __state: State });
+  if (import.meta.env.DEV) {
+    Object.assign(window, {
+      __island: island,
+      __state: State,
+      __welcome: GlobalWelcomeMessages,
+      __notifications: GlobalNotifications,
+    });
+  }
 
   const boot = await Bridge.boot();
   if (boot) {
@@ -185,24 +194,35 @@ async function main() {
   island.onWake = checkRecap;
   await onEvent<null>("recap-check", checkRecap);
 
-  island.launch();
+  if (IS_TAURI) {
+    island.launch();
+  }
 
-  // In a plain browser there is no wake strip behind the cursor: make the whole
-  // page wake the island so the visuals can be checked with `npm run dev`.
+  // In a plain browser there is no wake strip behind the cursor:
   if (!IS_TAURI) {
     document.documentElement.style.background = "#0c0d12";
     document.body.style.background = "#0c0d12";
-    document.addEventListener("click", () => {
-      Sound.resume();
-      if (State.mode === "hidden") {
-        island.wakeFromClosed();
+
+    window.addEventListener("keydown", (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === "w" || e.key === "W") {
+        island.fsm.forceHidden();
+        GlobalWelcomeMessages.onUserReturned(15, "Madhan");
+      } else if (e.key === "n" || e.key === "N") {
+        island.fsm.forceHidden();
+        GlobalNotifications.push({ app: "WhatsApp", title: "Alice", body: "Hey Madhan!" });
+      } else if (e.key === "h" || e.key === "H") {
+        if (State.mode === "hidden") {
+          island.wakeFromClosed();
+        } else {
+          island.fsm.forceHidden();
+        }
       }
     });
 
-    // Auto-wake island in browser mode so it is immediately visible
-    window.setTimeout(() => {
-      if (State.mode === "hidden") island.wakeFromClosed();
-    }, 150);
+    // In browser mode, stay in resting closed notch by default to showcase the Balanced Dynamic Island.
+    // Press H to toggle wake/closed, W for Welcome Back message, N for Notification.
   }
 }
 

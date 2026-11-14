@@ -27,17 +27,20 @@ mod log;
 mod mail;
 mod net;
 mod notes;
+mod notifications;
 mod openai_compat;
 mod phone_link;
 mod pipe;
 mod platform;
 #[cfg(target_os = "linux")]
 mod portal;
+mod presence;
 mod recap;
 mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod smart_notch;
 mod sounds;
 mod speech;
 mod spotify;
@@ -731,6 +734,12 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
     }
 }
 
+/// Takes a whole-screen screenshot, copied to clipboard.
+#[tauri::command]
+fn quick_screenshot() -> Result<(), String> {
+    platform::take_screenshot()
+}
+
 // ── Settings window ───────────────────────────────────────────────────────────
 
 /// WebView2 allows exactly one browser environment per app, and its options are
@@ -1000,6 +1009,7 @@ pub fn run() {
             set_paused,
             shortcuts_status,
             shortcuts_suspend,
+            quick_screenshot,
             phone_link::phone_link_status,
             phone_link::phone_link_set_enabled,
             phone_link::phone_link_pairing,
@@ -1111,6 +1121,10 @@ pub fn run() {
             update::update_dismiss,
             update::update_install,
             update::update_open_page,
+            notifications::check_notification_access,
+            notifications::request_notification_access,
+            presence::get_system_presence,
+            smart_notch::get_foreground_window_state,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1156,6 +1170,9 @@ pub fn run() {
             spotify::sync(&handle, &loaded.active_integrations);
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
+            notifications::start(&handle);
+            presence::start(&handle);
+            smart_notch::start(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());

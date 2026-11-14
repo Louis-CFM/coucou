@@ -216,7 +216,7 @@ export const Bridge = {
       return {
         settings: storedSettings,
         screen: { x: 0, y: 0, width: window.innerWidth || 1920, height: window.innerHeight || 1080, scale: window.devicePixelRatio || 1 },
-        version: "0.5.9",
+        version: "0.6.0",
         hookPath: "",
         cursorPoll: false,
       };
@@ -272,6 +272,9 @@ export const Bridge = {
   revealSoundsFolder: () => call<void>("reveal_sounds_folder"),
   /** Tells the island to read the sounds folder again ("sounds-changed"). */
   reloadSounds: () => call<void>("reload_sounds"),
+
+  /** Whole-screen screenshot, copied to clipboard (#7578fa6). */
+  quickScreenshot: () => call<void>("quick_screenshot"),
 
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
@@ -563,6 +566,11 @@ export const Bridge = {
   updateInstall: () => call<void>("update_install"),
   /** The release's page on github.com. */
   updateOpenPage: () => call<void>("update_open_page"),
+
+  // ── Smart Notch (src-tauri/src/smart_notch.rs) ───────────────────────────
+  /** Foreground window state (Smart Notch): whether the active foreground app is maximized or on desktop. */
+  getForegroundWindowState: () =>
+    call<{ isMaximized: boolean; isDesktop: boolean; app: string | null }>("get_foreground_window_state"),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

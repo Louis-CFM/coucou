@@ -109,6 +109,8 @@ export interface Settings {
   showClock: boolean;
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
   closedIsland: string;
+  /** Smart notch: full on the desktop, tucked away over maximized apps. */
+  smartNotch: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -182,6 +184,7 @@ export const DEFAULT_SETTINGS: Settings = {
   alertsFromAllPills: false,
   showClock: false,
   closedIsland: "mochi",
+  smartNotch: true,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
@@ -277,6 +280,10 @@ class AppState {
   wardrobePreview: Outfit | null = null;
 
   lastActivity = performance.now();
+
+  /** True when the active foreground application window is maximized / fullscreen. */
+  foregroundMaximized = false;
+  foregroundApp: string | null = null;
 
   settings: Settings = { ...DEFAULT_SETTINGS };
 

@@ -146,6 +146,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // linked and turned on in Settings → Integrations → WhatsApp, off until then.
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // Local countdown: work, then rest, until the user stops. No account, no network (#1055).
+  { id: "integration_coucoudoro", name: "Coucoudoro", color: "#0EA5E9", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

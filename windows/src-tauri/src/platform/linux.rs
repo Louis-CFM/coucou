@@ -1108,6 +1108,10 @@ fn apply_rects(gw: &impl IsA<gtk::Widget>, rects: &[(f64, f64, f64, f64)]) {
     gdk_window.input_shape_combine_region(&region, 0, 0);
 }
 
+pub fn take_screenshot() -> Result<(), String> {
+    Ok(())
+}
+
 #[cfg(test)]
 mod claude_launch_tests {
     use super::open_claude_with;

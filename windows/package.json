@@ -2,7 +2,7 @@
   "name": "coucou-windows",
   "author": "Madhan Kumar",
   "private": true,
-  "version": "0.5.9",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -27,9 +27,11 @@
   "dependencies": {
     "@fontsource/bricolage-grotesque": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
+    "@number-flow/react": "^0.6.2",
     "@tauri-apps/api": "^2",
     "glisse": "^0.6.0",
     "motion": "^14.13.0",
+    "number-flow": "^0.6.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-mediadrop": "^0.1.6"

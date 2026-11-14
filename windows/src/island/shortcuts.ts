@@ -132,6 +132,12 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       host.flyOutOrHome();
       break;
 
+    case "quickScreenshot":
+      void Bridge.quickScreenshot();
+      Sound.play("attach");
+      host.emote("happy");
+      break;
+
     // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), and
     // attachFrontWindow isn't in this version.
     default:

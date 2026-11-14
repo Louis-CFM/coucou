@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Coucou",
-  "version": "0.5.9",
+  "version": "0.6.0",
   "identifier": "fr.louisraille.coucou",
   "build": {
     "beforeDevCommand": "pnpm run dev",
@@ -49,6 +49,7 @@
       "icons/icon.ico"
     ],
     "resources": { "../target/release/coucou-hook.exe": "coucou-hook.exe" },
+    "publisher": "Madhan Kumar",
     "copyright": "© Madhan Kumar",
     "category": "DeveloperTool",
     "shortDescription": "Mochi lives at the top of your screen",

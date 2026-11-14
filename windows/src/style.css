@@ -173,17 +173,79 @@ body {
   width: 0;
 }
 
-/* Compact 2×2 mini grid, to the right of the notch. */
+/* Compact 2×2 mini grid: active agents removed from notch per user request. */
 #mini-grid {
+  display: none !important;
+}
+
+/* Compact Coucoudoro focus timer, in place of active agents on the right of the notch.
+   Unbordered bare typography with glowing dot, seamlessly integrated into the notch bar. */
+#compact-timer {
+  --cd-accent: #0EA5E9;
   position: absolute;
-  width: 29px;
-  height: 29px;
-  display: grid;
-  grid-template-columns: 13px 13px;
-  grid-auto-rows: 13px;
-  gap: 3px;
-  pointer-events: none;
-  transition: opacity 0.25s ease-in-out;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  color: #FFFFFF;
+  font-family: var(--font-sub, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-feature-settings: "tnum" 1;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  user-select: none;
+  z-index: 2;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+#compact-timer:hover {
+  opacity: 0.85;
+  transform: translateY(-50%) scale(1.05);
+}
+
+#compact-timer:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.compact-timer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cd-accent, #0EA5E9);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--cd-accent, #0EA5E9);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.compact-timer-dot.paused {
+  background: #F59E0B;
+  box-shadow: 0 0 6px #F59E0B;
+  animation: cd-pulse 1.2s infinite ease-in-out;
+}
+
+.compact-timer-dot.rest {
+  background: #10B981;
+  box-shadow: 0 0 6px #10B981;
+}
+
+.compact-timer-label {
+  color: #FFFFFF;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Compact Claude plan gauge, next to the agent dots in the compact island. */
@@ -226,40 +288,32 @@ body {
   flex-shrink: 0;
 }
 
-/* Date and time in the middle of the compact island, between Mochi and the grid. */
+/* Date and time in the middle of the compact island: removed per user request for minimal clean notch. */
 #island-clock {
-  position: absolute;
-  left: 50px;
-  right: 56px;
-  top: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 0.85);
-  pointer-events: none;
-  transition: opacity 0.25s ease-in-out;
+  display: none !important;
 }
 
-/* The closed island's one line (core/closed.ts): the time, the plan, the song. */
+/* The closed island's one line (core/closed.ts): the time, the plan, the song.
+   Generous padding and unconstrained text spacing so time and date fit without truncation. */
 #island-closed {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   padding: 0 16px;
+  font-family: var(--font);
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
   white-space: nowrap;
-  color: rgba(245, 246, 248, 0.92);
+  color: rgba(245, 246, 248, 0.95);
   pointer-events: none;
   opacity: 0;
+  text-align: center;
+  z-index: 2;
   transition: opacity 0.18s ease-in;
 }
 
@@ -269,9 +323,13 @@ body {
 }
 
 #island-closed .text {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
   min-width: 0;
+  flex-shrink: 0;
+  text-align: center;
+  margin: 0 auto;
 }
 
 #island-closed .dot {
@@ -281,11 +339,276 @@ body {
   border-radius: 50%;
 }
 
+#island-closed .closed-clock {
+  position: absolute;
+  right: 14px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(245, 246, 248, 0.9);
+  white-space: nowrap;
+  opacity: 1;
+  transform: translateX(0);
+  transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  user-select: none;
+  z-index: 3;
+}
+
+#island-closed .closed-clock.hidden {
+  opacity: 0;
+  transform: translateX(24px);
+  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease-in;
+  pointer-events: none;
+}
+
 #island-closed.note::before {
   content: "♪";
   flex: 0 0 auto;
   font-size: 11px;
   color: #1ed760;
+}
+
+#island-closed.notification {
+  pointer-events: auto;
+  cursor: pointer;
+  justify-content: center;
+  text-align: center;
+}
+
+#island-closed.with-bot {
+  justify-content: center;
+  padding-left: 36px;
+  padding-right: 36px;
+  pointer-events: auto;
+  cursor: pointer;
+  text-align: center;
+}
+
+#island-closed.with-bot .text {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #f5f6f8;
+  text-align: center;
+  margin: 0 auto;
+}
+
+#island-closed.welcome {
+  pointer-events: auto;
+  cursor: pointer;
+  justify-content: center;
+  text-align: center;
+}
+
+#island-closed.notification .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  animation: notif-green-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes notif-green-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 3px currentColor;
+  }
+  50% {
+    transform: scale(1.22);
+    opacity: 0.85;
+    box-shadow: 0 0 7px currentColor;
+  }
+}
+
+/* Smart Notch tucked away state (#island-tuck) */
+#island-tuck {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  color: rgba(245, 246, 248, 0.7);
+  z-index: 5;
+}
+
+#island-tuck .tuck-icon {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s ease;
+}
+
+#island.tucked {
+  cursor: pointer;
+}
+
+#island.tucked #island-tuck {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#island.tucked:hover #island-tuck .tuck-icon {
+  color: #ffffff;
+  transform: translateY(1.5px);
+}
+
+#island.tucked #island-closed,
+#island.tucked #bot-canvas,
+#island.tucked #compact-timer,
+#island.tucked #compact-plan,
+#island.tucked #island-clip {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Smart Notch card in Settings → General */
+.smart-notch-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(22, 24, 29, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+  margin: 14px 0 16px;
+  cursor: pointer;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  max-width: 380px;
+}
+
+.smart-notch-card:hover {
+  background: rgba(28, 31, 38, 0.9);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.smart-notch-card.active {
+  background: rgba(20, 26, 40, 0.9);
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.15), inset 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+.smart-notch-preview {
+  display: flex;
+  height: 96px;
+  background: #141b27;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.preview-pane {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.preview-desktop {
+  background: #121824;
+}
+
+.preview-desktop .screen-edge {
+  position: absolute;
+  top: 14px;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.preview-desktop .notch-full {
+  position: absolute;
+  top: 14px;
+  width: 58px;
+  height: 16px;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+}
+
+.preview-desktop .notch-full::before,
+.preview-desktop .notch-full::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+.preview-desktop .notch-full::before { left: -6px; }
+.preview-desktop .notch-full::after { right: -6px; }
+
+.preview-maximized {
+  background: #0c1119;
+  padding: 14px 12px 0;
+}
+
+.max-app-window {
+  width: 100%;
+  height: 100%;
+  background: #1b2638;
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-bottom: none;
+}
+
+.max-app-window .notch-tucked {
+  position: absolute;
+  top: 0;
+  width: 22px;
+  height: 10px;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.smart-notch-info {
+  margin-top: 10px;
+  padding: 0 4px;
+}
+
+.smart-notch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.smart-notch-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f5f6f8;
+  letter-spacing: -0.01em;
+}
+
+.smart-notch-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(245, 246, 248, 0.65);
 }
 
 /* A mini Mochi: the slot is the body, the canvas is larger and overflows it so

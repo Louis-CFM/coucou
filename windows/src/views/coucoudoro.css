@@ -1,0 +1,250 @@
+/* ── Coucoudoro macOS Liquid Glass & Rolling Digit Styles ───────────────────────
+   Refined to perfectly match Coucou's macOS theme with Mochi sitting on the left.
+   Equal button sizing (32px x 32px), smooth barrel roll transitions, and clean white Inter digits.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.coucoudoro-card {
+  padding: 10px 14px 10px 106px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  position: relative !important;
+}
+
+/* ── Header Row ── */
+.cd-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.cd-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cd-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0EA5E9;
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+
+.cd-dot.rest {
+  background: #10B981;
+}
+
+.cd-dot.paused {
+  background: #F59E0B;
+}
+
+.cd-title {
+  font: 600 12px var(--font, -apple-system, sans-serif);
+  color: var(--ink, #F5F6F8);
+  letter-spacing: -0.01em;
+}
+
+/* ── Middle Row: Digits + Controls ── */
+.cd-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 2px 0;
+}
+
+.cd-digits {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-sub, "Inter", -apple-system, BlinkMacSystemFont, sans-serif) !important;
+  font-size: 28px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.02em !important;
+  font-variant-numeric: tabular-nums !important;
+  -webkit-font-feature-settings: "tnum" 1, "cv02" 1, "cv03" 1, "cv04" 1 !important;
+  font-feature-settings: "tnum" 1, "cv02" 1, "cv03" 1, "cv04" 1 !important;
+  color: #FFFFFF !important;
+  text-shadow: none !important;
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  user-select: none !important;
+}
+
+/* ── Animated Tabular Digit Slot (Barrel Roll) ── */
+.cd-digit {
+  display: inline-block;
+  position: relative;
+  width: 18px;
+  height: 32px;
+  line-height: 32px;
+  overflow: hidden;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.cd-curr {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: #FFFFFF;
+  text-align: center;
+  line-height: 32px;
+}
+
+.cd-prev {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  color: #FFFFFF;
+  text-align: center;
+  line-height: 32px;
+}
+
+.cd-digit.roll .cd-curr {
+  animation: cd-roll-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cd-digit.roll .cd-prev {
+  display: block;
+  animation: cd-roll-out 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cd-roll-in {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0.25;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes cd-roll-out {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.cd-colon {
+  font-family: inherit !important;
+  font-size: 26px !important;
+  font-weight: 400 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  margin: 0 1px !important;
+  transform: translateY(-1px) !important;
+  text-shadow: none !important;
+  line-height: 32px;
+}
+
+.cd-colon.blink {
+  animation: cd-pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes cd-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.2; }
+}
+
+/* ── Controls: Perfectly Sized Action Buttons (Identical 32px x 32px circles) ── */
+.cd-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cd-btn-play,
+.cd-btn-stop {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  flex: 0 0 32px !important;
+  border-radius: 999px !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  outline: none !important;
+  padding: 0 !important;
+}
+
+.cd-btn-play {
+  background: #0EA5E9;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #041018;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease;
+}
+
+.cd-btn-play:hover {
+  background: #38BDF8;
+  transform: scale(1.06);
+}
+
+.cd-btn-play:active {
+  transform: scale(0.92);
+}
+
+.cd-btn-stop {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, color 0.15s ease;
+}
+
+.cd-btn-stop:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  transform: scale(1.06);
+}
+
+.cd-btn-stop:active {
+  transform: scale(0.92);
+}
+
+.cd-icon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  display: block;
+}
+
+/* ── Bottom Progress Bar ── */
+.cd-progress-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.cd-progress-fill {
+  height: 100%;
+  background: #0EA5E9;
+  border-radius: 999px;
+  transition: width 0.4s ease, background 0.3s ease;
+}

@@ -88,6 +88,7 @@ export interface FlowEntry {
   id: string;
   date: number;
   text: string;
+  heard?: string | null;
   app?: string | null;
   words: number;
   seconds: number;

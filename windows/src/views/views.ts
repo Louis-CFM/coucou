@@ -31,6 +31,8 @@ import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { MAIL_ID } from "../core/mail";
 import { buildMailCard } from "./mail";
+import { buildCoucoudoroCard, COUCOUDORO_ID } from "./coucoudoro";
+import { CoucoudoroController } from "../core/coucoudoro";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
@@ -229,6 +231,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   // WhatsApp's card too: its reply field keeps the draft and the keyboard while messages arrive.
   // Mail's card too (classic Outlook): the search field keeps its text and the keyboard.
   const mailCard = buildMailCard({ keyboard: (on) => actions.keyboard(on) });
+  const coucoudoroCard = buildCoucoudoroCard();
   const whatsappCard = buildWhatsAppCard({
     openSettings: () => actions.openSettingsWindow("integrations"),
     keyboard: (on) => actions.keyboard(on),
@@ -243,7 +246,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "mail" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "mail" | "coucoudoro" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -417,6 +420,15 @@ function buildOverview(actions: ViewActions): ViewHost {
           cardKey = "";
         }
         whatsappCard.sync();
+      } else if (task && task.id === COUCOUDORO_ID) {
+        // Coucoudoro timer card: work, rest, pause and stop (#1055).
+        if (mode !== "coucoudoro") {
+          clear(leftBody);
+          leftBody.append(coucoudoroCard.el);
+          mode = "coucoudoro";
+          cardKey = "";
+        }
+        coucoudoroCard.sync();
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
@@ -432,7 +444,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
-      jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
+      jump.style.display = detailOpen || mode === "plan" || mode === "diff" || mode === "coucoudoro" ? "none" : "";
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];
@@ -477,13 +489,27 @@ export function hasSessionTicker(task: AgentTask): boolean {
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? pillDefinition(task.id)!.name : task.name;
+  const label = task.id === COUCOUDORO_ID && CoucoudoroController.shared.snapshot.phase !== "idle"
+    ? CoucoudoroController.shared.clock()
+    : (task.id === "integration_claude" ? pillDefinition(task.id)!.name : task.name);
   const canvas = createMiniBot(task, 24);
+  const lbl = h("span", { class: "lbl", text: label });
+  if (task.id === COUCOUDORO_ID) {
+    lbl.style.fontFamily = 'var(--font-sub, "Inter", -apple-system, sans-serif)';
+    lbl.style.fontVariantNumeric = "tabular-nums";
+    lbl.style.letterSpacing = "-0.01em";
+    if (CoucoudoroController.shared.snapshot.phase !== "idle") {
+      lbl.style.fontWeight = "600";
+      lbl.style.color = CoucoudoroController.shared.snapshot.phase === "rest"
+        ? "#34D399"
+        : (CoucoudoroController.shared.snapshot.paused ? "#FBBF24" : "#38BDF8");
+    }
+  }
   const pill = h(
     "div",
     { class: "pill", onclick: () => actions.setFocus(task.id) },
     canvas,
-    h("span", { class: "lbl", text: label }),
+    lbl,
   );
   pill.style.borderColor = `${task.color}24`;
   pill.addEventListener("mouseenter", () => {

@@ -419,7 +419,8 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let outcome = paste::paste(&final_text, terminal);
     let entry = {
         let mut store = flow.store.lock().unwrap();
-        store.record(&final_text, front.map(|(_, n)| n.as_str()), seconds, store::today(), store::now_ms())
+        let heard = if raw.trim() != final_text.trim() { Some(raw.as_str()) } else { None };
+        store.record_full(&final_text, heard, front.map(|(_, n)| n.as_str()), seconds, store::today(), store::now_ms())
     };
     let _ = app.emit_to(crate::HUB_LABEL, "flow-history", entry);
     match outcome {

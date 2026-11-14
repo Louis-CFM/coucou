@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  CLOSED_ISLANDS, CLOSED_MAX_W, CLOSED_MIN_W, CLOSED_PAD, closedContent, closedIsland, closedWidth,
+  CLOSED_BALANCED_W, CLOSED_ISLANDS, CLOSED_MAX_W, CLOSED_MIN_W, CLOSED_PAD, closedContent, closedIsland, closedTime, closedWidth,
 } from "../src/core/closed.ts";
 
 const NOW = new Date(2026, 10, 2, 20, 28);
@@ -46,10 +46,47 @@ test("what plays, with its note; the time when nothing plays", () => {
   assert.equal(closedContent("music", input({ music: { title: "Intro", artist: "" } })).text, "Intro");
 });
 
+test("Coucoudoro timer shows the countdown with phase dot", () => {
+  const shown = closedContent("coucoudoro", input());
+  assert.ok(shown.text);
+});
+
+test("active notification takes top priority in the small notch", () => {
+  const notif = { text: "WhatsApp · 1 msg", dot: "#25D366" };
+  for (const style of ["time", "datetime", "claude", "music", "coucoudoro", "mochi", "empty"]) {
+    const shown = closedContent(style, input({ notification: notif }));
+    assert.deepEqual(shown, {
+      text: "WhatsApp · 1 msg",
+      dot: "#25D366",
+      note: false,
+      isNotification: true,
+    });
+  }
+});
+
+test("welcome message with Mochi on left takes top priority in the small notch", () => {
+  const welcome = { text: "Hey Madhan, you're back! ✨", bot: true };
+  for (const style of ["time", "datetime", "claude", "music", "coucoudoro", "mochi", "empty"]) {
+    const shown = closedContent(style, input({ welcome }));
+    assert.deepEqual(shown, {
+      text: "Hey Madhan, you're back! ✨",
+      dot: null,
+      note: false,
+      bot: true,
+      isWelcome: true,
+    });
+  }
+});
+
 test("the island is as wide as its line, within bounds", () => {
   assert.equal(closedWidth(0), CLOSED_MIN_W);
   assert.equal(closedWidth(Number.NaN), CLOSED_MIN_W);
   assert.equal(closedWidth(100), 100 + CLOSED_PAD * 2);
   assert.equal(closedWidth(100, 12), 112 + CLOSED_PAD * 2);
   assert.equal(closedWidth(5000), CLOSED_MAX_W);
+});
+
+test("balanced dynamic island resting constants and formatting", () => {
+  assert.equal(CLOSED_BALANCED_W, 150);
+  assert.equal(closedTime(NOW, "en-GB"), "20:28");
 });

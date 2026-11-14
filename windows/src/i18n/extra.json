@@ -676,6 +676,21 @@
       "ko": "Coucou가 Outlook 받은편지함을 정리합니다. VIP가 먼저, 다음은 금지어, 그다음은 내 규칙입니다. 메일을 삭제하지는 않습니다.",
       "ja": "Coucou は Outlook の受信トレイを整理します。まず VIP、次に禁止ワード、最後にあなたのルール。メールを削除することはありません。"
     },
+    "Coucoudoro timer": {
+      "zh-Hans": "Coucoudoro 计时器",
+      "hi": "Coucoudoro टाइमर",
+      "es": "Temporizador Coucoudoro",
+      "ar": "مؤقت Coucoudoro",
+      "fr": "Minuteur Coucoudoro",
+      "bn": "Coucoudoro টাইমার",
+      "pt-BR": "Temporizador Coucoudoro",
+      "ru": "Таймер Coucoudoro",
+      "id": "Pengatur waktu Coucoudoro",
+      "de": "Coucoudoro-Timer",
+      "tr": "Coucoudoro zamanlayıcı",
+      "ko": "Coucoudoro 타이머",
+      "ja": "Coucoudoro タイマー"
+    },
     "Could not remove {path}: {error}": {
       "zh-Hans": "无法删除 {path}：{error}",
       "hi": "{path} हटाया नहीं जा सका: {error}",
@@ -7278,6 +7293,36 @@
       "tr": "Kapalı ada şunu gösterir",
       "ko": "닫힌 아일랜드에 표시",
       "ja": "閉じたアイランドの表示"
+    },
+    "Smart": {
+      "zh-Hans": "智能",
+      "hi": "स्मार्ट",
+      "es": "Inteligente",
+      "ar": "ذكي",
+      "fr": "Intelligent",
+      "bn": "স্মার্ট",
+      "pt-BR": "Inteligente",
+      "ru": "Умный",
+      "id": "Pintar",
+      "de": "Smart",
+      "tr": "Akıllı",
+      "ko": "스마트",
+      "ja": "スマート"
+    },
+    "Full on the desktop; tucked away over maximized apps.": {
+      "zh-Hans": "桌面完全展开；窗口最大化时自动收拢避让。",
+      "hi": "डेस्कटॉप पर पूर्ण; मैक्सिमाइज ऐप्स पर छुपा हुआ।",
+      "es": "Completo en el escritorio; replegado en apps maximizadas.",
+      "ar": "كامل على سطح المكتب؛ مطوي فوق التطبيقات المكبّرة.",
+      "fr": "Complet sur le bureau ; replié sur les applications agrandies.",
+      "bn": "ডেস্কটপে পূর্ণ; ম্যাক্সিমাইজড অ্যাপে লুকানো।",
+      "pt-BR": "Completo na área de trabalho; recolhido sobre apps maximizados.",
+      "ru": "Полный на рабочем столе; свернут над развернутыми приложениями.",
+      "id": "Penuh di desktop; tersimpan rapi di atas aplikasi yang dimaksimalkan.",
+      "de": "Vollständig auf dem Desktop; eingeklappt bei maximierten Apps.",
+      "tr": "Masaüstünde tam; büyütülmüş uygulamalarda gizlenir.",
+      "ko": "바탕화면에서는 전체 표시; 최대화된 앱에서는 접혀서 숨김.",
+      "ja": "デスクトップではフル表示、最大化アプリ上では邪魔にならないよう収納。"
     },
     "Hide the island": {
       "zh-Hans": "隐藏灵动岛",

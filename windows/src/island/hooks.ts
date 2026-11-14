@@ -16,6 +16,7 @@ import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
 import { Launch } from "../core/launch";
+import { GlobalWorkStreak } from "../mochi/work-streak";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -112,6 +113,9 @@ export function restoreAlertFocus(): void {
 
 /** Events after which a pending permission request of the same session is moot. */
 const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
+
+/** The events that mean an agent is working with you (Mochi's work streak). */
+const WORK_HOOK_EVENTS = new Set(["UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop"]);
 
 /**
  * True when `name` (from `agentId`'s session) shows the pending card was
@@ -380,6 +384,9 @@ function handleHook(island: Island, payload: HookPayload) {
   }
 
   const name = payload.hook_event_name ?? "";
+  if (WORK_HOOK_EVENTS.has(name)) {
+    GlobalWorkStreak.activity(Date.now());
+  }
   const cwd = payload.cwd ?? "";
   const raw = lastPathComponent(cwd);
   const projectName = aliasProjectName(raw || "Session");

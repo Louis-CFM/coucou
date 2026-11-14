@@ -161,8 +161,8 @@ All packaged files are staged in **`windows/release/`**:
 
 | Output File | Format | Purpose |
 | :--- | :--- | :--- |
-| **`Coucou-Windows-0.5.9-setup.exe`** | NSIS Setup | **Recommended Installer**. Installs to `%LOCALAPPDATA%\Coucou`, creates Start Menu shortcut, desktop icon, and registered uninstaller. |
-| **`Coucou-Windows-0.5.9.msi`** | MSI Package | Native Windows Installer for enterprise and standard deployment. |
+| **`Coucou-Windows-0.6.0-setup.exe`** | NSIS Setup | **Recommended Installer**. Installs to `%LOCALAPPDATA%\Coucou`, creates Start Menu shortcut, desktop icon, and registered uninstaller. |
+| **`Coucou-Windows-0.6.0.msi`** | MSI Package | Native Windows Installer for enterprise and standard deployment. |
 | **`coucou.exe`** *(in `windows/target/release/`)* | Portable `.exe` | Standalone binary. Runs directly with zero installation required. |
 
 ---
@@ -181,7 +181,7 @@ Stop-Process -Name "coucou" -ErrorAction SilentlyContinue
    ```text
    windows\release\
    ```
-2. Double-click **`Coucou-Windows-0.5.9-setup.exe`**.
+2. Double-click **`Coucou-Windows-0.6.0-setup.exe`**.
 3. **If Windows Defender SmartScreen appears**:
    > Because this binary is compiled locally without an expensive commercial EV certificate, SmartScreen may say *"Windows protected your PC"*.
    - Click **More info**.
