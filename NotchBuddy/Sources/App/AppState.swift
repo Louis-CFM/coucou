@@ -367,6 +367,16 @@ final class AppState: ObservableObject {
     @Published var cornerPendingSwap: String? = nil
 
     /// Where the island lives on its screen: the notch, or a corner (IslandPlacement) — persisted.
+    /// The compact island's room beside the notch (CompactWidth) — persisted.
+    @Published var compactWidthExtra: Double = Double(CompactWidth.standard) {
+        didSet {
+            let r = CompactWidth.range
+            let v = min(max(compactWidthExtra, Double(r.lowerBound)), Double(r.upperBound))
+            if v != compactWidthExtra { compactWidthExtra = v; return }
+            CompactWidth.extra = CGFloat(v)
+            UserDefaults.standard.set(v, forKey: "compactWidthExtra")
+        }
+    }
     @Published var islandPlacement: IslandPlacement = .notch {
         didSet {
             IslandPlacement.current = islandPlacement
@@ -603,6 +613,11 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "islandPlacement"), let p = IslandPlacement(rawValue: v) {
             islandPlacement = p
             IslandPlacement.current = p   // didSet doesn't run from init
+        }
+        if let v = ud.object(forKey: "compactWidthExtra") as? Double {
+            let r = CompactWidth.range
+            compactWidthExtra = min(max(v, Double(r.lowerBound)), Double(r.upperBound))
+            CompactWidth.extra = CGFloat(compactWidthExtra)   // didSet doesn't run from init
         }
         if let d = ud.data(forKey: "vercelProjectFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }

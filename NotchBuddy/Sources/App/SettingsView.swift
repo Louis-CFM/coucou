@@ -356,6 +356,15 @@ struct SettingsView: View {
                 Toggle(String(localized: "alerts.all-pills"), isOn: $state.alertsFromAllPills)
                     .help(String(localized: "alerts.all-pills.help"))
                 HStack(spacing: 8) {
+                    Text("Folded island width")
+                    Slider(value: $state.compactWidthExtra,
+                           in: Double(CompactWidth.range.lowerBound)...Double(CompactWidth.range.upperBound), step: 4)
+                        .frame(width: 160)
+                    Text(verbatim: "\(Int(state.notchWidth + CGFloat(state.compactWidthExtra))) pt")
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
+                }
+                HStack(spacing: 8) {
                     Text("Close after")
                     TextField("60", value: $state.autoCloseInterval, format: .number)
                         .textFieldStyle(.roundedBorder)
