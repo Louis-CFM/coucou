@@ -7,6 +7,7 @@
 // a model writes can inject markup. Links open only when they are http(s), and
 // even then through Rust, which checks the scheme again.
 
+import { renderLatex } from "./latex";
 import { Bridge } from "../core/bridge";
 import { h, svg } from "./dom";
 import { ICONS } from "./icons";
@@ -21,6 +22,7 @@ export type Block =
   | { kind: "heading"; level: number; text: string }
   | { kind: "paragraph"; text: string }
   | { kind: "code"; lang: string; code: string }
+  | { kind: "math"; math: string; display: boolean }
   /** `prefix` is "•" or "1."; `indent` the nesting level, from 0. */
   | { kind: "item"; prefix: string; text: string; indent: number }
   | { kind: "quote"; text: string }
@@ -48,6 +50,36 @@ export function parseMarkdown(input: string): Block[] {
       continue;
     }
 
+    const stripped = line.trim();
+
+    // Fenced math block: $$ or \[
+    if (stripped.startsWith("$$") || stripped.startsWith("\\[")) {
+      const isBracket = stripped.startsWith("\\[");
+      const closeMarker = isBracket ? "\\]" : "$$";
+      const rest = stripped.slice(2).trim();
+      if (rest.endsWith(closeMarker)) {
+        const math = rest.slice(0, rest.length - closeMarker.length).trim();
+        blocks.push({ kind: "math", math, display: true });
+        i++;
+        continue;
+      }
+      const mathLines: string[] = [];
+      if (rest) mathLines.push(rest);
+      for (i++; i < lines.length; i++) {
+        const next = lines[i];
+        const nextTrimmed = next.trim();
+        if (nextTrimmed.endsWith(closeMarker)) {
+          const content = nextTrimmed.slice(0, nextTrimmed.length - closeMarker.length).trim();
+          if (content) mathLines.push(content);
+          break;
+        }
+        mathLines.push(next);
+      }
+      blocks.push({ kind: "math", math: mathLines.join("\n"), display: true });
+      i++;
+      continue;
+    }
+
     // A heading needs a space after the #s; "#hashtag" stays a paragraph.
     const hashes = /^#+/.exec(line)?.[0].length ?? 0;
     if (hashes && (line.length === hashes || line[hashes] === " ")) {
@@ -57,7 +89,6 @@ export function parseMarkdown(input: string): Block[] {
       continue;
     }
 
-    const stripped = line.trim();
     if (isRule(stripped)) {
       blocks.push({ kind: "rule" });
       i++;
@@ -91,7 +122,7 @@ export function parseMarkdown(input: string): Block[] {
     for (i++; i < lines.length; i++) {
       const next = lines[i];
       const s = next.trim();
-      if (!s || next.startsWith("#") || next.startsWith("```") || isQuote(s) || isBullet(s) || isRule(s) || ordered(s)) break;
+      if (!s || next.startsWith("#") || next.startsWith("```") || s.startsWith("$$") || s.startsWith("\\[") || isQuote(s) || isBullet(s) || isRule(s) || ordered(s)) break;
       para.push(next);
     }
     blocks.push({ kind: "paragraph", text: para.join("\n") });
@@ -104,17 +135,20 @@ export function parseMarkdown(input: string): Block[] {
 export type Inline =
   | { kind: "text"; text: string }
   | { kind: "code"; text: string }
+  | { kind: "math"; math: string; display: boolean }
   | { kind: "strong"; children: Inline[] }
   | { kind: "em"; children: Inline[] }
   /** `url` is null when the target is not a web address: the text stays, the link goes. */
   | { kind: "link"; url: string | null; children: Inline[] };
 
 /**
- * `code`, **bold**, __bold__, *italic*, _italic_ and [text](url), whichever
- * comes first. No lookbehind: older WebKitGTK builds reject it, and one bad
- * regex literal would take the whole island down with it.
+ * `code`, $$display$$, \[display\], $inline$, \(inline\), **bold**, __bold__,
+ * *italic*, _italic_ and [text](url), whichever comes first. No lookbehind:
+ * older WebKitGTK builds reject it, and one bad regex literal would take the
+ * whole island down with it.
  */
-const INLINE = /`([^`\n]+)`|\*\*([^*]+?)\*\*|__([^_]+?)__|\*([^*\s][^*]*?)\*|_([^_\s][^_]*?)_(?!\w)|\[([^\]\n]+)\]\(([^)\s]+)\)/g;
+const INLINE =
+  /`([^`\n]+)`|\$\$([^\$\n]+?)\$\$|\\\[([^\n]+?)\\\]|\$([^\s\$\n](?:[^\$\n]*?[^\s\$\n])?)\$|\\\(([^\n]+?)\\\)|\*\*([^*]+?)\*\*|__([^_]+?)__|\*([^*\s][^*]*?)\*|_([^_\s][^_]*?)_(?!\w)|\[([^\]\n]+)\]\(([^)\s]+)\)/g;
 
 const isWordChar = (c: string | undefined) => c != null && /\w/.test(c);
 
@@ -141,19 +175,25 @@ export function parseInline(text: string): Inline[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     // snake_case_words are not italics: an opening _ must not follow a letter.
-    if (m[5] != null && isWordChar(text[m.index - 1])) {
+    if (m[9] != null && isWordChar(text[m.index - 1])) {
       re.lastIndex = m.index + 1;
       continue;
     }
     pushText(text.slice(at, m.index));
     at = m.index + m[0].length;
     if (m[1] != null) out.push({ kind: "code", text: m[1] });
-    else if (m[6] != null) out.push({ kind: "link", url: safeWebUrl(m[7]), children: parseInline(m[6]) });
-    else if (m[2] != null || m[3] != null) out.push({ kind: "strong", children: parseInline(m[2] ?? m[3]) });
-    else out.push({ kind: "em", children: parseInline(m[4] ?? m[5]) });
+    else if (m[2] != null || m[3] != null) out.push({ kind: "math", math: (m[2] ?? m[3])!, display: true });
+    else if (m[4] != null || m[5] != null) out.push({ kind: "math", math: (m[4] ?? m[5])!, display: false });
+    else if (m[10] != null) out.push({ kind: "link", url: safeWebUrl(m[11]), children: parseInline(m[10]) });
+    else if (m[6] != null || m[7] != null) out.push({ kind: "strong", children: parseInline((m[6] ?? m[7])!) });
+    else out.push({ kind: "em", children: parseInline((m[8] ?? m[9])!) });
   }
   pushText(text.slice(at));
   return out;
+}
+
+function renderMath(into: HTMLElement, math: string, display: boolean) {
+  renderLatex(into, math, display);
 }
 
 function appendInline(into: HTMLElement, nodes: Inline[]) {
@@ -165,6 +205,12 @@ function appendInline(into: HTMLElement, nodes: Inline[]) {
       case "code":
         into.append(h("code", { class: "md-code", text: node.text }));
         break;
+      case "math": {
+        const span = h("span", { class: node.display ? "md-math md-math-display" : "md-math md-math-inline" });
+        renderMath(span, node.math, node.display);
+        into.append(span);
+        break;
+      }
       case "strong":
       case "em": {
         const el = h(node.kind === "strong" ? "strong" : "em");
@@ -243,6 +289,11 @@ function render(block: Block): HTMLElement {
     }
     case "code":
       return h("div", { class: "md-pre" }, h("pre", { text: block.code }), copyButton(block.code));
+    case "math": {
+      const el = h("div", { class: "md-math-block" });
+      renderMath(el, block.math, block.display);
+      return el;
+    }
     case "item": {
       const text = h("span", { class: "md-p" });
       inline(block.text, text);
