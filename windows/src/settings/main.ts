@@ -12,6 +12,7 @@ import {
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { closedIsland } from "../core/closed";
+import { clockDate, clockHours } from "../core/clock";
 import type { UpdateStatus } from "../core/update";
 import { SOUND_NAMES } from "../core/sound";
 import {
@@ -1045,6 +1046,30 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // The clock (core/clock.ts): what goes before the time, and 12 or 24 hours.
+  const clockDateSelect = h("select", {}) as HTMLSelectElement;
+  clockDateSelect.append(
+    h("option", { value: "date", text: t("The date and the time") }),
+    h("option", { value: "weekday", text: t("The weekday and the time") }),
+    h("option", { value: "none", text: t("The time") }),
+  );
+  clockDateSelect.value = clockDate(settings.clockDate);
+  clockDateSelect.addEventListener("change", () => {
+    settings.clockDate = clockDateSelect.value;
+    void save();
+  });
+  const clockHoursSelect = h("select", {}) as HTMLSelectElement;
+  clockHoursSelect.append(
+    h("option", { value: "auto", text: t("Automatic") }),
+    h("option", { value: "24", text: t("24-hour") }),
+    h("option", { value: "12", text: t("12-hour") }),
+  );
+  clockHoursSelect.value = clockHours(settings.clockHours);
+  clockHoursSelect.addEventListener("change", () => {
+    settings.clockHours = clockHoursSelect.value;
+    void save();
+  });
+
   // The closed island (core/closed.ts): what stays at the top of the screen.
   const closed = h("select", {}) as HTMLSelectElement;
   closed.append(
@@ -1130,6 +1155,14 @@ function generalSection(): HTMLElement {
       toggle(settings.showClock, (v) => { settings.showClock = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("The date and the time in the middle of the island when it is compact.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Clock shows") }),
+      clockDateSelect,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Clock format") }),
+      clockHoursSelect,
+    ),
     h("div", { class: "row" },
       h("label", { text: t("Closed island shows") }),
       closed,

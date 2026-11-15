@@ -224,6 +224,12 @@ struct IslandContainer: View {
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
                         .transition(.opacity)
+                    // A notch hides the middle: the clock only where there is none, as on a PC.
+                    if state.showClock && !state.hasNotch {
+                        IslandClockText(state: state)
+                            .position(x: islandWidth / 2, y: islandHeight / 2)
+                            .transition(.opacity)
+                    }
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
@@ -678,6 +684,23 @@ struct IslandContentView: View {
             // The island's own spring (IslandContainer.openSpring): the card and the island move together.
             withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { mailExtra = extra }
         }
+    }
+}
+
+// MARK: - Clock (Settings → General → Show clock in the island)
+
+struct IslandClockText: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        TimelineView(.everyMinute) { context in
+            Text(verbatim: IslandClock.text(context.date, date: state.clockDate, hours: state.clockHours))
+                .font(.system(size: 12).monospacedDigit())
+                .foregroundColor(.white.opacity(0.85))
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .allowsHitTesting(false)
     }
 }
 

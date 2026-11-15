@@ -15,6 +15,7 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { clockDate, clockHours, clockText } from "../core/clock";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -991,6 +992,7 @@ export class Island {
       ? closedContent(style, {
         now: new Date(),
         locale: language(),
+        hours: clockHours(State.settings.clockHours),
         planUsage: State.planUsage,
         music: State.spotifyPlaying && track ? { title: track.title, artist: track.artist } : null,
       })
@@ -1548,10 +1550,8 @@ export class Island {
     const on = State.mode === "compact" && State.settings.showClock;
     this.clockEl.style.opacity = on ? "1" : "0";
     if (!on) return;
-    const now = new Date();
-    const date = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
-    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const text = `${date}  ${time}`;
+    const s = State.settings;
+    const text = clockText(new Date(), clockDate(s.clockDate), clockHours(s.clockHours));
     if (this.clockEl.textContent !== text) this.clockEl.textContent = text;
   }
 
