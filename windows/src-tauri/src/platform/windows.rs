@@ -352,6 +352,11 @@ pub fn make_non_activating(win: &WebviewWindow) {
     }
 }
 
+/// A keyboard shortcut opened the island: activating it is enough here.
+pub fn grab_keyboard(win: &WebviewWindow) {
+    set_activating(win, true);
+}
+
 /// Temporarily allow activation so a text field inside the island can be typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let Some(hwnd) = hwnd_of(win) else { return };
