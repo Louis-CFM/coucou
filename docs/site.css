@@ -1,14 +1,20 @@
-:root{--bg:#0e0f12;--card:#16171b;--ink:#f3f4f6;--dim:#a1a6b0;--line:#26282e;--accent:#8ab4ff}
-@media (prefers-color-scheme: light){:root{--bg:#fafafa;--card:#fff;--ink:#16171b;--dim:#5f646d;--line:#e6e7ea;--accent:#2f6fe0}}
+:root{--bg:#0e0f12;--card:#16171b;--ink:#f3f4f6;--dim:#a1a6b0;--line:#26282e;--accent:#8ab4ff;--bezel:#1b1c20;--island:#000000}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#fafafa;--card:#fff;--ink:#16171b;--dim:#5f646d;--line:#e6e7ea;--accent:#2f6fe0;--bezel:#2d3036;--island:#000000}}
+:root[data-theme="light"]{--bg:#fafafa;--card:#fff;--ink:#16171b;--dim:#5f646d;--line:#e6e7ea;--accent:#2f6fe0;--bezel:#2d3036;--island:#000000}
+:root[data-theme="dark"]{--bg:#0e0f12;--card:#16171b;--ink:#f3f4f6;--dim:#a1a6b0;--line:#26282e;--accent:#8ab4ff;--bezel:#1b1c20;--island:#000000}
+
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",sans-serif}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",sans-serif;transition:background .25s ease,color .25s ease}
 a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 .wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px}
 header{display:flex;align-items:center;gap:12px;margin-bottom:36px;flex-wrap:wrap}
 header img{width:40px;height:40px;border-radius:10px}
 header .name{font-weight:700;font-size:18px}
-nav{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+nav{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:14px}
 nav a{color:var(--dim)}nav a.on{color:var(--ink);font-weight:600}
+.theme-toggle{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;padding:0;transition:all .2s ease}
+.theme-toggle:hover{background:var(--card);border-color:var(--accent)}
+
 h1{font-size:32px;line-height:1.2;margin:0 0 6px}
 h2{font-size:20px;margin:36px 0 8px}
 h3{font-size:16px;margin:22px 0 4px}
@@ -23,14 +29,74 @@ th{color:var(--dim);font-weight:600}
 code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:14px;word-break:break-all}
 hr{border:0;border-top:1px solid var(--line);margin:56px 0 32px}
 footer{color:var(--dim);font-size:13px;margin-top:56px;border-top:1px solid var(--line);padding-top:18px}
-.hero{text-align:center;margin:10px 0 30px}.hero img.demo{width:100%;border-radius:14px;border:1px solid var(--line);margin-top:22px}
-.btn{display:inline-block;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;margin:6px}
+.hero{text-align:center;margin:10px 0 30px}
+.btn{display:inline-block;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;margin:6px;transition:opacity .2s ease}
+.btn:hover{opacity:.9;text-decoration:none}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--accent)}
 @media (max-width:560px){h1{font-size:26px}nav{margin-left:0;width:100%}}
 .tip{display:flex;align-items:center;gap:14px;max-width:560px;margin:18px auto 0;padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:18px;text-align:left}
-.tip-mochi{flex:none}.tip-mochi .steam path{animation:steam 2.6s ease-in-out infinite;opacity:.0}.tip-mochi .steam path+path{animation-delay:1.3s}
+.tip-mochi{flex:none;transition:transform .2s ease}
+.tip-mochi:hover{transform:scale(1.05)}
+.mochi-happy{animation:happy-bounce .7s ease}
+@keyframes happy-bounce{0%,100%{transform:scale(1)}30%{transform:scale(1.15) rotate(-6deg)}60%{transform:scale(1.1) rotate(6deg)}}
+.tip-mochi .steam path{animation:steam 2.6s ease-in-out infinite;opacity:.0}.tip-mochi .steam path+path{animation-delay:1.3s}
 @keyframes steam{0%{opacity:0;transform:translateY(4px)}40%{opacity:.7}100%{opacity:0;transform:translateY(-6px)}}
 .tip-text{flex:1;font-size:14px;color:var(--dim);line-height:1.5}.tip-text b{color:var(--ink)}
 .tip-btn{margin:0;white-space:nowrap}
 @media (max-width:560px){.tip{flex-wrap:wrap;justify-content:center;text-align:center}.tip-text{flex-basis:100%}}
-@media (prefers-reduced-motion:reduce){.tip-mochi .steam path{animation:none;opacity:.6}}
+@media (prefers-reduced-motion:reduce){.tip-mochi .steam path,.tip-mochi{animation:none;opacity:.6}}
+
+/* --- Interactive Live Notch Simulator --- */
+.sim-container{margin:28px 0 36px;border-radius:20px;border:1px solid var(--line);background:var(--card);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.15)}
+.sim-header-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.08);font-size:13px;color:var(--dim)}
+.sim-tabs{display:flex;gap:6px}
+.sim-tab{background:transparent;border:0;color:var(--dim);font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .15s ease}
+.sim-tab.active{background:var(--bg);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.sim-tab:hover:not(.active){color:var(--ink)}
+
+.sim-screen{position:relative;height:240px;background:linear-gradient(180deg,#1e2029 0%,#111217 100%);display:flex;flex-direction:column;align-items:center;overflow:hidden;padding-top:0}
+.sim-screen.iphone-mode{background:linear-gradient(135deg,#0d1117 0%,#161b22 100%);padding-top:14px}
+.sim-bezel{position:absolute;top:0;left:0;right:0;height:4px;background:#050507}
+
+.sim-island{position:relative;background:#000;color:#fff;border-radius:0 0 16px 16px;z-index:10;display:flex;flex-direction:column;align-items:center;cursor:pointer;user-select:none;box-shadow:0 6px 18px rgba(0,0,0,.6);transition:all .35s cubic-bezier(.32,1.22,.42,1)}
+.sim-screen.iphone-mode .sim-island{border-radius:20px;top:4px}
+
+/* Island States */
+.sim-island.state-idle{width:180px;height:32px;padding:4px 12px;flex-direction:row;justify-content:space-between}
+.sim-island.state-working{width:310px;height:38px;padding:6px 14px;flex-direction:row;justify-content:space-between}
+.sim-island.state-approval{width:460px;height:124px;padding:12px 18px;border-radius:0 0 20px 20px}
+.sim-island.state-chat{width:440px;height:108px;padding:12px 16px;border-radius:0 0 20px 20px}
+.sim-island.state-iphone{width:220px;height:36px;padding:6px 14px;flex-direction:row;justify-content:space-between}
+
+.sim-island-header{display:flex;align-items:center;gap:8px;width:100%;font-size:13px;font-weight:500}
+.sim-mochi-icon{width:22px;height:19px;flex:none}
+.sim-status{font-size:12px;color:#d0d3dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sim-status b{color:#fff}
+.sim-prompt{width:100%;margin-top:10px;display:none;flex-direction:column;gap:8px}
+
+.sim-cmd{background:#18191f;border:1px solid #2e313b;border-radius:8px;padding:6px 10px;font-size:12px;text-align:left;color:#9cdcfe}
+.sim-cmd code{background:transparent;border:0;color:inherit;padding:0}
+.sim-actions{display:flex;justify-content:flex-end;gap:8px}
+.sim-btn{border:0;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;transition:transform .15s ease,opacity .15s ease}
+.sim-btn:hover{opacity:.9;transform:scale(1.02)}
+.sim-allow{background:#2ecc71;color:#0b2e16}
+.sim-deny{background:#353842;color:#d0d3dc}
+.sim-input{background:#18191f;border:1px solid #2e313b;border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;width:100%}
+.sim-approved{color:#2ecc71;font-size:13px;font-weight:600;padding:6px 0;text-align:center}
+.sim-denied{color:#e74c3c;font-size:13px;font-weight:600;padding:6px 0;text-align:center}
+
+.dot-green{display:inline-block;width:7px;height:7px;border-radius:50%;background:#2ecc71;margin-right:5px;box-shadow:0 0 6px #2ecc71}
+.dot-amber{display:inline-block;width:7px;height:7px;border-radius:50%;background:#f39c12;margin-right:5px;box-shadow:0 0 6px #f39c12}
+.dot-blue{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3498db;margin-right:5px;box-shadow:0 0 6px #3498db}
+.dot-purple{display:inline-block;width:7px;height:7px;border-radius:50%;background:#9b59b6;margin-right:5px;box-shadow:0 0 6px #9b59b6}
+
+/* Controls under simulator */
+.sim-controls{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;background:rgba(0,0,0,.04);border-top:1px solid var(--line);flex-wrap:wrap}
+.sim-controls-label{font-size:12px;font-weight:600;color:var(--dim);margin-right:4px}
+.sim-pill-btn{background:var(--bg);border:1px solid var(--line);color:var(--ink);padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s ease}
+.sim-pill-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sim-pill-btn.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.sim-gif-area{display:none}
+.sim-gif-area img{width:100%;display:block}
