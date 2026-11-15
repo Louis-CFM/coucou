@@ -352,6 +352,12 @@ fn build_stream(source: &Source, mut sink: impl FnMut(&[f32]) + Send + 'static) 
             err_fn,
             None,
         ),
+        cpal::SampleFormat::I24 => device.build_input_stream::<cpal::I24, _, _>(
+            config,
+            move |data: &[cpal::I24], _| push(&mut data.iter().map(|&s| cpal::Sample::to_sample::<f32>(s))),
+            err_fn,
+            None,
+        ),
         cpal::SampleFormat::I32 => device.build_input_stream::<i32, _, _>(
             config,
             move |data: &[i32], _| push(&mut data.iter().map(|&s| s as f32 / 2_147_483_648.0)),
