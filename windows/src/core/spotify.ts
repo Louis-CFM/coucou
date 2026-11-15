@@ -96,8 +96,12 @@ export function musicPlaying(s: SpotifyState, activeIntegrations: readonly strin
   return s.playing && s.track != null && activeIntegrations.includes(SPOTIFY_ID);
 }
 
-/** The states Mochi dances in; the rest (an alert, an error, sleep) win. */
-const DANCE_STATES: ReadonlySet<BotStateName> = new Set(["idle", "working", "thinking", "searching", "finished"]);
+/** The states Mochi dances in (only resting ones, idle or finished; a
+ *  Mochi at work keeps working). The rest (work, an alert, an error, sleep) win. */
+const DANCE_STATES: ReadonlySet<BotStateName> = new Set(["idle", "finished"]);
+
+/** Whether a Mochi in this state dances while music plays. */
+export const dancesIn = (state: BotStateName) => DANCE_STATES.has(state);
 
 /**
  * The island's Mochi (BotCanvasView, macOS): in the compact island whenever

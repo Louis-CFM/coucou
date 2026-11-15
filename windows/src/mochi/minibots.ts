@@ -3,6 +3,7 @@
 
 import { BotEngine, hexToRGB } from "./engine";
 import type { AgentTask } from "../core/state";
+import { dancesIn } from "../core/spotify";
 
 interface MiniBot {
   canvas: HTMLCanvasElement;
@@ -14,6 +15,12 @@ interface MiniBot {
 }
 
 const live = new Map<HTMLCanvasElement, MiniBot>();
+
+/** music is playing, so every resting mini dances (island.ts, each frame). */
+let music = false;
+export function setMiniBotsMusic(on: boolean) {
+  music = on;
+}
 
 /**
  * Creates a mini Mochi whose **body** is `bodySize` CSS pixels across.
@@ -79,7 +86,7 @@ export function tickMiniBots(dt: number) {
   for (const mb of live.values()) {
     const ctx = mb.canvas.getContext("2d");
     if (!ctx) continue;
-    mb.engine.setDancing(mb.dancing?.() ?? false);
+    mb.engine.setDancing(mb.dancing?.() ?? (music && dancesIn(mb.engine.state)));
     mb.engine.update(dt);
     // Sized at creation: the island may have moved to a monitor of another scale.
     const px = Math.round(mb.cssSize * dpr);
