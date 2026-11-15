@@ -122,6 +122,21 @@
    "ko": "7일",
    "ja": "7 日"
   },
+  "A click on a session's pill brings its terminal or editor forward, as Open terminal does.": {
+   "zh-Hans": "点击会话的标签会把它的终端或编辑器调到前面，和“打开终端”一样。",
+   "hi": "किसी सेशन की पिल पर क्लिक करने से उसका टर्मिनल या एडिटर सामने आ जाता है, जैसे टर्मिनल खोलें करता है।",
+   "es": "Un clic en la píldora de una sesión trae al frente su terminal o editor, como Abrir terminal.",
+   "ar": "النقر على حبة جلسة يُظهر طرفيتها أو محررها في المقدمة، كما يفعل فتح الطرفية.",
+   "fr": "Un clic sur la pastille d'une session met son terminal ou son éditeur au premier plan, comme Ouvrir le terminal.",
+   "bn": "কোনো সেশনের পিলে ক্লিক করলে তার টার্মিনাল বা এডিটর সামনে আসে, টার্মিনাল খুলুন-এর মতো।",
+   "pt-BR": "Um clique na pílula de uma sessão traz o terminal ou o editor dela para a frente, como Abrir terminal.",
+   "ru": "Щелчок по пилюле сеанса выводит вперёд его терминал или редактор, как «Открыть терминал».",
+   "id": "Klik pada pil sesi membawa terminal atau editornya ke depan, seperti Buka terminal.",
+   "de": "Ein Klick auf die Pille einer Sitzung holt ihr Terminal oder ihren Editor nach vorn, wie Terminal öffnen.",
+   "tr": "Bir oturumun hapına tıklamak, Terminali aç gibi terminalini ya da düzenleyicisini öne getirir.",
+   "ko": "세션 알약을 클릭하면 터미널 열기처럼 그 터미널이나 편집기를 앞으로 가져와요.",
+   "ja": "セッションのピルをクリックすると、「ターミナルを開く」と同じようにそのターミナルやエディタを前面に出します。"
+  },
   "A message whose sender, subject or text holds one of these words or addresses goes straight to Junk. Whole words only: “sale” does not catch “Salesforce”.": {
    "zh-Hans": "发件人、主题或正文包含这些词或地址的邮件会直接移到垃圾邮件。只匹配完整单词：“sale”不会匹配“Salesforce”。",
    "hi": "जिस मेल के प्रेषक, विषय या टेक्स्ट में इनमें से कोई शब्द या पता हो, वह सीधे जंक में जाता है। सिर्फ़ पूरे शब्द: “sale” से “Salesforce” नहीं पकड़ा जाता।",
@@ -2071,6 +2086,21 @@
    "tr": "Kaydetmek için tıkla",
    "ko": "클릭해서 기록",
    "ja": "クリックして記録"
+  },
+  "Clicking an agent opens its window": {
+   "zh-Hans": "点击代理即打开其窗口",
+   "hi": "एजेंट पर क्लिक करने से उसकी विंडो खुलती है",
+   "es": "Al hacer clic en un agente se abre su ventana",
+   "ar": "النقر على وكيل يفتح نافذته",
+   "fr": "Cliquer sur un agent ouvre sa fenêtre",
+   "bn": "এজেন্টে ক্লিক করলে তার উইন্ডো খোলে",
+   "pt-BR": "Clicar em um agente abre a janela dele",
+   "ru": "Щелчок по агенту открывает его окно",
+   "id": "Mengeklik agen membuka jendelanya",
+   "de": "Ein Klick auf einen Agenten öffnet sein Fenster",
+   "tr": "Bir ajana tıklamak penceresini açar",
+   "ko": "에이전트를 클릭하면 창이 열려요",
+   "ja": "エージェントをクリックするとそのウインドウを開く"
   },
   "Close": {
    "zh-Hans": "关闭",
