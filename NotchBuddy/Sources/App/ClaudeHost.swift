@@ -32,6 +32,7 @@ struct ClaudeHost: Equatable {
         "com.cmuxterm.app":           "cmux",    // sets TERM_PROGRAM=ghostty: the bundle id decides
         "com.stablyai.orca":          "Orca",
         "com.conductor.app":          "Conductor", // runs Claude Code with no TERM_PROGRAM
+        "com.t3tools.t3code": "T3 Code",
     ]
     private static let termPrograms: [String: String] = [
         "warpterminal":   "dev.warp.Warp-Stable",
@@ -69,9 +70,11 @@ struct ClaudeHost: Equatable {
     @discardableResult
     static func activate(_ hostBundleId: String?) -> Bool {
         guard let id = hostBundleId, terminals[id] != nil else { return false }
-        if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
-            running.activate()
-        } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+        // Open through Launch Services even when it runs: since macOS 14,
+        // NSRunningApplication.activate() is ignored when called from an app that is not
+        // active, and the island never is.
+        let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id })
+        if let url = running?.bundleURL ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
             NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
         }
         return true

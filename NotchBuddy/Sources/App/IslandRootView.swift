@@ -143,6 +143,15 @@ struct IslandContainer: View {
                         IslandHeader(state: state)
                             .frame(width: islandWidth, height: 34)
                             .offset(y: 8)
+                        #if !APPSTORE
+                        // While a file is dragged over: the sessions it can go to, on the card's right.
+                        if state.view == .upload {
+                            SessionDropTargets(state: state)
+                                .padding(.trailing, 22)
+                                .frame(width: islandWidth, height: max(0, islandHeight - 52), alignment: .trailing)
+                                .offset(y: 42)
+                        }
+                        #endif
                     }
                     .transition(.opacity)
                 } else {
@@ -697,6 +706,10 @@ struct IslandHeader: View {
                     #endif
                 })
                 TabButton(icon: "plus", view: .upload, state: state)
+                #if !APPSTORE
+                // A new Claude Code session, in a project, from here.
+                TabButton(icon: "terminal", view: .launch, state: state)
+                #endif
             }
             .padding(.leading, 14)
 

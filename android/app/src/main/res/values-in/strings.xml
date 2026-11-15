@@ -148,6 +148,8 @@
     <string name="approval_hint">Izinkan di ponsel meminta sidik jari atau kunci layar. Tolak tidak.</string>
     <string name="overlay_title">Tampilkan Mochi di atas aplikasi lain</string>
     <string name="overlay_hint">Sebuah pulau turun dari atas layar saat agen bekerja, lalu naik kembali.</string>
+    <string name="overlay_dnd_title">Sembunyikan pulau saat Jangan Ganggu</string>
+    <string name="overlay_dnd_hint">Selama Jangan Ganggu aktif, tidak ada yang turun dari atas layar. Permintaan tetap datang sebagai notifikasi.</string>
     <string name="msg_overlay_permission">Izinkan \"tampil di atas aplikasi lain\" untuk Coucou, lalu kembali.</string>
     <string name="settings_title">Pengaturan</string>
     <string name="settings_sound">Suara Mochi</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">Punya pertanyaan</string>
     <string name="notif_ratelimit">Mencapai batas pemakaian</string>
     <string name="island_answer_on_pc">Ketuk untuk membuka Coucou, atau jawab di komputermu</string>
+    <string name="island_dismiss">Tutup pulau</string>
     <string name="state_ready">Siap</string>
     <string name="state_working">Bekerja</string>
     <string name="state_thinking">Berpikir</string>

@@ -104,7 +104,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
         let gender = VoiceSettings.elevenGender
         // Pitch per voice type (Settings → Voice): the male voice a bit higher sounds younger.
         utt.pitchMultiplier = Float(VoiceSettings.pitch(for: gender))
-        utt.rate = AVSpeechUtteranceDefaultSpeechRate * 1.1
+        utt.rate = AVSpeechUtteranceDefaultSpeechRate * Float(VoiceSettings.rate)
         utt.voice = Self.bestVoice(for: locale, gender: gender)
         currentUtterance = utt
         synth.speak(utt)

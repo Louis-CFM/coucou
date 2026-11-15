@@ -54,6 +54,22 @@ enum FlowKeyLogicTests {
             check("its release does nothing", k.keyUp(at: 15.1) == .none)
         }
 
+        print("\nOne tap: hands-free (setting on)")
+        do {
+            var k = FlowKeyLogic()
+            k.oneTap = true
+            _ = k.keyDown(at: 10)
+            check("a short press locks", k.keyUp(at: 10.1) == .lock)
+            check("locked", k.phase == .locked)
+            check("next press pastes", k.keyDown(at: 15) == .finish)
+            check("its release does nothing", k.keyUp(at: 15.1) == .none)
+            _ = k.keyDown(at: 20)
+            check("a hold still pastes on release", k.keyUp(at: 21) == .finish)
+            _ = k.keyDown(at: 30)
+            check("another key while held still cancels", k.otherKey() == .cancel)
+            check("idle after", k.phase == .idle)
+        }
+
         print("\nA second press after the window, before the tick")
         do {
             var k = FlowKeyLogic()

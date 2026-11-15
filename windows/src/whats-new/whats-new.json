@@ -2,6 +2,151 @@
   "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 14 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.6.0",
+      "items": [
+        {
+          "icon": "shield",
+          "title": {
+            "en": "Approve Antigravity and OpenCode",
+            "zh-Hans": "批准 Antigravity 和 OpenCode",
+            "hi": "Antigravity और OpenCode को मंज़ूरी",
+            "es": "Aprueba Antigravity y OpenCode",
+            "ar": "وافق على Antigravity وOpenCode",
+            "fr": "Approuve Antigravity et OpenCode",
+            "bn": "Antigravity ও OpenCode অনুমোদন",
+            "pt-BR": "Aprove o Antigravity e o OpenCode",
+            "ru": "Одобряйте Antigravity и OpenCode",
+            "id": "Setujui Antigravity dan OpenCode",
+            "de": "Antigravity und OpenCode freigeben",
+            "tr": "Antigravity ve OpenCode'u onayla",
+            "ko": "Antigravity와 OpenCode 승인",
+            "ja": "Antigravity と OpenCode を承認"
+          },
+          "detail": {
+            "en": "Their requests wait for your Allow or Deny on the island.",
+            "zh-Hans": "它们的请求会在岛上等你允许或拒绝。",
+            "hi": "उनके अनुरोध आइलैंड पर आपकी अनुमति या इनकार का इंतज़ार करते हैं।",
+            "es": "Sus solicitudes esperan tu Permitir o Denegar en la isla.",
+            "ar": "طلباتهما تنتظر سماحك أو رفضك على الجزيرة.",
+            "fr": "Leurs demandes attendent ton Autoriser ou Refuser sur l'île.",
+            "bn": "তাদের অনুরোধ আইল্যান্ডে আপনার অনুমতি বা প্রত্যাখ্যানের অপেক্ষা করে।",
+            "pt-BR": "Os pedidos deles esperam seu Permitir ou Negar na ilha.",
+            "ru": "Их запросы ждут вашего «Разрешить» или «Отклонить» на острове.",
+            "id": "Permintaannya menunggu Izinkan atau Tolak darimu di island.",
+            "de": "Ihre Anfragen warten auf der Insel auf dein Erlauben oder Ablehnen.",
+            "tr": "İstekleri adada İzin ver ya da Reddet'i bekler.",
+            "ko": "요청이 아일랜드에서 허용 또는 거부를 기다립니다.",
+            "ja": "リクエストがアイランドであなたの許可か拒否を待ちます。"
+          }
+        },
+        {
+          "icon": "terminal",
+          "title": {
+            "en": "Start a session from the notch",
+            "zh-Hans": "从刘海直接开始会话",
+            "hi": "नॉच से सत्र शुरू करें",
+            "es": "Inicia una sesión desde el notch",
+            "ar": "ابدأ جلسة من النوتش",
+            "fr": "Lance une session depuis le notch",
+            "bn": "নচ থেকে সেশন শুরু করুন",
+            "pt-BR": "Inicie uma sessão pelo notch",
+            "ru": "Новая сессия прямо из выреза",
+            "id": "Mulai sesi dari notch",
+            "de": "Eine Sitzung aus der Notch starten",
+            "tr": "Çentikten oturum başlat",
+            "ko": "노치에서 세션 시작",
+            "ja": "ノッチからセッションを開始"
+          },
+          "detail": {
+            "en": "Pick a project, say what to do: your terminal opens with Claude Code and your words.",
+            "zh-Hans": "选个项目，说出要做的事：终端会带着 Claude Code 和你的话打开。",
+            "hi": "प्रोजेक्ट चुनें, बताएँ क्या करना है: टर्मिनल Claude Code और आपके शब्दों के साथ खुलता है।",
+            "es": "Elige un proyecto, di qué hacer: tu terminal se abre con Claude Code y tus palabras.",
+            "ar": "اختر مشروعًا وقل ما المطلوب: تفتح الطرفية مع Claude Code وكلماتك.",
+            "fr": "Choisis un projet, dis quoi faire : ton terminal s'ouvre avec Claude Code et tes mots.",
+            "bn": "প্রজেক্ট বেছে কী করতে হবে বলুন: টার্মিনাল Claude Code আর আপনার কথা নিয়ে খোলে।",
+            "pt-BR": "Escolha um projeto, diga o que fazer: o terminal abre com o Claude Code e suas palavras.",
+            "ru": "Выберите проект и скажите, что сделать: терминал откроется с Claude Code и вашими словами.",
+            "id": "Pilih proyek, katakan tugasnya: terminal terbuka dengan Claude Code dan kata-katamu.",
+            "de": "Projekt wählen, Aufgabe sagen: Dein Terminal öffnet sich mit Claude Code und deinen Worten.",
+            "tr": "Bir proje seç, ne yapılacağını söyle: terminal Claude Code ve sözlerinle açılır.",
+            "ko": "프로젝트를 고르고 할 일을 말하면 Claude Code와 함께 터미널이 열립니다.",
+            "ja": "プロジェクトを選んで頼むと、Claude Code とあなたの言葉でターミナルが開きます。"
+          }
+        },
+        {
+          "icon": "download",
+          "title": {
+            "en": "Drop a file on a session",
+            "zh-Hans": "把文件拖到会话上",
+            "hi": "फ़ाइल को सत्र पर छोड़ें",
+            "es": "Suelta un archivo en una sesión",
+            "ar": "أفلت ملفًا على جلسة",
+            "fr": "Lâche un fichier sur une session",
+            "bn": "সেশনের ওপর ফাইল ছাড়ুন",
+            "pt-BR": "Solte um arquivo numa sessão",
+            "ru": "Бросьте файл на сессию",
+            "id": "Jatuhkan file ke sesi",
+            "de": "Eine Datei auf eine Sitzung ziehen",
+            "tr": "Bir dosyayı oturuma bırak",
+            "ko": "파일을 세션에 놓기",
+            "ja": "ファイルをセッションにドロップ"
+          },
+          "detail": {
+            "en": "Let go on a session in the drop card: the file lands in its prompt.",
+            "zh-Hans": "在投放卡片上松开到某个会话：文件就进入它的提示里。",
+            "hi": "ड्रॉप कार्ड में किसी सत्र पर छोड़ें: फ़ाइल उसके प्रॉम्प्ट में पहुँचती है।",
+            "es": "Suéltalo sobre una sesión en la tarjeta: el archivo llega a su prompt.",
+            "ar": "أفلته على جلسة في بطاقة الإفلات: يصل الملف إلى موجّهها.",
+            "fr": "Lâche-le sur une session de la carte de dépôt : le fichier arrive dans son prompt.",
+            "bn": "ড্রপ কার্ডে কোনো সেশনের ওপর ছাড়ুন: ফাইলটি তার প্রম্পটে পৌঁছায়।",
+            "pt-BR": "Solte sobre uma sessão no cartão: o arquivo chega ao prompt dela.",
+            "ru": "Отпустите над сессией в карточке: файл попадёт в её запрос.",
+            "id": "Lepaskan di sebuah sesi pada kartu: file masuk ke prompt-nya.",
+            "de": "Auf einer Sitzung der Ablagekarte loslassen: Die Datei landet in ihrem Prompt.",
+            "tr": "Bırakma kartındaki bir oturumun üstüne bırak: dosya onun komutuna girer.",
+            "ko": "드롭 카드의 세션 위에 놓으면 파일이 그 프롬프트로 들어갑니다.",
+            "ja": "ドロップカードのセッションで離すと、ファイルがそのプロンプトに入ります。"
+          }
+        },
+        {
+          "icon": "mic",
+          "title": {
+            "en": "« OK Coucou » with your accent",
+            "zh-Hans": "带口音也能说« OK Coucou »",
+            "hi": "अपने लहजे में « OK Coucou »",
+            "es": "« OK Coucou » con tu acento",
+            "ar": "« OK Coucou » بلكنتك",
+            "fr": "« OK Coucou » avec ton accent",
+            "bn": "আপনার উচ্চারণে « OK Coucou »",
+            "pt-BR": "« OK Coucou » com seu sotaque",
+            "ru": "« OK Coucou » с вашим акцентом",
+            "id": "« OK Coucou » dengan logatmu",
+            "de": "« OK Coucou » mit deinem Akzent",
+            "tr": "Kendi aksanınla « OK Coucou »",
+            "ko": "내 억양으로 « OK Coucou »",
+            "ja": "なまりのある « OK Coucou » も"
+          },
+          "detail": {
+            "en": "Brazilian and Spanish accents wake it now, and one press of the key starts hands-free.",
+            "zh-Hans": "巴西和西班牙口音也能唤醒，按一下键就开始免手动。",
+            "hi": "ब्राज़ीली और स्पेनिश लहजे भी जगाते हैं, और एक बार कुंजी दबाने से हैंड्स-फ़्री शुरू होता है।",
+            "es": "Los acentos brasileño y español lo despiertan, y un toque de la tecla inicia el manos libres.",
+            "ar": "اللكنتان البرازيلية والإسبانية توقظانه، وضغطة واحدة تبدأ بلا يدين.",
+            "fr": "Les accents brésilien et espagnol le réveillent, et un appui sur la touche lance le mains libres.",
+            "bn": "ব্রাজিলীয় ও স্প্যানিশ উচ্চারণেও জাগে, আর একবার কী চাপলে হ্যান্ডস-ফ্রি শুরু হয়।",
+            "pt-BR": "Os sotaques brasileiro e espanhol o acordam, e um toque na tecla inicia o mãos-livres.",
+            "ru": "Бразильский и испанский акценты будят его, а одно нажатие клавиши включает «без рук».",
+            "id": "Logat Brasil dan Spanyol membangunkannya, dan sekali tekan memulai mode tanpa tangan.",
+            "de": "Brasilianischer und spanischer Akzent wecken es, ein Tastendruck startet freihändig.",
+            "tr": "Brezilya ve İspanyol aksanı onu uyandırır, tuşa bir basış ellerin serbest modu başlatır.",
+            "ko": "브라질·스페인 억양으로도 깨어나고, 키를 한 번 누르면 핸즈프리가 시작됩니다.",
+            "ja": "ブラジル・スペインなまりでも起動し、キーを一度押せばハンズフリーが始まります。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.9",
       "items": [
         {

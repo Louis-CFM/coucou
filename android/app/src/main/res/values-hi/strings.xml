@@ -148,6 +148,8 @@
     <string name="approval_hint">फ़ोन पर अनुमति देने के लिए फ़िंगरप्रिंट या स्क्रीन लॉक चाहिए। अस्वीकार करने के लिए नहीं।</string>
     <string name="overlay_title">दूसरे ऐप्स के ऊपर Mochi दिखाएँ</string>
     <string name="overlay_hint">जब कोई एजेंट काम करता है तो स्क्रीन के ऊपर से एक आइलैंड नीचे आता है, फिर वापस ऊपर चला जाता है।</string>
+    <string name="overlay_dnd_title">डू नॉट डिस्टर्ब में आइलैंड छिपाएँ</string>
+    <string name="overlay_dnd_hint">जब तक डू नॉट डिस्टर्ब चालू है, स्क्रीन के ऊपर से कुछ नीचे नहीं आता। अनुरोध फिर भी नोटिफ़िकेशन के रूप में आते हैं।</string>
     <string name="msg_overlay_permission">Coucou के लिए \"दूसरे ऐप्स के ऊपर दिखाएँ\" की अनुमति दें, फिर वापस आएँ।</string>
     <string name="settings_title">सेटिंग</string>
     <string name="settings_sound">Mochi की आवाज़ें</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">एक सवाल है</string>
     <string name="notif_ratelimit">उपयोग की सीमा पर पहुँचा</string>
     <string name="island_answer_on_pc">Coucou खोलने के लिए टैप करें, या अपने कंप्यूटर पर जवाब दें</string>
+    <string name="island_dismiss">आइलैंड हटाएँ</string>
     <string name="state_ready">तैयार</string>
     <string name="state_working">काम कर रहा है</string>
     <string name="state_thinking">सोच रहा है</string>

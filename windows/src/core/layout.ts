@@ -25,7 +25,8 @@ export type IslandViewName =
   | "recap"
   | "wardrobe"
   | "update"
-  | "whatsNew";
+  | "whatsNew"
+  | "launch";
 
 export type BotStateName =
   | "idle"
@@ -100,6 +101,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   // After an update: what the new version brings, then "Your Coucou so far".
   // Taller than a card, for two rows of items with their line.
   whatsNew: { height: 222, botX: 62, botY: null, botDiameter: 58, agentMode: "none" },
+  // A new Claude Code session: Mochi on the left, the project and the prompt (Mac: .launch).
+  launch: { height: 160, botX: 58, botY: null, botDiameter: 52, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually

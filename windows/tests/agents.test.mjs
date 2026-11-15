@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  APPROVAL_AGENTS, KNOWN_AGENTS, agentColor, agentName, validateAgent,
+  AGY_CARD_KIND, APPROVAL_AGENTS, KNOWN_AGENTS, agentColor, agentName, takesCard, validateAgent,
 } from "../src/island/agents.ts";
 
 test("known agents carry the Mac's names and colours", () => {
@@ -34,5 +34,14 @@ test("the agent tag is checked the Mac's way, and claude is reserved", () => {
 
 test("approval cards are for the agents the relay answers, no one else", () => {
   // Must match takes_decisions() in hook/src/reply.rs.
-  assert.deepEqual([...APPROVAL_AGENTS].sort(), ["claude-desktop", "codex", "copilot", "muse"]);
+  assert.deepEqual([...APPROVAL_AGENTS].sort(), ["claude-desktop", "codex", "copilot", "muse", "opencode"]);
+});
+
+test("Antigravity gets a card only for the commands Coucou itself puts on one", () => {
+  assert.equal(AGY_CARD_KIND, "agy_pre_tool"); // agy_approvals::KIND in Rust
+  assert.equal(takesCard(null, undefined), true); // Claude Code
+  assert.equal(takesCard("codex", undefined), true);
+  assert.equal(takesCard("antigravity", "agy_pre_tool"), true);
+  assert.equal(takesCard("antigravity", undefined), false);
+  assert.equal(takesCard("gemini", "agy_pre_tool"), false);
 });

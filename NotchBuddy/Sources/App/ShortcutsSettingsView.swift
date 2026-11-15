@@ -16,11 +16,33 @@ struct ShortcutsSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            #if !APPSTORE
+            screenshotSection
+            #endif
             globalSection
             islandSection
         }
         .onAppear { reload() }
     }
+
+    // MARK: - Screenshots
+
+    #if !APPSTORE
+    /// The two ways to capture the screen, together in their own box (and not again in the list below).
+    static let screenshotActions: [ShortcutAction] = [.quickScreenshot, .captureScreen]
+
+    private var screenshotSection: some View {
+        GroupBox(String(localized: "shortcut.group.screenshots")) {
+            VStack(alignment: .leading, spacing: 0) {
+                shortcutRow(.quickScreenshot, detail: String(localized: "shortcut.screenshot.detail"))
+                Divider().padding(.leading, 24)
+                shortcutRow(.captureScreen, detail: String(localized: "shortcut.capture.detail"))
+            }
+            .padding(6)
+        }
+            .settingsAnchor("shortcuts.screenshots")
+    }
+    #endif
 
     // MARK: - Global shortcuts
 
@@ -52,12 +74,12 @@ struct ShortcutsSettingsView: View {
         #if APPSTORE
         ShortcutAction.allCases.filter { !$0.isNonAppStore }
         #else
-        ShortcutAction.allCases
+        ShortcutAction.allCases.filter { !Self.screenshotActions.contains($0) }
         #endif
     }
 
     @ViewBuilder
-    private func shortcutRow(_ action: ShortcutAction) -> some View {
+    private func shortcutRow(_ action: ShortcutAction, detail: String? = nil) -> some View {
         let isEnabled    = enabled[action] ?? action.enabledByDefault
         let spec         = specs[action]   ?? ShortcutLogic.defaults[action]!
         let hasSysConf   = systemConflicts.contains(action)
@@ -72,9 +94,17 @@ struct ShortcutsSettingsView: View {
             .toggleStyle(.checkbox)
             .frame(width: 18)
 
-            Text(action.displayName)
-                .font(.system(size: 12))
-                .frame(minWidth: 160, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(action.displayName)
+                    .font(.system(size: 12))
+                if let detail {
+                    Text(detail)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(minWidth: 160, alignment: .leading)
 
             Spacer(minLength: 4)
 

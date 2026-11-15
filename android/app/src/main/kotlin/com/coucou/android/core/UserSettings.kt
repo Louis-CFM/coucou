@@ -50,6 +50,8 @@ data class UserSettings(
     val dynamicColour: Boolean = false,
     /** Agents (catalog ids) whose finished / failed / limit notices stay quiet. Requests and questions are never muted. */
     val mutedAgents: Set<String> = emptySet(),
+    /** Keep the island away while the phone is in Do Not Disturb (the notifications still reach the shade). Off = today's behaviour. */
+    val hideIslandInDnd: Boolean = false,
 ) {
     companion object {
         private const val SOUND = "sound_on"
@@ -66,6 +68,7 @@ data class UserSettings(
         private const val THEME = "theme_choice"
         private const val DYNAMIC = "dynamic_colour"
         private const val MUTED = "muted_agents"
+        private const val HIDE_IN_DND = "island_hide_in_dnd"
 
         fun load(store: KeyValueStore): UserSettings {
             val d = UserSettings()
@@ -86,6 +89,7 @@ data class UserSettings(
                 theme = ThemeChoice.parse(store.getString(THEME, d.theme.key)),
                 dynamicColour = store.getBoolean(DYNAMIC, d.dynamicColour),
                 mutedAgents = AgentMute.decode(store.getString(MUTED, "")),
+                hideIslandInDnd = store.getBoolean(HIDE_IN_DND, d.hideIslandInDnd),
             )
         }
 
@@ -104,6 +108,7 @@ data class UserSettings(
             store.put(THEME, s.theme.key)
             store.put(DYNAMIC, s.dynamicColour)
             store.put(MUTED, AgentMute.encode(s.mutedAgents))
+            store.put(HIDE_IN_DND, s.hideIslandInDnd)
         }
     }
 }

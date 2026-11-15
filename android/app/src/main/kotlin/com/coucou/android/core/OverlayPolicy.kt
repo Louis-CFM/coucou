@@ -9,8 +9,14 @@ package com.coucou.android.core
  */
 object OverlayPolicy {
     /** The pill is for when you are in another app; inside Coucou the screen already shows it. */
-    fun shouldShow(enabled: Boolean, permitted: Boolean, appInForeground: Boolean): Boolean =
-        blocker(enabled, permitted, appInForeground) == null
+    fun shouldShow(enabled: Boolean, permitted: Boolean, appInForeground: Boolean, silenced: Boolean = false): Boolean =
+        blocker(enabled, permitted, appInForeground, silenced) == null
+
+    /**
+     * "Hide the island in Do Not Disturb": the user asked for it and the phone is in Do Not Disturb (any mode but
+     * "all interruptions"). The notifications still go to the shade, where Android applies its own Do Not Disturb rules.
+     */
+    fun silenced(hideInDnd: Boolean, dndOn: Boolean): Boolean = hideInDnd && dndOn
 
     /**
      * A tap in the first moments is most likely meant for the app underneath (the pill slides in over
@@ -30,10 +36,11 @@ object OverlayPolicy {
     fun approvalAlert(pillShown: Boolean): ApprovalAlert = if (pillShown) ApprovalAlert.QUIET else ApprovalAlert.HEADS_UP
 
     /** Why the pill stays away (for the log), or null when it may show. */
-    fun blocker(enabled: Boolean, permitted: Boolean, appInForeground: Boolean): String? = when {
+    fun blocker(enabled: Boolean, permitted: Boolean, appInForeground: Boolean, silenced: Boolean = false): String? = when {
         !enabled -> "switch is off"
         !permitted -> "'display over other apps' is not allowed"
         appInForeground -> "the app is on screen"
+        silenced -> "Do Not Disturb is on"
         else -> null
     }
 }

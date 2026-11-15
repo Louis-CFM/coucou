@@ -124,6 +124,19 @@ export function behaviour(name: string, make: () => Promise<Harness>) {
       expect(got.kind === "binary" && got.data.length).toBe(66_000);
     });
 
+    it("forwards a burst in the order it was sent", async () => {
+      const { pc, phone } = await pair();
+      // Under the rate burst (60); frames of different sizes, as a conversation sends them.
+      const count = 50;
+      for (let i = 0; i < count; i++) phone.send(new Uint8Array(1 + ((i * 7919) % 40_000)).fill(i));
+      const order: number[] = [];
+      for (let i = 0; i < count; i++) {
+        const m = await pc.next(5000);
+        if (m.kind === "binary") order.push(m.data[0]);
+      }
+      expect(order).toEqual(Array.from({ length: count }, (_, i) => i));
+    });
+
     it("closes a socket that sends a frame over 66,000 bytes (1009)", async () => {
       const { pc, phone } = await pair();
       phone.send(new Uint8Array(66_001));

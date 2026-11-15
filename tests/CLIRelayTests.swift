@@ -60,6 +60,15 @@ enum CLIRelayTests {
         // An empty model is the tool's default too.
         precondition(!CLIRelay.arguments(.cursor, request(model: "")).contains("--model"))
         precondition(SubscriptionCLI.claude.promptOnStdin && SubscriptionCLI.codex.promptOnStdin && !SubscriptionCLI.gemini.promptOnStdin)
+        // Flow's clean-up: no tools at all, Haiku, and no thinking.
+        var flow = request(web: false, model: "claude-haiku-4-5")
+        flow.thinking = false
+        let cleanUp = CLIRelay.arguments(.claude, flow)
+        precondition(value(after: "--tools", in: cleanUp) == "" && !cleanUp.contains("--allowedTools"))
+        precondition(value(after: "--model", in: cleanUp) == "claude-haiku-4-5")
+        precondition(CLIRelay.environment(.claude, flow) == ["MAX_THINKING_TOKENS": "0"])
+        precondition(CLIRelay.environment(.claude, request()).isEmpty, "the chat thinks as Claude Code likes")
+        precondition(CLIRelay.environment(.codex, flow).isEmpty)
     }
 
     static func ok(_ r: Result<String, CLIFailure>) -> String? {

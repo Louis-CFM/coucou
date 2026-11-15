@@ -40,6 +40,23 @@ test("French accents and capitals do not matter", () => {
   });
 });
 
+test("new main settings remain searchable in English and the UI language", () => {
+  const settings = [
+    ["flow.keys", "Hands-free with one press"],
+    ["agents.antigravity", "Approve commands from the notch"],
+  ];
+  inLanguage("es", () => {
+    for (const [id, label] of settings) {
+      assert.notEqual(t(label), label);
+      for (const query of [label, t(label)]) {
+        const hit = searchSettings(query, title).find((h) => h.entry.id === id);
+        assert.ok(hit, query);
+        assert.equal(hit.label, t(label));
+      }
+    }
+  });
+});
+
 test("sidebar pages are searchable and do not request a box anchor", () => {
   const page = { id: "page.shortcuts", page: "shortcuts", title: "Shortcuts", terms: [], isPage: true };
   const [hit] = searchSettings("shortcuts", title, [page, ...SETTINGS_ENTRIES]);

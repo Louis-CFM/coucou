@@ -55,6 +55,8 @@ final class AppState: ObservableObject {
 
     // File drag-over state (mailbox morph glow + mouth spring)
     @Published var fileDragOver: Bool = false
+    /// The session a file is dragged over in the island (its task id): dropped, it goes into that session's prompt.
+    @Published var dropSessionTarget: String? = nil
 
     // Sound enabled — persisted
     @Published var soundEnabled: Bool = true {

@@ -95,6 +95,8 @@ pub struct Prefs {
     /// KeyboardEvent.code names ("AltLeft", "ShiftLeft", "KeyF").
     pub key_combo: Vec<String>,
     pub edge: Edge,
+    /// Hide the pill while nothing is dictated: it shows only for a dictation, a call being recorded or a message.
+    pub hide_pill: bool,
     /// The microphone by name; empty is the system's default.
     pub mic: String,
     /// Days the history is kept: 0 = not kept, -1 = forever.
@@ -114,6 +116,8 @@ pub struct Prefs {
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
     pub voice_gender: String,
+    /// One short press of the key starts hands-free dictation, instead of two.
+    pub one_tap_hands_free: bool,
 }
 
 impl Default for Prefs {
@@ -123,6 +127,7 @@ impl Default for Prefs {
             key: FlowKey::default(),
             key_combo: Vec::new(),
             edge: Edge::Bottom,
+            hide_pill: false,
             mic: String::new(),
             keep_days: 30,
             cleanup: false,
@@ -133,6 +138,7 @@ impl Default for Prefs {
             mute_others: true,
             voice_output: "system".into(),
             voice_gender: "female".into(),
+            one_tap_hands_free: false,
         }
     }
 }

@@ -27,17 +27,41 @@ fn is_ok(word: &str) -> bool {
     matches!(word, "ok" | "okay" | "oke" | "okey" | "hey")
 }
 
-/// How Parakeet may write "coucou", in one word.
+/// How Parakeet may write "coucou", in one word. Said with a Brazilian
+/// Portuguese accent it comes out as "cocku" (#813), with a Spanish accent as
+/// "coco" (the Mac's spotter takes "coco" too); the others are the close spellings
+/// of those accents. Not "cool": "okay, cool" is too common to wake on, nor
+/// "gogo": "okay, go go" is something people say.
 fn is_coucou(word: &str) -> bool {
     matches!(
         word,
-        "coucou" | "coucous" | "cuckoo" | "cucu" | "kuku" | "koukou" | "cookoo" | "coocoo" | "cocou" | "kukuu" | "couscous"
+        "coucou"
+            | "coucous"
+            | "cuckoo"
+            | "cucu"
+            | "kuku"
+            | "koukou"
+            | "cookoo"
+            | "coocoo"
+            | "cocou"
+            | "kukuu"
+            | "couscous"
+            | "cocku"
+            | "cocu"
+            | "cuco"
+            | "cuku"
+            | "coku"
+            | "kuko"
+            | "coco"
     )
 }
 
 /// …or in two.
 fn is_coucou_pair(a: &str, b: &str) -> bool {
-    matches!((a, b), ("cou", "cou") | ("coo", "coo") | ("ku", "ku") | ("cu", "cu") | ("koo", "koo") | ("cuck", "oo"))
+    matches!(
+        (a, b),
+        ("cou", "cou") | ("coo", "coo") | ("ku", "ku") | ("cu", "cu") | ("koo", "koo") | ("cuck", "oo") | ("co", "co")
+    )
 }
 
 /// When `text` holds the wake phrase, what was said after it (maybe nothing).
@@ -201,6 +225,19 @@ mod tests {
         assert_eq!(after_wake("ok cou cou ajoute Stripe").as_deref(), Some("ajoute Stripe"));
         assert_eq!(after_wake("OK Coucou.").as_deref(), Some(""));
         assert_eq!(after_wake("Hey coucou, ça va ?").as_deref(), Some("ça va ?"));
+        // A Brazilian speaker's « OK Coucou », as Parakeet wrote it (#813).
+        assert_eq!(after_wake("Okay, cocku.").as_deref(), Some(""));
+        assert_eq!(after_wake("Ok, cocku, que horas são?").as_deref(), Some("que horas são?"));
+        assert_eq!(after_wake("Okay, cuco.").as_deref(), Some(""));
+        // "cool" stays out: it is what people say, not the wake phrase.
+        assert_eq!(after_wake("Okay, cool."), None);
+        assert_eq!(after_wake("Okay, cool cool."), None);
+        // A Spanish speaker's « OK Coucou », as Parakeet wrote it.
+        assert_eq!(after_wake("Okay, coco.").as_deref(), Some(""));
+        assert_eq!(after_wake("Okay, Co Co, ¿qué hora es?").as_deref(), Some("¿qué hora es?"));
+        // "go go" stays out, and another assistant's wake phrase never wakes Coucou.
+        assert_eq!(after_wake("Okay, go go."), None);
+        assert_eq!(after_wake("Okay, Google."), None);
         assert_eq!(after_wake("on a dit coucou à Paul"), None);
         assert_eq!(after_wake("ok let's go"), None);
         assert_eq!(normalize("Ça VA, Élodie ?"), "ca va elodie");

@@ -12,12 +12,14 @@ path = "src/main.rs"
 [dependencies]
 serde_json = "1"
 
-# Just enough Win32 to know our own SID and to check who is serving the pipe.
+# Just enough Win32 to know our own SID, to check who is serving the pipe, and
+# to notice the process that ran us going away (ToolHelp finds it).
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",
+  "Win32_System_Diagnostics_ToolHelp",
   "Win32_System_Pipes",
   "Win32_System_Threading",
 ] }

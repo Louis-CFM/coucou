@@ -2,6 +2,167 @@
   "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 16 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.6.0",
+      "items": [
+        {
+          "icon": "terminal",
+          "title": {
+            "en": "Start a session from the notch",
+            "fr": "Lance une session depuis le notch",
+            "es": "Inicia una sesión desde el notch",
+            "pt-BR": "Inicie uma sessão pelo notch",
+            "ru": "Новая сессия прямо из выреза",
+            "zh-Hans": "从刘海直接开始会话",
+            "hi": "नॉच से सत्र शुरू करें",
+            "ar": "ابدأ جلسة من النوتش",
+            "bn": "নচ থেকে সেশন শুরু করুন",
+            "id": "Mulai sesi dari notch",
+            "de": "Eine Sitzung aus der Notch starten",
+            "tr": "Çentikten oturum başlat",
+            "th": "เริ่มเซสชันจากรอยบาก",
+            "zh-Hant": "從瀏海直接開始工作階段",
+            "ko": "노치에서 세션 시작",
+            "ja": "ノッチからセッションを開始"
+          },
+          "detail": {
+            "en": "Pick a project, say what to do: your terminal opens with Claude Code and your words.",
+            "fr": "Choisis un projet, dis quoi faire : ton terminal s'ouvre avec Claude Code et tes mots.",
+            "es": "Elige un proyecto, di qué hacer: tu terminal se abre con Claude Code y tus palabras.",
+            "pt-BR": "Escolha um projeto, diga o que fazer: o terminal abre com o Claude Code e suas palavras.",
+            "ru": "Выберите проект и скажите, что сделать: терминал откроется с Claude Code и вашими словами.",
+            "zh-Hans": "选个项目，说出要做的事：终端会带着 Claude Code 和你的话打开。",
+            "hi": "प्रोजेक्ट चुनें, बताएँ क्या करना है: टर्मिनल Claude Code और आपके शब्दों के साथ खुलता है।",
+            "ar": "اختر مشروعًا وقل ما المطلوب: تفتح الطرفية مع Claude Code وكلماتك.",
+            "bn": "প্রজেক্ট বেছে কী করতে হবে বলুন: টার্মিনাল Claude Code আর আপনার কথা নিয়ে খোলে।",
+            "id": "Pilih proyek, katakan tugasnya: terminal terbuka dengan Claude Code dan kata-katamu.",
+            "de": "Projekt wählen, Aufgabe sagen: Dein Terminal öffnet sich mit Claude Code und deinen Worten.",
+            "tr": "Bir proje seç, ne yapılacağını söyle: terminal Claude Code ve sözlerinle açılır.",
+            "th": "เลือกโปรเจกต์ บอกสิ่งที่ต้องทำ: เทอร์มินัลเปิดพร้อม Claude Code และคำของคุณ",
+            "zh-Hant": "選個專案，說出要做的事：終端機會帶著 Claude Code 和你的話開啟。",
+            "ko": "프로젝트를 고르고 할 일을 말하면 Claude Code와 함께 터미널이 열립니다.",
+            "ja": "プロジェクトを選んで頼むと、Claude Code とあなたの言葉でターミナルが開きます。"
+          }
+        },
+        {
+          "icon": "download",
+          "title": {
+            "en": "Drop a file on a session",
+            "fr": "Lâche un fichier sur une session",
+            "es": "Suelta un archivo en una sesión",
+            "pt-BR": "Solte um arquivo numa sessão",
+            "ru": "Бросьте файл на сессию",
+            "zh-Hans": "把文件拖到会话上",
+            "hi": "फ़ाइल को सत्र पर छोड़ें",
+            "ar": "أفلت ملفًا على جلسة",
+            "bn": "সেশনের ওপর ফাইল ছাড়ুন",
+            "id": "Jatuhkan file ke sesi",
+            "de": "Eine Datei auf eine Sitzung ziehen",
+            "tr": "Bir dosyayı oturuma bırak",
+            "th": "วางไฟล์ลงในเซสชัน",
+            "zh-Hant": "把檔案拖到工作階段上",
+            "ko": "파일을 세션에 놓기",
+            "ja": "ファイルをセッションにドロップ"
+          },
+          "detail": {
+            "en": "Let go on a session in the drop card: the file lands in its prompt.",
+            "fr": "Lâche-le sur une session de la carte de dépôt : le fichier arrive dans son prompt.",
+            "es": "Suéltalo sobre una sesión en la tarjeta: el archivo llega a su prompt.",
+            "pt-BR": "Solte sobre uma sessão no cartão: o arquivo chega ao prompt dela.",
+            "ru": "Отпустите над сессией в карточке: файл попадёт в её запрос.",
+            "zh-Hans": "在投放卡片上松开到某个会话：文件就进入它的提示里。",
+            "hi": "ड्रॉप कार्ड में किसी सत्र पर छोड़ें: फ़ाइल उसके प्रॉम्प्ट में पहुँचती है।",
+            "ar": "أفلته على جلسة في بطاقة الإفلات: يصل الملف إلى موجّهها.",
+            "bn": "ড্রপ কার্ডে কোনো সেশনের ওপর ছাড়ুন: ফাইলটি তার প্রম্পটে পৌঁছায়।",
+            "id": "Lepaskan di sebuah sesi pada kartu: file masuk ke prompt-nya.",
+            "de": "Auf einer Sitzung der Ablagekarte loslassen: Die Datei landet in ihrem Prompt.",
+            "tr": "Bırakma kartındaki bir oturumun üstüne bırak: dosya onun komutuna girer.",
+            "th": "ปล่อยบนเซสชันในการ์ดวางไฟล์ แล้วไฟล์จะเข้าไปในพรอมต์ของมัน",
+            "zh-Hant": "在投放卡片上放開到某個工作階段：檔案就進入它的提示裡。",
+            "ko": "드롭 카드의 세션 위에 놓으면 파일이 그 프롬프트로 들어갑니다.",
+            "ja": "ドロップカードのセッションで離すと、ファイルがそのプロンプトに入ります。"
+          }
+        },
+        {
+          "icon": "eye",
+          "title": {
+            "en": "⌘⇧2: the whole screen, copied",
+            "fr": "⌘⇧2 : tout l'écran, copié",
+            "es": "⌘⇧2: toda la pantalla, copiada",
+            "pt-BR": "⌘⇧2: a tela inteira, copiada",
+            "ru": "⌘⇧2: весь экран в буфер",
+            "zh-Hans": "⌘⇧2：整个屏幕，已拷贝",
+            "hi": "⌘⇧2: पूरी स्क्रीन, कॉपी",
+            "ar": "⌘⇧2: الشاشة كاملة، منسوخة",
+            "bn": "⌘⇧2: পুরো স্ক্রিন, কপি করা",
+            "id": "⌘⇧2: seluruh layar, tersalin",
+            "de": "⌘⇧2: der ganze Bildschirm, kopiert",
+            "tr": "⌘⇧2: tüm ekran, kopyalandı",
+            "th": "⌘⇧2: ทั้งหน้าจอ คัดลอกแล้ว",
+            "zh-Hant": "⌘⇧2：整個螢幕，已拷貝",
+            "ko": "⌘⇧2: 전체 화면, 복사됨",
+            "ja": "⌘⇧2：画面全体をコピー"
+          },
+          "detail": {
+            "en": "Paste it right away with ⌘V, or drag the thumbnail in the corner where you like.",
+            "fr": "Colle-la tout de suite avec ⌘V, ou glisse la miniature du coin où tu veux.",
+            "es": "Pégala al instante con ⌘V, o arrastra la miniatura de la esquina donde quieras.",
+            "pt-BR": "Cole na hora com ⌘V, ou arraste a miniatura do canto para onde quiser.",
+            "ru": "Вставьте сразу через ⌘V или перетащите миниатюру из угла куда угодно.",
+            "zh-Hans": "立刻用 ⌘V 粘贴，或把角落的缩略图拖到任意位置。",
+            "hi": "तुरंत ⌘V से चिपकाएँ, या कोने का थंबनेल कहीं भी खींचें।",
+            "ar": "ألصقها فورًا بـ ⌘V، أو اسحب الصورة المصغّرة من الزاوية حيث تشاء.",
+            "bn": "সঙ্গে সঙ্গে ⌘V দিয়ে পেস্ট করুন, বা কোণের থাম্বনেইল যেখানে খুশি টানুন।",
+            "id": "Tempel langsung dengan ⌘V, atau seret gambar kecil di pojok ke mana saja.",
+            "de": "Sofort mit ⌘V einfügen oder die Miniatur in der Ecke ziehen, wohin du willst.",
+            "tr": "Hemen ⌘V ile yapıştır ya da köşedeki küçük resmi istediğin yere sürükle.",
+            "th": "วางได้ทันทีด้วย ⌘V หรือลากภาพย่อที่มุมไปไว้ที่ไหนก็ได้",
+            "zh-Hant": "立刻用 ⌘V 貼上，或把角落的縮圖拖到任何地方。",
+            "ko": "바로 ⌘V로 붙여 넣거나, 모서리의 썸네일을 원하는 곳으로 끄세요.",
+            "ja": "すぐ ⌘V で貼り付け、または隅のサムネイルを好きな場所へドラッグ。"
+          }
+        },
+        {
+          "icon": "shield",
+          "title": {
+            "en": "Approve Antigravity from the notch",
+            "fr": "Approuve Antigravity depuis le notch",
+            "es": "Aprueba Antigravity desde el notch",
+            "pt-BR": "Aprove o Antigravity pelo notch",
+            "ru": "Одобряйте Antigravity из выреза",
+            "zh-Hans": "在刘海中批准 Antigravity",
+            "hi": "नॉच से Antigravity को मंज़ूरी",
+            "ar": "وافق على Antigravity من النوتش",
+            "bn": "নচ থেকে Antigravity অনুমোদন",
+            "id": "Setujui Antigravity dari notch",
+            "de": "Antigravity in der Notch freigeben",
+            "tr": "Antigravity'yi çentikten onayla",
+            "th": "อนุมัติ Antigravity จากรอยบาก",
+            "zh-Hant": "在瀏海中核准 Antigravity",
+            "ko": "노치에서 Antigravity 승인",
+            "ja": "ノッチで Antigravity を承認"
+          },
+          "detail": {
+            "en": "Optional: its shell commands wait for your Allow, as with Claude Code.",
+            "fr": "En option : ses commandes attendent ton Autoriser, comme avec Claude Code.",
+            "es": "Opcional: sus comandos esperan tu Permitir, como con Claude Code.",
+            "pt-BR": "Opcional: os comandos dele esperam seu Permitir, como no Claude Code.",
+            "ru": "По желанию: его команды ждут вашего «Разрешить», как у Claude Code.",
+            "zh-Hans": "可选：它的命令会等你点允许，就像 Claude Code 一样。",
+            "hi": "वैकल्पिक: इसके कमांड आपकी अनुमति का इंतज़ार करते हैं, Claude Code की तरह।",
+            "ar": "اختياري: أوامره تنتظر سماحك، كما مع Claude Code.",
+            "bn": "ঐচ্ছিক: এর কমান্ড আপনার অনুমতির অপেক্ষা করে, Claude Code-এর মতো।",
+            "id": "Opsional: perintahnya menunggu Izinkan darimu, seperti Claude Code.",
+            "de": "Optional: Seine Befehle warten auf dein Erlauben, wie bei Claude Code.",
+            "tr": "İsteğe bağlı: komutları, Claude Code'daki gibi iznini bekler.",
+            "th": "ไม่บังคับ: คำสั่งของมันจะรอให้คุณอนุญาต เหมือน Claude Code",
+            "zh-Hant": "可選：它的指令會等你點允許，就像 Claude Code 一樣。",
+            "ko": "선택 사항: Claude Code처럼 명령이 허용을 기다립니다.",
+            "ja": "任意：Claude Code と同じく、コマンドがあなたの許可を待ちます。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.8",
       "items": [
         {

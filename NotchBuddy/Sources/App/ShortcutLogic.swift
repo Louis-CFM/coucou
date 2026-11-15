@@ -20,6 +20,8 @@ enum ShortcutAction: String, CaseIterable, Sendable {
     case wardrobeToggle    = "wardrobeToggle"     // ⌃⌥G — open / close wardrobe
     case talkToCoucou      = "talkToCoucou"       // (unset) — start listening without wake phrase (non-AppStore)
     case captureScreen     = "captureScreen"      // ⌘⇧S — capture a part of the screen for Claude (non-AppStore)
+    case quickScreenshot   = "quickScreenshot"    // ⌘⇧2 — the whole screen: copied, and a thumbnail to drag (non-AppStore)
+    case newSession        = "newSession"         // ⌃⌥N — a new Claude Code session in a project (non-AppStore)
 
     // MARK: UserDefaults keys
 
@@ -52,12 +54,14 @@ enum ShortcutAction: String, CaseIterable, Sendable {
         case .wardrobeToggle:    return String(localized: "shortcut.wardrobe")
         case .talkToCoucou:      return String(localized: "shortcut.talk-to-coucou")
         case .captureScreen:     return String(localized: "shortcut.capture")
+        case .quickScreenshot:   return String(localized: "shortcut.screenshot")
+        case .newSession:        return String(localized: "launch.title")
         }
     }
 
     /// Whether this action should be omitted from App Store builds.
     var isAppStoreOnly: Bool { false }
-    var isNonAppStore: Bool  { self == .attachFrontWindow || self == .talkToCoucou || self == .captureScreen }
+    var isNonAppStore: Bool  { self == .attachFrontWindow || self == .talkToCoucou || self == .captureScreen || self == .quickScreenshot || self == .newSession }
 
     /// Whether the shortcut is enabled by default.
     /// `toggleIsland` and `talkToCoucou` are off by default; all others are on.
@@ -110,6 +114,8 @@ enum ShortcutLogic {
         .wardrobeToggle:    ShortcutSpec(keyCode: 5,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥G
         .talkToCoucou:      ShortcutSpec(keyCode: 9,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥V (disabled by default)
         .captureScreen:     ShortcutSpec(keyCode: 1,  nsFlags: ShortcutSpec.cmdShift), // ⌘⇧S
+        .quickScreenshot:   ShortcutSpec(keyCode: 19, nsFlags: ShortcutSpec.cmdShift), // ⌘⇧2 (next to macOS's ⌘⇧3, free)
+        .newSession:        ShortcutSpec(keyCode: 45, nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥N
     ]
 
     // MARK: - Load / save (UserDefaults)
