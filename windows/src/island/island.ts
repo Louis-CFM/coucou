@@ -1547,6 +1547,7 @@ export class Island {
   /** The clock sits in the middle of the compact island, where the notch is on a Mac. */
   private updateClock() {
     this.updateClosed();
+    if (State.mode === "expanded" && State.settings.clockExpanded) this.header.sync();
     const on = State.mode === "compact" && State.settings.showClock;
     this.clockEl.style.opacity = on ? "1" : "0";
     if (!on) return;

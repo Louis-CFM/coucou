@@ -343,6 +343,15 @@ body {
   color: var(--ink);
 }
 
+.header-clock {
+  padding-left: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .header-actions {
   margin-left: auto;
   display: flex;

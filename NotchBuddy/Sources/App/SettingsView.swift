@@ -357,6 +357,7 @@ struct SettingsView: View {
                     .help(String(localized: "alerts.all-pills.help"))
                 Toggle("Show clock in the island", isOn: $state.showClock)
                     .help("The date and the time in the middle of the island when it is compact, on a screen without a notch.")
+                Toggle("Show clock in the open island", isOn: $state.clockExpanded)
                 Picker("Clock shows", selection: $state.clockDate) {
                     Text("The date and the time").tag(ClockDate.date)
                     Text("The weekday and the time").tag(ClockDate.weekday)

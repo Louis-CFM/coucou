@@ -691,10 +691,12 @@ struct IslandContentView: View {
 
 struct IslandClockText: View {
     @ObservedObject var state: AppState
+    /// Beside a notch there is room for the time only.
+    var timeOnly = false
 
     var body: some View {
         TimelineView(.everyMinute) { context in
-            Text(verbatim: IslandClock.text(context.date, date: state.clockDate, hours: state.clockHours))
+            Text(verbatim: IslandClock.text(context.date, date: timeOnly ? .timeOnly : state.clockDate, hours: state.clockHours))
                 .font(.system(size: 12, weight: .semibold).monospacedDigit())
                 .foregroundColor(.white.opacity(0.85))
                 .lineLimit(1)
@@ -735,6 +737,11 @@ struct IslandHeader: View {
                 #endif
             }
             .padding(.leading, 14)
+
+            if state.clockExpanded {
+                IslandClockText(state: state, timeOnly: state.hasNotch)
+                    .padding(.leading, 12)
+            }
 
             Spacer()
 

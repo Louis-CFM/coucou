@@ -334,6 +334,10 @@ final class AppState: ObservableObject {
     @Published var showClock: Bool = false {
         didSet { UserDefaults.standard.set(showClock, forKey: "showClock") }
     }
+    /// The clock in the open island's header too — persisted, off by default.
+    @Published var clockExpanded: Bool = false {
+        didSet { UserDefaults.standard.set(clockExpanded, forKey: "clockExpanded") }
+    }
     /// What goes before the time (IslandClock.swift) — persisted.
     @Published var clockDate: ClockDate = .date {
         didSet { UserDefaults.standard.set(clockDate.rawValue, forKey: "clockDate") }
@@ -603,6 +607,7 @@ final class AppState: ObservableObject {
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
         if let v = ud.object(forKey: "showClock") as? Bool { showClock = v }
+        if let v = ud.object(forKey: "clockExpanded") as? Bool { clockExpanded = v }
         if let v = ud.string(forKey: "clockDate").flatMap(ClockDate.init) { clockDate = v }
         if let v = ud.string(forKey: "clockHours").flatMap(ClockHours.init) { clockHours = v }
         if let v = ud.object(forKey: "alertsFromAllPills") as? Bool { alertsFromAllPills = v }

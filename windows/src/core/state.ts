@@ -111,6 +111,8 @@ export interface Settings {
   clockDate: string;
   /** "auto" (the language's), "24" or "12"; the closed island's time too. */
   clockHours: string;
+  /** The clock in the open island's header too. */
+  clockExpanded: boolean;
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
   closedIsland: string;
   absenceInterval: number;
@@ -187,6 +189,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showClock: false,
   clockDate: "date",
   clockHours: "auto",
+  clockExpanded: false,
   closedIsland: "mochi",
   absenceInterval: 180,
   activeIntegrations: [

@@ -9707,6 +9707,21 @@
    "ko": "아일랜드에 시계 표시",
    "ja": "アイランドに時計を表示"
   },
+  "Show clock in the open island": {
+   "zh-Hans": "在展开的岛中显示时钟",
+   "hi": "खुले आइलैंड में घड़ी दिखाएँ",
+   "es": "Mostrar el reloj en la isla abierta",
+   "ar": "إظهار الساعة في الجزيرة المفتوحة",
+   "fr": "Afficher l'horloge dans l'îlot ouvert",
+   "bn": "খোলা আইল্যান্ডে ঘড়ি দেখান",
+   "pt-BR": "Mostrar relógio na ilha aberta",
+   "ru": "Показывать часы в открытом острове",
+   "id": "Tampilkan jam di pulau yang terbuka",
+   "de": "Uhr in der geöffneten Insel anzeigen",
+   "tr": "Açık adada saati göster",
+   "ko": "펼친 아일랜드에 시계 표시",
+   "ja": "開いたアイランドに時計を表示"
+  },
   "Show in notch": {
    "zh-Hans": "在刘海中显示",
    "hi": "नॉच में दिखाएं",
