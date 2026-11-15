@@ -7,19 +7,23 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BODY_RADIUS_FRACTION, DesktopMochiController, PANEL_SIZE, RETRACT_DELAY_MS, RETURN_DELAY_MS,
-  agentActive, alertActive, gaze, isOverBody, layerDragTopLeft, lookOrigin, pointerDistance,
-  shouldRetractOnLanding, shouldSleep, windowDragTopLeft,
+  agentActive, alertActive, gaze, isOverBody, layerDragTopLeft, lookOrigin, pointerDistance, sessionStarted,
+  shouldRetractOnLanding, windowDragTopLeft,
 } from "../src/mochi/desktop-logic.ts";
 
-// ── shouldSleep ───────────────────────────────────────────────────────────────
+// ── sessionStarted (what wakes the sleeping Mochis) ─────────────────────
 
-test("shouldSleep: idle long enough and the pointer far away", () => {
-  assert.equal(shouldSleep(5, 300), false, "active agent must not sleep");
-  assert.equal(shouldSleep(200, 50), false, "mouse near panel must not sleep");
-  assert.equal(shouldSleep(200, 200), true, "long idle + far mouse must sleep");
-  assert.equal(shouldSleep(120, 300), false, "exactly at timeout must not sleep");
-  assert.equal(shouldSleep(120.1, 300), true, "just over timeout must sleep");
-  assert.equal(shouldSleep(200, 150), true, "at distance threshold must sleep");
+test("only a session starting wakes them, not a session going on or ending", () => {
+  const before = new Map([["a", "idle"], ["b", "finished"], ["c", "working"], ["d", "error"]]);
+  const tasks = (states) => Object.entries(states).map(([id, state]) => ({ id, state }));
+  const same = { a: "idle", b: "finished", c: "working", d: "error" };
+  assert.equal(sessionStarted(before, tasks(same)), false, "nothing changed");
+  assert.equal(sessionStarted(before, tasks({ ...same, a: "working" })), true, "idle to work");
+  assert.equal(sessionStarted(before, tasks({ ...same, b: "thinking" })), true, "finished to work");
+  assert.equal(sessionStarted(before, tasks({ ...same, d: "searching" })), true, "error to work");
+  assert.equal(sessionStarted(before, tasks({ ...same, c: "approval" })), false, "still at work");
+  assert.equal(sessionStarted(before, tasks({ ...same, c: "finished" })), false, "a session ending");
+  assert.equal(sessionStarted(before, tasks({ ...same, e: "idle" })), true, "a new pill");
 });
 
 test("agent work keeps him awake, idle and sleeping don't", () => {
