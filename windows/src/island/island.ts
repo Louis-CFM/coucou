@@ -527,6 +527,8 @@ export class Island {
     void onEvent<{ status: string; away_minutes: number; user_name?: string }>("user-presence", (e) => {
       if (e.status === "returned") {
         GlobalWelcomeMessages.onUserReturned(e.away_minutes, e.user_name);
+      } else if (e.status === "away") {
+        GlobalWelcomeMessages.onUserAway(e.away_minutes);
       }
     });
     void onEvent<{ isMaximized: boolean; isDesktop: boolean; app?: string }>("smart-notch-state", (e) => {

@@ -1,11 +1,12 @@
-/* ── Coucou Notch: File Shelf (Parked Files) ─────────────────────────────── */
+/* ── CouCou Desk: macOS-Refined File Shelf Design System ────────────────── */
 
 .fileshelf-card {
   position: relative;
   display: flex;
   height: 100%;
-  border-radius: 18px;
-  background: rgba(14, 15, 18, 0.9);
+  width: 100%;
+  border-radius: 16px;
+  background: rgba(14, 15, 18, 0.95);
   backdrop-filter: blur(40px) saturate(190%);
   -webkit-backdrop-filter: blur(40px) saturate(190%);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -15,36 +16,39 @@
   box-sizing: border-box;
 }
 
-/* ── Left Sidebar (Shelves) ── */
+/* ── Region B: Left Sidebar (Shelves) ── */
 .fileshelf-sidebar {
-  width: 154px;
-  flex: 0 0 154px;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 12px 8px;
+  width: 144px;
+  flex: 0 0 144px;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 10px 6px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  background: rgba(0, 0, 0, 0.25);
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.2);
   box-sizing: border-box;
   user-select: none;
   -webkit-user-select: none;
+  min-height: 0;
 }
 
 .fileshelf-section-label {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: rgba(255, 255, 255, 0.35);
   text-transform: uppercase;
-  padding: 2px 8px 6px;
+  padding: 2px 7px 6px;
 }
 
 .fileshelf-list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1 1 auto;
+  min-height: 0;
 }
 
 .fileshelf-shelf-btn {
@@ -52,49 +56,48 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  height: 32px;
-  padding: 0 8px 0 9px;
-  border-radius: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
   background: transparent;
   border: 1px solid transparent;
   color: rgba(255, 255, 255, 0.72);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
   box-sizing: border-box;
   transition:
-    background 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    background 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.1s ease;
   text-align: left;
   position: relative;
 }
 
 .fileshelf-shelf-btn:hover {
-  background: rgba(255, 255, 255, 0.075);
+  background: rgba(255, 255, 255, 0.07);
   color: #ffffff;
 }
 
 .fileshelf-shelf-btn:active {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.11);
   transform: scale(0.985);
 }
 
 .fileshelf-shelf-btn.on {
-  background: rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.08);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .fileshelf-shelf-btn .shelf-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -102,17 +105,11 @@
 }
 
 .fileshelf-shelf-btn .shelf-name svg {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
   fill: currentColor;
   opacity: 0.85;
-  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
-}
-
-.fileshelf-shelf-btn:hover .shelf-name svg {
-  transform: scale(1.08);
-  opacity: 1;
 }
 
 .fileshelf-shelf-right {
@@ -120,39 +117,34 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-width: 20px;
+  min-width: 18px;
   height: 100%;
   flex-shrink: 0;
   margin-left: auto;
 }
 
 .fileshelf-count-badge {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
   color: rgba(255, 255, 255, 0.45);
   line-height: 1.2;
-  margin-left: 0;
   flex-shrink: 0;
-  transform: translateX(0);
-  transition:
-    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
-    background 0.18s ease,
-    color 0.18s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease, color 0.15s ease;
 }
 
 .fileshelf-shelf-btn:hover .fileshelf-count-badge,
 .fileshelf-shelf-btn:has(.fileshelf-shelf-more.open) .fileshelf-count-badge {
-  transform: translateX(-23px);
+  transform: translateX(-20px);
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.8);
 }
 
 .fileshelf-shelf-btn.on .fileshelf-count-badge {
   background: rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.95);
+  color: #ffffff;
 }
 
 .fileshelf-shelf-more {
@@ -162,53 +154,42 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 19px;
-  height: 19px;
-  border-radius: 5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
   padding: 0;
   opacity: 0;
-  transform: translateY(-50%) scale(0.7) translateX(3px);
+  transform: translateY(-50%) scale(0.75);
   pointer-events: none;
-  transition:
-    opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background 0.15s ease,
-    color 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease;
   flex-shrink: 0;
-  outline: none;
 }
 
 .fileshelf-shelf-btn:hover .fileshelf-shelf-more,
 .fileshelf-shelf-more.open {
   opacity: 1;
-  transform: translateY(-50%) scale(1) translateX(0);
+  transform: translateY(-50%) scale(1);
   pointer-events: auto;
 }
 
 .fileshelf-shelf-more:hover {
   background: rgba(255, 255, 255, 0.18);
   color: #ffffff;
-  transform: translateY(-50%) scale(1.12);
-}
-
-.fileshelf-shelf-more:active {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-50%) scale(0.92);
 }
 
 .fileshelf-rename-input {
-  width: 78px;
-  height: 22px;
+  width: 74px;
+  height: 20px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(251, 146, 60, 0.7);
-  color: #fff;
+  color: #ffffff;
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
   padding: 0 4px;
   outline: none;
@@ -218,17 +199,17 @@
 .fileshelf-new-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   width: 100%;
   height: 28px;
   margin-top: auto;
-  padding: 0 8px;
-  border-radius: 8px;
+  padding: 0 7px;
+  border-radius: 7px;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.5);
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   box-sizing: border-box;
@@ -248,7 +229,6 @@
   opacity: 1;
 }
 
-/* ── Inline New Shelf Input ── */
 .fileshelf-new-input-row {
   display: flex;
   align-items: center;
@@ -260,102 +240,229 @@
 .fileshelf-new-input {
   flex: 1 1 auto;
   width: 100%;
-  height: 26px;
-  border-radius: 6px;
+  height: 24px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(251, 146, 60, 0.7);
-  color: #fff;
+  color: #ffffff;
   font-family: inherit;
-  font-size: 12px;
-  padding: 0 6px;
+  font-size: 11.5px;
+  padding: 0 5px;
   outline: none;
   box-sizing: border-box;
 }
 
-/* ── Right Main Workspace ── */
+/* ── Region C: Right Main Workspace ── */
 .fileshelf-main {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 12px 18px 14px;
+  padding: 8px 12px 8px;
   overflow: hidden;
   box-sizing: border-box;
+  position: relative;
 }
 
+/* ── Header: Title & Secondary Stats (Stacked) + Toolbar ── */
 .fileshelf-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 6px;
   flex-shrink: 0;
+  min-width: 0;
   user-select: none;
   -webkit-user-select: none;
 }
 
 .fileshelf-header-left {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.5px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .fileshelf-active-title {
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fileshelf-active-status {
-  font-size: 12px;
+  font-size: 10.5px;
+  font-weight: 450;
   color: rgba(255, 255, 255, 0.45);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* ── Unified Native Desktop Toolbar ── */
 .fileshelf-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.fileshelf-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  padding: 1px;
+  gap: 1px;
+}
+
+.fileshelf-toolbar-group .fileshelf-tool-btn {
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  height: 24px;
+}
+
+.fileshelf-toolbar-group .fileshelf-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.fileshelf-toolbar-group .fileshelf-tool-btn.on {
+  background: rgba(251, 146, 60, 0.16);
+  color: var(--hub-accent, #fb923c);
+  font-weight: 600;
+}
+
+.fileshelf-toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 2px;
   flex-shrink: 0;
 }
 
+/* ── Standard Toolbar Buttons (26px height) ── */
 .fileshelf-tool-btn {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.65);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 3px 7px;
-  cursor: pointer;
-  transition: all 0.15s ease;
   line-height: 1;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
 }
 
 .fileshelf-tool-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.15);
   color: #ffffff;
+}
+
+.fileshelf-tool-btn:active {
+  background: rgba(255, 255, 255, 0.13);
+  transform: scale(0.97);
+}
+
+/* Subtle Unboxed/Ghost Utility Actions */
+.fileshelf-tool-btn.ghost {
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 6px;
+}
+
+.fileshelf-tool-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+}
+
+.fileshelf-tool-btn.ghost.danger:hover {
+  background: rgba(255, 69, 58, 0.14);
+  border-color: rgba(255, 69, 58, 0.25);
+  color: #ff5a50;
 }
 
 .fileshelf-tool-btn.on {
   color: var(--hub-accent, #fb923c);
   background: rgba(251, 146, 60, 0.12);
+  border-color: rgba(251, 146, 60, 0.35);
   font-weight: 600;
 }
 
 .fileshelf-tool-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
+  opacity: 0.28;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
-/* ── Content Area ── */
+/* ── Prominent "Add Files" Button (Apple 2px Refined Border) ── */
+.fileshelf-tool-btn.fileshelf-add-btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(251, 146, 60, 0.1);
+  border: 2px solid rgba(251, 146, 60, 0.55);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.fileshelf-tool-btn.fileshelf-add-btn:hover {
+  background: rgba(251, 146, 60, 0.18);
+  border-color: rgba(251, 146, 60, 0.9);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(251, 146, 60, 0.25);
+}
+
+.fileshelf-tool-btn.fileshelf-add-btn:active {
+  background: rgba(251, 146, 60, 0.08);
+  border-color: rgba(251, 146, 60, 1);
+  transform: scale(0.97);
+}
+
+.fileshelf-tool-btn.fileshelf-add-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.6);
+}
+
+/* ── Content Area & Scrolling Container ── */
 .fileshelf-content {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -365,142 +472,243 @@
 /* ── Empty State Dropzone ── */
 .fileshelf-dropzone {
   flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1.5px dashed rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
-  padding: 16px;
-  gap: 8px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 6px 12px;
   box-sizing: border-box;
   text-align: center;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   background: rgba(255, 255, 255, 0.015);
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+  position: relative;
 }
 
 .fileshelf-dropzone:hover,
 .fileshelf-dropzone.over {
   border-color: var(--hub-accent, #fb923c);
   background: rgba(251, 146, 60, 0.05);
-  box-shadow: 0 0 16px rgba(251, 146, 60, 0.12);
+  box-shadow: 0 0 24px rgba(251, 146, 60, 0.12);
 }
 
-.fileshelf-dropzone-row {
+.fileshelf-empty-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+  margin: auto 0;
+}
+
+.fileshelf-empty-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
   justify-content: center;
+  color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  margin-bottom: 2px;
 }
 
-.fileshelf-dropzone-icon {
+.fileshelf-empty-icon-badge svg {
   width: 16px;
   height: 16px;
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.5);
-  stroke-width: 1.8;
 }
 
-.fileshelf-dropzone-text {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
+.fileshelf-dropzone:hover .fileshelf-empty-icon-badge,
+.fileshelf-dropzone.over .fileshelf-empty-icon-badge {
+  color: var(--hub-accent, #fb923c);
+  background: rgba(251, 146, 60, 0.12);
+  border-color: rgba(251, 146, 60, 0.3);
+  transform: translateY(-1px);
+}
+
+.fileshelf-empty-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5px;
+  width: 100%;
+  user-select: none;
+}
+
+.fileshelf-empty-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.fileshelf-empty-sub {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.fileshelf-empty-hint {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .fileshelf-choose-btn {
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 600;
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 4px 12px;
-  border-radius: 7px;
+  background: rgba(251, 146, 60, 0.1);
+  border: 2px solid rgba(251, 146, 60, 0.55);
+  padding: 0 10px;
+  height: 24px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 3px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .fileshelf-choose-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: scale(1.02);
+  background: rgba(251, 146, 60, 0.18);
+  border-color: rgba(251, 146, 60, 0.9);
+  box-shadow: 0 2px 8px rgba(251, 146, 60, 0.25);
+  transform: translateY(-0.5px);
+}
+
+.fileshelf-choose-btn:active {
+  background: rgba(251, 146, 60, 0.08);
+  border-color: rgba(251, 146, 60, 1);
+  transform: scale(0.97);
+}
+
+.fileshelf-choose-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.6);
 }
 
 /* ── Populated File Grid ── */
 .fileshelf-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 108px);
-  grid-auto-rows: 104px;
-  align-content: start;
-  justify-content: start;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-auto-rows: 96px;
+  gap: 8px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 10px 14px 6px;
+  padding: 2px 4px 6px 2px;
   flex: 1 1 auto;
+  min-height: 0;
   box-sizing: border-box;
+  align-content: start;
 }
 
+/* ── macOS Floating Overlay Scrollbar ── */
+.fileshelf-grid::-webkit-scrollbar,
+.fileshelf-list::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.fileshelf-grid::-webkit-scrollbar-track,
+.fileshelf-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fileshelf-grid::-webkit-scrollbar-thumb,
+.fileshelf-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+.fileshelf-grid::-webkit-scrollbar-thumb:hover,
+.fileshelf-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* ── File Card Geometry ── */
 .fileshelf-file-card {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  width: 108px;
-  height: 104px;
-  padding: 10px 8px 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.1s ease;
-  cursor: grab;
+  padding: 8px 6px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
   box-sizing: border-box;
   text-align: center;
   user-select: none;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .fileshelf-file-card:hover {
-  background: rgba(255, 255, 255, 0.085);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  /* STRICTLY NO translateY to prevent cutting off top edges */
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .fileshelf-file-card:active {
-  cursor: grabbing;
   background: rgba(255, 255, 255, 0.11);
-  transform: scale(0.98);
 }
 
 .fileshelf-file-card.selected {
   border-color: var(--hub-accent, #fb923c);
   background: rgba(251, 146, 60, 0.12);
-  box-shadow: 0 0 0 1px var(--hub-accent, #fb923c), 0 4px 12px rgba(251, 146, 60, 0.2);
+  box-shadow: 0 0 0 1px var(--hub-accent, #fb923c), 0 2px 8px rgba(251, 146, 60, 0.2);
 }
 
 .fileshelf-file-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  margin-bottom: 4px;
   flex-shrink: 0;
 }
 
 .fileshelf-file-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
 }
 
 .fileshelf-file-name {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 500;
   color: #ffffff;
   width: 100%;
@@ -516,22 +724,30 @@
 }
 
 .fileshelf-file-size {
-  font-size: 9.5px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.42);
   margin-top: auto;
   font-weight: 450;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
-/* Card Hover Actions (Remove, Copy) */
+/* Card Hover Actions Floating Pill */
 .fileshelf-card-actions {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 3px;
+  right: 3px;
   display: none;
-  gap: 3px;
+  align-items: center;
+  gap: 2px;
   z-index: 2;
+  background: rgba(14, 15, 18, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 6px;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .fileshelf-file-card:hover .fileshelf-card-actions {
@@ -539,13 +755,13 @@
 }
 
 .fileshelf-card-btn {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: rgba(18, 19, 23, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.75);
-  display: flex;
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
@@ -554,9 +770,13 @@
 }
 
 .fileshelf-card-btn:hover {
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.fileshelf-card-btn.danger:hover {
+  background: rgba(255, 69, 58, 0.35);
+  color: #ff5a50;
 }
 
 .fileshelf-card-btn svg {
@@ -568,41 +788,91 @@
 /* Selection Checkbox */
 .fileshelf-checkbox {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 5px;
+  left: 5px;
   width: 14px;
   height: 14px;
   accent-color: var(--hub-accent, #fb923c);
   cursor: pointer;
+  z-index: 2;
+  margin: 0;
 }
 
-/* Batch Toolbar in Select Mode */
+/* ── Card Rename Inline Input ── */
+.fileshelf-card-rename-input {
+  width: 92%;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(251, 146, 60, 0.7);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 0 4px;
+  outline: none;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* ── Missing File State ── */
+.fileshelf-file-card.missing {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.fileshelf-missing-badge {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.16);
+  border-radius: 3px;
+  padding: 1px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Populated Grid Dropzone Overlay ── */
+.fileshelf-card.over .fileshelf-content::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 2px dashed var(--hub-accent, #fb923c);
+  border-radius: 12px;
+  background: rgba(251, 146, 60, 0.08);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Batch Selection Bar ── */
 .fileshelf-batch-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
-  margin-top: 8px;
+  padding: 5px 10px;
+  margin-top: 6px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(20, 22, 28, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 .fileshelf-batch-btn {
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   transition: all 0.15s ease;
 }
 
 .fileshelf-batch-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .fileshelf-batch-btn.danger {
@@ -612,4 +882,92 @@
 
 .fileshelf-batch-btn.danger:hover {
   background: rgba(255, 69, 58, 0.35);
+}
+
+.fileshelf-batch-link {
+  background: transparent;
+  border: none;
+  color: var(--hub-accent, #fb923c);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.fileshelf-batch-link:hover {
+  opacity: 1;
+}
+
+.fileshelf-batch-count {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Status Feedback Toast ── */
+.fileshelf-feedback-toast {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 22, 28, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 999px;
+  z-index: 20;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ── Responsive Narrow Layout Rule ── */
+@media (max-width: 600px) {
+  .fileshelf-sidebar {
+    width: 130px;
+    flex: 0 0 130px;
+  }
+  .fileshelf-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .fileshelf-toolbar {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+}
+
+/* ── Responsive Low-Height Layout Rule ── */
+@media (max-height: 230px) {
+  .fileshelf-main {
+    padding: 6px 10px 6px;
+  }
+  .fileshelf-dropzone {
+    padding: 4px 8px;
+  }
+  .fileshelf-empty-icon-badge {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 0;
+  }
+  .fileshelf-empty-icon-badge svg {
+    width: 14px;
+    height: 14px;
+  }
+  .fileshelf-empty-stack {
+    gap: 3px;
+  }
+  .fileshelf-empty-hint {
+    display: none;
+  }
 }

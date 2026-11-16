@@ -9,9 +9,11 @@ mod claude;
 mod claude_code;
 mod cli_relay;
 mod codex_plan;
+mod companion_ai;
 mod config_file;
 mod desktop;
 mod files;
+mod fileshelf;
 mod flow;
 mod github;
 mod herdr;
@@ -952,6 +954,7 @@ pub fn run() {
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .manage(coudrop::CoudropManager::default())
+        .manage(companion_ai::CompanionAiState::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             mail::mail_refresh,
@@ -1143,6 +1146,7 @@ pub fn run() {
             notifications::check_notification_access,
             notifications::request_notification_access,
             presence::get_system_presence,
+            identity::get_user_identity,
             smart_notch::get_foreground_window_state,
             power::get_battery_status,
             coudrop::coudrop_start_receive,
@@ -1159,6 +1163,13 @@ pub fn run() {
             coudrop::coudrop_set_download_dir,
             coudrop::coudrop_get_download_dir,
             coudrop::coudrop_pick_files,
+            fileshelf::fileshelf_pick_files,
+            fileshelf::fileshelf_open_file,
+            fileshelf::fileshelf_reveal_file,
+            fileshelf::fileshelf_get_file_info,
+            companion_ai::companion_ai_generate,
+            companion_ai::companion_ai_cancel,
+            companion_ai::companion_probe_health,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

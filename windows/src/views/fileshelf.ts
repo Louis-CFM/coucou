@@ -1,13 +1,14 @@
-// File Shelf View — Staging dock for parked files and folders in Coucou's notch.
+// File Shelf View — Staging dock for parked files and folders in Coucou's Desk.
 
 import "./fileshelf.css";
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
-import { ShelfStore, type Shelf, type ShelfSort } from "../core/fileshelf";
+import { ShelfStore, type Shelf, type ShelfSort, type ParkedFile } from "../core/fileshelf";
 import { Sound } from "../core/sound";
 import { t } from "../i18n/i18n";
 import type { ViewActions, ViewHost } from "./views";
 import { dropdown } from "./dropdown";
+import { Bridge, type FileShelfItemInfo } from "../core/bridge";
 
 function tr(template: string, vars?: Record<string, string | number>): string {
   if (!vars) return template;
@@ -16,10 +17,12 @@ function tr(template: string, vars?: Record<string, string | number>): string {
 
 export function buildFileShelf(_actions: ViewActions): ViewHost {
   let isSelectMode = false;
-  let selectedFileIds = new Set<string>();
+  const selectedFileIds = new Set<string>();
   let currentSort: ShelfSort = "recent";
   let isCreatingShelf = false;
   let renamingShelfId: string | null = null;
+  let renamingFileId: string | null = null;
+    let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ── Elements ──
   const shelfListEl = h("div", { class: "fileshelf-list" });
@@ -35,11 +38,11 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
     newShelfBtn,
   );
 
-  const activeTitleEl = h("span", { class: "fileshelf-active-title" });
-  const activeStatusEl = h("span", { class: "fileshelf-active-status" });
+  const activeTitleEl = h("div", { class: "fileshelf-active-title" });
+  const activeStatusEl = h("div", { class: "fileshelf-active-status" });
   const headerLeftEl = h("div", { class: "fileshelf-header-left" }, activeTitleEl, activeStatusEl);
 
-  // Hidden file picker input for "Choose files" button
+  // Hidden file picker input for fallback when native dialog is unavailable
   const fileInput = h("input", {
     type: "file",
     multiple: "true",
@@ -48,15 +51,18 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
 
   fileInput.addEventListener("change", () => {
     if (fileInput.files && fileInput.files.length > 0) {
-      ingestFiles(Array.from(fileInput.files));
+      void ingestFiles(Array.from(fileInput.files));
       fileInput.value = "";
     }
   });
 
-  const sortLabelMap: Record<ShelfSort, string> = {
+  const sortTriggerLabelMap: Record<string, string> = {
     recent: t("Recent"),
-    name: tr("Name (A-Z)"),
-    size: tr("Size"),
+    oldest: tr("Oldest"),
+    name_asc: tr("Name A–Z"),
+    name_desc: tr("Name Z–A"),
+    size_desc: tr("Largest"),
+    size_asc: tr("Smallest"),
     type: tr("Type"),
   };
 
@@ -64,41 +70,65 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
 
   const openSortMenu = (anchor: HTMLElement) => {
     const sortMenu = dropdown([
-      { label: t("Recent"), onClick: () => setSort("recent"), checked: currentSort === "recent" },
-      { label: tr("Name (A-Z)"), onClick: () => setSort("name"), checked: currentSort === "name" },
-      { label: tr("Size"), onClick: () => setSort("size"), checked: currentSort === "size" },
-      { label: tr("Type"), onClick: () => setSort("type"), checked: currentSort === "type" },
+      { label: tr("Recently added"), onClick: () => setSort("recent"), checked: currentSort === "recent" },
+      { label: tr("Oldest added"), onClick: () => setSort("oldest"), checked: currentSort === "oldest" },
+      { type: "separator" },
+      { label: tr("Name (A–Z)"), onClick: () => setSort("name_asc"), checked: currentSort === "name_asc" || currentSort === "name" },
+      { label: tr("Name (Z–A)"), onClick: () => setSort("name_desc"), checked: currentSort === "name_desc" },
+      { type: "separator" },
+      { label: tr("Largest first"), onClick: () => setSort("size_desc"), checked: currentSort === "size_desc" || currentSort === "size" },
+      { label: tr("Smallest first"), onClick: () => setSort("size_asc"), checked: currentSort === "size_asc" },
+      { type: "separator" },
+      { label: tr("File type"), onClick: () => setSort("type"), checked: currentSort === "type" },
     ]);
     sortMenu.open(anchor);
   };
 
-  const recentTrigger = h("button", {
+  const sortTrigger = h("button", {
     class: "fileshelf-tool-btn",
     type: "button",
+    title: tr("Sort files"),
     onclick: (e) => openSortMenu(e.currentTarget as HTMLElement),
   }, sortLabelSpan, svg(ICONS.chevronDown, 9, { stroke: 2 }));
 
   const selectBtn = h("button", {
     class: "fileshelf-tool-btn",
     type: "button",
+    title: tr("Select mode"),
     onclick: () => toggleSelectMode(),
   }, h("span", { text: tr("Select") }));
 
-  const copyAllBtn = h("button", {
-    class: "fileshelf-tool-btn",
+  // Prominent "Add Files" toolbar button: ALWAYS accessible in header
+  const addFilesBtn = h("button", {
+    class: "fileshelf-tool-btn fileshelf-add-btn",
     type: "button",
+    title: tr("Add files to shelf"),
+    onclick: () => void triggerAddFiles(),
+  }, svg(ICONS.plus, 10), h("span", { text: tr("Add Files") }));
+
+  const copyAllBtn = h("button", {
+    class: "fileshelf-tool-btn ghost",
+    type: "button",
+    title: tr("Copy all paths"),
     onclick: () => handleCopyAll(),
   }, h("span", { text: tr("Copy all") }));
 
   const clearBtn = h("button", {
-    class: "fileshelf-tool-btn",
+    class: "fileshelf-tool-btn ghost danger",
     type: "button",
+    title: tr("Clear shelf"),
     onclick: () => handleClear(),
   }, h("span", { text: t("Clear") }));
 
+  const toolbarGroup = h("div", { class: "fileshelf-toolbar-group" }, sortTrigger, selectBtn);
+  const divider1 = h("div", { class: "fileshelf-toolbar-divider" });
+  const divider2 = h("div", { class: "fileshelf-toolbar-divider" });
+
   const toolbarEl = h("div", { class: "fileshelf-toolbar" },
-    recentTrigger,
-    selectBtn,
+    toolbarGroup,
+    divider1,
+    addFilesBtn,
+    divider2,
     copyAllBtn,
     clearBtn,
   );
@@ -106,15 +136,27 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
   const headerEl = h("div", { class: "fileshelf-header" }, headerLeftEl, toolbarEl);
   const contentEl = h("div", { class: "fileshelf-content" });
 
-  const mainEl = h("div", { class: "fileshelf-main" }, headerEl, contentEl);
+  const feedbackToastEl = h("div", { class: "fileshelf-feedback-toast", style: "display:none" });
+
+  const mainEl = h("div", { class: "fileshelf-main" }, headerEl, contentEl, feedbackToastEl);
   const cardEl = h("div", { class: "fileshelf-card" }, sidebarEl, mainEl, fileInput);
   const viewEl = h("div", { class: "view fileshelf-view" }, cardEl);
 
   // ── Functions ──
 
+  function showFeedback(msg: string) {
+        feedbackToastEl.textContent = msg;
+    feedbackToastEl.style.display = "";
+    if (feedbackTimer) clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(() => {
+      feedbackToastEl.style.display = "none";
+            feedbackTimer = null;
+    }, 2800);
+  }
+
   function setSort(sort: ShelfSort) {
     currentSort = sort;
-    sortLabelSpan.textContent = sort === "recent" ? t("Recent") : sortLabelMap[sort] || t("Recent");
+    sortLabelSpan.textContent = sortTriggerLabelMap[sort] || t("Recent");
     Sound.resume();
     Sound.play("blip");
     render();
@@ -124,6 +166,96 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
     isSelectMode = !isSelectMode;
     selectedFileIds.clear();
     selectBtn.classList.toggle("on", isSelectMode);
+    Sound.resume();
+    Sound.play("tick");
+    render();
+  }
+
+  async function triggerAddFiles() {
+    Sound.resume();
+    Sound.play("tick");
+
+    try {
+      const paths = await Bridge.fileshelfPickFiles();
+      if (paths && paths.length > 0) {
+        // Query native file metadata
+        const infos = await Bridge.fileshelfGetFileInfo(paths);
+        const raw = (infos && infos.length > 0)
+          ? infos.map((info: FileShelfItemInfo) => ({
+              name: info.name,
+              path: info.path,
+              size: info.size,
+              type: info.extension ? `file/${info.extension}` : "application/octet-stream",
+            }))
+          : paths.map((p: string) => {
+              const name = p.split(/[\\/]/).pop() || p;
+              return { name, path: p };
+            });
+
+        const activeShelf = ShelfStore.getActiveShelf();
+        const res = ShelfStore.addFilesWithResult(activeShelf.id, raw);
+        if (res.added.length > 0) {
+          Sound.play("pop");
+        }
+        if (res.duplicates.length > 0) {
+          showFeedback(tr("{count} duplicate(s) skipped", { count: res.duplicates.length }));
+        } else if (res.added.length > 0) {
+          showFeedback(tr("{count} file(s) added", { count: res.added.length }));
+        }
+        render();
+        return;
+      }
+    } catch (err) {
+      console.warn("[fileshelf] native picker failed, falling back to browser picker", err);
+    }
+
+    // Fallback if not running in Tauri or native picker cancelled
+    fileInput.click();
+  }
+
+  async function openFile(file: ParkedFile) {
+    if (!file.path) return;
+    ShelfStore.updateFile(ShelfStore.getActiveShelfId(), file.id, { lastAccessedAt: Date.now() });
+
+    try {
+      await Bridge.fileshelfOpenFile(file.path);
+      Sound.resume();
+      Sound.play("blip");
+    } catch (err) {
+      console.warn("[fileshelf] open file failed", err);
+      ShelfStore.updateFile(ShelfStore.getActiveShelfId(), file.id, { missing: true });
+      showFeedback(tr("File not found on disk"));
+      Sound.resume();
+      Sound.play("tick");
+      render();
+    }
+  }
+
+  async function revealFile(file: ParkedFile) {
+    if (!file.path) return;
+    Sound.resume();
+    Sound.play("blip");
+    try {
+      await Bridge.fileshelfRevealFile(file.path);
+    } catch (err) {
+      console.warn("[fileshelf] reveal file failed", err);
+      showFeedback(tr("File not found on disk"));
+    }
+  }
+
+  function copyFilePath(path: string) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      void navigator.clipboard.writeText(path);
+    }
+    Sound.resume();
+    Sound.play("approve");
+    showFeedback(tr("Path copied to clipboard"));
+  }
+
+  function removeSingleFile(fileId: string) {
+    const activeShelf = ShelfStore.getActiveShelf();
+    ShelfStore.removeFile(activeShelf.id, fileId);
+    selectedFileIds.delete(fileId);
     Sound.resume();
     Sound.play("tick");
     render();
@@ -207,22 +339,57 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
     input.focus();
   }
 
-  function ingestFiles(files: File[]) {
+  async function ingestFiles(files: File[]) {
     if (files.length === 0) return;
     const activeShelf = ShelfStore.getActiveShelf();
+
+    // Check if files have native path
+    const paths = files
+      .map((f) => (f as unknown as { path?: string }).path)
+      .filter((p): p is string => Boolean(p && p.trim()));
+
+    if (paths.length === files.length) {
+      try {
+        const infos = await Bridge.fileshelfGetFileInfo(paths);
+        if (infos && infos.length > 0) {
+          const raw = infos.map((info: FileShelfItemInfo) => ({
+            name: info.name,
+            path: info.path,
+            size: info.size,
+            type: info.extension ? `file/${info.extension}` : "application/octet-stream",
+          }));
+          const res = ShelfStore.addFilesWithResult(activeShelf.id, raw);
+          if (res.duplicates.length > 0) {
+            showFeedback(tr("{count} duplicate(s) skipped", { count: res.duplicates.length }));
+          } else {
+            showFeedback(tr("{count} file(s) added", { count: res.added.length }));
+          }
+          Sound.resume();
+          Sound.play("pop");
+          render();
+          return;
+        }
+      } catch {}
+    }
+
     const raw = files.map((f) => ({
       name: f.name,
       path: (f as unknown as { path?: string }).path || f.name,
       size: f.size,
       type: f.type,
     }));
-    ShelfStore.addFiles(activeShelf.id, raw);
+    const res = ShelfStore.addFilesWithResult(activeShelf.id, raw);
+    if (res.duplicates.length > 0) {
+      showFeedback(tr("{count} duplicate(s) skipped", { count: res.duplicates.length }));
+    } else if (res.added.length > 0) {
+      showFeedback(tr("{count} file(s) added", { count: res.added.length }));
+    }
     Sound.resume();
     Sound.play("tick");
     render();
   }
 
-  // ── Drag & Drop & Paste Listeners ──
+  // ── Drag & Drop & Paste Listeners on entire view ──
   cardEl.addEventListener("dragover", (e) => {
     e.preventDefault();
     cardEl.classList.add("over");
@@ -238,7 +405,7 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
     e.preventDefault();
     cardEl.classList.remove("over");
     if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-      ingestFiles(Array.from(e.dataTransfer.files));
+      void ingestFiles(Array.from(e.dataTransfer.files));
     }
   });
 
@@ -246,15 +413,22 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
   viewEl.addEventListener("paste", (e) => {
     if (e.clipboardData?.files && e.clipboardData.files.length > 0) {
       e.preventDefault();
-      ingestFiles(Array.from(e.clipboardData.files));
+      void ingestFiles(Array.from(e.clipboardData.files));
     }
   });
 
+  // Comprehensive file icon renderer with semantic coloring
   function getFileIcon(ext: string): SVGSVGElement {
-    const isImage = ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext);
-    const isCode = ["ts", "js", "py", "rs", "json", "html", "css", "c", "cpp", "go"].includes(ext);
-    const isPdf = ext === "pdf";
-    const isZip = ["zip", "tar", "gz", "rar", "7z"].includes(ext);
+    const e = ext.toLowerCase();
+    const isImage = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "tiff", "psd", "ai"].includes(e);
+    const isPdf = e === "pdf";
+    const isDoc = ["doc", "docx", "txt", "rtf", "odt", "md", "markdown", "tex", "log"].includes(e);
+    const isSheet = ["xls", "xlsx", "csv", "tsv", "ods"].includes(e);
+    const isSlide = ["ppt", "pptx", "key", "odp"].includes(e);
+    const isCode = ["ts", "tsx", "js", "jsx", "py", "rs", "go", "c", "cpp", "h", "hpp", "cs", "java", "html", "css", "scss", "json", "xml", "yaml", "yml", "toml", "sql", "sh", "ps1", "bat"].includes(e);
+    const isZip = ["zip", "tar", "gz", "rar", "7z", "bz2", "xz", "iso"].includes(e);
+    const isMedia = ["mp3", "wav", "flac", "m4a", "ogg", "mp4", "mkv", "mov", "avi", "webm"].includes(e);
+    const isExe = ["exe", "msi", "dll", "app", "apk"].includes(e);
 
     const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svgEl.setAttribute("viewBox", "0 0 24 24");
@@ -267,16 +441,31 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     if (isImage) {
       path.setAttribute("d", "M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zm4 5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm12 5-5-5-6 6");
-      svgEl.style.stroke = "#38bdf8";
+      svgEl.style.stroke = "#38bdf8"; // Sky blue
     } else if (isPdf) {
       path.setAttribute("d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 15h6M9 11h6");
-      svgEl.style.stroke = "#f43f5e";
+      svgEl.style.stroke = "#f43f5e"; // Rose / Red
+    } else if (isDoc) {
+      path.setAttribute("d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h6M8 9h2");
+      svgEl.style.stroke = "#60a5fa"; // Blue
+    } else if (isSheet) {
+      path.setAttribute("d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 11h8M8 15h8M8 19h8M12 11v8");
+      svgEl.style.stroke = "#10b981"; // Emerald
+    } else if (isSlide) {
+      path.setAttribute("d", "M3 4h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm5 16l4-2 4 2M8 11l4-3 4 3");
+      svgEl.style.stroke = "#f59e0b"; // Amber
     } else if (isCode) {
       path.setAttribute("d", "M16 18l6-6-6-6M8 6l-6 6 6 6");
-      svgEl.style.stroke = "#34d399";
+      svgEl.style.stroke = "#34d399"; // Green
     } else if (isZip) {
       path.setAttribute("d", "M10 2v20M14 2v20M4 7h16M4 17h16");
-      svgEl.style.stroke = "#fbbf24";
+      svgEl.style.stroke = "#fbbf24"; // Gold
+    } else if (isMedia) {
+      path.setAttribute("d", "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm12-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0z");
+      svgEl.style.stroke = "#a855f7"; // Purple
+    } else if (isExe) {
+      path.setAttribute("d", "M4 4h16v16H4zM9 9h6v6H9z");
+      svgEl.style.stroke = "#94a3b8"; // Slate
     } else {
       path.setAttribute("d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6");
       svgEl.style.stroke = "rgba(255, 255, 255, 0.75)";
@@ -329,12 +518,48 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
     menu.open(anchor);
   }
 
+  function openCardContextMenu(anchor: HTMLElement, file: ParkedFile) {
+    const items: Parameters<typeof dropdown>[0] = [
+      {
+        label: tr("Open file"),
+        onClick: () => void openFile(file),
+      },
+      {
+        label: tr("Reveal in File Explorer"),
+        onClick: () => void revealFile(file),
+      },
+      {
+        label: tr("Copy path"),
+        icon: "copy",
+        onClick: () => copyFilePath(file.path || file.name),
+      },
+      {
+        label: tr("Rename display name"),
+        icon: "pencil",
+        onClick: () => {
+          renamingFileId = file.id;
+          render();
+        },
+      },
+      { type: "separator" },
+      {
+        label: tr("Remove from shelf"),
+        icon: "trash",
+        danger: true,
+        onClick: () => removeSingleFile(file.id),
+      },
+    ];
+
+    const menu = dropdown(items);
+    menu.open(anchor);
+  }
+
   // ── Render ──
   function render() {
     const shelves = ShelfStore.getShelves();
     const activeShelf = ShelfStore.getActiveShelf();
 
-    // Render Shelves list
+    // Render Shelves sidebar list
     clear(shelfListEl);
     for (const shelf of shelves) {
       const isActive = shelf.id === activeShelf.id;
@@ -407,6 +632,7 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
           if (isRenaming) return;
           if (activeShelf.id !== shelf.id) {
             ShelfStore.setActiveShelfId(shelf.id);
+            selectedFileIds.clear();
             Sound.resume();
             Sound.play("blip");
             render();
@@ -426,10 +652,10 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
       );
     }
 
-    // Active shelf header info
+    // Active shelf header statistics
     activeTitleEl.textContent = activeShelf.name;
     const files = ShelfStore.getSortedFiles(activeShelf.id, currentSort);
-    const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
+    const totalBytes = files.reduce((acc, f) => acc + (f.size || 0), 0);
 
     if (files.length === 0) {
       activeStatusEl.textContent = tr("Empty");
@@ -448,27 +674,35 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
       const dropzone = h("div", {
         class: "fileshelf-dropzone",
         onclick: (e) => {
-          // If clicked choose files or empty area, open file dialog
-          if ((e.target as HTMLElement).tagName !== "BUTTON") {
-            fileInput.click();
+          if ((e.target as HTMLElement).tagName !== "BUTTON" && !(e.target as HTMLElement).closest("button")) {
+            void triggerAddFiles();
           }
         },
       },
-        h("div", { class: "fileshelf-dropzone-row" },
-          svg(ICONS.folder, 16),
-          h("span", {
-            class: "fileshelf-dropzone-text",
-            text: tr("Nothing on {name} yet · drop files or paste with Ctrl+V", { name: activeShelf.name }),
-          }),
+        h("div", { class: "fileshelf-empty-stack" },
+          h("div", { class: "fileshelf-empty-icon-badge" }, svg(ICONS.folder, 16)),
+          h("div", { class: "fileshelf-empty-copy" },
+            h("div", {
+              class: "fileshelf-empty-title",
+              text: tr("Nothing on {name} yet", { name: activeShelf.name }),
+            }),
+            h("div", {
+              class: "fileshelf-empty-sub",
+              text: tr("Drop files here to stage them on this shelf"),
+            }),
+            h("div", {
+              class: "fileshelf-empty-hint",
+              text: tr("Paste files with Ctrl+V"),
+            }),
+          ),
           h("button", {
             class: "fileshelf-choose-btn",
             type: "button",
             onclick: (e) => {
               e.stopPropagation();
-              fileInput.click();
+              void triggerAddFiles();
             },
-            text: tr("Choose files"),
-          })
+          }, svg(ICONS.plus, 10), h("span", { text: tr("Add Files") }))
         )
       );
 
@@ -481,7 +715,7 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
         e.preventDefault();
         dropzone.classList.remove("over");
         if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-          ingestFiles(Array.from(e.dataTransfer.files));
+          void ingestFiles(Array.from(e.dataTransfer.files));
         }
       });
 
@@ -492,17 +726,26 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
 
       for (const f of files) {
         const isSelected = selectedFileIds.has(f.id);
+        const isRenaming = renamingFileId === f.id;
 
         const card = h("div", {
-          class: `fileshelf-file-card ${isSelected ? "selected" : ""}`,
+          class: `fileshelf-file-card ${isSelected ? "selected" : ""} ${f.missing ? "missing" : ""}`,
           draggable: "true",
+          title: f.path || f.name,
         });
 
-        // Native drag out
+        // Native drag out support
         card.addEventListener("dragstart", (e) => {
           if (e.dataTransfer) {
             e.dataTransfer.setData("text/plain", f.path || f.name);
           }
+        });
+
+        // Context menu (right click)
+        card.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openCardContextMenu(card, f);
         });
 
         // Select mode checkbox
@@ -522,19 +765,26 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
           card.append(cb);
         }
 
-        // Hover quick actions (Remove, Copy path)
-        const deleteBtn = h("button", {
+        // Hover quick action bar (Open, Reveal, Copy path, Remove)
+        const openBtn = h("button", {
           class: "fileshelf-card-btn",
-          title: tr("Remove from shelf"),
+          title: tr("Open file"),
           type: "button",
           onclick: (e) => {
             e.stopPropagation();
-            ShelfStore.removeFile(activeShelf.id, f.id);
-            Sound.resume();
-            Sound.play("tick");
-            render();
+            void openFile(f);
           },
-        }, svg(ICONS.xmark, 9));
+        }, svg(ICONS.arrowUpRight, 9));
+
+        const revealBtn = h("button", {
+          class: "fileshelf-card-btn",
+          title: tr("Reveal in File Explorer"),
+          type: "button",
+          onclick: (e) => {
+            e.stopPropagation();
+            void revealFile(f);
+          },
+        }, svg(ICONS.folder, 9));
 
         const copyBtn = h("button", {
           class: "fileshelf-card-btn",
@@ -542,44 +792,97 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
           type: "button",
           onclick: (e) => {
             e.stopPropagation();
-            if (typeof navigator !== "undefined" && navigator.clipboard) {
-              void navigator.clipboard.writeText(f.path || f.name);
-            }
-            Sound.resume();
-            Sound.play("approve");
+            copyFilePath(f.path || f.name);
           },
         }, svg(ICONS.copy, 9));
 
-        const actionsRow = h("div", { class: "fileshelf-card-actions" }, copyBtn, deleteBtn);
+        const deleteBtn = h("button", {
+          class: "fileshelf-card-btn danger",
+          title: tr("Remove from shelf"),
+          type: "button",
+          onclick: (e) => {
+            e.stopPropagation();
+            removeSingleFile(f.id);
+          },
+        }, svg(ICONS.xmark, 9));
+
+        const actionsRow = h("div", { class: "fileshelf-card-actions" }, openBtn, revealBtn, copyBtn, deleteBtn);
         card.append(actionsRow);
 
-        // Icon, Name, Size
+        // File icon
         const iconWrap = h("div", { class: "fileshelf-file-icon" }, getFileIcon(f.extension));
-        const nameEl = h("div", {
-          class: "fileshelf-file-name",
-          text: f.name,
-          title: f.path || f.name,
-        });
-        const sizeEl = h("div", {
-          class: "fileshelf-file-size",
-          text: `${f.extension ? f.extension.toUpperCase() + " · " : ""}${ShelfStore.formatBytes(f.size)}`,
-        });
+
+        // File name (or inline rename input)
+        let nameEl: HTMLElement;
+        if (isRenaming) {
+          const renameInput = h("input", {
+            class: "fileshelf-card-rename-input",
+            type: "text",
+            value: f.name,
+          }) as HTMLInputElement;
+
+          let renameDone = false;
+          const finishCardRename = (commit: boolean) => {
+            if (renameDone) return;
+            renameDone = true;
+            const val = renameInput.value.trim();
+            if (commit && val && val !== f.name) {
+              ShelfStore.renameFile(activeShelf.id, f.id, val);
+              Sound.resume();
+              Sound.play("pop");
+            }
+            renamingFileId = null;
+            render();
+          };
+
+          renameInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              finishCardRename(true);
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              finishCardRename(false);
+            }
+          });
+          renameInput.addEventListener("blur", () => finishCardRename(true));
+          renameInput.addEventListener("click", (e) => e.stopPropagation());
+
+          setTimeout(() => {
+            renameInput.focus();
+            renameInput.select();
+          }, 10);
+
+          nameEl = h("div", { class: "fileshelf-file-name" }, renameInput);
+        } else {
+          nameEl = h("div", {
+            class: "fileshelf-file-name",
+            text: f.name,
+          });
+        }
+
+        // Subtitle: Type · Size (or Missing)
+        const sizeLabel = f.missing
+          ? h("span", { class: "fileshelf-missing-badge", text: tr("Missing") })
+          : h("span", { text: `${f.extension ? f.extension.toUpperCase() + " · " : ""}${ShelfStore.formatBytes(f.size)}` });
+
+        const sizeEl = h("div", { class: "fileshelf-file-size" }, sizeLabel);
 
         card.append(iconWrap, nameEl, sizeEl);
 
-        card.addEventListener("click", () => {
+        // Click handler: in select mode toggles selection; otherwise double-click opens, single-click selects or copies
+        card.addEventListener("click", (e) => {
           if (isSelectMode) {
+            e.stopPropagation();
             if (selectedFileIds.has(f.id)) selectedFileIds.delete(f.id);
             else selectedFileIds.add(f.id);
             render();
-          } else {
-            // Copy path by default on click
-            if (typeof navigator !== "undefined" && navigator.clipboard) {
-              void navigator.clipboard.writeText(f.path || f.name);
-            }
-            Sound.resume();
-            Sound.play("tick");
           }
+        });
+
+        card.addEventListener("dblclick", (e) => {
+          e.stopPropagation();
+          void openFile(f);
         });
 
         grid.append(card);
@@ -587,12 +890,40 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
 
       contentEl.append(grid);
 
-      // In select mode: batch action toolbar
-      if (isSelectMode && selectedFileIds.size > 0) {
+      // In select mode: batch action toolbar at bottom
+      if (isSelectMode) {
+        const allSelected = files.length > 0 && selectedFileIds.size === files.length;
+        const toggleAllBtn = h("button", {
+          class: "fileshelf-batch-link",
+          type: "button",
+          text: allSelected ? tr("Deselect all") : tr("Select all"),
+          onclick: () => {
+            if (allSelected) {
+              selectedFileIds.clear();
+            } else {
+              for (const f of files) selectedFileIds.add(f.id);
+            }
+            render();
+          },
+        });
+
+        const batchCopyBtn = h("button", {
+          class: "fileshelf-batch-btn",
+          type: "button",
+          disabled: selectedFileIds.size === 0,
+          text: tr("Copy paths ({count})", { count: selectedFileIds.size }),
+          onclick: () => {
+            const selectedFiles = files.filter((f) => selectedFileIds.has(f.id));
+            const paths = selectedFiles.map((f) => f.path || f.name).join("\n");
+            copyFilePath(paths);
+          },
+        });
+
         const batchDeleteBtn = h("button", {
           class: "fileshelf-batch-btn danger",
           type: "button",
-          text: tr("Delete selected ({count})", { count: selectedFileIds.size }),
+          disabled: selectedFileIds.size === 0,
+          text: tr("Remove ({count})", { count: selectedFileIds.size }),
           onclick: () => {
             ShelfStore.removeFiles(activeShelf.id, Array.from(selectedFileIds));
             selectedFileIds.clear();
@@ -602,23 +933,11 @@ export function buildFileShelf(_actions: ViewActions): ViewHost {
           },
         });
 
-        const batchCopyBtn = h("button", {
-          class: "fileshelf-batch-btn",
-          type: "button",
-          text: tr("Copy paths ({count})", { count: selectedFileIds.size }),
-          onclick: () => {
-            const selectedFiles = files.filter((f) => selectedFileIds.has(f.id));
-            const paths = selectedFiles.map((f) => f.path || f.name).join("\n");
-            if (typeof navigator !== "undefined" && navigator.clipboard) {
-              void navigator.clipboard.writeText(paths);
-            }
-            Sound.resume();
-            Sound.play("approve");
-          },
-        });
-
         const batchBar = h("div", { class: "fileshelf-batch-bar" },
-          h("span", { text: tr("{count} selected", { count: selectedFileIds.size }) }),
+          h("div", { style: "display:flex;align-items:center;gap:10px" },
+            h("span", { class: "fileshelf-batch-count", text: tr("{count} selected", { count: selectedFileIds.size }) }),
+            toggleAllBtn,
+          ),
           h("div", { style: "display:flex;gap:6px" }, batchCopyBtn, batchDeleteBtn)
         );
         contentEl.append(batchBar);

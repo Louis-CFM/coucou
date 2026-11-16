@@ -39,11 +39,12 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
   }, "primary");
   record.prepend(h("span", { class: "hub-rec", style: "background:#170c04;box-shadow:none;margin-inline-end:8px" }));
   const alertLine = h("div", { class: "hub-note" });
-  const device = status.deviceName || "MADHAN";
-  const nameWithDevice = status.userName
-    ? (status.userName.toLowerCase() === device.toLowerCase() ? status.userName : `${status.userName} (${device})`)
+  const device = status.deviceName?.trim() || "";
+  const user = status.userName?.trim() || "";
+  const nameWithDevice = user
+    ? (device && user.toLowerCase() !== device.toLowerCase() ? `${user} (${device})` : user)
     : device;
-  const hello = t("Hello {0}", { 0: nameWithDevice });
+  const hello = nameWithDevice ? t("Hello {0}", { 0: nameWithDevice }) : t("Hello");
   page.append(ctx.hero("dictation", hello, t("Hold {0} anywhere, speak, let go: it's pasted.", { 0: key }), [record]));
   page.append(alertLine);
 

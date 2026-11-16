@@ -4,6 +4,20 @@
 // personal messages with the user's name ({name}), displayed alongside Mochi in the small notch.
 
 import { State } from "./state";
+import { Bridge } from "./bridge";
+import { ContextIntelligence } from "../companion/context";
+import { MessagePolicyEngine } from "../companion/policy";
+import { DeterministicCatalog } from "../companion/catalog";
+import { SpeculativeEngine } from "../companion/speculative";
+import { MessageValidator } from "../companion/validator";
+import { CompanionMemory } from "../companion/memory";
+import type {
+  CompanionCategory,
+  CompanionSettings,
+  PersonalityMode,
+  PrivacyConsentRecord,
+  RoutingMode,
+} from "../companion/types";
 
 export type CircadianPhase =
   | "dawn"
@@ -67,10 +81,66 @@ export class WelcomeMessageManager {
   private activeMinutes = 0;
   private hasGreetedOnLaunch = false;
 
-  userName = "Madhan";
+  private _preferredName = "";
+  private _detectedGreetingName = "";
+  private _legacyDefaultCleaned = false;
+
   enabled = true;
   wellnessEnabled = true;
   hydrationIntervalMinutes = 45; // default 45 min
+
+  routingMode: RoutingMode = "auto";
+  personalityMode: PersonalityMode = "warm_playful";
+  quietHoursEnabled = false;
+  quietHoursStart = "22:00";
+  quietHoursEnd = "08:00";
+  localEndpoint = "http://127.0.0.1:11434";
+  localModel = "llama3.2";
+  cloudProvider: "anthropic" | "openai" = "anthropic";
+  cloudModel = "claude-3-5-haiku-20241022";
+
+  /** Explicit user preferred name override. If empty, automatically uses detected Windows identity. */
+  get preferredName(): string {
+    return this._preferredName;
+  }
+
+  set preferredName(val: string) {
+    this._preferredName = (val ?? "").trim();
+    this.saveState();
+    // Invalidate speculative prefetch cache on identity change
+    void SpeculativeEngine.invalidate();
+    ContextIntelligence.incrementVersion();
+    this.notify();
+  }
+
+  /** Automatically detected Windows first name. */
+  get detectedGreetingName(): string {
+    return this._detectedGreetingName;
+  }
+
+  set detectedGreetingName(val: string) {
+    this._detectedGreetingName = (val ?? "").trim();
+    this.notify();
+  }
+
+  /**
+   * Authoritative resolved greeting name for message personalization.
+   * Priority: 1. Preferred name -> 2. Detected Windows name -> 3. "" (neutral fallback)
+   */
+  get resolvedGreetingName(): string {
+    if (this._preferredName.length > 0) return this._preferredName;
+    if (this._detectedGreetingName.length > 0) return this._detectedGreetingName;
+    return "";
+  }
+
+  /** Backward-compatible alias for resolvedGreetingName. */
+  get userName(): string {
+    return this.resolvedGreetingName;
+  }
+
+  set userName(val: string) {
+    this.preferredName = val;
+  }
 
   static get shared(): WelcomeMessageManager {
     if (!WelcomeMessageManager.instance) {
@@ -82,6 +152,35 @@ export class WelcomeMessageManager {
   private constructor() {
     this.loadState();
     this.startAmbientTicker();
+    void this.initIdentity();
+  }
+
+  async initIdentity() {
+    try {
+      const id = await Bridge.getUserIdentity();
+      if (id?.detectedGreetingName && id.detectedGreetingName.trim().length > 0) {
+        const detected = id.detectedGreetingName.trim();
+        this._detectedGreetingName = detected;
+
+        // Migration: If preferredName was loaded as "Madhan" from old hardcoded default,
+        // but the detected Windows account is someone else and coucou_preferred_name was never
+        // explicitly saved, reset preferredName so the real Windows identity is used.
+        if (
+          !this._legacyDefaultCleaned &&
+          this._preferredName.toLowerCase() === "madhan" &&
+          detected.toLowerCase() !== "madhan" &&
+          typeof localStorage !== "undefined" &&
+          localStorage.getItem("coucou_preferred_name") == null
+        ) {
+          this._preferredName = "";
+          try {
+            localStorage.removeItem("coucou_user_name");
+          } catch {}
+          this._legacyDefaultCleaned = true;
+        }
+      }
+    } catch {}
+    this.notify();
   }
 
   private loadState() {
@@ -91,12 +190,35 @@ export class WelcomeMessageManager {
         if (en != null) this.enabled = en === "true";
         const well = localStorage.getItem("coucou_wellness_enabled");
         if (well != null) this.wellnessEnabled = well === "true";
-        const u = localStorage.getItem("coucou_user_name");
-        if (u && u.trim().length > 0) this.userName = u.trim();
         const water = localStorage.getItem("coucou_last_water_time");
         if (water) this.lastWaterNudgeTime = Number(water) || Date.now();
         const intv = localStorage.getItem("coucou_hydration_interval");
         if (intv) this.hydrationIntervalMinutes = Number(intv) || 45;
+
+        const rm = localStorage.getItem("coucou_companion_routing_mode");
+        if (rm === "auto" || rm === "local_only" || rm === "cloud_only" || rm === "classic") this.routingMode = rm;
+        const pm = localStorage.getItem("coucou_companion_personality");
+        if (pm === "warm_playful" || pm === "witty_sarcastic" || pm === "zen_mindful" || pm === "focus_coach") this.personalityMode = pm;
+        const qh = localStorage.getItem("coucou_quiet_hours_enabled");
+        if (qh != null) this.quietHoursEnabled = qh === "true";
+        const qs = localStorage.getItem("coucou_quiet_hours_start");
+        if (qs) this.quietHoursStart = qs;
+        const qe = localStorage.getItem("coucou_quiet_hours_end");
+        if (qe) this.quietHoursEnd = qe;
+        const le = localStorage.getItem("coucou_companion_local_endpoint");
+        if (le) this.localEndpoint = le;
+        const lm = localStorage.getItem("coucou_companion_local_model");
+        if (lm) this.localModel = lm;
+
+        const pref = localStorage.getItem("coucou_preferred_name");
+        if (pref != null && pref.trim().length > 0) {
+          this._preferredName = pref.trim();
+        } else {
+          const legacy = localStorage.getItem("coucou_user_name");
+          if (legacy != null && legacy.trim().length > 0) {
+            this._preferredName = legacy.trim();
+          }
+        }
       }
     } catch {}
   }
@@ -106,9 +228,23 @@ export class WelcomeMessageManager {
       if (typeof localStorage !== "undefined") {
         localStorage.setItem("coucou_welcome_enabled", String(this.enabled));
         localStorage.setItem("coucou_wellness_enabled", String(this.wellnessEnabled));
-        localStorage.setItem("coucou_user_name", this.userName);
         localStorage.setItem("coucou_last_water_time", String(this.lastWaterNudgeTime));
         localStorage.setItem("coucou_hydration_interval", String(this.hydrationIntervalMinutes));
+        localStorage.setItem("coucou_companion_routing_mode", this.routingMode);
+        localStorage.setItem("coucou_companion_personality", this.personalityMode);
+        localStorage.setItem("coucou_quiet_hours_enabled", String(this.quietHoursEnabled));
+        localStorage.setItem("coucou_quiet_hours_start", this.quietHoursStart);
+        localStorage.setItem("coucou_quiet_hours_end", this.quietHoursEnd);
+        localStorage.setItem("coucou_companion_local_endpoint", this.localEndpoint);
+        localStorage.setItem("coucou_companion_local_model", this.localModel);
+
+        if (this._preferredName.length > 0) {
+          localStorage.setItem("coucou_preferred_name", this._preferredName);
+          localStorage.setItem("coucou_user_name", this._preferredName);
+        } else {
+          localStorage.removeItem("coucou_preferred_name");
+          localStorage.removeItem("coucou_user_name");
+        }
       }
     } catch {}
   }
@@ -178,7 +314,7 @@ export class WelcomeMessageManager {
     const now = Date.now();
     const d = new Date(now);
     const hour = d.getHours() + d.getMinutes() / 60;
-    const u = this.userName;
+    const u = this.resolvedGreetingName;
 
     let text = u ? `Hey ${u}, good to see you! ✨` : "Hey, good to see you! ✨";
     if (hour >= 5 && hour < 11.5) {
@@ -220,7 +356,7 @@ export class WelcomeMessageManager {
 
     // 1. Proactive Hydration Nudge
     if (this.wellnessEnabled && minutesSinceWater >= this.hydrationIntervalMinutes && sessionWorkHours >= 0.75) {
-      const u = this.userName;
+      const u = this.resolvedGreetingName;
       const hydrationTemplates = [
         u ? `Hey ${u}! Grab a glass of water right now 💧` : "Hey! Grab a glass of water right now 💧",
         u ? `${u}, quick water break to keep your energy up! 💧` : "Quick water break to keep your energy up! 💧",
@@ -241,7 +377,7 @@ export class WelcomeMessageManager {
 
     // 2. Posture & 20-20-20 Eye Relief Nudge
     if (this.wellnessEnabled && minutesSincePosture >= 90 && sessionWorkHours >= 1.5) {
-      const u = this.userName;
+      const u = this.resolvedGreetingName;
       const postureTemplates = [
         u ? `${u}, look 20 feet away for 20 seconds ✨` : "Look 20 feet away for 20 seconds ✨",
         u ? `Quick posture check, ${u}! Roll those shoulders back 🧘` : "Quick posture check! Roll those shoulders back 🧘",
@@ -262,7 +398,7 @@ export class WelcomeMessageManager {
     // 3. Circadian Phase Transition
     const currentPhase = this.computeStateVector(0, now).timeOfDay;
     if (this.lastCircadianPhase && this.lastCircadianPhase !== currentPhase) {
-      const u = this.userName;
+      const u = this.resolvedGreetingName;
       let phaseText = "";
       if (currentPhase === "afternoon_slump") {
         phaseText = u ? `2 PM slump? Not on Mochi's watch, ${u} ⚡` : "2 PM slump? Not on Mochi's watch ⚡";
@@ -289,6 +425,54 @@ export class WelcomeMessageManager {
     this.lastCircadianPhase = currentPhase;
   }
 
+  getPrivacyConsent(): PrivacyConsentRecord {
+    try {
+      if (typeof localStorage !== "undefined") {
+        const raw = localStorage.getItem("coucou_cloud_consent_v2");
+        if (raw) return JSON.parse(raw);
+      }
+    } catch {}
+    return {
+      version: 2,
+      consentedProviders: { anthropic: false, openai: false },
+      consentedCategories: { userGreetingName: true, sessionMetrics: true },
+      grantedAtTimestamp: null,
+      consentRevoked: false,
+    };
+  }
+
+  getCompanionSettings(): CompanionSettings {
+    return {
+      enabled: this.enabled,
+      routingMode: this.routingMode,
+      preferredName: this.preferredName,
+      personality: this.personalityMode,
+      absenceIntervalSeconds: 180,
+      quietHoursEnabled: this.quietHoursEnabled,
+      quietHoursStart: this.quietHoursStart,
+      quietHoursEnd: this.quietHoursEnd,
+    };
+  }
+
+  /**
+   * Called when Win32 reports the user stepped away from keyboard/mouse.
+   * Speculatively pre-generates an AI candidate in the background.
+   */
+  onUserAway(awayMinutes: number) {
+    if (!this.enabled) return;
+    const awaySnap = ContextIntelligence.capture("greeting_return", awayMinutes * 60);
+    const settings = this.getCompanionSettings();
+    const consent = this.getPrivacyConsent();
+    void SpeculativeEngine.onUserAway(
+      awaySnap,
+      settings,
+      consent,
+      CompanionMemory.getRecentExclusions(),
+      this.localEndpoint,
+      this.localModel,
+    );
+  }
+
   /**
    * Called when Win32 GetLastInputInfo reports the user returned after an idle period.
    */
@@ -296,37 +480,55 @@ export class WelcomeMessageManager {
     if (!this.enabled) return;
 
     const now = Date.now();
-    if (now - this.lastTriggerTime < WelcomeMessageManager.RETURN_COOLDOWN_MS) {
+    if (!MessagePolicyEngine.canTriggerReturnGreeting(now)) {
       return;
     }
 
     if (resolvedName && resolvedName.trim().length > 0) {
-      this.userName = resolvedName.trim();
+      this._detectedGreetingName = resolvedName.trim();
     }
 
-    const stateVector = this.computeStateVector(awayMinutes, now);
-    const message = this.selectBestMessage(stateVector);
+    const returnSnap = ContextIntelligence.capture("greeting_return", awayMinutes * 60);
+    const settings = this.getCompanionSettings();
 
-    if (message) {
-      if (message.category === "hydration") {
-        this.lastWaterNudgeTime = now;
-        this.saveState();
+    // 1. Try consuming fresh speculative candidate from queue
+    const specResult = SpeculativeEngine.consumeIfValid(returnSnap, settings, now);
+    let chosenText: string | null = null;
+    let chosenId = "";
+    let chosenCategory: CompanionCategory = "greeting_return";
+    let chosenProvider = "static";
+
+    if (specResult.candidate) {
+      const sanitized = MessageValidator.sanitizeAndValidate(specResult.candidate.text);
+      if (sanitized && !CompanionMemory.isDuplicateOrSimilar(sanitized, now)) {
+        chosenText = sanitized;
+        chosenId = specResult.candidate.id;
+        chosenCategory = specResult.candidate.category;
+        chosenProvider = specResult.candidate.provider;
       }
-
-      this.recentHistory.push(message.id);
-      if (this.recentHistory.length > 8) {
-        this.recentHistory.shift();
-      }
-
-      const text = message.template(this.userName);
-      this.displayMessage({
-        id: message.id,
-        text,
-        bot: true,
-        category: message.category,
-        timestamp: now,
-      });
     }
+
+    // 2. If no valid candidate, use instant deterministic fallback (<1ms)
+    if (!chosenText) {
+      const fallback = DeterministicCatalog.resolveFallback(returnSnap);
+      chosenText = fallback.text;
+      chosenId = fallback.id;
+      chosenCategory = fallback.category;
+      chosenProvider = "static";
+    }
+
+    // 3. Record in memory and deliver to Dynamic Island
+    CompanionMemory.record(chosenText, chosenCategory, chosenProvider, now);
+    MessagePolicyEngine.recordDelivered(chosenCategory, now);
+    this.lastTriggerTime = now;
+
+    this.displayMessage({
+      id: chosenId,
+      text: chosenText,
+      bot: true,
+      category: chosenCategory,
+      timestamp: now,
+    });
   }
 
   /**
@@ -334,7 +536,7 @@ export class WelcomeMessageManager {
    */
   poke() {
     const now = Date.now();
-    const u = this.userName;
+    const u = this.resolvedGreetingName;
     const thoughts = [
       u ? `Mochi's right here with you, ${u}! 💙` : "Mochi's right here with you! 💙",
       u ? `You're doing awesome work today, ${u}! 🚀` : "You're doing awesome work today! 🚀",
@@ -355,7 +557,8 @@ export class WelcomeMessageManager {
    * Immediately triggers a preview message (for Settings or test buttons).
    */
   triggerPreview(sampleText?: string) {
-    const text = sampleText || (this.userName ? `Hey ${this.userName}! Mochi companion is active 🌟` : "Hey! Mochi companion is active 🌟");
+    const u = this.resolvedGreetingName;
+    const text = sampleText || (u ? `Hey ${u}! Mochi companion is active 🌟` : "Hey! Mochi companion is active 🌟");
     this.displayMessage({
       id: "preview_test",
       text,
@@ -412,7 +615,7 @@ export class WelcomeMessageManager {
       dayOfWeek,
       sessionWorkHours,
       minutesSinceWater,
-      userName: this.userName,
+      userName: this.resolvedGreetingName,
       wardrobe,
     };
   }

@@ -65,11 +65,11 @@ test("active notification takes top priority in the small notch", () => {
 });
 
 test("welcome message with Mochi on left takes top priority in the small notch", () => {
-  const welcome = { text: "Hey Madhan, you're back! ✨", bot: true };
+  const welcome = { text: "Hey Alex, you're back! ✨", bot: true };
   for (const style of ["time", "datetime", "claude", "music", "coucoudoro", "mochi", "empty"]) {
     const shown = closedContent(style, input({ welcome }));
     assert.deepEqual(shown, {
-      text: "Hey Madhan, you're back! ✨",
+      text: "Hey Alex, you're back! ✨",
       dot: null,
       note: false,
       bot: true,

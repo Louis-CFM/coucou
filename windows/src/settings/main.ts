@@ -27,6 +27,7 @@ import { appearanceSection } from "./appearance";
 import { phoneSection } from "./phone";
 import { coudropSettingsSection } from "./coudrop";
 import { GlobalWelcomeMessages } from "../core/welcome";
+import { CompanionMemory } from "../companion/memory";
 import { whatsappSection } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { CoucoudoroController } from "../core/coucoudoro";
@@ -1096,18 +1097,51 @@ function buildCompanionCareCard(): HTMLElement {
 
   const nameInput = h("input", {
     type: "text",
-    value: GlobalWelcomeMessages.userName || "Madhan",
-    placeholder: "Your first name",
+    value: GlobalWelcomeMessages.preferredName,
+    placeholder: GlobalWelcomeMessages.detectedGreetingName ? `e.g. ${GlobalWelcomeMessages.detectedGreetingName}` : "Your preferred name",
     style: "width: 140px; font-family: var(--font-sub); font-size: 12px;",
   }) as HTMLInputElement;
 
+  const descSpan = h("span", {
+    class: "coudrop-row-desc",
+    text: GlobalWelcomeMessages.detectedGreetingName
+      ? `Auto-detected: ${GlobalWelcomeMessages.detectedGreetingName}. Enter a custom name to override, or leave blank to use auto-detected.`
+      : "By default, CouCou uses your Windows account name. Enter a preferred name to personalize your companion messages.",
+  });
+
   nameInput.addEventListener("input", () => {
     const val = nameInput.value.trim();
-    if (val) {
-      GlobalWelcomeMessages.userName = val;
-      GlobalWelcomeMessages.saveState();
-    }
+    GlobalWelcomeMessages.preferredName = val;
   });
+
+  const resetBtn = h("button", {
+    class: "coudrop-mac-btn",
+    text: "Reset",
+    style: "font-size: 11px; padding: 2px 8px;",
+    onclick: () => {
+      nameInput.value = "";
+      GlobalWelcomeMessages.preferredName = "";
+      updateIdentityDisplay();
+    },
+  });
+
+  const updateIdentityDisplay = () => {
+    nameInput.placeholder = GlobalWelcomeMessages.detectedGreetingName
+      ? `e.g. ${GlobalWelcomeMessages.detectedGreetingName}`
+      : "Your preferred name";
+    descSpan.textContent = GlobalWelcomeMessages.detectedGreetingName
+      ? `Auto-detected: ${GlobalWelcomeMessages.detectedGreetingName}. Enter a custom name to override, or leave blank to use auto-detected.`
+      : "By default, CouCou uses your Windows account name. Enter a preferred name to personalize your companion messages.";
+  };
+
+  GlobalWelcomeMessages.subscribe(updateIdentityDisplay);
+
+  const nameInputGroup = h(
+    "div",
+    { style: "display: flex; align-items: center; gap: 6px;" },
+    nameInput,
+    resetBtn,
+  );
 
   const nameRow = h(
     "div",
@@ -1116,9 +1150,9 @@ function buildCompanionCareCard(): HTMLElement {
       "div",
       { class: "coudrop-row-label-group" },
       h("span", { class: "coudrop-row-title", text: "Preferred name" }),
-      h("span", { class: "coudrop-row-desc", text: "Name Mochi greets you with in personal messages." }),
+      descSpan,
     ),
-    nameInput,
+    nameInputGroup,
   );
 
   const companionSw = toggle(GlobalWelcomeMessages.enabled, (v) => {
@@ -1158,27 +1192,20 @@ function buildCompanionCareCard(): HTMLElement {
     wellnessSw,
   );
 
-  const intvSelect = h("select", {
-    style: "font-family: var(--font-sub); font-size: 12px; width: 140px;",
-  }) as HTMLSelectElement;
-
-  const options = [
-    { label: "Every 30 minutes", value: "30" },
-    { label: "Every 45 minutes", value: "45" },
-    { label: "Every 60 minutes", value: "60" },
+  const intvOptions: [string, string][] = [
+    ["30", "Every 30 minutes"],
+    ["45", "Every 45 minutes"],
+    ["60", "Every 60 minutes"],
   ];
-  for (const opt of options) {
-    const o = h("option", { text: opt.label, value: opt.value }) as HTMLOptionElement;
-    if (Number(opt.value) === GlobalWelcomeMessages.hydrationIntervalMinutes) {
-      o.selected = true;
-    }
-    intvSelect.append(o);
-  }
-
-  intvSelect.addEventListener("change", () => {
-    GlobalWelcomeMessages.hydrationIntervalMinutes = Number(intvSelect.value) || 45;
-    GlobalWelcomeMessages.saveState();
-  });
+  const intvSelect = dropdownSelect(
+    intvOptions,
+    String(GlobalWelcomeMessages.hydrationIntervalMinutes || 45),
+    (v) => {
+      GlobalWelcomeMessages.hydrationIntervalMinutes = Number(v) || 45;
+      GlobalWelcomeMessages.saveState();
+    },
+    { ariaLabel: "Hydration interval", style: "min-width: 165px;" },
+  );
 
   const intvRow = h(
     "div",
@@ -1192,7 +1219,93 @@ function buildCompanionCareCard(): HTMLElement {
     intvSelect,
   );
 
-  card.append(headerRow, nameRow, companionRow, wellnessRow, intvRow);
+  // ── AI Generation Engine (Routing Mode) ──
+  const routingOptions: [string, string][] = [
+    ["auto", "Auto (Local + Fallback)"],
+    ["local_only", "Local AI Only (Ollama)"],
+    ["cloud_only", "Cloud AI Only"],
+    ["classic", "Classic (Deterministic)"],
+  ];
+  const routingSelect = dropdownSelect(
+    routingOptions,
+    GlobalWelcomeMessages.routingMode || "auto",
+    (v) => {
+      GlobalWelcomeMessages.routingMode = v as any;
+      GlobalWelcomeMessages.saveState();
+    },
+    { ariaLabel: "AI generation engine", style: "min-width: 195px;" },
+  );
+
+  const routingRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "AI generation engine" }),
+      h("span", { class: "coudrop-row-desc", text: "Runs dynamic on-device local AI via Ollama, consented Cloud APIs, or instant classic fallback." }),
+    ),
+    routingSelect,
+  );
+
+  // ── Mochi Personality Mode ──
+  const personalityOptions: [string, string][] = [
+    ["warm_playful", "Warm & Playful"],
+    ["witty_sarcastic", "Witty & Sarcastic"],
+    ["zen_mindful", "Zen & Mindful"],
+    ["focus_coach", "Focus & Productivity Coach"],
+  ];
+  const personalitySelect = dropdownSelect(
+    personalityOptions,
+    GlobalWelcomeMessages.personalityMode || "warm_playful",
+    (v) => {
+      GlobalWelcomeMessages.personalityMode = v as any;
+      GlobalWelcomeMessages.saveState();
+    },
+    { ariaLabel: "Mochi personality", style: "min-width: 215px;" },
+  );
+
+  const personalityRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Mochi personality" }),
+      h("span", { class: "coudrop-row-desc", text: "Choose Mochi's companion tone and conversational style in the Dynamic Island." }),
+    ),
+    personalitySelect,
+  );
+
+  // ── Memory & Diagnostics ──
+  const memoryDesc = h("span", {
+    class: "coudrop-row-desc",
+    text: `Cached messages: ${CompanionMemory.count} in memory. Exact duplicate & phrase repetition prevention active.`,
+  });
+
+  const clearMemBtn = h("button", {
+    class: "coudrop-mac-btn",
+    text: "Clear Memory",
+    style: "font-size: 11px; padding: 2px 8px;",
+    onclick: () => {
+      CompanionMemory.clear();
+      memoryDesc.textContent = `Cached messages: 0 in memory. Exact duplicate & phrase repetition prevention active.`;
+    },
+  });
+
+  const memoryRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Companion memory" }),
+      memoryDesc,
+    ),
+    clearMemBtn,
+  );
+
+  card.append(headerRow, nameRow, companionRow, routingRow, personalityRow, wellnessRow, intvRow, memoryRow);
   return card;
 }
 

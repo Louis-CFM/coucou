@@ -91,6 +91,14 @@ export interface CoudropProgress {
   progress: number;
 }
 
+export interface FileShelfItemInfo {
+  path: string;
+  name: string;
+  size: number;
+  exists: boolean;
+  extension: string;
+}
+
 /** Session details for the phone: the switch (off by default). */
 export interface PhoneDetailsStatus {
   enabled: boolean;
@@ -479,6 +487,12 @@ export const Bridge = {
   coudropOpenFile: (path: string) => call<void>("coudrop_open_file", { path }),
   coudropStageSendFiles: (paths: string[]) => call<string[]>("coudrop_stage_send_files", { paths }),
 
+  // ── File Shelf (Desk) ──────────────────────────────────────────────────────
+  fileshelfPickFiles: () => call<string[]>("fileshelf_pick_files"),
+  fileshelfOpenFile: (path: string) => call<void>("fileshelf_open_file", { path }),
+  fileshelfRevealFile: (path: string) => call<void>("fileshelf_reveal_file", { path }),
+  fileshelfGetFileInfo: (paths: string[]) => call<FileShelfItemInfo[]>("fileshelf_get_file_info", { paths }),
+
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null, mail = false) =>
@@ -626,7 +640,30 @@ export const Bridge = {
   // ── Power & Battery Status (src-tauri/src/power.rs) ────────────────────────
   /** Hardware battery & power status from Windows Win32 API. */
   getBatteryStatus: () => call<BatteryStatusDto>("get_battery_status"),
+
+  // ── Windows User Identity (src-tauri/src/identity.rs) ─────────────────────
+  /** Authoritative Windows system user identity (Flow Dictation & Mochi Companion). */
+  getUserIdentity: () => call<UserIdentityDto>("get_user_identity"),
+
+  // ── Companion AI Orchestration (src-tauri/src/companion_ai.rs) ───────────
+  companionAiGenerate: (requestId: string, contextVersion: number, payload: unknown) =>
+    call<any>("companion_ai_generate", { requestId, contextVersion, payload }),
+  companionAiCancel: (requestId: string) =>
+    call<boolean>("companion_ai_cancel", { requestId }),
+  companionProbeHealth: (provider: string, endpoint?: string) =>
+    call<any>("companion_probe_health", { provider, endpoint }),
 };
+
+export interface UserIdentityDto {
+  windowsDisplayName?: string | null;
+  windowsAccountName?: string | null;
+  detectedGreetingName?: string | null;
+  deviceName?: string | null;
+  isResolved: boolean;
+  authoritativeGreetingName?: string | null;
+  identityVersion?: string | null;
+  isCustomPreferred?: boolean;
+}
 
 export interface BatteryStatusDto {
   hasBattery: boolean;

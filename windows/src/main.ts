@@ -31,6 +31,7 @@ async function main() {
   if (!root) return;
 
   void Sound.preload();
+  void GlobalWelcomeMessages.initIdentity();
 
   // Before the island exists: its canvases size their bitmaps from the pixel
   // ratio once, so the zoom correction has to land first. If zoom was adjusted,
@@ -212,10 +213,10 @@ async function main() {
 
       if (e.key === "w" || e.key === "W") {
         island.fsm.forceHidden();
-        GlobalWelcomeMessages.onUserReturned(15, "Madhan");
+        GlobalWelcomeMessages.onUserReturned(15);
       } else if (e.key === "n" || e.key === "N") {
         island.fsm.forceHidden();
-        GlobalNotifications.push({ app: "WhatsApp", title: "Alice", body: "Hey Madhan!" });
+        GlobalNotifications.push({ app: "WhatsApp", title: "Alice", body: "Hello!" });
       } else if (e.key === "h" || e.key === "H") {
         if (State.mode === "hidden") {
           island.wakeFromClosed();

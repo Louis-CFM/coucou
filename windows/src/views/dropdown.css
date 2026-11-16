@@ -24,10 +24,32 @@
     0 2px 8px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   /* Framer Motion manages jelly spring transforms & opacity */
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
   outline: none;
   /* Ensure Inter for all dropdown text */
   font-family: var(--font-sub, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+  box-sizing: border-box;
+}
+
+.dd-panel::-webkit-scrollbar {
+  width: 5px;
+}
+
+.dd-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dd-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+.dd-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.38);
 }
 
 /* ── Separator ── */

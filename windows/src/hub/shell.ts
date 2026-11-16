@@ -95,8 +95,8 @@ const DEFAULT_STATUS: FlowStatus = {
   mics: [],
   platform: navigator.userAgent.includes("Windows") ? "windows" : "linux",
   autostarted: false,
-  userName: "Madhan",
-  deviceName: "MADHAN",
+  userName: null,
+  deviceName: null,
 };
 
 export async function startHub(root: HTMLElement, opts: HubOptions) {

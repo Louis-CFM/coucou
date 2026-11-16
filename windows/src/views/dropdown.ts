@@ -107,8 +107,14 @@ function checkSvg(): SVGSVGElement {
 // Shared state: only one panel open at a time.
 let activePanel: HTMLElement | null = null;
 let activeTrigger: HTMLElement | null = null;
+let activeCleanup: (() => void) | null = null;
 
 function closeActive() {
+  if (activeCleanup) {
+    const cleanup = activeCleanup;
+    activeCleanup = null;
+    cleanup();
+  }
   if (activeTrigger) {
     activeTrigger.classList.remove("open");
     activeTrigger = null;
@@ -124,6 +130,113 @@ function closeActive() {
       panel.remove();
     });
   }
+}
+
+export interface PlacementOptions {
+  padding?: number;
+  offset?: number;
+  maxHeightCap?: number;
+}
+
+export interface PlacementResult {
+  left: number;
+  top: number;
+  maxHeight: number;
+  isFlipped: boolean;
+  isRightAligned: boolean;
+  transformOrigin: string;
+}
+
+/**
+ * Computes collision-free, deterministic placement for dropdown menus.
+ *
+ * Rules:
+ * 1. Checks available space below and above the trigger anchor within viewport bounds.
+ * 2. Prefers downward placement if menu fits completely below.
+ * 3. Flips upward only if it fits cleanly above AND above has more space.
+ * 4. When the menu cannot fit fully in either direction without scroll, chooses the direction
+ *    with the LARGER available space and constrains maxHeight (enabling sleek scrolling).
+ * 5. Strictly clamps top and left within [padding, viewport - size - padding] so menus
+ *    NEVER escape into negative coordinates or clip outside window boundaries.
+ */
+export function calculateDropdownPlacement(
+  anchorRect: { top: number; bottom: number; left: number; right: number; width?: number; height?: number },
+  panelWidth: number,
+  panelHeight: number,
+  viewportWidth: number,
+  viewportHeight: number,
+  options: PlacementOptions = {},
+): PlacementResult {
+  const padding = options.padding ?? 8;
+  const offset = options.offset ?? 6;
+  const maxHeightCap = options.maxHeightCap ?? 380;
+
+  // Space available above and below anchor within viewport padding
+  const spaceBelow = Math.max(0, viewportHeight - anchorRect.bottom - offset - padding);
+  const spaceAbove = Math.max(0, anchorRect.top - offset - padding);
+
+  let isFlipped = false;
+  let availableHeight = spaceBelow;
+
+  // Directional placement logic
+  if (panelHeight <= spaceBelow) {
+    // Fits cleanly below (standard reading flow)
+    isFlipped = false;
+    availableHeight = spaceBelow;
+  } else if (panelHeight <= spaceAbove && spaceAbove > spaceBelow) {
+    // Doesn't fit below, but fits cleanly above with more space
+    isFlipped = true;
+    availableHeight = spaceAbove;
+  } else {
+    // Neither fits completely without scroll: pick the side with LARGER available space!
+    if (spaceAbove > spaceBelow) {
+      isFlipped = true;
+      availableHeight = spaceAbove;
+    } else {
+      isFlipped = false;
+      availableHeight = spaceBelow;
+    }
+  }
+
+  // Constrain height to available space and cap
+  const maxHeight = Math.min(panelHeight, availableHeight, maxHeightCap);
+  // Guarantee a reasonable minimal height so menus in tight spots remain readable
+  const effectiveHeight = Math.max(Math.min(60, availableHeight), maxHeight);
+
+  // Compute top coordinate
+  let top = isFlipped
+    ? anchorRect.top - offset - effectiveHeight
+    : anchorRect.bottom + offset;
+
+  // Strict viewport boundary protection: NEVER allow negative top or bottom overflow
+  top = Math.max(padding, Math.min(top, viewportHeight - effectiveHeight - padding));
+
+  // Compute horizontal coordinate
+  let left = anchorRect.left;
+  let isRightAligned = false;
+
+  // If overflowing right edge, align right edge of panel to right edge of anchor
+  if (left + panelWidth > viewportWidth - padding) {
+    left = anchorRect.right - panelWidth;
+    isRightAligned = true;
+  }
+
+  // Strict viewport boundary protection: NEVER allow left or right overflow
+  left = Math.max(padding, Math.min(left, viewportWidth - panelWidth - padding));
+
+  // Natural bloom transform origin
+  const vOrigin = isFlipped ? "bottom" : "top";
+  const hOrigin = isRightAligned ? "right" : "left";
+  const transformOrigin = `${vOrigin} ${hOrigin}`;
+
+  return {
+    left: Math.round(left),
+    top: Math.round(top),
+    maxHeight: Math.round(effectiveHeight),
+    isFlipped,
+    isRightAligned,
+    transformOrigin,
+  };
 }
 
 /** Creates and returns a dropdown menu controller. */
@@ -207,27 +320,48 @@ export function dropdown(items: DropdownEntry[]) {
     document.body.append(panel);
     activePanel = panel;
 
-    // Position: below the anchor by default, flip up if near bottom edge.
-    const rect = anchor.getBoundingClientRect();
-    const actualW = panel.offsetWidth || 140;
-    let left = rect.left;
-    let top = rect.bottom + 6;
-    let isFlipped = false;
+    const updatePosition = (): PlacementResult | null => {
+      if (!activePanel || !anchor.isConnected) {
+        closeActive();
+        return null;
+      }
+      const rect = anchor.getBoundingClientRect();
+      // If anchor scrolled off-screen completely, close cleanly
+      if (
+        rect.bottom < 0 ||
+        rect.top > window.innerHeight ||
+        rect.right < 0 ||
+        rect.left > window.innerWidth
+      ) {
+        closeActive();
+        return null;
+      }
 
-    // Flip left if overflows right edge.
-    if (left + actualW > window.innerWidth - 8) left = rect.right - actualW;
-    if (left < 8) left = 8;
+      panel.style.minWidth = `${Math.max(125, Math.round(rect.width))}px`;
+      const actualW = panel.offsetWidth || 140;
+      const actualH = panel.scrollHeight || panel.offsetHeight || items.length * 30;
 
-    // Flip up if overflows bottom.
-    const actualH = panel.offsetHeight || items.length * 30;
-    if (top + actualH > window.innerHeight - 8) {
-      top = rect.top - actualH - 6;
-      isFlipped = true;
-    }
+      const placement = calculateDropdownPlacement(
+        rect,
+        actualW,
+        actualH,
+        window.innerWidth,
+        window.innerHeight,
+        { padding: 8, offset: 6 }
+      );
 
-    panel.style.left = `${left}px`;
-    panel.style.top = `${top}px`;
-    panel.style.transformOrigin = isFlipped ? "bottom left" : "top left";
+      panel.style.left = `${placement.left}px`;
+      panel.style.top = `${placement.top}px`;
+      panel.style.maxHeight = `${placement.maxHeight}px`;
+      panel.style.overflowY = actualH > placement.maxHeight ? "auto" : "hidden";
+      panel.style.transformOrigin = placement.transformOrigin;
+
+      return placement;
+    };
+
+    const initialPlacement = updatePosition();
+    if (!initialPlacement) return;
+
     panel.style.willChange = "transform, opacity";
 
     // macOS Liquid Glass jelly bloom entrance
@@ -236,7 +370,7 @@ export function dropdown(items: DropdownEntry[]) {
       {
         opacity: [0, 1],
         scale: [0.90, 1.035, 0.992, 1],
-        y: [isFlipped ? 8 : -8, isFlipped ? -2 : 2, 0],
+        y: [initialPlacement.isFlipped ? 8 : -8, initialPlacement.isFlipped ? -2 : 2, 0],
       },
       MACOS_JELLY.dropdownOpen
     );
@@ -257,7 +391,7 @@ export function dropdown(items: DropdownEntry[]) {
 
     // Close on outside click / Escape / Keyboard navigation
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { closeActive(); cleanup(); return; }
+      if (e.key === "Escape") { closeActive(); return; }
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const btns = Array.from(panel.querySelectorAll<HTMLElement>(".dd-item:not(.dd-disabled)"));
@@ -286,14 +420,27 @@ export function dropdown(items: DropdownEntry[]) {
       }
     };
     const onDown = (e: MouseEvent) => {
-      if (!panel.contains(e.target as Node)) { closeActive(); cleanup(); }
+      if (!panel.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
+        closeActive();
+      }
     };
-    function cleanup() {
+
+    const onReposition = () => {
+      if (activePanel) updatePosition();
+    };
+
+    const cleanup = () => {
       document.removeEventListener("keydown", onKey, true);
       document.removeEventListener("mousedown", onDown, true);
-    }
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+
+    activeCleanup = cleanup;
     document.addEventListener("keydown", onKey, true);
     document.addEventListener("mousedown", onDown, true);
+    window.addEventListener("resize", onReposition, { passive: true });
+    window.addEventListener("scroll", onReposition, { passive: true, capture: true });
 
     // Focus first item.
     requestAnimationFrame(() => {

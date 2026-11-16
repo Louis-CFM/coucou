@@ -1,14 +1,17 @@
-// File Shelf Store: Staging dock for parked files and folders in Coucou's notch.
+// File Shelf Store: Staging dock for parked files and folders in Coucou's Desk.
 
 export interface ParkedFile {
   id: string;
   name: string;
+  originalName: string;
   path: string;
   size: number;
   mimeType: string;
   extension: string;
   addedAt: number;
   lastAccessedAt: number;
+  sortOrder?: number;
+  missing?: boolean;
 }
 
 export interface Shelf {
@@ -16,10 +19,25 @@ export interface Shelf {
   name: string;
   isDefault?: boolean;
   createdAt: number;
+  updatedAt?: number;
   files: ParkedFile[];
 }
 
-export type ShelfSort = "recent" | "name" | "size" | "type";
+export type ShelfSort =
+  | "recent"
+  | "oldest"
+  | "name_asc"
+  | "name_desc"
+  | "size_desc"
+  | "size_asc"
+  | "type"
+  | "name" // backward-compat alias for name_asc
+  | "size"; // backward-compat alias for size_desc
+
+export interface AddFilesResult {
+  added: ParkedFile[];
+  duplicates: string[];
+}
 
 const STORAGE_KEY = "coucou_file_shelves_v1";
 const ACTIVE_SHELF_KEY = "coucou_active_shelf_v1";
@@ -31,9 +49,14 @@ function defaultShelves(): Shelf[] {
       name: "Desk",
       isDefault: true,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
       files: [],
     },
   ];
+}
+
+function normalizePath(p: string): string {
+  return p.trim().replace(/\//g, "\\").toLowerCase();
 }
 
 class FileShelfStore {
@@ -55,7 +78,40 @@ class FileShelfStore {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          this.shelves = parsed;
+          // Schema migration & backward-compatibility validation
+          this.shelves = parsed.map((s: Partial<Shelf>) => {
+            const validFiles: ParkedFile[] = Array.isArray(s.files)
+              ? s.files
+                  .filter((f) => f && typeof f === "object")
+                  .map((f: Partial<ParkedFile>) => ({
+                    id: f.id || `file_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                    name: f.name || "Untitled",
+                    originalName: f.originalName || f.name || "Untitled",
+                    path: f.path || f.name || "",
+                    size: typeof f.size === "number" && !isNaN(f.size) ? f.size : 0,
+                    mimeType: f.mimeType || "application/octet-stream",
+                    extension: f.extension || (f.name?.includes(".") ? f.name.split(".").pop()?.toLowerCase() ?? "" : ""),
+                    addedAt: typeof f.addedAt === "number" ? f.addedAt : Date.now(),
+                    lastAccessedAt: typeof f.lastAccessedAt === "number" ? f.lastAccessedAt : Date.now(),
+                    sortOrder: f.sortOrder,
+                    missing: Boolean(f.missing),
+                  }))
+              : [];
+
+            return {
+              id: s.id || `shelf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              name: s.name || "Shelf",
+              isDefault: Boolean(s.isDefault),
+              createdAt: typeof s.createdAt === "number" ? s.createdAt : Date.now(),
+              updatedAt: typeof s.updatedAt === "number" ? s.updatedAt : Date.now(),
+              files: validFiles,
+            };
+          });
+
+          // Ensure at least one default desk exists
+          if (!this.shelves.some((s) => s.isDefault || s.id === "desk")) {
+            this.shelves.unshift(defaultShelves()[0]);
+          }
         } else {
           this.shelves = defaultShelves();
         }
@@ -129,10 +185,12 @@ class FileShelfStore {
     if (!trimmed) return this.getActiveShelf();
 
     const id = `shelf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const now = Date.now();
     const shelf: Shelf = {
       id,
       name: trimmed,
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
       files: [],
     };
     this.shelves.push(shelf);
@@ -147,6 +205,7 @@ class FileShelfStore {
     const shelf = this.shelves.find((s) => s.id === id);
     if (shelf) {
       shelf.name = trimmed;
+      shelf.updatedAt = Date.now();
       this.notify();
     }
   }
@@ -167,36 +226,103 @@ class FileShelfStore {
     shelfId: string,
     rawFiles: { name: string; path?: string; size?: number; type?: string }[]
   ): ParkedFile[] {
+    const res = this.addFilesWithResult(shelfId, rawFiles);
+    return res.added;
+  }
+
+  addFilesWithResult(
+    shelfId: string,
+    rawFiles: { name: string; path?: string; size?: number; type?: string }[]
+  ): AddFilesResult {
     const shelf = this.shelves.find((s) => s.id === shelfId);
-    if (!shelf || rawFiles.length === 0) return [];
+    if (!shelf || rawFiles.length === 0) return { added: [], duplicates: [] };
 
     const added: ParkedFile[] = [];
+    const duplicates: string[] = [];
     const now = Date.now();
 
+    // Map existing files for fast duplicate lookup
+    const existingPaths = new Set<string>();
+    const existingNameSize = new Set<string>();
+
+    for (const f of shelf.files) {
+      if (f.path) existingPaths.add(normalizePath(f.path));
+      existingNameSize.add(`${f.name.toLowerCase()}::${f.size}`);
+    }
+
     for (const f of rawFiles) {
+      const filePath = f.path || f.name;
+      const normalized = normalizePath(filePath);
+      const nameSizeKey = `${f.name.toLowerCase()}::${typeof f.size === "number" ? f.size : 0}`;
+
+      // Duplicate detection
+      const isDuplicate =
+        (filePath && existingPaths.has(normalized)) ||
+        (!f.path && existingNameSize.has(nameSizeKey));
+
+      if (isDuplicate) {
+        duplicates.push(f.name);
+        continue;
+      }
+
+      existingPaths.add(normalized);
+      existingNameSize.add(nameSizeKey);
+
       const ext = f.name.includes(".") ? f.name.split(".").pop()?.toLowerCase() ?? "" : "";
       const parked: ParkedFile = {
         id: `file_${now}_${Math.random().toString(36).slice(2, 7)}`,
         name: f.name,
-        path: f.path || f.name,
-        size: typeof f.size === "number" ? f.size : 0,
+        originalName: f.name,
+        path: filePath,
+        size: typeof f.size === "number" && !isNaN(f.size) ? f.size : 0,
         mimeType: f.type || "application/octet-stream",
         extension: ext,
         addedAt: now,
         lastAccessedAt: now,
       };
+
       shelf.files.unshift(parked);
       added.push(parked);
     }
 
+    if (added.length > 0) {
+      shelf.updatedAt = now;
+      this.notify();
+    }
+
+    return { added, duplicates };
+  }
+
+  renameFile(shelfId: string, fileId: string, newDisplayName: string): boolean {
+    const trimmed = newDisplayName.trim();
+    if (!trimmed) return false;
+    const shelf = this.shelves.find((s) => s.id === shelfId);
+    if (!shelf) return false;
+    const file = shelf.files.find((f) => f.id === fileId);
+    if (!file) return false;
+
+    file.name = trimmed;
+    shelf.updatedAt = Date.now();
     this.notify();
-    return added;
+    return true;
+  }
+
+  updateFile(shelfId: string, fileId: string, patch: Partial<ParkedFile>) {
+    const shelf = this.shelves.find((s) => s.id === shelfId);
+    if (!shelf) return;
+    const file = shelf.files.find((f) => f.id === fileId);
+    if (!file) return;
+
+    Object.assign(file, patch);
+    shelf.updatedAt = Date.now();
+    this.notify();
   }
 
   removeFile(shelfId: string, fileId: string) {
     const shelf = this.shelves.find((s) => s.id === shelfId);
     if (!shelf) return;
     shelf.files = shelf.files.filter((f) => f.id !== fileId);
+    shelf.updatedAt = Date.now();
     this.notify();
   }
 
@@ -205,6 +331,7 @@ class FileShelfStore {
     if (!shelf || fileIds.length === 0) return;
     const idSet = new Set(fileIds);
     shelf.files = shelf.files.filter((f) => !idSet.has(f.id));
+    shelf.updatedAt = Date.now();
     this.notify();
   }
 
@@ -212,6 +339,7 @@ class FileShelfStore {
     const shelf = this.shelves.find((s) => s.id === shelfId);
     if (!shelf) return;
     shelf.files = [];
+    shelf.updatedAt = Date.now();
     this.notify();
   }
 
@@ -223,24 +351,41 @@ class FileShelfStore {
     switch (sort) {
       case "recent":
         return files.sort((a, b) => b.addedAt - a.addedAt);
+      case "oldest":
+        return files.sort((a, b) => a.addedAt - b.addedAt);
       case "name":
-        return files.sort((a, b) => a.name.localeCompare(b.name));
+      case "name_asc":
+        return files.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      case "name_desc":
+        return files.sort((a, b) => b.name.localeCompare(a.name, undefined, { sensitivity: "base" }));
       case "size":
+      case "size_desc":
         return files.sort((a, b) => b.size - a.size);
+      case "size_asc":
+        return files.sort((a, b) => a.size - b.size);
       case "type":
-        return files.sort((a, b) => a.extension.localeCompare(b.extension));
+        return files.sort((a, b) => {
+          const extCmp = a.extension.localeCompare(b.extension);
+          return extCmp !== 0 ? extCmp : a.name.localeCompare(b.name);
+        });
       default:
         return files;
     }
   }
 
+  getTotalSize(shelfId: string): number {
+    const shelf = this.shelves.find((s) => s.id === shelfId);
+    if (!shelf) return 0;
+    return shelf.files.reduce((acc, f) => acc + (f.size || 0), 0);
+  }
+
   formatBytes(bytes: number): string {
-    if (bytes <= 0) return "0 B";
+    if (bytes <= 0 || isNaN(bytes)) return "0 B";
     const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     const val = (bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1);
-    return `${val} ${sizes[i]}`;
+    return `${val} ${sizes[i] || "B"}`;
   }
 }
 

@@ -1,0 +1,36 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { MessageValidator } from "../src/companion/validator.ts";
+
+test("MessageValidator strips <think> reasoning tags and thought blocks", () => {
+  const input = "<think>The user is returning from a break. I should be warm.</think>Welcome back, Alex! Let's get to it ✨";
+  const cleaned = MessageValidator.sanitizeAndValidate(input);
+  assert.equal(cleaned, "Welcome back, Alex! Let's get to it ✨");
+
+  const input2 = "[thought]Internal reasoning[/thought]Good to see you again! 🌱";
+  const cleaned2 = MessageValidator.sanitizeAndValidate(input2);
+  assert.equal(cleaned2, "Good to see you again! 🌱");
+});
+
+test("MessageValidator neutralizes quotes, conversational preambles and markdown", () => {
+  const input = 'Mochi says: "**Welcome back!** Let\'s crush this project."';
+  const cleaned = MessageValidator.sanitizeAndValidate(input);
+  assert.equal(cleaned, "Welcome back! Let's crush this project.");
+});
+
+test("MessageValidator rejects overly short, empty, or unparseable text", () => {
+  assert.equal(MessageValidator.sanitizeAndValidate(""), null);
+  assert.equal(MessageValidator.sanitizeAndValidate("   "), null);
+  assert.equal(MessageValidator.sanitizeAndValidate("Hi"), null);
+  assert.equal(MessageValidator.sanitizeAndValidate("<think>only thoughts</think>"), null);
+});
+
+test("MessageValidator clamps long text gracefully at whole word boundary with ellipsis", () => {
+  const longText = "This is a remarkably long greeting sentence that clearly exceeds the maximum fifty-two grapheme limit of the dynamic island notch.";
+  const cleaned = MessageValidator.sanitizeAndValidate(longText);
+
+  assert.ok(cleaned !== null);
+  assert.ok(cleaned.endsWith("…"), "Clamped text should end with ellipsis");
+  assert.ok(cleaned.length <= 55, "Clamped text should respect character bounds");
+});

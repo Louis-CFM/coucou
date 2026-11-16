@@ -478,6 +478,7 @@ pub struct FlowStatus {
 
 #[tauri::command]
 pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
+    let identity = crate::identity::detect();
     FlowStatus {
         prefs: flow.store.lock().unwrap().prefs.clone(),
         models: speech::status(),
@@ -489,14 +490,8 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
         mics: audio::input_devices(),
         platform: if cfg!(windows) { "windows" } else { "linux" },
         autostarted: crate::launched_at_login(),
-        user_name: crate::platform::user_full_name()
-            .and_then(|n| n.split_whitespace().next().map(String::from))
-            .or_else(|| std::env::var("USERNAME").ok().and_then(|u| u.split_whitespace().next().map(String::from)))
-            .filter(|n| !n.is_empty()),
-        device_name: std::env::var("COMPUTERNAME")
-            .or_else(|_| std::env::var("HOSTNAME"))
-            .ok()
-            .filter(|n| !n.trim().is_empty()),
+        user_name: identity.detected_greeting_name.clone(),
+        device_name: identity.device_name.clone(),
     }
 }
 
