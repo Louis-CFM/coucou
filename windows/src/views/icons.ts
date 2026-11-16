@@ -89,4 +89,6 @@ export const ICONS = {
   folder: "M3 6.6a2 2 0 0 1 2-2h4.3l2 2.2H19a2 2 0 0 1 2 2v8.6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.6z",
   // chevron.down (stroked)
   chevronDown: "M5.5 9 12 15.5 18.5 9",
+  // phone with arrow up (Coudrop)
+  phoneArrowUp: "M7 2.5h10a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2zm5 4.5l-3 3h2v6h2v-6h2l-3-3z",
 } as const;

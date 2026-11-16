@@ -20,6 +20,7 @@ mod i18n;
 mod identity;
 mod integrations;
 mod calcom;
+mod coudrop;
 mod island;
 mod launch;
 mod local_chat;
@@ -221,6 +222,21 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     let size = *shared.gate.collapsed_size.lock().unwrap();
     island::apply_geometry(&app, &pref, collapsed.then_some(size));
+}
+
+/// Notifies Rust that the island webview has mounted, its intro/assets are ready,
+/// and the transparent composition frame is drawn. This allows showing the native
+/// window smoothly with zero black flashes or un-hydrated clipping.
+#[tauri::command]
+fn island_ready(app: AppHandle, shared: State<Shared>) {
+    if let Some(win) = island::window(&app) {
+        let pref = shared.settings.lock().unwrap().screen.clone();
+        let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
+        let size = *shared.gate.collapsed_size.lock().unwrap();
+        island::apply_geometry(&app, &pref, collapsed.then_some(size));
+        let _ = win.show();
+        log::line("[coucou] island_ready received — native window shown smoothly");
+    }
 }
 
 /// The panel is laid out in CSS px against the window's own scale. If the webview
@@ -935,6 +951,7 @@ pub fn run() {
         .manage(Chat::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
+        .manage(coudrop::CoudropManager::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             mail::mail_refresh,
@@ -955,6 +972,7 @@ pub fn run() {
             set_system_languages,
             set_collapsed,
             set_island_rect,
+            island_ready,
             focus_window,
             reposition,
             fit_zoom,
@@ -1127,6 +1145,20 @@ pub fn run() {
             presence::get_system_presence,
             smart_notch::get_foreground_window_state,
             power::get_battery_status,
+            coudrop::coudrop_start_receive,
+            coudrop::coudrop_cancel,
+            coudrop::coudrop_status,
+            coudrop::coudrop_get_device,
+            coudrop::coudrop_send_files,
+            coudrop::coudrop_cancel_send,
+            coudrop::coudrop_get_history,
+            coudrop::coudrop_open_folder,
+            coudrop::coudrop_open_file,
+            coudrop::coudrop_stage_send_files,
+            coudrop::coudrop_pick_download_dir,
+            coudrop::coudrop_set_download_dir,
+            coudrop::coudrop_get_download_dir,
+            coudrop::coudrop_pick_files,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1153,7 +1185,20 @@ pub fn run() {
                 #[cfg(windows)]
                 webview_drop::install(&handle);
                 island::apply_geometry(&handle, &loaded.screen, None);
-                let _ = win.show();
+
+                // Do not show the window immediately while WebView2 initializes transparent DirectComposition.
+                // The webview signals `island_ready` once the intro and canvas are painted.
+                // Failsafe: if the renderer does not signal within 4 seconds, reveal anyway.
+                let win_fallback = win.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(4000));
+                    if let Ok(is_vis) = win_fallback.is_visible() {
+                        if !is_vis {
+                            let _ = win_fallback.show();
+                            crate::log::line("[coucou] window shown by startup fallback timer");
+                        }
+                    }
+                });
             }
             gate.collapsed.store(false, Ordering::Relaxed);
             // Nothing drawn yet, so nothing takes the mouse until the page

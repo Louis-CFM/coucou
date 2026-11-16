@@ -6,24 +6,25 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// Release signing comes from the environment or from Gradle properties (-P on the command line, or ~/.gradle/gradle.properties), never
-// from a file in this repository. Without all of them the release build is made unsigned (it cannot be installed) rather than
-// signed with a debug key.
+// Release signing comes from the environment, from Gradle properties (-P on the command line, or ~/.gradle/gradle.properties),
+// or from an optional local release.keystore in app/. Without any of them the release build is made unsigned (it cannot be installed).
 fun signingValue(name: String): String? = (System.getenv(name) ?: providers.gradleProperty(name).orNull)?.takeIf { it.isNotBlank() }
-val releaseKeystore = signingValue("COUCOU_KEYSTORE_FILE")
-val releaseStorePassword = signingValue("COUCOU_KEYSTORE_PASSWORD")
-val releaseKeyAlias = signingValue("COUCOU_KEY_ALIAS")
+val localKeystore = file("release.keystore").takeIf { it.exists() }
+val releaseKeystore = signingValue("COUCOU_KEYSTORE_FILE") ?: localKeystore?.absolutePath
+val releaseStorePassword = signingValue("COUCOU_KEYSTORE_PASSWORD") ?: (if (localKeystore != null) "coucou123" else null)
+val releaseKeyAlias = signingValue("COUCOU_KEY_ALIAS") ?: (if (localKeystore != null) "coucou" else null)
 val releaseKeyPassword = signingValue("COUCOU_KEY_PASSWORD") ?: releaseStorePassword
 
 android {
     namespace = "com.coucou.android"
     compileSdk = 35
+    buildToolsVersion = "35.0.0"
     defaultConfig {
         applicationId = "com.coucou.android"
         minSdk = 30
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.5.0"
+        versionCode = 6
+        versionName = "0.6.0"
         // The app's languages (English and the translations in i18n/translations); the libraries' other languages are left out of the app.
         resourceConfigurations += listOf("en", "fr", "es", "pt-rBR", "b+zh+Hans", "hi", "bn", "ru", "in", "ar", "tr", "de", "ja", "ko", "b+zh+Hant", "th", "it")
     }

@@ -1,7 +1,4 @@
-// ── islandcn Core Engine & Activity Presets ───────────────────────────────────
+// ── islandcn Battery Activity & Real-Time Hardware Monitor ───────────────────
 
-export * from "./types";
-export * from "./physics";
-export * from "./activity-stack";
 export * from "./battery-activity";
 export * from "./battery-monitor";

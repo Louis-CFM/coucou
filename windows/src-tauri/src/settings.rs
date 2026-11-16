@@ -131,6 +131,9 @@ pub struct Settings {
     /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
     /// what a webview sends back is ignored. The Mac's key is the same.
     pub agy_approvals_enabled: bool,
+    /// User-configured folder where files received via Coudrop are saved.
+    /// Empty string means the default (%USERPROFILE%\Downloads\Coudrop).
+    pub coudrop_download_dir: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -213,6 +216,7 @@ impl Default for Settings {
             show_tab_drop: Some(true),
             show_tab_launch: Some(true),
             agy_approvals_enabled: false,
+            coudrop_download_dir: String::new(),
         }
     }
 }
@@ -515,7 +519,18 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
   "closedIsland": "music",
-  "agyApprovalsEnabled": true
+  "smartNotch": false,
+  "visibility": "minimal",
+  "notchStyle": "island",
+  "notchScale": 1.2,
+  "showBattery": false,
+  "showBatteryPercentage": false,
+  "showTabChat": false,
+  "showTabShelf": false,
+  "showTabDrop": false,
+  "showTabLaunch": false,
+  "agyApprovalsEnabled": true,
+  "coudropDownloadDir": "D:\\Downloads\\Custom"
 }"##;
 
     fn custom() -> Value {
@@ -1038,7 +1053,18 @@ mod tests {
                 "phoneRelayUrl",
                 "showClock",
                 "closedIsland",
+                "smartNotch",
+                "visibility",
+                "notchStyle",
+                "notchScale",
+                "showBattery",
+                "showBatteryPercentage",
+                "showTabChat",
+                "showTabShelf",
+                "showTabDrop",
+                "showTabLaunch",
                 "agyApprovalsEnabled",
+                "coudropDownloadDir",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

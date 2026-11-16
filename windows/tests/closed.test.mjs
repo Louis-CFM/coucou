@@ -87,6 +87,6 @@ test("the island is as wide as its line, within bounds", () => {
 });
 
 test("balanced dynamic island resting constants and formatting", () => {
-  assert.equal(CLOSED_BALANCED_W, 150);
+  assert.equal(CLOSED_BALANCED_W, 160);
   assert.equal(closedTime(NOW, "en-GB"), "20:28");
 });

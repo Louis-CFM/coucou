@@ -13,6 +13,7 @@ import {
   resolveShowTabChat,
   resolveShowTabShelf,
   resolveShowTabDrop,
+  resolveShowTabCoudrop,
   resolveShowTabLaunch,
   type NotchVisibility,
   type NotchStyle,
@@ -163,7 +164,7 @@ export function appearanceSection(
     createVisibilityCard(
       "always",
       t("Always"),
-      t("Always on screen. Fullscreen rules below still apply."),
+      "Always on screen. Fullscreen rules below still apply.",
       previewAlways,
     ),
     createVisibilityCard(
@@ -175,13 +176,13 @@ export function appearanceSection(
     createVisibilityCard(
       "minimal",
       t("Minimal"),
-      t("Just a small arrow at the top. Hover to peek, open on hover or click."),
+      "Just a small arrow at the top. Hover to peek, open on hover or click.",
       previewMinimal,
     ),
     createVisibilityCard(
       "hidden",
-      t("Hidden"),
-      t("Nothing on screen. Open it from the tray icon (or set a shortcut in General)."),
+      "Hidden",
+      "Nothing on screen. Open it from the tray icon (or set a shortcut in General).",
       previewHidden,
     ),
   );
@@ -249,13 +250,13 @@ export function appearanceSection(
     createStyleCard(
       "notch",
       t("Notch"),
-      t("Grows out of the screen edge"),
+      "Grows out of the screen edge",
       previewNotch,
     ),
     createStyleCard(
       "island",
       t("Island"),
-      t("A pill floating just below the edge"),
+      "A pill floating just below the edge",
       previewIsland,
     ),
   );
@@ -300,8 +301,8 @@ export function appearanceSection(
     h(
       "div",
       { class: "size-info" },
-      h("div", { class: "size-title", text: t("Size") }),
-      h("div", { class: "size-desc", text: t("Scales the resting notch") }),
+      h("div", { class: "size-title", text: "Size" }),
+      h("div", { class: "size-desc", text: "Scales the resting notch" }),
     ),
     h("div", { class: "size-control" }, sizeValueEl, sizeInput),
   );
@@ -457,6 +458,11 @@ export function appearanceSection(
     void save();
   });
 
+  const showTabCoudrop = toggle(resolveShowTabCoudrop(settings), (v) => {
+    settings.showTabCoudrop = v;
+    void save();
+  });
+
   const showTabLaunch = toggle(resolveShowTabLaunch(settings), (v) => {
     settings.showTabLaunch = v;
     void save();
@@ -471,6 +477,7 @@ export function appearanceSection(
     setSwitch(showTabChat, resolveShowTabChat(settings));
     setSwitch(showTabShelf, resolveShowTabShelf(settings));
     setSwitch(showTabDrop, resolveShowTabDrop(settings));
+    setSwitch(showTabCoudrop, resolveShowTabCoudrop(settings));
     setSwitch(showTabLaunch, resolveShowTabLaunch(settings));
   };
 
@@ -538,23 +545,23 @@ export function appearanceSection(
       "div",
       { class: "hint" },
       h("span", {
-        text: t("What appears in the compact notch when resting at the top of the screen."),
+        text: "What appears in the compact notch when resting at the top of the screen.",
       }),
     ),
-    h("div", { class: "row" }, h("label", { text: t("Battery indicator") }), showBattery),
+    h("div", { class: "row" }, h("label", { text: "Battery indicator" }), showBattery),
     h(
       "div",
       { class: "hint" },
       h("span", {
-        text: t("Show dynamic battery level and charging status on the right side of the resting notch."),
+        text: "Show dynamic battery level and charging status on the right side of the resting notch.",
       }),
     ),
-    h("div", { class: "row" }, h("label", { text: t("Battery percentage") }), showBatteryPct),
+    h("div", { class: "row" }, h("label", { text: "Battery percentage" }), showBatteryPct),
     h(
       "div",
       { class: "hint" },
       h("span", {
-        text: t("Show exact numeric percentage next to the battery icon."),
+        text: "Show exact numeric percentage next to the battery icon.",
       }),
     ),
     h("div", { class: "row" }, h("label", { text: t("Show clock in the island") }), showClock),
@@ -575,39 +582,47 @@ export function appearanceSection(
         class: "hub-label",
         style:
           "font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin:16px 0 4px;text-transform:uppercase;",
-        text: t("Navigation & Features"),
+        text: "Navigation & Features",
       },
     ),
-    h("div", { class: "row" }, h("label", { text: t("Ask (AI Chat)") }), showTabChat),
+    h("div", { class: "row" }, h("label", { text: "Ask (AI Chat)" }), showTabChat),
     h(
       "div",
       { class: "hint" },
       h("span", {
-        text: t("Show the chat bubble tab in the header to ask Claude or local models."),
+        text: "Show the chat bubble tab in the header to ask Claude or local models.",
       }),
     ),
-    h("div", { class: "row" }, h("label", { text: t("File Shelf") }), showTabShelf),
+    h("div", { class: "row" }, h("label", { text: "File Shelf" }), showTabShelf),
     h(
       "div",
       { class: "hint" },
       h("span", {
-        text: t("Show the folder tab for parking files and documents in the notch."),
+        text: "Show the folder tab for parking files and documents in the notch.",
       }),
     ),
-    h("div", { class: "row" }, h("label", { text: t("Drop & Upload") }), showTabDrop),
+    h("div", { class: "row" }, h("label", { text: "Drop & Upload" }), showTabDrop),
     h(
       "div",
       { class: "hint" },
       h("span", {
-        text: t("Show the plus tab to drop and ingest files into active sessions."),
+        text: "Show the plus tab to drop and ingest files into active sessions.",
       }),
     ),
-    h("div", { class: "row" }, h("label", { text: t("Terminal (Claude Code)") }), showTabLaunch),
+    h("div", { class: "row" }, h("label", { text: "Coudrop (Quick Share)" }), showTabCoudrop),
     h(
       "div",
       { class: "hint" },
       h("span", {
-        text: t("Show the terminal tab to start new Claude Code sessions from the island."),
+        text: "Show the phone transfer tab to beam files between your PC and phone.",
+      }),
+    ),
+    h("div", { class: "row" }, h("label", { text: "Terminal (Claude Code)" }), showTabLaunch),
+    h(
+      "div",
+      { class: "hint" },
+      h("span", {
+        text: "Show the terminal tab to start new Claude Code sessions from the island.",
       }),
     ),
 
@@ -630,7 +645,7 @@ export function appearanceSection(
         class: "hub-label",
         style:
           "font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin:16px 0 4px;text-transform:uppercase;",
-        text: t("Mochi's Wardrobe"),
+        text: "Mochi's Wardrobe",
       },
     ),
     h(
@@ -649,7 +664,7 @@ export function appearanceSection(
       h("div", {
         class: "hint",
         style: "margin-top:8px",
-        text: t("Select an outfit for Mochi, or choose Auto to dress for holidays and seasons."),
+        text: "Select an outfit for Mochi, or choose Auto to dress for holidays and seasons.",
       }),
     ),
 
@@ -663,8 +678,8 @@ export function appearanceSection(
       h(
         "div",
         {},
-        h("div", { style: "font-weight:600;font-size:12.5px;color:var(--ink)", text: t("macOS Dynamic Island") }),
-        h("div", { style: "font-size:11.5px;color:var(--dim)", text: t("Adaptive dark glass, fluid spring morphing, and tactile feedback.") }),
+        h("div", { style: "font-weight:600;font-size:12.5px;color:var(--ink)", text: "macOS Dynamic Island" }),
+        h("div", { style: "font-size:11.5px;color:var(--dim)", text: "Adaptive dark glass, fluid spring morphing, and tactile feedback." }),
       ),
       h("span", {
         class: "tag",

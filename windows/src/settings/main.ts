@@ -25,6 +25,8 @@ import { claudeModelControl } from "./claude-models";
 import { agentsSection } from "./agents";
 import { appearanceSection } from "./appearance";
 import { phoneSection } from "./phone";
+import { coudropSettingsSection } from "./coudrop";
+import { GlobalWelcomeMessages } from "../core/welcome";
 import { whatsappSection } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { CoucoudoroController } from "../core/coucoudoro";
@@ -264,7 +266,7 @@ function claudeSection(status: HookStatus): HTMLElement {
 const PLAN_SETTINGS_TEXT = {
   get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
   get claudeCli() { return t("The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app."); },
-  get showClaude() { return t("Show in notch"); },
+  get showClaude() { return t("Show Claude plan in the notch"); },
   get showClaudeCompact() { return t("Show in compact island"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
@@ -1063,6 +1065,137 @@ function whatsappSections(): HTMLElement[] {
 let generalSync: (() => void) | null = null;
 let appearanceSync: (() => void) | null = null;
 
+function buildCompanionCareCard(): HTMLElement {
+  const card = h("div", {
+    class: "coudrop-group",
+    style: "margin: 8px 0;",
+  });
+
+  const previewBtn = h("button", {
+    class: "coudrop-mac-btn",
+    text: "Preview message",
+    onclick: () => {
+      GlobalWelcomeMessages.triggerPreview();
+    },
+  });
+
+  const headerRow = h(
+    "div",
+    { class: "coudrop-group-row", style: "background: rgba(255, 255, 255, 0.02);" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Companion & Care" }),
+      h("span", {
+        class: "coudrop-row-desc",
+        text: "Mochi shares heartwarming greetings, hydration reminders, posture check-ins, and circadian awareness in the Dynamic Island Notch.",
+      }),
+    ),
+    previewBtn,
+  );
+
+  const nameInput = h("input", {
+    type: "text",
+    value: GlobalWelcomeMessages.userName || "Madhan",
+    placeholder: "Your first name",
+    style: "width: 140px; font-family: var(--font-sub); font-size: 12px;",
+  }) as HTMLInputElement;
+
+  nameInput.addEventListener("input", () => {
+    const val = nameInput.value.trim();
+    if (val) {
+      GlobalWelcomeMessages.userName = val;
+      GlobalWelcomeMessages.saveState();
+    }
+  });
+
+  const nameRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Preferred name" }),
+      h("span", { class: "coudrop-row-desc", text: "Name Mochi greets you with in personal messages." }),
+    ),
+    nameInput,
+  );
+
+  const companionSw = toggle(GlobalWelcomeMessages.enabled, (v) => {
+    GlobalWelcomeMessages.enabled = v;
+    GlobalWelcomeMessages.saveState();
+  });
+
+  const companionRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Companion messages" }),
+      h("span", { class: "coudrop-row-desc", text: "Greets you upon launch and when returning from a break." }),
+    ),
+    companionSw,
+  );
+
+  const wellnessSw = toggle(GlobalWelcomeMessages.wellnessEnabled, (v) => {
+    GlobalWelcomeMessages.wellnessEnabled = v;
+    GlobalWelcomeMessages.saveState();
+  });
+
+  const wellnessRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Wellness & hydration nudges" }),
+      h("span", {
+        class: "coudrop-row-desc",
+        text: "Ambient reminders to drink water, roll shoulders, and rest eyes during continuous work.",
+      }),
+    ),
+    wellnessSw,
+  );
+
+  const intvSelect = h("select", {
+    style: "font-family: var(--font-sub); font-size: 12px; width: 140px;",
+  }) as HTMLSelectElement;
+
+  const options = [
+    { label: "Every 30 minutes", value: "30" },
+    { label: "Every 45 minutes", value: "45" },
+    { label: "Every 60 minutes", value: "60" },
+  ];
+  for (const opt of options) {
+    const o = h("option", { text: opt.label, value: opt.value }) as HTMLOptionElement;
+    if (Number(opt.value) === GlobalWelcomeMessages.hydrationIntervalMinutes) {
+      o.selected = true;
+    }
+    intvSelect.append(o);
+  }
+
+  intvSelect.addEventListener("change", () => {
+    GlobalWelcomeMessages.hydrationIntervalMinutes = Number(intvSelect.value) || 45;
+    GlobalWelcomeMessages.saveState();
+  });
+
+  const intvRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Hydration interval" }),
+      h("span", { class: "coudrop-row-desc", text: "Frequency of gentle ambient hydration nudges during active screen time." }),
+    ),
+    intvSelect,
+  );
+
+  card.append(headerRow, nameRow, companionRow, wellnessRow, intvRow);
+  return card;
+}
+
 function generalSection(): HTMLElement {
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
@@ -1208,6 +1341,7 @@ function generalSection(): HTMLElement {
     ),
     h("div", { class: "hint", text: t("A PC has no notch: once closed, a small island stays at the top of the screen. Hover it to bring Coucou back. Hidden, move the pointer to the very top of the screen.") }),
     smartNotchCard,
+    buildCompanionCareCard(),
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
@@ -1740,11 +1874,12 @@ async function render() {
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
     general: () => [generalSection()],
     appearance: () => [appearanceSection(settings, save, toggle, setSwitch, buildSmartNotchCard, (sync) => { appearanceSync = sync; })],
-    pills: () => [activePillsSection(connected)],
+    pills: () => [activePillsSection(connected), planSection(status)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
     chat: () => [subscriptionsSection(), apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
     integrations: () => [integrationsSection(present), ...whatsappSections()],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
+    coudrop: () => [coudropSettingsSection(toggle, settings, save)],
     shortcuts: () => [shortcutsSection(shortcutReport)],
   };
   root.append(...(sections[notchPage]?.() ?? []));

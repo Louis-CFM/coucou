@@ -279,6 +279,7 @@ where
     let asked_chat = hello["caps"].as_array().is_some_and(|c| c.iter().any(|x| x == "chat"));
     let chat = shared.chat.clone().filter(|c| asked_chat && c.enabled());
     let asked = |cap: &str| hello["caps"].as_array().is_some_and(|c| c.iter().any(|x| x == cap));
+    let device_name = hello["device"].as_str().filter(|s| !s.trim().is_empty()).unwrap_or("Android Phone").to_string();
     let details = asked("details") && shared.features.details();
     let answers = asked("answers") && shared.features.answers();
     // The outfit is no secret and says nothing about the user's work: offered whenever the phone asks.
@@ -287,6 +288,7 @@ where
     let usage = asked("usage") && shared.features.usage();
     let recap = asked("recap") && shared.features.recap();
     let relay = asked("relay") && shared.features.relay();
+    let drop = asked("drop");
     let services: Vec<String> = if asked("services") { shared.features.services() } else { Vec::new() };
     let mut offered: Vec<&str> = Vec::new();
     if chat.is_some() {
@@ -313,6 +315,9 @@ where
     if relay {
         offered.push("relay");
     }
+    if drop {
+        offered.push("drop");
+    }
     if !services.is_empty() {
         offered.push("services");
     }
@@ -321,7 +326,23 @@ where
         welcome["caps"] = json!(offered);
     }
     let _ = say(welcome).await;
-    let (id, evicted) = shared.hub.subscribe_with(tx.clone(), (shared.clock)(), crate::phone_link::hub::Caps { details, answers, prefs, diffs, usage, recap, relay, services });
+    let (id, evicted) = shared.hub.subscribe_with(
+        tx.clone(),
+        (shared.clock)(),
+        crate::phone_link::hub::Caps {
+            details,
+            answers,
+            prefs,
+            diffs,
+            usage,
+            recap,
+            relay,
+            services,
+            drop,
+            device_name: device_name.clone(),
+        },
+    );
+    shared.hub.drop_event("phone-connected", &serde_json::json!({ "device": device_name }));
 
     // 2. the conversation
     loop {
@@ -365,6 +386,9 @@ where
                     shared.hub.request_diff(id, pill, file, (shared.clock)());
                 }
             }
+            Some(t) if t.starts_with("drop") => {
+                shared.hub.handle_drop_message(&msg);
+            }
             Some("bye") => break,
             Some(t) if t.starts_with("chat") => {
                 if let Some(chat) = &chat {
@@ -375,6 +399,7 @@ where
         }
     }
     shared.hub.unsubscribe(id);
+    shared.hub.drop_event("phone-disconnected", &serde_json::json!({ "device": device_name }));
     if let Some(chat) = &chat {
         chat.cancel_conn(id);
     }

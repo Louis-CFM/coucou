@@ -142,6 +142,10 @@ export function resolveShowTabDrop(settings: Partial<Settings>): boolean {
   return settings.showTabDrop !== false;
 }
 
+export function resolveShowTabCoudrop(settings: Partial<Settings>): boolean {
+  return settings.showTabCoudrop !== false;
+}
+
 export function resolveShowTabLaunch(settings: Partial<Settings>): boolean {
   return settings.showTabLaunch !== false;
 }
@@ -174,6 +178,8 @@ export interface Settings {
   showTabShelf?: boolean;
   /** Show Drop & Upload (plus) tab in the expanded island header. */
   showTabDrop?: boolean;
+  /** Show Coudrop (peer-to-peer file transfer) tab in the expanded island header. */
+  showTabCoudrop?: boolean;
   /** Show Terminal (Claude Code launch) tab in the expanded island header. */
   showTabLaunch?: boolean;
   /** Smart notch: full on the desktop, tucked away over maximized apps. */
@@ -236,6 +242,14 @@ export interface Settings {
   phoneDetails?: boolean;
   /** Which models the phone may use, "provider/model". Rust owns it too. */
   phoneChatModels?: string[];
+  /** Automatically open files received via Coudrop in default app. */
+  coudropAutoOpen?: boolean;
+  /** Play sound effects on Coudrop send/receive complete. */
+  coudropSound?: boolean;
+  /** Show desktop notification when a file is received via Coudrop. */
+  coudropNotify?: boolean;
+  /** User-configured folder where files received via Coudrop are saved. Empty = default. */
+  coudropDownloadDir?: string;
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -280,6 +294,11 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  coudropAutoOpen: false,
+  coudropSound: true,
+  coudropNotify: true,
+  coudropDownloadDir: "",
+  showTabCoudrop: true,
 };
 
 type Listener = () => void;
@@ -350,6 +369,28 @@ class AppState {
 
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;
+
+  // ── Coudrop / Vayli Drop State ───────────────────────────────────────────
+  coudropPhase:
+    | "idle"
+    | "initializing"
+    | "firewall_notice"
+    | "waiting_qr"
+    | "qr_ready"
+    | "connected"
+    | "receiving"
+    | "completed"
+    | "expired"
+    | "cancelled"
+    | "error" = "idle";
+  coudropRemainingSeconds = 600;
+  coudropQrSvg: string | null = null;
+  coudropConnected: boolean = false;
+  coudropConnectedDevice: string | null = null;
+  coudropReceivedFiles: Array<{ name: string; path: string; size: number }> = [];
+  coudropHistoryCleared: boolean = false;
+  coudropLastReceivedFile: { name: string; path: string; size: number } | null = null;
+  coudropProgress: { name: string; progress: number; bytesRead: number; totalBytes: number } | null = null;
 
   lastActivity = performance.now();
 

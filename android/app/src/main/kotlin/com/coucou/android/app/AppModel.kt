@@ -86,6 +86,8 @@ class AppModel(private val context: Context) : LinkListener {
 
     /** Agent tasks finished today, for the Today widget. Kept on this phone only (see [TodayStore]). */
     private val todayCounter = com.coucou.android.core.TodayCounter(TodayStore(context))
+    val coudropManager = com.coucou.android.drop.CoudropManager(context, { link })
+    val fileReceiver get() = coudropManager.receiver
 
     var mode by mutableStateOf(Mode.NONE); private set
     var linkState by mutableStateOf(LinkState.DISCONNECTED); private set
@@ -915,6 +917,32 @@ class AppModel(private val context: Context) : LinkListener {
             main.removeCallbacks(diffTimeout)
             if (diffState is com.coucou.android.core.DiffState.Loading) diffState = com.coucou.android.core.DiffState.Ready(done)
         }
+    }
+
+    override fun onDropOffer(offer: com.coucou.android.link.ServerMsg.DropOffer) {
+        fileReceiver.onOffer(offer)
+    }
+
+    override fun onDropChunk(chunk: com.coucou.android.link.ServerMsg.DropChunk) {
+        fileReceiver.onChunk(chunk)
+    }
+
+    override fun onDropCancel(cancel: com.coucou.android.link.ServerMsg.DropCancel) {
+        fileReceiver.onCancel(cancel)
+    }
+
+    override fun onDropAccept(transferId: String) {
+        coudropManager.onAccept(transferId)
+    }
+
+    override fun onDropReject(transferId: String, reason: String) {
+        coudropManager.onReject(transferId, reason)
+    }
+
+    override fun onDropProgress(transferId: String, bytes: Long, total: Long) {}
+
+    override fun onDropDone(transferId: String, sha256: String) {
+        coudropManager.onDone(transferId, sha256)
     }
 
     override fun onApprovalResolved(fingerprint: String) {

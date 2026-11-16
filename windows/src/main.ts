@@ -19,6 +19,7 @@ import { WhatsNew } from "./whats-new/controller";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 import { GlobalNotifications } from "./core/notifications";
 import { GlobalWelcomeMessages } from "./core/welcome";
+import { nearbyTransferManager } from "./components/islandcn/transfer-adapter";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
 function applyLanguage() {
@@ -44,6 +45,7 @@ async function main() {
   }
 
   const island = new Island(root);
+
   // The dev previews (dev/*.html) drive the island from the console.
   if (import.meta.env.DEV) {
     Object.assign(window, {
@@ -51,6 +53,7 @@ async function main() {
       __state: State,
       __welcome: GlobalWelcomeMessages,
       __notifications: GlobalNotifications,
+      __nearbyTransfer: nearbyTransferManager,
     });
   }
 
@@ -189,13 +192,14 @@ async function main() {
   island.onGreetingDone = () => {
     checkRecap();
     whatsNew();
+    GlobalWelcomeMessages.onAppLaunch();
   };
   window.setTimeout(whatsNew, 8000);
   island.onWake = checkRecap;
   await onEvent<null>("recap-check", checkRecap);
 
   if (IS_TAURI) {
-    island.launch();
+    island.launchIntro();
   }
 
   // In a plain browser there is no wake strip behind the cursor:

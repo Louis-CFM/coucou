@@ -6,7 +6,7 @@ import { modelId, modelsOf, toggleModel, usableProviders } from "../core/phone-c
 import { PROVIDERS, type ProviderDef } from "../core/providers";
 import type { Settings } from "../core/state";
 import { h } from "../views/dom";
-import { t } from "../i18n/i18n";
+import { t, tl } from "../i18n/i18n";
 
 type Toggle = (on: boolean, onChange: (v: boolean) => void) => HTMLElement;
 
@@ -79,6 +79,7 @@ export function phoneSection(on: boolean, makeToggle: Toggle, settings: Settings
       recapBlock(makeToggle),
       servicesBlock(),
       chatBlock(makeToggle, settings),
+      coudropBlock(),
     );
   };
 
@@ -554,4 +555,36 @@ function pairingRows(pairing: PhoneLinkPairing, again: () => void): HTMLElement[
     ...(pairing.relay ? [h("div", { class: "hint", text: t("This code also carries the access key and the end-to-end key for the relay {host}. Pair again makes a new key and a new room.", { host: pairing.relay }) })] : []),
     h("div", { class: "row" }, repair, h("span", { class: "hint", text: t("The phone that was paired is disconnected and needs the new code.") })),
   ];
+}
+
+/**
+ * Coudrop settings summary and direct navigation link in Android phone section.
+ */
+function coudropBlock(): HTMLElement {
+  const openBtn = h("button", {
+    text: "Open Coudrop settings",
+    onclick: () => {
+      window.location.hash = "#coudrop";
+    },
+  });
+
+  const folderBtn = h("button", {
+    text: tl("Downloads"),
+    onclick: () => void Bridge.coudropOpenFolder(),
+  });
+
+  return h(
+    "div",
+    {},
+    h(
+      "div",
+      { class: "row" },
+      h("label", { text: "Coudrop (Peer-to-peer file transfer)" }),
+      h("div", { style: "display: flex; gap: 8px;" }, folderBtn, openBtn),
+    ),
+    h("div", {
+      class: "hint",
+      text: "Instant zero-cloud file transfer between PC and phone over your private TLS link. Manage transfer folders, auto-open preferences and history.",
+    }),
+  );
 }

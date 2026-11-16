@@ -82,6 +82,12 @@ pub trait Host: Send + Sync {
     fn get_diff(&self, _sub_id: u64, _pill_id: &str, _file_id: u64) {}
 
     fn answer(&self, _request_id: &str, _answers: &serde_json::Map<String, serde_json::Value>) {}
+
+    /// Vayli Drop file transfer event from phone.
+    fn drop_event(&self, _event_type: &str, _payload: &serde_json::Value) {}
+
+    /// Vayli Drop protocol message from phone.
+    fn handle_drop_message(&self, _msg: &serde_json::Value) {}
 }
 
 /// One file a session changed, as the island has it. Only its name (never a path) is kept.
@@ -515,6 +521,11 @@ struct Sub {
     services: Vec<String>,
     /// When this phone asked for a diff lately (ms), to keep it from flooding the island.
     diff_asks: Vec<u64>,
+    /// Vayli Drop file receive capability.
+    drop: bool,
+    /// The phone's device name (e.g. "Pixel 8 Pro").
+    device_name: String,
+    connected_at: u64,
 }
 
 /// What a connection may have been offered.
@@ -529,6 +540,8 @@ pub struct Caps {
     pub relay: bool,
     /// The services the user allowed for the phone (empty: the capability is not offered).
     pub services: Vec<String>,
+    pub drop: bool,
+    pub device_name: String,
 }
 
 #[derive(Default)]
@@ -560,6 +573,15 @@ pub enum Outcome {
     Invalid,
     /// `allow` for a request whose command was cut to fit the phone: refused, and the request stays pending so it is answered here.
     TooLong,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectedDevice {
+    pub id: u64,
+    pub name: String,
+    pub can_drop: bool,
+    pub connected_at: u64,
 }
 
 pub struct Hub {
@@ -651,7 +673,7 @@ impl Hub {
 
     /// Like [`subscribe`], for a phone that may also have been offered `answers` and `prefs`.
     pub fn subscribe_with(&self, tx: mpsc::Sender<Out>, now: u64, caps: Caps) -> (u64, Arc<AtomicBool>) {
-        let Caps { details, answers, prefs, diffs, usage, recap, relay, services } = caps;
+        let Caps { details, answers, prefs, diffs, usage, recap, relay, services, drop, device_name } = caps;
         let mut inner = self.inner.lock().unwrap();
         expire(&mut inner, now);
         let id = inner.next_sub;
@@ -687,7 +709,23 @@ impl Hub {
             }
         }
         let evicted = Arc::new(AtomicBool::new(false));
-        inner.subs.push(Sub { id, tx, evicted: evicted.clone(), details, answers, prefs, diffs, usage, recap, relay, services, diff_asks: Vec::new() });
+        inner.subs.push(Sub {
+            id,
+            tx,
+            evicted: evicted.clone(),
+            details,
+            answers,
+            prefs,
+            diffs,
+            usage,
+            recap,
+            relay,
+            services,
+            diff_asks: Vec::new(),
+            drop,
+            device_name,
+            connected_at: now,
+        });
         (id, evicted)
     }
 
@@ -721,6 +759,55 @@ impl Hub {
         for s in subs {
             let _ = s.tx.try_send(Out::Close { code, message });
         }
+    }
+
+    pub fn connected_device(&self) -> Option<ConnectedDevice> {
+        let inner = self.inner.lock().unwrap();
+        inner.subs.last().map(|s| ConnectedDevice {
+            id: s.id,
+            name: if s.device_name.is_empty() { "Android Phone".to_string() } else { s.device_name.clone() },
+            can_drop: s.drop,
+            connected_at: s.connected_at,
+        })
+    }
+
+    pub fn drop_event(&self, event: &str, payload: &serde_json::Value) {
+        self.host.drop_event(event, payload);
+    }
+
+    pub fn handle_drop_message(&self, msg: &serde_json::Value) {
+        self.host.handle_drop_message(msg);
+    }
+
+    #[allow(dead_code)]
+    pub fn send_drop(&self, line: &str) -> bool {
+        let line: Arc<str> = line.to_string().into();
+        let inner = self.inner.lock().unwrap();
+        let mut sent = false;
+        for s in &inner.subs {
+            if s.drop && s.tx.try_send(Out::Line(line.clone())).is_ok() {
+                sent = true;
+            }
+        }
+        sent
+    }
+
+    pub async fn send_drop_async(&self, line: &str) -> Result<(), String> {
+        let line: Arc<str> = line.to_string().into();
+        let senders: Vec<mpsc::Sender<Out>> = {
+            let inner = self.inner.lock().unwrap();
+            inner.subs.iter().filter(|s| s.drop).map(|s| s.tx.clone()).collect()
+        };
+        if senders.is_empty() {
+            return Err("No paired phone connected with file transfer capability.".to_string());
+        }
+        for tx in senders {
+            tokio::time::timeout(std::time::Duration::from_secs(10), tx.send(Out::Line(line.clone())))
+                .await
+                .map_err(|_| "Timeout waiting for network transmission buffer".to_string())?
+                .map_err(|_| "Connection closed by remote device".to_string())?;
+        }
+        Ok(())
     }
 
     pub fn clients(&self) -> usize {

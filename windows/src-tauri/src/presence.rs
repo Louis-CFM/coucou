@@ -35,8 +35,15 @@ pub fn system_idle_ms() -> u64 {
     0
 }
 
-/// Minimum idle time before user is considered "away" (10 minutes = 600,000 ms).
-const DEFAULT_AWAY_THRESHOLD_MS: u64 = 10 * 60 * 1000;
+/// Dynamic absence threshold: reads from Settings.absence_interval (default 180s = 3 minutes).
+fn away_threshold_ms() -> u64 {
+    let secs = crate::settings::load().absence_interval;
+    if secs >= 60.0 {
+        (secs * 1000.0) as u64
+    } else {
+        180 * 1000 // 3 minutes baseline fallback
+    }
+}
 
 pub fn start(app: &AppHandle) {
     let handle = app.clone();
@@ -53,33 +60,34 @@ fn run_presence_loop(app: AppHandle) {
     let mut away_start = Instant::now();
 
     loop {
-        std::thread::sleep(std::time::Duration::from_millis(2500));
+        std::thread::sleep(std::time::Duration::from_millis(2000));
 
         let idle_ms = system_idle_ms();
+        let threshold = away_threshold_ms();
 
         if !is_away {
-            if idle_ms >= DEFAULT_AWAY_THRESHOLD_MS {
+            if idle_ms >= threshold {
                 is_away = true;
-                away_start = Instant::now();
+                away_start = Instant::now().checked_sub(std::time::Duration::from_millis(idle_ms)).unwrap_or_else(Instant::now);
                 let _ = app.emit(
                     "user-presence",
                     PresenceEvent {
                         status: "away".into(),
-                        away_minutes: idle_ms / 60000,
+                        away_minutes: (idle_ms / 60000).max(1),
                         user_name: crate::identity::first_name().map(String::from),
                     },
                 );
             }
         } else {
             // User was away and has now performed input (mouse moved or key pressed)
-            if idle_ms < 2000 {
+            if idle_ms < 1500 {
                 is_away = false;
-                let away_minutes = away_start.elapsed().as_secs() / 60;
+                let away_minutes = (away_start.elapsed().as_secs() / 60).max(1);
                 let _ = app.emit(
                     "user-presence",
                     PresenceEvent {
                         status: "returned".into(),
-                        away_minutes: away_minutes.max(DEFAULT_AWAY_THRESHOLD_MS / 60000),
+                        away_minutes,
                         user_name: crate::identity::first_name().map(String::from),
                     },
                 );
@@ -91,7 +99,8 @@ fn run_presence_loop(app: AppHandle) {
 #[tauri::command]
 pub fn get_system_presence() -> Result<PresenceEvent, String> {
     let idle_ms = system_idle_ms();
-    let is_away = idle_ms >= DEFAULT_AWAY_THRESHOLD_MS;
+    let threshold = away_threshold_ms();
+    let is_away = idle_ms >= threshold;
     Ok(PresenceEvent {
         status: if is_away { "away".into() } else { "active".into() },
         away_minutes: idle_ms / 60000,

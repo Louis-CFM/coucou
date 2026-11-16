@@ -87,13 +87,14 @@ body {
   background: #000;
   border-radius: 0 0 14px 14px;
   overflow: visible;
-  will-change: width, height, transform;
+  will-change: width, height, transform, top, border-radius;
+  border: 1px solid transparent;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  transition: box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #island.style-island {
-  top: 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.09);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
 }
 
@@ -102,9 +103,8 @@ body {
 }
 
 #island.style-notch {
-  top: 0;
-  border-top: none;
-  box-shadow: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
 }
 
 #island-clip {
@@ -340,12 +340,14 @@ body {
 /* ── Dynamic Island Battery Indicator ─────────────────────────────────── */
 #island-battery {
   position: absolute;
-  right: 14px;
+  right: 16px;
   top: 0;
   bottom: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 5px;
+  flex-shrink: 0;
   font-family: var(--font);
   font-variant-numeric: tabular-nums;
   color: rgba(245, 246, 248, 0.95);
@@ -357,7 +359,7 @@ body {
 }
 
 #island.style-island #island-battery {
-  right: 18px;
+  right: 20px;
 }
 
 #island.has-battery #island-battery {
@@ -568,6 +570,9 @@ body {
 
 #island.tucked {
   cursor: pointer;
+  box-shadow: none !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
 }
 
 #island.tucked #island-tuck {
@@ -580,14 +585,23 @@ body {
   transform: translateY(1.5px);
 }
 
+#island-closed,
+#bot-canvas,
+#island-battery,
+#compact-timer,
+#compact-plan,
+#island-clip {
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 #island.tucked #island-closed,
 #island.tucked #bot-canvas,
 #island.tucked #island-battery,
 #island.tucked #compact-timer,
 #island.tucked #compact-plan,
 #island.tucked #island-clip {
-  opacity: 0 !important;
-  pointer-events: none !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Smart Notch card in Settings → General */
@@ -746,6 +760,19 @@ body {
 
 /* ── Content shell (expanded) ───────────────────────────────────────────── */
 
+/* Hard isolation: Header and expanded content NEVER render in closed/compact notch */
+#island:not(.expanded) #content,
+#island:not(.expanded) #header,
+#island:not(.expanded) #views,
+#island:not(.expanded) .header-actions,
+#island:not(.expanded) .header-mochi-pills,
+#island:not(.expanded) .plan-pills {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 #content {
   position: absolute;
   inset: 0;
@@ -797,6 +824,67 @@ body {
   display: flex;
   gap: 14px;
   padding-right: 16px;
+  align-items: center;
+}
+
+.header-mochi-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.header-mochi-pill {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  cursor: default;
+  user-select: none;
+  flex: 0 0 26px;
+  transition: transform 0.18s cubic-bezier(0.3, 1.2, 0.4, 1), background 0.18s, border-color 0.18s,
+    box-shadow 0.18s, filter 0.18s;
+}
+
+.header-mochi-pill:hover {
+  transform: scale(1.12);
+  filter: brightness(1.15);
+}
+
+.header-mochi-pill.active {
+  transform: scale(1.04);
+}
+
+.header-mochi-pill .mini {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.header-mochi-badge-wrap {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 0;
+  height: 0;
+}
+
+.header-mochi-badge-wrap .pill-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 11px;
+  height: 11px;
+}
+
+.header-mochi-badge-wrap .pill-badge i {
+  width: 9px;
+  height: 9px;
 }
 
 .header-actions button {
@@ -946,17 +1034,14 @@ body {
 
 .overview {
   display: flex;
-  gap: 10px;
+  width: 100%;
   height: 100%;
 }
 
 .overview > .left {
-  flex: 0 0 322px;
-  width: 322px;
-}
-
-.overview > .right {
-  flex: 1 1 auto;
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .card-body {
@@ -996,8 +1081,8 @@ body {
 
 .jump {
   position: absolute;
-  top: 8px;
-  right: 10px;
+  top: 10px;
+  right: 14px;
   z-index: 2;
 }
 
@@ -1379,6 +1464,7 @@ small {
 .question-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -2503,6 +2589,7 @@ input[type="range"]::-webkit-slider-thumb {
   color: #c5c8cd;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -3043,6 +3130,7 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: 12px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -3114,6 +3202,7 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--dim-2);
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -4243,3 +4332,535 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }
+
+
+/* ── Coudrop (P2P Zero-QR File Transfer) ─────────────────────────────────── */
+
+.coudrop-root {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.coudrop-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  background: #050607;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Left Studio: Minimal AirDrop / File Drop Transmitter ── */
+.coudrop-transmitter {
+  position: relative;
+  width: 330px;
+  flex: 0 0 330px;
+  height: 100%;
+  border-radius: 16px;
+  background: #0B0D10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.coudrop-transmitter.in-progress {
+  cursor: default;
+}
+
+.coudrop-transmitter-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.coudrop-transmitter-frame rect {
+  stroke: rgba(255, 255, 255, 0.10);
+  stroke-dasharray: 6 5;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.coudrop-transmitter:hover .coudrop-transmitter-frame rect {
+  stroke: rgba(255, 255, 255, 0.20);
+}
+
+.coudrop-transmitter.drag-over {
+  background: rgba(22, 133, 255, 0.05);
+}
+
+.coudrop-transmitter.drag-over .coudrop-transmitter-frame rect {
+  stroke: #1685FF;
+  stroke-width: 1.5;
+}
+
+.coudrop-transmitter-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.coudrop-upload-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(22, 133, 255, 0.10);
+  border: 2px solid rgba(22, 133, 255, 0.40);
+  box-shadow: 0 0 0 3px rgba(22, 133, 255, 0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1685FF;
+  margin-bottom: 2px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.coudrop-upload-icon.border-2,
+.coudrop-upload-icon.border2 {
+  border-width: 2px;
+}
+
+.coudrop-transmitter:hover .coudrop-upload-icon {
+  transform: translateY(-1px);
+  background: rgba(22, 133, 255, 0.16);
+  border-color: rgba(22, 133, 255, 0.65);
+  box-shadow: 0 0 0 4px rgba(22, 133, 255, 0.16);
+}
+
+.coudrop-transmitter.drag-over .coudrop-upload-icon {
+  transform: scale(1.06) translateY(-2px);
+  background: rgba(22, 133, 255, 0.24);
+  border-color: #1685FF;
+  box-shadow: 0 0 0 5px rgba(22, 133, 255, 0.22);
+}
+
+.coudrop-upload-icon.sending {
+  animation: coudrop-pulse 2s infinite ease-in-out;
+}
+
+.coudrop-title {
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "Inter", sans-serif);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #F5F7FA;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin: 0;
+  user-select: none;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.coudrop-browse-action {
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "Inter", sans-serif);
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #9299A5;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  user-select: none;
+  line-height: 1.3;
+  margin: 0;
+  text-decoration: none;
+}
+
+.coudrop-browse-action:hover,
+.coudrop-transmitter:hover .coudrop-browse-action {
+  color: #1685FF;
+}
+
+/* ── Right Studio: Device Hub & Transfer History ── */
+.coudrop-hub {
+  flex: 1 1 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.coudrop-hub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 32px;
+}
+
+.coudrop-device-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.coudrop-device-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.coudrop-device-name {
+  font: 600 12px var(--font);
+  color: #FFFFFF;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coudrop-device-status {
+  font: 400 10px var(--font);
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coudrop-device-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #30D158;
+  box-shadow: 0 0 8px rgba(48, 209, 88, 0.85);
+  flex-shrink: 0;
+  animation: coudrop-pulse 2s infinite ease-in-out;
+}
+
+.coudrop-device-dot.offline {
+  background: #8E8E93;
+  box-shadow: none;
+  animation: none;
+}
+
+.coudrop-folder-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  color: rgba(255, 255, 255, 0.85);
+  font: 500 11px var(--font);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.coudrop-folder-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.coudrop-hub-divider {
+  height: 1px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 5px 0 6px 0;
+  flex-shrink: 0;
+}
+
+.coudrop-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 4px 2px;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.coudrop-hub-section-title {
+  font: 600 10px var(--font);
+  color: rgba(255, 255, 255, 0.38);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.coudrop-clear-btn {
+  background: none;
+  border: none;
+  padding: 1px 6px;
+  margin: 0;
+  font: 500 11px var(--font);
+  color: #1685FF;
+  cursor: pointer;
+  letter-spacing: -0.1px;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  user-select: none;
+  border-radius: 4px;
+}
+
+.coudrop-clear-btn:hover {
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+.coudrop-clear-btn:active {
+  opacity: 0.65;
+}
+
+.coudrop-history-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+  font: 400 11px var(--font);
+  padding: 0 10px;
+  line-height: 1.35;
+}
+
+.coudrop-history-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 2px;
+  scrollbar-width: none;
+}
+
+.coudrop-history-list::-webkit-scrollbar {
+  display: none;
+}
+
+.coudrop-file-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.coudrop-file-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.coudrop-file-icon-badge {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(48, 209, 88, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #30D158;
+  flex-shrink: 0;
+}
+
+.coudrop-file-name {
+  flex: 1;
+  color: #F5F5F7;
+  font-weight: 500;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.coudrop-file-size {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.coudrop-file-action {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.coudrop-file-row:hover .coudrop-file-action {
+  opacity: 1;
+  color: #FFFFFF;
+}
+
+/* In-flight Progress Ring */
+.coudrop-progress-ring-container {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.coudrop-progress-ring {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.coudrop-progress-ring-track {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.coudrop-progress-ring-indicator {
+  stroke: #0A84FF;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.15s ease;
+}
+
+.coudrop-progress-ring-text {
+  position: absolute;
+  font: 700 13px var(--font);
+  color: #FFFFFF;
+  letter-spacing: -0.3px;
+}
+
+.coudrop-cancel-btn {
+  margin-top: 3px;
+  padding: 2px 10px;
+  font-size: 10px;
+}
+
+@keyframes coudrop-pulse {
+  0% { transform: scale(0.9); opacity: 0.85; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.85; }
+}
+
+/* IslandCN Nearby Transfer Activity in Coucou Dynamic Island */
+#island-activity-host {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  background: transparent;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#island-activity-host.active {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nearby-transfer-activity-view {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  box-sizing: border-box;
+  user-select: none;
+  background: transparent;
+}
+
+.nearby-transfer-lead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.nearby-transfer-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0 14px;
+  text-align: left;
+}
+
+.nearby-transfer-action {
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "Inter", sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: #9299A5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.nearby-transfer-party {
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "Inter", sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: #F5F7FA;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.nearby-transfer-trail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+

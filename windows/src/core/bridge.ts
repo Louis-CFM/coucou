@@ -59,6 +59,38 @@ export interface PhoneRelayStatus {
   shown: boolean;
 }
 
+export interface VayliDropDevice {
+  connected: boolean;
+  name: string;
+  canDrop: boolean;
+}
+
+/** Coudrop local P2P session info */
+export interface CoudropSessionInfo {
+  active: boolean;
+  token: string;
+  port: number;
+  host: string;
+  url: string;
+  qrSvg: string;
+  computerName: string;
+  remainingSeconds: number;
+  connectedDevice: string | null;
+}
+
+export interface CoudropReceivedFile {
+  name: string;
+  path: string;
+  size: number;
+}
+
+export interface CoudropProgress {
+  name: string;
+  bytesRead: number;
+  totalBytes: number;
+  progress: number;
+}
+
 /** Session details for the phone: the switch (off by default). */
 export interface PhoneDetailsStatus {
   enabled: boolean;
@@ -248,6 +280,9 @@ export const Bridge = {
   setIslandRect: (x: number, y: number, width: number, height: number) =>
     call<void>("set_island_rect", { x, y, width, height }),
 
+  /** Notifies native host that renderer DOM, intro, and first transparent frame are painted. */
+  islandReady: () => call<void>("island_ready"),
+
   /** Give the window keyboard focus (chat field) and take it away again. */
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
 
@@ -427,6 +462,22 @@ export const Bridge = {
   phoneLinkPublishQuestion: (question: PhoneLinkQuestion | null) => call<void>("phone_link_publish_question", { question }),
   /** What Mochi wears ("auto" or an outfit), for phones that asked for it. */
   phoneLinkPublishPrefs: (outfit: string) => call<void>("phone_link_publish_prefs", { outfit }),
+
+  // ── Coudrop / Vayli Drop (Zero-QR Local File Transfer) ────────────────────
+  coudropGetDevice: () => call<VayliDropDevice>("coudrop_get_device"),
+  coudropSendFiles: (paths: string[]) => call<void>("coudrop_send_files", { paths }),
+  coudropCancelSend: () => call<void>("coudrop_cancel_send"),
+  coudropGetHistory: () => call<CoudropReceivedFile[]>("coudrop_get_history"),
+  coudropStartReceive: () => callOrThrow<CoudropSessionInfo>("coudrop_start_receive"),
+  coudropCancel: () => call<void>("coudrop_cancel"),
+  coudropStatus: () => call<CoudropSessionInfo | null>("coudrop_status"),
+  coudropOpenFolder: () => call<void>("coudrop_open_folder"),
+  coudropPickDownloadDir: () => call<string | null>("coudrop_pick_download_dir"),
+  coudropSetDownloadDir: (path: string) => call<void>("coudrop_set_download_dir", { path }),
+  coudropGetDownloadDir: () => call<string>("coudrop_get_download_dir"),
+  coudropPickFiles: () => call<string[]>("coudrop_pick_files"),
+  coudropOpenFile: (path: string) => call<void>("coudrop_open_file", { path }),
+  coudropStageSendFiles: (paths: string[]) => call<string[]>("coudrop_stage_send_files", { paths }),
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */

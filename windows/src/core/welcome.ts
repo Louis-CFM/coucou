@@ -1,7 +1,7 @@
-// Mochi Contextual Companion Welcome-Back Engine (#1055 & Dynamic Island Notch).
-// Evaluates a multi-factor live state vector (absence duration, computer usage time,
-// hydration interval, circadian rhythm, and day-of-week) to select the most heartwarming,
-// personal message with the user's name ({name}), displayed alongside Mochi in the small notch.
+// Mochi Contextual Companion & Ambient Messaging Engine (#1055 & Dynamic Island Notch).
+// Evaluates a multi-factor live state vector (screen time, hydration intervals,
+// circadian rhythm, absence duration, and day-of-week) to select heartwarming,
+// personal messages with the user's name ({name}), displayed alongside Mochi in the small notch.
 
 import { State } from "./state";
 
@@ -50,20 +50,27 @@ export class WelcomeMessageManager {
   private static instance: WelcomeMessageManager;
 
   static readonly DISPLAY_DURATION_MS = 6500;
-  static readonly COOLDOWN_MS = 8 * 60 * 1000;
+  static readonly RETURN_COOLDOWN_MS = 2.5 * 60 * 1000; // 2.5 min return cooldown
+  static readonly AMBIENT_COOLDOWN_MS = 30 * 60 * 1000; // 30 min between ambient nudges
 
   private current: WelcomeMessageDisplay | null = null;
   private timer: number | null = null;
+  private tickerInterval: number | null = null;
   private listeners = new Set<() => void>();
 
   private recentHistory: string[] = [];
   private lastTriggerTime = 0;
-  private lastWaterNudgeTime = 0;
+  private lastWaterNudgeTime = Date.now();
+  private lastPostureNudgeTime = Date.now();
+  private lastCircadianPhase: CircadianPhase | null = null;
   private sessionStartTime = Date.now();
+  private activeMinutes = 0;
+  private hasGreetedOnLaunch = false;
 
   userName = "Madhan";
   enabled = true;
   wellnessEnabled = true;
+  hydrationIntervalMinutes = 45; // default 45 min
 
   static get shared(): WelcomeMessageManager {
     if (!WelcomeMessageManager.instance) {
@@ -74,6 +81,7 @@ export class WelcomeMessageManager {
 
   private constructor() {
     this.loadState();
+    this.startAmbientTicker();
   }
 
   private loadState() {
@@ -84,20 +92,23 @@ export class WelcomeMessageManager {
         const well = localStorage.getItem("coucou_wellness_enabled");
         if (well != null) this.wellnessEnabled = well === "true";
         const u = localStorage.getItem("coucou_user_name");
-        if (u) this.userName = u;
+        if (u && u.trim().length > 0) this.userName = u.trim();
         const water = localStorage.getItem("coucou_last_water_time");
-        if (water) this.lastWaterNudgeTime = Number(water) || 0;
+        if (water) this.lastWaterNudgeTime = Number(water) || Date.now();
+        const intv = localStorage.getItem("coucou_hydration_interval");
+        if (intv) this.hydrationIntervalMinutes = Number(intv) || 45;
       }
     } catch {}
   }
 
-  private saveState() {
+  saveState() {
     try {
       if (typeof localStorage !== "undefined") {
         localStorage.setItem("coucou_welcome_enabled", String(this.enabled));
         localStorage.setItem("coucou_wellness_enabled", String(this.wellnessEnabled));
         localStorage.setItem("coucou_user_name", this.userName);
         localStorage.setItem("coucou_last_water_time", String(this.lastWaterNudgeTime));
+        localStorage.setItem("coucou_hydration_interval", String(this.hydrationIntervalMinutes));
       }
     } catch {}
   }
@@ -134,13 +145,158 @@ export class WelcomeMessageManager {
   }
 
   /**
+   * Starts the 60-second background ambient ticker.
+   * Regularly monitors hydration intervals, posture, eye breaks, and circadian shifts.
+   */
+  startAmbientTicker() {
+    if (this.tickerInterval != null) return;
+    if (typeof window === "undefined") return;
+
+    // Initial companion greeting will trigger after intro finishes (via onGreetingDone)
+    const interval = window.setInterval(() => {
+      this.onAmbientTick();
+    }, 60 * 1000) as unknown as { unref?: () => void };
+    interval?.unref?.();
+
+    this.tickerInterval = interval as unknown as number;
+  }
+
+  stopAmbientTicker() {
+    if (this.tickerInterval != null) {
+      window.clearInterval(this.tickerInterval);
+      this.tickerInterval = null;
+    }
+  }
+
+  /**
+   * Warm greeting upon app launch / initial startup.
+   */
+  onAppLaunch() {
+    if (!this.enabled || this.hasGreetedOnLaunch) return;
+    this.hasGreetedOnLaunch = true;
+
+    const now = Date.now();
+    const d = new Date(now);
+    const hour = d.getHours() + d.getMinutes() / 60;
+    const u = this.userName;
+
+    let text = u ? `Hey ${u}, good to see you! ✨` : "Hey, good to see you! ✨";
+    if (hour >= 5 && hour < 11.5) {
+      text = u ? `Good morning, ${u}! Ready to crush today? 🚀` : "Good morning! Ready to crush today? 🚀";
+    } else if (hour >= 11.5 && hour < 17) {
+      text = u ? `Afternoon momentum looking great, ${u} ✨` : "Afternoon momentum looking great! ✨";
+    } else if (hour >= 17 && hour < 22) {
+      text = u ? `Evening building, ${u}! Let's make it count 🌇` : "Evening building! Let's make it count 🌇";
+    } else {
+      text = u ? `Night owl mode, ${u}! Mochi's here with you 🌙` : "Night owl mode! Mochi's here with you 🌙";
+    }
+
+    this.displayMessage({
+      id: "launch_greeting",
+      text,
+      bot: true,
+      category: "classic",
+      timestamp: now,
+    });
+  }
+
+  /**
+   * 60-second active work evaluation loop.
+   */
+  private onAmbientTick() {
+    if (!this.enabled) return;
+
+    // Increment active work screen time
+    this.activeMinutes += 1;
+    const now = Date.now();
+    const minutesSinceLastMsg = (now - this.lastTriggerTime) / (60 * 1000);
+
+    // Enforce gentle ambient spacing (at least 30 minutes between proactive nudges)
+    if (minutesSinceLastMsg < 30) return;
+
+    const sessionWorkHours = this.activeMinutes / 60;
+    const minutesSinceWater = (now - this.lastWaterNudgeTime) / (60 * 1000);
+    const minutesSincePosture = (now - this.lastPostureNudgeTime) / (60 * 1000);
+
+    // 1. Proactive Hydration Nudge
+    if (this.wellnessEnabled && minutesSinceWater >= this.hydrationIntervalMinutes && sessionWorkHours >= 0.75) {
+      const u = this.userName;
+      const hydrationTemplates = [
+        u ? `Hey ${u}! Grab a glass of water right now 💧` : "Hey! Grab a glass of water right now 💧",
+        u ? `${u}, quick water break to keep your energy up! 💧` : "Quick water break to keep your energy up! 💧",
+        u ? `Hydration check, ${u}! Take a refreshing sip 🥤` : "Hydration check! Take a refreshing sip 🥤",
+      ];
+      const text = hydrationTemplates[Math.floor(Math.random() * hydrationTemplates.length)];
+      this.lastWaterNudgeTime = now;
+      this.saveState();
+      this.displayMessage({
+        id: "ambient_hydration",
+        text,
+        bot: true,
+        category: "hydration",
+        timestamp: now,
+      });
+      return;
+    }
+
+    // 2. Posture & 20-20-20 Eye Relief Nudge
+    if (this.wellnessEnabled && minutesSincePosture >= 90 && sessionWorkHours >= 1.5) {
+      const u = this.userName;
+      const postureTemplates = [
+        u ? `${u}, look 20 feet away for 20 seconds ✨` : "Look 20 feet away for 20 seconds ✨",
+        u ? `Quick posture check, ${u}! Roll those shoulders back 🧘` : "Quick posture check! Roll those shoulders back 🧘",
+        u ? `Deep breath in, ${u}... and exhale 🌿` : "Deep breath in... and exhale 🌿",
+      ];
+      const text = postureTemplates[Math.floor(Math.random() * postureTemplates.length)];
+      this.lastPostureNudgeTime = now;
+      this.displayMessage({
+        id: "ambient_posture",
+        text,
+        bot: true,
+        category: "posture",
+        timestamp: now,
+      });
+      return;
+    }
+
+    // 3. Circadian Phase Transition
+    const currentPhase = this.computeStateVector(0, now).timeOfDay;
+    if (this.lastCircadianPhase && this.lastCircadianPhase !== currentPhase) {
+      const u = this.userName;
+      let phaseText = "";
+      if (currentPhase === "afternoon_slump") {
+        phaseText = u ? `2 PM slump? Not on Mochi's watch, ${u} ⚡` : "2 PM slump? Not on Mochi's watch ⚡";
+      } else if (currentPhase === "golden_hour") {
+        phaseText = u ? `Golden hour, ${u}! Look at all you built today 🌇` : "Golden hour! Look at all you built today 🌇";
+      } else if (currentPhase === "evening_wrapup") {
+        phaseText = u ? `Almost wrap-up time, ${u}! You earned your evening ✨` : "Almost wrap-up time! You earned your evening ✨";
+      } else if (currentPhase === "deep_night") {
+        phaseText = u ? `Still awake, ${u}? Don't forget to rest soon 🌙` : "Still awake? Don't forget to rest soon 🌙";
+      }
+
+      this.lastCircadianPhase = currentPhase;
+      if (phaseText) {
+        this.displayMessage({
+          id: `circadian_${currentPhase}`,
+          text: phaseText,
+          bot: true,
+          category: "circadian",
+          timestamp: now,
+        });
+        return;
+      }
+    }
+    this.lastCircadianPhase = currentPhase;
+  }
+
+  /**
    * Called when Win32 GetLastInputInfo reports the user returned after an idle period.
    */
   onUserReturned(awayMinutes: number, resolvedName?: string | null) {
     if (!this.enabled) return;
 
     const now = Date.now();
-    if (now - this.lastTriggerTime < WelcomeMessageManager.COOLDOWN_MS) {
+    if (now - this.lastTriggerTime < WelcomeMessageManager.RETURN_COOLDOWN_MS) {
       return;
     }
 
@@ -152,51 +308,93 @@ export class WelcomeMessageManager {
     const message = this.selectBestMessage(stateVector);
 
     if (message) {
-      this.lastTriggerTime = now;
       if (message.category === "hydration") {
         this.lastWaterNudgeTime = now;
         this.saveState();
       }
 
-      this.current = {
-        id: message.id,
-        text: message.template(this.userName),
-        bot: true,
-        category: message.category,
-        timestamp: now,
-      };
-
-      // Record in recent history ring-buffer (max 10)
       this.recentHistory.push(message.id);
-      if (this.recentHistory.length > 10) {
+      if (this.recentHistory.length > 8) {
         this.recentHistory.shift();
       }
 
-      this.restartTimer();
-      this.notify();
+      const text = message.template(this.userName);
+      this.displayMessage({
+        id: message.id,
+        text,
+        bot: true,
+        category: message.category,
+        timestamp: now,
+      });
     }
+  }
+
+  /**
+   * User clicks or pokes Mochi directly in the Notch.
+   */
+  poke() {
+    const now = Date.now();
+    const u = this.userName;
+    const thoughts = [
+      u ? `Mochi's right here with you, ${u}! 💙` : "Mochi's right here with you! 💙",
+      u ? `You're doing awesome work today, ${u}! 🚀` : "You're doing awesome work today! 🚀",
+      u ? `Focus mode active! Let's build something great ✨` : "Focus mode active! Let's build something great ✨",
+      u ? `Remember to stretch and hydrate, ${u} 🧘` : "Remember to stretch and hydrate! 🧘",
+    ];
+    const text = thoughts[Math.floor(Math.random() * thoughts.length)];
+    this.displayMessage({
+      id: "poke_interaction",
+      text,
+      bot: true,
+      category: "classic",
+      timestamp: now,
+    });
+  }
+
+  /**
+   * Immediately triggers a preview message (for Settings or test buttons).
+   */
+  triggerPreview(sampleText?: string) {
+    const text = sampleText || (this.userName ? `Hey ${this.userName}! Mochi companion is active 🌟` : "Hey! Mochi companion is active 🌟");
+    this.displayMessage({
+      id: "preview_test",
+      text,
+      bot: true,
+      category: "classic",
+      timestamp: Date.now(),
+    });
+  }
+
+  private displayMessage(display: WelcomeMessageDisplay) {
+    this.lastTriggerTime = Date.now();
+    this.current = display;
+    this.restartTimer();
+    this.notify();
   }
 
   private restartTimer() {
     if (this.timer != null) {
       window.clearTimeout(this.timer);
     }
-    this.timer = window.setTimeout(() => {
+    const t = window.setTimeout(() => {
       this.timer = null;
       this.dismiss();
-    }, WelcomeMessageManager.DISPLAY_DURATION_MS);
+    }, WelcomeMessageManager.DISPLAY_DURATION_MS) as unknown as { unref?: () => void };
+    t?.unref?.();
+    this.timer = t as unknown as number;
   }
 
   computeStateVector(awayMinutes: number, now: number): WelcomeStateVector {
     const d = new Date(now);
     const hour = d.getHours() + d.getMinutes() / 60;
     const dayOfWeek = d.getDay();
-    const sessionWorkHours = Math.max(0.1, (now - this.sessionStartTime) / (3600 * 1000));
-    const minutesSinceWater = this.lastWaterNudgeTime > 0
-      ? Math.max(0, (now - this.lastWaterNudgeTime) / 60000)
-      : sessionWorkHours * 60;
 
-    let timeOfDay: CircadianPhase = "morning_peak";
+    const sessionWorkHours = Math.max(0.1, (now - this.sessionStartTime) / (1000 * 60 * 60));
+    const minutesSinceWater = this.lastWaterNudgeTime > 0
+      ? Math.max(0, (now - this.lastWaterNudgeTime) / (1000 * 60))
+      : 60;
+
+    let timeOfDay: CircadianPhase;
     if (hour >= 5 && hour < 8.5) timeOfDay = "dawn";
     else if (hour >= 8.5 && hour < 12) timeOfDay = "morning_peak";
     else if (hour >= 12 && hour < 13.5) timeOfDay = "midday_lunch";
@@ -205,7 +403,7 @@ export class WelcomeMessageManager {
     else if (hour >= 19.5 && hour < 23) timeOfDay = "evening_wrapup";
     else timeOfDay = "deep_night";
 
-    const wardrobe = State.settings.mochiOutfit || "none";
+    const wardrobe = State.settings?.mochiOutfit || "none";
 
     return {
       awayMinutes,
@@ -286,10 +484,10 @@ export class WelcomeMessageManager {
         else score -= 15;
       }
 
-      // Wardrobe synergy
+      // Wardrobe synergy (normalized to a gentle +6 flavor touch, avoiding monopoly)
       if (c.wardrobe != null) {
-        if (s.wardrobe.toLowerCase().includes(c.wardrobe.toLowerCase())) score += 25;
-        else score -= 30;
+        if (s.wardrobe.toLowerCase().includes(c.wardrobe.toLowerCase())) score += 6;
+        else score -= 12;
       }
 
       if (score > bestScore) {
@@ -472,14 +670,14 @@ export class WelcomeMessageManager {
         id: "dur_short_stretch",
         category: "duration",
         template: (u) => (u ? `Nice quick break, ${u}! Ready to dive back in?` : "Nice quick break! Ready to dive back in?"),
-        minAwayMinutes: 10,
+        minAwayMinutes: 3,
         weight: 14,
       },
       {
         id: "dur_long_reunion",
         category: "duration",
         template: (u) => (u ? `You're back! Mochi missed you so much, ${u}! 💙` : "You're back! Mochi missed you so much! 💙"),
-        minAwayMinutes: 60,
+        minAwayMinutes: 30,
         weight: 25,
       },
 
@@ -512,14 +710,14 @@ export class WelcomeMessageManager {
         category: "wardrobe",
         wardrobe: "santa",
         template: (u) => (u ? `Brrr! Welcome back into the warm, ${u} ❄️` : "Brrr! Welcome back into the warm ❄️"),
-        weight: 25,
+        weight: 14,
       },
       {
         id: "wardrobe_sunglasses",
         category: "wardrobe",
         wardrobe: "sunglasses",
         template: (u) => (u ? `Looking cool, ${u}! Welcome back 😎` : "Looking cool! Welcome back 😎"),
-        weight: 25,
+        weight: 14,
       },
     ];
   }

@@ -45,6 +45,11 @@ function sharedSounds(): Plugin {
 
 export default defineConfig({
   plugins: [react(), sharedSounds()],
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "src"),
+    },
+  },
   clearScreen: false,
   server: {
     port: 1420,

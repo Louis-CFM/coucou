@@ -27,7 +27,8 @@ export type IslandViewName =
   | "update"
   | "whatsNew"
   | "launch"
-  | "fileshelf";
+  | "fileshelf"
+  | "coudrop";
 
 export type BotStateName =
   | "idle"
@@ -106,6 +107,7 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   launch: { height: 160, botX: 58, botY: null, botDiameter: 52, agentMode: "none" },
   // File Shelf: Staging dock for parked files and folders
   fileshelf: { height: 240, botX: 46, botY: 80, botDiameter: 0, agentMode: "none" },
+  coudrop: { height: 250, botX: 46, botY: 80, botDiameter: 0, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually

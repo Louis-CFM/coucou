@@ -163,6 +163,26 @@
             </intent-filter>
         </activity>
 
+        <!-- "Coudrop": share files, photos, videos, docs straight to paired desktop over TLS -->
+        <activity
+            android:name=".app.CoudropShareActivity"
+            android:exported="true"
+            android:label="Coudrop"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+
         <!-- The quick-settings tile: on while the computer is connected; a tap opens Coucou. -->
         <service
             android:name=".app.GlanceTile"

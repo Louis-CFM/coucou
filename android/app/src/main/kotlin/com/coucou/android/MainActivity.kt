@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -97,6 +98,9 @@ import com.coucou.android.core.TypeScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.Color
+import com.coucou.android.core.IconKind
+import com.coucou.android.ui.CoucouIcon
 import com.coucou.android.ui.CoucouTheme
 import com.coucou.android.core.HomePanel
 import com.coucou.android.link.DiscoveryState
@@ -186,16 +190,19 @@ class MainActivity : ComponentActivity() {
                                 model, onHistory = { screen = Screen.HISTORY },
                                 onGallery = { screen = Screen.GALLERY }, onWardrobe = { screen = Screen.WARDROBE }, onOverlay = ::setOverlay,
                                 onDiagnostics = { screen = Screen.DIAGNOSTICS }, onLicences = { screen = Screen.LICENCES },
+                                onCoudrop = { screen = Screen.COUDROP },
                             )
                             Screen.LICENCES -> LicencesScreen(onBack = { screen = Screen.SETTINGS })
                             Screen.WARDROBE -> WardrobeScreen(model, onBack = { screen = Screen.SETTINGS })
                             Screen.DIAGNOSTICS -> DiagnosticsScreen(model, onBack = { screen = Screen.SETTINGS })
                             Screen.HISTORY -> HistoryScreen(model, onBack = { screen = Screen.SETTINGS })
+                            Screen.COUDROP -> com.coucou.android.ui.coudrop.CoudropScreen(model, onBack = { screen = Screen.HOME })
                             Screen.HOME -> if (model.mode == Mode.NONE) PairingScreen(model, onScan = { screen = Screen.SCAN }, onAbout = { screen = Screen.SETTINGS }) else Home(
                                 model, onApprove = ::approve, onOverlay = ::setOverlay,
                                 onSession = { detailPill = it; screen = Screen.SESSION },
                                 onScan = { screen = Screen.SCAN }, onReview = { closedApproval = null }, onQuestion = { questionPill = it },
                                 onHistory = { screen = Screen.HISTORY }, onDiagnostics = { screen = Screen.DIAGNOSTICS },
+                                onCoudrop = { screen = Screen.COUDROP },
                             )
                         }
                         }
@@ -279,6 +286,10 @@ class MainActivity : ComponentActivity() {
         model.launch.takeScreen()?.let { screen = it.screen }
         // Text shared to Coucou from another app (ShareActivity, which only keeps cleaned text): it waits in the model for the chat box.
         if (model.shareDraft.pending()) screen = Screen.CHAT
+        if (i.getStringExtra("screen") == "coudrop") {
+            screen = Screen.COUDROP
+            i.removeExtra("screen")
+        }
         val launch = model.launch.take() ?: return
         val fp = launch.fingerprint
         if (launch.allow) {
@@ -327,6 +338,7 @@ class MainActivity : ComponentActivity() {
 private fun Home(
     model: AppModel, onApprove: (ApprovalRequest) -> Unit, onOverlay: (Boolean) -> Unit, onSession: (String) -> Unit,
     onScan: () -> Unit, onHistory: () -> Unit, onReview: () -> Unit, onQuestion: (String) -> Unit, onDiagnostics: () -> Unit,
+    onCoudrop: () -> Unit,
 ) {
     val engines = remember { HashMap<String, MochiEngine>() }
     val miniEngines = remember { HashMap<String, MochiEngine>() }
@@ -424,6 +436,45 @@ private fun Home(
         if (model.recap != null) item { Box(Modifier.padding(horizontal = Gutter)) { RecapPanel(model.recap) } }
         if (model.usage != null) item { Box(Modifier.padding(horizontal = Gutter)) { UsagePanel(model.usage) } }
         if (model.services.isNotEmpty()) item { Box(Modifier.padding(horizontal = Gutter)) { ServicesPanel(model.services) } }
+        if (model.mode == Mode.PAIRED) {
+            item {
+                Box(Modifier.padding(horizontal = Gutter)) {
+                    Panel {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onCoudrop)
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF1E2024)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CoucouIcon(kind = IconKind.SEND, tint = Color(0xFF0A84FF), size = 18.dp)
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text("Coudrop", style = TypeScale.BODY.style(Color.White), fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        if (model.linkState == LinkState.CONNECTED) "Quick Share with ${model.desktopName ?: "PC"}" else "Share files to your computer",
+                                        style = TypeScale.SECONDARY.style(Color(0xFF8E8E93)),
+                                    )
+                                }
+                            }
+                            CoucouIcon(kind = IconKind.CHEVRON, tint = Color(0xFF8E8E93), size = 14.dp)
+                        }
+                    }
+                }
+            }
+        }
         item { Box(Modifier.padding(horizontal = Gutter)) { RecentPanel(model.decisions, onHistory) } }
 
         // Only when the switch is on but Android still refuses: the one thing Home must say about it.

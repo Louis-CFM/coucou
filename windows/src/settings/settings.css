@@ -1207,3 +1207,263 @@ html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="t
   pointer-events: none;
 }
 
+/* ── macOS Inset Grouped Settings Panel (Apple Human Interface Guidelines) ── */
+
+.coudrop-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Apple Continuity / AirDrop Hero Device Status Card */
+.coudrop-hero-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.coudrop-hero-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.coudrop-device-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.coudrop-status-indicator {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  flex-shrink: 0;
+}
+
+.coudrop-status-indicator.offline {
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: none;
+}
+
+.coudrop-device-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.coudrop-device-title {
+  font-family: var(--font-sub);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.coudrop-device-status {
+  font-family: var(--font-sub);
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+/* macOS Inset Group Container */
+.coudrop-group {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.coudrop-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.12s ease;
+}
+
+.coudrop-group-row:last-child {
+  border-bottom: none;
+}
+
+.coudrop-group-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.coudrop-row-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.coudrop-row-title {
+  font-family: var(--font-sub);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.coudrop-row-desc {
+  font-family: var(--font-sub);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--dim);
+}
+
+/* macOS Path Capsule & Control styling */
+.coudrop-folder-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  max-width: 60%;
+}
+
+.coudrop-path-capsule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  padding: 5px 10px;
+  min-width: 0;
+  cursor: default;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.coudrop-path-capsule:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.coudrop-path-icon {
+  flex-shrink: 0;
+  color: #0a84ff;
+  display: flex;
+  align-items: center;
+}
+
+.coudrop-path-text {
+  font-family: var(--font-sub); /* Inter */
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.coudrop-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.coudrop-mac-btn {
+  font-family: var(--font-sub);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+.coudrop-mac-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.coudrop-mac-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.coudrop-mac-btn.subtle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--dim);
+}
+
+.coudrop-mac-btn.subtle:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+}
+
+/* macOS Recent Transfers Card */
+.coudrop-history-card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.coudrop-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.12s ease;
+}
+
+.coudrop-history-item:last-child {
+  border-bottom: none;
+}
+
+.coudrop-history-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.coudrop-history-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.coudrop-history-item-name {
+  font-family: var(--font-sub);
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coudrop-history-item-size {
+  font-family: var(--font-sub);
+  font-size: 11px;
+  color: var(--dim);
+  flex-shrink: 0;
+}
+
+

@@ -46,9 +46,96 @@
       "ko": "스타일",
       "ja": "スタイル"
     },
-    "Grows out of the screen edge": {
-      "zh-Hans": "从屏幕边缘伸展出来",
-      "fr": "Pousse depuis le bord de l'écran"
+    "Show Claude plan in the notch": {
+      "zh-Hans": "在刘海中显示 Claude 套餐",
+      "hi": "नॉच में Claude प्लान दिखाएं",
+      "es": "Mostrar el plan de Claude en el notch",
+      "ar": "عرض خطة Claude في الشريط العلوي",
+      "fr": "Afficher le forfait Claude dans l'encoche",
+      "bn": "নচে Claude প্ল্যান দেখান",
+      "pt-BR": "Mostrar o plano Claude no notch",
+      "ru": "Показывать тариф Claude в нотче",
+      "id": "Tampilkan paket Claude di notch",
+      "de": "Claude-Tarif in der Notch anzeigen",
+      "tr": "Claude planını adada göster",
+      "ko": "노치에 Claude 요금제 표시",
+      "ja": "ノッチに Claude プランを表示"
+    },
+    "Drop files to send": {
+      "zh-Hans": "拖放文件以发送",
+      "hi": "भेजने के लिए फ़ाइलें यहाँ छोड़ें",
+      "es": "Suelta archivos para enviar",
+      "ar": "أفلت الملفات للإرسال",
+      "fr": "Déposez des fichiers pour envoyer",
+      "bn": "পাঠাতে ফাইল এখানে ফেলুন",
+      "pt-BR": "Solte arquivos para enviar",
+      "ru": "Перетащите файлы для отправки",
+      "id": "Lepaskan file untuk dikirim",
+      "de": "Dateien zum Senden ablegen",
+      "tr": "Göndermek için dosyaları bırakın",
+      "ko": "보낼 파일을 드롭하세요",
+      "ja": "送信するファイルをドロップ"
+    },
+    "or browse files": {
+      "zh-Hans": "或浏览文件",
+      "hi": "या फ़ाइलें ब्राउज़ करें",
+      "es": "o buscar archivos",
+      "ar": "أو تصفح الملفات",
+      "fr": "ou parcourir les fichiers",
+      "bn": "অথবা ফাইল ব্রাউজ করুন",
+      "pt-BR": "ou procurar arquivos",
+      "ru": "или выберите файлы",
+      "id": "atau jelajahi file",
+      "de": "oder Dateien durchsuchen",
+      "tr": "veya dosyalara göz atın",
+      "ko": "또는 파일 찾아보기",
+      "ja": "またはファイルを参照"
+    },
+
+    "Show in folder": {
+      "zh-Hans": "在文件夹中显示",
+      "hi": "फ़ोल्डर में दिखाएँ",
+      "es": "Mostrar en la carpeta",
+      "ar": "إظهار في المجلد",
+      "fr": "Afficher dans le dossier",
+      "bn": "ফোল্ডারে দেখান",
+      "pt-BR": "Mostrar na pasta",
+      "ru": "Показать в папке",
+      "id": "Tampilkan di folder",
+      "de": "Im Ordner anzeigen",
+      "tr": "Klasörde göster",
+      "ko": "폴더에서 보기",
+      "ja": "フォルダーで表示"
+    },
+    "Open folder in Explorer": {
+      "zh-Hans": "在文件资源管理器中打开文件夹",
+      "hi": "Explorer में फ़ोल्डर खोलें",
+      "es": "Abrir carpeta en el Explorador",
+      "ar": "فتح المجلد في Explorer",
+      "fr": "Ouvrir le dossier dans l'Explorateur",
+      "bn": "Explorer-এ ফোল্ডার খুলুন",
+      "pt-BR": "Abrir pasta no Explorador",
+      "ru": "Открыть папку в Проводнике",
+      "id": "Buka folder di Explorer",
+      "de": "Ordner im Explorer öffnen",
+      "tr": "Klasörü Gezgin'de aç" ,
+      "ko": "파일 탐색기에서 폴더 열기",
+      "ja": "エクスプローラーでフォルダーを開く"
+    },
+    "Phone": {
+      "zh-Hans": "手机",
+      "hi": "फ़ोन",
+      "es": "Teléfono",
+      "ar": "هاتف",
+      "fr": "Téléphone",
+      "bn": "ফোন",
+      "pt-BR": "Telefone",
+      "ru": "Телефон",
+      "id": "Ponsel",
+      "de": "Telefon",
+      "tr": "Telefon",
+      "ko": "휴대폰",
+      "ja": "スマートフォン"
     },
     "Island": {
       "zh-Hans": "灵动岛",
@@ -64,14 +151,6 @@
       "tr": "Ada",
       "ko": "아일랜드",
       "ja": "アイランド"
-    },
-    "A pill floating just below the edge": {
-      "zh-Hans": "浮动在屏幕边缘下方的药丸",
-      "fr": "Une pilule flottant juste sous le bord"
-    },
-    "Scales the resting notch": {
-      "zh-Hans": "缩放静止时的刘海/岛屿",
-      "fr": "Met à l'échelle l'encoche au repos"
     },
     "Minimal": {
       "zh-Hans": "极简",
@@ -7710,6 +7789,96 @@
       "tr": "Yalnızca dikte ederken, bir görüşmeyi kaydederken veya mesaj gelince görünür. Dikte tuşu yine çalışır.",
       "ko": "받아쓰기하거나 통화를 녹음하거나 메시지가 올 때만 표시됩니다. 받아쓰기 키는 그대로 작동합니다.",
       "ja": "音声入力中、通話の録音中、メッセージが届いたときだけ表示されます。音声入力キーはそのまま使えます。"
+    },
+    "Your phone is currently offline. Make sure Coucou is open on your phone.": {
+      "zh-Hans": "你的手机当前处于离线状态。请确保手机上的 Coucou 处于打开状态。",
+      "hi": "आपका फ़ोन अभी ऑफ़लाइन है। सुनिश्चित करें कि आपके फ़ोन पर Coucou खुला है।",
+      "es": "Tu teléfono está desconectado. Asegúrate de que Coucou esté abierto en tu teléfono.",
+      "ar": "هاتفك غير متصل حاليًا. تأكد من فتح Coucou على هاتفك.",
+      "fr": "Ton téléphone est actuellement hors ligne. Assure-toi que Coucou est ouvert sur ton téléphone.",
+      "bn": "আপনার ফোন বর্তমানে অফলাইন। আপনার ফোনে Coucou খোলা আছে কিনা নিশ্চিত করুন।",
+      "pt-BR": "Seu telefone está offline no momento. Verifique se o Coucou está aberto no telefone.",
+      "ru": "Ваш телефон сейчас не в сети. Убедитесь, что Coucou открыт на телефоне.",
+      "id": "Ponsel Anda saat ini sedang offline. Pastikan Coucou terbuka di ponsel Anda.",
+      "de": "Dein Telefon ist derzeit offline. Vergewissere dich, dass Coucou auf deinem Telefon geöffnet ist.",
+      "tr": "Telefonunuz şu anda çevrimdışı. Telefonunuzda Coucou'nun açık olduğundan emin olun.",
+      "ko": "휴대폰이 현재 오프라인 상태입니다. 휴대폰에서 Coucou가 열려 있는지 확인하세요.",
+      "ja": "スマートフォンが現在オフラインです。スマートフォンで Coucou が開いていることを確認してください。"
+    },
+    "File transfer could not be completed.": {
+      "zh-Hans": "文件传输未能完成。",
+      "hi": "फ़ाइल स्थानांतरण पूरा नहीं हो सका।",
+      "es": "No se pudo completar la transferencia de archivos.",
+      "ar": "تعذر إكمال نقل الملفات.",
+      "fr": "Le transfert de fichier n'a pas pu être terminé.",
+      "bn": "ফাইল স্থানান্তর সম্পন্ন করা যায়নি।",
+      "pt-BR": "Não foi possível concluir a transferência de arquivos.",
+      "ru": "Не удалось завершить передачу файла.",
+      "id": "Transfer file tidak dapat diselesaikan.",
+      "de": "Dateiübertragung konnte nicht abgeschlossen werden.",
+      "tr": "Dosya aktarımı tamamlanamadı.",
+      "ko": "파일 전송을 완료할 수 없습니다.",
+      "ja": "ファイル転送を完了できませんでした。"
+    },
+    "Paired Phone": {
+      "zh-Hans": "配对的手机",
+      "hi": "पेयर किया गया फ़ोन",
+      "es": "Teléfono vinculado",
+      "ar": "الهاتف المقترن",
+      "fr": "Téléphone jumelé",
+      "bn": "পেয়ার করা ফোন",
+      "pt-BR": "Telefone emparelhado",
+      "ru": "Сопряжённый телефон",
+      "id": "Ponsel Berpasangan",
+      "de": "Gekoppeltes Telefon",
+      "tr": "Eşlenen Telefon",
+      "ko": "페어링된 휴대폰",
+      "ja": "ペアリング済みスマートフォン"
+    },
+    "Phone offline": {
+      "zh-Hans": "手机离线",
+      "hi": "फ़ोन ऑफ़लाइन",
+      "es": "Teléfono desconectado",
+      "ar": "الهاتف غير متصل",
+      "fr": "Téléphone hors ligne",
+      "bn": "ফোন অফলাইন",
+      "pt-BR": "Telefone offline",
+      "ru": "Телефон не в сети",
+      "id": "Ponsel offline",
+      "de": "Telefon offline",
+      "tr": "Telefon çevrimdışı",
+      "ko": "휴대폰 오프라인",
+      "ja": "スマートフォン オフライン"
+    },
+    "Downloads": {
+      "zh-Hans": "下载",
+      "hi": "डाउनलोड",
+      "es": "Descargas",
+      "ar": "التنزيلات",
+      "fr": "Téléchargements",
+      "bn": "ডাউনলোড",
+      "pt-BR": "Downloads",
+      "ru": "Загрузки",
+      "id": "Unduhan",
+      "de": "Downloads",
+      "tr": "İndirilenler",
+      "ko": "다운로드",
+      "ja": "ダウンロード"
+    },
+    "Recent transfers": {
+      "zh-Hans": "最近传输",
+      "hi": "हाल के स्थानांतरण",
+      "es": "Transferencias recientes",
+      "ar": "عمليات النقل الأخيرة",
+      "fr": "Transferts récents",
+      "bn": "সাম্প্রতিক স্থানান্তর",
+      "pt-BR": "Transferências recentes",
+      "ru": "Недавние передачи",
+      "id": "Transfer terbaru",
+      "de": "Kürzliche Übertragungen",
+      "tr": "Son aktarımlar",
+      "ko": "최근 전송",
+      "ja": "最近の転送"
     }
   }
 }
