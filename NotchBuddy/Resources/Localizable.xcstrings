@@ -60649,6 +60649,208 @@
         }
       }
     },
+    "island.fill-alone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استخدام العرض الكامل عند وجود حبة واحدة فقط"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "শুধু একটি পিল থাকলে পুরো প্রস্থ ব্যবহার করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganze Breite nutzen, wenn es nur eine Pill gibt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the whole width when there is only one pill"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar todo el ancho cuando solo hay una píldora"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prendre toute la largeur quand il n’y a qu’une pill"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "सिर्फ़ एक पिल होने पर पूरी चौड़ाई इस्तेमाल करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gunakan seluruh lebar saat hanya ada satu pil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ピルが1つだけのときは幅いっぱいに表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모찌가 하나뿐일 때 전체 너비 사용"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar toda a largura quando houver só uma pílula"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Занимать всю ширину, если пилюля одна"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใช้ความกว้างทั้งหมดเมื่อมีแถบเดียว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tek araç varken tüm genişliği kullan"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只有一个胶囊时占满宽度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只有一個標籤時佔滿寬度"
+          }
+        }
+      }
+    },
+    "island.fill-alone.help" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عندما تكون هناك حبة واحدة فقط في النوتش، تأخذ العرض الكامل بدلًا من ترك مساحة فارغة بجانبها."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নচে শুধু একটি পিল থাকলে, পাশে ফাঁকা জায়গা না রেখে সেটি পুরো প্রস্থ জুড়ে থাকে।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn nur eine Pill in der Notch ist, nutzt sie die ganze Breite, statt daneben eine leere Fläche zu lassen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When only one pill is in the notch, it takes the whole width instead of leaving an empty space beside it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuando solo hay una píldora en el notch, ocupa todo el ancho en lugar de dejar un hueco vacío a su lado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quand il n’y a qu’une pill dans le notch, elle prend toute la largeur au lieu de laisser un espace vide à côté."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जब नॉच में सिर्फ़ एक पिल हो, तो वह बगल में खाली जगह छोड़ने के बजाय पूरी चौड़ाई लेती है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saat hanya ada satu pil di notch, pil itu memakai seluruh lebar alih-alih menyisakan ruang kosong di sebelahnya."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ノッチにピルが1つしかないとき、横に空きを残さず幅いっぱいに表示します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "노치에 모찌가 하나뿐이면 옆에 빈 공간을 남기지 않고 전체 너비를 사용해요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quando há só uma pílula no notch, ela ocupa toda a largura em vez de deixar um espaço vazio ao lado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда в вырезе только одна пилюля, она занимает всю ширину, а не оставляет пустое место рядом."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เมื่อมีแถบเดียวในแถบด้านบน แถบนั้นจะใช้ความกว้างทั้งหมดแทนการเว้นที่ว่างไว้ข้าง ๆ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adada yalnızca bir araç varken yanında boş alan bırakmak yerine tüm genişliği kaplar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刘海里只有一个胶囊时，它会占满整个宽度，不再在旁边留出空白。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瀏海裡只有一個標籤時，它會佔滿整個寬度，不再在旁邊留下空白。"
+          }
+        }
+      }
+    },
     "Français" : {
       "localizations" : {
         "ja" : {
