@@ -32,6 +32,7 @@ export interface BootInfo {
   hookPath: string;
   /** False where the OS has no global cursor (Wayland): see Island.followPageCursor. */
   cursorPoll: boolean;
+  battery: BatteryStatusDto;
 }
 
 /** The phone link (src-tauri/src/phone_link): how it is, never its secrets. */
@@ -85,10 +86,28 @@ export interface CoudropReceivedFile {
 }
 
 export interface CoudropProgress {
+  transferId?: string;
   name: string;
   bytesRead: number;
   totalBytes: number;
   progress: number;
+  speedBytesPerSec?: number;
+  timeRemainingSeconds?: number;
+  direction?: "send" | "receive";
+  isPaused?: boolean;
+}
+
+export interface ActiveTransferInfo {
+  id: string;
+  direction: "send" | "receive";
+  name: string;
+  totalBytes: number;
+  bytesTransferred: number;
+  progress: number;
+  speedBytesPerSec: number;
+  timeRemainingSeconds?: number;
+  isPaused: boolean;
+  status: string;
 }
 
 export interface FileShelfItemInfo {
@@ -259,6 +278,14 @@ export const Bridge = {
         version: "0.6.0",
         hookPath: "",
         cursorPoll: false,
+        battery: {
+          hasBattery: true,
+          level: 0.8,
+          percent: 80,
+          charging: true,
+          acConnected: true,
+          timeRemainingSeconds: undefined,
+        },
       };
     }
     return call<BootInfo>("boot");
@@ -475,6 +502,10 @@ export const Bridge = {
   coudropGetDevice: () => call<VayliDropDevice>("coudrop_get_device"),
   coudropSendFiles: (paths: string[]) => call<void>("coudrop_send_files", { paths }),
   coudropCancelSend: () => call<void>("coudrop_cancel_send"),
+  coudropPauseTransfer: (transferId?: string) => call<void>("coudrop_pause_transfer", { transferId: transferId ?? null }),
+  coudropResumeTransfer: (transferId?: string) => call<void>("coudrop_resume_transfer", { transferId: transferId ?? null }),
+  coudropCancelTransfer: (transferId?: string) => call<void>("coudrop_cancel_transfer", { transferId: transferId ?? null }),
+  coudropGetActiveTransfer: () => call<ActiveTransferInfo | null>("coudrop_get_active_transfer"),
   coudropGetHistory: () => call<CoudropReceivedFile[]>("coudrop_get_history"),
   coudropStartReceive: () => callOrThrow<CoudropSessionInfo>("coudrop_start_receive"),
   coudropCancel: () => call<void>("coudrop_cancel"),
@@ -640,6 +671,8 @@ export const Bridge = {
   // ── Power & Battery Status (src-tauri/src/power.rs) ────────────────────────
   /** Hardware battery & power status from Windows Win32 API. */
   getBatteryStatus: () => call<BatteryStatusDto>("get_battery_status"),
+  /** Force-refresh hardware battery & power status from Windows Win32 API. */
+  refreshBatteryStatus: () => call<BatteryStatusDto>("refresh_battery_status"),
 
   // ── Windows User Identity (src-tauri/src/identity.rs) ─────────────────────
   /** Authoritative Windows system user identity (Flow Dictation & Mochi Companion). */
@@ -859,7 +892,8 @@ export async function onDragDrop(handler: (e: DragDropPayload) => void) {
   };
   const onLeave = (e: DragEvent) => {
     if (!hasFiles(e) || depth === 0) return;
-    if (--depth === 0) handler({ type: "leave" });
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) handler({ type: "leave" });
   };
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -869,19 +903,27 @@ export async function onDragDrop(handler: (e: DragDropPayload) => void) {
       handler({ type: "drop", paths: [] });
       return;
     }
-    webview.postMessageWithAdditionalObjects("coucou-file-drop", files);
+    try {
+      webview.postMessageWithAdditionalObjects("coucou-file-drop", files);
+    } catch (err) {
+      console.error("[bridge] Failed to post dropped files to WebView2:", err);
+      const paths = Array.from(files)
+        .map((f) => (f as unknown as { path?: string }).path || f.name)
+        .filter(Boolean);
+      handler({ type: "drop", paths });
+    }
   };
 
-  window.addEventListener("dragenter", onEnter);
-  window.addEventListener("dragover", onOver);
-  window.addEventListener("dragleave", onLeave);
-  window.addEventListener("drop", onDrop);
+  window.addEventListener("dragenter", onEnter, true);
+  window.addEventListener("dragover", onOver, true);
+  window.addEventListener("dragleave", onLeave, true);
+  window.addEventListener("drop", onDrop, true);
   const unlisten = await listen<DragDropPayload>("file-drag", (e) => handler(e.payload));
   return () => {
-    window.removeEventListener("dragenter", onEnter);
-    window.removeEventListener("dragover", onOver);
-    window.removeEventListener("dragleave", onLeave);
-    window.removeEventListener("drop", onDrop);
+    window.removeEventListener("dragenter", onEnter, true);
+    window.removeEventListener("dragover", onOver, true);
+    window.removeEventListener("dragleave", onLeave, true);
+    window.removeEventListener("drop", onDrop, true);
     unlisten();
   };
 }

@@ -6,13 +6,7 @@ import { IconRing } from "./progress-ring";
 import { islandAccent } from "./theme";
 import { useActivity, useLatest } from "./use-activity";
 
-import {
-  nearbyTransferWords,
-  type NearbyDevice,
-  type NearbyTransferWords,
-} from "./transfer-adapter";
-
-export { nearbyTransferWords, type NearbyDevice, type NearbyTransferWords };
+export type NearbyDevice = "phone" | "tablet" | "laptop" | "desktop";
 
 export interface NearbyTransferActivityProps {
   /** Activity id. Defaults to "nearby-transfer". */
@@ -37,6 +31,12 @@ export interface NearbyTransferActivityProps {
   accent?: string;
   /** Makes the expanded ring a stop button while it runs. Defaults to none (the ring shows an arrow for the direction). */
   onCancel?: () => void;
+  /** Optional state indicating if the transfer is currently paused. */
+  isPaused?: boolean;
+  /** Optional callback to pause the transfer. */
+  onPause?: () => void;
+  /** Optional callback to resume the transfer. */
+  onResume?: () => void;
 }
 
 const deviceGlyphs = {
@@ -46,7 +46,47 @@ const deviceGlyphs = {
   desktop: DesktopGlyph,
 } as const satisfies Record<NearbyDevice, IslandGlyph>;
 
+export interface NearbyTransferWords {
+  /** What a screen reader says. */
+  label: string;
+  /** The grey line: what happens to what, such as "Sending 3 photos" or "Sent 3 photos". */
+  action: string;
+  /** The white line: who, such as "To Maya's Laptop". */
+  party: string;
+}
 
+export interface NearbyTransferWordsOptions {
+  direction?: "send" | "receive";
+  deviceName: string;
+  itemName: string;
+  progress: number;
+  status?: "in_progress" | "paused" | "completed" | "failed" | "cancelled";
+}
+
+/**
+ * The words the transfer shows at a progress, so a test or an app's own view can say the same
+ * thing the island does.
+ */
+export const nearbyTransferWords = ({
+  direction = "send",
+  deviceName,
+  itemName,
+  progress,
+  status = "in_progress",
+}: NearbyTransferWordsOptions): NearbyTransferWords => {
+  const value = Math.min(1, Math.max(0, progress));
+  const done = status === "completed" || value >= 1;
+  const isPaused = status === "paused";
+  const sending = direction === "send";
+  const verb = isPaused ? "Paused" : sending ? (done ? "Sent" : "Sending") : done ? "Received" : "Receiving";
+  return {
+    // In the order the expanded view reads, the grey line then the white one: "Sending 3 photos to Maya's Laptop".
+    label: `${verb} ${itemName} ${sending ? "to" : "from"} ${deviceName}${done || isPaused ? "" : `, ${Math.floor(value * 100)} percent`}`,
+    // The grey line says what happens to what, the white one who: "Sending 3 photos" over "To Maya's Laptop".
+    action: `${verb} ${itemName}`,
+    party: `${sending ? "To" : "From"} ${deviceName}`,
+  };
+};
 
 /**
  * A transfer to or from a device nearby, as a nearby share shows one. Compact shows who it goes
@@ -66,31 +106,41 @@ export const NearbyTransferActivity = ({
   progress,
   accent = islandAccent.blue,
   onCancel,
+  isPaused,
+  onPause: _onPause,
+  onResume: _onResume,
 }: NearbyTransferActivityProps) => {
   const cancel = useLatest(onCancel);
   const hasCancel = onCancel !== undefined;
   const value = Math.min(1, Math.max(0, progress));
   const percent = Math.floor(value * 100);
   const done = value >= 1;
+  const effectiveAccent = isPaused ? islandAccent.orange : done ? islandAccent.green : accent;
 
   useActivity(() => {
     const glyph = deviceGlyphs[device];
     const sending = direction === "send";
-    const { label, action, party } = nearbyTransferWords({ direction, deviceName, itemName, progress: value });
+    const { label, action, party } = nearbyTransferWords({
+      direction,
+      deviceName,
+      itemName,
+      progress: value,
+      status: isPaused ? "paused" : done ? "completed" : "in_progress",
+    });
     const person = avatar === undefined ? undefined : { name: deviceName, src: avatar };
-    const ring = <ShareRing value={value} accent={accent} />;
+    const ring = <ShareRing value={value} accent={effectiveAccent} />;
     // When the split doesn't fit at all, the device in its ring. In the split's bubble the compact pair fits whole (a 22 pt disc and a 20 pt ring).
-    const minimal = done ? ring : <IconRing icon={glyph} value={value} accent={accent} size={22} />;
+    const minimal = done ? ring : <IconRing icon={glyph} value={value} accent={effectiveAccent} size={22} />;
     return {
       id,
       priority,
       label,
-      compact: { leading: <SharePicture icon={glyph} accent={accent} person={person} />, trailing: ring },
+      compact: { leading: <SharePicture icon={glyph} accent={effectiveAccent} person={person} />, trailing: ring },
       minimal,
       expanded: {
         leading: (
           <MediaLead>
-            <SharePicture icon={glyph} accent={accent} person={person} size={mediaRow.lead} src={src} />
+            <SharePicture icon={glyph} accent={effectiveAccent} person={person} size={mediaRow.lead} src={src} />
           </MediaLead>
         ),
         center: <MediaText line={action} title={party} />,
@@ -98,7 +148,7 @@ export const NearbyTransferActivity = ({
           <MediaTrail>
             <ShareRing
               value={value}
-              accent={accent}
+              accent={effectiveAccent}
               size={mediaRow.ring}
               mark={hasCancel ? "stop" : sending ? "up" : "down"}
               onStop={hasCancel ? () => cancel.current?.() : undefined}
@@ -109,7 +159,7 @@ export const NearbyTransferActivity = ({
         bottom: undefined,
       },
     };
-  }, [id, priority, direction, deviceName, device, itemName, src, avatar, percent, done, accent, hasCancel]);
+  }, [id, priority, direction, deviceName, device, itemName, src, avatar, percent, done, effectiveAccent, hasCancel, isPaused]);
 
   return null;
 };

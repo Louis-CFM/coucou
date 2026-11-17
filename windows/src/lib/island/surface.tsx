@@ -695,7 +695,7 @@ const makeGrainTile = (): string | null => {
 
 /** Draws one island: the black shape, the content layers, and the pressable hit areas. */
 export const IslandSurface = (props: IslandSurfaceProps) => {
-  const { presentation, contentKey, metrics, interaction } = props;
+  const { presentation, contentKey, metrics, clock: _clock, interaction } = props;
 
   const [containerWidth, setContainerWidth] = useState(0);
   const stageWidth = islandScreenWidth(containerWidth, metrics);

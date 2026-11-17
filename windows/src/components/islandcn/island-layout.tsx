@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
-import { islandMetrics } from "@/lib/island/index";
+import { islandMetrics } from "@/lib/island";
 
 import { islandBaseline, islandFont, islandLine, islandRow, islandSafe, islandSize } from "./theme";
 

@@ -58,16 +58,40 @@ test("Coucou File Drop - Minimal Apple Design contains only upload icon, primary
   const radarPulse = transmitter.querySelector(".coudrop-radar-pulse");
   assert.equal(radarPulse, null, "Decorative radar pulse must NOT exist inside drop zone");
 
-  // 5. Test drag-and-drop state transitions
+  // 5. Test drag-and-drop state transitions & "Release to send files" visual cue
   assert.equal(transmitter.classList.contains("drag-over"), false);
+  assert.equal(title.textContent, "Drop files to send");
 
   transmitter.fire("dragenter");
   assert.equal(transmitter.classList.contains("drag-over"), true, "dragenter adds .drag-over");
+  assert.equal(title.textContent, "Release to send files", "dragenter updates text to 'Release to send files'");
 
   transmitter.fire("dragleave");
   assert.equal(transmitter.classList.contains("drag-over"), false, "dragleave removes .drag-over");
+  assert.equal(title.textContent, "Drop files to send", "dragleave restores text to 'Drop files to send'");
 
-  // 6. Test click-to-browse trigger
+  // 6. Test view-level onDragOver and onFileDrop orchestration
+  view.onDragOver(true);
+  assert.equal(transmitter.classList.contains("drag-over"), true, "view.onDragOver(true) adds .drag-over");
+  assert.equal(title.textContent, "Release to send files", "view.onDragOver(true) sets release prompt");
+
+  view.onDragOver(false);
+  assert.equal(transmitter.classList.contains("drag-over"), false, "view.onDragOver(false) removes .drag-over");
+  assert.equal(title.textContent, "Drop files to send", "view.onDragOver(false) restores drop prompt");
+
+  // 7. Test dropping single and multiple files including spaces and Unicode
+  const droppedPaths = [
+    "C:\\Users\\User\\Documents\\Quarterly Report 2026.pdf",
+    "D:\\Photos\\東京旅行_2026.png",
+  ];
+  view.onFileDrop(droppedPaths);
+  const sendCalls = sent("coudrop_send_files");
+  assert.ok(sendCalls.length > 0, "view.onFileDrop dispatches coudrop_send_files");
+  const lastSendCall = sendCalls[sendCalls.length - 1];
+  assert.deepEqual(lastSendCall.paths, droppedPaths, "coudrop_send_files receives exact Windows paths with spaces & Unicode");
+  assert.equal(transmitter.classList.contains("drag-over"), false, "Drop clears .drag-over class");
+
+  // 8. Test click-to-browse trigger
   browseAction.fire("click");
   assert.ok(sent("coudrop_pick_files").length > 0, "Clicking 'or browse files' invokes coudrop_pick_files bridge command");
 
@@ -92,4 +116,33 @@ test("Coucou File Drop - Minimal Apple Design contains only upload icon, primary
   assert.equal(State.coudropHistoryCleared, true, "Clicking Clear marks history as cleared");
   assert.equal(el.querySelector(".coudrop-clear-btn"), null, "Clear button disappears after clearing");
   assert.ok(el.querySelector(".coudrop-history-empty"), "Empty state is displayed after clearing");
+});
+
+test("Coucou File Drop - Offline device blocks drop transfer with user feedback", () => {
+  State.coudropConnected = false;
+  State.coudropConnectedDevice = null;
+  State.coudropProgress = null;
+
+  const mockActions = {
+    openSettings: () => {},
+    close: () => {},
+    switchView: () => {},
+  };
+
+  const view = buildCoudrop(mockActions);
+  view.sync();
+
+  let alertShown = false;
+  const originalAlert = globalThis.alert;
+  globalThis.alert = (_msg) => {
+    alertShown = true;
+  };
+
+  const beforeCalls = sent("coudrop_send_files").length;
+  view.onFileDrop(["C:\\Users\\User\\Documents\\test.txt"]);
+
+  assert.equal(alertShown, true, "Alert is shown when dropping file with disconnected phone");
+  assert.equal(sent("coudrop_send_files").length, beforeCalls, "coudrop_send_files is not dispatched when phone is offline");
+
+  globalThis.alert = originalAlert;
 });

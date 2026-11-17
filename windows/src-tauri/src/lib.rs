@@ -86,6 +86,7 @@ pub struct BootInfo {
     /// False where the OS has no global cursor (Wayland): the page then reports
     /// the cursor from its own mouse events.
     cursor_poll: bool,
+    battery: power::BatteryStatusDto,
 }
 
 #[tauri::command]
@@ -96,12 +97,18 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     settings.hooks_installed = hooks_status.installed;
     settings.plan_relay_installed = hooks_status.plan_relay_installed;
     let screen = island::screen_info(&app, &settings.screen);
+    let battery = power::get_authoritative_status();
+    log::line(format!(
+        "[coucou] boot() providing initial battery snapshot: {}% (charging: {}, has_battery: {})",
+        battery.percent, battery.charging, battery.has_battery
+    ));
     BootInfo {
         settings,
         screen,
         version: env!("CARGO_PKG_VERSION").to_string(),
         hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
         cursor_poll: platform::CURSOR_POLL,
+        battery,
     }
 }
 
@@ -1149,12 +1156,17 @@ pub fn run() {
             identity::get_user_identity,
             smart_notch::get_foreground_window_state,
             power::get_battery_status,
+            power::refresh_battery_status,
             coudrop::coudrop_start_receive,
             coudrop::coudrop_cancel,
             coudrop::coudrop_status,
             coudrop::coudrop_get_device,
             coudrop::coudrop_send_files,
             coudrop::coudrop_cancel_send,
+            coudrop::coudrop_pause_transfer,
+            coudrop::coudrop_resume_transfer,
+            coudrop::coudrop_cancel_transfer,
+            coudrop::coudrop_get_active_transfer,
             coudrop::coudrop_get_history,
             coudrop::coudrop_open_folder,
             coudrop::coudrop_open_file,

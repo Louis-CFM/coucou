@@ -7,7 +7,7 @@ import { State } from "../../core/state";
 
 export type NearbyDevice = "phone" | "tablet" | "laptop" | "desktop";
 export type TransferDirection = "send" | "receive";
-export type TransferStatus = "in_progress" | "completed" | "failed" | "cancelled";
+export type TransferStatus = "in_progress" | "paused" | "completed" | "failed" | "cancelled";
 
 export interface NearbyTransferWords {
   /** What a screen reader says. */
@@ -23,6 +23,7 @@ export interface NearbyTransferWordsOptions {
   deviceName: string;
   itemName: string;
   progress: number;
+  status?: TransferStatus;
 }
 
 /**
@@ -34,13 +35,22 @@ export const nearbyTransferWords = ({
   deviceName,
   itemName,
   progress,
+  status = "in_progress",
 }: NearbyTransferWordsOptions): NearbyTransferWords => {
   const value = Math.min(1, Math.max(0, Number.isFinite(progress) ? progress : 0));
-  const done = value >= 1;
+  const done = status === "completed" || value >= 1;
+  const isPaused = status === "paused";
+  const isCancelled = status === "cancelled";
+  const isFailed = status === "failed";
   const sending = direction === "send";
-  const verb = sending ? (done ? "Sent" : "Sending") : done ? "Received" : "Receiving";
+
+  let verb = sending ? (done ? "Sent" : "Sending") : done ? "Received" : "Receiving";
+  if (isPaused) verb = "Paused";
+  else if (isCancelled) verb = "Cancelled";
+  else if (isFailed) verb = "Failed";
+
   return {
-    label: `${verb} ${itemName} ${sending ? "to" : "from"} ${deviceName}${done ? "" : `, ${Math.floor(value * 100)} percent`}`,
+    label: `${verb} ${itemName} ${sending ? "to" : "from"} ${deviceName}${done || isPaused ? "" : `, ${Math.floor(value * 100)} percent`}`,
     action: `${verb} ${itemName}`,
     party: `${sending ? "To" : "From"} ${deviceName}`,
   };
@@ -56,6 +66,9 @@ export interface ActiveNearbyTransfer {
   bytesTransferred: number;
   progress: number; // 0.0 to 0.99 in-flight, strictly 1.0 on verified completion
   status: TransferStatus;
+  speedBytesPerSec?: number;
+  timeRemainingSeconds?: number;
+  isPaused?: boolean;
   src?: string;
   accent?: string;
   startTime: number;
@@ -229,7 +242,10 @@ class NearbyTransferManager {
       totalBytes?: number;
       total?: number;
       progress?: number;
+      speedBytesPerSec?: number;
+      timeRemainingSeconds?: number;
       direction?: TransferDirection;
+      isPaused?: boolean;
     }>("coudrop-progress", (prog) => {
       this.clearDismissTimer();
       if (!prog) return;
@@ -323,12 +339,44 @@ class NearbyTransferManager {
       const direction = prog.direction || currentTransfer?.direction || "send";
       const id = incomingId || currentTransfer?.id || "nearby-transfer";
 
+      const speed = typeof prog.speedBytesPerSec === "number" && Number.isFinite(prog.speedBytesPerSec)
+        ? prog.speedBytesPerSec
+        : undefined;
+      const eta = typeof prog.timeRemainingSeconds === "number" && Number.isFinite(prog.timeRemainingSeconds)
+        ? prog.timeRemainingSeconds
+        : undefined;
+      const isPaused = prog.isPaused === true || currentTransfer?.status === "paused";
+
+      // Client-side fallback moving-window speed calculation
+      let calculatedSpeed = speed;
+      let calculatedEta = eta;
+      if (calculatedSpeed === undefined || calculatedSpeed === 0) {
+        const now = Date.now();
+        const lastTime = currentTransfer?.lastProgressUpdate || currentTransfer?.startTime || now;
+        const timeDiff = (now - lastTime) / 1000;
+        if (timeDiff >= 0.3) {
+          const byteDiff = bytesTransferred - (currentTransfer?.bytesTransferred || 0);
+          if (byteDiff > 0) {
+            calculatedSpeed = Math.round(byteDiff / timeDiff);
+            const remainingBytes = totalBytes - bytesTransferred;
+            if (calculatedSpeed > 0 && remainingBytes > 0) {
+              calculatedEta = Math.round(remainingBytes / calculatedSpeed);
+            }
+          }
+        }
+      }
+
+      const status: TransferStatus = isPaused ? "paused" : "in_progress";
+
       logDebug("PROGRESS_STATE_UPDATED", {
         transferId: id,
         previousProgress: currentProgress,
         newProgress: calcProgress,
         bytesTransferred,
         totalBytes,
+        speed: calculatedSpeed,
+        eta: calculatedEta,
+        isPaused,
       });
 
       this.activeTransfer = {
@@ -340,16 +388,49 @@ class NearbyTransferManager {
         totalBytes,
         bytesTransferred,
         progress: calcProgress,
-        status: "in_progress",
+        status,
+        speedBytesPerSec: calculatedSpeed ?? currentTransfer?.speedBytesPerSec,
+        timeRemainingSeconds: calculatedEta ?? currentTransfer?.timeRemainingSeconds,
+        isPaused,
         startTime: currentTransfer?.startTime || Date.now(),
         lastProgressUpdate: Date.now(),
       };
 
-      //Snappy first update: if previous progress was 0, notify immediately
+      // Snappy first update: if previous progress was 0, notify immediately
       if (currentProgress === 0) {
         this.notifyImmediate();
       } else {
         this.notifyThrottled();
+      }
+    });
+
+    // 2b. Transfer paused
+    void onEvent<{ transferId?: string }>("coudrop-transfer-paused", (payload) => {
+      this.clearDismissTimer();
+      if (this.activeTransfer) {
+        logDebug("TRANSFER_PAUSED", { transferId: payload?.transferId || this.activeTransfer.id });
+        this.activeTransfer = {
+          ...this.activeTransfer,
+          status: "paused",
+          isPaused: true,
+          speedBytesPerSec: 0,
+        };
+        this.notifyImmediate();
+      }
+    });
+
+    // 2c. Transfer resumed
+    void onEvent<{ transferId?: string }>("coudrop-transfer-resumed", (payload) => {
+      this.clearDismissTimer();
+      if (this.activeTransfer) {
+        logDebug("TRANSFER_RESUMED", { transferId: payload?.transferId || this.activeTransfer.id });
+        this.activeTransfer = {
+          ...this.activeTransfer,
+          status: "in_progress",
+          isPaused: false,
+          lastProgressUpdate: Date.now(),
+        };
+        this.notifyImmediate();
       }
     });
 
@@ -472,9 +553,59 @@ class NearbyTransferManager {
         this.notifyImmediate();
       }
     });
+
+    // 8. Hydrate active transfer if app reloaded or was launched during ongoing transfer
+    void Bridge.coudropGetActiveTransfer().then((active) => {
+      if (active && !this.activeTransfer) {
+        logDebug("ACTIVE_TRANSFER_HYDRATED", { id: active.id, status: active.status });
+        this.activeTransfer = {
+          id: active.id,
+          direction: active.direction as TransferDirection,
+          deviceName: this.resolveDeviceName(),
+          device: "phone",
+          itemName: active.name,
+          totalBytes: active.totalBytes,
+          bytesTransferred: active.bytesTransferred,
+          progress: active.progress,
+          status: active.isPaused ? "paused" : "in_progress",
+          speedBytesPerSec: active.speedBytesPerSec,
+          timeRemainingSeconds: active.timeRemainingSeconds,
+          isPaused: active.isPaused,
+          startTime: Date.now(),
+          lastProgressUpdate: Date.now(),
+        };
+        this.notifyImmediate();
+      }
+    }).catch(() => {});
   }
 
-  async cancel(_transferId?: string): Promise<void> {
+  async pause(transferId?: string): Promise<void> {
+    if (this.activeTransfer) {
+      this.activeTransfer = {
+        ...this.activeTransfer,
+        status: "paused",
+        isPaused: true,
+        speedBytesPerSec: 0,
+      };
+      this.notifyImmediate();
+    }
+    await Bridge.coudropPauseTransfer(transferId ?? this.activeTransfer?.id);
+  }
+
+  async resume(transferId?: string): Promise<void> {
+    if (this.activeTransfer) {
+      this.activeTransfer = {
+        ...this.activeTransfer,
+        status: "in_progress",
+        isPaused: false,
+        lastProgressUpdate: Date.now(),
+      };
+      this.notifyImmediate();
+    }
+    await Bridge.coudropResumeTransfer(transferId ?? this.activeTransfer?.id);
+  }
+
+  async cancel(transferId?: string): Promise<void> {
     this.clearDismissTimer();
     const current = this.activeTransfer;
     if (this.activeTransfer) {
@@ -482,14 +613,18 @@ class NearbyTransferManager {
       this.activeTransfer = {
         ...this.activeTransfer,
         status: "cancelled",
+        isPaused: false,
+        speedBytesPerSec: 0,
       };
       this.notifyImmediate();
       this.dismissTimer = window.setTimeout(() => {
         this.activeTransfer = null;
         this.notifyImmediate();
-      }, 800);
+      }, 1000);
     }
 
+    const id = transferId ?? current?.id;
+    await Bridge.coudropCancelTransfer(id);
     if (current?.direction === "receive") {
       await Bridge.coudropCancel();
     } else {
@@ -531,5 +666,7 @@ export const nearbyTransferManager = new NearbyTransferManager();
 
 export const getActiveTransfer = () => nearbyTransferManager.getActiveTransfer();
 export const subscribeActiveTransfer = (listener: TransferListener) => nearbyTransferManager.subscribe(listener);
+export const pauseTransfer = (id?: string) => nearbyTransferManager.pause(id);
+export const resumeTransfer = (id?: string) => nearbyTransferManager.resume(id);
 export const cancelTransfer = (id?: string) => nearbyTransferManager.cancel(id);
 export const simulateTransfer = (mock: Partial<ActiveNearbyTransfer>) => nearbyTransferManager.simulateTransfer(mock);

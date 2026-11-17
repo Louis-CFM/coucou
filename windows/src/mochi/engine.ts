@@ -596,15 +596,26 @@ export class BotEngine {
   // ── Update ──────────────────────────────────────────────────────────────────
 
   update(dt: number) {
+    const safeDt = Math.max(0, Math.min(0.1, Number.isFinite(dt) ? dt : 0.016));
     const n = now();
     const nowMs = performance.now();
 
     for (const tw of [...this.tweens.values()]) {
       const k = tw.keys[tw.index];
-      const p = Math.min(1, Math.max(0, (nowMs - tw.startMs) / k[1]));
-      this[tw.prop] = tw.from + (k[0] - tw.from) * k[2](p);
+      if (!k) {
+        this.tweens.delete(tw.prop);
+        this.locks.delete(tw.prop);
+        continue;
+      }
+      const dur = Math.max(1, Number.isFinite(k[1]) ? k[1] : 1);
+      const p = Math.min(1, Math.max(0, (nowMs - tw.startMs) / dur));
+      const easeVal = typeof k[2] === "function" ? k[2](p) : p;
+      const targetVal = Number.isFinite(k[0]) ? k[0] : 0;
+      const fromVal = Number.isFinite(tw.from) ? tw.from : 0;
+      const nextVal = fromVal + (targetVal - fromVal) * easeVal;
+      this[tw.prop] = Number.isFinite(nextVal) ? nextVal : targetVal;
       if (p >= 1) {
-        tw.from = k[0];
+        tw.from = targetVal;
         tw.index += 1;
         tw.startMs = nowMs;
         if (tw.index >= tw.keys.length) {
@@ -643,9 +654,9 @@ export class BotEngine {
       tp = this.miniLookTarget.y * 0.5;
     }
 
-    this.tgYaw = ty;
-    this.tgPitch = tp;
-    this.tgTilt = this.cfg.tilt;
+    this.tgYaw = Number.isFinite(ty) ? ty : 0;
+    this.tgPitch = Number.isFinite(tp) ? tp : 0;
+    this.tgTilt = Number.isFinite(this.cfg.tilt) ? this.cfg.tilt : 0;
 
     if (n > this.waveStart && n < this.waveUntil) {
       const wt = n - this.waveStart;
@@ -653,7 +664,7 @@ export class BotEngine {
     }
 
     const bounce = this.cfg.bounces ? -Math.abs(Math.sin(t * 5.2)) * 0.07 : 0;
-    const kGen = 1 - Math.pow(0.0008, dt);
+    const kGen = 1 - Math.pow(0.0008, safeDt);
     if (!this.locks.has("oy")) this.oy += (bounce - this.oy) * kGen;
 
     if (this.cfg.breathes) {
@@ -670,7 +681,7 @@ export class BotEngine {
 
     if (this.isMini && n > this.miniNextBehavior) this.doMiniBehaviorLoop();
 
-    const kLook = 1 - Math.pow(0.0025, dt);
+    const kLook = 1 - Math.pow(0.0025, safeDt);
     if (!this.locks.has("yaw")) this.yaw += (this.tgYaw - this.yaw) * kLook;
     if (!this.locks.has("pitch")) this.pitch += (this.tgPitch - this.pitch) * kLook;
     if (!this.locks.has("tilt")) this.tilt += (this.tgTilt - this.tilt) * kGen;
@@ -678,7 +689,7 @@ export class BotEngine {
     if (!this.locks.has("sx")) this.sx += (this.tgSx - this.sx) * kGen;
     if (!this.locks.has("es")) this.es += (this.tgEs - this.es) * kGen;
 
-    this.col = mix3(this.col, this.colT, 1 - Math.pow(0.002, dt));
+    this.col = mix3(this.col, this.colT, 1 - Math.pow(0.002, safeDt));
 
     if (n > this.nextBlink) {
       if (this.state !== "sleeping" && this.state !== "dizzy") {
@@ -699,33 +710,54 @@ export class BotEngine {
       if (!this.isMini && this.cfg.sweat && Math.random() < 0.5) this.emit("sweat", 1);
     }
 
-    for (const p of this.particles) p.age += dt;
+    for (const p of this.particles) p.age += safeDt;
     this.particles = this.particles.filter((p) => p.age < p.life);
 
     // Mouth slot spring — ω₀ = 2π/0.25, ζ = 0.6
     const omega = (2 * Math.PI) / 0.25;
     const zeta = 0.6;
     const acc = omega * omega * (this.slotHTarget - this.slotH) - 2 * zeta * omega * this.slotHVel;
-    this.slotHVel += acc * dt;
-    this.slotH = Math.max(0, this.slotH + this.slotHVel * dt);
+    this.slotHVel += acc * safeDt;
+    this.slotH = Math.max(0, this.slotH + this.slotHVel * safeDt);
 
-    this.dancingLevel = stepDanceLevel(this.dancingLevel, this.isDancing, dt);
+    this.dancingLevel = stepDanceLevel(this.dancingLevel, this.isDancing, safeDt);
 
     // Soft-part spring: lags behind head turns, hops and rolls (stiffness 60, damping 9).
-    if (dt > 0) {
-      const yawVel = (this.yaw - this.prevYaw) / dt;
-      const oyVel = (this.oy - this.prevOy) / dt;
+    if (safeDt > 0) {
+      const yawVel = (this.yaw - this.prevYaw) / safeDt;
+      const oyVel = (this.oy - this.prevOy) / safeDt;
       // A finished roll snaps from 2π·turns back to 0: that jump is not motion.
       const dRoll = this.roll - this.prevRoll;
-      const rollVel = Math.abs(dRoll) > Math.PI ? 0 : dRoll / dt;
+      const rollVel = Math.abs(dRoll) > Math.PI ? 0 : dRoll / safeDt;
       const centrifugal = this.rigidRoll ? rollVel * 0.18 : 0;
       const tDx = Math.max(-1, Math.min(1, -yawVel * 0.35 - this.tilt * 2 + centrifugal));
       const tDy = Math.max(-1, Math.min(1, oyVel * 0.5));
-      this.physVx += (60 * (tDx - this.physDx) - 9 * this.physVx) * dt;
-      this.physVy += (60 * (tDy - this.physDy) - 9 * this.physVy) * dt;
-      this.physDx += this.physVx * dt;
-      this.physDy += this.physVy * dt;
+      this.physVx += (60 * (tDx - this.physDx) - 9 * this.physVx) * safeDt;
+      this.physVy += (60 * (tDy - this.physDy) - 9 * this.physVy) * safeDt;
+      this.physDx += this.physVx * safeDt;
+      this.physDy += this.physVy * safeDt;
     }
+
+    // Numerical finite sanity guards
+    if (!Number.isFinite(this.yaw)) this.yaw = this.tgYaw;
+    if (!Number.isFinite(this.pitch)) this.pitch = this.tgPitch;
+    if (!Number.isFinite(this.roll)) this.roll = 0;
+    if (!Number.isFinite(this.tilt)) this.tilt = this.tgTilt;
+    if (!Number.isFinite(this.sx)) this.sx = 1;
+    if (!Number.isFinite(this.sy)) this.sy = 1;
+    if (!Number.isFinite(this.ox)) this.ox = 0;
+    if (!Number.isFinite(this.oy)) this.oy = 0;
+    if (!Number.isFinite(this.es)) this.es = 1;
+    if (!Number.isFinite(this.slotH)) this.slotH = 0;
+    if (!Number.isFinite(this.slotHVel)) this.slotHVel = 0;
+    if (!Number.isFinite(this.physDx)) this.physDx = 0;
+    if (!Number.isFinite(this.physDy)) this.physDy = 0;
+    if (!Number.isFinite(this.physVx)) this.physVx = 0;
+    if (!Number.isFinite(this.physVy)) this.physVy = 0;
+    if (!Number.isFinite(this.col[0]) || !Number.isFinite(this.col[1]) || !Number.isFinite(this.col[2])) {
+      this.col = this.colT;
+    }
+
     this.prevYaw = this.yaw;
     this.prevOy = this.oy;
     this.prevRoll = this.roll;
@@ -796,6 +828,7 @@ export class BotEngine {
    * `w`×`h` CSS pixels (the caller has already applied the DPR transform).
    */
   draw(x: CanvasRenderingContext2D, W: number, H: number) {
+    if (!Number.isFinite(W) || !Number.isFinite(H) || W <= 0 || H <= 0) return;
     const R = W * 0.3;
     const rx = R * 1.14;
     const ry = R * 0.88;

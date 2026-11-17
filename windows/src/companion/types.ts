@@ -33,7 +33,7 @@ export type ProviderHealthState =
   | "DEGRADED"
   | "OFFLINE";
 
-/** Immutable, versioned 8-dimensional context state snapshot. */
+/** Immutable, versioned context state snapshot enriched with actual computer usage activity. */
 export interface ContextSnapshot {
   readonly version: number;             // Monotonic sequence ID
   readonly timestamp: number;           // Unix epoch milliseconds
@@ -47,6 +47,12 @@ export interface ContextSnapshot {
   readonly identityVersion: string;      // Hash/fingerprint of active identity
   readonly mochiWardrobe: string;        // Active wardrobe outfit ID
   readonly category: CompanionCategory;
+  // Actual computer activity context
+  readonly currentApp: string | null;
+  readonly appSwitchCount: number;
+  readonly continuousAppMinutes: number;
+  readonly recentApps: string[];
+  readonly activitySummary: string;
 }
 
 /** Single speculative candidate held in-memory for upcoming user return. */
@@ -71,6 +77,11 @@ export interface CompanionRawCandidate {
   readonly provider: string;
   readonly model: string;
   readonly durationMs: number;
+  readonly loadDurationMs?: number;
+  readonly promptEvalDurationMs?: number;
+  readonly evalDurationMs?: number;
+  readonly evalCount?: number;
+  readonly thinkingDisabled?: boolean;
 }
 
 /** Payload passed from TypeScript orchestrator to Rust native client. */

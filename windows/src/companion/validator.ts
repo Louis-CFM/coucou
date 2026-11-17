@@ -1,15 +1,22 @@
 // CouCou Dynamic AI Companion — Multi-Stage Message Validation Pipeline (Phase 6)
-// Strips reasoning tags, neutralizes markdown/quotes, clamps grapheme clusters (<= 52),
-// and verifies physical pixel width against Dynamic Island constraints (<= 344px).
+// Strips reasoning tags, neutralizes markdown/quotes, enforces max 2 sentences,
+// rejects generic ungrounded filler, clamps grapheme clusters (<= 72),
+// and verifies physical pixel width against Dynamic Island constraints (<= 380px).
 
 export class MessageValidator {
-  public static readonly MAX_GRAPHEMES = 52;
-  public static readonly MAX_PIXEL_WIDTH = 344; // 420px max pill - 44px padding - 32px mascot
+  public static readonly MAX_GRAPHEMES = 72;
+  public static readonly MAX_PIXEL_WIDTH = 380; // Fits within 420px Dynamic Island pill
 
   private static segmenter =
     typeof Intl !== "undefined" && typeof Intl.Segmenter !== "undefined"
       ? new Intl.Segmenter("en", { granularity: "grapheme" })
       : null;
+
+  private static readonly PURE_GENERIC_PATTERNS = [
+    /^(you got this|believe in yourself|keep pushing|you can do it|stay positive|never give up|reach for the stars)[!. ]*$/i,
+    /^(you got this[!.]*\s*(keep pushing|believe in yourself|you can do it)[!. ]*)$/i,
+    /^(believe in yourself[!.]*\s*(you got this|keep pushing)[!. ]*)$/i,
+  ];
 
   /**
    * Sanitizes, validates, and fits raw model text for the Dynamic Island.
@@ -18,13 +25,30 @@ export class MessageValidator {
   public static sanitizeAndValidate(raw: string | null | undefined): string | null {
     if (!raw || typeof raw !== "string") return null;
 
-    // Stage 1: Strip <think> tags and XML-like wrappers
+    // Stage 1: Detect and reject unclosed reasoning traces or leaked thinking headers
+    if (/<think/i.test(raw) && !/<\/think>/i.test(raw)) {
+      return null; // Unclosed <think> tag indicates truncated/leaked reasoning
+    }
+    if (/\[thought/i.test(raw) && !/\[\/thought\]/i.test(raw)) {
+      return null;
+    }
+
+    // Strip paired <think> tags and XML-like wrappers
     let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
     text = text.replace(/\[thought\][\s\S]*?\[\/thought\]/gi, "");
     text = text.replace(/<[^>]+>/g, "");
 
-    // Stage 2: Strip conversational preambles and surrounding quotes
+    // Reject if reasoning markers or leaked deliberation headers remain
+    if (
+      /\b(thinking process|internal deliberation|reasoning):/i.test(text) ||
+      /<think>|<\/think>|\[thought\]|\[\/thought\]/i.test(text)
+    ) {
+      return null;
+    }
+
+    // Stage 2: Strip conversational preambles, bullet markers, and surrounding quotes
     text = text.replace(/^(here is(\s+a)?|mochi says|greeting|message|mochi)\s*[:\-]?\s*/i, "");
+    text = text.replace(/^[-*•]\s+/, "");
     text = text.replace(/^["'“](.*)["'”]$/, "$1").trim();
 
     // Stage 3: Strip Markdown formatting (**, __, `, #)
@@ -35,12 +59,19 @@ export class MessageValidator {
     text = text.replace(/[\r\n\t]+/g, " ").trim();
     if (text.length < 5) return null; // Reject overly short or empty strings
 
-    // Stage 5: Grapheme cluster boundary measurement & truncation
+    // Stage 5: Enforce length constraint: maximum 2 sentences
+    text = this.extractMaxSentences(text, 2);
+
+    // Stage 6: Discard pure generic motivational filler with no activity grounding
+    if (this.isPureGenericMotivational(text)) {
+      return null;
+    }
+
+    // Stage 7: Grapheme cluster boundary measurement & truncation
     if (this.segmenter) {
       const graphemes = Array.from(this.segmenter.segment(text), s => s.segment);
       if (graphemes.length > this.MAX_GRAPHEMES) {
-        // Truncate at last space boundary before 50 graphemes
-        const candidateSlice = graphemes.slice(0, 48).join("");
+        const candidateSlice = graphemes.slice(0, this.MAX_GRAPHEMES - 2).join("");
         const lastSpace = candidateSlice.lastIndexOf(" ");
         if (lastSpace > 20) {
           text = candidateSlice.slice(0, lastSpace).trim() + "…";
@@ -50,16 +81,44 @@ export class MessageValidator {
       }
     } else {
       if (text.length > this.MAX_GRAPHEMES) {
-        text = text.slice(0, 48).trim() + "…";
+        const candidateSlice = text.slice(0, this.MAX_GRAPHEMES - 2);
+        const lastSpace = candidateSlice.lastIndexOf(" ");
+        if (lastSpace > 20) {
+          text = candidateSlice.slice(0, lastSpace).trim() + "…";
+        } else {
+          text = candidateSlice.trim() + "…";
+        }
       }
     }
 
-    // Stage 6: Canvas Pixel Width Fit
+    // Stage 8: Canvas Pixel Width Fit
     if (!this.checkPhysicalWidth(text)) {
       return null;
     }
 
     return text;
+  }
+
+  /**
+   * Extracts up to `max` complete sentences from the text.
+   */
+  public static extractMaxSentences(text: string, max = 2): string {
+    const sentenceMatches = text.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g);
+    if (!sentenceMatches || sentenceMatches.length <= max) {
+      return text;
+    }
+    return sentenceMatches.slice(0, max).join("").trim();
+  }
+
+  /**
+   * Checks whether the message consists purely of generic motivational clichés.
+   */
+  public static isPureGenericMotivational(text: string): boolean {
+    const trimmed = text.trim();
+    for (const pattern of this.PURE_GENERIC_PATTERNS) {
+      if (pattern.test(trimmed)) return true;
+    }
+    return false;
   }
 
   /**
@@ -78,8 +137,8 @@ export class MessageValidator {
       } catch {}
     }
 
-    // Headless / fallback heuristic: average 6.5px per grapheme at 12px font size
-    const estimatedWidth = text.length * 6.5;
+    // Headless / fallback heuristic: average 5.0px per grapheme at 12px font size
+    const estimatedWidth = text.length * 5.0;
     return estimatedWidth <= this.MAX_PIXEL_WIDTH;
   }
 }

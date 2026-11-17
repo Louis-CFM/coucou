@@ -95,7 +95,7 @@ export class WelcomeMessageManager {
   quietHoursStart = "22:00";
   quietHoursEnd = "08:00";
   localEndpoint = "http://127.0.0.1:11434";
-  localModel = "llama3.2";
+  localModel = "qwen3.5:4b";
   cloudProvider: "anthropic" | "openai" = "anthropic";
   cloudModel = "claude-3-5-haiku-20241022";
 
@@ -208,7 +208,12 @@ export class WelcomeMessageManager {
         const le = localStorage.getItem("coucou_companion_local_endpoint");
         if (le) this.localEndpoint = le;
         const lm = localStorage.getItem("coucou_companion_local_model");
-        if (lm) this.localModel = lm;
+        if (lm) {
+          // If stored value is legacy "llama3.2", automatically migrate to "qwen3.5:4b"
+          this.localModel = lm === "llama3.2" ? "qwen3.5:4b" : lm;
+        } else {
+          this.localModel = "qwen3.5:4b";
+        }
 
         const pref = localStorage.getItem("coucou_preferred_name");
         if (pref != null && pref.trim().length > 0) {
@@ -357,16 +362,20 @@ export class WelcomeMessageManager {
     // 1. Proactive Hydration Nudge
     if (this.wellnessEnabled && minutesSinceWater >= this.hydrationIntervalMinutes && sessionWorkHours >= 0.75) {
       const u = this.resolvedGreetingName;
-      const hydrationTemplates = [
-        u ? `Hey ${u}! Grab a glass of water right now 💧` : "Hey! Grab a glass of water right now 💧",
-        u ? `${u}, quick water break to keep your energy up! 💧` : "Quick water break to keep your energy up! 💧",
-        u ? `Hydration check, ${u}! Take a refreshing sip 🥤` : "Hydration check! Take a refreshing sip 🥤",
-      ];
-      const text = hydrationTemplates[Math.floor(Math.random() * hydrationTemplates.length)];
+      const hydrationItems = this.getCatalog().filter(c => c.category === "hydration");
+      const unseenHydration = hydrationItems.filter(c => !this.recentHistory.includes(c.id));
+      const pool = unseenHydration.length > 0 ? unseenHydration : hydrationItems;
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      const text = item ? item.template(u) : (u ? `Hey ${u}! Grab a glass of water right now 💧` : "Hey! Grab a glass of water right now 💧");
+      const chosenId = item ? item.id : "ambient_hydration";
+
+      this.recentHistory.unshift(chosenId);
+      if (this.recentHistory.length > 20) this.recentHistory.pop();
+
       this.lastWaterNudgeTime = now;
       this.saveState();
       this.displayMessage({
-        id: "ambient_hydration",
+        id: chosenId,
         text,
         bot: true,
         category: "hydration",
@@ -378,15 +387,19 @@ export class WelcomeMessageManager {
     // 2. Posture & 20-20-20 Eye Relief Nudge
     if (this.wellnessEnabled && minutesSincePosture >= 90 && sessionWorkHours >= 1.5) {
       const u = this.resolvedGreetingName;
-      const postureTemplates = [
-        u ? `${u}, look 20 feet away for 20 seconds ✨` : "Look 20 feet away for 20 seconds ✨",
-        u ? `Quick posture check, ${u}! Roll those shoulders back 🧘` : "Quick posture check! Roll those shoulders back 🧘",
-        u ? `Deep breath in, ${u}... and exhale 🌿` : "Deep breath in... and exhale 🌿",
-      ];
-      const text = postureTemplates[Math.floor(Math.random() * postureTemplates.length)];
+      const postureItems = this.getCatalog().filter(c => c.category === "posture");
+      const unseenPosture = postureItems.filter(c => !this.recentHistory.includes(c.id));
+      const pool = unseenPosture.length > 0 ? unseenPosture : postureItems;
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      const text = item ? item.template(u) : (u ? `${u}, look 20 feet away for 20 seconds ✨` : "Look 20 feet away for 20 seconds ✨");
+      const chosenId = item ? item.id : "ambient_posture";
+
+      this.recentHistory.unshift(chosenId);
+      if (this.recentHistory.length > 20) this.recentHistory.pop();
+
       this.lastPostureNudgeTime = now;
       this.displayMessage({
-        id: "ambient_posture",
+        id: chosenId,
         text,
         bot: true,
         category: "posture",
@@ -399,21 +412,34 @@ export class WelcomeMessageManager {
     const currentPhase = this.computeStateVector(0, now).timeOfDay;
     if (this.lastCircadianPhase && this.lastCircadianPhase !== currentPhase) {
       const u = this.resolvedGreetingName;
+      const circadianItems = this.getCatalog().filter(c => c.category === "circadian" && c.phase === currentPhase);
+      const unseenCircadian = circadianItems.filter(c => !this.recentHistory.includes(c.id));
+      const pool = unseenCircadian.length > 0 ? unseenCircadian : circadianItems;
       let phaseText = "";
-      if (currentPhase === "afternoon_slump") {
-        phaseText = u ? `2 PM slump? Not on Mochi's watch, ${u} ⚡` : "2 PM slump? Not on Mochi's watch ⚡";
-      } else if (currentPhase === "golden_hour") {
-        phaseText = u ? `Golden hour, ${u}! Look at all you built today 🌇` : "Golden hour! Look at all you built today 🌇";
-      } else if (currentPhase === "evening_wrapup") {
-        phaseText = u ? `Almost wrap-up time, ${u}! You earned your evening ✨` : "Almost wrap-up time! You earned your evening ✨";
-      } else if (currentPhase === "deep_night") {
-        phaseText = u ? `Still awake, ${u}? Don't forget to rest soon 🌙` : "Still awake? Don't forget to rest soon 🌙";
+      let chosenId = `circadian_${currentPhase}`;
+
+      if (pool.length > 0) {
+        const item = pool[Math.floor(Math.random() * pool.length)];
+        phaseText = item.template(u);
+        chosenId = item.id;
+        this.recentHistory.unshift(chosenId);
+        if (this.recentHistory.length > 20) this.recentHistory.pop();
+      } else {
+        if (currentPhase === "afternoon_slump") {
+          phaseText = u ? `2 PM slump? Not on Mochi's watch, ${u} ⚡` : "2 PM slump? Not on Mochi's watch ⚡";
+        } else if (currentPhase === "golden_hour") {
+          phaseText = u ? `Golden hour, ${u}! Look at all you built today 🌇` : "Golden hour! Look at all you built today 🌇";
+        } else if (currentPhase === "evening_wrapup") {
+          phaseText = u ? `Almost wrap-up time, ${u}! You earned your evening ✨` : "Almost wrap-up time! You earned your evening ✨";
+        } else if (currentPhase === "deep_night") {
+          phaseText = u ? `Still awake, ${u}? Don't forget to rest soon 🌙` : "Still awake? Don't forget to rest soon 🌙";
+        }
       }
 
       this.lastCircadianPhase = currentPhase;
       if (phaseText) {
         this.displayMessage({
-          id: `circadian_${currentPhase}`,
+          id: chosenId,
           text: phaseText,
           bot: true,
           category: "circadian",
@@ -542,6 +568,12 @@ export class WelcomeMessageManager {
       u ? `You're doing awesome work today, ${u}! 🚀` : "You're doing awesome work today! 🚀",
       u ? `Focus mode active! Let's build something great ✨` : "Focus mode active! Let's build something great ✨",
       u ? `Remember to stretch and hydrate, ${u} 🧘` : "Remember to stretch and hydrate! 🧘",
+      u ? `Keep up the momentum, ${u} — you're on a roll 🔥` : "Keep up the momentum — you're on a roll 🔥",
+      u ? `Always in your corner, ${u}! 🌟` : "Always in your corner! 🌟",
+      u ? `Step by step, ${u} — great things take time 🛠️` : "Step by step — great things take time 🛠️",
+      u ? `High five, ${u}! Take pride in your work ✨` : "High five! Take pride in your work ✨",
+      u ? `Need a second, ${u}? Take a deep breath 🌿` : "Need a second? Take a deep breath 🌿",
+      u ? `Your focus inspires me, ${u}! Let's keep building 💻` : "Your focus inspires me! Let's keep building 💻",
     ];
     const text = thoughts[Math.floor(Math.random() * thoughts.length)];
     this.displayMessage({
@@ -625,12 +657,18 @@ export class WelcomeMessageManager {
     let bestScore = -Infinity;
     let selected = candidates[0];
 
+    // Determine how many recent IDs to track (scale with catalog size for meaningful variety)
+    const recentWindow = Math.min(20, Math.floor(candidates.length * 0.08));
+
     for (const c of candidates) {
       let score = c.weight ?? 10;
 
-      // Recency penalty
-      if (this.recentHistory.includes(c.id)) {
-        score -= 25;
+      // Recency penalty — stronger penalty for recently shown messages
+      const recentIdx = this.recentHistory.indexOf(c.id);
+      if (recentIdx !== -1) {
+        // Stronger penalty for most recent; fades with distance in history
+        const recencyFraction = 1 - (recentIdx / recentWindow);
+        score -= Math.round(30 * Math.max(0, recencyFraction));
       }
 
       // Wellness filter
@@ -693,10 +731,24 @@ export class WelcomeMessageManager {
         else score -= 12;
       }
 
+      // Category diversity bonus: prefer categories not seen in recent history
+      const recentCategories = this.recentHistory.slice(0, 5).map(id => {
+        const item = candidates.find(x => x.id === id);
+        return item?.category ?? "";
+      });
+      const recentCategoryCount = recentCategories.filter(cat => cat === c.category).length;
+      if (recentCategoryCount >= 2) score -= 8; // Soft penalty for over-represented category
+
       if (score > bestScore) {
         bestScore = score;
         selected = c;
       }
+    }
+
+    // Push selected ID into front of history (bounded ring buffer of 20)
+    this.recentHistory.unshift(selected.id);
+    if (this.recentHistory.length > 20) {
+      this.recentHistory.pop();
     }
 
     return selected;
@@ -704,6 +756,10 @@ export class WelcomeMessageManager {
 
   private getCatalog(): WelcomeMessageItem[] {
     return [
+      // ═══════════════════════════════════════════════════════════════════
+      // ORIGINAL CATALOG — 35 scripts. Do NOT modify or remove these.
+      // ═══════════════════════════════════════════════════════════════════
+
       // ── Core & Classics ──
       {
         id: "core_back",
@@ -922,6 +978,271 @@ export class WelcomeMessageManager {
         template: (u) => (u ? `Looking cool, ${u}! Welcome back 😎` : "Looking cool! Welcome back 😎"),
         weight: 14,
       },
+
+      // ═══════════════════════════════════════════════════════════════════
+      // EXPANDED CATALOG v2 — 220 additional scripts.
+      // All messages: 6–20 words, single sentence where possible.
+      // ═══════════════════════════════════════════════════════════════════
+
+      // ── Focus & Productivity (30) ──
+      { id: "focus_01", category: "work_streak", template: (u) => (u ? `Locked in, ${u}? Keep that flow going! ⚡` : "Locked in? Keep that flow going! ⚡"), weight: 14 },
+      { id: "focus_02", category: "work_streak", template: (u) => (u ? `${u}, your focus game is strong today!` : "Your focus game is strong today!"), weight: 13 },
+      { id: "focus_03", category: "work_streak", template: (u) => (u ? `Deep work mode suits you, ${u}!` : "Deep work mode suits you!"), minWorkHours: 1.5, weight: 14 },
+      { id: "focus_04", category: "work_streak", template: (u) => (u ? `${u}, you're on a roll. Don't stop now!` : "You're on a roll. Don't stop now!"), weight: 13 },
+      { id: "focus_05", category: "work_streak", template: (u) => (u ? `Flow state achieved, ${u}! Ride it ✨` : "Flow state achieved! Ride it ✨"), minWorkHours: 1, weight: 14 },
+      { id: "focus_06", category: "work_streak", template: (u) => (u ? `Tasks falling like dominoes today, ${u}!` : "Tasks falling like dominoes today!"), weight: 13 },
+      { id: "focus_07", category: "work_streak", template: (u) => (u ? `${u}, solid session. Keep that energy up!` : "Solid session. Keep that energy up!"), minWorkHours: 2, weight: 13 },
+      { id: "focus_08", category: "work_streak", template: (_u) => "One thing at a time. You've got this! 🎯", weight: 12 },
+      { id: "focus_09", category: "work_streak", template: (u) => (u ? `${u}, Mochi sees you working hard. Well done!` : "Mochi sees you working hard. Well done!"), weight: 12 },
+      { id: "focus_10", category: "work_streak", template: (u) => (u ? `Momentum is everything, ${u}. Keep moving!` : "Momentum is everything. Keep moving!"), weight: 12 },
+      { id: "focus_11", category: "work_streak", template: (_u) => "Heads down, good things happening! 💙", minWorkHours: 1, weight: 12 },
+      { id: "focus_12", category: "work_streak", template: (u) => (u ? `${u}, another focused hour in the books 📚` : "Another focused hour in the books 📚"), minWorkHours: 1, weight: 13 },
+      { id: "focus_13", category: "work_streak", template: (_u) => "Doing it one step at a time — nice!", weight: 11 },
+      { id: "focus_14", category: "work_streak", template: (u) => (u ? `${u}, Mochi's impressed by your consistency!` : "Mochi's impressed by your consistency!"), minWorkHours: 2, weight: 13 },
+      { id: "focus_15", category: "work_streak", template: (_u) => "Brain fully online! Good things ahead ✨", weight: 11 },
+      { id: "focus_16", category: "work_streak", template: (u) => (u ? `Staying in the zone, ${u}? Perfect.` : "Staying in the zone? Perfect."), weight: 12 },
+      { id: "focus_17", category: "work_streak", template: (_u) => "Tick, tick... progress is building! 🔧", minWorkHours: 1, weight: 11 },
+      { id: "focus_18", category: "work_streak", template: (u) => (u ? `${u}, quiet and productive. Love to see it!` : "Quiet and productive. Love to see it!"), weight: 12 },
+      { id: "focus_19", category: "work_streak", template: (_u) => "Session looking solid. Keep the pace! 🏃", minWorkHours: 1.5, weight: 11 },
+      { id: "focus_20", category: "work_streak", template: (u) => (u ? `Making it happen, ${u}! 🌟` : "Making it happen! 🌟"), weight: 12 },
+      { id: "focus_21", category: "work_streak", template: (_u) => "Zero distractions mode — respect! ⚡", weight: 11 },
+      { id: "focus_22", category: "work_streak", template: (u) => (u ? `${u}, focused sprints beat marathon multitasking!` : "Focused sprints beat marathon multitasking!"), weight: 12 },
+      { id: "focus_23", category: "work_streak", template: (_u) => "Good work takes good focus. You've got both!", weight: 11 },
+      { id: "focus_24", category: "work_streak", template: (u) => (u ? `${u}, three hours deep. You're on fire 🔥` : "Three hours deep. You're on fire 🔥"), minWorkHours: 3, weight: 14 },
+      { id: "focus_25", category: "work_streak", template: (_u) => "The work is happening. Mochi's rooting for you!", weight: 11 },
+      { id: "focus_26", category: "work_streak", template: (u) => (u ? `Crush it, ${u}! Today's a big day 🚀` : "Crush it! Today's a big day 🚀"), weight: 12 },
+      { id: "focus_27", category: "work_streak", template: (_u) => "Steady progress beats rushed bursts. Well done!", weight: 11 },
+      { id: "focus_28", category: "work_streak", template: (u) => (u ? `${u}, dialled in and delivering!` : "Dialled in and delivering!"), minWorkHours: 1, weight: 12 },
+      { id: "focus_29", category: "work_streak", template: (_u) => "Persistence pays off. Keep pushing forward!", weight: 11 },
+      { id: "focus_30", category: "work_streak", template: (u) => (u ? `${u}, another productive minute ticked! ⏱️` : "Another productive minute ticked! ⏱️"), minWorkHours: 2, weight: 11 },
+
+      // ── Coding & Development (30) ──
+      { id: "code_01", category: "work_streak", template: (u) => (u ? `Shipping code today, ${u}? Nice! 🚀` : "Shipping code today? Nice! 🚀"), weight: 14 },
+      { id: "code_02", category: "work_streak", template: (_u) => "Bugs don't stand a chance today! 🐛⚡", weight: 13 },
+      { id: "code_03", category: "work_streak", template: (u) => (u ? `${u}, commit early. Commit often!` : "Commit early. Commit often!"), weight: 12 },
+      { id: "code_04", category: "work_streak", template: (_u) => "Every line of code is a step forward. Keep going!", weight: 12 },
+      { id: "code_05", category: "work_streak", template: (u) => (u ? `${u}, deep in the editor? Don't forget to save!` : "Deep in the editor? Don't forget to save!"), weight: 13 },
+      { id: "code_06", category: "work_streak", template: (_u) => "Debug mode active! You'll crack it soon 🔍", weight: 12 },
+      { id: "code_07", category: "work_streak", template: (u) => (u ? `${u}, writing great code takes great coffee ☕` : "Writing great code takes great coffee ☕"), weight: 12 },
+      { id: "code_08", category: "work_streak", template: (_u) => "Stack traces exist so you can fix them! 💪", weight: 11 },
+      { id: "code_09", category: "work_streak", template: (u) => (u ? `${u}, clean code is happy code ✨` : "Clean code is happy code ✨"), weight: 12 },
+      { id: "code_10", category: "work_streak", template: (_u) => "PRs merged. Code shipped. Good day ahead!", weight: 11 },
+      { id: "code_11", category: "work_streak", template: (u) => (u ? `${u}, great engineers take breaks too!` : "Great engineers take breaks too!"), minWorkHours: 2, weight: 13 },
+      { id: "code_12", category: "work_streak", template: (_u) => "Every function you write matters. Build on! 🛠️", weight: 11 },
+      { id: "code_13", category: "work_streak", template: (u) => (u ? `${u}, hours of coding? Remember to commit!` : "Hours of coding? Remember to commit!"), minWorkHours: 2, weight: 13 },
+      { id: "code_14", category: "work_streak", template: (_u) => "That tricky bug? One more look might do it.", weight: 11 },
+      { id: "code_15", category: "work_streak", template: (u) => (u ? `${u}, reading docs? Good engineers always do!` : "Reading docs? Good engineers always do!"), weight: 12 },
+      { id: "code_16", category: "work_streak", template: (_u) => "Code review time! Fresh eyes catch everything.", weight: 11 },
+      { id: "code_17", category: "work_streak", template: (u) => (u ? `${u}, tests are green means good things ahead 🟢` : "Tests are green means good things ahead 🟢"), weight: 13 },
+      { id: "code_18", category: "work_streak", template: (_u) => "Refactoring counts as progress too! ♻️", weight: 11 },
+      { id: "code_19", category: "work_streak", template: (u) => (u ? `${u}, your IDE misses you when you're away!` : "Your IDE misses you when you're away!"), weight: 12 },
+      { id: "code_20", category: "work_streak", template: (_u) => "If it compiles, it's a win. Keep iterating! 💡", weight: 11 },
+      { id: "code_21", category: "work_streak", template: (u) => (u ? `${u}, three hours in VS Code? Time to stretch!` : "Three hours in VS Code? Time to stretch!"), minWorkHours: 3, weight: 14 },
+      { id: "code_22", category: "work_streak", template: (_u) => "The terminal is your friend. Use it well!", weight: 11 },
+      { id: "code_23", category: "work_streak", template: (u) => (u ? `${u}, one more function and then a quick break!` : "One more function and then a quick break!"), weight: 12 },
+      { id: "code_24", category: "work_streak", template: (_u) => "Good architecture starts with good thinking. Take a breath!", weight: 12 },
+      { id: "code_25", category: "work_streak", template: (u) => (u ? `${u}, commit your work before the break!` : "Commit your work before the break!"), weight: 12 },
+      { id: "code_26", category: "work_streak", template: (_u) => "That feature is almost there. So close! 🎯", weight: 11 },
+      { id: "code_27", category: "work_streak", template: (u) => (u ? `${u}, keyboard clicking means things are happening!` : "Keyboard clicking means things are happening!"), weight: 11 },
+      { id: "code_28", category: "work_streak", template: (_u) => "Ship it. Iterate. That's how progress works!", weight: 11 },
+      { id: "code_29", category: "work_streak", template: (u) => (u ? `${u}, error messages are just puzzles. Solve them!` : "Error messages are just puzzles. Solve them!"), weight: 12 },
+      { id: "code_30", category: "work_streak", template: (_u) => "Every commit is a small victory. Well done! 🏆", weight: 12 },
+
+      // ── Break & Wellness (25) ──
+      { id: "break_01", category: "posture", template: (u) => (u ? `${u}, five minute walk? Your legs will thank you!` : "Five minute walk? Your legs will thank you!"), weight: 14 },
+      { id: "break_02", category: "posture", template: (_u) => "Quick stretch — shoulders, neck, wrists. Go!", weight: 13 },
+      { id: "break_03", category: "posture", template: (u) => (u ? `${u}, blink slowly a few times. Screen dryness is real!` : "Blink slowly a few times. Screen dryness is real!"), weight: 13 },
+      { id: "break_04", category: "posture", template: (_u) => "Stand up for 60 seconds. Your back wants this!", minWorkHours: 1.5, weight: 14 },
+      { id: "break_05", category: "posture", template: (u) => (u ? `${u}, chin up, shoulders back. Quick posture reset!` : "Chin up, shoulders back. Quick posture reset!"), weight: 13 },
+      { id: "break_06", category: "posture", template: (_u) => "Look out the window for 20 seconds. Eyes need rest!", weight: 13 },
+      { id: "break_07", category: "posture", template: (u) => (u ? `${u}, wrist roll time! 10 seconds each side 🤲` : "Wrist roll time! 10 seconds each side 🤲"), minWorkHours: 2, weight: 13 },
+      { id: "break_08", category: "posture", template: (_u) => "Neck tilt left, neck tilt right. Gentle stretch!", weight: 12 },
+      { id: "break_09", category: "posture", template: (u) => (u ? `${u}, breathe in for 4, hold for 4, out for 4 🌿` : "Breathe in for 4, hold for 4, out for 4 🌿"), weight: 13 },
+      { id: "break_10", category: "posture", template: (_u) => "Quick eye massage. Close them, gentle circles!", minWorkHours: 2, weight: 12 },
+      { id: "break_11", category: "posture", template: (u) => (u ? `${u}, arms above your head! Big stretch time 🙌` : "Arms above your head! Big stretch time 🙌"), weight: 13 },
+      { id: "break_12", category: "posture", template: (_u) => "Ten slow shoulder rolls. Mochi's counting!", weight: 12 },
+      { id: "break_13", category: "posture", template: (u) => (u ? `${u}, feet flat on the floor. Grounded and focused!` : "Feet flat on the floor. Grounded and focused!"), weight: 11 },
+      { id: "break_14", category: "posture", template: (_u) => "Jaw unclenched? Check your face tension!", weight: 12 },
+      { id: "break_15", category: "posture", template: (u) => (u ? `${u}, take three slow breaths before diving back in 🌿` : "Take three slow breaths before diving back in 🌿"), weight: 12 },
+      { id: "break_16", category: "posture", template: (_u) => "Raise your arms, roll your neck. Quick reset!", weight: 12 },
+      { id: "break_17", category: "posture", template: (u) => (u ? `${u}, short break now means longer focus later!` : "Short break now means longer focus later!"), minWorkHours: 1.5, weight: 13 },
+      { id: "break_18", category: "posture", template: (_u) => "Rest your eyes on something green. Nature heals!", weight: 11 },
+      { id: "break_19", category: "posture", template: (u) => (u ? `${u}, palm your eyes gently. Warm and dark for 10 seconds!` : "Palm your eyes gently. Warm and dark for 10 seconds!"), weight: 12 },
+      { id: "break_20", category: "posture", template: (_u) => "Scroll less, think more. Rest those thumbs!", weight: 11 },
+      { id: "break_21", category: "posture", template: (u) => (u ? `${u}, move your fingers, flex your hands. Type better after!` : "Move your fingers, flex your hands. Type better after!"), weight: 12 },
+      { id: "break_22", category: "posture", template: (_u) => "Even 90 seconds of movement resets your brain!", minWorkHours: 1, weight: 12 },
+      { id: "break_23", category: "posture", template: (u) => (u ? `${u}, step away from the screen. Even two minutes helps!` : "Step away from the screen. Even two minutes helps!"), minWorkHours: 2, weight: 13 },
+      { id: "break_24", category: "posture", template: (_u) => "You can't pour from an empty cup. Rest up!", minWorkHours: 3, weight: 14 },
+      { id: "break_25", category: "posture", template: (u) => (u ? `${u}, Mochi orders: one genuine rest break. Now!` : "Mochi orders: one genuine rest break. Now!"), minWorkHours: 4, weight: 15 },
+
+      // ── Hydration Reminders (20) ──
+      { id: "hydro_01", category: "hydration", template: (u) => (u ? `${u}, sip some water. Right now!` : "Sip some water. Right now!"), minWaterMinutes: 45, weight: 20 },
+      { id: "hydro_02", category: "hydration", template: (_u) => "Water break! Your brain runs on it 💧", minWaterMinutes: 50, weight: 19 },
+      { id: "hydro_03", category: "hydration", template: (u) => (u ? `${u}, time to hydrate. Mochi insists!` : "Time to hydrate. Mochi insists!"), minWaterMinutes: 55, weight: 20 },
+      { id: "hydro_04", category: "hydration", template: (_u) => "Thirsty yet? Pour yourself a glass of water! 🥛", minWaterMinutes: 45, weight: 18 },
+      { id: "hydro_05", category: "hydration", template: (u) => (u ? `${u}, water first. Then code!` : "Water first. Then code!"), minWaterMinutes: 60, weight: 19 },
+      { id: "hydro_06", category: "hydration", template: (_u) => "Coffee's great, but water is greater. Balance it out!", minWaterMinutes: 50, weight: 17 },
+      { id: "hydro_07", category: "hydration", template: (u) => (u ? `${u}, stay hydrated. Your focus depends on it 💧` : "Stay hydrated. Your focus depends on it 💧"), minWaterMinutes: 60, weight: 18 },
+      { id: "hydro_08", category: "hydration", template: (_u) => "Quick hydration check! Mochi wants to see you drink up!", minWaterMinutes: 45, weight: 17 },
+      { id: "hydro_09", category: "hydration", template: (u) => (u ? `${u}, three sips of water. Go!` : "Three sips of water. Go!"), minWaterMinutes: 50, weight: 19 },
+      { id: "hydro_10", category: "hydration", template: (_u) => "Dehydration is sneaky. Grab your water bottle now!", minWaterMinutes: 55, weight: 18 },
+      { id: "hydro_11", category: "hydration", template: (u) => (u ? `${u}, best performance needs best hydration 💧` : "Best performance needs best hydration 💧"), minWaterMinutes: 60, weight: 17 },
+      { id: "hydro_12", category: "hydration", template: (_u) => "Water o'clock! Don't forget while you work ⏰", minWaterMinutes: 45, weight: 16 },
+      { id: "hydro_13", category: "hydration", template: (u) => (u ? `${u}, Mochi's counting your water breaks. Have one!` : "Mochi's counting your water breaks. Have one!"), minWaterMinutes: 50, weight: 17 },
+      { id: "hydro_14", category: "hydration", template: (_u) => "Refill that bottle. One step and a sip!", minWaterMinutes: 45, weight: 16 },
+      { id: "hydro_15", category: "hydration", template: (u) => (u ? `${u}, still no water? That changes now 💧` : "Still no water? That changes now 💧"), minWaterMinutes: 70, weight: 20 },
+      { id: "hydro_16", category: "hydration", template: (_u) => "Water does what coffee can't. Drink up!", minWaterMinutes: 60, weight: 17 },
+      { id: "hydro_17", category: "hydration", template: (u) => (u ? `${u}, quick water break before the next task!` : "Quick water break before the next task!"), minWaterMinutes: 50, weight: 17 },
+      { id: "hydro_18", category: "hydration", template: (_u) => "Glass half empty? Fill it up and drink it! 💧", minWaterMinutes: 45, weight: 16 },
+      { id: "hydro_19", category: "hydration", template: (u) => (u ? `${u}, that headache? Probably needs water!` : "That headache? Probably needs water!"), minWaterMinutes: 65, weight: 18 },
+      { id: "hydro_20", category: "hydration", template: (_u) => "No snacks without water. Grab both! 🥤", minWaterMinutes: 50, weight: 16 },
+
+      // ── Workflow Awareness (25) ──
+      { id: "workflow_01", category: "work_streak", template: (_u) => "Tab chaos? One window, one task. Try it!", weight: 12 },
+      { id: "workflow_02", category: "work_streak", template: (u) => (u ? `${u}, context switching is expensive. Batch your tasks!` : "Context switching is expensive. Batch your tasks!"), weight: 13 },
+      { id: "workflow_03", category: "work_streak", template: (_u) => "15-minute sprint. One thing. No distractions. Go!", weight: 12 },
+      { id: "workflow_04", category: "work_streak", template: (u) => (u ? `${u}, app-hopping? Pick one and finish it!` : "App-hopping? Pick one and finish it!"), weight: 12 },
+      { id: "workflow_05", category: "work_streak", template: (_u) => "Notifications off. Focus on. Let's build!", weight: 11 },
+      { id: "workflow_06", category: "work_streak", template: (u) => (u ? `${u}, close unused tabs. Clear screen, clear mind!` : "Close unused tabs. Clear screen, clear mind!"), weight: 12 },
+      { id: "workflow_07", category: "work_streak", template: (_u) => "What's the one thing that moves you forward today?", weight: 11 },
+      { id: "workflow_08", category: "work_streak", template: (u) => (u ? `${u}, prioritise ruthlessly. Not everything is urgent!` : "Prioritise ruthlessly. Not everything is urgent!"), weight: 12 },
+      { id: "workflow_09", category: "work_streak", template: (_u) => "Done is better than perfect. Ship it! 🚀", weight: 11 },
+      { id: "workflow_10", category: "work_streak", template: (u) => (u ? `${u}, write it down before you forget it!` : "Write it down before you forget it!"), weight: 12 },
+      { id: "workflow_11", category: "work_streak", template: (_u) => "Switching apps too often? Pick one and stick with it!", weight: 12 },
+      { id: "workflow_12", category: "work_streak", template: (u) => (u ? `${u}, block out 30 minutes for deep work. Worth it!` : "Block out 30 minutes for deep work. Worth it!"), weight: 12 },
+      { id: "workflow_13", category: "work_streak", template: (_u) => "Big task? Break it down. Start with step one!", weight: 11 },
+      { id: "workflow_14", category: "work_streak", template: (u) => (u ? `${u}, Pomodoro it — 25 minutes focus, 5 minutes break!` : "Pomodoro it — 25 minutes focus, 5 minutes break!"), weight: 12 },
+      { id: "workflow_15", category: "work_streak", template: (_u) => "Start with the hardest thing. Rest gets easier!", weight: 11 },
+      { id: "workflow_16", category: "work_streak", template: (u) => (u ? `${u}, single tasking beats multitasking every time!` : "Single tasking beats multitasking every time!"), weight: 12 },
+      { id: "workflow_17", category: "work_streak", template: (_u) => "Inbox can wait. The work in front of you can't!", weight: 11 },
+      { id: "workflow_18", category: "work_streak", template: (u) => (u ? `${u}, time blocking is your friend today!` : "Time blocking is your friend today!"), weight: 11 },
+      { id: "workflow_19", category: "work_streak", template: (_u) => "Make the next ten minutes count. What's the task?", weight: 11 },
+      { id: "workflow_20", category: "work_streak", template: (u) => (u ? `${u}, three priorities. That's all you need today!` : "Three priorities. That's all you need today!"), weight: 12 },
+      { id: "workflow_21", category: "work_streak", template: (_u) => "A tidy desktop means a tidy mind. Quick declutter?", weight: 11 },
+      { id: "workflow_22", category: "work_streak", template: (u) => (u ? `${u}, kill that background music if it's distracting!` : "Kill that background music if it's distracting!"), weight: 11 },
+      { id: "workflow_23", category: "work_streak", template: (_u) => "Quick task list review. Are your priorities right?", weight: 11 },
+      { id: "workflow_24", category: "work_streak", template: (u) => (u ? `${u}, if a task takes under 2 minutes, do it now!` : "If a task takes under 2 minutes, do it now!"), weight: 12 },
+      { id: "workflow_25", category: "work_streak", template: (_u) => "Energy dipping? Switch to an easier task for 10 minutes!", weight: 12 },
+
+      // ── Positive Reinforcement (25) ──
+      { id: "praise_01", category: "work_streak", template: (u) => (u ? `${u}, look at that progress! Genuinely impressive!` : "Look at that progress! Genuinely impressive!"), minWorkHours: 2, weight: 13 },
+      { id: "praise_02", category: "work_streak", template: (_u) => "Session goal hit! You should feel good about that!", weight: 12 },
+      { id: "praise_03", category: "work_streak", template: (u) => (u ? `${u}, Mochi is genuinely proud of you today!` : "Mochi is genuinely proud of you today!"), weight: 12 },
+      { id: "praise_04", category: "work_streak", template: (_u) => "Great things are built brick by brick. Keep stacking! 🧱", weight: 12 },
+      { id: "praise_05", category: "work_streak", template: (u) => (u ? `${u}, hard work beats talent when talent doesn't work hard!` : "Hard work beats talent when talent doesn't work hard!"), minWorkHours: 3, weight: 13 },
+      { id: "praise_06", category: "work_streak", template: (_u) => "You showed up today. That already counts for a lot!", weight: 11 },
+      { id: "praise_07", category: "work_streak", template: (u) => (u ? `${u}, solid output today. Genuinely!` : "Solid output today. Genuinely!"), minWorkHours: 2, weight: 12 },
+      { id: "praise_08", category: "work_streak", template: (_u) => "Every great project starts with great days like this!", weight: 11 },
+      { id: "praise_09", category: "work_streak", template: (u) => (u ? `${u}, you're building something that matters. Keep going!` : "You're building something that matters. Keep going!"), weight: 12 },
+      { id: "praise_10", category: "work_streak", template: (_u) => "Discipline today, results tomorrow. Nicely done! 🎯", minWorkHours: 2, weight: 12 },
+      { id: "praise_11", category: "work_streak", template: (u) => (u ? `${u}, quiet consistency beats loud sprints every time!` : "Quiet consistency beats loud sprints every time!"), weight: 11 },
+      { id: "praise_12", category: "work_streak", template: (_u) => "Mochi's impressed. You've been at it for a while now!", minWorkHours: 2, weight: 13 },
+      { id: "praise_13", category: "work_streak", template: (u) => (u ? `${u}, future you will thank today you for this!` : "Future you will thank today you for this!"), weight: 12 },
+      { id: "praise_14", category: "work_streak", template: (_u) => "Progress is progress, no matter the pace. Well done!", weight: 11 },
+      { id: "praise_15", category: "work_streak", template: (u) => (u ? `${u}, you're doing better than you think!` : "You're doing better than you think!"), weight: 12 },
+      { id: "praise_16", category: "work_streak", template: (_u) => "Good work deserves good recognition. Take a moment! 🌟", minWorkHours: 3, weight: 13 },
+      { id: "praise_17", category: "work_streak", template: (u) => (u ? `${u}, smart and steady always wins the race!` : "Smart and steady always wins the race!"), weight: 11 },
+      { id: "praise_18", category: "work_streak", template: (_u) => "Incredible focus today. Mochi sees everything! ✨", minWorkHours: 2, weight: 12 },
+      { id: "praise_19", category: "work_streak", template: (u) => (u ? `${u}, another great chapter in a great story!` : "Another great chapter in a great story!"), weight: 11 },
+      { id: "praise_20", category: "work_streak", template: (_u) => "If effort was currency, you'd be rich today! 💰", minWorkHours: 3, weight: 12 },
+      { id: "praise_21", category: "work_streak", template: (u) => (u ? `${u}, keep that energy. It's contagious!` : "Keep that energy. It's contagious!"), weight: 11 },
+      { id: "praise_22", category: "work_streak", template: (_u) => "Half the battle is just showing up. You showed up! 🏅", weight: 11 },
+      { id: "praise_23", category: "work_streak", template: (u) => (u ? `${u}, Mochi's rooting for you. Always!` : "Mochi's rooting for you. Always!"), weight: 12 },
+      { id: "praise_24", category: "work_streak", template: (_u) => "Look how far you've come! Really impressive work!", minWorkHours: 4, weight: 13 },
+      { id: "praise_25", category: "work_streak", template: (u) => (u ? `${u}, top-tier effort today. Absolutely top-tier!` : "Top-tier effort today. Absolutely top-tier!"), minWorkHours: 3, weight: 12 },
+
+      // ── Daily Motivation (20) ──
+      { id: "motiv_01", category: "classic", template: (u) => (u ? `${u}, today is a great day to build something new!` : "Today is a great day to build something new!"), weight: 12 },
+      { id: "motiv_02", category: "classic", template: (_u) => "Start small. Grow fast. Ship often. That's the formula!", weight: 11 },
+      { id: "motiv_03", category: "classic", template: (u) => (u ? `${u}, it doesn't have to be perfect. Ship it!` : "It doesn't have to be perfect. Ship it!"), weight: 11 },
+      { id: "motiv_04", category: "classic", template: (_u) => "The best time to start was yesterday. Next best is now!", weight: 12 },
+      { id: "motiv_05", category: "classic", template: (u) => (u ? `${u}, small consistent effort beats big irregular bursts!` : "Small consistent effort beats big irregular bursts!"), weight: 12 },
+      { id: "motiv_06", category: "classic", template: (_u) => "Make today count. Even one task done well matters!", weight: 11 },
+      { id: "motiv_07", category: "classic", template: (u) => (u ? `${u}, clarity comes from doing, not from planning!` : "Clarity comes from doing, not from planning!"), weight: 11 },
+      { id: "motiv_08", category: "classic", template: (_u) => "Every expert was once a beginner. Keep learning! 📚", weight: 11 },
+      { id: "motiv_09", category: "classic", template: (u) => (u ? `${u}, the work is the reward. Enjoy it!` : "The work is the reward. Enjoy it!"), weight: 11 },
+      { id: "motiv_10", category: "classic", template: (_u) => "Energy flows where attention goes. Direct it well! ⚡", weight: 11 },
+      { id: "motiv_11", category: "classic", template: (u) => (u ? `${u}, what's the one thing that will move the needle today?` : "What's the one thing that will move the needle today?"), weight: 12 },
+      { id: "motiv_12", category: "classic", template: (_u) => "Creative problems need creative minds. You've got one! 🧠", weight: 11 },
+      { id: "motiv_13", category: "classic", template: (u) => (u ? `${u}, hard days make great stories later!` : "Hard days make great stories later!"), weight: 11 },
+      { id: "motiv_14", category: "classic", template: (_u) => "Excellence is a habit. Keep building yours! 🏅", weight: 11 },
+      { id: "motiv_15", category: "classic", template: (u) => (u ? `${u}, some days you build. Some days you plan. Both count!` : "Some days you build. Some days you plan. Both count!"), weight: 12 },
+      { id: "motiv_16", category: "classic", template: (_u) => "Mochi believes today is going to be a good one! 🌟", weight: 11 },
+      { id: "motiv_17", category: "classic", template: (u) => (u ? `${u}, curiosity is your superpower. Use it!` : "Curiosity is your superpower. Use it!"), weight: 11 },
+      { id: "motiv_18", category: "classic", template: (_u) => "Take it one task, one hour, one win at a time!", weight: 11 },
+      { id: "motiv_19", category: "classic", template: (u) => (u ? `${u}, better than yesterday. That's all that matters!` : "Better than yesterday. That's all that matters!"), weight: 12 },
+      { id: "motiv_20", category: "classic", template: (_u) => "Every day that you try is a day you grow. Keep going!", weight: 11 },
+
+      // ── Welcome-Back Messages (15) ──
+      { id: "return_01", category: "classic", template: (u) => (u ? `Welcome back, ${u}! Ready to pick up where you left off?` : "Welcome back! Ready to pick up where you left off?"), minAwayMinutes: 5, weight: 16 },
+      { id: "return_02", category: "classic", template: (u) => (u ? `${u}'s back! Mochi's been keeping the screen warm 🌟` : "You're back! Mochi's been keeping the screen warm 🌟"), minAwayMinutes: 10, weight: 15 },
+      { id: "return_03", category: "classic", template: (u) => (u ? `Hey ${u}, good break? Let's finish what we started!` : "Good break? Let's finish what we started!"), minAwayMinutes: 5, weight: 14 },
+      { id: "return_04", category: "classic", template: (_u) => "Back in action! What's next on the list? 📋", minAwayMinutes: 5, weight: 13 },
+      { id: "return_05", category: "classic", template: (u) => (u ? `${u}, refreshed and ready? Let's keep the momentum!` : "Refreshed and ready? Let's keep the momentum!"), minAwayMinutes: 10, weight: 14 },
+      { id: "return_06", category: "classic", template: (_u) => "Welcome back to your corner of the internet! 💙", minAwayMinutes: 15, weight: 14 },
+      { id: "return_07", category: "classic", template: (u) => (u ? `${u}, Mochi saved your place. Right here, ready to go!` : "Mochi saved your place. Right here, ready to go!"), minAwayMinutes: 10, weight: 14 },
+      { id: "return_08", category: "classic", template: (_u) => "Back at the desk! Time to make it count ✨", minAwayMinutes: 5, weight: 13 },
+      { id: "return_09", category: "classic", template: (u) => (u ? `${u}, break over! On to the next great thing!` : "Break over! On to the next great thing!"), minAwayMinutes: 5, weight: 13 },
+      { id: "return_10", category: "classic", template: (_u) => "Session resuming. Let's pick that thought back up!", minAwayMinutes: 10, weight: 13 },
+      { id: "return_11", category: "classic", template: (u) => (u ? `${u}, the desk called and you answered!` : "The desk called and you answered!"), minAwayMinutes: 10, weight: 12 },
+      { id: "return_12", category: "classic", template: (_u) => "Mochi's glad you're back. Now, what's the plan?", minAwayMinutes: 15, weight: 13 },
+      { id: "return_13", category: "classic", template: (u) => (u ? `${u}, stepping back into it. Just like that!` : "Stepping back into it. Just like that!"), minAwayMinutes: 5, weight: 12 },
+      { id: "return_14", category: "classic", template: (_u) => "Back at the helm! What needs attention right now?", minAwayMinutes: 10, weight: 12 },
+      { id: "return_15", category: "classic", template: (u) => (u ? `Hey ${u}! Good to have you back at the controls 🎮` : "Good to have you back at the controls 🎮"), minAwayMinutes: 15, weight: 14 },
+
+      // ── Context-Switching Awareness (20) ──
+      { id: "switch_01", category: "work_streak", template: (_u) => "Lots of windows? Pick the most important one!", weight: 12 },
+      { id: "switch_02", category: "work_streak", template: (u) => (u ? `${u}, app-switching a lot? One thing at a time helps!` : "App-switching a lot? One thing at a time helps!"), weight: 12 },
+      { id: "switch_03", category: "work_streak", template: (_u) => "Every switch costs focus. Make each one count!", weight: 11 },
+      { id: "switch_04", category: "work_streak", template: (u) => (u ? `${u}, juggling too much? Narrow it down to one task!` : "Juggling too much? Narrow it down to one task!"), weight: 12 },
+      { id: "switch_05", category: "work_streak", template: (_u) => "Research mode? Stay in one tab until you have your answer!", weight: 12 },
+      { id: "switch_06", category: "work_streak", template: (u) => (u ? `${u}, Slack and code at once? That's context tax!` : "Slack and code at once? That's context tax!"), weight: 11 },
+      { id: "switch_07", category: "work_streak", template: (_u) => "Open tabs are open loops. Close what you don't need!", weight: 12 },
+      { id: "switch_08", category: "work_streak", template: (u) => (u ? `${u}, multitasking myth alert! Sequential focus wins!` : "Multitasking myth alert! Sequential focus wins!"), weight: 12 },
+      { id: "switch_09", category: "work_streak", template: (_u) => "Back and forth? Pick a direction and go for it!", weight: 11 },
+      { id: "switch_10", category: "work_streak", template: (u) => (u ? `${u}, the browser can wait. Finish that code first!` : "The browser can wait. Finish that code first!"), weight: 12 },
+      { id: "switch_11", category: "work_streak", template: (_u) => "Twitter, Slack, IDE, repeat? Break the cycle!", weight: 12 },
+      { id: "switch_12", category: "work_streak", template: (u) => (u ? `${u}, focused context means less context-switching tax!` : "Focused context means less context-switching tax!"), weight: 11 },
+      { id: "switch_13", category: "work_streak", template: (_u) => "Every open app is a mental thread. Reduce the count!", weight: 12 },
+      { id: "switch_14", category: "work_streak", template: (u) => (u ? `${u}, notifications off for the next hour. Try it!` : "Notifications off for the next hour. Try it!"), weight: 12 },
+      { id: "switch_15", category: "work_streak", template: (_u) => "The deepest work happens in the longest sessions!", weight: 11 },
+      { id: "switch_16", category: "work_streak", template: (u) => (u ? `${u}, research done? Time to execute what you found!` : "Research done? Time to execute what you found!"), weight: 12 },
+      { id: "switch_17", category: "work_streak", template: (_u) => "Less switching, more shipping. That's the mantra!", weight: 11 },
+      { id: "switch_18", category: "work_streak", template: (u) => (u ? `${u}, mind scattered? A five-minute journal clears it!` : "Mind scattered? A five-minute journal clears it!"), weight: 12 },
+      { id: "switch_19", category: "work_streak", template: (_u) => "Chaos mode? Pick ONE task and do just that!", weight: 12 },
+      { id: "switch_20", category: "work_streak", template: (u) => (u ? `${u}, app rotation slows you down. Settle in!` : "App rotation slows you down. Settle in!"), weight: 11 },
+
+      // ── General Personalized Interactions (10) ──
+      { id: "personal_01", category: "classic", template: (u) => (u ? `${u}, Mochi's happy you're here! Let's make it a great session!` : "Mochi's happy you're here! Let's make it a great session!"), weight: 13 },
+      { id: "personal_02", category: "classic", template: (_u) => "Every session with you is Mochi's favourite! 💙", weight: 12 },
+      { id: "personal_03", category: "classic", template: (u) => (u ? `${u}, you and Mochi are a team. Best team!` : "You and Mochi are a team. Best team!"), weight: 12 },
+      { id: "personal_04", category: "classic", template: (_u) => "Mochi noticed you've been building a lot. Impressive stuff!", weight: 12 },
+      { id: "personal_05", category: "classic", template: (u) => (u ? `${u}, whatever you're working on, Mochi's cheering you on!` : "Whatever you're working on, Mochi's cheering you on!"), weight: 12 },
+      { id: "personal_06", category: "classic", template: (_u) => "Together we work better! Mochi's right here 🤝", weight: 11 },
+      { id: "personal_07", category: "classic", template: (u) => (u ? `${u}, Mochi's here if you need a little nudge!` : "Mochi's here if you need a little nudge!"), weight: 12 },
+      { id: "personal_08", category: "classic", template: (_u) => "Good vibes only. Good work always. That's the way! ✨", weight: 11 },
+      { id: "personal_09", category: "classic", template: (u) => (u ? `${u}, Mochi's rooting for you. Every single day!` : "Mochi's rooting for you. Every single day!"), weight: 12 },
+      { id: "personal_10", category: "classic", template: (_u) => "You + Mochi = unstoppable. Let's prove it today! 🚀", weight: 12 },
+
+      // ── Additional Day-of-Week variants ──
+      { id: "day_tuesday", category: "day_of_week", dayOfWeek: 2, template: (u) => (u ? `Happy Tuesday, ${u}! Week's warming up nicely!` : "Happy Tuesday! Week's warming up nicely!"), weight: 15 },
+      { id: "day_wednesday", category: "day_of_week", dayOfWeek: 3, template: (u) => (u ? `Midweek check-in, ${u}! Halfway there 💪` : "Midweek check-in! Halfway there 💪"), weight: 16 },
+      { id: "day_thursday", category: "day_of_week", dayOfWeek: 4, template: (u) => (u ? `${u}, Friday's almost here. One more strong day!` : "Friday's almost here. One more strong day!"), weight: 16 },
+      { id: "day_sunday", category: "day_of_week", dayOfWeek: 0, template: (u) => (u ? `Sunday session, ${u}? Respect the hustle 🛠️` : "Sunday session? Respect the hustle 🛠️"), weight: 15 },
+
+      // ── Additional Circadian ──
+      { id: "time_dawn_silent", category: "circadian", phase: "dawn", template: (_u) => "Pre-dawn hustle! The world is still asleep. Use it! 🌅", weight: 17 },
+      { id: "time_morning_sharp", category: "circadian", phase: "morning_peak", template: (u) => (u ? `${u}, mind is freshest in the morning. Use it well!` : "Mind is freshest in the morning. Use it well!"), weight: 17 },
+      { id: "time_lunch_rest", category: "circadian", phase: "midday_lunch", template: (_u) => "Midday fuel break! Eat well for an energised afternoon 🥗", weight: 20 },
+      { id: "time_slump_tea", category: "circadian", phase: "afternoon_slump", template: (u) => (u ? `${u}, 3 PM? Perfect time for tea and a quick reset ☕` : "3 PM? Perfect time for tea and a quick reset ☕"), weight: 19 },
+      { id: "time_golden_wrap", category: "circadian", phase: "golden_hour", template: (_u) => "Golden hour! What one thing can you close out before evening?", weight: 18 },
+      { id: "time_evening_save", category: "circadian", phase: "evening_wrapup", template: (u) => (u ? `${u}, save your work and log off when you're ready!` : "Save your work and log off when you're ready!"), weight: 18 },
+      { id: "time_night_stars", category: "circadian", phase: "deep_night", template: (u) => (u ? `${u}, late nights are magic. But sleep is too 💙` : "Late nights are magic. But sleep is too 💙"), weight: 22 },
+
+      // ── Additional Wardrobe ──
+      { id: "wardrobe_witch", category: "wardrobe", wardrobe: "witch", template: (u) => (u ? `${u}, spooky season vibes! Welcome back 🎃` : "Spooky season vibes! Welcome back 🎃"), weight: 13 },
+      { id: "wardrobe_bunny", category: "wardrobe", wardrobe: "bunny", template: (u) => (u ? `Hoppy to see you, ${u}! Back to work we go 🐰` : "Hoppy to see you! Back to work we go 🐰"), weight: 13 },
+      { id: "wardrobe_party", category: "wardrobe", wardrobe: "party", template: (u) => (u ? `Party hat on, ${u}! Let's make today a celebration! 🎉` : "Party hat on! Let's make today a celebration! 🎉"), weight: 13 },
     ];
   }
 }

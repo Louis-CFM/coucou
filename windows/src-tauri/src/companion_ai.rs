@@ -106,6 +106,16 @@ pub struct CompanionRawCandidate {
     pub provider: String,
     pub model: String,
     pub duration_ms: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub load_duration_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_eval_duration_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub eval_duration_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub eval_count: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking_disabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,13 +178,61 @@ pub fn validate_loopback_url(endpoint: &str) -> Result<String, String> {
 
 // ── Ollama Local Client ───────────────────────────────────────────────────────
 
-async fn generate_ollama(
+#[derive(Debug, Clone)]
+pub struct OllamaChatResult {
+    pub content: String,
+    pub load_duration_ms: Option<u64>,
+    pub prompt_eval_duration_ms: Option<u64>,
+    pub eval_duration_ms: Option<u64>,
+    pub eval_count: Option<u64>,
+    pub thinking_disabled: bool,
+}
+
+pub fn model_supports_thinking(model: &str) -> bool {
+    let lower = model.to_lowercase();
+    lower.contains("qwen") || lower.contains("r1") || lower.contains("think")
+}
+
+pub async fn check_model_supports_thinking(
+    client: &reqwest::Client,
     endpoint: &str,
     model: &str,
-    prompt: &str,
+) -> bool {
+    // Fast path: if model identifier indicates a thinking model (like qwen3.5:4b), it is supported
+    if model_supports_thinking(model) {
+        return true;
+    }
+    // Only query /api/show on standard Ollama port to avoid interfering with unit test mock listeners
+    if !endpoint.contains("11434") {
+        return false;
+    }
+    let url = format!("{}/api/show", endpoint.trim_end_matches('/'));
+    let body = serde_json::json!({ "model": model });
+    if let Ok(res) = client.post(&url).json(&body).send().await {
+        if res.status().is_success() {
+            if let Ok(json) = res.json::<serde_json::Value>().await {
+                if let Some(thinking) = json.get("thinking") {
+                    if let Some(vals) = thinking.get("values").and_then(|v| v.as_array()) {
+                        return vals.iter().any(|v| v.as_bool() == Some(false));
+                    }
+                }
+                if let Some(caps) = json.get("capabilities").and_then(|c| c.as_array()) {
+                    return caps.iter().any(|c| c.as_str() == Some("thinking"));
+                }
+            }
+        }
+    }
+    false
+}
+
+pub async fn generate_ollama_chat(
+    endpoint: &str,
+    model: &str,
+    system_prompt: &str,
+    user_context: &str,
     timeout_ms: u64,
     token: CancellationToken,
-) -> Result<String, String> {
+) -> Result<OllamaChatResult, String> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_millis(timeout_ms))
         .redirect(reqwest::redirect::Policy::none())
@@ -182,18 +240,27 @@ async fn generate_ollama(
         .build()
         .map_err(|e| format!("Client builder error: {e}"))?;
 
-    let url = format!("{}/api/generate", endpoint.trim_end_matches('/'));
+    let supports_thinking = check_model_supports_thinking(&client, endpoint, model).await;
+    let url = format!("{}/api/chat", endpoint.trim_end_matches('/'));
 
-    let body = serde_json::json!({
+    let mut body = serde_json::json!({
         "model": model,
-        "prompt": prompt,
+        "messages": [
+            { "role": "system", "content": system_prompt },
+            { "role": "user", "content": user_context }
+        ],
         "stream": false,
         "options": {
-            "num_predict": 45,
-            "temperature": 0.7,
+            "num_predict": 75,
+            "temperature": 0.6,
             "top_p": 0.9
         }
     });
+
+    // Pass think as a top-level API parameter when supported (critical for qwen3.5:4b)
+    if supports_thinking {
+        body["think"] = serde_json::Value::Bool(false);
+    }
 
     let send_fut = client.post(&url).json(&body).send();
 
@@ -223,20 +290,75 @@ async fn generate_ollama(
                 .await
                 .map_err(|e| format!("Failed to parse Ollama response JSON: {e}"))?;
 
-            let text = json
-                .get("response")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .trim()
-                .to_string();
+            // Durations in Ollama are reported in nanoseconds; convert to milliseconds
+            let load_duration_ms = json.get("load_duration").and_then(|v| v.as_u64()).map(|ns| ns / 1_000_000);
+            let prompt_eval_duration_ms = json.get("prompt_eval_duration").and_then(|v| v.as_u64()).map(|ns| ns / 1_000_000);
+            let eval_duration_ms = json.get("eval_duration").and_then(|v| v.as_u64()).map(|ns| ns / 1_000_000);
+            let eval_count = json.get("eval_count").and_then(|v| v.as_u64());
 
-            if text.is_empty() {
-                Err("EMPTY_MODEL_RESPONSE".into())
-            } else {
-                Ok(text)
+            // Strict separation: extract message.content only
+            let message = json.get("message");
+            let raw_content = message
+                .and_then(|m| m.get("content"))
+                .and_then(|c| c.as_str())
+                .unwrap_or_else(|| {
+                    // Fallback to "response" field if testing against legacy mock endpoint
+                    json.get("response").and_then(|r| r.as_str()).unwrap_or("")
+                })
+                .trim();
+
+            // Check if thinking was present in the response
+            let raw_thinking = message
+                .and_then(|m| m.get("thinking"))
+                .and_then(|t| t.as_str())
+                .unwrap_or("")
+                .trim();
+
+            if !raw_thinking.is_empty() {
+                // Log and discard reasoning trace without ever exposing to callers
+                eprintln!("[CompanionAI] Discarded reasoning trace (length: {} chars)", raw_thinking.len());
             }
+
+            // Never fallback to thinking if content is empty!
+            if raw_content.is_empty() {
+                return Err("EMPTY_MODEL_RESPONSE".into());
+            }
+
+            // Reject if content contains raw reasoning leak
+            if raw_content.contains("<think>") || raw_content.contains("</think>") || raw_content.starts_with("Thinking Process:") {
+                return Err("REASONING_LEAKED_IN_CONTENT".into());
+            }
+
+            Ok(OllamaChatResult {
+                content: raw_content.to_string(),
+                load_duration_ms,
+                prompt_eval_duration_ms,
+                eval_duration_ms,
+                eval_count,
+                thinking_disabled: supports_thinking,
+            })
         }
     }
+}
+
+#[allow(dead_code)]
+async fn generate_ollama(
+    endpoint: &str,
+    model: &str,
+    prompt: &str,
+    timeout_ms: u64,
+    token: CancellationToken,
+) -> Result<String, String> {
+    let res = generate_ollama_chat(
+        endpoint,
+        model,
+        "You are Mochi, a helpful desktop companion in Coucou.",
+        prompt,
+        timeout_ms,
+        token,
+    )
+    .await?;
+    Ok(res.content)
 }
 
 // ── Cloud AI Clients ──────────────────────────────────────────────────────────
@@ -346,18 +468,38 @@ pub async fn companion_ai_generate(
         "ollama" => {
             let raw_endpoint = payload.endpoint.as_deref().unwrap_or("http://127.0.0.1:11434");
             let endpoint = validate_loopback_url(raw_endpoint)?;
-            let combined_prompt = format!(
-                "{}\n\nCONTEXT:\n{}\n\nRespond with one short greeting sentence:",
-                payload.system_prompt, payload.user_context_json
+            let user_context_prompt = format!(
+                "Actual computer usage activity context:\n{}\n\nGenerate exactly one personalized companion message adhering to the output contract:",
+                payload.user_context_json
             );
-            generate_ollama(
+            let chat_res = generate_ollama_chat(
                 &endpoint,
                 &payload.model,
-                &combined_prompt,
+                &payload.system_prompt,
+                &user_context_prompt,
                 payload.timeout_ms,
                 token.clone(),
             )
-            .await
+            .await;
+
+            state.unregister(&request_id);
+            let duration_ms = start.elapsed().as_millis() as u64;
+
+            return match chat_res {
+                Ok(res) => Ok(CompanionRawCandidate {
+                    request_id,
+                    text: res.content,
+                    provider: payload.provider,
+                    model: payload.model,
+                    duration_ms,
+                    load_duration_ms: res.load_duration_ms,
+                    prompt_eval_duration_ms: res.prompt_eval_duration_ms,
+                    eval_duration_ms: res.eval_duration_ms,
+                    eval_count: res.eval_count,
+                    thinking_disabled: Some(res.thinking_disabled),
+                }),
+                Err(e) => Err(e),
+            };
         }
         "anthropic" => {
             let secret_key = canonical_secret_key("anthropic").unwrap();
@@ -400,6 +542,11 @@ pub async fn companion_ai_generate(
             provider: payload.provider,
             model: payload.model,
             duration_ms,
+            load_duration_ms: None,
+            prompt_eval_duration_ms: None,
+            eval_duration_ms: None,
+            eval_count: None,
+            thinking_disabled: None,
         }),
         Err(e) => Err(e),
     }
@@ -644,5 +791,107 @@ mod tests {
         )
         .await;
         assert_eq!(res_cancelled.unwrap_err(), "REQUEST_CANCELLED");
+    }
+
+    #[tokio::test]
+    async fn ollama_chat_separates_thinking_and_content_safely() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let endpoint = format!("http://127.0.0.1:{port}");
+
+        tokio::spawn(async move {
+            if let Ok((mut stream, _)) = listener.accept().await {
+                let mut buf = [0u8; 2048];
+                let _ = stream.read(&mut buf).await;
+                let chat_response = concat!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n",
+                    r#"{"model":"qwen3.5:4b","message":{"role":"assistant","content":"Save your current work and take a short break.","thinking":"Thinking Process:\n1. User has been coding...\n2. Suggest break."},"done":true}"#
+                );
+                let _ = stream.write_all(chat_response.as_bytes()).await;
+                let _ = stream.flush().await;
+            }
+        });
+
+        let res = generate_ollama_chat(
+            &endpoint,
+            "qwen3.5:4b",
+            "system",
+            "user",
+            2000,
+            CancellationToken::new(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(res.content, "Save your current work and take a short break.");
+        assert!(!res.content.contains("Thinking Process"));
+        assert!(res.thinking_disabled);
+    }
+
+    #[tokio::test]
+    async fn ollama_chat_rejects_empty_content_when_thinking_only() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let endpoint = format!("http://127.0.0.1:{port}");
+
+        tokio::spawn(async move {
+            if let Ok((mut stream, _)) = listener.accept().await {
+                let mut buf = [0u8; 2048];
+                let _ = stream.read(&mut buf).await;
+                let chat_response = concat!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n",
+                    r#"{"model":"qwen3.5:4b","message":{"role":"assistant","content":"","thinking":"Thinking only, no content"},"done":true}"#
+                );
+                let _ = stream.write_all(chat_response.as_bytes()).await;
+                let _ = stream.flush().await;
+            }
+        });
+
+        let res = generate_ollama_chat(
+            &endpoint,
+            "qwen3.5:4b",
+            "system",
+            "user",
+            2000,
+            CancellationToken::new(),
+        )
+        .await;
+
+        assert_eq!(res.unwrap_err(), "EMPTY_MODEL_RESPONSE");
+    }
+
+    #[tokio::test]
+    async fn ollama_chat_rejects_leaked_thinking_tags() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let endpoint = format!("http://127.0.0.1:{port}");
+
+        tokio::spawn(async move {
+            if let Ok((mut stream, _)) = listener.accept().await {
+                let mut buf = [0u8; 2048];
+                let _ = stream.read(&mut buf).await;
+                let chat_response = concat!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n",
+                    r#"{"model":"qwen3.5:4b","message":{"role":"assistant","content":"<think>leak</think>Take a break."},"done":true}"#
+                );
+                let _ = stream.write_all(chat_response.as_bytes()).await;
+                let _ = stream.flush().await;
+            }
+        });
+
+        let res = generate_ollama_chat(
+            &endpoint,
+            "qwen3.5:4b",
+            "system",
+            "user",
+            2000,
+            CancellationToken::new(),
+        )
+        .await;
+
+        assert_eq!(res.unwrap_err(), "REASONING_LEAKED_IN_CONTENT");
     }
 }

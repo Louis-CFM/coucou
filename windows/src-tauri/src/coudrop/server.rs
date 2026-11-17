@@ -27,6 +27,14 @@ pub struct TransferProgress {
     pub bytes_read: u64,
     pub total_bytes: u64,
     pub progress: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub speed_bytes_per_sec: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_remaining_seconds: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_paused: Option<bool>,
 }
 
 // ── Destination directory ─────────────────────────────────────────────────────

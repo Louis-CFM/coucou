@@ -42,10 +42,12 @@ import { CoucoudoroController } from "../core/coucoudoro";
 import { COUCOUDORO_BLUE, COUCOUDORO_MINT, COUCOUDORO_AMBER } from "../views/coucoudoro";
 import { GlobalNotifications } from "../core/notifications";
 import { GlobalWelcomeMessages } from "../core/welcome";
+import { ContextIntelligence } from "../companion/context";
 import { createRoot, type Root } from "react-dom/client";
 import { createElement } from "react";
 import { NearbyTransferHost } from "../components/islandcn/nearby-transfer-host";
 import { subscribeActiveTransfer } from "../components/islandcn/transfer-adapter";
+import { AvatarLifecycleManager } from "../mochi/avatar-lifecycle";
 
 const BOT_OVERHANG = 40;
 const UPDATE_BLUE_RGB = hexToRGB(UPDATE_BLUE);
@@ -70,6 +72,8 @@ export class Island {
   readonly fsm = new IslandStateMachine();
   /** Mochi on the desktop: his life cycle and the drag out of the island. */
   readonly desktop: DesktopLink;
+  /** Resilient lifecycle manager and health monitor for interactive avatar. */
+  readonly avatarLifecycle = new AvatarLifecycleManager();
 
   private root: HTMLElement;
   private islandEl!: HTMLElement;
@@ -192,6 +196,7 @@ export class Island {
       dizzyFromDesktop: () => this.handleDizzy(),
     });
     this.build();
+    this.updateClosed();
     this.wireFsm();
     this.wireInput();
     this.engine.onDizzy = () => this.handleDizzy();
@@ -479,6 +484,7 @@ export class Island {
 
     this.root.append(this.wakeStrip, this.islandEl);
     this.applyGeometry();
+    this.syncBatteryVisibility();
 
     // Mount single IslandCN activity host inside Coucou Dynamic Island
     this.reactRoot = createRoot(this.activityHostEl);
@@ -495,6 +501,41 @@ export class Island {
           void Bridge.setCollapsed(false);
         }
         this.activityHostEl.classList.toggle("active", isNowActive);
+        this.islandEl.classList.toggle("transfer-active", isNowActive);
+        if (isNowActive) {
+          this.syncBatteryVisibility();
+        } else {
+          // Transfer has completed, cancelled, or failed and been dismissed!
+          // Explicitly restore all Dynamic Island elements that were hidden during transfer!
+          this.botCanvas.style.display = "";
+          this.botGlow.style.display = "";
+          this.closedEl.style.display = "";
+          this.batteryEl.style.display = "";
+          this.clockEl.style.display = "";
+          this.miniGrid.style.display = "";
+          this.compactTimer.style.display = "";
+          this.compactPlan.style.display = "";
+          this.closedKey = ""; // force re-computation of closed island content
+
+          this.updateClosed();
+          this.syncBatteryVisibility();
+          this.updateBotTargets();
+          this.updateWindowCollapsed();
+          this.scheduleClosedLife();
+
+          if (State.mode === "expanded") {
+            const greetingActive = State.view === "greeting";
+            const live = !greetingActive;
+            this.contentEl.style.display = live ? "flex" : "none";
+            this.contentEl.style.visibility = live ? "visible" : "hidden";
+            this.contentEl.style.opacity = live ? "1" : "0";
+            this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";
+            this.header.el.style.display = live ? "flex" : "none";
+            this.header.el.style.visibility = live ? "visible" : "hidden";
+            this.header.el.style.opacity = live ? "1" : "0";
+            this.header.el.style.pointerEvents = live ? "auto" : "none";
+          }
+        }
         this.animateGeometry();
         this.ensureRunning();
         this.syncDom();
@@ -542,6 +583,36 @@ export class Island {
         this.onForegroundStateChange(!State.foregroundMaximized, State.foregroundMaximized, State.foregroundMaximized ? "desktop" : "chrome");
       }
     });
+
+    // Avatar lifecycle & GPU context restoration
+    this.avatarLifecycle.initialize();
+    this.botCanvas.addEventListener("contextlost", (e) => {
+      e.preventDefault();
+      this.avatarLifecycle.onContextLost();
+    });
+    this.botCanvas.addEventListener("contextrestored", () => {
+      this.avatarLifecycle.onContextRestored();
+      this.recoverAvatar("contextrestored");
+    });
+    document.addEventListener("visibilitychange", () => {
+      const visible = document.visibilityState === "visible";
+      this.avatarLifecycle.onVisibilityChange(visible);
+      if (visible) {
+        this.canvasPx = 0;
+        this.dirty = true;
+        this.updateBotTargets();
+        this.ensureRunning();
+      }
+    });
+    window.addEventListener("focus", () => {
+      this.avatarLifecycle.onVisibilityChange(true);
+      this.ensureRunning();
+    });
+    window.addEventListener("pageshow", () => {
+      this.avatarLifecycle.onVisibilityChange(true);
+      this.ensureRunning();
+    });
+
     this.updateClosed();
     this.clockTimer ??= window.setInterval(() => this.updateClock(), 1000);
   }
@@ -1081,7 +1152,7 @@ export class Island {
       return { w: 44, h: 14, r: 8 };
     }
     if (this.transferActive) {
-      return { w: 390, h: 68, r: 34 };
+      return { w: Math.round(448 * scale), h: Math.round(68 * scale), r: Math.round(34 * scale) };
     }
     const baseH = isIsland ? CLOSED_ISLAND_H : CLOSED_NOTCH_H;
     if (State.mode === "hidden" && this.closedShows) {
@@ -1105,12 +1176,13 @@ export class Island {
   }
 
   private animateGeometry(shrinking?: boolean) {
+    const scale = resolveNotchScale(State.settings);
     const { w, h, r } = this.targetSize();
     const isShrinking = shrinking ?? (w < this.width.value || h < this.height.value);
     const isIsland = this.isIslandStyle;
     const isTucked = this.isSmartTucked;
     const targetTop = isTucked ? 0 : (isIsland ? 10 : 0);
-    const targetTopR = isTucked ? 0 : (isIsland ? (this.transferActive ? 34 : (State.mode === "expanded" ? 28 : 999)) : 0);
+    const targetTopR = isTucked ? 0 : (isIsland ? (this.transferActive ? Math.round(34 * scale) : (State.mode === "expanded" ? 28 : 999)) : 0);
 
     if (isShrinking) {
       this.width.curveTowards(w);
@@ -1129,6 +1201,7 @@ export class Island {
   }
 
   private applyGeometry() {
+    const scale = resolveNotchScale(State.settings);
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
@@ -1139,11 +1212,12 @@ export class Island {
     this.islandEl.classList.toggle("tucked", this.isSmartTucked);
     this.islandEl.classList.toggle("style-island", isIsland);
     this.islandEl.classList.toggle("style-notch", !isIsland);
+    this.islandEl.classList.toggle("transfer-active", this.transferActive);
     this.islandEl.style.top = `${topOffset}px`;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
 
-    const maxR = this.transferActive ? 34 : (State.mode === "expanded" ? 28 : Math.round(hh / 2));
+    const maxR = this.transferActive ? Math.round(34 * scale) : (State.mode === "expanded" ? 28 : Math.round(hh / 2));
     const topR = Math.max(0, Math.min(maxR, this.topRadius.value));
     const botR = isIsland ? Math.max(0, Math.min(maxR, r)) : Math.max(0, r);
     this.islandEl.style.borderRadius = `${topR}px ${topR}px ${botR}px ${botR}px`;
@@ -1342,19 +1416,20 @@ export class Island {
         welcome: activeWelcome ? { text: activeWelcome.text, bot: activeWelcome.bot } : null,
       })
       : null;
+    const textToShow = content?.text ?? "";
+    const hasVisibleClosedText = textToShow.trim().length > 0;
     const showBattery = resolveShowBattery(State.settings);
     const showPct = resolveShowBatteryPercentage(State.settings);
     const hasBattery = BatteryMonitor.getState().hasBattery;
 
-    // In resting hidden mode: battery is only present in mochi style (never in closed text pill like 01:09 AM)
-    const batteryVisibleInClosed = showBattery && hasBattery && style === "mochi" && !activeWelcome && !activeNotif && !this.isSmartTucked;
+    // In resting hidden mode: battery is only present in mochi style when text is not occupying the pill
+    const batteryVisibleInClosed = showBattery && hasBattery && style === "mochi" && !hasVisibleClosedText && !this.isSmartTucked;
 
     const isIsland = this.isIslandStyle;
     const scale = resolveNotchScale(State.settings);
 
     // closedText faithfully displays what closedContent provides for the selected condition
     // (e.g. "Sat, Nov 14  07:59 PM" for datetime, "07:59 PM" for time, Claude %, music, or welcome/notif).
-    const textToShow = content?.text ?? "";
     this.closedText.textContent = textToShow;
     this.closedEl.classList.toggle("note", content?.note === true);
     this.closedDot.style.display = content?.dot ? "" : "none";
@@ -1428,30 +1503,42 @@ export class Island {
   }
 
   private syncBatteryVisibility() {
+    if (this.transferActive) {
+      this.batteryEl.style.opacity = "0";
+      this.batteryEl.style.display = "none";
+      this.batteryEl.classList.add("hidden");
+      this.islandEl.classList.remove("has-battery");
+      return;
+    }
+
     const showBattery = resolveShowBattery(State.settings);
     const showPct = resolveShowBatteryPercentage(State.settings);
     const style = closedIsland(State.settings.closedIsland);
-    const activeWelcome = GlobalWelcomeMessages.active() != null;
-    const activeNotif = GlobalNotifications.active() != null;
     const hasBattery = BatteryMonitor.getState().hasBattery;
 
     // 1. Closed notch (e.g. 01:09 AM): ZERO battery, perfectly clean time pill.
     const isClosedNotchActive = State.mode === "hidden" && style !== "mochi";
+
+    // Text in closed notch only suppresses the battery if text is ACTUALLY being displayed in the closed pill
+    const hasVisibleClosedText =
+      (State.mode === "hidden" || this.collapsed) &&
+      (this.closedText.textContent?.trim().length ?? 0) > 0 &&
+      this.closedEl.classList.contains("on");
 
     // 2. The notch where Mochi is:
     //    - In compact mode (State.mode === "compact"): Mochi is ALWAYS in the notch on the left.
     //    - In resting mode when style === "mochi": Mochi is in the notch on the left.
     //    In this notch, dynamic battery level and charging status appear on the right when hardware battery exists.
     const isMochiInNotch =
-      (State.mode === "compact" || (State.mode === "hidden" && style === "mochi")) &&
-      !activeWelcome &&
-      !activeNotif;
+      State.mode === "compact" || (State.mode === "hidden" && style === "mochi");
 
     const batteryVisible =
+      !this.transferActive &&
       showBattery &&
       hasBattery &&
       isMochiInNotch &&
       !isClosedNotchActive &&
+      !hasVisibleClosedText &&
       State.mode !== "expanded" &&
       !this.isSmartTucked;
 
@@ -1758,92 +1845,176 @@ export class Island {
 
   ensureRunning() {
     if (this.running) return;
+    if (!this.avatarLifecycle.canRender()) return;
     this.running = true;
     this.lastFrame = performance.now();
     requestAnimationFrame(this.frame);
   }
 
-  private frame = (nowMs: number) => {
-    const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
-    this.lastFrame = nowMs;
+  /**
+   * Resets avatar geometry, clears cached metrics, resets stuck inline styles,
+   * and triggers an authoritative rendering restart.
+   */
+  recoverAvatar(reason: string) {
+    console.warn(`[Island] Recovering avatar: ${reason}`);
+    this.avatarLifecycle.recover(() => {
+      // 1. Sanitize spring coordinates to valid targets if poisoned
+      const defaultCx = State.mode === "hidden" ? 28 : 40;
+      const defaultCy = 16;
+      const defaultSize = State.mode === "hidden" ? 30 : 33.3;
 
-    this.width.step(dt, nowMs);
-    this.height.step(dt, nowMs);
-    this.radius.step(dt, nowMs);
-    this.topOffset.step(dt, nowMs);
-    this.topRadius.step(dt, nowMs);
-    this.applyGeometry();
-
-    if (this.dirty) {
-      this.dirty = false;
-      this.syncDom();
-    }
-
-    this.updateBotTargets();
-    this.botCx.step(dt);
-    this.botCy.step(dt);
-    this.botSize.step(dt);
-
-    const greetingActive = State.mode === "expanded" && State.view === "greeting";
-    if (greetingActive) {
-      const gctx = this.greetingCanvas.getContext("2d");
-      if (gctx) {
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
-        if (this.greetingCanvas.width !== Math.round(EXPANDED_W * dpr)) {
-          this.greetingCanvas.width = Math.round(EXPANDED_W * dpr);
-          this.greetingCanvas.height = Math.round(150 * dpr);
-        }
-        gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        this.greeting.draw(gctx);
+      if (!Number.isFinite(this.botCx.value) || !Number.isFinite(this.botCx.target)) {
+        this.botCx.set(defaultCx);
       }
-    } else {
-      // Kept running even while the drop canvas is up, so the island's own Mochi
-      // is already in the right place the moment the canvas fades out.
-      this.drawBot(dt);
+      if (!Number.isFinite(this.botCy.value) || !Number.isFinite(this.botCy.target)) {
+        this.botCy.set(defaultCy);
+      }
+      if (!Number.isFinite(this.botSize.value) || !Number.isFinite(this.botSize.target) || this.botSize.value <= 0) {
+        this.botSize.set(defaultSize);
+      }
+
+      // 2. Clear canvas metrics cache to force re-dimensioning and context reset
+      this.canvasPx = 0;
+      this.canvasDpr = 0;
+
+      // 3. Reset any stuck inline styles
+      if (!this.transferActive) {
+        this.botCanvas.style.display = "";
+        this.botGlow.style.display = "";
+      }
+
+      // 4. Force state machine targets and resume loop
+      this.running = false;
+      this.updateBotTargets();
+      this.ensureRunning();
+    });
+  }
+
+  /**
+   * Watchdog check executed periodically to detect and auto-heal stuck states.
+   */
+  checkAvatarHealth() {
+    if (this.transferActive || State.mochiOnDesktop) return;
+
+    const corruptMath =
+      !Number.isFinite(this.botCx.value) ||
+      !Number.isFinite(this.botCy.value) ||
+      !Number.isFinite(this.botSize.value);
+
+    if (corruptMath) {
+      this.recoverAvatar("corrupt-math");
+      return;
     }
 
-    const uploadActive = this.uploadActive;
-    // A file over the drop card: the sessions it could go to, on the right.
-    const listing = uploadActive && State.view === "upload" && State.fileDragOver && !UploadSeq.dropped;
-    this.sessionDrop.sync(listing);
-    this.uploadCanvas.textRight = listing && dropTargets(State.tasks).length > 0 ? DROP_TEXT_RIGHT_WITH_LIST : this.uploadCanvas.defaultTextRight;
-    if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
-    this.uploadCanvas.el.classList.toggle("on", uploadActive);
-    this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
-
-    tickMiniBots(dt);
-    // A ticker scroll that loses its frames freezes mid-way, rows overlapping.
-    const viewAnimating = this.views.get(State.view)?.tick?.(nowMs) === true;
-    if (UploadSeq.isActive) this.stepSequence();
-    this.updateCountdown(nowMs);
-
-    // Nothing is drawn while the island is hidden, so nothing may keep the loop
-    // alive either. This used to read `... || this.engine.busy || State.mode !==
-    // "hidden"`, and engine.busy is permanently true for any state with a
-    // looping animation — breathing, ratelimit sweat, sleeping z's, the search
-    // sweep — so a hidden island went on burning frames in exactly the states it
-    // spends most of its life in. Geometry still has to finish retracting.
-    const settling =
-      this.width.animating ||
-      this.height.animating ||
-      this.radius.animating ||
-      this.topOffset.animating ||
-      this.topRadius.animating;
-    const botMoving = !this.botCx.settled || !this.botCy.settled || !this.botSize.settled;
-    // Closed, only the folding — and Mochi reaching his place in the closed island.
     const welcome = GlobalWelcomeMessages.active();
-    const busy = State.mode === "hidden"
-      ? settling || welcome != null || (closedIsland(State.settings.closedIsland) === "mochi" &&
-        (botMoving || nowMs < this.closedAwakeUntil))
-      : settling ||
-        !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
+    const style = closedIsland(State.settings.closedIsland);
+    const shouldBeVisible =
+      !this.isSmartTucked &&
+      (State.mode !== "hidden" || welcome != null || style === "mochi");
 
-    if (busy) {
-      requestAnimationFrame(this.frame);
-    } else {
-      this.running = false;
-      Sound.idle();
+    if (shouldBeVisible && (this.botCanvas.style.opacity === "0" || this.botCanvas.width === 0)) {
+      this.updateBotTargets();
+      this.ensureRunning();
+    }
+
+    if (!this.running && this.engine.busy && this.avatarLifecycle.canRender()) {
+      this.ensureRunning();
+    }
+  }
+
+  private frame = (nowMs: number) => {
+    try {
+      this.avatarLifecycle.onFrameStart();
+      const dt = Math.min(0.05, Math.max(0.001, (nowMs - this.lastFrame) / 1000));
+      this.lastFrame = nowMs;
+
+      this.width.step(dt, nowMs);
+      this.height.step(dt, nowMs);
+      this.radius.step(dt, nowMs);
+      this.topOffset.step(dt, nowMs);
+      this.topRadius.step(dt, nowMs);
+      this.applyGeometry();
+
+      if (this.dirty) {
+        this.dirty = false;
+        this.syncDom();
+      }
+
+      this.updateBotTargets();
+      this.botCx.step(dt);
+      this.botCy.step(dt);
+      this.botSize.step(dt);
+
+      const greetingActive = State.mode === "expanded" && State.view === "greeting";
+      if (greetingActive) {
+        const gctx = this.greetingCanvas.getContext("2d");
+        if (gctx) {
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          if (this.greetingCanvas.width !== Math.round(EXPANDED_W * dpr)) {
+            this.greetingCanvas.width = Math.round(EXPANDED_W * dpr);
+            this.greetingCanvas.height = Math.round(150 * dpr);
+          }
+          gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          this.greeting.draw(gctx);
+        }
+      } else {
+        // Kept running even while the drop canvas is up, so the island's own Mochi
+        // is already in the right place the moment the canvas fades out.
+        this.drawBot(dt);
+      }
+
+      const uploadActive = this.uploadActive;
+      // A file over the drop card: the sessions it could go to, on the right.
+      const listing = uploadActive && State.view === "upload" && State.fileDragOver && !UploadSeq.dropped;
+      this.sessionDrop.sync(listing);
+      this.uploadCanvas.textRight = listing && dropTargets(State.tasks).length > 0 ? DROP_TEXT_RIGHT_WITH_LIST : this.uploadCanvas.defaultTextRight;
+      if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+      this.uploadCanvas.el.classList.toggle("on", uploadActive);
+      this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
+
+      tickMiniBots(dt);
+      // A ticker scroll that loses its frames freezes mid-way, rows overlapping.
+      const viewAnimating = this.views.get(State.view)?.tick?.(nowMs) === true;
+      if (UploadSeq.isActive) this.stepSequence();
+      this.updateCountdown(nowMs);
+
+      // Nothing is drawn while the island is hidden, so nothing may keep the loop
+      // alive either. This used to read `... || this.engine.busy || State.mode !==
+      // "hidden"`, and engine.busy is permanently true for any state with a
+      // looping animation — breathing, ratelimit sweat, sleeping z's, the search
+      // sweep — so a hidden island went on burning frames in exactly the states it
+      // spends most of its life in. Geometry still has to finish retracting.
+      const settling =
+        this.width.animating ||
+        this.height.animating ||
+        this.radius.animating ||
+        this.topOffset.animating ||
+        this.topRadius.animating;
+      const botMoving = !this.botCx.settled || !this.botCy.settled || !this.botSize.settled;
+      // Closed, only the folding — and Mochi reaching his place in the closed island.
+      const welcome = GlobalWelcomeMessages.active();
+      const busy = State.mode === "hidden"
+        ? settling || welcome != null || (closedIsland(State.settings.closedIsland) === "mochi" &&
+          (botMoving || nowMs < this.closedAwakeUntil))
+        : settling ||
+          !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
+          greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
+
+      this.avatarLifecycle.onFrameSuccess();
+
+      if (busy && this.avatarLifecycle.canRender()) {
+        requestAnimationFrame(this.frame);
+      } else {
+        this.running = false;
+        Sound.idle();
+      }
+    } catch (err) {
+      console.error("[Island] Unhandled animation frame error:", err);
+      this.running = false; // CRITICAL: NEVER LEAVE this.running STUCK AT TRUE!
+      const shouldRecover = this.avatarLifecycle.onFrameError(err);
+      if (shouldRecover) {
+        this.recoverAvatar("frame-error");
+      }
     }
   };
 
@@ -1857,7 +2028,8 @@ export class Island {
       const isIsland = this.isIslandStyle;
       const showBattery = resolveShowBattery(State.settings);
       const hasBattery = BatteryMonitor.getState().hasBattery;
-      const batteryVisibleInClosed = showBattery && hasBattery && style === "mochi" && !welcome && !notif && !this.isSmartTucked;
+      const hasVisibleClosedText = (this.closedText.textContent ?? "").trim().length > 0 && this.closedEl.classList.contains("on");
+      const batteryVisibleInClosed = showBattery && hasBattery && style === "mochi" && !hasVisibleClosedText && !this.isSmartTucked;
       const botD = isIsland ? 20 : 18;
       const botCy = Math.round(this.height.value / 2);
       let botCx: number;
@@ -1889,9 +2061,9 @@ export class Island {
     if (this.isSmartTucked) {
       p = { ...p, opacity: 0 };
     }
-    this.botCx.target = p.cx;
-    this.botCy.target = p.cy;
-    this.botSize.target = p.diameter / 0.6;
+    if (Number.isFinite(p.cx)) this.botCx.target = p.cx;
+    if (Number.isFinite(p.cy)) this.botCy.target = p.cy;
+    if (Number.isFinite(p.diameter) && p.diameter > 0) this.botSize.target = p.diameter / 0.6;
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
     // The drop canvas draws its own Mochi; two of them would overlap. Out on the
@@ -1916,7 +2088,8 @@ export class Island {
   }
 
   private drawBot(dt: number) {
-    const size = this.botSize.value;
+    const rawSize = this.botSize.value;
+    const size = Number.isFinite(rawSize) && rawSize > 0 ? rawSize : 30;
     const w = Math.max(1, Math.round(size));
     const isClosed = State.mode === "hidden";
     const hCss = isClosed ? Math.round(w * 0.88) : w + BOT_OVERHANG;
@@ -1932,10 +2105,16 @@ export class Island {
       this.botCanvas.style.width = `${wCss}px`;
       this.botCanvas.style.height = `${hCss}px`;
     }
-    this.botCanvas.style.left = `${this.botCx.value - wCss / 2}px`;
+
+    const rawCx = this.botCx.value;
+    const rawCy = this.botCy.value;
+    const cx = Number.isFinite(rawCx) ? rawCx : 24;
+    const cy = Number.isFinite(rawCy) ? rawCy : 16;
+
+    this.botCanvas.style.left = `${cx - wCss / 2}px`;
     this.botCanvas.style.top = isClosed
-      ? `${Math.max(0, Math.round(this.botCy.value - hCss / 2))}px`
-      : `${this.botCy.value - BOT_OVERHANG / 2 - hCss / 2}px`;
+      ? `${Math.max(0, Math.round(cy - hCss / 2))}px`
+      : `${cy - BOT_OVERHANG / 2 - hCss / 2}px`;
 
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
@@ -1994,9 +2173,12 @@ export class Island {
     ctx.clearRect(0, 0, this.botCanvas.width, this.botCanvas.height);
     ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
     ctx.save();
-    this.engine.applyDance(ctx, w, hCss);
-    this.engine.draw(ctx, w, hCss);
-    ctx.restore();
+    try {
+      this.engine.applyDance(ctx, w, hCss);
+      this.engine.draw(ctx, w, hCss);
+    } finally {
+      ctx.restore();
+    }
   }
 
   /** BotCanvasView.lookX / lookY — tanh of the distance to the bot. */
@@ -2058,6 +2240,15 @@ export class Island {
       this.countdown.style.width = "0px";
       return;
     }
+
+    // Clear any inline display: none overrides from previous transfer
+    this.botCanvas.style.display = "";
+    this.botGlow.style.display = "";
+    this.closedEl.style.display = "";
+    this.clockEl.style.display = "";
+    this.miniGrid.style.display = "";
+    this.compactTimer.style.display = "";
+    this.compactPlan.style.display = "";
 
     const expanded = State.mode === "expanded";
     const greetingActive = expanded && State.view === "greeting";
@@ -2138,6 +2329,7 @@ export class Island {
   /** Medium notch and closed notch time updates: updates the clean clock on the right. */
   private updateClock() {
     this.updateClosed();
+    this.checkAvatarHealth();
     this.clockEl.style.opacity = "0";
     this.clockEl.style.display = "none";
   }
@@ -2211,6 +2403,7 @@ export class Island {
     const changed = State.foregroundMaximized !== isMaximized || State.foregroundApp !== app;
     State.foregroundMaximized = isMaximized;
     State.foregroundApp = app;
+    ContextIntelligence.recordForegroundApp(app);
     if (changed && State.settings.smartNotch && State.mode !== "expanded") {
       this.dirty = true;
       this.ensureRunning();

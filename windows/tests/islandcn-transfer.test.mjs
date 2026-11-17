@@ -6,6 +6,8 @@ import {
   getActiveTransfer,
   subscribeActiveTransfer,
   cancelTransfer,
+  pauseTransfer,
+  resumeTransfer,
   simulateTransfer,
 } from "../src/components/islandcn/transfer-adapter";
 import { emit, sent } from "./tauri.mjs";
@@ -309,4 +311,110 @@ test("Anti-flickering guarantee: progress is strictly monotonic and never flashe
   assert.equal(latest.status, "completed");
 
   unsubscribe();
+});
+
+test("Pause and resume transfer controls and event synchronization", async () => {
+  nearbyTransferManager.clear();
+  assert.equal(getActiveTransfer(), null);
+
+  let currentTransfer = null;
+  const unsubscribe = subscribeActiveTransfer((transfer) => {
+    currentTransfer = transfer;
+  });
+
+  // 1. Start transfer
+  simulateTransfer({
+    id: "tx-pause-test",
+    direction: "send",
+    deviceName: "Pixel 9 Pro",
+    itemName: "archive.tar",
+    totalBytes: 20000000,
+    bytesTransferred: 5000000,
+    progress: 0.25,
+    status: "in_progress",
+    speedBytesPerSec: 1500000,
+    timeRemainingSeconds: 10,
+  });
+
+  assert.ok(currentTransfer);
+  assert.equal(currentTransfer.status, "in_progress");
+  assert.equal(currentTransfer.isPaused, undefined);
+
+  // 2. Pause transfer via action
+  await pauseTransfer("tx-pause-test");
+  assert.equal(currentTransfer.status, "paused");
+  assert.equal(currentTransfer.isPaused, true);
+  assert.equal(currentTransfer.speedBytesPerSec, 0);
+  assert.ok(sent("coudrop_pause_transfer").length > 0);
+
+  // 3. Verify copy when paused
+  const pausedWords = nearbyTransferWords({
+    direction: "send",
+    deviceName: "Pixel 9 Pro",
+    itemName: "archive.tar",
+    progress: 0.25,
+    status: "paused",
+  });
+  assert.equal(pausedWords.action, "Paused archive.tar");
+  assert.equal(pausedWords.party, "To Pixel 9 Pro");
+
+  // 4. Resume transfer via action
+  await resumeTransfer("tx-pause-test");
+  assert.equal(currentTransfer.status, "in_progress");
+  assert.equal(currentTransfer.isPaused, false);
+  assert.ok(sent("coudrop_resume_transfer").length > 0);
+
+  // 5. Test incoming pause and resume events from peer phone
+  emit("coudrop-transfer-paused", { transferId: "tx-pause-test" });
+  assert.equal(currentTransfer.status, "paused");
+  assert.equal(currentTransfer.isPaused, true);
+
+  emit("coudrop-transfer-resumed", { transferId: "tx-pause-test" });
+  assert.equal(currentTransfer.status, "in_progress");
+  assert.equal(currentTransfer.isPaused, false);
+
+  // 6. Complete transfer
+  emit("coudrop-file-sent", {
+    name: "archive.tar",
+    size: 20000000,
+  });
+  assert.equal(currentTransfer.status, "completed");
+  assert.equal(currentTransfer.progress, 1.0);
+
+  unsubscribe();
+});
+
+test("Apple Dynamic Island UI refinement: completed and active transfer state contracts", () => {
+  // 1. Completed receive transfer
+  const completedRecvWords = nearbyTransferWords({
+    direction: "receive",
+    deviceName: "Pixel 9",
+    itemName: "wallpaper.png",
+    progress: 1.0,
+    status: "completed",
+  });
+  assert.equal(completedRecvWords.action, "Received wallpaper.png");
+  assert.equal(completedRecvWords.party, "From Pixel 9");
+
+  // 2. Active receiving transfer
+  const activeRecvWords = nearbyTransferWords({
+    direction: "receive",
+    deviceName: "Pixel 9",
+    itemName: "biscuit-in-the-sun.jpg",
+    progress: 0.34,
+    status: "in_progress",
+  });
+  assert.equal(activeRecvWords.action, "Receiving biscuit-in-the-sun.jpg");
+  assert.equal(activeRecvWords.party, "From Pixel 9");
+
+  // 3. Active sending transfer
+  const activeSendWords = nearbyTransferWords({
+    direction: "send",
+    deviceName: "Maya's MacBook",
+    itemName: "project_specs.pdf",
+    progress: 0.72,
+    status: "in_progress",
+  });
+  assert.equal(activeSendWords.action, "Sending project_specs.pdf");
+  assert.equal(activeSendWords.party, "To Maya's MacBook");
 });

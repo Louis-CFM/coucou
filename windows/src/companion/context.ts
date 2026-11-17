@@ -11,6 +11,19 @@ export class ContextIntelligence {
   private static sessionStartTime = Date.now();
   private static lastHydrationTime = Date.now();
 
+  // Activity tracking state
+  private static currentForegroundApp: string | null = null;
+  private static currentAppStartTime = Date.now();
+  private static appSwitchCount = 0;
+  private static recentApps: string[] = [];
+  private static activityOverride: Partial<{
+    currentApp: string;
+    appSwitchCount: number;
+    continuousAppMinutes: number;
+    recentApps: string[];
+    activitySummary: string;
+  }> | null = null;
+
   /** Current monotonic context version counter. */
   public static get currentVersion(): number {
     return this.sequenceVersion;
@@ -30,6 +43,73 @@ export class ContextIntelligence {
   /** Records that the user has hydrated. */
   public static recordHydration(timeMs: number = Date.now()): void {
     this.lastHydrationTime = timeMs;
+  }
+
+  /**
+   * Normalizes raw process names to user-friendly application labels.
+   */
+  public static normalizeAppName(raw: string | null): string | null {
+    if (!raw) return null;
+    const lower = raw.trim().toLowerCase();
+    if (lower === "code" || lower.includes("vscode") || lower.includes("visual studio code")) return "VS Code";
+    if (lower === "chrome" || lower.includes("google chrome")) return "Chrome";
+    if (lower === "firefox") return "Firefox";
+    if (lower === "msedge" || lower.includes("edge")) return "Edge";
+    if (lower === "windowsterminal" || lower === "cmd" || lower === "powershell" || lower === "pwsh") return "Terminal";
+    if (lower === "spotify") return "Spotify";
+    if (lower === "slack") return "Slack";
+    if (lower === "discord") return "Discord";
+    if (lower === "notion") return "Notion";
+    if (lower === "explorer") return "File Explorer";
+    return raw.trim();
+  }
+
+  /**
+   * Tracks foreground application switches and duration in real time.
+   */
+  public static recordForegroundApp(rawApp: string | null, nowMs: number = Date.now()): void {
+    const normalized = this.normalizeAppName(rawApp);
+    if (normalized === "Coucou" || normalized === "coucou") return; // Ignore Coucou itself
+
+    if (normalized !== this.currentForegroundApp) {
+      if (this.currentForegroundApp !== null) {
+        this.appSwitchCount++;
+        if (!this.recentApps.includes(this.currentForegroundApp)) {
+          this.recentApps.unshift(this.currentForegroundApp);
+          if (this.recentApps.length > 5) this.recentApps.pop();
+        }
+      }
+      this.currentForegroundApp = normalized;
+      this.currentAppStartTime = nowMs;
+    }
+  }
+
+  /** Allows test suites to inject simulated activity context. */
+  public static setActivityContextOverride(override: typeof ContextIntelligence.activityOverride): void {
+    this.activityOverride = override;
+  }
+
+  /**
+   * Formats a concise, factual summary of actual computer activity.
+   */
+  public static computeActivitySummary(
+    app: string | null,
+    continuousMins: number,
+    switchCount: number,
+    recentApps: string[],
+    sessionMins: number,
+  ): string {
+    if (switchCount >= 5 && recentApps.length >= 2) {
+      const topApps = recentApps.slice(0, 3).join(" and ");
+      return `Frequent switching between ${topApps} with ${switchCount} window transitions in the session`;
+    }
+    if (continuousMins >= 45 && app) {
+      return `Long continuous session in ${app} for ${continuousMins} minutes with no application switching`;
+    }
+    if (app) {
+      return `${continuousMins} minutes focused on ${app} (${sessionMins} minutes overall session)`;
+    }
+    return `${sessionMins} minutes of active desktop session`;
   }
 
   /**
@@ -89,7 +169,7 @@ export class ContextIntelligence {
   }
 
   /**
-   * Captures an immutable 8-dimensional ContextSnapshot.
+   * Captures an immutable, activity-enriched ContextSnapshot.
    */
   public static capture(
     category: CompanionCategory = "greeting_return",
@@ -100,6 +180,16 @@ export class ContextIntelligence {
     const resolvedName = GlobalWelcomeMessages.resolvedGreetingName;
     const wardrobe = State.settings?.mochiOutfit || "classic";
 
+    const sessionDurationMinutes = this.getSessionDurationMinutes(nowMs);
+    const continuousAppMinutes = Math.max(0, Math.floor((nowMs - this.currentAppStartTime) / 60000));
+    const currentApp = this.activityOverride?.currentApp ?? (this.currentForegroundApp || State.foregroundApp || null);
+    const appSwitchCount = this.activityOverride?.appSwitchCount ?? this.appSwitchCount;
+    const continuousMins = this.activityOverride?.continuousAppMinutes ?? continuousAppMinutes;
+    const recentApps = this.activityOverride?.recentApps ?? [...this.recentApps];
+    const activitySummary =
+      this.activityOverride?.activitySummary ??
+      this.computeActivitySummary(currentApp, continuousMins, appSwitchCount, recentApps, sessionDurationMinutes);
+
     return {
       version: this.sequenceVersion,
       timestamp: nowMs,
@@ -107,12 +197,17 @@ export class ContextIntelligence {
       circadianPhase: this.evaluateCircadianPhase(now),
       localTimeStr: this.formatLocalTime(now),
       dayOfWeek: this.getDayOfWeek(now),
-      sessionDurationMinutes: this.getSessionDurationMinutes(nowMs),
+      sessionDurationMinutes,
       minutesSinceHydration: this.getMinutesSinceHydration(nowMs),
       resolvedName,
       identityVersion: this.hashIdentity(resolvedName),
       mochiWardrobe: wardrobe,
       category,
+      currentApp,
+      appSwitchCount,
+      continuousAppMinutes: continuousMins,
+      recentApps,
+      activitySummary,
     };
   }
 }

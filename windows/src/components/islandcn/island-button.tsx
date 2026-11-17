@@ -2,7 +2,7 @@
 
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
-import { useIslandReducedMotion } from "@/lib/island/index";
+import { useIslandReducedMotion } from "@/lib/island";
 
 import { IslandStyle } from "./island-style";
 import { islandFont, islandInk, islandSize, trackingFor } from "./theme";

@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 
-import { continuousRectPath, islandMetrics } from "@/lib/island/index";
+import { continuousRectPath, islandMetrics } from "@/lib/island";
 
 import { Avatar } from "./avatar";
 import { Glyph, type GlyphIcon } from "./glyph";

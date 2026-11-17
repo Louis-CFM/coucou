@@ -4781,6 +4781,18 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   100% { transform: scale(0.9); opacity: 0.85; }
 }
 
+/* Complete isolation: battery and other notch decorations are strictly forbidden during transfer */
+#island.transfer-active #island-battery,
+#island.transfer-active #bot-canvas,
+#island.transfer-active #island-closed,
+#island.transfer-active .island-compact-timer,
+#island.transfer-active .island-compact-plan {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
 /* IslandCN Nearby Transfer Activity in Coucou Dynamic Island */
 #island-activity-host {
   position: absolute;
@@ -4788,7 +4800,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 10;
+  z-index: 20;
   pointer-events: none;
   opacity: 0;
   background: transparent;
@@ -4817,9 +4829,64 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
+}
+
+.nearby-transfer-glyph-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nearby-transfer-badge {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8.5px;
+  font-weight: 700;
+  border: 1.5px solid #000;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.nearby-transfer-badge.badge-up {
+  background: #0a84ff;
+  color: #fff;
+}
+
+.nearby-transfer-badge.badge-down {
+  background: #30d158;
+  color: #fff;
+}
+
+.nearby-transfer-badge.badge-done {
+  background: #22c55e;
+  color: #fff;
+  font-size: 8.5px;
+}
+
+.nearby-transfer-badge.badge-paused {
+  background: #f59e0b;
+  color: #fff;
+  font-size: 7.5px;
+}
+
+.nearby-transfer-badge.badge-stopped {
+  background: #ef4444;
+  color: #fff;
+  font-size: 7.5px;
 }
 
 .nearby-transfer-body {
@@ -4828,39 +4895,232 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   display: flex;
   flex-direction: column;
   justify-content: center;
-  margin: 0 14px;
+  margin: 0 12px;
   text-align: left;
 }
 
-.nearby-transfer-action {
-  font-family: var(--font, -apple-system, BlinkMacSystemFont, "Inter", sans-serif);
-  font-size: 13px;
-  font-weight: 500;
-  color: #9299A5;
+.nearby-transfer-body.completed,
+.nearby-transfer-body.stopped {
+  gap: 3px;
+}
+
+.nearby-transfer-title {
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
-.nearby-transfer-party {
-  font-family: var(--font, -apple-system, BlinkMacSystemFont, "Inter", sans-serif);
-  font-size: 15px;
-  font-weight: 700;
-  color: #F5F7FA;
+.nearby-transfer-subtitle {
+  display: flex;
+  align-items: center;
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif);
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
-  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.nearby-transfer-filename-done {
+  color: #cbd5e1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.nearby-transfer-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  line-height: 1.25;
+}
+
+.nearby-transfer-filename {
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.nearby-transfer-status-tag {
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nearby-transfer-status-tag.paused {
+  color: #fb923c;
+  font-weight: 600;
+}
+
+.nearby-transfer-progress-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  margin: 5px 0 4px;
+}
+
+.nearby-transfer-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: #0a84ff;
+  transition: width 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nearby-transfer-progress-fill.paused {
+  background: #f59e0b;
+}
+
+.nearby-transfer-progress-fill.completed {
+  background: #22c55e;
+}
+
+.nearby-transfer-progress-fill.cancelled,
+.nearby-transfer-progress-fill.failed {
+  background: #ef4444;
+}
+
+.nearby-transfer-metrics-row {
+  display: flex;
+  align-items: center;
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif);
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.nearby-transfer-party-tag {
+  color: #cbd5e1;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.nearby-transfer-divider {
+  color: #475569;
+  margin: 0 4px;
+  font-weight: 600;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.nearby-transfer-bytes {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.nearby-transfer-speed {
+  color: #94a3b8;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.nearby-transfer-eta {
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nearby-transfer-trail {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
+  justify-content: flex-end;
+  width: 58px;
+  height: 38px;
   flex-shrink: 0;
+}
+
+.nearby-transfer-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nearby-ctrl-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.nearby-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: scale(1.05);
+}
+
+.nearby-ctrl-btn:active {
+  transform: scale(0.94);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.nearby-ctrl-btn.resume-btn {
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.3);
+  background: rgba(251, 146, 60, 0.12);
+}
+
+.nearby-ctrl-btn.resume-btn:hover {
+  background: rgba(251, 146, 60, 0.22);
+  border-color: rgba(251, 146, 60, 0.5);
+}
+
+.nearby-ctrl-btn.cancel-btn:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+}
+
+.nearby-transfer-done-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1.5px solid rgba(34, 197, 94, 0.45);
+}
+
+.nearby-transfer-stopped-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
 }
 

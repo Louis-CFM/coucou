@@ -64,7 +64,7 @@ export class CompanionOrchestrator {
     consent: PrivacyConsentRecord,
     recentExclusions: string[] = [],
     localEndpoint = "http://127.0.0.1:11434",
-    localModel = "llama3.2",
+    localModel = "qwen3.5:4b",
     cloudProvider: "anthropic" | "openai" = "anthropic",
     cloudModel = "claude-3-5-haiku-20241022",
   ): Promise<CompanionRawCandidate | null> {
@@ -73,6 +73,9 @@ export class CompanionOrchestrator {
       return null;
     }
 
+    // Migrate legacy default model if encountered
+    const effectiveLocalModel = localModel === "llama3.2" ? "qwen3.5:4b" : localModel;
+
     // Cancel any previous in-flight generation task before starting a new one
     await this.cancelActiveRequest();
 
@@ -80,12 +83,12 @@ export class CompanionOrchestrator {
     this.activeRequestId = requestId;
 
     let targetProvider: "ollama" | "anthropic" | "openai" = "ollama";
-    let targetModel = localModel;
+    let targetModel = effectiveLocalModel;
     let endpoint: string | undefined = localEndpoint;
 
     if (settings.routingMode === "local_only") {
       targetProvider = "ollama";
-      targetModel = localModel;
+      targetModel = effectiveLocalModel;
       endpoint = localEndpoint;
     } else if (settings.routingMode === "cloud_only") {
       if (!consent.consentedProviders[cloudProvider] || consent.consentRevoked) {
@@ -106,7 +109,7 @@ export class CompanionOrchestrator {
         endpoint = undefined;
       } else {
         targetProvider = "ollama";
-        targetModel = localModel;
+        targetModel = effectiveLocalModel;
         endpoint = localEndpoint;
       }
     }
@@ -118,7 +121,7 @@ export class CompanionOrchestrator {
       targetProvider,
       targetModel,
       endpoint,
-      2500, // 2500ms timeout
+      3500, // 3500ms timeout
     );
 
     try {

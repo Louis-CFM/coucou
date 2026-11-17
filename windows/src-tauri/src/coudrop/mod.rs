@@ -28,6 +28,21 @@ pub struct VayliDropDevice {
     pub can_drop: bool,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveTransferInfo {
+    pub id: String,
+    pub direction: String,
+    pub name: String,
+    pub total_bytes: u64,
+    pub bytes_transferred: u64,
+    pub progress: f64,
+    pub speed_bytes_per_sec: u64,
+    pub time_remaining_seconds: Option<u64>,
+    pub is_paused: bool,
+    pub status: String,
+}
+
 #[allow(dead_code)]
 pub struct IncomingTransfer {
     pub transfer_id: String,
@@ -38,23 +53,40 @@ pub struct IncomingTransfer {
     pub file: tokio::fs::File,
     pub digest_ctx: ring::digest::Context,
     pub bytes_received: u64,
+    pub is_paused: bool,
+    pub start_time: std::time::Instant,
+    pub window_start: std::time::Instant,
+    pub window_bytes: u64,
+    pub current_speed: u64,
 }
 
 pub struct CoudropManager {
-    is_sending: Arc<AtomicBool>,
-    current_transfer_id: Mutex<Option<String>>,
-    incoming: Mutex<HashMap<String, IncomingTransfer>>,
-    accept_notify: Arc<Notify>,
-    last_accept_status: Mutex<Option<(String, bool)>>,
-    done_notify: Arc<Notify>,
-    last_done_status: Mutex<Option<(String, String)>>,
+    pub is_sending: Arc<AtomicBool>,
+    pub is_paused: Arc<AtomicBool>,
+    pub is_cancelled: Arc<AtomicBool>,
+    pub pause_notify: Arc<Notify>,
+    pub current_transfer_id: Mutex<Option<String>>,
+    pub current_transfer_name: Mutex<Option<String>>,
+    pub current_transfer_size: Mutex<u64>,
+    pub current_transfer_direction: Mutex<Option<String>>,
+    pub incoming: Mutex<HashMap<String, IncomingTransfer>>,
+    pub accept_notify: Arc<Notify>,
+    pub last_accept_status: Mutex<Option<(String, bool)>>,
+    pub done_notify: Arc<Notify>,
+    pub last_done_status: Mutex<Option<(String, String)>>,
 }
 
 impl Default for CoudropManager {
     fn default() -> Self {
         Self {
             is_sending: Arc::new(AtomicBool::new(false)),
+            is_paused: Arc::new(AtomicBool::new(false)),
+            is_cancelled: Arc::new(AtomicBool::new(false)),
+            pause_notify: Arc::new(Notify::new()),
             current_transfer_id: Mutex::new(None),
+            current_transfer_name: Mutex::new(None),
+            current_transfer_size: Mutex::new(0),
+            current_transfer_direction: Mutex::new(None),
             incoming: Mutex::new(HashMap::new()),
             accept_notify: Arc::new(Notify::new()),
             last_accept_status: Mutex::new(None),
@@ -92,6 +124,7 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
 
             match tokio::fs::File::create(&temp_path).await {
                 Ok(file) => {
+                    let now = std::time::Instant::now();
                     let transfer = IncomingTransfer {
                         transfer_id: transfer_id.clone(),
                         name: sanitized_name.clone(),
@@ -101,8 +134,20 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
                         file,
                         digest_ctx: ring::digest::Context::new(&SHA256),
                         bytes_received: 0,
+                        is_paused: false,
+                        start_time: now,
+                        window_start: now,
+                        window_bytes: 0,
+                        current_speed: 0,
                     };
                     manager.incoming.lock().await.insert(transfer_id.clone(), transfer);
+
+                    *manager.current_transfer_id.lock().await = Some(transfer_id.clone());
+                    *manager.current_transfer_name.lock().await = Some(sanitized_name.clone());
+                    *manager.current_transfer_size.lock().await = size;
+                    *manager.current_transfer_direction.lock().await = Some("receive".to_string());
+                    manager.is_paused.store(false, Ordering::SeqCst);
+                    manager.is_cancelled.store(false, Ordering::SeqCst);
 
                     // Send dropAccept back to phone
                     let accept_msg = serde_json::json!({
@@ -126,6 +171,10 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
                         bytes_read: 0,
                         total_bytes: size,
                         progress: 0.0,
+                        speed_bytes_per_sec: Some(0),
+                        time_remaining_seconds: None,
+                        direction: Some("receive".to_string()),
+                        is_paused: Some(false),
                     });
                 }
                 Err(e) => {
@@ -139,6 +188,10 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
             }
         }
         "dropChunk" => {
+            if manager.is_cancelled.load(Ordering::SeqCst) {
+                return;
+            }
+
             let transfer_id = msg["transferId"].as_str().unwrap_or("");
             let data_b64 = msg["data"].as_str().unwrap_or("");
 
@@ -151,10 +204,27 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
                         transfer.bytes_received += bytes.len() as u64;
 
                         let progress = if transfer.size > 0 {
-                            (transfer.bytes_received as f64 / transfer.size as f64).min(1.0)
+                            (transfer.bytes_received as f64 / transfer.size as f64).min(0.99)
                         } else {
                             1.0
                         };
+
+                        let now = std::time::Instant::now();
+                        let elapsed = (now - transfer.window_start).as_secs_f64();
+                        if elapsed >= 0.4 {
+                            let diff = transfer.bytes_received.saturating_sub(transfer.window_bytes);
+                            transfer.current_speed = (diff as f64 / elapsed) as u64;
+                            transfer.window_start = now;
+                            transfer.window_bytes = transfer.bytes_received;
+                        }
+                        let remaining_bytes = transfer.size.saturating_sub(transfer.bytes_received);
+                        let eta = if transfer.current_speed > 0 && remaining_bytes > 0 {
+                            Some(remaining_bytes / transfer.current_speed)
+                        } else {
+                            None
+                        };
+
+                        let is_paused = manager.is_paused.load(Ordering::SeqCst);
 
                         let _ = app.emit("coudrop-progress", TransferProgress {
                             transfer_id: Some(transfer.transfer_id.clone()),
@@ -162,10 +232,29 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
                             bytes_read: transfer.bytes_received,
                             total_bytes: transfer.size,
                             progress,
+                            speed_bytes_per_sec: Some(transfer.current_speed),
+                            time_remaining_seconds: eta,
+                            direction: Some("receive".to_string()),
+                            is_paused: Some(is_paused),
                         });
                     }
                 }
             }
+        }
+        "dropPause" => {
+            let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
+            manager.is_paused.store(true, Ordering::SeqCst);
+            let _ = app.emit("coudrop-transfer-paused", serde_json::json!({
+                "transferId": transfer_id
+            }));
+        }
+        "dropResume" => {
+            let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
+            manager.is_paused.store(false, Ordering::SeqCst);
+            manager.pause_notify.notify_waiters();
+            let _ = app.emit("coudrop-transfer-resumed", serde_json::json!({
+                "transferId": transfer_id
+            }));
         }
         "dropDone" => {
             let transfer_id = msg["transferId"].as_str().unwrap_or("");
@@ -351,6 +440,19 @@ fn detect_mime_type(path: &Path) -> &'static str {
     }
 }
 
+fn collect_dir_files(dir: &Path, list: &mut Vec<PathBuf>) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_file() {
+                list.push(p);
+            } else if p.is_dir() {
+                collect_dir_files(&p, list);
+            }
+        }
+    }
+}
+
 /// Send one or more files from Desktop to the connected Android device in streaming chunks over the TLS link.
 #[tauri::command]
 pub async fn coudrop_send_files(
@@ -364,16 +466,38 @@ pub async fn coudrop_send_files(
         .connected_device()
         .ok_or_else(|| "No paired phone connected. Make sure your phone is connected on the same Wi-Fi network.".to_string())?;
 
-    state.is_sending.store(true, Ordering::SeqCst);
+    let mut resolved_paths: Vec<PathBuf> = Vec::new();
+    for p_str in paths {
+        let cleaned = p_str.trim().trim_matches('"');
+        let path = if cleaned.starts_with("file:///") {
+            PathBuf::from(&cleaned[8..])
+        } else if cleaned.starts_with("file://") {
+            PathBuf::from(&cleaned[7..])
+        } else {
+            PathBuf::from(cleaned)
+        };
 
-    for path_str in paths {
-        if !state.is_sending.load(Ordering::SeqCst) {
-            break;
+        if !path.exists() {
+            crate::log::line(format!("coudrop_send_files: path does not exist: {:?}", path));
+            continue;
         }
 
-        let path = PathBuf::from(&path_str);
-        if !path.exists() {
-            continue;
+        if path.is_file() {
+            resolved_paths.push(path);
+        } else if path.is_dir() {
+            collect_dir_files(&path, &mut resolved_paths);
+        }
+    }
+
+    if resolved_paths.is_empty() {
+        return Err("No valid files found to send.".to_string());
+    }
+
+    state.is_sending.store(true, Ordering::SeqCst);
+
+    for path in resolved_paths {
+        if !state.is_sending.load(Ordering::SeqCst) {
+            break;
         }
 
         let file_name = path
@@ -442,16 +566,43 @@ pub async fn coudrop_send_files(
             ((total_bytes + CHUNK_SIZE as u64 - 1) / CHUNK_SIZE as u64) as usize
         };
 
-        let mut file = tokio::fs::File::open(&path)
-            .await
-            .map_err(|e| format!("Failed to read file {}: {}", file_name, e))?;
+        let mut file = match tokio::fs::File::open(&path).await {
+            Ok(f) => f,
+            Err(e) => {
+                state.is_sending.store(false, Ordering::SeqCst);
+                return Err(format!("Failed to read file {}: {}", file_name, e));
+            }
+        };
 
         let mut buffer = vec![0u8; CHUNK_SIZE];
         let mut chunk_index = 0usize;
         let mut bytes_sent = 0u64;
 
+        let start_time = std::time::Instant::now();
+        let mut window_start = start_time;
+        let mut window_bytes = 0u64;
+        let mut current_speed = 0u64;
+
         loop {
-            if !state.is_sending.load(Ordering::SeqCst) {
+            if !state.is_sending.load(Ordering::SeqCst) || state.is_cancelled.load(Ordering::SeqCst) {
+                let cancel_msg = serde_json::json!({
+                    "type": "dropCancel",
+                    "transferId": transfer_id.clone(),
+                    "reason": "cancelled_by_desktop"
+                }).to_string();
+                let _ = link.hub.send_drop_async(&cancel_msg).await;
+                let _ = app.emit("coudrop-cancel", ());
+                return Ok(());
+            }
+
+            while state.is_paused.load(Ordering::SeqCst) {
+                if !state.is_sending.load(Ordering::SeqCst) || state.is_cancelled.load(Ordering::SeqCst) {
+                    break;
+                }
+                state.pause_notify.notified().await;
+            }
+
+            if !state.is_sending.load(Ordering::SeqCst) || state.is_cancelled.load(Ordering::SeqCst) {
                 let cancel_msg = serde_json::json!({
                     "type": "dropCancel",
                     "transferId": transfer_id.clone(),
@@ -496,12 +647,32 @@ pub async fn coudrop_send_files(
                 1.0
             };
 
+            let now = std::time::Instant::now();
+            let elapsed = (now - window_start).as_secs_f64();
+            if elapsed >= 0.4 {
+                let diff = bytes_sent.saturating_sub(window_bytes);
+                current_speed = (diff as f64 / elapsed) as u64;
+                window_start = now;
+                window_bytes = bytes_sent;
+            }
+            let remaining_bytes = total_bytes.saturating_sub(bytes_sent);
+            let eta = if current_speed > 0 && remaining_bytes > 0 {
+                Some(remaining_bytes / current_speed)
+            } else {
+                None
+            };
+            let is_paused = state.is_paused.load(Ordering::SeqCst);
+
             let _ = app.emit("coudrop-progress", TransferProgress {
                 transfer_id: Some(transfer_id.clone()),
                 name: file_name.clone(),
                 bytes_read: bytes_sent,
                 total_bytes,
                 progress,
+                speed_bytes_per_sec: Some(current_speed),
+                time_remaining_seconds: eta,
+                direction: Some("send".to_string()),
+                is_paused: Some(is_paused),
             });
 
             chunk_index += 1;
@@ -525,6 +696,8 @@ pub async fn coudrop_send_files(
         };
         let _ = tokio::time::timeout(Duration::from_secs(8), done_fut).await;
 
+        let path_str = path.to_string_lossy().to_string();
+
         // Notify desktop frontend that sending completed successfully
         let _ = app.emit("coudrop-file-sent", ReceivedFileInfo {
             name: file_name,
@@ -542,19 +715,166 @@ pub async fn coudrop_send_files(
 /// Cancels an ongoing send operation.
 #[tauri::command]
 pub async fn coudrop_cancel_send(
+    app: AppHandle,
     link: State<'_, PhoneLink>,
     state: State<'_, CoudropManager>,
 ) -> Result<(), String> {
+    coudrop_cancel_transfer(app, link, state, None).await
+}
+
+/// Pauses an active transfer (either send or receive).
+#[tauri::command]
+pub async fn coudrop_pause_transfer(
+    app: AppHandle,
+    link: State<'_, PhoneLink>,
+    state: State<'_, CoudropManager>,
+    transfer_id: Option<String>,
+) -> Result<(), String> {
+    state.is_paused.store(true, Ordering::SeqCst);
+    let id = match transfer_id {
+        Some(i) => i,
+        None => state.current_transfer_id.lock().await.clone().unwrap_or_default(),
+    };
+    if !id.is_empty() {
+        let pause_msg = serde_json::json!({
+            "type": "dropPause",
+            "transferId": id.clone(),
+        }).to_string();
+        let _ = link.hub.send_drop_async(&pause_msg).await;
+    }
+    let _ = app.emit("coudrop-transfer-paused", serde_json::json!({ "transferId": id }));
+    Ok(())
+}
+
+/// Resumes a paused transfer (either send or receive).
+#[tauri::command]
+pub async fn coudrop_resume_transfer(
+    app: AppHandle,
+    link: State<'_, PhoneLink>,
+    state: State<'_, CoudropManager>,
+    transfer_id: Option<String>,
+) -> Result<(), String> {
+    state.is_paused.store(false, Ordering::SeqCst);
+    state.pause_notify.notify_waiters();
+    let id = match transfer_id {
+        Some(i) => i,
+        None => state.current_transfer_id.lock().await.clone().unwrap_or_default(),
+    };
+    if !id.is_empty() {
+        let resume_msg = serde_json::json!({
+            "type": "dropResume",
+            "transferId": id.clone(),
+        }).to_string();
+        let _ = link.hub.send_drop_async(&resume_msg).await;
+    }
+    let _ = app.emit("coudrop-transfer-resumed", serde_json::json!({ "transferId": id }));
+    Ok(())
+}
+
+/// Cancels an ongoing transfer (either send or receive).
+#[tauri::command]
+pub async fn coudrop_cancel_transfer(
+    app: AppHandle,
+    link: State<'_, PhoneLink>,
+    state: State<'_, CoudropManager>,
+    transfer_id: Option<String>,
+) -> Result<(), String> {
     state.is_sending.store(false, Ordering::SeqCst);
-    if let Some(transfer_id) = state.current_transfer_id.lock().await.take() {
+    state.is_cancelled.store(true, Ordering::SeqCst);
+    state.is_paused.store(false, Ordering::SeqCst);
+    state.pause_notify.notify_waiters();
+
+    let id = match transfer_id {
+        Some(i) => i,
+        None => state.current_transfer_id.lock().await.take().unwrap_or_default(),
+    };
+
+    if !id.is_empty() {
+        // Clean up any incoming partial file
+        if let Some(transfer) = state.incoming.lock().await.remove(&id) {
+            drop(transfer.file);
+            let _ = tokio::fs::remove_file(&transfer.temp_path).await;
+        }
+
         let cancel_msg = serde_json::json!({
             "type": "dropCancel",
-            "transferId": transfer_id,
-            "reason": "cancelled_by_desktop"
+            "transferId": id.clone(),
+            "reason": "cancelled_by_user"
         }).to_string();
         let _ = link.hub.send_drop_async(&cancel_msg).await;
+    } else {
+        // Clean up any remaining incoming transfers
+        let mut incoming = state.incoming.lock().await;
+        for (_, transfer) in incoming.drain() {
+            drop(transfer.file);
+            let _ = tokio::fs::remove_file(&transfer.temp_path).await;
+        }
     }
+
+    *state.current_transfer_id.lock().await = None;
+    *state.current_transfer_name.lock().await = None;
+    *state.current_transfer_size.lock().await = 0;
+    *state.current_transfer_direction.lock().await = None;
+
+    let _ = app.emit("coudrop-cancel", serde_json::json!({ "transferId": id }));
     Ok(())
+}
+
+/// Returns the currently active transfer if there is one ongoing.
+#[tauri::command]
+pub async fn coudrop_get_active_transfer(
+    state: State<'_, CoudropManager>,
+) -> Result<Option<ActiveTransferInfo>, String> {
+    let id_opt = state.current_transfer_id.lock().await.clone();
+    if let Some(id) = id_opt {
+        let is_paused = state.is_paused.load(Ordering::SeqCst);
+        let direction = state.current_transfer_direction.lock().await.clone().unwrap_or_else(|| "send".to_string());
+
+        if direction == "receive" {
+            let incoming = state.incoming.lock().await;
+            if let Some(t) = incoming.get(&id) {
+                let progress = if t.size > 0 {
+                    (t.bytes_received as f64 / t.size as f64).min(1.0)
+                } else {
+                    0.0
+                };
+                let rem = t.size.saturating_sub(t.bytes_received);
+                let eta = if t.current_speed > 0 && rem > 0 {
+                    Some(rem / t.current_speed)
+                } else {
+                    None
+                };
+                return Ok(Some(ActiveTransferInfo {
+                    id: t.transfer_id.clone(),
+                    direction: "receive".to_string(),
+                    name: t.name.clone(),
+                    total_bytes: t.size,
+                    bytes_transferred: t.bytes_received,
+                    progress,
+                    speed_bytes_per_sec: t.current_speed,
+                    time_remaining_seconds: eta,
+                    is_paused,
+                    status: if is_paused { "paused".to_string() } else { "transferring".to_string() },
+                }));
+            }
+        } else {
+            let name = state.current_transfer_name.lock().await.clone().unwrap_or_else(|| "file.bin".to_string());
+            let total = *state.current_transfer_size.lock().await;
+            return Ok(Some(ActiveTransferInfo {
+                id,
+                direction: "send".to_string(),
+                name,
+                total_bytes: total,
+                bytes_transferred: 0,
+                progress: 0.0,
+                speed_bytes_per_sec: 0,
+                time_remaining_seconds: None,
+                is_paused,
+                status: if is_paused { "paused".to_string() } else { "transferring".to_string() },
+            }));
+        }
+    }
+    Ok(None)
 }
 
 /// Returns history of transferred files in Vayli Drop downloads directory.
@@ -629,10 +949,11 @@ pub async fn coudrop_start_receive(
 
 #[tauri::command]
 pub async fn coudrop_cancel(
+    app: AppHandle,
     state: State<'_, CoudropManager>,
     link: State<'_, PhoneLink>,
 ) -> Result<(), String> {
-    coudrop_cancel_send(link, state).await
+    coudrop_cancel_transfer(app, link, state, None).await
 }
 
 #[tauri::command]

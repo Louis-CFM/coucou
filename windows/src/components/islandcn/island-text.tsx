@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 
-import { type CompactContent, IslandNumber, useIslandReducedMotion } from "@/lib/island/index";
+import { type CompactContent, IslandNumber, useIslandReducedMotion } from "@/lib/island";
 
 import { IslandStyle } from "./island-style";
 import { SteadyNumber } from "./steady-number";

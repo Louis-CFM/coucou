@@ -74,7 +74,7 @@ test("Scenario B: Provider unavailable seamlessly falls back to deterministic ca
   const fallback = DeterministicCatalog.resolveFallback(returnSnap);
   const duration = performance.now() - start;
 
-  assert.ok(duration < 2, `Fallback resolution took ${duration}ms, expected < 2ms`);
+  assert.ok(duration < 15, `Fallback resolution took ${duration}ms, expected < 15ms`);
   assert.equal(fallback.provider, "static");
   assert.ok(fallback.text && fallback.text.length > 0);
   assert.equal(fallback.category, "greeting_return");

@@ -1,4 +1,4 @@
-import { continuousRectPath, islandMetrics } from "@/lib/island/index";
+import { continuousRectPath, islandMetrics } from "@/lib/island";
 
 /** System font first, so each platform gets its own UI font; Inter or Geist elsewhere. */
 export const islandFont = '-apple-system, BlinkMacSystemFont, "Inter", "Geist", system-ui, sans-serif';

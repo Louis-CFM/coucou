@@ -20,6 +20,7 @@ import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from 
 import { GlobalNotifications } from "./core/notifications";
 import { GlobalWelcomeMessages } from "./core/welcome";
 import { nearbyTransferManager } from "./components/islandcn/transfer-adapter";
+import { BatteryMonitor } from "./islandcn";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
 function applyLanguage() {
@@ -45,6 +46,22 @@ async function main() {
     }
   }
 
+  const boot = await Bridge.boot();
+  if (boot) {
+    State.settings = { ...State.settings, ...boot.settings };
+    if (boot.battery) {
+      BatteryMonitor.initialize(boot.battery);
+    }
+  }
+
+  // A language change redraws the island in place: the texts given as tl(…)
+  // relabel themselves (views/dom.ts) and the views redraw the rest on this
+  // sync. Nothing is rebuilt, so tasks, steps and the chat stay as they are.
+  onLanguageChange(() => State.notify());
+  applyLanguage();
+  // Rust shows the tray and its errors in the same language as the webview.
+  void Bridge.setSystemLanguages(systemLanguages());
+
   const island = new Island(root);
 
   // The dev previews (dev/*.html) drive the island from the console.
@@ -55,20 +72,10 @@ async function main() {
       __welcome: GlobalWelcomeMessages,
       __notifications: GlobalNotifications,
       __nearbyTransfer: nearbyTransferManager,
+      __batteryMonitor: BatteryMonitor,
     });
   }
 
-  const boot = await Bridge.boot();
-  if (boot) {
-    State.settings = { ...State.settings, ...boot.settings };
-  }
-  // A language change redraws the island in place: the texts given as tl(…)
-  // relabel themselves (views/dom.ts) and the views redraw the rest on this
-  // sync. Nothing is rebuilt, so tasks, steps and the chat stay as they are.
-  onLanguageChange(() => State.notify());
-  applyLanguage();
-  // Rust shows the tray and its errors in the same language as the webview.
-  void Bridge.setSystemLanguages(systemLanguages());
   island.applySettings();
   State.loadIntegrationTasks();
   if (boot && !boot.cursorPoll) island.followPageCursor();

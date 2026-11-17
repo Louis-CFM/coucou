@@ -2,7 +2,7 @@
 
 import { type DependencyList, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
-import { type ActivityOptions, type ActivityUpdate, useIslandActions } from "@/lib/island/index";
+import { type ActivityOptions, type ActivityUpdate, useIslandActions } from "@/lib/island";
 
 /** What `useActivity` hands back: ways to poke the activity it owns. */
 export interface ActivityControls {

@@ -5,10 +5,11 @@
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { State } from "../core/state";
-import { Bridge, IS_TAURI, onEvent, type CoudropReceivedFile, type CoudropProgress } from "../core/bridge";
+import { Bridge, IS_TAURI, onEvent, type CoudropReceivedFile } from "../core/bridge";
 import type { ViewActions, ViewHost } from "./views";
 import { Sound } from "../core/sound";
-import { t, tl } from "../i18n/i18n";
+import { t, tl, type Msg } from "../i18n/i18n";
+import { getActiveTransfer, subscribeActiveTransfer } from "../components/islandcn/transfer-adapter";
 
 /** Format byte size to human readable */
 function formatBytes(bytes: number | null | undefined): string {
@@ -42,6 +43,34 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
   let listenersBound = false;
   let isSending = false;
   let isCardDragOver = false;
+  let cardDragDepth = 0;
+
+  function setCardDragOver(isOver: boolean) {
+    isCardDragOver = isOver;
+    const transmitter = root.querySelector(".coudrop-transmitter") as HTMLElement | null;
+    if (!transmitter) return;
+
+    if (isOver) {
+      transmitter.classList.add("drag-over");
+    } else {
+      transmitter.classList.remove("drag-over");
+    }
+
+    const active = getActiveTransfer();
+    const isTransferActive = active !== null;
+    const isPaused = active?.status === "paused";
+
+    const titleEl = transmitter.querySelector(".coudrop-title");
+    if (titleEl) {
+      if (isTransferActive) {
+        titleEl.textContent = isPaused ? t("Transfer paused") : t("Transfer in progress");
+      } else if (isOver) {
+        titleEl.textContent = t("Release to send files");
+      } else {
+        titleEl.textContent = t("Drop files to send");
+      }
+    }
+  }
 
   // Hidden native file picker for selecting files
   const fileInput = h("input", {
@@ -101,16 +130,11 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
       sync();
     });
 
-    let progressRaf = 0;
-    void onEvent<CoudropProgress>("coudrop-progress", (prog: CoudropProgress) => {
-      if (!prog) return;
-      isSending = true;
-      State.coudropProgress = prog;
-      if (!progressRaf) {
-        progressRaf = requestAnimationFrame(() => {
-          progressRaf = 0;
-          sync();
-        });
+    subscribeActiveTransfer((active) => {
+      const currentlyActive = active !== null;
+      if (isSending !== currentlyActive) {
+        isSending = currentlyActive;
+        sync();
       }
     });
 
@@ -146,9 +170,24 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
   }
 
   async function sendFiles(paths: string[]) {
+    if (!paths || paths.length === 0) return;
+
+    // Filter valid path strings
+    const validPaths = paths
+      .map((p) => (typeof p === "string" ? p.trim() : ""))
+      .filter((p) => p.length > 0);
+    if (validPaths.length === 0) return;
+
     if (!State.coudropConnected) {
       Sound.play("deny");
       alert(tl("Your phone is currently offline. Make sure Coucou is open on your phone."));
+      return;
+    }
+
+    const currentTransfer = getActiveTransfer();
+    if (currentTransfer !== null) {
+      Sound.play("deny");
+      alert(tl("A file transfer is already in progress."));
       return;
     }
 
@@ -158,6 +197,7 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
 
     if (!IS_TAURI) {
       // Browser preview simulated transfer
+      const firstName = validPaths[0].split(/[/\\]/).pop() || "sample_file.png";
       let pct = 0;
       const fakeTimer = setInterval(() => {
         pct += 10;
@@ -166,15 +206,15 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
           isSending = false;
           State.coudropProgress = null;
           State.coudropReceivedFiles.unshift({
-            name: paths[0].split("/").pop() || "sample_file.png",
-            path: paths[0],
+            name: firstName,
+            path: validPaths[0],
             size: 1542890,
           });
           Sound.play("done");
           sync();
         } else {
           State.coudropProgress = {
-            name: paths[0].split("/").pop() || "sample_file.png",
+            name: firstName,
             bytesRead: Math.floor((1542890 * pct) / 100),
             totalBytes: 1542890,
             progress: pct / 100,
@@ -186,7 +226,7 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
     }
 
     try {
-      await Bridge.coudropSendFiles(paths);
+      await Bridge.coudropSendFiles(validPaths);
     } catch (err) {
       console.error("[coudrop] Transfer failed:", err);
       const msg = err instanceof Error ? err.message : String(err);
@@ -235,18 +275,32 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
 
     iconSvg.append(arrowLine, arrowHead, baseTray);
 
-    const iconBadge = h("div", { class: `coudrop-upload-icon border-2 border2 ${isSending ? "sending" : ""}` }, iconSvg);
+    const active = getActiveTransfer();
+    const isTransferActive = active !== null;
+    const isPaused = active?.status === "paused";
 
-    // 2. Primary text: "Drop files to send"
-    const title = h("div", { class: "coudrop-title", text: tl("Drop files to send") });
+    const iconBadge = h("div", { class: `coudrop-upload-icon border-2 border2 ${isTransferActive ? "sending" : ""}` }, iconSvg);
+
+    // 2. Primary text: "Drop files to send" or "Release to send files"
+    let titleText: Msg;
+    if (isTransferActive) {
+      titleText = isPaused ? tl("Transfer paused") : tl("Transfer in progress");
+    } else if (isCardDragOver) {
+      titleText = tl("Release to send files");
+    } else {
+      titleText = tl("Drop files to send");
+    }
+    const title = h("div", { class: "coudrop-title", text: titleText });
 
     // 3. Secondary clickable text: "or browse files"
     const browseAction = h("span", {
       class: "coudrop-browse-action",
-      text: tl("or browse files"),
+      text: isTransferActive ? tl("Controlled via Dynamic Island above") : tl("or browse files"),
       onclick: (e: Event) => {
         e.stopPropagation();
-        void chooseAndSendFiles();
+        if (!isTransferActive) {
+          void chooseAndSendFiles();
+        }
       },
     });
 
@@ -261,8 +315,10 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
     const card = h(
       "div",
       {
-        class: `coudrop-transmitter ${isCardDragOver ? "drag-over" : ""} ${isSending ? "in-progress" : ""}`,
-        onclick: () => void chooseAndSendFiles(),
+        class: `coudrop-transmitter ${isCardDragOver ? "drag-over" : ""} ${isTransferActive ? "in-progress" : ""}`,
+        onclick: () => {
+          if (!isTransferActive) void chooseAndSendFiles();
+        },
       },
       dashedFrame(),
       content,
@@ -270,33 +326,43 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
 
     // HTML5 drag and drop listeners on transmitter
     card.addEventListener("dragenter", (e: DragEvent) => {
+      const active = getActiveTransfer();
+      if (active !== null) return;
+      if (e.dataTransfer && !e.dataTransfer.types.includes("Files")) return;
       e.preventDefault();
-      e.stopPropagation();
-      isCardDragOver = true;
-      card.classList.add("drag-over");
+      cardDragDepth++;
+      setCardDragOver(true);
+      // DO NOT call e.stopPropagation() - allows window capture listener to track drag state
     });
 
     card.addEventListener("dragover", (e: DragEvent) => {
+      const active = getActiveTransfer();
+      if (active !== null) return;
       e.preventDefault();
-      e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
-      isCardDragOver = true;
-      card.classList.add("drag-over");
+      if (!isCardDragOver) {
+        setCardDragOver(true);
+      }
+      // DO NOT call e.stopPropagation()
     });
 
     card.addEventListener("dragleave", (e: DragEvent) => {
       e.preventDefault();
-      e.stopPropagation();
-      isCardDragOver = false;
-      card.classList.remove("drag-over");
+      cardDragDepth = Math.max(0, cardDragDepth - 1);
+      if (cardDragDepth === 0 || (e.relatedTarget && !card.contains(e.relatedTarget as Node))) {
+        cardDragDepth = 0;
+        setCardDragOver(false);
+      }
+      // DO NOT call e.stopPropagation()
     });
 
     card.addEventListener("drop", (e: DragEvent) => {
       e.preventDefault();
-      e.stopPropagation();
-      isCardDragOver = false;
-      card.classList.remove("drag-over");
-      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      cardDragDepth = 0;
+      setCardDragOver(false);
+
+      // In non-Tauri / test environments, window onDragDrop is disabled so card handles the mock files directly:
+      if (!IS_TAURI && e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
         const files = Array.from(e.dataTransfer.files);
         const paths = files
           .map((f) => (f as unknown as { path?: string }).path || f.name)
@@ -305,6 +371,9 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
           void sendFiles(paths);
         }
       }
+      // In Tauri (Windows / WebView2), e.stopPropagation() is NOT called, so the drop event
+      // bubbles up to the window capture listener in bridge.ts, which forwards native ICoreWebView2File
+      // objects to Rust via chrome.webview.postMessageWithAdditionalObjects!
     });
 
     return card;
@@ -421,18 +490,11 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
     el: root,
     sync,
     onDragOver(isOver: boolean) {
-      isCardDragOver = isOver;
-      const transmitter = root.querySelector(".coudrop-transmitter");
-      if (transmitter) {
-        if (isOver) transmitter.classList.add("drag-over");
-        else transmitter.classList.remove("drag-over");
-      }
+      setCardDragOver(isOver);
     },
     onFileDrop(paths: string[]) {
-      isCardDragOver = false;
-      const transmitter = root.querySelector(".coudrop-transmitter");
-      if (transmitter) transmitter.classList.remove("drag-over");
-      if (paths.length > 0) {
+      setCardDragOver(false);
+      if (paths && paths.length > 0) {
         void sendFiles(paths);
       }
     },

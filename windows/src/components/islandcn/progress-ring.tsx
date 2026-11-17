@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { useIslandReducedMotion } from "@/lib/island/index";
+import { useIslandReducedMotion } from "@/lib/island";
 
 import type { GlyphIcon } from "./glyph";
 import { IslandStyle } from "./island-style";

@@ -56,7 +56,10 @@ pub fn install(app: &AppHandle) {
                 paths.push(take_pwstr(path));
             }
             crate::files::allow_dropped(paths.iter().cloned());
-            let _ = handle.emit_to(WINDOW_LABEL, "file-drag", FileDrop { kind: "drop", paths });
+            crate::log::line(format!("webview_drop: successfully resolved {} dropped file(s): {:?}", paths.len(), paths));
+            let payload = FileDrop { kind: "drop", paths };
+            let _ = handle.emit_to(WINDOW_LABEL, "file-drag", payload.clone());
+            let _ = handle.emit("file-drag", payload);
             Ok(())
         }));
         let mut token = 0i64;

@@ -2,7 +2,7 @@
 
 import { type ComponentType, type CSSProperties, useId } from "react";
 
-import { continuousRectPath, islandMetrics } from "@/lib/island/index";
+import { continuousRectPath, islandMetrics } from "@/lib/island";
 
 import type { IslandGlyph } from "./glyphs";
 import { islandInk, islandSize } from "./theme";
