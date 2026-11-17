@@ -10,6 +10,7 @@ import Foundation
 // No voice ID is hard-coded: ElevenLabs' old default voices expire on 31 Dec 2026 and
 // newer accounts don't have them. Coucou lists the voices of the user's account and
 // picks the first English one of the chosen gender (female by default), then caches it.
+// When Coucou answers in Portuguese, a voice labelled Portuguese comes first.
 
 @MainActor
 final class ElevenLabsTTS {
@@ -23,7 +24,7 @@ final class ElevenLabsTTS {
     }
 
     struct Voice: Equatable { let id: String; let name: String }
-    private var chosen: (gender: String, voice: Voice)?
+    private var chosen: (gender: String, language: String, voice: Voice)?
 
     /// Name of the voice in use, for Settings ("Rachel", "Talia – Warm Soft Guide"…).
     var currentVoiceName: String? { chosen?.voice.name }
@@ -43,7 +44,9 @@ final class ElevenLabsTTS {
         req.setValue(key, forHTTPHeaderField: "xi-api-key")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("audio/mpeg", forHTTPHeaderField: "Accept")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: ["text": text, "model_id": Self.model])
+        var body: [String: Any] = ["text": text, "model_id": Self.model]
+        if VoiceSettings.lang == .pt { body["language_code"] = "pt" }
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200, !data.isEmpty else {
             appendAppLog("nb.log", "[Voice] ElevenLabs request failed, Mac voice used")
@@ -55,7 +58,8 @@ final class ElevenLabsTTS {
     /// The voice for the chosen gender, looked up once in the user's account.
     func voice(key: String) async -> Voice? {
         let gender = VoiceSettings.elevenGender
-        if let c = chosen, c.gender == gender { return c.voice }
+        let language = VoiceSettings.lang.rawValue
+        if let c = chosen, c.gender == gender, c.language == language { return c.voice }
         var req = URLRequest(url: URL(string: "https://api.elevenlabs.io/v1/voices")!, timeoutInterval: 8)
         req.setValue(key, forHTTPHeaderField: "xi-api-key")
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
@@ -65,30 +69,16 @@ final class ElevenLabsTTS {
             appendAppLog("nb.log", "[Voice] ElevenLabs voice list unavailable")
             return nil
         }
-        guard let v = Self.pick(voices, gender: gender) else { return nil }
-        chosen = (gender, v)
+        guard let v = Self.pick(voices, gender: gender, language: language) else { return nil }
+        chosen = (gender, language, v)
         return v
     }
 
     /// First English voice of the gender (a young one first for a man); else any voice of
-    /// the gender; else the first one.
-    nonisolated static func pick(_ voices: [[String: Any]], gender: String) -> Voice? {
-        func labels(_ v: [String: Any]) -> [String: String] { v["labels"] as? [String: String] ?? [:] }
-        func isEnglish(_ v: [String: Any]) -> Bool {
-            let l = labels(v)
-            if let lang = l["language"] { return lang.lowercased().hasPrefix("en") }
-            let accent = (l["accent"] ?? "").lowercased()
-            return accent.isEmpty || ["american", "british", "australian", "irish", "english", "us", "uk"]
-                .contains { accent.contains($0) }
-        }
-        func isYoung(_ v: [String: Any]) -> Bool { (labels(v)["age"] ?? "").lowercased().contains("young") }
-        let ofGender = voices.filter { labels($0)["gender"]?.lowercased() == gender }
-        let english = ofGender.filter(isEnglish)
-        // Male: a young voice first, it sounds closer to Coucou than a deep narrator.
-        let young = gender == "male" ? english.first(where: isYoung) : nil
-        let v = young ?? english.first ?? ofGender.first ?? voices.first
-        guard let v, let id = v["voice_id"] as? String else { return nil }
-        return Voice(id: id, name: v["name"] as? String ?? id)
+    /// the gender; else the first one. For `language` "pt", Portuguese voices come first.
+    nonisolated static func pick(_ voices: [[String: Any]], gender: String, language: String = "en") -> Voice? {
+        guard let v = ElevenVoicePicker.pick(voices, gender: gender, language: language) else { return nil }
+        return Voice(id: v.id, name: v.name)
     }
 }
 #endif

@@ -87,6 +87,13 @@ enum EntityResolverTests {
         let total = pass + fail
         if fail == 0 { print("\n\(total)/\(total) passed.") }
         else { print("\n\(fail) FAILED / \(total) total"); exit(1) }
+        // ── Portuguese: names reach the resolver after the parser strips "o", "a", "do"… ──
+        check("pt o GitHub",        resolve("o GitHub"),        "integration_github")
+        check("pt a Stripe",        resolve("a Stripe"),        "integration_stripe")
+        check("pt o Notion",        resolve("o Notion"),        "integration_notion")
+        check("pt o Cursor",        resolve("o Cursor"),        "agent_cursor")
+        check("pt o Spotify",       resolve("o Spotify"),       "integration_spotify")
+
     }
 
     static func resolve(_ query: String, cat: PillCategory? = nil) -> String? {
