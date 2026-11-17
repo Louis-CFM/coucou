@@ -280,9 +280,23 @@ struct OverviewView: View {
         case "integration_claude":
             if ClaudeHost.activate(task.hostApp) { return }
             // openApplication also brings a running VS Code forward; activate() is ignored on macOS 14+.
-            let vscode = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode")
+            // The running copy's URL first: with two installs, Launch Services may pick the other one.
+            // The session's own bundle id covers Insiders / VSCodium.
+            let ids = [task.sessionBundleId, "com.microsoft.VSCode"].compactMap { $0 }.filter { !$0.isEmpty }
+            let running = NSWorkspace.shared.runningApplications
+                .first { ids.contains($0.bundleIdentifier ?? "") }?.bundleURL
+            let vscode = running
+                ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode")
                 ?? URL(fileURLWithPath: "/Applications/Visual Studio Code.app")
-            NSWorkspace.shared.openApplication(at: vscode, configuration: .init(), completionHandler: nil)
+            // Opening the session's folder makes VS Code focus the window that has it open,
+            // so with several windows the right one comes forward.
+            // ponytail: a cwd below the window's root folder opens a new window; match roots if that bites.
+            if let cwd = task.sessionCwd, !cwd.isEmpty, FileManager.default.fileExists(atPath: cwd) {
+                NSWorkspace.shared.open([URL(fileURLWithPath: cwd)], withApplicationAt: vscode,
+                                        configuration: .init(), completionHandler: nil)
+            } else {
+                NSWorkspace.shared.openApplication(at: vscode, configuration: .init(), completionHandler: nil)
+            }
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_mail":
