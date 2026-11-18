@@ -169,7 +169,8 @@ async function main() {
   await Updates.register(island);
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
-    void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));
+    void Bridge.spotifyRefresh("spotify").then((s) => s && applySpotify(island, s, "spotify"));
+    void Bridge.spotifyRefresh("ytmusic").then((s) => s && applySpotify(island, s, "ytmusic"));
   }
 
   // Monday recap: app start (greeting over), an agent starting work, waking up.

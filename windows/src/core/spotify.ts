@@ -6,8 +6,11 @@
 import type { BotStateName, IslandMode, IslandViewName } from "./layout";
 
 export const SPOTIFY_ID = "integration_spotify";
+export const YTMUSIC_ID = "integration_ytmusic";
+export type MediaPlayerId = "spotify" | "ytmusic";
 /** SpotifyController.green. */
 export const SPOTIFY_GREEN = "#1DB954";
+export const YTMUSIC_RED = "#FF0000";
 
 export interface SpotifyTrack {
   /** spotify:track:…, spotify:episode:…, spotify:ad:… */
@@ -47,9 +50,26 @@ export const Spotify = {
   artwork: null as { artUrl: string; dataUrl: string } | null,
 };
 
+export const YTMusic = {
+  state: { ...IDLE_SPOTIFY } as SpotifyState,
+  artwork: null as { artUrl: string; dataUrl: string } | null,
+};
+
+export function mediaStore(player: MediaPlayerId = "spotify") {
+  return player === "ytmusic" ? YTMusic : Spotify;
+}
+
+export function playerForPill(pillId: string): MediaPlayerId {
+  return pillId === YTMUSIC_ID ? "ytmusic" : "spotify";
+}
+
+export function isMediaPill(pillId: string): boolean {
+  return pillId === SPOTIFY_ID || pillId === YTMUSIC_ID;
+}
+
 /** The cover to show for the current track, if it has arrived. */
-export function currentArtwork(s: SpotifyState = Spotify.state): string | null {
-  const art = Spotify.artwork;
+export function currentArtwork(s: SpotifyState = Spotify.state, player: MediaPlayerId = "spotify"): string | null {
+  const art = mediaStore(player).artwork;
   return art && s.track?.artUrl && art.artUrl === s.track.artUrl ? art.dataUrl : null;
 }
 
@@ -91,9 +111,22 @@ export function volumeLevel(volume: number): 0 | 1 | 2 | 3 {
   return 3;
 }
 
-/** Music is playing on a declared Spotify pill. */
+/** Music is playing on a declared Spotify or YouTube Music pill. */
 export function musicPlaying(s: SpotifyState, activeIntegrations: readonly string[]): boolean {
-  return s.playing && s.track != null && activeIntegrations.includes(SPOTIFY_ID);
+  const spotifyOn = s.playing && s.track != null && activeIntegrations.includes(SPOTIFY_ID);
+  const ytOn = YTMusic.state.playing && YTMusic.state.track != null && activeIntegrations.includes(YTMUSIC_ID);
+  return spotifyOn || ytOn;
+}
+
+/** Active playing track across Spotify / YouTube Music for the compact island. */
+export function activeMusicTrack(activeIntegrations: readonly string[]): SpotifyTrack | null {
+  if (Spotify.state.playing && Spotify.state.track != null && activeIntegrations.includes(SPOTIFY_ID)) {
+    return Spotify.state.track;
+  }
+  if (YTMusic.state.playing && YTMusic.state.track != null && activeIntegrations.includes(YTMUSIC_ID)) {
+    return YTMusic.state.track;
+  }
+  return null;
 }
 
 /** The states Mochi dances in; the rest (an alert, an error, sleep) win. */

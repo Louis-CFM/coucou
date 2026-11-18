@@ -41,6 +41,7 @@ mod shortcuts;
 mod sounds;
 mod speech;
 mod spotify;
+mod ytmusic;
 mod tray;
 mod update;
 mod voice;
@@ -142,6 +143,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    ytmusic::sync(&app, &settings.active_integrations);
     whatsapp::sync(&settings.active_integrations);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
@@ -1025,6 +1027,10 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
+            ytmusic::ytmusic_refresh,
+            ytmusic::ytmusic_control,
+            ytmusic::ytmusic_open,
+            ytmusic::ytmusic_installed,
             whatsapp::whatsapp_island,
             whatsapp::whatsapp_open,
             whatsapp::whatsapp_close,
@@ -1124,6 +1130,7 @@ pub fn run() {
             integrations::start(handle.clone());
             mail::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            ytmusic::sync(&handle, &loaded.active_integrations);
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);

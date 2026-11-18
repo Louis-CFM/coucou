@@ -884,8 +884,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
-  // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
+  // Nothing to enter: Spotify and YouTube Music are read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  { id: "integration_ytmusic", name: "YouTube Music", color: "#FF0000", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
