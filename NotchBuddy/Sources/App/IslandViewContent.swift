@@ -57,12 +57,6 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
-        case .launch:
-            #if !APPSTORE
-            LaunchView(state: state)
-            #else
-            EmptyView()
-            #endif
         }
     }
 }
@@ -181,10 +175,8 @@ struct OverviewView: View {
             // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
             #if !APPSTORE
             let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
-                || agent?.id == CoucoudoroController.pillId
             #else
             let hideJumpButton = showingN8nDetail || activeDiffId != nil
-                || agent?.id == CoucoudoroController.pillId
             #endif
             if !hideJumpButton {
                 Button(action: { openAgentTarget(agent) }) {
@@ -279,10 +271,12 @@ struct OverviewView: View {
         switch task.pill {
         case "integration_claude":
             if ClaudeHost.activate(task.hostApp) { return }
-            // openApplication also brings a running VS Code forward; activate() is ignored on macOS 14+.
-            let vscode = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode")
-                ?? URL(fileURLWithPath: "/Applications/Visual Studio Code.app")
-            NSWorkspace.shared.openApplication(at: vscode, configuration: .init(), completionHandler: nil)
+            let vscodeBundleId = "com.microsoft.VSCode"
+            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
+                app.activate(options: .activateIgnoringOtherApps)
+            } else {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
+            }
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_mail":
@@ -295,8 +289,6 @@ struct OverviewView: View {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
-        case "integration_coucoudoro":
-            break
         case "integration_crypto":
             let exchange = CryptoSettings.exchange
             if let first = CryptoSettings.coins.first,
@@ -459,13 +451,7 @@ struct ApprovalView: View {
                         let hideAlways = asking == "agent_codex"
                             || asking == "agent_copilot"
                             || asking == "agent_muse"
-                        if asking == "agent_antigravity" {
-                            // Antigravity waits on the card: this hands it back to its own
-                            // prompt in the terminal, where "Always allow" lives.
-                            SecondaryButton("Reply in terminal") {
-                                HookServer.shared.sendApprovalDecision("ask", for: shownId)
-                            }
-                        } else if !hideAlways {
+                        if !hideAlways {
                             SecondaryButton("Always") {
                                 HookServer.shared.sendApprovalDecision("always", for: shownId)
                             }
@@ -1414,7 +1400,7 @@ struct MailView: View {
 // MARK: - Prompt (chat)
 
 /// The mic's right-click menu: Automatic (the user's languages) or one fixed language.
-struct DictationLanguageMenu: View {
+private struct DictationLanguageMenu: View {
     @Bindable var dictation: MacDictation
 
     var body: some View {
@@ -2066,8 +2052,6 @@ struct IntegrationCardView: View {
             #endif
         case "integration_crypto":
             return true  // public market data: no key, nothing to set up
-        case "integration_coucoudoro":
-            return true  // a local countdown: nothing to connect
         case "integration_portfolio":
             return PortfolioSettings.hasAnyAccount
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil || AppState.shared.subscriptionReady(.anthropic)
@@ -2325,9 +2309,6 @@ struct IntegrationCardView: View {
             // Its own card in every state (loading, no coins, prices).
             CryptoCardView()
                 .transition(.opacity)
-        } else if task.id == CoucoudoroController.pillId {
-            CoucoudoroCardView()
-                .transition(.opacity)
         } else if task.id == "integration_portfolio" {
             PortfolioCardView()
                 .transition(.opacity)
@@ -2577,11 +2558,10 @@ struct IntegrationCardView: View {
         }
 
         // No cwd: activate running instance or launch fresh
-        // openApplication, not activate(): macOS 14+ ignores activate() from the island.
-        if let runningURL = ids.compactMap({ id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }?.bundleURL
+        if let running = ids.compactMap({ id in
+            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
         }).first {
-            NSWorkspace.shared.openApplication(at: runningURL, configuration: .init(), completionHandler: nil)
+            running.activate(options: .activateIgnoringOtherApps)
             return
         }
         if let appURL = appURL {
@@ -4079,10 +4059,7 @@ struct TickerView: View {
                 rowB = steps[min(idx, steps.count - 1)]
             }
         }
-        // Watch the steps themselves, not their count: appendStep keeps at most
-        // 20, so once full the count and stepIndex stop changing while new
-        // steps keep arriving.
-        .onChange(of: task?.steps) { _, _ in
+        .onChange(of: task?.steps.count) { _, _ in
             guard let task, !task.steps.isEmpty, !isTransitioning else { return }
             let newIdx = task.stepIndex
             if displayIndex < 0 {
@@ -4091,7 +4068,7 @@ struct TickerView: View {
                 rowB = steps[min(newIdx, steps.count - 1)]
                 return
             }
-            guard newIdx != displayIndex || steps[min(newIdx, steps.count - 1)] != rowB else { return }
+            guard newIdx != displayIndex else { return }
             tickerAnimate(to: newIdx)
         }
     }
@@ -4287,14 +4264,7 @@ struct AgentPillsView: View {
     @ViewBuilder
     private func pill(_ task: AgentTask) -> some View {
         #if !APPSTORE
-        if task.id == CoucoudoroController.pillId {
-            CoucoudoroPill(task: task, state: state, swapping: $swapping) {
-                swapping = true
-                state.setFocus(task.id)
-                SoundEngine.shared.play("blip")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-            }
-        } else if task.id == "integration_music" {
+        if task.id == "integration_music" {
             MusicPill(task: task, state: state, swapping: $swapping) {
                 swapping = true
                 state.setFocus(task.id)
@@ -4317,20 +4287,11 @@ struct AgentPillsView: View {
             }
         }
         #else
-        if task.id == CoucoudoroController.pillId {
-            CoucoudoroPill(task: task, state: state, swapping: $swapping) {
-                swapping = true
-                state.setFocus(task.id)
-                SoundEngine.shared.play("blip")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-            }
-        } else {
-            AgentPill(task: task, state: state, swapping: $swapping) {
-                swapping = true
-                state.setFocus(task.id)
-                SoundEngine.shared.play("blip")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-            }
+        AgentPill(task: task, state: state, swapping: $swapping) {
+            swapping = true
+            state.setFocus(task.id)
+            SoundEngine.shared.play("blip")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
         }
         #endif
     }

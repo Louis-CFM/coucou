@@ -238,15 +238,11 @@ export function lastWeeks(activity: GitHubActivity, n: number): ContributionDay[
   return activity.weeks.slice(Math.max(0, activity.weeks.length - n));
 }
 
-/** The last `n` days, oldest first, each level graded against the busiest of those
- *  days: GitHub's own levels are year quartiles. */
+/** The last `n` days, oldest first. */
 export function lastDays(activity: GitHubActivity, n: number): ContributionDay[] {
   if (n <= 0) return [];
   const all = activity.weeks.flat();
-  const days = all.slice(Math.max(0, all.length - n));
-  const busiest = Math.max(0, ...days.map((d) => d.count));
-  if (busiest === 0) return days;
-  return days.map((d) => ({ ...d, level: d.count === 0 ? 0 : Math.max(1, Math.ceil((4 * d.count) / busiest)) }));
+  return all.slice(Math.max(0, all.length - n));
 }
 
 /** One column of the grid: seven slots, Sunday first, null where a day is missing. */

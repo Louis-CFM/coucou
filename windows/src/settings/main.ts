@@ -5,6 +5,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport, type SubscriptionStatus } from "../core/bridge";
+import { DeezerBridge } from "../core/deezer-bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
@@ -66,12 +67,6 @@ function toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement {
     onChange(next);
   });
   return el;
-}
-
-/** Shows a switch made by toggle() as on or off, without calling its onChange. */
-function setSwitch(el: HTMLElement, on: boolean) {
-  el.classList.toggle("on", on);
-  el.setAttribute("aria-pressed", String(on));
 }
 
 // ── Changes to Claude Code's settings.json ────────────────────────────────────
@@ -886,6 +881,8 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Nothing to enter either: Deezer is read from the OS, on Windows (src-tauri/src/deezer.rs).
+  { id: "integration_deezer", name: "Deezer", color: "#A238FF", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -964,6 +961,13 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
     }
+    if (def.id === "integration_deezer") {
+      const hint = h("div", { class: "hint", style: "padding-top:5px" });
+      rows.append(hint);
+      void DeezerBridge.installed().then((ok) => {
+        hint.textContent = ok === false ? t("Not installed") : "";
+      });
+    }
 
     list.append(
       h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
@@ -1003,12 +1007,6 @@ function whatsappSections(): HTMLElement[] {
 }
 
 // ── General section ───────────────────────────────────────────────────────────
-
-/**
- * Puts the General fields back in line with the settings after a change made
- * elsewhere (the island's own settings change sound, volume and auto-close).
- */
-let generalSync: (() => void) | null = null;
 
 function generalSection(): HTMLElement {
   const volume = h("input", {
@@ -1088,36 +1086,20 @@ function generalSection(): HTMLElement {
     void save();
   });
 
-  const sound = toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); });
-  const openOnHover = toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); });
-  const autostart = toggle(settings.autostart, (v) => { settings.autostart = v; void save(); });
-  generalSync = () => {
-    setSwitch(sound, settings.soundEnabled);
-    setSwitch(openOnHover, settings.openOnHover);
-    setSwitch(autostart, settings.autostart);
-    // A field being edited keeps what is in it; it catches up when it is left.
-    if (document.activeElement !== volume) volume.value = String(settings.soundVolume);
-    if (document.activeElement !== autoClose) {
-      autoClose.value = String(Math.round(settings.autoCloseInterval));
-    }
-  };
-  volume.addEventListener("blur", () => generalSync?.());
-  autoClose.addEventListener("blur", () => generalSync?.());
-
   return h(
     "section",
     {},
     h("h2", {}, h("span", { text: t("General") })),
     h("div", { class: "row" },
       h("label", { text: t("Sound") }),
-      sound,
+      toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
       volume,
     ),
     h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
     h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
     h("div", { class: "row" },
       h("label", { text: t("Open on hover") }),
-      openOnHover,
+      toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
     h("div", { class: "row" },
@@ -1146,7 +1128,7 @@ function generalSection(): HTMLElement {
     ),
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
-      autostart,
+      toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
     ...recapRows(),
     ...updateRows(toggle, version),
@@ -1480,7 +1462,6 @@ async function main() {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
-    generalSync?.();
     for (const redraw of declaredViews) redraw();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
@@ -1534,7 +1515,6 @@ async function render() {
   declaredViews.length = 0;
   localRedraw = null;
   shortcutsListener = null;
-  generalSync = null;
   clear(root);
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
     general: () => [generalSection()],

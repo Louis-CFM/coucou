@@ -62,17 +62,11 @@ struct GitHubActivity: Equatable {
         return Array(weeks[start...])
     }
 
-    /// Returns the last n days in chronological order (oldest first), each level graded
-    /// against the busiest of those days: GitHub's own levels are year quartiles.
+    /// Returns the last n days in chronological order (oldest first).
     func lastDays(_ n: Int) -> [ContributionDay] {
         guard n > 0 else { return [] }
         let all = weeks.flatMap { $0 }
         let start = max(0, all.count - n)
-        var days = Array(all[start...])
-        let busiest = days.map(\.count).max() ?? 0
-        for i in days.indices where busiest > 0 {
-            days[i].level = days[i].count == 0 ? 0 : max(1, Int((4 * Double(days[i].count) / Double(busiest)).rounded(.up)))
-        }
-        return days
+        return Array(all[start...])
     }
 }

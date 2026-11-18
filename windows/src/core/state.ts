@@ -13,6 +13,7 @@ import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
 import { Spotify, musicPlaying } from "./spotify";
+import { Deezer, musicPlaying as deezerMusicPlaying } from "./deezer";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -234,8 +235,6 @@ class AppState {
   uploadProgress = 0;
   uploadDuration = 2.4;
   fileDragOver = false;
-  /** The session pill a dragged file is over on the drop card (Mac dropSessionTarget). */
-  dropSessionTarget: string | null = null;
 
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
@@ -306,6 +305,16 @@ class AppState {
   /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
   get spotifyPlaying(): boolean {
     return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
+  }
+
+  /** Deezer plays on a declared pill (Windows). */
+  get deezerPlaying(): boolean {
+    return deezerMusicPlaying(Deezer.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
+  }
+
+  /** Either player: Mochi dances to whichever plays, or both. */
+  get anyMusicPlaying(): boolean {
+    return this.spotifyPlaying || this.deezerPlaying;
   }
 
   get otherTasks(): AgentTask[] {

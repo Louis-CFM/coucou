@@ -32,7 +32,7 @@ pub const DOWNLOAD_URL: &str = "https://www.spotify.com/download/windows/";
 const STATE_EVENT: &str = "spotify";
 const ARTWORK_EVENT: &str = "spotify-artwork";
 /// The biggest cover we read (Spotify's are 640 px JPEGs, ~100 KB).
-const ARTWORK_LIMIT: usize = 3 * 1024 * 1024;
+pub(crate) const ARTWORK_LIMIT: usize = 3 * 1024 * 1024;
 
 // ── Values ────────────────────────────────────────────────────────────────────
 
@@ -394,19 +394,19 @@ pub fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
-fn data_url(bytes: &[u8]) -> Option<String> {
+pub(crate) fn data_url(bytes: &[u8]) -> Option<String> {
     let mime = sniff_image(bytes)?;
     Some(format!("data:{mime};base64,{}", crate::claude::base64_for(bytes)))
 }
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct Artwork {
-    art_url: String,
-    data_url: String,
+pub(crate) struct Artwork {
+    pub(crate) art_url: String,
+    pub(crate) data_url: String,
 }
 
-fn now_ms() -> f64 {
+pub(crate) fn now_ms() -> f64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs_f64() * 1000.0)

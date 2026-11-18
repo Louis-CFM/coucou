@@ -298,9 +298,11 @@ final class MusicController: ObservableObject {
     }
 
     func openMusic() {
-        // openApplication also brings a running Music forward; activate() is ignored on macOS 14+ (see openSpotify).
-        NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/System/Applications/Music.app"),
-                                           configuration: .init(), completionHandler: nil)
+        if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.apple.Music" }) {
+            app.activate(options: .activateIgnoringOtherApps)
+        } else {
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Music.app"))
+        }
     }
 
     func openAutomationSettings() {

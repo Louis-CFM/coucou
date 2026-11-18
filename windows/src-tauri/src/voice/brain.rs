@@ -44,10 +44,11 @@ fn tools() -> Vec<Value> {
         }),
         json!({
             "name": "music",
-            "description": "Control Spotify: play or pause, next, previous, set the volume, or search a song, an artist or a playlist in Spotify.",
+            "description": "Control Spotify or Deezer: play or pause, next, previous, set the volume, or (Spotify only) search a song, an artist or a playlist. Spotify unless the user names Deezer.",
             "input_schema": {
                 "type": "object",
                 "properties": {
+                    "service": { "type": "string", "enum": ["spotify", "deezer"], "description": "Which player. Spotify when not said." },
                     "action": { "type": "string", "enum": ["play_pause", "next", "previous", "set_volume", "search"] },
                     "query": { "type": "string", "description": "What to search, for search." },
                     "volume": { "type": "integer", "description": "0-100 for set_volume." }
@@ -57,7 +58,7 @@ fn tools() -> Vec<Value> {
         }),
         json!({
             "name": "service_info",
-            "description": "Read the user's real data that Coucou already has, as JSON: the active pills, the agent sessions (Claude Code, Codex…) and what they are doing, Claude or Codex plan usage, Spotify now playing, and the services' latest data (Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com).",
+            "description": "Read the user's real data that Coucou already has, as JSON: the active pills, the agent sessions (Claude Code, Codex…) and what they are doing, Claude or Codex plan usage, Spotify and Deezer now playing, and the services' latest data (Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com).",
             "input_schema": { "type": "object", "properties": {} }
         }),
         json!({

@@ -220,9 +220,9 @@ struct HubStylesPage: View {
                     Toggle("", isOn: $store.cleanupEnabled)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .disabled(!FlowCleanup.isAvailable && !store.cleanupEnabled)
+                        .disabled(!FlowCleanup.hasKey && !store.cleanupEnabled)
                 }
-                if !FlowCleanup.isAvailable {
+                if !FlowCleanup.hasKey {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
                             .foregroundColor(HubTheme.accent)

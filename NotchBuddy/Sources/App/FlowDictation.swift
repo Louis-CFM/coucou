@@ -111,13 +111,6 @@ final class FlowDictation: ObservableObject {
             pill.setEdge(pillEdge)
         }
     }
-    /// One short press of the key starts hands-free dictation, instead of two.
-    @Published var oneTapHandsFree: Bool = UserDefaults.standard.bool(forKey: "flowOneTapHandsFree") {
-        didSet {
-            UserDefaults.standard.set(oneTapHandsFree, forKey: "flowOneTapHandsFree")
-            logic.oneTap = oneTapHandsFree
-        }
-    }
     /// Whether macOS lets Coucou watch the key and paste (System Settings → Privacy & Security → Accessibility).
     @Published private(set) var trusted: Bool = AXIsProcessTrusted()
 
@@ -131,8 +124,6 @@ final class FlowDictation: ObservableObject {
     private let bands: FlowAudioBands
     /// The system's Accessibility prompt is shown at most once per launch, when a paste could not happen.
     private var promptedThisRun = false
-    /// Claude Code signed out with the key standing in: said once per launch, nothing was lost.
-    private var toldKeyStoodIn = false
     let pill: FlowPillController
 
     private init() {
@@ -141,7 +132,6 @@ final class FlowDictation: ObservableObject {
         pill = FlowPillController(bands: bands)
         // The pill's buttons, under the pointer.
         pill.setEdge(pillEdge)
-        logic.oneTap = oneTapHandsFree
         pill.model.keyLabel = key.label
         pill.model.dictate = { [weak self] in self?.startHandsFree() }
         pill.model.finishDictation = { [weak self] in self?.finishFromPill() }
@@ -329,11 +319,8 @@ final class FlowDictation: ObservableObject {
 
     /// One listen, from the key press to the paste. Cancelling it drops its words.
     @MainActor private final class Listen {
-        /// The Mac's recognizer (its newer model when it knows the languages), or Parakeet when it
-        /// is chosen and downloaded. The Mac's is picked when the listen starts.
-        private(set) var apple: MacDictation?
-        /// `AnalyzerDictation`, kept untyped so Listen stays available before macOS 26.
-        private(set) var analyzer: AnyObject?
+        /// The Mac's recognizer, or Parakeet when it is chosen and downloaded.
+        let apple: MacDictation?
         let parakeet: ParakeetDictation?
         var cancelled = false
         /// The app the words go to, seen when the key went down.
@@ -342,47 +329,29 @@ final class FlowDictation: ObservableObject {
         var stoppedAt: Date?
 
         init(useParakeet: Bool) {
+            apple = useParakeet ? nil : MacDictation()
             parakeet = useParakeet ? ParakeetDictation() : nil
         }
 
-        var isRecording: Bool {
-            if #available(macOS 26.0, *), let analyzer = analyzer as? AnalyzerDictation { return analyzer.isRecording }
-            return apple?.isRecording ?? parakeet?.isRecording ?? false
-        }
+        var isRecording: Bool { apple?.isRecording ?? parakeet?.isRecording ?? false }
 
         func start(bands: FlowAudioBands) async {
-            if let parakeet {
+            if let apple {
+                apple.bands = bands
+                await apple.start(from: "")
+            } else if let parakeet {
                 parakeet.bands = bands
                 await parakeet.start()
-                return
             }
-            if #available(macOS 26.0, *) {
-                let language = UserDefaults.standard.string(forKey: MacDictation.languageKey) ?? MacDictation.automatic
-                if let locales = await AnalyzerDictation.locales(for: language) {
-                    let analyzer = AnalyzerDictation(locales: locales)
-                    analyzer.bands = bands
-                    self.analyzer = analyzer
-                    await analyzer.start()
-                    if analyzer.isRecording || cancelled { return }
-                    // The newer model couldn't start: the Mac's recognizer listens instead.
-                    self.analyzer = nil
-                }
-            }
-            let apple = MacDictation()
-            apple.bands = bands
-            self.apple = apple
-            await apple.start(from: "")
         }
 
         func finish() async -> String {
-            if #available(macOS 26.0, *), let analyzer = analyzer as? AnalyzerDictation { return await analyzer.finish() }
             if let apple { return await apple.finish() }
             if let parakeet { return await parakeet.finish() }
             return ""
         }
 
         func stop() {
-            if #available(macOS 26.0, *), let analyzer = analyzer as? AnalyzerDictation { analyzer.stop() }
             apple?.stop()
             parakeet?.stop()
         }
@@ -442,28 +411,22 @@ final class FlowDictation: ObservableObject {
             var body = prepared.text
             // Prompt mode or translation: one call to Claude does the clean-up too.
             let language = FlowLanguages.language(store.translateTo)
-            var shaping: FlowCleanup.Outcome?
             if (store.promptMode || language != nil), !body.isEmpty {
                 let shaped = await FlowCleanup.transform(body, prompt: store.promptMode, language: language,
                                                          style: store.style(for: listen.app?.bundleIdentifier),
                                                          app: listen.app?.localizedName, words: store.words)
                 guard !listen.cancelled else { return }
-                if FlowText.keepsMarks(shaped.text, prepared.snippets) { body = shaped.text }
-                shaping = shaped
+                if FlowText.keepsMarks(shaped, prepared.snippets) { body = shaped }
             } else if store.cleanupEnabled, !body.isEmpty {
                 let cleaned = await FlowCleanup.clean(body, style: store.style(for: listen.app?.bundleIdentifier),
                                                       app: listen.app?.localizedName, words: store.words)
                 guard !listen.cancelled else { return }
-                if FlowText.keepsMarks(cleaned.text, prepared.snippets) { body = cleaned.text }
-                shaping = cleaned
+                if FlowText.keepsMarks(cleaned, prepared.snippets) { body = cleaned }
             }
             let text = FlowText.finish(body, snippets: prepared.snippets)
             if !text.isEmpty {
                 let spoken = (listen.stoppedAt ?? Date()).timeIntervalSince(listen.startedAt)
-                // What would have gone in without Claude, kept beside the rewrite in the history.
-                let original = FlowText.finish(prepared.text, snippets: prepared.snippets)
-                store.record(text: text, heard: original == text ? nil : original,
-                             app: listen.app?.localizedName, seconds: spoken)
+                store.record(text: text, app: listen.app?.localizedName, seconds: spoken)
             }
             // A new listen may have begun meanwhile: its pill is left alone, but these words still go in.
             let latest = self.current === listen
@@ -475,9 +438,7 @@ final class FlowDictation: ObservableObject {
             if latest { self.pill.rest() }
             switch result {
             case .pasted:
-                if latest, let shaping, let tool = shaping.signedOut {
-                    self.announceSignedOut(tool, keyStoodIn: shaping.keyStoodIn)
-                }
+                break
             case .noAccess:
                 // No Accessibility: the words wait on the clipboard, and macOS is asked once.
                 self.trusted = false
@@ -487,22 +448,6 @@ final class FlowDictation: ObservableObject {
             case .noField:
                 self.announceNoField(text)
             }
-        }
-    }
-
-    /// Claude Code is signed out, so Claude's clean-up was lost (or the key did it instead, said once
-    /// per launch): the pill says how to sign in again.
-    private func announceSignedOut(_ tool: SubscriptionCLI, keyStoodIn: Bool) {
-        if keyStoodIn {
-            guard !toldKeyStoodIn else { return }
-            toldKeyStoodIn = true
-        }
-        let format = keyStoodIn ? String(localized: "flow.ann.signed-out-key %@ %@")
-                                : String(localized: "flow.ann.signed-out %@ %@")
-        pill.announce(FlowAnnouncement(symbol: "person.crop.circle.badge.exclamationmark",
-                                       text: String(format: format, tool.displayName, tool.signIn),
-                                       action: String(localized: "flow.ann.terminal"))) {
-            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
         }
     }
 

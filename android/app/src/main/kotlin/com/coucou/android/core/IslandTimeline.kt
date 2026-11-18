@@ -28,8 +28,6 @@ data class IslandSpec(
  *   the island retracts. A newer event restarts the hold.
  * - The island re-opens when something starts while it is retracting; a content change (working to
  *   finished) never retracts it.
- * - [swipeAway]: the user swiped the island up. It goes back into the notch and stays there while the same thing
- *   goes on (same kind, same agent, same request); something new brings it back down.
  * - [nextDeadline] is the only time anything must wake up: while hidden it is null, so nothing runs.
  */
 class IslandTimeline(private val clockMs: () -> Double) {
@@ -42,11 +40,6 @@ class IslandTimeline(private val clockMs: () -> Double) {
     private var flash: IslandSpec? = null
     private var flashUntil = 0.0
     private var retractUntil = 0.0
-
-    /** What the user swiped away: kept until that thing is over or something else comes up. */
-    private var swiped: Triple<IslandSpec.Kind, String, String?>? = null
-
-    private fun IslandSpec.key() = Triple(kind, pillId, fingerprint)
 
     /** What to draw now (kept while retracting, so the island shrinks around its last content). */
     var current: IslandSpec? = null
@@ -63,16 +56,8 @@ class IslandTimeline(private val clockMs: () -> Double) {
         refresh()
     }
 
-    /** The user swiped the island up: it retracts now, and the same thing does not bring it back. */
-    fun swipeAway() {
-        if (phase != Phase.OPEN) return
-        swiped = (active ?: flash)?.key()
-        refresh()
-    }
-
     /** Close at once (Coucou came to the front, the switch went off, the link dropped). */
     fun dismiss() {
-        swiped = null
         active = null
         flash = null
         current = null
@@ -100,10 +85,7 @@ class IslandTimeline(private val clockMs: () -> Double) {
     private fun refresh() {
         val now = clockMs()
         if (flash != null && now >= flashUntil) flash = null
-        val candidate = active ?: flash
-        // Nothing going on, or something else than what was swiped: the swipe is forgotten.
-        if (candidate == null || candidate.key() != swiped) swiped = null
-        val shown = candidate?.takeUnless { it.key() == swiped }
+        val shown = active ?: flash
         when {
             shown != null -> {
                 current = shown

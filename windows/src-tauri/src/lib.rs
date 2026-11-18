@@ -1,27 +1,23 @@
-// Coucou for Windows — app wiring and the commands the island calls.
+// Coucou for Windows â€” app wiring and the commands the island calls.
 
 mod agent_hooks;
 mod agents;
-mod agy_approvals;
-mod agy_rules;
 mod chat;
 mod claude;
 mod claude_code;
 mod cli_relay;
 mod codex_plan;
 mod config_file;
+mod deezer;
 mod desktop;
 mod files;
 mod flow;
 mod github;
-mod herdr;
 mod hooks;
 mod i18n;
 mod identity;
 mod integrations;
-mod calcom;
 mod island;
-mod launch;
 mod local_chat;
 mod log;
 mod mail;
@@ -46,7 +42,6 @@ mod update;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
-mod webview_memory;
 mod whatsapp;
 
 use std::process::Command;
@@ -120,8 +115,6 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay = current.phone_relay;
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
-        // Antigravity approvals: only their own switch changes them (agy_approvals.rs).
-        settings.agy_approvals_enabled = current.agy_approvals_enabled;
         *current = settings;
         (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -142,6 +135,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    deezer::sync(&app, &settings.active_integrations);
     whatsapp::sync(&settings.active_integrations);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
@@ -149,12 +143,12 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     if i18n::set_picked(&settings.language) {
         language_changed(&app);
     }
-    // Keep the other window in step (island ⇄ settings window).
+    // Keep the other window in step (island â‡„ settings window).
     let _ = app.emit("settings-changed", settings);
 }
 
 /// The island reports the system's languages at launch, for "System" in
-/// Settings → Language (WebView2 and WebKitGTK know them best).
+/// Settings â†’ Language (WebView2 and WebKitGTK know them best).
 #[tauri::command]
 fn set_system_languages(app: AppHandle, languages: Vec<String>) {
     if i18n::set_system(languages) {
@@ -171,8 +165,8 @@ fn language_changed(app: &AppHandle) {
     }
 }
 
-/// Hidden island → shrink the window to the invisible wake strip and park the
-/// cursor poll; anything else → full panel and 60 Hz polling.
+/// Hidden island â†’ shrink the window to the invisible wake strip and park the
+/// cursor poll; anything else â†’ full panel and 60 Hz polling.
 #[tauri::command]
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool, width: Option<f64>, height: Option<f64>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
@@ -230,7 +224,7 @@ fn fit_zoom(app: AppHandle, dpr: f64) -> bool {
     let mut zoom = ZOOM.lock().unwrap();
     if let Some(new_zoom) = island::calculate_zoom_correction(*zoom, scale, dpr) {
         *zoom = new_zoom;
-        log::line(format!("webview dpr {dpr} != window scale {scale} — setting zoom {new_zoom:.3}"));
+        log::line(format!("webview dpr {dpr} != window scale {scale} â€” setting zoom {new_zoom:.3}"));
         let _ = win.set_zoom(new_zoom);
         true
     } else {
@@ -329,18 +323,16 @@ fn open_in_vscode(path: Option<String>) -> bool {
 
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
-/// folder in VS Code, as before. A session in herdr also gets its pane selected,
-/// and never falls back to VS Code.
+/// folder in VS Code, as before.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
-    let in_herdr = session_id.as_deref().is_some_and(herdr::focus);
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return in_herdr || open_in_vscode(path);
+        return open_in_vscode(path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
     {
-        if platform::focus_session_window(&owners, &folder) || in_herdr {
+        if platform::focus_session_window(&owners, &folder) {
             return true;
         }
         open_in_vscode(path)
@@ -351,7 +343,7 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) && !in_herdr {
+            if !platform::focus_session_window(&owners, &folder) {
                 open_in_vscode(path);
             }
         });
@@ -367,15 +359,15 @@ fn open_claude_desktop() -> bool {
 }
 
 /// The file behind a live diff, if it may be handed to the editor: an existing
-/// regular file given by its full path. Anything else — a relative path, a
-/// folder, a path `code` could read as an option — goes no further.
+/// regular file given by its full path. Anything else â€” a relative path, a
+/// folder, a path `code` could read as an option â€” goes no further.
 fn diff_file(path: &str) -> Option<&std::path::Path> {
     let p = std::path::Path::new(path);
     (p.is_absolute() && p.is_file()).then_some(p)
 }
 
-/// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
-/// otherwise shows its folder. The file itself is never opened by its type —
+/// The diff card's â†—: opens the edited file in VS Code when `code` is on PATH,
+/// otherwise shows its folder. The file itself is never opened by its type â€”
 /// xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
@@ -398,21 +390,21 @@ fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
-/// Tray → Pause. Paused means paused: the pollers stop talking to the network,
+/// Tray â†’ Pause. Paused means paused: the pollers stop talking to the network,
 /// not just the island stopping showing things.
 #[tauri::command]
 fn set_paused(paused: bool) {
     integrations::set_paused(paused);
 }
 
-// ── Claude Code hooks ─────────────────────────────────────────────────────────
+// â”€â”€ Claude Code hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 #[tauri::command]
 fn hooks_status() -> HookStatus {
     hooks::status()
 }
 
-/// Pill ID → whether that agent's hooks reach Coucou. Read-only.
+/// Pill ID â†’ whether that agent's hooks reach Coucou. Read-only.
 #[tauri::command]
 fn agent_hooks_status() -> std::collections::HashMap<String, bool> {
     agent_hooks::status()
@@ -447,7 +439,7 @@ fn hooks_apply(
     Ok(backup)
 }
 
-// ── Other agents' hooks and plugins ──────────────────────────────────────────
+// â”€â”€ Other agents' hooks and plugins â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 #[tauri::command]
 fn agent_hooks_list() -> Vec<agents::AgentStatus> {
@@ -470,7 +462,7 @@ fn agent_hooks_apply(agent: String, install: bool, fingerprint: String) -> Resul
     Ok(backups)
 }
 
-// ── Plan usage ────────────────────────────────────────────────────────────────
+// â”€â”€ Plan usage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /// The diff of putting the plan usage relay into (or taking it out of) the
 /// status line, before anything is written.
@@ -538,7 +530,7 @@ fn approval_ack(app: AppHandle, request_id: String) {
     pipe::acknowledge(&app, &request_id);
 }
 
-/// Nobody can act on this request — the island is paused, or another card is
+/// Nobody can act on this request â€” the island is paused, or another card is
 /// already up. Claude Code falls back to asking in the terminal immediately.
 #[tauri::command]
 fn approval_decline(app: AppHandle, request_id: String) {
@@ -546,7 +538,7 @@ fn approval_decline(app: AppHandle, request_id: String) {
     pipe::decline(&app, &request_id);
 }
 
-// ── Chat, files and secrets ───────────────────────────────────────────────────
+// â”€â”€ Chat, files and secrets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /// One chat turn with the provider picked in the chat view. API keys and any
 /// file bytes stay on the Rust side.
@@ -586,7 +578,7 @@ async fn claude_api_models() -> Result<Vec<ModelInfo>, String> {
     claude::available_models().await
 }
 
-/// Settings → Local models → Connect: does the server answer, and with which models?
+/// Settings â†’ Local models â†’ Connect: does the server answer, and with which models?
 #[tauri::command]
 async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
     local_chat::connect(&provider, &url).await
@@ -610,7 +602,7 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
-/// The island may only ask whether a key exists — never read it.
+/// The island may only ask whether a key exists â€” never read it.
 #[tauri::command]
 fn secret_present(key: String) -> bool {
     secrets::present(&key)
@@ -622,7 +614,7 @@ fn claude_ready() -> bool {
     claude::ready()
 }
 
-/// Settings → Chat → Your AI subscriptions: each provider's switch and
+/// Settings â†’ Chat â†’ Your AI subscriptions: each provider's switch and
 /// whether its terminal tool is installed (looked up again on every call).
 #[tauri::command]
 fn subscription_status(shared: State<Shared>) -> Vec<cli_relay::Status> {
@@ -684,7 +676,7 @@ fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Opens the configured n8n instance — the URL lives in the Credential Manager.
+/// Opens the configured n8n instance â€” the URL lives in the Credential Manager.
 #[tauri::command]
 fn open_n8n() {
     if let Some(url) = secrets::get("n8n-url") {
@@ -711,7 +703,7 @@ fn log_line(message: String) {
     log::line(format!("ui  {message}"));
 }
 
-// ── Global shortcuts ──────────────────────────────────────────────────────────
+// â”€â”€ Global shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /// How each global shortcut went: registered, taken by another app, and so on.
 #[tauri::command]
@@ -731,12 +723,12 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
     }
 }
 
-// ── Settings window ───────────────────────────────────────────────────────────
+// â”€â”€ Settings window â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /// WebView2 allows exactly one browser environment per app, and its options are
 /// fixed by whichever webview is created first. Every window must therefore ask
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
-/// tauri.conf.json) — a mismatch makes the second window come up blank, with no
+/// tauri.conf.json) â€” a mismatch makes the second window come up blank, with no
 /// error anywhere.
 pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
 
@@ -757,8 +749,8 @@ fn settings_page_url(app: &AppHandle) -> WebviewUrl {
 pub const HUB_LABEL: &str = "settings";
 
 /// The Coucou window is created hidden at launch and only ever shown and
-/// hidden afterwards. A WebView2 window created later — on the main thread or
-/// not — silently comes up blank in this app, so the window that works is the
+/// hidden afterwards. A WebView2 window created later â€” on the main thread or
+/// not â€” silently comes up blank in this app, so the window that works is the
 /// one that exists before the island's webview does.
 fn create_settings_window(app: &AppHandle) {
     let url = settings_page_url(app);
@@ -780,16 +772,14 @@ fn create_settings_window(app: &AppHandle) {
                     api.prevent_close();
                     let _ = this.hide();
                     set_hub_shown(&this, false);
-                    webview_memory::set_low(&this, true);
                 }
-                // Minimised (a 0×0 resize on Windows) or back from it.
+                // Minimised (a 0Ã—0 resize on Windows) or back from it.
                 tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true) => {
                     let on = this.is_visible().unwrap_or(false) && !this.is_minimized().unwrap_or(false);
                     set_hub_shown(&this, on);
                 }
                 _ => {}
             });
-            webview_memory::set_low(&win, true); // created hidden
         }
         Err(err) => log::line(format!("Coucou window failed: {err}")),
     }
@@ -823,7 +813,7 @@ pub fn show_settings_window(app: &AppHandle) {
 }
 
 /// Shows the Coucou window, on `page` when given ("dictation", "notes",
-/// "settings", "general", "shortcuts"…).
+/// "settings", "general", "shortcuts"â€¦).
 pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     let Some(win) = app.get_webview_window(HUB_LABEL) else {
         // Creating it at startup can fail on some machines (WebView2
@@ -834,7 +824,6 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
         let _ = app.run_on_main_thread(move || {
             create_settings_window(&handle);
             if let Some(win) = handle.get_webview_window(HUB_LABEL) {
-                webview_memory::set_low(&win, false);
                 let _ = win.show();
                 let _ = win.set_focus();
                 set_hub_shown(&win, true);
@@ -845,7 +834,6 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     if let Some(page) = page {
         let _ = win.emit("hub-page", page.to_string());
     }
-    webview_memory::set_low(&win, false);
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
@@ -927,9 +915,6 @@ pub fn run() {
             open_gitea_url,
             open_in_vscode,
             open_session,
-            launch::launch_session,
-            launch::pick_folder,
-            launch::drop_into_session,
             open_claude_desktop,
             open_file_in_vscode,
             quit_app,
@@ -947,8 +932,6 @@ pub fn run() {
             approval_answer,
             approval_ack,
             approval_decline,
-            agy_approvals::agy_approvals_status,
-            agy_approvals::agy_approvals_set_enabled,
             log_line,
             chat_send,
             chat_models,
@@ -1025,10 +1008,13 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
+            deezer::deezer_refresh,
+            deezer::deezer_control,
+            deezer::deezer_open,
+            deezer::deezer_installed,
             whatsapp::whatsapp_island,
             whatsapp::whatsapp_open,
             whatsapp::whatsapp_close,
-            whatsapp::whatsapp_open_app,
             whatsapp::whatsapp_send,
             whatsapp::whatsapp_ignore,
             whatsapp::whatsapp_unignore,
@@ -1084,7 +1070,6 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
-            secrets::warm_up();
             app.manage(phone_link::PhoneLink::new(handle.clone()));
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
@@ -1124,6 +1109,7 @@ pub fn run() {
             integrations::start(handle.clone());
             mail::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            deezer::sync(&handle, &loaded.active_integrations);
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);

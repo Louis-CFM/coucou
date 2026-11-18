@@ -8,8 +8,6 @@
 // people should be told it is recorded.
 
 pub mod builder;
-#[cfg(windows)]
-mod export;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -732,11 +730,12 @@ pub fn notes_markdown(taker: State<Arc<NoteTaker>>, id: String) -> Option<String
     taker.note(&id).map(|n| markdown(&n))
 }
 
-/// Windows asks where to save; cancelling the native dialog writes nothing.
+/// Saves the note as Markdown in Documents (or the home folder) and shows it.
 #[tauri::command]
-pub async fn notes_export(window: tauri::WebviewWindow, taker: State<'_, Arc<NoteTaker>>, id: String) -> Result<Option<String>, String> {
-    if window.label() != crate::HUB_LABEL { return Err("Open the note in Coucou to export it.".into()); }
+pub fn notes_export(taker: State<Arc<NoteTaker>>, id: String) -> Result<String, String> {
     let note = taker.note(&id).ok_or("no such note")?;
+    let home = crate::platform::home_dir();
+    let dir = [home.join("Documents"), home.clone()].into_iter().find(|d| d.is_dir()).unwrap_or(home);
     let safe: String = note
         .title
         .chars()
@@ -745,29 +744,15 @@ pub async fn notes_export(window: tauri::WebviewWindow, taker: State<'_, Arc<Not
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
-    let name = if safe.is_empty() { "Coucou notes" } else { &safe };
-    #[cfg(windows)]
-    {
-        let owner = window.hwnd().map_err(|error| error.to_string())?.0 as isize;
-        let selected = export::choose_path(owner, format!("{name}.md")).await?;
-        let content = markdown(&note);
-        tauri::async_runtime::spawn_blocking(move || export::write_selected(selected, &content))
-            .await.map_err(|error| error.to_string())?
+    let mut path = dir.join(format!("{}.md", if safe.is_empty() { "Coucou notes".to_string() } else { safe.clone() }));
+    let mut n = 2;
+    while path.exists() {
+        path = dir.join(format!("{} ({n}).md", if safe.is_empty() { "Coucou notes" } else { &safe }));
+        n += 1;
     }
-    #[cfg(not(windows))]
-    {
-        let home = crate::platform::home_dir();
-        let dir = [home.join("Documents"), home.clone()].into_iter().find(|d| d.is_dir()).unwrap_or(home);
-        let mut path = dir.join(format!("{name}.md"));
-        let mut n = 2;
-        while path.exists() {
-            path = dir.join(format!("{name} ({n}).md"));
-            n += 1;
-        }
-        std::fs::write(&path, markdown(&note)).map_err(|e| e.to_string())?;
-        crate::platform::reveal_folder(&dir.to_string_lossy());
-        Ok(Some(path.to_string_lossy().to_string()))
-    }
+    std::fs::write(&path, markdown(&note)).map_err(|e| e.to_string())?;
+    crate::platform::reveal_folder(&dir.to_string_lossy());
+    Ok(path.to_string_lossy().to_string())
 }
 
 #[cfg(test)]

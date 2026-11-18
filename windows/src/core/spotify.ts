@@ -4,6 +4,7 @@
 // (BotCanvasView, DesktopMochi.swift).
 
 import type { BotStateName, IslandMode, IslandViewName } from "./layout";
+import { DEEZER_ID } from "./deezer";
 
 export const SPOTIFY_ID = "integration_spotify";
 /** SpotifyController.green. */
@@ -112,7 +113,7 @@ export function islandDances(o: {
 }): boolean {
   if (!o.music || !DANCE_STATES.has(o.state)) return false;
   if (o.mode === "compact") return true;
-  return o.mode === "expanded" && o.view === "overview" && o.focusId === SPOTIFY_ID;
+  return o.mode === "expanded" && o.view === "overview" && (o.focusId === SPOTIFY_ID || o.focusId === DEEZER_ID);
 }
 
 /** Mochi on the desktop: the compact island's rules (DesktopMochi.swift). */

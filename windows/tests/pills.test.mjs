@@ -49,7 +49,7 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_whatsapp", "WhatsApp", "#25D366", "service", "Integration"],
   ];
   assert.deepEqual(
-    PILL_CATALOG.filter((p) => !["integration_gitlab", "integration_gitea"].includes(p.id))
+    PILL_CATALOG.filter((p) => !["integration_gitlab", "integration_gitea", "integration_deezer"].includes(p.id))
       .map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     mac,
   );
@@ -62,6 +62,16 @@ test("GitLab is a supported service integration", () => {
   const def = pillDefinition("integration_gitlab");
   assert.deepEqual([def.name, def.color, def.category, def.support], ["GitLab", "#FC6D26", "service", "yes"]);
   assert.ok(!isComingSoon("integration_gitlab"));
+});
+
+test("Deezer is a Windows-only service pill that needs nothing entered", () => {
+  const def = pillDefinition("integration_deezer");
+  assert.deepEqual(
+    [def.name, def.color, def.category, def.subtitle, def.support, def.connect.kind],
+    ["Deezer", "#A238FF", "service", "Integration", "windows", "none"],
+  );
+  assert.ok(availablePills("windows").some((p) => p.id === "integration_deezer"));
+  assert.ok(!availablePills("linux").some((p) => p.id === "integration_deezer"));
 });
 
 test("Gitea is an available service pill", () => {
@@ -116,7 +126,10 @@ test("this build leaves out what only macOS has", () => {
   // Spotify: MPRIS on Linux, the system media controls on Windows.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(windows.includes("integration_spotify"));
-  assert.deepEqual(linux, windows.filter((id) => id !== "integration_mail"));
+  // Deezer, like Mail, is Windows only (its session is the system media controls).
+  assert.ok(windows.includes("integration_deezer"));
+  assert.ok(!linux.includes("integration_deezer"));
+  assert.deepEqual(linux, windows.filter((id) => id !== "integration_mail" && id !== "integration_deezer"));
 });
 
 test("Spotify: a service on both systems with nothing to set up", () => {

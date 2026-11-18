@@ -334,10 +334,7 @@ fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
     }
     let built = builder.build();
     match built {
-        Ok(win) => {
-            crate::webview_memory::set_low(&win, true); // he starts at home
-            Some(win)
-        }
+        Ok(win) => Some(win),
         Err(err) => {
             crate::log::line(format!("desktop Mochi window failed: {err}"));
             None
@@ -451,7 +448,6 @@ fn show(app: &AppHandle, d: &Desktop, at: (f64, f64)) {
     place(app, d, at);
     d.inner.lock().unwrap().shown = true;
     if let Some(win) = window(app) {
-        crate::webview_memory::set_low(&win, false);
         if !PARK {
             let _ = win.show();
         }
@@ -471,9 +467,6 @@ fn hide(app: &AppHandle, d: &Desktop) {
         i.asleep = false;
     }
     refresh(app, d);
-    if let Some(win) = window(app) {
-        crate::webview_memory::set_low(&win, true); // nothing to draw while he is home
-    }
     if PARK {
         place(app, d, PARKED);
     } else if let Some(win) = window(app) {
@@ -519,7 +512,7 @@ fn refresh(app: &AppHandle, d: &Desktop) {
         DesktopMode::Poll => {
             if let Some(flag) = ignore {
                 d.inner.lock().unwrap().ignoring = Some(flag);
-                platform::set_click_through(&win, flag);
+                let _ = win.set_ignore_cursor_events(flag);
             }
             d.gate.set_active(active);
         }
@@ -672,7 +665,7 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
                 let mut i = d.inner.lock().unwrap();
                 if i.ignoring != Some(!accept) {
                     i.ignoring = Some(!accept);
-                    platform::set_click_through(&win, !accept);
+                    let _ = win.set_ignore_cursor_events(!accept);
                 }
             }
             if (local.0 - last.0).abs() >= 1.0 || (local.1 - last.1).abs() >= 1.0 {

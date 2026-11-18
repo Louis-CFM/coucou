@@ -53,13 +53,8 @@ struct HubSettingsPage: View {
                 }
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.handsfree"),
-                       detail: flow.oneTapHandsFree ? String(localized: "flow.one-tap-detail")
-                                                    : String(localized: "hub.settings.handsfree-detail")) {
-                    HubKeyCap(text: flow.oneTapHandsFree ? flow.key.symbol : "\(flow.key.symbol) \(flow.key.symbol)")
-                }
-                HubDivider()
-                HubRow(title: String(localized: "flow.one-tap")) {
-                    Toggle("", isOn: $flow.oneTapHandsFree).toggleStyle(.switch).labelsHidden()
+                       detail: String(localized: "hub.settings.handsfree-detail")) {
+                    HubKeyCap(text: "\(flow.key.symbol) \(flow.key.symbol)")
                 }
                 HubDivider()
                 HubRow(title: String(localized: "hub.settings.paste-again"),
@@ -80,7 +75,7 @@ struct HubSettingsPage: View {
                     Toggle("", isOn: $store.promptMode)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .disabled(!FlowCleanup.isAvailable && !store.promptMode)
+                        .disabled(!FlowCleanup.hasKey && !store.promptMode)
                 }
                 HubDivider()
                 HubRow(title: String(localized: "flow.translate"),
@@ -94,9 +89,9 @@ struct HubSettingsPage: View {
                     }
                     .labelsHidden()
                     .fixedSize()
-                    .disabled(!FlowCleanup.isAvailable && store.translateTo.isEmpty)
+                    .disabled(!FlowCleanup.hasKey && store.translateTo.isEmpty)
                 }
-                if !FlowCleanup.isAvailable {
+                if !FlowCleanup.hasKey {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
                             .foregroundColor(HubTheme.accent)
