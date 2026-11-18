@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 — Unreleased
+
+- **Botan, the founders list** — the "Your Coucou so far" step of the card shown after an update has one more line: *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). Botan is Mochi on a little device that snaps onto the back of your iPhone. The Coucou page has the same link
+
 ## 0.6.0 — November 12, 2026
 
 - **Start a Claude Code session from the notch** *(GitHub build)* — the terminal tab in the island's header, or ⌃⌥N: pick the project (the folders your sessions ran in, or any folder), type or dictate what Claude should do, and your terminal opens there with Claude Code and your words. Terminal, iTerm2, Ghostty, kitty, WezTerm and Alacritty; the prompt is never written into a command line
@@ -50,6 +54,7 @@ Fixes:
 - **Settings → General follows changes made from the island**, and a failed drop's note no longer reopens a folded island (#695, #696 by @mahach666)
 - **Instant page switches in Settings** *(Linux)* (#906 by @RomainBrocheton)
 - **The finished card goes away when a new prompt comes** (#587) and **the GitHub week strip is graded against its own week** (#611), by @rollecode
+- **Botan, the founders list** — the second step of the card shown after an update has one more line, *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). The card is a little taller for it
 
 ## Android 0.5.0 — November 13, 2026
 

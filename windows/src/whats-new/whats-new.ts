@@ -192,5 +192,8 @@ export function releasePage(platform: "windows" | "linux", version: string): str
 /** Buy Mochi a coffee: the same Stripe link as the Coucou page (docs/index.html). */
 export const COFFEE_URL = "https://buy.stripe.com/dRm6oGbfa7Kqcqs0hxes003";
 
+/** Botan, Mochi out of the notch: the founders list (same link as the Coucou page and the Mac). */
+export const BOTAN_URL = "https://louisraille.fr/botan";
+
 /** The blue of an update, and of the arrow badge. */
 export const UPDATE_BLUE = "#3B82F6";
