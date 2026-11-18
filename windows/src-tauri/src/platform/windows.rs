@@ -592,6 +592,48 @@ fn open_claude_with(
     focus() || squirrel() || protocol()
 }
 
+/// Focuses an existing Antigravity window (matching `folder` when given), or
+/// spawns Antigravity with `folder` if installed.
+pub fn focus_or_open_antigravity(folder: Option<&str>) -> bool {
+    let pids: Vec<u32> = process_table()
+        .into_iter()
+        .filter(|(_, p)| p.exe.eq_ignore_ascii_case("Antigravity.exe"))
+        .map(|(pid, _)| pid)
+        .collect();
+
+    let candidates: Vec<(isize, String)> = top_windows()
+        .into_iter()
+        .filter(|(_, owner, _)| pids.contains(owner))
+        .map(|(hwnd, _, title)| (hwnd, title))
+        .collect();
+
+    let target = folder.map(session_window::folder_name).unwrap_or_default();
+    if let Some(hwnd) = session_window::pick_window(&candidates, target) {
+        bring_forward(*hwnd);
+        return true;
+    }
+
+    let exe = std::env::var_os("LOCALAPPDATA")
+        .map(|base| PathBuf::from(base).join("Programs").join("antigravity").join("Antigravity.exe"))
+        .filter(|p| p.is_file())
+        .or_else(|| find_on_path("agy"));
+
+    if let Some(exe) = exe {
+        let mut cmd = Command::new(exe);
+        if let Some(dir) = folder
+            .map(std::path::Path::new)
+            .filter(|p| p.is_absolute() && p.is_dir())
+        {
+            cmd.arg(dir);
+        }
+        if no_console(&mut cmd).spawn().is_ok() {
+            return true;
+        }
+    }
+
+    false
+}
+
 /// The MSIX manifest registers `claude`; let Windows resolve its current install.
 fn activate_claude_protocol() -> bool {
     unsafe {
