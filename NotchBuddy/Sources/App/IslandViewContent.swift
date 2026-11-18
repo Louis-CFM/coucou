@@ -279,24 +279,7 @@ struct OverviewView: View {
         switch task.pill {
         case "integration_claude":
             if ClaudeHost.activate(task.hostApp) { return }
-            // openApplication also brings a running VS Code forward; activate() is ignored on macOS 14+.
-            // The running copy's URL first: with two installs, Launch Services may pick the other one.
-            // The session's own bundle id covers Insiders / VSCodium.
-            let ids = [task.sessionBundleId, "com.microsoft.VSCode"].compactMap { $0 }.filter { !$0.isEmpty }
-            let running = NSWorkspace.shared.runningApplications
-                .first { ids.contains($0.bundleIdentifier ?? "") }?.bundleURL
-            let vscode = running
-                ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode")
-                ?? URL(fileURLWithPath: "/Applications/Visual Studio Code.app")
-            // Opening the session's folder makes VS Code focus the window that has it open,
-            // so with several windows the right one comes forward.
-            // ponytail: a cwd below the window's root folder opens a new window; match roots if that bites.
-            if let cwd = task.sessionCwd, !cwd.isEmpty, FileManager.default.fileExists(atPath: cwd) {
-                NSWorkspace.shared.open([URL(fileURLWithPath: cwd)], withApplicationAt: vscode,
-                                        configuration: .init(), completionHandler: nil)
-            } else {
-                NSWorkspace.shared.openApplication(at: vscode, configuration: .init(), completionHandler: nil)
-            }
+            openVSCodeSession(task)
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_mail":
@@ -815,9 +798,41 @@ struct ErrorView: View {
 /// Only brings apps to the front, so the App Store build has it too.
 private func openSessionApp(_ task: AgentTask?) {
     if !(task?.pill == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+       !openVSCodeSession(task),
        !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
     }
+}
+
+/// Brings forward the VS Code window of a VS Code session (launching VS Code if needed).
+/// false when the session doesn't run in VS Code.
+@discardableResult
+private func openVSCodeSession(_ task: AgentTask?) -> Bool {
+    guard let task, task.pill == "integration_claude", task.hostApp == nil else { return false }
+    // openApplication also brings a running VS Code forward; activate() is ignored on macOS 14+.
+    // The running copy's URL first: with two installs, Launch Services may pick the other one.
+    // The session's own bundle id covers Insiders / VSCodium.
+    let ids = [task.sessionBundleId, "com.microsoft.VSCode"].compactMap { $0 }.filter { !$0.isEmpty }
+    let running = NSWorkspace.shared.runningApplications
+        .first { ids.contains($0.bundleIdentifier ?? "") }?.bundleURL
+    let vscode = running
+        ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode")
+        ?? URL(fileURLWithPath: "/Applications/Visual Studio Code.app")
+    // Opening the session's folder makes VS Code focus the window that has it open,
+    // so with several windows the right one comes forward. If that is refused (the App Store
+    // sandbox can), VS Code still comes forward.
+    // ponytail: a cwd below the window's root folder opens a new window; match roots if that bites.
+    if let cwd = task.sessionCwd, !cwd.isEmpty, FileManager.default.fileExists(atPath: cwd) {
+        NSWorkspace.shared.open([URL(fileURLWithPath: cwd)], withApplicationAt: vscode,
+                                configuration: .init()) { _, error in
+            if error != nil {
+                NSWorkspace.shared.openApplication(at: vscode, configuration: .init(), completionHandler: nil)
+            }
+        }
+    } else {
+        NSWorkspace.shared.openApplication(at: vscode, configuration: .init(), completionHandler: nil)
+    }
+    return true
 }
 
 /// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
