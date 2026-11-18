@@ -240,6 +240,7 @@ export class Island {
         // WhatsApp Desktop at the open conversation; WhatsApp Web when it isn't installed.
         else if (task.id === "integration_whatsapp") void Bridge.whatsappOpenApp();
         else if (task.id === "integration_gitea") void Bridge.openGitea();
+        else if (task.id === "integration_jira") void Bridge.openJira();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
