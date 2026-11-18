@@ -10,6 +10,11 @@ Approve permissions, watch your agents work, drop a file, chat with Claude — a
 
 **New in 0.4: Coucou is a real Mac app.** Hold a key anywhere, speak, let go: your words are pasted where you type, like Wispr Flow — free, open source, and offline with Parakeet. Record your calls without a bot in the meeting and get the transcript, the summary and the to-dos.
 
+<a href="https://louisraille.fr/botan"><img src="docs/media/botan.svg" width="40" alt="Botan"></a>
+
+**New: Botan. Mochi is leaving the notch.** Botan snaps onto the back of your iPhone. **[Join the founders list ↗](https://louisraille.fr/botan)**
+
+[![Botan: founders list open](https://img.shields.io/badge/Botan-founders%20list%20open-FF5A24)](https://louisraille.fr/botan)
 [![Version](https://img.shields.io/github/v/release/Louis-CFM/coucou?filter=v*&label=version&color=0A84FF)](https://github.com/Louis-CFM/coucou/releases)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
 ![iOS 18+](https://img.shields.io/badge/iOS-18%2B-black?logo=apple)
@@ -34,6 +39,14 @@ Some studios showed off gorgeous notch companions… and never let anyone use th
 **Coucou is the open version.** Every line of code is open source under the MIT License: read it, fork it, learn from it. The Coucou name, Mochi and the sounds stay © Louis Raillé (see [License](#license)).
 
 Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment Claude Code needs you.
+
+## Botan: Mochi in real life
+
+<a href="https://louisraille.fr/botan"><img src="docs/media/botan.svg" width="64" alt="Botan" align="right"></a>
+
+Mochi is leaving the notch. **Botan** is my next project: it snaps onto the back of your iPhone, and I'm building it in public.
+
+The founders list is open: join it to follow the build and hear everything first. **[Join the founders ↗](https://louisraille.fr/botan)**
 
 ## Coucou on the Mac: dictation, notes, one window
 
@@ -120,6 +133,8 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 - 🔒 **Through your own iCloud** — sessions sync through your private CloudKit database; project names, commands and questions are encrypted with your iCloud keys. No Coucou server sees your projects, commands or keys. Turn it on in the Mac app: Settings → General → iPhone.
 
 **Get it on your iPhone in 3 steps:** install Coucou on your iPhone ([Join the TestFlight beta](https://testflight.apple.com/join/3GpeHv2b) — free, App Store coming soon), turn on **Settings → General → iPhone** in the Mac app (0.1.9 or later), and use the same Apple Account in iCloud on both. Full guide, troubleshooting and build-it-yourself: [docs/IPHONE.md](docs/IPHONE.md).
+
+> 📱 Want Mochi on the *back* of your iPhone too? That's [Botan](https://louisraille.fr/botan): the founders list is open.
 
 ## Coucou for Android
 
@@ -550,7 +565,7 @@ Want to add or improve a translation? Open a PR with changes to `NotchBuddy/Reso
 
 ## Credits
 
-Built by [Louis Raillé](https://louisraille.fr) with Claude Code.
+Built by [Louis Raillé](https://louisraille.fr) with Claude Code. Next up: [Botan](https://louisraille.fr/botan), Mochi in real life.
 Coucou for Android and the phone link by [Rhytam Biswas (@Rhytam23)](https://github.com/Rhytam23).
 Thanks to everyone who sent a pull request — see [contributors](https://github.com/Louis-CFM/coucou/graphs/contributors).
 Inspired by the notch-companion concepts shared by design studios — this project is independent and not affiliated with any of them.
@@ -564,6 +579,6 @@ Inspired by the notch-companion concepts shared by design studios — this proje
 
 **If Mochi made you smile, a ⭐ helps a lot.**
 
-[Website](https://louis-cfm.github.io/coucou/) · [Privacy](https://louis-cfm.github.io/coucou/privacy.html) · [Terms](https://louis-cfm.github.io/coucou/terms.html) · [Support](https://louis-cfm.github.io/coucou/support.html)
+[Website](https://louis-cfm.github.io/coucou/) · [Botan](https://louisraille.fr/botan) · [Privacy](https://louis-cfm.github.io/coucou/privacy.html) · [Terms](https://louis-cfm.github.io/coucou/terms.html) · [Support](https://louis-cfm.github.io/coucou/support.html)
 
 </div>
