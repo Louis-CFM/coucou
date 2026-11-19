@@ -2201,11 +2201,12 @@ mod launch {
 
     #[test]
     fn the_app_hands_the_request_to_the_islands_launcher_and_to_nothing_else() {
-        // mod.rs: the phone's request ends in launch::launch_session, the function behind the island's own card. No
-        // second launcher, no Command, no shell here.
+        // mod.rs: the phone's request ends in launch::launch_from_phone, the island's own launcher in the standard
+        // permission mode (launch.rs tests the mode). No second launcher, no Command, no shell here.
         let source = include_str!("mod.rs").replace("\r\n", "\n");
         let body = source.split("fn launch(&self, folder: &str, prompt: &str) -> bool {").nth(1).unwrap().split("\n    }\n").next().unwrap();
-        assert!(body.contains("crate::launch::launch_session(folder.to_string(), prompt.to_string())"), "{body}");
+        assert!(body.contains("crate::launch::launch_from_phone(folder, prompt)"), "{body}");
+        assert!(!body.contains("launch_session"), "never the island's own mode: {body}");
         assert!(!body.contains("{prompt") && !body.contains("prompt)\")"), "the prompt is not logged: {body}");
         for file in [source.as_str(), include_str!("hub.rs"), include_str!("server.rs")] {
             assert!(!file.contains("Command::new"), "the phone link starts no process of its own");

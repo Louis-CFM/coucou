@@ -35,6 +35,26 @@ pub struct Spawn {
     pub dir: String,
 }
 
+/// Who asked for the session. From the island it is the user at the computer,
+/// and Claude Code starts the way their own settings say. From a phone it
+/// always starts in the standard permission mode, whatever those settings
+/// say: a phone must never start a session that doesn't ask for approval.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Origin {
+    Island,
+    Phone,
+}
+
+impl Origin {
+    /// What comes between `claude` and the prompt.
+    pub fn claude_flags(self) -> &'static str {
+        match self {
+            Origin::Island => "",
+            Origin::Phone => " --permission-mode default",
+        }
+    }
+}
+
 /// The prompt as it is handed over: trimmed, on one line.
 pub fn clean_prompt(prompt: &str) -> String {
     prompt.split(['\r', '\n']).map(str::trim).filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" ")
@@ -63,8 +83,9 @@ pub fn sh_quote(s: &str) -> String {
 /// any terminal), Claude Code with the prompt from COUCOU_PROMPT, then the
 /// shell again in the project once Claude Code quits.
 #[cfg_attr(windows, allow(dead_code))]
-pub fn shell_command(shell: &str, has_prompt: bool) -> Vec<String> {
-    let run = if has_prompt { r#"claude "$COUCOU_PROMPT""# } else { "claude" };
+pub fn shell_command(shell: &str, has_prompt: bool, origin: Origin) -> Vec<String> {
+    let flags = origin.claude_flags();
+    let run = if has_prompt { format!(r#"claude{flags} "$COUCOU_PROMPT""#) } else { format!("claude{flags}") };
     vec![shell.to_string(), "-lic".to_string(), format!("{run}; exec {} -l", sh_quote(shell))]
 }
 
@@ -114,9 +135,9 @@ pub fn linux_terminal_args(terminal: &str, dir: &str, command: &[String]) -> Vec
 
 /// The whole launch on Linux, `terminal` being the one found.
 #[cfg_attr(windows, allow(dead_code))]
-pub fn linux_spawn(terminal: &str, shell: &str, folder: &str, prompt: &str) -> Spawn {
+pub fn linux_spawn(terminal: &str, shell: &str, folder: &str, prompt: &str, origin: Origin) -> Spawn {
     let prompt = clean_prompt(prompt);
-    let command = shell_command(shell, !prompt.is_empty());
+    let command = shell_command(shell, !prompt.is_empty(), origin);
     let env = if prompt.is_empty() { Vec::new() } else { vec![("COUCOU_PROMPT".to_string(), prompt)] };
     Spawn { program: terminal.to_string(), args: linux_terminal_args(terminal, folder, &command), env, dir: folder.to_string() }
 }
@@ -144,10 +165,10 @@ pub fn windows_prompt(prompt: &str) -> String {
 /// the default execution policy refuses to run. No double quote and nothing
 /// but the file's path, which is ours, is spelled out.
 #[cfg_attr(not(windows), allow(dead_code))]
-pub fn powershell_script(prompt_file: Option<&str>) -> String {
-    let claude = "& (Get-Command claude -CommandType Application -TotalCount 1)";
+pub fn powershell_script(prompt_file: Option<&str>, origin: Origin) -> String {
+    let claude = format!("& (Get-Command claude -CommandType Application -TotalCount 1){}", origin.claude_flags());
     match prompt_file {
-        None => claude.to_string(),
+        None => claude,
         Some(file) => {
             let f = ps_quote(file);
             format!(
@@ -169,8 +190,8 @@ pub fn wt_escape(s: &str) -> String {
 /// is installed, else PowerShell in a console of its own (the caller gives it
 /// one). `shell` is pwsh.exe or powershell.exe.
 #[cfg_attr(not(windows), allow(dead_code))]
-pub fn windows_spawn(wt: Option<&str>, shell: &str, folder: &str, prompt_file: Option<&str>) -> Spawn {
-    let script = powershell_script(prompt_file);
+pub fn windows_spawn(wt: Option<&str>, shell: &str, folder: &str, prompt_file: Option<&str>, origin: Origin) -> Spawn {
+    let script = powershell_script(prompt_file, origin);
     match wt {
         Some(wt) => Spawn {
             program: wt.to_string(),
@@ -247,7 +268,7 @@ fn start(spawn: &Spawn, new_console: bool) -> std::io::Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
+fn launch_here(folder: &str, prompt: &str, origin: Origin) -> Result<String, String> {
     let shell = std::env::var("SHELL").ok().filter(|s| Path::new(s).is_absolute()).unwrap_or_else(|| "/bin/bash".into());
     let env_terminal = std::env::var("TERMINAL").ok();
     for candidate in linux_candidates(env_terminal.as_deref()) {
@@ -258,7 +279,7 @@ fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
         }) else {
             continue;
         };
-        let spawn = linux_spawn(&path.to_string_lossy(), &shell, folder, prompt);
+        let spawn = linux_spawn(&path.to_string_lossy(), &shell, folder, prompt, origin);
         match start(&spawn, false) {
             Ok(()) => return Ok(candidate),
             Err(err) => crate::log::line(format!("launch: {candidate} didn't start: {err}")),
@@ -268,7 +289,7 @@ fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
 }
 
 #[cfg(windows)]
-fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
+fn launch_here(folder: &str, prompt: &str, origin: Origin) -> Result<String, String> {
     let prompt = windows_prompt(prompt);
     let file = if prompt.is_empty() {
         None
@@ -290,13 +311,13 @@ fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
     // spaces of "Program Files" through wt.exe's re-joined command line.
     let shell = if platform::find_on_path("pwsh").is_some() { "pwsh.exe" } else { "powershell.exe" };
     if let Some(wt) = platform::windows_terminal() {
-        let spawn = windows_spawn(Some(&wt.to_string_lossy()), shell, folder, file.as_deref());
+        let spawn = windows_spawn(Some(&wt.to_string_lossy()), shell, folder, file.as_deref(), origin);
         match start(&spawn, false) {
             Ok(()) => return Ok("Windows Terminal".into()),
             Err(err) => crate::log::line(format!("launch: Windows Terminal didn't start: {err}")),
         }
     }
-    let spawn = windows_spawn(None, shell, folder, file.as_deref());
+    let spawn = windows_spawn(None, shell, folder, file.as_deref(), origin);
     start(&spawn, true).map(|()| "PowerShell".into()).map_err(|e| e.to_string())
 }
 
@@ -304,11 +325,21 @@ fn launch_here(folder: &str, prompt: &str) -> Result<String, String> {
 /// False when the folder isn't one or no terminal could be started.
 #[tauri::command]
 pub fn launch_session(folder: String, prompt: String) -> bool {
-    if !valid_folder(&folder) {
+    launch_in(&folder, &prompt, Origin::Island)
+}
+
+/// The same launch, asked for by a paired phone (phone_link): Claude Code
+/// always starts in the standard permission mode, so it asks for approval.
+pub fn launch_from_phone(folder: &str, prompt: &str) -> bool {
+    launch_in(folder, prompt, Origin::Phone)
+}
+
+fn launch_in(folder: &str, prompt: &str, origin: Origin) -> bool {
+    if !valid_folder(folder) {
         return false;
     }
-    let name = session_window::folder_name(&folder).to_string();
-    match launch_here(&folder, &prompt) {
+    let name = session_window::folder_name(folder).to_string();
+    match launch_here(folder, prompt, origin) {
         Ok(terminal) => {
             crate::log::line(format!("launch: Claude Code in {name} with {terminal}"));
             true
@@ -405,10 +436,57 @@ mod tests {
     #[test]
     fn the_shell_runs_claude_with_the_variable_never_the_prompt() {
         assert_eq!(
-            shell_command("/bin/zsh", true),
+            shell_command("/bin/zsh", true, Origin::Island),
             s(&["/bin/zsh", "-lic", r#"claude "$COUCOU_PROMPT"; exec /bin/zsh -l"#])
         );
-        assert_eq!(shell_command("/usr/bin/fish", false), s(&["/usr/bin/fish", "-lic", "claude; exec /usr/bin/fish -l"]));
+        assert_eq!(shell_command("/usr/bin/fish", false, Origin::Island), s(&["/usr/bin/fish", "-lic", "claude; exec /usr/bin/fish -l"]));
+    }
+
+    #[test]
+    fn a_session_from_the_phone_always_starts_in_the_standard_permission_mode() {
+        // Whatever the computer's own Claude Code settings say (bypassPermissions, acceptEdits, plan...), the flag
+        // overrides them for this session: it asks for approval, and the requests reach the phone as usual.
+        assert_eq!(Origin::Phone.claude_flags(), " --permission-mode default");
+        assert_eq!(Origin::Island.claude_flags(), "", "the island's own launch is unchanged");
+
+        // Linux, with and without a prompt; the prompt stays in the environment.
+        assert_eq!(
+            shell_command("/bin/zsh", true, Origin::Phone),
+            s(&["/bin/zsh", "-lic", r#"claude --permission-mode default "$COUCOU_PROMPT"; exec /bin/zsh -l"#])
+        );
+        assert_eq!(
+            shell_command("/bin/bash", false, Origin::Phone),
+            s(&["/bin/bash", "-lic", "claude --permission-mode default; exec /bin/bash -l"])
+        );
+        let nasty = r#"--dangerously-skip-permissions "x"; claude --permission-mode bypassPermissions"#;
+        let spawn = linux_spawn("/usr/bin/kitty", "/bin/zsh", "/home/me/p", nasty, Origin::Phone);
+        assert_eq!(spawn.args.last().unwrap(), r#"claude --permission-mode default "$COUCOU_PROMPT"; exec /bin/zsh -l"#);
+        assert!(spawn.args.iter().all(|a| !a.contains("dangerously") && !a.contains("bypass")), "{:?}", spawn.args);
+        assert_eq!(spawn.env, vec![("COUCOU_PROMPT".to_string(), nasty.to_string())]);
+
+        // Windows, with and without a prompt, in Windows Terminal and in a console.
+        assert_eq!(
+            powershell_script(None, Origin::Phone),
+            "& (Get-Command claude -CommandType Application -TotalCount 1) --permission-mode default"
+        );
+        let script = powershell_script(Some(r"C:\Temp\p.txt"), Origin::Phone);
+        assert!(
+            script.ends_with("& (Get-Command claude -CommandType Application -TotalCount 1) --permission-mode default $env:COUCOU_PROMPT"),
+            "{script}"
+        );
+        assert!(!script.contains('"'));
+        let wt = windows_spawn(Some("wt.exe"), "pwsh.exe", r"C:\code", Some(r"C:\Temp\p.txt"), Origin::Phone);
+        assert_eq!(wt.args[6].replace(r"\;", ";"), script);
+        let console = windows_spawn(None, "powershell.exe", r"C:\code", None, Origin::Phone);
+        assert!(console.args.last().unwrap().ends_with("--permission-mode default"));
+    }
+
+    #[test]
+    fn only_the_phone_entry_point_uses_the_phone_origin() {
+        let source = include_str!("launch.rs").replace("\r\n", "\n");
+        let body = |head: &str| source.split(head).nth(1).unwrap().split("\n}\n").next().unwrap().trim().to_string();
+        assert_eq!(body("pub fn launch_from_phone(folder: &str, prompt: &str) -> bool {"), "launch_in(folder, prompt, Origin::Phone)");
+        assert_eq!(body("pub fn launch_session(folder: String, prompt: String) -> bool {"), "launch_in(&folder, &prompt, Origin::Island)");
     }
 
     #[test]
@@ -445,14 +523,14 @@ mod tests {
     #[test]
     fn linux_hands_the_prompt_in_the_environment_only() {
         let nasty = r#"fix the "login" bug; rm -rf / && echo $HOME `id` $(id)"#;
-        let spawn = linux_spawn("/usr/bin/kitty", "/bin/zsh", "/home/me/p", nasty);
+        let spawn = linux_spawn("/usr/bin/kitty", "/bin/zsh", "/home/me/p", nasty, Origin::Island);
         assert_eq!(spawn.program, "/usr/bin/kitty");
         assert_eq!(spawn.dir, "/home/me/p");
         assert_eq!(spawn.env, vec![("COUCOU_PROMPT".to_string(), nasty.to_string())]);
         assert!(spawn.args.iter().all(|a| !a.contains("login") && !a.contains("rm -rf")), "{:?}", spawn.args);
         assert_eq!(spawn.args.last().unwrap(), r#"claude "$COUCOU_PROMPT"; exec /bin/zsh -l"#);
 
-        let empty = linux_spawn("kitty", "/bin/zsh", "/home/me/p", "  \n ");
+        let empty = linux_spawn("kitty", "/bin/zsh", "/home/me/p", "  \n ", Origin::Island);
         assert!(empty.env.is_empty());
         assert_eq!(empty.args.last().unwrap(), "claude; exec /bin/zsh -l");
     }
@@ -466,8 +544,8 @@ mod tests {
 
     #[test]
     fn powershell_reads_the_prompt_from_our_file() {
-        assert_eq!(powershell_script(None), "& (Get-Command claude -CommandType Application -TotalCount 1)");
-        let script = powershell_script(Some(r"C:\Temp\coucou-prompt-ab.txt"));
+        assert_eq!(powershell_script(None, Origin::Island), "& (Get-Command claude -CommandType Application -TotalCount 1)");
+        let script = powershell_script(Some(r"C:\Temp\coucou-prompt-ab.txt"), Origin::Island);
         assert_eq!(
             script,
             "$env:COUCOU_PROMPT = Get-Content -LiteralPath 'C:\\Temp\\coucou-prompt-ab.txt' -Raw -Encoding UTF8; \
@@ -481,18 +559,18 @@ mod tests {
     #[test]
     fn windows_terminal_or_a_powershell_console() {
         let file = Some(r"C:\Temp\p.txt");
-        let wt = windows_spawn(Some(r"C:\Users\me\AppData\Local\Microsoft\WindowsApps\wt.exe"), "pwsh.exe", r"C:\code\my app", file);
+        let wt = windows_spawn(Some(r"C:\Users\me\AppData\Local\Microsoft\WindowsApps\wt.exe"), "pwsh.exe", r"C:\code\my app", file, Origin::Island);
         assert_eq!(wt.args[..3], s(&["-d", r"C:\code\my app", "pwsh.exe"]));
         assert_eq!(wt.args[3..6], s(&["-NoExit", "-NoLogo", "-Command"]));
         let script = &wt.args[6];
         assert!(script.contains(r"\;") && !script.replace(r"\;", "").contains(';'), "every semicolon escaped for wt: {script}");
-        assert_eq!(script.replace(r"\;", ";"), powershell_script(file));
+        assert_eq!(script.replace(r"\;", ";"), powershell_script(file, Origin::Island));
         assert_eq!(wt.dir, r"C:\code\my app");
         assert!(wt.env.is_empty());
 
-        let console = windows_spawn(None, "powershell.exe", r"C:\code", None);
+        let console = windows_spawn(None, "powershell.exe", r"C:\code", None, Origin::Island);
         assert_eq!(console.program, "powershell.exe");
-        assert_eq!(console.args, s(&["-NoExit", "-NoLogo", "-Command", &powershell_script(None)]));
+        assert_eq!(console.args, s(&["-NoExit", "-NoLogo", "-Command", &powershell_script(None, Origin::Island)]));
         assert_eq!(console.dir, r"C:\code");
     }
 

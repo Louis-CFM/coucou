@@ -74,9 +74,10 @@ impl Host for TauriHost {
 
     fn launch(&self, folder: &str, prompt: &str) -> bool {
         // The island's own launcher (launch.rs): the same terminal, the same way of handing the prompt over (never in a
-        // command line), the same check that the folder exists. The prompt is not logged.
+        // command line), the same check that the folder exists. Claude Code always starts in the standard permission
+        // mode, whatever the computer's settings say, so it asks for approval. The prompt is not logged.
         log::line("phone link: a phone asked for a new Claude Code session");
-        crate::launch::launch_session(folder.to_string(), prompt.to_string())
+        crate::launch::launch_from_phone(folder, prompt)
     }
 
     fn decide(&self, request_id: &str, allow: bool) {

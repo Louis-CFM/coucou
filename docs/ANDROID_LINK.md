@@ -275,9 +275,11 @@ sent nothing about it, and its `launch` messages are an unknown type: ignored an
 - `reason` is one of `off` (the switch was turned off since the phone connected), `empty` or `too_long` (the prompt, after control
   characters are replaced by spaces and it is trimmed), `unknown_project`, `rate` (6 sessions started from phones in 10 minutes, all
   phones together), `failed` (the folder is gone or no terminal could be opened).
-- **The computer starts the session with the island's own launcher** (`launch.rs`, `launch_session`): the same terminals, the same check
-  that the folder exists, and the prompt handed over the same way, **never written into a command line** (an environment variable on
-  Linux, a temporary file read and deleted by PowerShell on Windows). There is no second launcher.
+- **The computer starts the session with the island's own launcher** (`launch.rs`, `launch_from_phone`): the same terminals, the same
+  check that the folder exists, and the prompt handed over the same way, **never written into a command line** (an environment variable
+  on Linux, a temporary file read and deleted by PowerShell on Windows). There is no second launcher.
+- **Claude Code always starts in the standard permission mode** (`claude --permission-mode default`), whatever the computer's own
+  Claude Code settings say: a phone can never start a session that doesn't ask for approval. The island's own launch is unchanged.
 - The answer goes to the phone that asked. A `launch` whose `id` is not valid is ignored (there is nothing to answer to); the same `id`
   twice starts one session. The prompt is never logged, on either side, and the phone does not keep it.
 - **The phone asks for its screen lock (fingerprint, pattern, PIN) before it sends**, like Allow; with no screen lock set up it sends
@@ -384,7 +386,7 @@ simply keeps using the saved address.**
 - Sessions from the phone (Settings → Android phone → "Let the phone start Claude Code sessions"): off by default, owned by Rust like
   the other switches (`phoneLaunch` in settings.json; the webview cannot change it). The island publishes its projects
   (`phone_link_publish_projects`, the island window only); the hub keeps the paths and tells a phone the names and ids. A request ends
-  in `launch::launch_session`, the function behind the island's card.
+  in `launch::launch_from_phone`, the launcher behind the island's card, always in the standard permission mode.
 - New crates: `mdns-sd` (+ `flume`, `if-addrs`, `socket-pktinfo`, `spin`; default features off, so no async runtime or logger) announces the computer on the local network while the link is on (`phone_link/discovery.rs`); `rcgen` (+ `yasna`) makes the certificate once, `qrcode` draws the pairing QR; `rustls`,
   `tokio-rustls` and `ring` were already in the dependency tree (through `reqwest`) and are now named
   directly. Hashing, randomness and the constant-time comparison use `ring`; no other crate.

@@ -160,11 +160,10 @@ The phone needs no change for it.
    "doesn't offer this yet" state would then only be seen on a Mac or after the switch goes off.
 2. **An empty prompt is refused.** The island accepts one (it just opens Claude Code); from a phone, nobody is at the
    terminal to type.
-3. **Claude Code starts in whatever permission mode the computer's own settings give it**, exactly as from the island. If
-   that mode asks, the requests arrive on the phone as usual. If the user runs Claude Code in a mode that never asks, a
-   session started from the phone does not ask either. The safer variant is to start phone sessions with
-   `--permission-mode default`; that is one argument in `launch.rs`, but it changes the shared launcher, so it is left for
-   you to decide.
+3. **Decided (Louis, 19 November): a session started from the phone always starts in the standard permission mode**,
+   with `--permission-mode default`, whatever the computer's own Claude Code settings say, so it always asks for approval
+   and the requests arrive on the phone as usual. The island's own launch is unchanged. In `launch.rs` this is
+   `Origin::Phone` and `launch_from_phone`, tested in `a_session_from_the_phone_always_starts_in_the_standard_permission_mode`.
 4. **The list is the island's whole list**, including a folder the user picked by hand there, not only folders sessions ran in.
 5. **Two folders with the same name look the same on the phone** (the path is never sent). Rare with ten projects.
 6. **The limits**: 4000 characters, 6 starts per 10 minutes for all phones together, 10 seconds before "No answer".
