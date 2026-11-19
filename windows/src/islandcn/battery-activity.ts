@@ -77,7 +77,10 @@ export function createBatteryElement(state: BatteryState, showPct = true): HTMLE
   bolt.setAttribute("viewBox", "0 0 10 14");
   bolt.setAttribute("class", "battery-bolt");
   bolt.setAttribute("aria-hidden", "true");
-  bolt.innerHTML = '<path d="M5.8 1L1.2 7.6h3.4L3.8 13l5-6.6H5.4L5.8 1z" fill="currentColor"/>';
+  const boltPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  boltPath.setAttribute("d", "M5.8 1L1.2 7.6h3.4L3.8 13l5-6.6H5.4L5.8 1z");
+  boltPath.setAttribute("fill", "currentColor");
+  bolt.append(boltPath);
 
   const pct = document.createElement("span");
   pct.className = "battery-pct";
@@ -104,7 +107,11 @@ export function updateBatteryElement(
 
   const mode = getBatteryColorMode(state);
   const color = getBatteryFillColor(mode);
-  const pctValue = Math.max(0, Math.min(100, Math.round(state.level * 100)));
+  const rawLevel =
+    typeof state.level === "number" && !Number.isNaN(state.level)
+      ? state.level
+      : 1.0;
+  const pctValue = Math.max(0, Math.min(100, Math.round(rawLevel * 100)));
 
   // Update container state classes
   container.classList.toggle("charging", state.charging);
@@ -116,9 +123,21 @@ export function updateBatteryElement(
   fillEl.style.width = `${pctValue}%`;
   fillEl.style.backgroundColor = color;
 
-  // Percentage text
-  pctEl.textContent = `${pctValue}%`;
+  // Percentage text: strictly clear and collapse when showPct is false (e.g. in Smart feature)
+  pctEl.textContent = showPct ? `${pctValue}%` : "";
   pctEl.style.display = showPct ? "" : "none";
+  if (!showPct) {
+    pctEl.style.width = "0px";
+    pctEl.style.margin = "0px";
+    pctEl.style.padding = "0px";
+    pctEl.style.visibility = "hidden";
+  } else {
+    pctEl.style.width = "";
+    pctEl.style.margin = "";
+    pctEl.style.padding = "";
+    pctEl.style.visibility = "";
+  }
+  container.classList.toggle("no-pct", !showPct);
 
   // Charging bolt visibility
   if (boltEl) {

@@ -90,8 +90,12 @@ class CoudropManager(
         )
     }
 
+    fun onAccept(accept: ServerMsg.DropAccept) {
+        sender.onAccept(accept)
+    }
+
     fun onAccept(transferId: String) {
-        sender.onAccept(transferId)
+        sender.onAccept(ServerMsg.DropAccept(transferId))
     }
 
     fun onReject(transferId: String, reason: String) {

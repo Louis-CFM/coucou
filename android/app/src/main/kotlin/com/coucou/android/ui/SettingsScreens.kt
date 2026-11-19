@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +58,7 @@ import com.coucou.android.core.Spacing
 import com.coucou.android.core.TypeScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.coucou.android.Attribution
 import com.coucou.android.R
 import com.coucou.android.app.AppModel
@@ -84,7 +86,13 @@ import java.time.format.FormatStyle
 fun ScreenTitle(title: String, onBack: (() -> Unit)?, trailing: @Composable (() -> Unit)? = null) {
     if (onBack == null) {
         Row(Modifier.padding(top = Spacing.INSIDE.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, Modifier.weight(1f).padding(start = 4.dp), style = TypeScale.TITLE.style(tokens().text.c()), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                title,
+                Modifier.weight(1f).padding(start = 4.dp),
+                style = TypeScale.DISPLAY.style(tokens().text.c()).copy(fontSize = 26.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             trailing?.invoke()
         }
         return
@@ -115,7 +123,7 @@ fun SettingSwitch(title: String, hint: String?, checked: Boolean, onChange: (Boo
 /** A row that opens another page: its title and a chevron. */
 @Composable
 private fun LinkRow(title: String, onClick: () -> Unit) {
-    ListRow(title, onClick = onClick, trailing = { CoucouIcon(IconKind.CHEVRON, tint = tokens().textDim.c(), size = 20.dp) })
+    ListRow(title, onClick = onClick, trailing = { CoucouIcon(IconKind.CHEVRON, tint = tokens().textDim.c(), size = 18.dp) })
 }
 
 private fun clock(min: Int) = "%02d:%02d".format(QuietHours.wrap(min) / 60, QuietHours.wrap(min) % 60)
@@ -144,25 +152,51 @@ private fun TimeRow(label: String, minutes: Int, enabled: Boolean, onChange: (In
     }
 }
 
-/** A title over a row of choices, one of them selected (read as radio buttons by TalkBack). */
+/** Apple-inspired segmented control row for options. */
 @Composable
 private fun <T> ChoiceRow(title: String, options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
     val t = tokens()
-    Column(Modifier.padding(horizontal = Spacing.INSIDE.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = TypeScale.BODY.style(t.text.c()))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        Modifier.padding(horizontal = Spacing.INSIDE.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(title, style = TypeScale.BODY.style(t.text.c()).copy(fontWeight = FontWeight.SemiBold))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(CircleShape)
+                .background(t.panel2.c())
+                .padding(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             for ((value, label) in options) {
-                PillButton(
-                    label, { onSelect(value) },
-                    Modifier.weight(1f).semantics { this.selected = value == selected; role = Role.RadioButton },
-                    if (value == selected) PillKind.PRIMARY else PillKind.SECONDARY,
-                )
+                val isSelected = value == selected
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 38.dp)
+                        .clip(CircleShape)
+                        .background(if (isSelected) t.panel.c() else androidx.compose.ui.graphics.Color.Transparent)
+                        .clickable(role = Role.RadioButton) { onSelect(value) }
+                        .semantics { this.selected = isSelected; role = Role.RadioButton }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        label,
+                        style = TypeScale.LABEL.style(if (isSelected) t.text.c() else t.textDim.c()).copy(
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
 }
 
-/** The language of the app: the row shows the one in force; a tap opens the list (the phone's own first, then each language by its own name). */
+/** The language of the app: the row shows the one in force; a tap opens the list. */
 @Composable
 private fun LanguageRow() {
     val context = LocalContext.current
@@ -173,7 +207,7 @@ private fun LanguageRow() {
     val currentName = Languages.ALL.firstOrNull { it.tag == current }?.name ?: system
     ListRow(
         stringResource(R.string.settings_language), hint = currentName, onClick = { open = true },
-        trailing = { CoucouIcon(IconKind.CHEVRON, tint = t.textDim.c(), size = 20.dp) },
+        trailing = { CoucouIcon(IconKind.CHEVRON, tint = t.textDim.c(), size = 18.dp) },
     )
     if (open) {
         AlertDialog(
@@ -205,8 +239,7 @@ private fun LanguageRow() {
 val BarClearance = 96.dp
 
 /**
- * Settings, a tab. Grouped, each group one panel: your computer (with Disconnect at the bottom, away
- * from the everyday switches), the island, sound, notices, more, and About (Louis Raillé's required notice).
+ * Settings, grouped in Apple iOS style: each group is an inset Panel.
  */
 @Composable
 fun SettingsScreen(
@@ -237,15 +270,15 @@ fun SettingsScreen(
                 }
                 when (model.mode) {
                     Mode.PAIRED -> {
-                        RowDivider()
+                        RowDivider(startIndent = 16.dp)
                         LinkRow("Coudrop (Quick Share)", onCoudrop)
-                        RowDivider()
+                        RowDivider(startIndent = 16.dp)
                         LinkRow(stringResource(R.string.diag_title), onDiagnostics)
-                        RowDivider()
+                        RowDivider(startIndent = 16.dp)
                         PillButton(stringResource(R.string.action_unpair), { model.unpair() }, Modifier.fillMaxWidth().padding(Spacing.INSIDE.dp), PillKind.DANGER)
                     }
                     Mode.DEMO -> {
-                        RowDivider()
+                        RowDivider(startIndent = 16.dp)
                         PillButton(stringResource(R.string.demo_leave), { model.stopDemo() }, Modifier.fillMaxWidth().padding(Spacing.INSIDE.dp))
                     }
                     Mode.NONE -> Text(
@@ -267,7 +300,7 @@ fun SettingsScreen(
         item {
             Panel {
                 LanguageRow()
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 ChoiceRow(
                     stringResource(R.string.settings_theme),
                     listOf(
@@ -278,18 +311,18 @@ fun SettingsScreen(
                     s.theme,
                 ) { model.updateSettings(s.copy(theme = it)) }
                 if (ThemePolicy.dynamicAvailable(android.os.Build.VERSION.SDK_INT)) {
-                    RowDivider()
+                    RowDivider(startIndent = 16.dp)
                     SettingSwitch(stringResource(R.string.settings_dynamic), stringResource(R.string.settings_dynamic_hint), s.dynamicColour) {
                         model.updateSettings(s.copy(dynamicColour = it))
                     }
                 }
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 SettingSwitch(stringResource(R.string.overlay_title), stringResource(R.string.overlay_hint), model.overlayOn, onOverlay)
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 SettingSwitch(stringResource(R.string.overlay_dnd_title), stringResource(R.string.overlay_dnd_hint), s.hideIslandInDnd) {
                     model.updateSettings(s.copy(hideIslandInDnd = it))
                 }
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 ChoiceRow(
                     stringResource(R.string.settings_motion),
                     listOf(
@@ -311,7 +344,7 @@ fun SettingsScreen(
         item {
             Panel {
                 SettingSwitch(stringResource(R.string.settings_sound), null, s.soundOn) { model.updateSettings(s.copy(soundOn = it)) }
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 Column(Modifier.padding(horizontal = Spacing.INSIDE.dp, vertical = 8.dp)) {
                     Row {
                         Text(stringResource(R.string.settings_volume), Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()))
@@ -331,7 +364,7 @@ fun SettingsScreen(
                 SettingSwitch(stringResource(R.string.settings_no_wake), stringResource(R.string.settings_no_wake_hint), s.keepScreenOff) {
                     model.updateSettings(s.copy(keepScreenOff = it))
                 }
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 ChoiceRow(
                     stringResource(R.string.settings_vibration),
                     listOf(
@@ -355,7 +388,7 @@ fun SettingsScreen(
                 SettingSwitch(stringResource(R.string.notify_done), stringResource(R.string.notify_done_hint), s.notifyDone) {
                     model.updateSettings(s.copy(notifyDone = it))
                 }
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 SettingSwitch(stringResource(R.string.quiet_hours), stringResource(R.string.quiet_hint), s.quiet.enabled) {
                     model.updateSettings(s.copy(quiet = s.quiet.copy(enabled = it)))
                 }
@@ -365,7 +398,7 @@ fun SettingsScreen(
                 TimeRow(stringResource(R.string.quiet_to), s.quiet.toMin, s.quiet.enabled) {
                     model.updateSettings(s.copy(quiet = s.quiet.copy(toMin = QuietHours.wrap(it))))
                 }
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 MutedAgentsRows(s.mutedAgents) { id, mute -> model.updateSettings(s.copy(mutedAgents = AgentMute.with(s.mutedAgents, id, mute))) }
                 Spacer(Modifier.height(8.dp))
             }
@@ -375,11 +408,11 @@ fun SettingsScreen(
         item {
             Panel {
                 LinkRow("Coudrop (Quick Share)", onCoudrop)
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 LinkRow(stringResource(R.string.history_title), onHistory)
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 LinkRow(stringResource(R.string.wardrobe_title), onWardrobe)
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 LinkRow(stringResource(R.string.gallery), onGallery)
             }
         }
@@ -397,7 +430,7 @@ fun SettingsScreen(
                     )
                     Text(stringResource(R.string.about_assets), style = TypeScale.SECONDARY.style(t.textDim.c()))
                 }
-                RowDivider()
+                RowDivider(startIndent = 16.dp)
                 LinkRow(stringResource(R.string.licences_title), onLicences)
             }
         }
@@ -429,6 +462,7 @@ fun HistoryScreen(model: AppModel, onBack: () -> Unit) {
                 OutlinedTextField(
                     value = query, onValueChange = { query = it.take(HistoryExport.MAX_QUERY) }, singleLine = true,
                     label = { Text(stringResource(R.string.history_search)) }, modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
                 )
             }
         }
@@ -452,7 +486,7 @@ fun HistoryScreen(model: AppModel, onBack: () -> Unit) {
             item {
                 Panel {
                     list.forEachIndexed { i, d ->
-                        if (i > 0) RowDivider()
+                        if (i > 0) RowDivider(startIndent = 32.dp)
                         Row(
                             Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = Spacing.INSIDE.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(Spacing.GAP.dp), verticalAlignment = Alignment.CenterVertically,
@@ -514,7 +548,7 @@ private fun RelayCard(model: AppModel) {
             SettingSwitch(stringResource(R.string.relay_use), stringResource(R.string.relay_use_hint), s.useRelay) {
                 model.updateSettings(s.copy(useRelay = it))
             }
-            RowDivider()
+            RowDivider(startIndent = 16.dp)
         }
         Text(line, Modifier.padding(Spacing.INSIDE.dp), style = TypeScale.SECONDARY.style(t.textDim.c()))
     }
@@ -533,7 +567,7 @@ private fun MutedAgentsRows(muted: Set<String>, onChange: (String, Boolean) -> U
     )
     if (open) {
         for (pill in AgentMute.candidates) {
-            RowDivider()
+            RowDivider(startIndent = 16.dp)
             SettingSwitch(TeamChoice.nameOf(pill.id), null, pill.id in muted) { onChange(pill.id, it) }
         }
     }

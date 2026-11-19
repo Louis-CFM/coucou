@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -17,15 +17,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.coucou.android.core.TypeScale
 import com.coucou.android.drop.ActiveTransferUiState
 import com.coucou.android.drop.TransferDirection
 import com.coucou.android.ui.PillButton
 import com.coucou.android.ui.PillKind
+import com.coucou.android.ui.StatusColors
+import com.coucou.android.ui.c
+import com.coucou.android.ui.style
 import com.coucou.android.ui.tokens
 
 private fun formatBytes(bytes: Long): String {
@@ -52,11 +55,11 @@ fun CoudropTransferCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF16181B))
-            .border(1.dp, Color(0xFF2C2F36), RoundedCornerShape(16.dp))
+            .background(t.panel.c())
+            .border(1.dp, t.line.c(), RoundedCornerShape(16.dp))
             .padding(16.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -64,18 +67,14 @@ fun CoudropTransferCard(
             ) {
                 Text(
                     text = if (isSending) "Sending ${record.name}" else "Receiving ${record.name}",
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
+                    style = TypeScale.BODY.style(t.text.c()).copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
                     text = "$pct%",
-                    color = Color(0xFF0A84FF),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    style = TypeScale.BODY.style(t.text.c()).copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
@@ -85,9 +84,9 @@ fun CoudropTransferCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = Color(0xFF0A84FF),
-                trackColor = Color(0xFF2C2F36),
+                    .clip(CircleShape),
+                color = StatusColors.online,
+                trackColor = t.secondaryButton.c(),
             )
 
             Row(
@@ -98,8 +97,7 @@ fun CoudropTransferCard(
                 val transferredBytes = (state.progress * record.size).toLong()
                 Text(
                     text = "${formatBytes(transferredBytes)} / ${formatBytes(record.size)}$speedText",
-                    color = Color(0xFF8E8E93),
-                    fontSize = 11.sp,
+                    style = TypeScale.SECONDARY.style(t.textDim.c()),
                 )
 
                 PillButton(

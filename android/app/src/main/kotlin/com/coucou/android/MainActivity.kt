@@ -439,6 +439,7 @@ private fun Home(
         if (model.mode == Mode.PAIRED) {
             item {
                 Box(Modifier.padding(horizontal = Gutter)) {
+                    val t = tokens()
                     Panel {
                         Row(
                             Modifier
@@ -454,22 +455,22 @@ private fun Home(
                             ) {
                                 Box(
                                     Modifier
-                                        .size(36.dp)
+                                        .size(38.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFF1E2024)),
+                                        .background(t.panel2.c()),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    CoucouIcon(kind = IconKind.SEND, tint = Color(0xFF0A84FF), size = 18.dp)
+                                    CoucouIcon(kind = IconKind.SEND, tint = t.primaryButton.c(), size = 18.dp)
                                 }
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text("Coudrop", style = TypeScale.BODY.style(Color.White), fontWeight = FontWeight.SemiBold)
+                                    Text("Coudrop", style = TypeScale.BODY.style(t.text.c()), fontWeight = FontWeight.SemiBold)
                                     Text(
                                         if (model.linkState == LinkState.CONNECTED) "Quick Share with ${model.desktopName ?: "PC"}" else "Share files to your computer",
-                                        style = TypeScale.SECONDARY.style(Color(0xFF8E8E93)),
+                                        style = TypeScale.SECONDARY.style(t.textDim.c()),
                                     )
                                 }
                             }
-                            CoucouIcon(kind = IconKind.CHEVRON, tint = Color(0xFF8E8E93), size = 14.dp)
+                            CoucouIcon(kind = IconKind.CHEVRON, tint = t.textDim.c(), size = 14.dp)
                         }
                     }
                 }

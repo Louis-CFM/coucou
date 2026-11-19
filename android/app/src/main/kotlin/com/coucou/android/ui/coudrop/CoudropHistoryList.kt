@@ -20,17 +20,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.coucou.android.core.IconKind
+import com.coucou.android.core.TypeScale
 import com.coucou.android.drop.CoudropRecord
 import com.coucou.android.drop.TransferDirection
 import com.coucou.android.drop.TransferStatus
 import com.coucou.android.ui.CoucouIcon
+import com.coucou.android.ui.StatusColors
+import com.coucou.android.ui.c
+import com.coucou.android.ui.style
+import com.coucou.android.ui.tokens
 
 private fun formatBytes(bytes: Long): String {
     return when {
@@ -58,63 +62,59 @@ fun CoudropHistoryItem(
     record: CoudropRecord,
     modifier: Modifier = Modifier,
 ) {
+    val t = tokens()
     val context = LocalContext.current
     val isIncoming = record.direction == TransferDirection.INCOMING
     val isSuccess = record.status == TransferStatus.COMPLETED
+    val statusTint = if (isSuccess) StatusColors.online else t.danger.c()
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF16181B))
-            .border(1.dp, Color(0xFF24272E), RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(t.panel.c())
+            .border(1.dp, t.line.c(), RoundedCornerShape(14.dp))
             .clickable { openFile(context, record) }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Status Icon Badge
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (isSuccess) Color(0xFF30D158).copy(alpha = 0.16f)
-                        else Color(0xFFFF453A).copy(alpha = 0.16f),
-                    ),
+                    .background(statusTint.copy(alpha = 0.16f)),
                 contentAlignment = Alignment.Center,
             ) {
                 CoucouIcon(
                     kind = if (isSuccess) IconKind.CHECK else IconKind.CLOSE,
-                    tint = if (isSuccess) Color(0xFF30D158) else Color(0xFFFF453A),
+                    tint = statusTint,
                     size = 16.dp,
                 )
             }
 
             // Filename and Direction Details
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = record.name,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
+                    style = TypeScale.BODY.style(t.text.c()).copy(fontWeight = FontWeight.Medium),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = "${if (isIncoming) "Received" else "Sent"} • ${formatBytes(record.size)}",
-                    color = Color(0xFF8E8E93),
-                    fontSize = 11.sp,
+                    style = TypeScale.SECONDARY.style(t.textDim.c()),
                 )
             }
 
             // Open indicator
             CoucouIcon(
                 kind = IconKind.CHEVRON,
-                tint = Color(0xFF48484A),
+                tint = t.textDim.c(),
                 size = 16.dp,
             )
         }

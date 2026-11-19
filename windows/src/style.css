@@ -4781,16 +4781,44 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   100% { transform: scale(0.9); opacity: 0.85; }
 }
 
-/* Complete isolation: battery and other notch decorations are strictly forbidden during transfer */
-#island.transfer-active #island-battery,
+/* Complete isolation: avatar, glow, canvas, battery, and all notch decorations are strictly forbidden during transfer */
+#island.transfer-active #bot-glow,
 #island.transfer-active #bot-canvas,
+#island.transfer-active #greeting-canvas,
+#island.transfer-active #island-battery,
 #island.transfer-active #island-closed,
+#island.transfer-active #island-clock,
+#island.transfer-active #mini-grid,
+#island.transfer-active #countdown,
 #island.transfer-active .island-compact-timer,
 #island.transfer-active .island-compact-plan {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
   visibility: hidden !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Dedicated presentation styling for Nearby Transfer Activity */
+#island.transfer-active {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* When battery percentage is disabled or notch is tucked: strictly remove label and zero out layout footprint */
+#island.tucked .battery-pct,
+#island-battery.no-pct .battery-pct {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
 }
 
 /* IslandCN Nearby Transfer Activity in Coucou Dynamic Island */

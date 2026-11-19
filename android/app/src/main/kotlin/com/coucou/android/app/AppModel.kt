@@ -931,8 +931,12 @@ class AppModel(private val context: Context) : LinkListener {
         fileReceiver.onCancel(cancel)
     }
 
+    override fun onDropAccept(accept: com.coucou.android.link.ServerMsg.DropAccept) {
+        coudropManager.onAccept(accept)
+    }
+
     override fun onDropAccept(transferId: String) {
-        coudropManager.onAccept(transferId)
+        coudropManager.onAccept(com.coucou.android.link.ServerMsg.DropAccept(transferId))
     }
 
     override fun onDropReject(transferId: String, reason: String) {

@@ -1,5 +1,6 @@
 // Vayli Drop zero-QR device-aware file transfer module (windows/src-tauri/src/coudrop/mod.rs)
 // Directly uses the existing Coucou Desktop <-> Android authenticated connection.
+// Upgraded to CouDrop Protocol V2: Direct high-performance binary streaming over local HTTP/TCP.
 
 pub mod server;
 
@@ -16,7 +17,7 @@ use tokio::sync::{Mutex, Notify};
 
 use crate::phone_link::PhoneLink;
 use server::{
-    base64_decode, base64_encode, coudrop_dir, generate_token, unique_path,
+    base64_decode, base64_encode, coudrop_dir, generate_token, hex_encode, unique_path,
     ReceivedFileInfo, TransferProgress,
 };
 
@@ -71,9 +72,10 @@ pub struct CoudropManager {
     pub current_transfer_direction: Mutex<Option<String>>,
     pub incoming: Mutex<HashMap<String, IncomingTransfer>>,
     pub accept_notify: Arc<Notify>,
-    pub last_accept_status: Mutex<Option<(String, bool)>>,
+    pub last_accept_status: Mutex<Option<(String, bool, u64)>>, // (transferId, accepted, protocolVersion)
     pub done_notify: Arc<Notify>,
     pub last_done_status: Mutex<Option<(String, String)>>,
+    pub data_server: Mutex<Option<Arc<server::DataServer>>>,
 }
 
 impl Default for CoudropManager {
@@ -92,8 +94,20 @@ impl Default for CoudropManager {
             last_accept_status: Mutex::new(None),
             done_notify: Arc::new(Notify::new()),
             last_done_status: Mutex::new(None),
+            data_server: Mutex::new(None),
         }
     }
+}
+
+/// Retrieves the existing dedicated DataServer or initializes a new instance on DEFAULT_DATA_PORT.
+pub async fn get_or_init_data_server(app: &AppHandle, manager: &CoudropManager) -> Result<Arc<server::DataServer>, String> {
+    let mut lock = manager.data_server.lock().await;
+    if let Some(ref srv) = *lock {
+        return Ok(srv.clone());
+    }
+    let srv = server::DataServer::start(Some(app.clone()), server::DEFAULT_DATA_PORT).await?;
+    *lock = Some(srv.clone());
+    Ok(srv)
 }
 
 /// Dispatches an incoming drop protocol message received over the TLS link.
@@ -111,6 +125,7 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
             if transfer_id.is_empty() {
                 return;
             }
+            let protocol_version = msg["protocolVersion"].as_u64().unwrap_or(1);
             let raw_name = msg["name"].as_str().unwrap_or("file.bin");
             let sanitized_name = Path::new(raw_name)
                 .file_name()
@@ -122,6 +137,73 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
             let dir = coudrop_dir();
             let temp_path = dir.join(format!(".coudrop_{}.tmp", &transfer_id));
 
+            *manager.current_transfer_id.lock().await = Some(transfer_id.clone());
+            *manager.current_transfer_name.lock().await = Some(sanitized_name.clone());
+            *manager.current_transfer_size.lock().await = size;
+            *manager.current_transfer_direction.lock().await = Some("receive".to_string());
+            manager.is_paused.store(false, Ordering::SeqCst);
+            manager.is_cancelled.store(false, Ordering::SeqCst);
+
+            if protocol_version >= 2 {
+                // ── COUDROP PROTOCOL V2: DIRECT HIGH-SPEED BINARY UPLOAD ─────
+                let data_server = match get_or_init_data_server(app, &manager).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        let reject_msg = serde_json::json!({
+                            "type": "dropReject",
+                            "transferId": transfer_id,
+                            "reason": format!("server_init_error: {}", e)
+                        }).to_string();
+                        let _ = link.hub.send_drop_async(&reject_msg).await;
+                        return;
+                    }
+                };
+
+                let token = generate_token();
+                data_server
+                    .register_upload(
+                        transfer_id.clone(),
+                        sanitized_name.clone(),
+                        temp_path.clone(),
+                        token.clone(),
+                        size,
+                        sha256.clone(),
+                    )
+                    .await;
+
+                // Send dropAccept back to phone with dataPort and token
+                let accept_msg = serde_json::json!({
+                    "type": "dropAccept",
+                    "transferId": transfer_id.clone(),
+                    "protocolVersion": 2,
+                    "dataPort": data_server.port(),
+                    "token": token
+                }).to_string();
+                let _ = link.hub.send_drop_async(&accept_msg).await;
+
+                // Emit transfer started (receiving)
+                let _ = app.emit("coudrop-transfer-started", serde_json::json!({
+                    "transferId": transfer_id.clone(),
+                    "name": sanitized_name.clone(),
+                    "totalBytes": size,
+                    "direction": "receive"
+                }));
+
+                let _ = app.emit("coudrop-progress", TransferProgress {
+                    transfer_id: Some(transfer_id.clone()),
+                    name: sanitized_name,
+                    bytes_read: 0,
+                    total_bytes: size,
+                    progress: 0.0,
+                    speed_bytes_per_sec: Some(0),
+                    time_remaining_seconds: None,
+                    direction: Some("receive".to_string()),
+                    is_paused: Some(false),
+                });
+                return;
+            }
+
+            // ── FALLBACK: V1 CHUNKED BASE64 TLS FRAMING ──────────────────────
             match tokio::fs::File::create(&temp_path).await {
                 Ok(file) => {
                     let now = std::time::Instant::now();
@@ -142,21 +224,12 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
                     };
                     manager.incoming.lock().await.insert(transfer_id.clone(), transfer);
 
-                    *manager.current_transfer_id.lock().await = Some(transfer_id.clone());
-                    *manager.current_transfer_name.lock().await = Some(sanitized_name.clone());
-                    *manager.current_transfer_size.lock().await = size;
-                    *manager.current_transfer_direction.lock().await = Some("receive".to_string());
-                    manager.is_paused.store(false, Ordering::SeqCst);
-                    manager.is_cancelled.store(false, Ordering::SeqCst);
-
-                    // Send dropAccept back to phone
                     let accept_msg = serde_json::json!({
                         "type": "dropAccept",
                         "transferId": transfer_id.clone(),
                     }).to_string();
                     let _ = link.hub.send_drop_async(&accept_msg).await;
 
-                    // Emit transfer started (receiving)
                     let _ = app.emit("coudrop-transfer-started", serde_json::json!({
                         "transferId": transfer_id.clone(),
                         "name": sanitized_name.clone(),
@@ -164,7 +237,6 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
                         "direction": "receive"
                     }));
 
-                    // Emit starting progress
                     let _ = app.emit("coudrop-progress", TransferProgress {
                         transfer_id: Some(transfer_id.clone()),
                         name: sanitized_name,
@@ -211,7 +283,7 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
 
                         let now = std::time::Instant::now();
                         let elapsed = (now - transfer.window_start).as_secs_f64();
-                        if elapsed >= 0.4 {
+                        if elapsed >= 0.25 {
                             let diff = transfer.bytes_received.saturating_sub(transfer.window_bytes);
                             transfer.current_speed = (diff as f64 / elapsed) as u64;
                             transfer.window_start = now;
@@ -266,102 +338,179 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
                 manager.done_notify.notify_waiters();
             }
 
-            // 2. Finalize any incoming transfer (Android -> Desktop)
-            let transfer_opt = manager.incoming.lock().await.remove(transfer_id);
-            if let Some(mut transfer) = transfer_opt {
-                use tokio::io::AsyncWriteExt;
-                let _ = transfer.file.flush().await;
-                drop(transfer.file);
+            // 2. Finalize incoming V2 transfer if present
+            let mut finalized_v2 = false;
+            if let Ok(data_server) = get_or_init_data_server(app, &manager).await {
+                if let Some(upload) = data_server.remove_upload(transfer_id).await {
+                    finalized_v2 = true;
+                    let computed_hash = upload.completed_sha256.lock().await.clone().unwrap_or_default();
+                    let expected = if !upload.expected_sha256.is_empty() {
+                        &upload.expected_sha256
+                    } else {
+                        reported_sha256
+                    };
 
-                let computed_hash = hex_encode(transfer.digest_ctx.finish().as_ref());
-                let expected = if !transfer.expected_sha256.is_empty() {
-                    &transfer.expected_sha256
-                } else {
-                    reported_sha256
-                };
-
-                if !expected.is_empty() && !computed_hash.eq_ignore_ascii_case(expected) {
-                    eprintln!("[coudrop] Checksum mismatch for {}: expected {}, got {}", transfer.name, expected, computed_hash);
-                    let _ = tokio::fs::remove_file(&transfer.temp_path).await;
-                    let reject_msg = serde_json::json!({
-                        "type": "dropReject",
-                        "transferId": transfer_id,
-                        "reason": "checksum_mismatch"
-                    }).to_string();
-                    let _ = link.hub.send_drop_async(&reject_msg).await;
-                    let _ = app.emit("coudrop-cancel", ());
-                    return;
-                }
-
-                let dir = coudrop_dir();
-                let target_path = unique_path(&dir, &transfer.name);
-
-                // On Windows, handle file locks / delay before rename with small retry backoff
-                let mut rename_ok = false;
-                for attempt in 0..10 {
-                    if attempt > 0 {
-                        tokio::time::sleep(Duration::from_millis(40)).await;
+                    if !expected.is_empty() && !computed_hash.is_empty() && !computed_hash.eq_ignore_ascii_case(expected) {
+                        eprintln!("[coudrop] Checksum mismatch for {}: expected {}, got {}", upload.name, expected, computed_hash);
+                        let _ = tokio::fs::remove_file(&upload.temp_path).await;
+                        let reject_msg = serde_json::json!({
+                            "type": "dropReject",
+                            "transferId": transfer_id,
+                            "reason": "checksum_mismatch"
+                        }).to_string();
+                        let _ = link.hub.send_drop_async(&reject_msg).await;
+                        let _ = app.emit("coudrop-cancel", ());
+                        return;
                     }
-                    if tokio::fs::rename(&transfer.temp_path, &target_path).await.is_ok() {
-                        rename_ok = true;
-                        break;
+
+                    let dir = coudrop_dir();
+                    let target_path = unique_path(&dir, &upload.name);
+
+                    let mut rename_ok = false;
+                    for attempt in 0..10 {
+                        if attempt > 0 {
+                            tokio::time::sleep(Duration::from_millis(40)).await;
+                        }
+                        if tokio::fs::rename(&upload.temp_path, &target_path).await.is_ok() {
+                            rename_ok = true;
+                            break;
+                        }
+                    }
+                    if !rename_ok {
+                        if tokio::fs::copy(&upload.temp_path, &target_path).await.is_ok() {
+                            let _ = tokio::fs::remove_file(&upload.temp_path).await;
+                            rename_ok = true;
+                        }
+                    }
+
+                    if rename_ok {
+                        let done_ack = serde_json::json!({
+                            "type": "dropDone",
+                            "transferId": transfer_id,
+                            "sha256": computed_hash
+                        }).to_string();
+                        let _ = link.hub.send_drop_async(&done_ack).await;
+
+                        let final_name = target_path
+                            .file_name()
+                            .map(|f| f.to_string_lossy().to_string())
+                            .unwrap_or(upload.name);
+
+                        let file_size = tokio::fs::metadata(&target_path).await.map(|m| m.len()).unwrap_or(upload.size);
+
+                        let _ = app.emit("coudrop-file-received", ReceivedFileInfo {
+                            name: final_name,
+                            path: target_path.to_string_lossy().to_string(),
+                            size: file_size,
+                        });
+                    } else {
+                        eprintln!("[coudrop] Failed to save received file to {:?}", target_path);
+                        let _ = tokio::fs::remove_file(&upload.temp_path).await;
+                        let reject_msg = serde_json::json!({
+                            "type": "dropReject",
+                            "transferId": transfer_id,
+                            "reason": "io_error_rename"
+                        }).to_string();
+                        let _ = link.hub.send_drop_async(&reject_msg).await;
+                        let _ = app.emit("coudrop-cancel", ());
                     }
                 }
-                if !rename_ok {
-                    if tokio::fs::copy(&transfer.temp_path, &target_path).await.is_ok() {
+            }
+
+            // 3. Finalize incoming V1 transfer if not V2
+            if !finalized_v2 {
+                let transfer_opt = manager.incoming.lock().await.remove(transfer_id);
+                if let Some(mut transfer) = transfer_opt {
+                    use tokio::io::AsyncWriteExt;
+                    let _ = transfer.file.flush().await;
+                    drop(transfer.file);
+
+                    let computed_hash = hex_encode(transfer.digest_ctx.finish().as_ref());
+                    let expected = if !transfer.expected_sha256.is_empty() {
+                        &transfer.expected_sha256
+                    } else {
+                        reported_sha256
+                    };
+
+                    if !expected.is_empty() && !computed_hash.eq_ignore_ascii_case(expected) {
+                        eprintln!("[coudrop] Checksum mismatch for {}: expected {}, got {}", transfer.name, expected, computed_hash);
                         let _ = tokio::fs::remove_file(&transfer.temp_path).await;
-                        rename_ok = true;
+                        let reject_msg = serde_json::json!({
+                            "type": "dropReject",
+                            "transferId": transfer_id,
+                            "reason": "checksum_mismatch"
+                        }).to_string();
+                        let _ = link.hub.send_drop_async(&reject_msg).await;
+                        let _ = app.emit("coudrop-cancel", ());
+                        return;
                     }
-                }
 
-                if rename_ok {
-                    let done_ack = serde_json::json!({
-                        "type": "dropDone",
-                        "transferId": transfer_id,
-                        "sha256": computed_hash
-                    }).to_string();
-                    let _ = link.hub.send_drop_async(&done_ack).await;
+                    let dir = coudrop_dir();
+                    let target_path = unique_path(&dir, &transfer.name);
 
-                    let final_name = target_path
-                        .file_name()
-                        .map(|f| f.to_string_lossy().to_string())
-                        .unwrap_or(transfer.name);
+                    let mut rename_ok = false;
+                    for attempt in 0..10 {
+                        if attempt > 0 {
+                            tokio::time::sleep(Duration::from_millis(40)).await;
+                        }
+                        if tokio::fs::rename(&transfer.temp_path, &target_path).await.is_ok() {
+                            rename_ok = true;
+                            break;
+                        }
+                    }
+                    if !rename_ok {
+                        if tokio::fs::copy(&transfer.temp_path, &target_path).await.is_ok() {
+                            let _ = tokio::fs::remove_file(&transfer.temp_path).await;
+                            rename_ok = true;
+                        }
+                    }
 
-                    let _ = app.emit("coudrop-file-received", ReceivedFileInfo {
-                        name: final_name,
-                        path: target_path.to_string_lossy().to_string(),
-                        size: transfer.bytes_received,
-                    });
-                } else {
-                    eprintln!("[coudrop] Failed to save received file to {:?}", target_path);
-                    let _ = tokio::fs::remove_file(&transfer.temp_path).await;
-                    let reject_msg = serde_json::json!({
-                        "type": "dropReject",
-                        "transferId": transfer_id,
-                        "reason": "io_error_rename"
-                    }).to_string();
-                    let _ = link.hub.send_drop_async(&reject_msg).await;
-                    let _ = app.emit("coudrop-cancel", ());
+                    if rename_ok {
+                        let done_ack = serde_json::json!({
+                            "type": "dropDone",
+                            "transferId": transfer_id,
+                            "sha256": computed_hash
+                        }).to_string();
+                        let _ = link.hub.send_drop_async(&done_ack).await;
+
+                        let final_name = target_path
+                            .file_name()
+                            .map(|f| f.to_string_lossy().to_string())
+                            .unwrap_or(transfer.name);
+
+                        let _ = app.emit("coudrop-file-received", ReceivedFileInfo {
+                            name: final_name,
+                            path: target_path.to_string_lossy().to_string(),
+                            size: transfer.bytes_received,
+                        });
+                    } else {
+                        eprintln!("[coudrop] Failed to save received file to {:?}", target_path);
+                        let _ = tokio::fs::remove_file(&transfer.temp_path).await;
+                        let reject_msg = serde_json::json!({
+                            "type": "dropReject",
+                            "transferId": transfer_id,
+                            "reason": "io_error_rename"
+                        }).to_string();
+                        let _ = link.hub.send_drop_async(&reject_msg).await;
+                        let _ = app.emit("coudrop-cancel", ());
+                    }
                 }
             }
         }
         "dropAccept" => {
             let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
-            *manager.last_accept_status.lock().await = Some((transfer_id, true));
+            let proto_v = msg["protocolVersion"].as_u64().unwrap_or(1);
+            *manager.last_accept_status.lock().await = Some((transfer_id, true, proto_v));
             manager.accept_notify.notify_waiters();
             let _ = app.emit("coudrop-accept", msg);
         }
         "dropReject" => {
             let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
-            *manager.last_accept_status.lock().await = Some((transfer_id, false));
+            *manager.last_accept_status.lock().await = Some((transfer_id, false, 1));
             manager.accept_notify.notify_waiters();
             let _ = app.emit("coudrop-reject", msg);
         }
         "dropProgress" => {
-            // Android sends dropProgress as an inbound acknowledgement while receiving chunks.
-            // The desktop sender loop already emits verified monotonically increasing TransferProgress
-            // with exact bytesSent, totalBytes, and fileName. Emitting raw unmapped msg here was causing
-            // progress to flicker between 0% and actual progress due to missing/differing field names.
             let _ = app.emit("coudrop-peer-progress", msg);
         }
         "dropCancel" => {
@@ -369,6 +518,12 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
             if let Some(transfer) = manager.incoming.lock().await.remove(transfer_id) {
                 drop(transfer.file);
                 let _ = tokio::fs::remove_file(&transfer.temp_path).await;
+            }
+            if let Ok(data_server) = get_or_init_data_server(app, &manager).await {
+                data_server.remove_download(transfer_id).await;
+                if let Some(upload) = data_server.remove_upload(transfer_id).await {
+                    let _ = tokio::fs::remove_file(&upload.temp_path).await;
+                }
             }
             let _ = app.emit("coudrop-cancel", msg);
         }
@@ -392,32 +547,6 @@ pub async fn coudrop_get_device(link: State<'_, PhoneLink>) -> Result<VayliDropD
             can_drop: false,
         })
     }
-}
-
-/// Computes the SHA-256 hex string and byte count of a file via chunked async streaming.
-async fn compute_file_sha256(path: &Path) -> Result<(u64, String), String> {
-    use tokio::io::AsyncReadExt;
-    let mut file = tokio::fs::File::open(path)
-        .await
-        .map_err(|e| format!("Failed to open file {}: {}", path.display(), e))?;
-    let mut context = ring::digest::Context::new(&SHA256);
-    let mut buffer = [0u8; 64 * 1024];
-    let mut total_bytes = 0u64;
-
-    loop {
-        let n = file
-            .read(&mut buffer)
-            .await
-            .map_err(|e| format!("Failed to read file {}: {}", path.display(), e))?;
-        if n == 0 {
-            break;
-        }
-        context.update(&buffer[..n]);
-        total_bytes += n as u64;
-    }
-
-    let digest = context.finish();
-    Ok((total_bytes, hex_encode(digest.as_ref())))
 }
 
 fn detect_mime_type(path: &Path) -> &'static str {
@@ -453,7 +582,7 @@ fn collect_dir_files(dir: &Path, list: &mut Vec<PathBuf>) {
     }
 }
 
-/// Send one or more files from Desktop to the connected Android device in streaming chunks over the TLS link.
+/// Send one or more files from Desktop to the connected Android device in streaming chunks or direct binary stream.
 #[tauri::command]
 pub async fn coudrop_send_files(
     app: AppHandle,
@@ -505,20 +634,40 @@ pub async fn coudrop_send_files(
             .map(|f| f.to_string_lossy().to_string())
             .unwrap_or_else(|| "file.bin".to_string());
 
-        let (total_bytes, sha256_hex) = compute_file_sha256(&path).await?;
+        let total_bytes = tokio::fs::metadata(&path).await.map(|m| m.len()).unwrap_or(0);
         let mime_type = detect_mime_type(&path);
         let transfer_id = generate_token();
+        let token = generate_token();
 
         *state.current_transfer_id.lock().await = Some(transfer_id.clone());
+        *state.current_transfer_name.lock().await = Some(file_name.clone());
+        *state.current_transfer_size.lock().await = total_bytes;
+        *state.current_transfer_direction.lock().await = Some("send".to_string());
+        state.is_paused.store(false, Ordering::SeqCst);
+        state.is_cancelled.store(false, Ordering::SeqCst);
 
-        // 1. Send dropOffer to phone
+        let data_server = get_or_init_data_server(&app, &state).await?;
+        let _completed_hash_handle = data_server
+            .register_download(
+                transfer_id.clone(),
+                file_name.clone(),
+                path.clone(),
+                token.clone(),
+                total_bytes,
+            )
+            .await;
+
+        // 1. Send dropOffer to phone advertising Protocol V2
         let offer_msg = serde_json::json!({
             "type": "dropOffer",
             "transferId": transfer_id.clone(),
             "name": file_name.clone(),
             "size": total_bytes,
-            "sha256": sha256_hex,
-            "mimeType": mime_type
+            "sha256": "", // Verified on the fly in single pass
+            "mimeType": mime_type,
+            "protocolVersion": 2,
+            "dataPort": data_server.port(),
+            "token": token
         }).to_string();
 
         link.hub
@@ -539,166 +688,201 @@ pub async fn coudrop_send_files(
         // 2. Wait for dropAccept (or reject) with timeout
         let accept_fut = async {
             loop {
-                if let Some((id, accepted)) = state.last_accept_status.lock().await.take() {
+                if let Some((id, accepted, proto_ver)) = state.last_accept_status.lock().await.take() {
                     if id == transfer_id {
-                        return accepted;
+                        return (accepted, proto_ver);
                     }
                 }
                 state.accept_notify.notified().await;
             }
         };
-        match tokio::time::timeout(Duration::from_secs(8), accept_fut).await {
-            Ok(true) => {} // Phone accepted
-            Ok(false) => {
+
+        let (accepted, peer_proto_ver) = match tokio::time::timeout(Duration::from_secs(8), accept_fut).await {
+            Ok((true, ver)) => (true, ver),
+            Ok((false, _)) => {
                 state.is_sending.store(false, Ordering::SeqCst);
+                data_server.remove_download(&transfer_id).await;
                 return Err("Phone rejected the file transfer.".to_string());
             }
-            _ => {
-                // Timeout or older version, proceed with streaming
+            Err(_) => {
+                // Timeout or older version, proceed with v1 fallback
+                (true, 1)
             }
-        }
+        };
 
-        // 3. Stream chunks directly from disk (32 KiB chunks)
-        const CHUNK_SIZE: usize = 32 * 1024;
-        let total_chunks = if total_bytes == 0 {
-            1
+        if accepted && peer_proto_ver >= 2 {
+            // ── COUDROP PROTOCOL V2: DIRECT HIGH-SPEED BINARY STREAM ─────────
+            // Phone connects to GET /coudrop/v2/download/{transfer_id}
+            // DataServer handles streaming with 512 KiB buffer and updates progress.
+            let done_fut = async {
+                loop {
+                    if state.is_cancelled.load(Ordering::SeqCst) {
+                        return false;
+                    }
+                    if let Some((id, _hash)) = state.last_done_status.lock().await.take() {
+                        if id == transfer_id {
+                            return true;
+                        }
+                    }
+                    state.done_notify.notified().await;
+                }
+            };
+
+            let _ = tokio::time::timeout(Duration::from_secs(3600), done_fut).await;
+            data_server.remove_download(&transfer_id).await;
         } else {
-            ((total_bytes + CHUNK_SIZE as u64 - 1) / CHUNK_SIZE as u64) as usize
-        };
+            // ── FALLBACK: V1 CHUNKED BASE64 TLS FRAMING ───────────────────────
+            data_server.remove_download(&transfer_id).await;
 
-        let mut file = match tokio::fs::File::open(&path).await {
-            Ok(f) => f,
-            Err(e) => {
-                state.is_sending.store(false, Ordering::SeqCst);
-                return Err(format!("Failed to read file {}: {}", file_name, e));
-            }
-        };
+            const CHUNK_SIZE: usize = 32 * 1024;
+            let total_chunks = if total_bytes == 0 {
+                1
+            } else {
+                ((total_bytes + CHUNK_SIZE as u64 - 1) / CHUNK_SIZE as u64) as usize
+            };
 
-        let mut buffer = vec![0u8; CHUNK_SIZE];
-        let mut chunk_index = 0usize;
-        let mut bytes_sent = 0u64;
+            let mut file = match tokio::fs::File::open(&path).await {
+                Ok(f) => f,
+                Err(e) => {
+                    state.is_sending.store(false, Ordering::SeqCst);
+                    return Err(format!("Failed to read file {}: {}", file_name, e));
+                }
+            };
 
-        let start_time = std::time::Instant::now();
-        let mut window_start = start_time;
-        let mut window_bytes = 0u64;
-        let mut current_speed = 0u64;
+            let mut digest_ctx = ring::digest::Context::new(&SHA256);
+            let mut buffer = vec![0u8; CHUNK_SIZE];
+            let mut chunk_index = 0usize;
+            let mut bytes_sent = 0u64;
 
-        loop {
-            if !state.is_sending.load(Ordering::SeqCst) || state.is_cancelled.load(Ordering::SeqCst) {
-                let cancel_msg = serde_json::json!({
-                    "type": "dropCancel",
-                    "transferId": transfer_id.clone(),
-                    "reason": "cancelled_by_desktop"
-                }).to_string();
-                let _ = link.hub.send_drop_async(&cancel_msg).await;
-                let _ = app.emit("coudrop-cancel", ());
-                return Ok(());
-            }
+            let start_time = std::time::Instant::now();
+            let mut window_start = start_time;
+            let mut window_bytes = 0u64;
+            let mut current_speed = 0u64;
 
-            while state.is_paused.load(Ordering::SeqCst) {
+            loop {
                 if !state.is_sending.load(Ordering::SeqCst) || state.is_cancelled.load(Ordering::SeqCst) {
+                    let cancel_msg = serde_json::json!({
+                        "type": "dropCancel",
+                        "transferId": transfer_id.clone(),
+                        "reason": "cancelled_by_desktop"
+                    }).to_string();
+                    let _ = link.hub.send_drop_async(&cancel_msg).await;
+                    let _ = app.emit("coudrop-cancel", ());
+                    return Ok(());
+                }
+
+                while state.is_paused.load(Ordering::SeqCst) {
+                    if !state.is_sending.load(Ordering::SeqCst) || state.is_cancelled.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    state.pause_notify.notified().await;
+                }
+
+                if !state.is_sending.load(Ordering::SeqCst) || state.is_cancelled.load(Ordering::SeqCst) {
+                    let cancel_msg = serde_json::json!({
+                        "type": "dropCancel",
+                        "transferId": transfer_id.clone(),
+                        "reason": "cancelled_by_desktop"
+                    }).to_string();
+                    let _ = link.hub.send_drop_async(&cancel_msg).await;
+                    let _ = app.emit("coudrop-cancel", ());
+                    return Ok(());
+                }
+
+                let n = if total_bytes == 0 {
+                    0
+                } else {
+                    use tokio::io::AsyncReadExt;
+                    file.read(&mut buffer)
+                        .await
+                        .map_err(|e| format!("Read error on {}: {}", file_name, e))?
+                };
+
+                if n == 0 && total_bytes > 0 {
                     break;
                 }
-                state.pause_notify.notified().await;
-            }
 
-            if !state.is_sending.load(Ordering::SeqCst) || state.is_cancelled.load(Ordering::SeqCst) {
-                let cancel_msg = serde_json::json!({
-                    "type": "dropCancel",
+                digest_ctx.update(&buffer[..n]);
+                let b64 = base64_encode(&buffer[..n]);
+                let chunk_msg = serde_json::json!({
+                    "type": "dropChunk",
                     "transferId": transfer_id.clone(),
-                    "reason": "cancelled_by_desktop"
+                    "index": chunk_index,
+                    "total": total_chunks,
+                    "data": b64
                 }).to_string();
-                let _ = link.hub.send_drop_async(&cancel_msg).await;
-                let _ = app.emit("coudrop-cancel", ());
-                return Ok(());
-            }
 
-            let n = if total_bytes == 0 {
-                0
-            } else {
-                use tokio::io::AsyncReadExt;
-                file.read(&mut buffer)
+                link.hub
+                    .send_drop_async(&chunk_msg)
                     .await
-                    .map_err(|e| format!("Read error on {}: {}", file_name, e))?
-            };
+                    .map_err(|e| format!("Chunk send failed: {}", e))?;
 
-            if n == 0 && total_bytes > 0 {
-                break;
-            }
+                bytes_sent += n as u64;
+                let progress = if total_bytes > 0 {
+                    (bytes_sent as f64 / total_bytes as f64).min(1.0)
+                } else {
+                    1.0
+                };
 
-            let b64 = base64_encode(&buffer[..n]);
-            let chunk_msg = serde_json::json!({
-                "type": "dropChunk",
-                "transferId": transfer_id.clone(),
-                "index": chunk_index,
-                "total": total_chunks,
-                "data": b64
-            }).to_string();
-
-            link.hub
-                .send_drop_async(&chunk_msg)
-                .await
-                .map_err(|e| format!("Chunk send failed: {}", e))?;
-
-            bytes_sent += n as u64;
-            let progress = if total_bytes > 0 {
-                (bytes_sent as f64 / total_bytes as f64).min(1.0)
-            } else {
-                1.0
-            };
-
-            let now = std::time::Instant::now();
-            let elapsed = (now - window_start).as_secs_f64();
-            if elapsed >= 0.4 {
-                let diff = bytes_sent.saturating_sub(window_bytes);
-                current_speed = (diff as f64 / elapsed) as u64;
-                window_start = now;
-                window_bytes = bytes_sent;
-            }
-            let remaining_bytes = total_bytes.saturating_sub(bytes_sent);
-            let eta = if current_speed > 0 && remaining_bytes > 0 {
-                Some(remaining_bytes / current_speed)
-            } else {
-                None
-            };
-            let is_paused = state.is_paused.load(Ordering::SeqCst);
-
-            let _ = app.emit("coudrop-progress", TransferProgress {
-                transfer_id: Some(transfer_id.clone()),
-                name: file_name.clone(),
-                bytes_read: bytes_sent,
-                total_bytes,
-                progress,
-                speed_bytes_per_sec: Some(current_speed),
-                time_remaining_seconds: eta,
-                direction: Some("send".to_string()),
-                is_paused: Some(is_paused),
-            });
-
-            chunk_index += 1;
-            if total_bytes == 0 || bytes_sent >= total_bytes {
-                break;
-            }
-
-            tokio::task::yield_now().await;
-        }
-
-        // 4. Wait for phone's completion acknowledgement
-        let done_fut = async {
-            loop {
-                if let Some((id, _hash)) = state.last_done_status.lock().await.take() {
-                    if id == transfer_id {
-                        return true;
-                    }
+                let now = std::time::Instant::now();
+                let elapsed = (now - window_start).as_secs_f64();
+                if elapsed >= 0.25 {
+                    let diff = bytes_sent.saturating_sub(window_bytes);
+                    current_speed = (diff as f64 / elapsed) as u64;
+                    window_start = now;
+                    window_bytes = bytes_sent;
                 }
-                state.done_notify.notified().await;
+                let remaining_bytes = total_bytes.saturating_sub(bytes_sent);
+                let eta = if current_speed > 0 && remaining_bytes > 0 {
+                    Some(remaining_bytes / current_speed)
+                } else {
+                    None
+                };
+                let is_paused = state.is_paused.load(Ordering::SeqCst);
+
+                let _ = app.emit("coudrop-progress", TransferProgress {
+                    transfer_id: Some(transfer_id.clone()),
+                    name: file_name.clone(),
+                    bytes_read: bytes_sent,
+                    total_bytes,
+                    progress,
+                    speed_bytes_per_sec: Some(current_speed),
+                    time_remaining_seconds: eta,
+                    direction: Some("send".to_string()),
+                    is_paused: Some(is_paused),
+                });
+
+                chunk_index += 1;
+                if total_bytes == 0 || bytes_sent >= total_bytes {
+                    break;
+                }
+
+                tokio::task::yield_now().await;
             }
-        };
-        let _ = tokio::time::timeout(Duration::from_secs(8), done_fut).await;
+
+            let computed_hash = hex_encode(digest_ctx.finish().as_ref());
+            let done_msg = serde_json::json!({
+                "type": "dropDone",
+                "transferId": transfer_id.clone(),
+                "sha256": computed_hash
+            }).to_string();
+            let _ = link.hub.send_drop_async(&done_msg).await;
+
+            let done_fut = async {
+                loop {
+                    if let Some((id, _hash)) = state.last_done_status.lock().await.take() {
+                        if id == transfer_id {
+                            return true;
+                        }
+                    }
+                    state.done_notify.notified().await;
+                }
+            };
+            let _ = tokio::time::timeout(Duration::from_secs(8), done_fut).await;
+        }
 
         let path_str = path.to_string_lossy().to_string();
 
-        // Notify desktop frontend that sending completed successfully
         let _ = app.emit("coudrop-file-sent", ReceivedFileInfo {
             name: file_name,
             path: path_str,
@@ -790,10 +974,18 @@ pub async fn coudrop_cancel_transfer(
     };
 
     if !id.is_empty() {
-        // Clean up any incoming partial file
+        // Clean up any incoming partial file in manager
         if let Some(transfer) = state.incoming.lock().await.remove(&id) {
             drop(transfer.file);
             let _ = tokio::fs::remove_file(&transfer.temp_path).await;
+        }
+
+        // Clean up DataServer if V2 was used
+        if let Ok(data_server) = get_or_init_data_server(&app, &state).await {
+            data_server.remove_download(&id).await;
+            if let Some(upload) = data_server.remove_upload(&id).await {
+                let _ = tokio::fs::remove_file(&upload.temp_path).await;
+            }
         }
 
         let cancel_msg = serde_json::json!({
@@ -966,10 +1158,6 @@ pub async fn coudrop_status(
 #[tauri::command]
 pub async fn coudrop_stage_send_files(paths: Vec<String>) -> Result<Vec<String>, String> {
     Ok(paths)
-}
-
-fn hex_encode(data: &[u8]) -> String {
-    data.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 /// Opens the system folder picker and returns the chosen path, or null if cancelled.

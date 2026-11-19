@@ -377,7 +377,7 @@ export class Island {
     this.closedDot = h("span", { class: "dot" });
     this.closedText = h("span", { class: "text" });
     this.closedEl = h("div", { id: "island-closed" }, this.closedDot, this.closedText);
-    this.batteryEl = createBatteryElement(BatteryMonitor.getState(), resolveShowBatteryPercentage(State.settings));
+    this.batteryEl = createBatteryElement(BatteryMonitor.getState(), this.effectiveShowBatteryPercentage());
     const tuckChevron = svg("M6 9l6 6 6-6", 11, { stroke: 2.2 });
     tuckChevron.classList.add("tuck-icon");
     this.tuckEl = h("div", { id: "island-tuck" }, tuckChevron);
@@ -503,12 +503,26 @@ export class Island {
         this.activityHostEl.classList.toggle("active", isNowActive);
         this.islandEl.classList.toggle("transfer-active", isNowActive);
         if (isNowActive) {
+          // Strictly suppress avatar, blur, and glow from the transfer presentation
+          this.botCanvas.style.display = "none";
+          this.botCanvas.style.visibility = "hidden";
+          this.botCanvas.style.opacity = "0";
+          this.greetingCanvas.style.display = "none";
+          this.greetingCanvas.style.visibility = "hidden";
+          this.greetingCanvas.style.opacity = "0";
+          this.botGlow.style.display = "none";
+          this.botGlow.style.visibility = "hidden";
+          this.botGlow.style.opacity = "0";
           this.syncBatteryVisibility();
         } else {
           // Transfer has completed, cancelled, or failed and been dismissed!
           // Explicitly restore all Dynamic Island elements that were hidden during transfer!
           this.botCanvas.style.display = "";
+          this.botCanvas.style.visibility = "";
+          this.greetingCanvas.style.display = "";
+          this.greetingCanvas.style.visibility = "";
           this.botGlow.style.display = "";
+          this.botGlow.style.visibility = "";
           this.closedEl.style.display = "";
           this.batteryEl.style.display = "";
           this.clockEl.style.display = "";
@@ -1130,6 +1144,18 @@ export class Island {
     return false;
   }
 
+  /**
+   * Resolves whether the numeric battery percentage label should be presented.
+   * Respects user preference (Settings -> Appearance -> Resting Notch -> Battery percentage).
+   * Suppressed only when the notch is tucked into a minimal 44x14 tab over maximized windows.
+   */
+  private effectiveShowBatteryPercentage(): boolean {
+    if (this.isSmartTucked) {
+      return false;
+    }
+    return resolveShowBatteryPercentage(State.settings);
+  }
+
   /** The closed island stays on screen (anything but "hidden"), or when a welcome/notification is active. */
   private get closedShows(): boolean {
     if (GlobalWelcomeMessages.active() != null || GlobalNotifications.active() != null) {
@@ -1419,7 +1445,7 @@ export class Island {
     const textToShow = content?.text ?? "";
     const hasVisibleClosedText = textToShow.trim().length > 0;
     const showBattery = resolveShowBattery(State.settings);
-    const showPct = resolveShowBatteryPercentage(State.settings);
+    const showPct = this.effectiveShowBatteryPercentage();
     const hasBattery = BatteryMonitor.getState().hasBattery;
 
     // In resting hidden mode: battery is only present in mochi style when text is not occupying the pill
@@ -1493,7 +1519,7 @@ export class Island {
   }
 
   private onBatteryStateChange(state: BatteryState) {
-    const showPct = resolveShowBatteryPercentage(State.settings);
+    const showPct = this.effectiveShowBatteryPercentage();
     updateBatteryElement(this.batteryEl, state, showPct);
     this.syncBatteryVisibility();
     if (State.mode === "hidden") {
@@ -1512,7 +1538,7 @@ export class Island {
     }
 
     const showBattery = resolveShowBattery(State.settings);
-    const showPct = resolveShowBatteryPercentage(State.settings);
+    const showPct = this.effectiveShowBatteryPercentage();
     const style = closedIsland(State.settings.closedIsland);
     const hasBattery = BatteryMonitor.getState().hasBattery;
 
@@ -2069,13 +2095,24 @@ export class Island {
     // The drop canvas draws its own Mochi; two of them would overlap. Out on the
     // desktop, he isn't here at all.
     const away = State.mochiOnDesktop;
-    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away;
+    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away && !this.transferActive;
     this.botCanvas.style.opacity = visible ? "1" : "0";
+
+    if (this.transferActive) {
+      this.botCanvas.style.opacity = "0";
+      this.botCanvas.style.display = "none";
+      this.botCanvas.style.visibility = "hidden";
+      this.botGlow.style.display = "none";
+      this.botGlow.style.opacity = "0";
+      this.botGlow.style.visibility = "hidden";
+      return;
+    }
 
     if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive && !away) {
       const d = p.diameter;
       const color = botGlowColor(State.effectiveState);
       this.botGlow.style.display = "block";
+      this.botGlow.style.visibility = "visible";
       this.botGlow.style.width = `${d * 2.2}px`;
       this.botGlow.style.height = `${d * 2.2}px`;
       this.botGlow.style.left = `${this.botCx.value - d * 1.1}px`;
@@ -2084,10 +2121,15 @@ export class Island {
       this.botGlow.style.opacity = String(botGlowOpacity(State.effectiveState));
     } else {
       this.botGlow.style.display = "none";
+      this.botGlow.style.opacity = "0";
+      this.botGlow.style.visibility = "hidden";
     }
   }
 
   private drawBot(dt: number) {
+    if (this.transferActive) {
+      return;
+    }
     const rawSize = this.botSize.value;
     const size = Number.isFinite(rawSize) && rawSize > 0 ? rawSize : 30;
     const w = Math.max(1, Math.round(size));
@@ -2233,9 +2275,18 @@ export class Island {
       this.compactTimer.style.display = "none";
       this.compactPlan.style.display = "none";
       this.batteryEl.style.display = "none";
+      this.batteryEl.style.opacity = "0";
+      this.batteryEl.style.visibility = "hidden";
       this.clockEl.style.display = "none";
       this.botCanvas.style.display = "none";
+      this.botCanvas.style.visibility = "hidden";
+      this.botCanvas.style.opacity = "0";
+      this.greetingCanvas.style.display = "none";
+      this.greetingCanvas.style.visibility = "hidden";
+      this.greetingCanvas.style.opacity = "0";
       this.botGlow.style.display = "none";
+      this.botGlow.style.visibility = "hidden";
+      this.botGlow.style.opacity = "0";
       this.miniGrid.style.display = "none";
       this.countdown.style.width = "0px";
       return;
@@ -2243,7 +2294,11 @@ export class Island {
 
     // Clear any inline display: none overrides from previous transfer
     this.botCanvas.style.display = "";
+    this.botCanvas.style.visibility = "";
+    this.greetingCanvas.style.display = "";
+    this.greetingCanvas.style.visibility = "";
     this.botGlow.style.display = "";
+    this.botGlow.style.visibility = "";
     this.closedEl.style.display = "";
     this.clockEl.style.display = "";
     this.miniGrid.style.display = "";
@@ -2347,7 +2402,7 @@ export class Island {
     const currentScale = resolveNotchScale(State.settings);
     const currentClosed = State.settings.closedIsland;
     const currentShowBattery = resolveShowBattery(State.settings);
-    const currentShowPct = resolveShowBatteryPercentage(State.settings);
+    const currentShowPct = this.effectiveShowBatteryPercentage();
 
     const appearanceChanged =
       this.prevNotchStyle !== undefined &&

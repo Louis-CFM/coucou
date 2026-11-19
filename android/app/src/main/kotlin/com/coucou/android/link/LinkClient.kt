@@ -62,6 +62,7 @@ interface LinkListener {
     fun onDropChunk(chunk: ServerMsg.DropChunk) {}
     fun onDropCancel(cancel: ServerMsg.DropCancel) {}
     fun onDropAccept(transferId: String) {}
+    fun onDropAccept(accept: ServerMsg.DropAccept) { onDropAccept(accept.transferId) }
     fun onDropReject(transferId: String, reason: String) {}
     fun onDropProgress(transferId: String, bytes: Long, total: Long) {}
     fun onDropDone(transferId: String, sha256: String) {}
@@ -70,6 +71,7 @@ interface LinkListener {
 /** What the UI talks to: the real [LinkClient] or the offline [DemoLink]. */
 interface DesktopLink {
     val approvals: ApprovalBook
+    val desktopHost: String get() = ""
     fun start()
     fun stop()
     /** Try the connection again now (the network changed); the demo has nothing to retry. */
@@ -97,11 +99,13 @@ interface DesktopLink {
 
     /** Vayli Drop file transfer commands */
     fun dropAccept(transferId: String): Boolean = false
+    fun dropAccept(transferId: String, protocolVersion: Int = 1, dataPort: Int = 0, token: String = "", offset: Long = 0L): Boolean = dropAccept(transferId)
     fun dropReject(transferId: String, reason: String): Boolean = false
     fun dropProgress(transferId: String, bytes: Long, total: Long): Boolean = false
     fun dropDone(transferId: String, sha256: String): Boolean = false
     fun dropCancel(transferId: String, reason: String): Boolean = false
     fun dropOffer(transferId: String, name: String, size: Long, sha256: String, mimeType: String = "application/octet-stream"): Boolean = false
+    fun dropOffer(transferId: String, name: String, size: Long, sha256: String, mimeType: String = "application/octet-stream", protocolVersion: Int = 1, dataPort: Int = 0, token: String = ""): Boolean = dropOffer(transferId, name, size, sha256, mimeType)
     fun dropChunk(transferId: String, index: Int, total: Int, data: String): Boolean = false
 }
 
@@ -271,13 +275,19 @@ class LinkClient(
     override fun chatCancel(id: String) { queue(ClientMsg.ChatCancel(id)) }
     override fun chatReset() { queue(ClientMsg.ChatReset) }
 
-    override fun dropAccept(transferId: String): Boolean = queue(ClientMsg.DropAccept(transferId))
+    override val desktopHost: String get() = pairing.host
+
+    override fun dropAccept(transferId: String): Boolean = dropAccept(transferId, 1, 0, "", 0L)
+    override fun dropAccept(transferId: String, protocolVersion: Int, dataPort: Int, token: String, offset: Long): Boolean =
+        queue(ClientMsg.DropAccept(transferId, protocolVersion, dataPort, token, offset))
     override fun dropReject(transferId: String, reason: String): Boolean = queue(ClientMsg.DropReject(transferId, reason))
     override fun dropProgress(transferId: String, bytes: Long, total: Long): Boolean = queue(ClientMsg.DropProgress(transferId, bytes, total))
     override fun dropDone(transferId: String, sha256: String): Boolean = queue(ClientMsg.DropDone(transferId, sha256))
     override fun dropCancel(transferId: String, reason: String): Boolean = queue(ClientMsg.DropCancel(transferId, reason))
     override fun dropOffer(transferId: String, name: String, size: Long, sha256: String, mimeType: String): Boolean =
-        queue(ClientMsg.DropOffer(transferId, name, size, sha256, mimeType))
+        dropOffer(transferId, name, size, sha256, mimeType, 1, 0, "")
+    override fun dropOffer(transferId: String, name: String, size: Long, sha256: String, mimeType: String, protocolVersion: Int, dataPort: Int, token: String): Boolean =
+        queue(ClientMsg.DropOffer(transferId, name, size, sha256, mimeType, protocolVersion, dataPort, token))
     override fun dropChunk(transferId: String, index: Int, total: Int, data: String): Boolean =
         queue(ClientMsg.DropChunk(transferId, index, total, data))
 
@@ -404,7 +414,7 @@ class LinkClient(
                 is ServerMsg.DropOffer -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropOffer(msg)
                 is ServerMsg.DropChunk -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropChunk(msg)
                 is ServerMsg.DropCancel -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropCancel(msg)
-                is ServerMsg.DropAccept -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropAccept(msg.transferId)
+                is ServerMsg.DropAccept -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropAccept(msg)
                 is ServerMsg.DropReject -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropReject(msg.transferId, msg.reason)
                 is ServerMsg.DropProgress -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropProgress(msg.transferId, msg.bytes, msg.total)
                 is ServerMsg.DropDone -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropDone(msg.transferId, msg.sha256)

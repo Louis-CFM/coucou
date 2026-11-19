@@ -35,11 +35,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.coucou.android.app.AppModel
 import com.coucou.android.core.IconKind
+import com.coucou.android.core.TypeScale
 import com.coucou.android.link.LinkState
 import com.coucou.android.ui.CoucouIcon
 import com.coucou.android.ui.Gutter
+import com.coucou.android.ui.Panel
 import com.coucou.android.ui.PillButton
 import com.coucou.android.ui.PillKind
+import com.coucou.android.ui.SectionHeading
+import com.coucou.android.ui.StateDot
+import com.coucou.android.ui.StatusColors
+import com.coucou.android.ui.c
+import com.coucou.android.ui.style
 import com.coucou.android.ui.tokens
 
 @Composable
@@ -70,49 +77,44 @@ fun CoudropScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF0F1012)),
+            .background(t.bg.c()),
         contentPadding = PaddingValues(horizontal = Gutter, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Top App Bar
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF1E2024))
+                        .background(t.panel2.c())
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CoucouIcon(kind = IconKind.BACK, tint = Color.White, size = 18.dp)
+                    CoucouIcon(kind = IconKind.BACK, tint = t.text.c(), size = 18.dp)
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Coudrop",
-                        color = Color.White,
+                        color = t.text.c(),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
+                        letterSpacing = (-0.3).sp,
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(if (isConnected) Color(0xFF30D158) else Color(0xFF8E8E93)),
-                        )
+                        StateDot(if (isConnected) StatusColors.online else StatusColors.offline)
                         Text(
                             text = if (isConnected) "Connected to $desktopName" else "Computer offline",
-                            color = Color(0xFF8E8E93),
-                            fontSize = 11.sp,
+                            style = TypeScale.SECONDARY.style(t.textDim.c()),
                         )
                     }
                 }
@@ -121,31 +123,23 @@ fun CoudropScreen(
 
         // Radar Section
         item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF16181B))
-                    .border(1.dp, Color(0xFF24272E), RoundedCornerShape(20.dp))
-                    .padding(vertical = 24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
+            Panel {
                 Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp, horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     CoudropRadarView(linkState = model.linkState)
 
                     Text(
                         text = if (isConnected) "Quick Share with $desktopName" else "Open Coucou on your computer",
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
+                        style = TypeScale.HEADLINE.style(t.text.c()).copy(fontWeight = FontWeight.SemiBold),
                     )
                     Text(
                         text = "Instant, zero-cloud peer-to-peer TLS transfer",
-                        color = Color(0xFF8E8E93),
-                        fontSize = 11.sp,
+                        style = TypeScale.SECONDARY.style(t.textDim.c()),
                     )
 
                     // Action buttons
@@ -177,14 +171,7 @@ fun CoudropScreen(
         // Active Transfers
         if (activeTransfers.isNotEmpty()) {
             item {
-                Text(
-                    text = "ACTIVE TRANSFERS",
-                    color = Color(0xFF8E8E93),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(start = 4.dp),
-                )
+                SectionHeading("ACTIVE TRANSFERS")
             }
             items(activeTransfers.values.toList(), key = { it.record.id }) { activeState ->
                 CoudropTransferCard(
@@ -197,26 +184,18 @@ fun CoudropScreen(
         // Recent Transfers History
         item {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "RECENT TRANSFERS",
-                    color = Color(0xFF8E8E93),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                    letterSpacing = 1.sp,
-                )
+                SectionHeading("RECENT TRANSFERS")
                 if (history.isNotEmpty()) {
                     Text(
                         text = "Clear",
-                        color = Color(0xFF0A84FF),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
+                        style = TypeScale.LABEL.style(t.textDim.c()).copy(fontWeight = FontWeight.SemiBold),
                         modifier = Modifier
                             .clickable { model.coudropManager.clearHistory() }
-                            .padding(4.dp),
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
                     )
                 }
             }
@@ -224,17 +203,18 @@ fun CoudropScreen(
 
         if (history.isEmpty()) {
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 20.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Transferred files will appear here",
-                        color = Color(0xFF48484A),
-                        fontSize = 12.sp,
-                    )
+                Panel {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Transferred files will appear here",
+                            style = TypeScale.SECONDARY.style(t.textDim.c()),
+                        )
+                    }
                 }
             }
         } else {
