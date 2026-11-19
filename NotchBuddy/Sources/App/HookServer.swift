@@ -3064,6 +3064,8 @@ export default function (amp: any): void {
 
     /// Reads the shebang of `executablePath` and returns the interpreter path.
     /// Handles `#!/usr/bin/env python3` by resolving via `which`.
+    /// Also handles shell wrappers (e.g. Hermes's installer writes `#!/bin/sh` +
+    /// `exec <path>/python3 …`): the real interpreter is taken from the exec line.
     private static func interpreterFromShebang(_ executablePath: String) -> String? {
         guard let fh = FileHandle(forReadingAtPath: executablePath) else { return nil }
         let data = fh.readData(ofLength: 512)
@@ -3072,6 +3074,7 @@ export default function (amp: any): void {
               text.hasPrefix("#!") else { return nil }
         let line = String(text.prefix(while: { $0 != "\n" }).dropFirst(2))
             .trimmingCharacters(in: .whitespaces)
+        let interpreter: String?
         if line.hasPrefix("/usr/bin/env ") {
             let name = String(line.dropFirst("/usr/bin/env ".count))
                 .trimmingCharacters(in: .whitespaces)
@@ -3082,11 +3085,29 @@ export default function (amp: any): void {
                 task.waitUntilExit()
                 let out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                return out.isEmpty ? nil : out
+                interpreter = out.isEmpty ? nil : out
+            } else {
+                return nil
             }
+        } else if line.isEmpty {
             return nil
+        } else {
+            interpreter = line
         }
-        return line.isEmpty ? nil : line
+        // Shell wrapper: follow the `exec` line to the real interpreter.
+        if let shell = interpreter, shell.hasSuffix("/sh") || shell.hasSuffix("/bash") || shell.hasSuffix("/zsh") {
+            for statement in text.split(separator: "\n").dropFirst() {
+                let tokens = statement.split(separator: " ", omittingEmptySubsequences: true)
+                guard let first = tokens.first, first == "exec" else { continue }
+                // `exec <interpreter> …` — the first token after exec is the binary.
+                if let candidate = tokens.dropFirst().first {
+                    let path = String(candidate)
+                    if FileManager.default.isExecutableFile(atPath: path) { return path }
+                }
+                break
+            }
+        }
+        return interpreter
     }
 
     /// Returns true if the installed Hermes version exposes register_approval_transport.
