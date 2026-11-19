@@ -291,7 +291,9 @@
     "pair_confirm_body": "你的网络上的 %1$s:%2$d。只与属于你自己的电脑配对。",
     "pair_confirm_relay": "它也可以通过位于 %1$s 的中继，从其他网络连接到你的电脑。只有当这个中继是你自己搭建的，才可以配对。",
     "pair_confirm_replace": "这会替换你当前连接的电脑。",
+    "pair_confirm_fingerprint": "证书指纹：%1$s",
     "pair_confirm_ok": "配对",
+    "msg_pair_verify_failed": "无法验证新电脑，已保留当前连接。",
     "wardrobe_title": "Mochi 的衣橱",
     "wardrobe_note": "选择 Mochi 在这部手机上穿什么。",
     "wardrobe_follow": "与我的电脑相同",
@@ -459,11 +461,23 @@
     "mute_agents_hint": "所选代理的完成、失败和达到上限通知将保持安静。请求和问题始终会送达。"
   },
   "plurals": {
-    "widget_n_waiting": {"other": "%1$d 个等待中"},
-    "glance_requests": {"other": "%1$d 个请求待批准"},
-    "glance_questions": {"other": "%1$d 个来自代理的问题"},
-    "glance_stopped": {"other": "%1$d 个代理已停止"},
-    "glance_working_many": {"other": "%1$d 个代理正在工作"},
-    "spoken_waiting_you": {"other": "%1$d 个在等你"}
+    "widget_n_waiting": {
+      "other": "%1$d 个等待中"
+    },
+    "glance_requests": {
+      "other": "%1$d 个请求待批准"
+    },
+    "glance_questions": {
+      "other": "%1$d 个来自代理的问题"
+    },
+    "glance_stopped": {
+      "other": "%1$d 个代理已停止"
+    },
+    "glance_working_many": {
+      "other": "%1$d 个代理正在工作"
+    },
+    "spoken_waiting_you": {
+      "other": "%1$d 个在等你"
+    }
   }
 }

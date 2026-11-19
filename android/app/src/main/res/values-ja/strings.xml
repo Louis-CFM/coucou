@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">ネットワーク上の %1$s:%2$d。自分が所有するコンピューターとのみペアリングしてください。</string>
     <string name="pair_confirm_relay">%1$s のリレーを経由して、別のネットワークからもコンピューターに接続できます。自分で設定したリレーである場合だけペアリングしてください。</string>
     <string name="pair_confirm_replace">現在接続しているコンピューターが置き換えられます。</string>
+    <string name="pair_confirm_fingerprint">証明書のフィンガープリント: %1$s</string>
     <string name="pair_confirm_ok">ペアリング</string>
+    <string name="msg_pair_verify_failed">新しいコンピューターを確認できませんでした。現在の接続を維持しました。</string>
     <string name="wardrobe_title">Mochi のクローゼット</string>
     <string name="wardrobe_note">このスマートフォンで Mochi が着るものを選択します。</string>
     <string name="wardrobe_follow">コンピューターと同じ</string>

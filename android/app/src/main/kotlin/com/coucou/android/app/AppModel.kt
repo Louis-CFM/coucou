@@ -483,6 +483,8 @@ class AppModel(private val context: Context) : LinkListener {
         return true
     }
 
+    @Volatile private var verifyGeneration = 0
+
     fun confirmPairing() {
         val link = pairRequest ?: return
         pairRequest = null
@@ -494,9 +496,28 @@ class AppModel(private val context: Context) : LinkListener {
     fun pair(text: String): Boolean {
         val p = PairingPayload.parse(text)
         if (p == null) { message = context.getString(R.string.msg_bad_link); return false }
-        stopLink()
-        store.savePairing(p)
-        connect(p)
+        if (!isPaired) {
+            stopLink()
+            store.savePairing(p)
+            connect(p)
+            return true
+        }
+        val gen = ++verifyGeneration
+        val useRelay = settings.useRelay
+        val modelName = Build.MODEL ?: "Android"
+        probeExecutor.execute {
+            val result = com.coucou.android.link.PairingVerifier.verify(p, useRelay = useRelay, deviceName = modelName)
+            main.post {
+                if (gen != verifyGeneration) return@post
+                if (result is com.coucou.android.link.PairingVerifier.Result.Verified) {
+                    stopLink()
+                    store.savePairing(p)
+                    connect(p)
+                } else {
+                    message = context.getString(R.string.msg_pair_verify_failed)
+                }
+            }
+        }
         return true
     }
 
@@ -671,6 +692,7 @@ class AppModel(private val context: Context) : LinkListener {
     fun stopDemo() = stopLink()
 
     private fun stopLink() {
+        verifyGeneration++
         closeDiff()
         usage = null
         recap = null

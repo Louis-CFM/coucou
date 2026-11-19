@@ -217,6 +217,8 @@ class MainActivity : ComponentActivity() {
                         )
                         SideEffect {
                             if (secure) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                            window.decorView.filterTouchesWhenObscured = secure
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) window.setHideOverlayWindows(secure)
                         }
                         // A scanned code or a link from the camera app: the user decides before anything is paired.
                         model.pairRequest?.let { PairConfirm(model, it) }

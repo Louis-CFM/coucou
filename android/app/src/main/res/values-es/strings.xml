@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d en tu red. Vincula solo con un ordenador que sea tuyo.</string>
     <string name="pair_confirm_relay">También puede llegar a tu ordenador desde otras redes a través del relé en %1$s. Vincula solo si configuraste ese relé tú mismo.</string>
     <string name="pair_confirm_replace">Esto reemplaza al ordenador al que estás conectado ahora.</string>
+    <string name="pair_confirm_fingerprint">Huella del certificado: %1$s</string>
     <string name="pair_confirm_ok">Vincular</string>
+    <string name="msg_pair_verify_failed">No se pudo verificar el nuevo equipo. Se mantuvo tu conexión actual.</string>
     <string name="wardrobe_title">El armario de Mochi</string>
     <string name="wardrobe_note">Elige lo que lleva Mochi en este teléfono.</string>
     <string name="wardrobe_follow">Igual que mi ordenador</string>

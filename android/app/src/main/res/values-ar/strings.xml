@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d على شبكتك. اقترن فقط مع حاسوب تملكه.</string>
     <string name="pair_confirm_relay">يمكنه أيضًا الوصول إلى حاسوبك من شبكات أخرى عبر المرحّل في %1$s. اقترن فقط إن كنت أنت من أعدّ هذا المرحّل.</string>
     <string name="pair_confirm_replace">سيحلّ هذا محل الحاسوب المتصل به الآن.</string>
+    <string name="pair_confirm_fingerprint">بصمة الشهادة: %1$s</string>
     <string name="pair_confirm_ok">اقتران</string>
+    <string name="msg_pair_verify_failed">تعذر التحقق من الكمبيوتر الجديد. تم الإبقاء على اتصالك الحالي.</string>
     <string name="wardrobe_title">خزانة Mochi</string>
     <string name="wardrobe_note">اختر ما يرتديه Mochi على هذا الهاتف.</string>
     <string name="wardrobe_follow">مثل حاسوبي</string>

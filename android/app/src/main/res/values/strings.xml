@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d on your network. Only pair with a computer you own.</string>
     <string name="pair_confirm_relay">It can also reach your computer from other networks through the relay at %1$s. Only pair if you set up that relay yourself.</string>
     <string name="pair_confirm_replace">This replaces the computer you are connected to now.</string>
+    <string name="pair_confirm_fingerprint">Certificate fingerprint: %1$s</string>
     <string name="pair_confirm_ok">Pair</string>
+    <string name="msg_pair_verify_failed">Could not verify the new computer. Kept your current connection.</string>
     <string name="wardrobe_title">Mochi\'s wardrobe</string>
     <string name="wardrobe_note">Choose what Mochi wears on this phone.</string>
     <string name="wardrobe_follow">Same as my computer</string>

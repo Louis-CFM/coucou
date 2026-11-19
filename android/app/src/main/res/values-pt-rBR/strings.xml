@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d na sua rede. Pareie só com um computador que seja seu.</string>
     <string name="pair_confirm_relay">Ele também pode alcançar o seu computador de outras redes pelo relay em %1$s. Pareie só se você mesmo configurou esse relay.</string>
     <string name="pair_confirm_replace">Isso substitui o computador ao qual você está conectado agora.</string>
+    <string name="pair_confirm_fingerprint">Impressão digital do certificado: %1$s</string>
     <string name="pair_confirm_ok">Parear</string>
+    <string name="msg_pair_verify_failed">Não foi possível verificar o novo computador. Sua conexão atual foi mantida.</string>
     <string name="wardrobe_title">O guarda-roupa do Mochi</string>
     <string name="wardrobe_note">Escolha o que o Mochi veste neste celular.</string>
     <string name="wardrobe_follow">Igual ao meu computador</string>

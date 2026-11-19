@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d di jaringanmu. Pasangkan hanya dengan komputer milikmu sendiri.</string>
     <string name="pair_confirm_relay">Komputer itu juga dapat dijangkau dari jaringan lain lewat relai di %1$s. Pasangkan hanya jika kamu sendiri yang menyiapkan relai itu.</string>
     <string name="pair_confirm_replace">Ini menggantikan komputer yang sedang terhubung denganmu sekarang.</string>
+    <string name="pair_confirm_fingerprint">Sidik jari sertifikat: %1$s</string>
     <string name="pair_confirm_ok">Pasangkan</string>
+    <string name="msg_pair_verify_failed">Tidak dapat memverifikasi komputer baru. Koneksi Anda saat ini tetap dipertahankan.</string>
     <string name="wardrobe_title">Lemari Mochi</string>
     <string name="wardrobe_note">Pilih apa yang dipakai Mochi di ponsel ini.</string>
     <string name="wardrobe_follow">Sama seperti komputerku</string>

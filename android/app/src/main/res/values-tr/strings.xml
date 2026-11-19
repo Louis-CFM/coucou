@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">Ağındaki %1$s:%2$d. Yalnızca sana ait bir bilgisayarla eşleştir.</string>
     <string name="pair_confirm_relay">%1$s adresindeki aktarıcı üzerinden başka ağlardan da bilgisayarına ulaşabilir. Yalnızca bu aktarıcıyı kendin kurduysan eşleştir.</string>
     <string name="pair_confirm_replace">Şu anda bağlı olduğun bilgisayarın yerini alır.</string>
+    <string name="pair_confirm_fingerprint">Sertifika parmak izi: %1$s</string>
     <string name="pair_confirm_ok">Eşleştir</string>
+    <string name="msg_pair_verify_failed">Yeni bilgisayar doğrulanamadı. Mevcut bağlantınız korundu.</string>
     <string name="wardrobe_title">Mochi\'nin gardırobu</string>
     <string name="wardrobe_note">Mochi\'nin bu telefonda ne giyeceğini seç.</string>
     <string name="wardrobe_follow">Bilgisayarımla aynı</string>
