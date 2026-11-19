@@ -18,6 +18,7 @@ enum IslandView: String, CaseIterable {
     case update       // a new Coucou is out on GitHub: one click to install it (GitHub build)
     case whatsNew     // Coucou just updated itself: what the version brings, then your Coucou so far (GitHub build)
     case launch       // a new Claude Code session: a prompt, a project, and the terminal opens (GitHub build)
+    case level        // a volume or brightness key: Mochi on the level's track, like an upload (GitHub build)
 }
 
 // MARK: - Bot State
@@ -237,6 +238,14 @@ enum AgentLayoutMode {
 
 // MARK: - Constants (from NW, NH, EW in prototype)
 
+/// The volume / brightness card (IslandView.level), in island coordinates: the same track
+/// as an upload's (left 36, 526 wide), on which Mochi rides at the level.
+enum SystemLevelLayout {
+    static let cardHeight: CGFloat = 62
+    static let trackLeft: CGFloat = 36
+    static let trackWidth: CGFloat = 526
+}
+
 enum IslandConst {
     static let notchWidth: CGFloat  = IslandScreenGeometry.fallbackNotchWidth
     static let notchHeight: CGFloat = 32
@@ -279,6 +288,9 @@ enum IslandConst {
         .update:       ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
         // After an update: taller, four items then the stats (like mail, it fills the height)
         .whatsNew:     ViewLayout(height: 232, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
+        // Volume / brightness key: a low card, Mochi riding the track at the level (botX from it,
+        // like .uploading). 114 = 8 top + 34 header + 62 card + 10 bottom; track centre at y 87.
+        .level:        ViewLayout(height: 114, botX: 36,  botY: 87,  botDiameter: 26, agentMode: .none),
     ]
 
     // Project colors — keyed by lowercase display name or slug

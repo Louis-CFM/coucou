@@ -63,6 +63,12 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .level:
+            #if !APPSTORE
+            SystemLevelCard()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }
