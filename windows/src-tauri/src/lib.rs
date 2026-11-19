@@ -665,6 +665,10 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
     if key == "gitea-token" || key == "gitea-url" {
         integrations::gitea_credentials_changed(&app);
     }
+    if key == "n8n-api-key" || key == "n8n-url" {
+        integrations::n8n_credentials_changed(&app);
+    }
+    let _ = app.emit("secrets-changed", &key);
     Ok(())
 }
 
@@ -681,6 +685,10 @@ fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
     if key == "gitea-token" || key == "gitea-url" {
         integrations::gitea_credentials_changed(&app);
     }
+    if key == "n8n-api-key" || key == "n8n-url" {
+        integrations::n8n_credentials_changed(&app);
+    }
+    let _ = app.emit("secrets-changed", &key);
     Ok(())
 }
 

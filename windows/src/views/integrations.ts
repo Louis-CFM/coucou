@@ -59,7 +59,7 @@ const OPEN_URLS: Record<string, string> = {
 /** IntegrationCardView.statusLabel on macOS. */
 export function idleStatus(
   id: string,
-  info: { configured: boolean; error: string | null } | undefined,
+  info: { configured: boolean; error: string | null; loaded?: boolean } | undefined,
   chatModel: string,
 ): { label: string; color: string } {
   if (isComingSoon(id)) return { label: t("Coming soon"), color: "#6B7079" };
@@ -77,7 +77,8 @@ export function idleStatus(
     if (!configured) return missing(t("Key not configured"));
     return ok(id === "ai_anthropic" ? t("Key configured · {model}", { model: chatModel }) : t("Key configured"));
   }
-  return configured ? ok(t("Connected · loading…")) : missing(t("Key not configured"));
+  if (!configured) return missing(t("Key not configured"));
+  return ok(info?.loaded ? t("Connected") : t("Connected · loading…"));
 }
 
 function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
@@ -373,11 +374,31 @@ function calcomCard(openDetail: () => void): HTMLElement {
 
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
+function n8nRun(task: AgentTask): { workflow: string; detail: string | null; success: boolean } | null {
+  if (task.steps.length > 0 && (task.state === "finished" || task.state === "error")) {
+    return {
+      workflow: task.steps[0] ?? t("Workflow"),
+      detail: task.steps[1] ?? null,
+      success: task.state === "finished",
+    };
+  }
+  const info = State.integrations.integration_n8n;
+  if (!info || info.error) return null;
+  const d = get("integration_n8n");
+  if (typeof d.workflow === "string" && d.workflow.length > 0) {
+    return {
+      workflow: d.workflow,
+      detail: typeof d.detail === "string" && d.detail.length > 0 ? d.detail : null,
+      success: d.status === "success",
+    };
+  }
+  return null;
+}
+
 function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void): HTMLElement {
-  const hasActivity = task.steps.length > 0 && (task.state === "finished" || task.state === "error");
-  if (!hasActivity) return idleCard(task, openSettings);
-  const success = task.state === "finished";
-  const accent = success ? "#22C55E" : "#F4505E";
+  const run = n8nRun(task);
+  if (!run) return idleCard(task, openSettings);
+  const accent = run.success ? "#22C55E" : "#F4505E";
   return h(
     "div",
     { class: "int-card" },
@@ -393,17 +414,16 @@ function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void
           onclick: onDetail,
         },
         dot(accent, 5),
-        h("span", { class: "int-name", text: task.steps[0] ?? t("Workflow") }),
+        h("span", { class: "int-name", text: run.workflow }),
         svg(ICONS.ellipsis, 8),
       ),
     ),
   );
 }
 
-function n8nDetail(task: AgentTask, onBack: () => void): HTMLElement {
-  const success = task.state === "finished";
+function n8nDetail(run: { workflow: string; detail: string | null; success: boolean }, onBack: () => void): HTMLElement {
+  const { success, detail, workflow } = run;
   const accent = success ? "#22C55E" : "#F4505E";
-  const detail = task.steps[1];
   return h(
     "div",
     { class: "int-card detail" },
@@ -412,7 +432,7 @@ function n8nDetail(task: AgentTask, onBack: () => void): HTMLElement {
       { class: "int-detail-head" },
       h("button", { class: "int-back", onclick: onBack }, svg(ICONS.chevronLeft, 10, { stroke: 2.4 })),
       dot(accent, 6),
-      h("b", { text: task.steps[0] ?? t("Workflow") }),
+      h("b", { text: workflow }),
       h("span", {
         class: "int-badge",
         style: `color:${accent};background:${accent}24`,
@@ -442,6 +462,8 @@ export function hasIntegrationData(id: string): boolean {
   const info = State.integrations[id];
   if (!info || info.error) return false;
   switch (id) {
+    case "integration_n8n":
+      return typeof get(id).workflow === "string" && String(get(id).workflow).length > 0;
     case "integration_vercel":
       return arr(id, "deployments").length > 0;
     case "integration_resend":
@@ -464,9 +486,9 @@ export function hasIntegrationData(id: string): boolean {
 
 export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
   if (task.id === "integration_n8n") {
-    const hasActivity = task.steps.length > 0 && (task.state === "finished" || task.state === "error");
-    return hooks.detailOpen && hasActivity
-      ? n8nDetail(task, hooks.closeDetail)
+    const run = n8nRun(task);
+    return hooks.detailOpen && run
+      ? n8nDetail(run, hooks.closeDetail)
       : n8nCard(task, hooks.openDetail, hooks.openSettings);
   }
   if (task.id === "integration_vercel" && hasIntegrationData(task.id)) {
