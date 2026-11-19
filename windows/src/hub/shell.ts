@@ -81,7 +81,7 @@ export interface HubOptions {
 
 const DEFAULT_STATUS: FlowStatus = {
   prefs: {
-    enabled: false, key: "right_ctrl", keyCombo: [], edge: "bottom", mic: "", keepDays: 30, cleanup: false,
+    enabled: false, key: "right_ctrl", keyCombo: [], edge: "bottom", hidePill: false, mic: "", keepDays: 30, cleanup: false,
     defaultStyle: "natural", summaryEngine: "claude", openAtLaunch: true, voice: false, voiceOutput: "system", voiceGender: "female", muteOthers: true,
     oneTapHandsFree: false,
   },

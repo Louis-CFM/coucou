@@ -148,6 +148,8 @@
     <string name="approval_hint">Autoriser sur le téléphone demande l\'empreinte ou le verrouillage d\'écran. Refuser, non.</string>
     <string name="overlay_title">Afficher Mochi par-dessus les autres apps</string>
     <string name="overlay_hint">Une île descend du haut de l\'écran pendant qu\'un agent travaille, puis remonte.</string>
+    <string name="overlay_dnd_title">Masquer l\'île en mode Ne pas déranger</string>
+    <string name="overlay_dnd_hint">Tant que Ne pas déranger est activé, rien ne descend du haut de l\'écran. Les demandes arrivent toujours en notification.</string>
     <string name="msg_overlay_permission">Autorise « l\'affichage par-dessus les autres apps » pour Coucou, puis reviens.</string>
     <string name="settings_title">Réglages</string>
     <string name="settings_sound">Sons de Mochi</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">A une question</string>
     <string name="notif_ratelimit">A atteint une limite d\'utilisation</string>
     <string name="island_answer_on_pc">Touche pour ouvrir Coucou, ou réponds sur ton ordinateur</string>
+    <string name="island_dismiss">Fermer l\'îlot</string>
     <string name="state_ready">Prêt</string>
     <string name="state_working">Au travail</string>
     <string name="state_thinking">Réfléchit</string>
@@ -289,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d sur ton réseau. N\'associe qu\'un ordinateur qui t\'appartient.</string>
     <string name="pair_confirm_relay">Il peut aussi joindre ton ordinateur depuis d\'autres réseaux via le relais à l\'adresse %1$s. N\'associe que si tu as mis en place ce relais toi-même.</string>
     <string name="pair_confirm_replace">Cela remplace l\'ordinateur auquel tu es connecté actuellement.</string>
+    <string name="pair_confirm_fingerprint">Empreinte du certificat : %1$s</string>
     <string name="pair_confirm_ok">Associer</string>
+    <string name="msg_pair_verify_failed">Impossible de vérifier le nouvel ordinateur. La connexion actuelle a été conservée.</string>
     <string name="wardrobe_title">La garde-robe de Mochi</string>
     <string name="wardrobe_note">Choisis ce que Mochi porte sur ce téléphone.</string>
     <string name="wardrobe_follow">Comme mon ordinateur</string>

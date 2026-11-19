@@ -135,7 +135,7 @@ enum VoiceSettings {
         let mic = await AVAudioApplication.requestRecordPermission()
         guard mic else { return false }
         return await withCheckedContinuation { cont in
-            SFSpeechRecognizer.requestAuthorization { status in
+            SFSpeechRecognizer.requestAuthorization { @Sendable status in
                 cont.resume(returning: status == .authorized)
             }
         }

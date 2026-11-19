@@ -148,6 +148,8 @@
     <string name="approval_hint">السماح على الهاتف يطلب بصمة الإصبع أو قفل الشاشة. أما الرفض فلا.</string>
     <string name="overlay_title">إظهار Mochi فوق التطبيقات الأخرى</string>
     <string name="overlay_hint">تنزل جزيرة من أعلى الشاشة أثناء عمل الوكيل، ثم تعود إلى الأعلى.</string>
+    <string name="overlay_dnd_title">إخفاء الجزيرة في وضع عدم الإزعاج</string>
+    <string name="overlay_dnd_hint">ما دام وضع عدم الإزعاج مفعّلًا، لا ينزل شيء من أعلى الشاشة. الطلبات تصلك دائمًا كإشعارات.</string>
     <string name="msg_overlay_permission">اسمح لـ Coucou بـ«العرض فوق التطبيقات الأخرى»، ثم عُد.</string>
     <string name="settings_title">الإعدادات</string>
     <string name="settings_sound">أصوات Mochi</string>
@@ -170,6 +172,7 @@
     <string name="notif_question">لديه سؤال</string>
     <string name="notif_ratelimit">بلغ حدّ الاستخدام</string>
     <string name="island_answer_on_pc">اضغط لفتح Coucou، أو أجب على حاسوبك</string>
+    <string name="island_dismiss">إغلاق الجزيرة</string>
     <string name="state_ready">جاهز</string>
     <string name="state_working">يعمل</string>
     <string name="state_thinking">يفكّر</string>
@@ -289,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d على شبكتك. اقترن فقط مع حاسوب تملكه.</string>
     <string name="pair_confirm_relay">يمكنه أيضًا الوصول إلى حاسوبك من شبكات أخرى عبر المرحّل في %1$s. اقترن فقط إن كنت أنت من أعدّ هذا المرحّل.</string>
     <string name="pair_confirm_replace">سيحلّ هذا محل الحاسوب المتصل به الآن.</string>
+    <string name="pair_confirm_fingerprint">بصمة الشهادة: %1$s</string>
     <string name="pair_confirm_ok">اقتران</string>
+    <string name="msg_pair_verify_failed">تعذر التحقق من الكمبيوتر الجديد. تم الإبقاء على اتصالك الحالي.</string>
     <string name="wardrobe_title">خزانة Mochi</string>
     <string name="wardrobe_note">اختر ما يرتديه Mochi على هذا الهاتف.</string>
     <string name="wardrobe_follow">مثل حاسوبي</string>

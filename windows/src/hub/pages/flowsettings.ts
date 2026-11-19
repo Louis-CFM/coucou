@@ -94,6 +94,12 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
     divider(),
     row(t("Where the pill is"), null, segmented(edges, prefs.edge, (edge) => void ctx.setPrefs((p) => (p.edge = edge)))),
     divider(),
+    row(
+      t("Hide the pill until I dictate"),
+      t("It shows only while you dictate, record a call or get a message. The dictation key still works."),
+      toggle(prefs.hidePill, (on) => void ctx.setPrefs((p) => (p.hidePill = on))),
+    ),
+    divider(),
     row(t("Hands-free"),
       prefs.oneTapHandsFree ? t("Tap once, speak as long as you like, tap again to paste.") : t("Tap twice, speak as long as you like, tap once to paste."),
       keyKeycap(status.keys === "wayland" ? "wayland" : flowKeyId(prefs), status.platform, !prefs.oneTapHandsFree)),

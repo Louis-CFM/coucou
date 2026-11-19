@@ -96,8 +96,12 @@ struct AndroidLinkSettingsBox: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button(String(localized: "android.link.copy")) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(text, forType: .string)
+                    // Mark pairing link/token as concealed and transient so clipboard managers do not persist it.
+                    pasteboard.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType"))
+                    pasteboard.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
                 }
                 Button(String(localized: "android.link.repair")) {
                     link.pairAgain()

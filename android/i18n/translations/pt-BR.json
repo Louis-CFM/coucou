@@ -147,6 +147,8 @@
     "approval_hint": "Permitir no celular pede a digital ou o bloqueio de tela. Negar, não.",
     "overlay_title": "Mostrar o Mochi sobre outros apps",
     "overlay_hint": "Uma ilha desce do topo da tela enquanto um agente trabalha e depois volta a subir.",
+    "overlay_dnd_title": "Ocultar a ilha no Não perturbe",
+    "overlay_dnd_hint": "Enquanto o Não perturbe estiver ativado, nada desce do topo da tela. Os pedidos continuam chegando como notificações.",
     "msg_overlay_permission": "Permita «exibir sobre outros apps» para o Coucou e volte.",
     "settings_title": "Ajustes",
     "settings_sound": "Sons do Mochi",
@@ -169,6 +171,7 @@
     "notif_question": "Tem uma pergunta",
     "notif_ratelimit": "Atingiu um limite de uso",
     "island_answer_on_pc": "Toque para abrir o Coucou, ou responda no computador",
+    "island_dismiss": "Fechar a ilha",
     "state_ready": "Pronto",
     "state_working": "Trabalhando",
     "state_thinking": "Pensando",
@@ -288,7 +291,9 @@
     "pair_confirm_body": "%1$s:%2$d na sua rede. Pareie só com um computador que seja seu.",
     "pair_confirm_relay": "Ele também pode alcançar o seu computador de outras redes pelo relay em %1$s. Pareie só se você mesmo configurou esse relay.",
     "pair_confirm_replace": "Isso substitui o computador ao qual você está conectado agora.",
+    "pair_confirm_fingerprint": "Impressão digital do certificado: %1$s",
     "pair_confirm_ok": "Parear",
+    "msg_pair_verify_failed": "Não foi possível verificar o novo computador. Sua conexão atual foi mantida.",
     "wardrobe_title": "O guarda-roupa do Mochi",
     "wardrobe_note": "Escolha o que o Mochi veste neste celular.",
     "wardrobe_follow": "Igual ao meu computador",
@@ -456,11 +461,35 @@
     "mute_agents_hint": "Os avisos de término, falha e limite dos agentes escolhidos ficam quietos. Pedidos e perguntas sempre chegam."
   },
   "plurals": {
-    "widget_n_waiting": {"one": "%1$d esperando", "many": "%1$d esperando", "other": "%1$d esperando"},
-    "glance_requests": {"one": "%1$d pedido para aprovar", "many": "%1$d de pedidos para aprovar", "other": "%1$d pedidos para aprovar"},
-    "glance_questions": {"one": "%1$d pergunta de um agente", "many": "%1$d de perguntas de agentes", "other": "%1$d perguntas de agentes"},
-    "glance_stopped": {"one": "%1$d agente parado", "many": "%1$d de agentes parados", "other": "%1$d agentes parados"},
-    "glance_working_many": {"one": "%1$d agente está trabalhando", "many": "%1$d de agentes estão trabalhando", "other": "%1$d agentes estão trabalhando"},
-    "spoken_waiting_you": {"one": "%1$d esperando por você", "many": "%1$d esperando por você", "other": "%1$d esperando por você"}
+    "widget_n_waiting": {
+      "one": "%1$d esperando",
+      "many": "%1$d esperando",
+      "other": "%1$d esperando"
+    },
+    "glance_requests": {
+      "one": "%1$d pedido para aprovar",
+      "many": "%1$d de pedidos para aprovar",
+      "other": "%1$d pedidos para aprovar"
+    },
+    "glance_questions": {
+      "one": "%1$d pergunta de um agente",
+      "many": "%1$d de perguntas de agentes",
+      "other": "%1$d perguntas de agentes"
+    },
+    "glance_stopped": {
+      "one": "%1$d agente parado",
+      "many": "%1$d de agentes parados",
+      "other": "%1$d agentes parados"
+    },
+    "glance_working_many": {
+      "one": "%1$d agente está trabalhando",
+      "many": "%1$d de agentes estão trabalhando",
+      "other": "%1$d agentes estão trabalhando"
+    },
+    "spoken_waiting_you": {
+      "one": "%1$d esperando por você",
+      "many": "%1$d esperando por você",
+      "other": "%1$d esperando por você"
+    }
   }
 }

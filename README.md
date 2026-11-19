@@ -10,6 +10,11 @@ Approve permissions, watch your agents work, drop a file, chat with Claude — a
 
 **New in 0.4: Coucou is a real Mac app.** Hold a key anywhere, speak, let go: your words are pasted where you type, like Wispr Flow — free, open source, and offline with Parakeet. Record your calls without a bot in the meeting and get the transcript, the summary and the to-dos.
 
+<a href="https://louisraille.fr/botan"><img src="docs/media/botan.svg" width="40" alt="Botan"></a>
+
+**New: Botan. Mochi is leaving the notch.** Botan snaps onto the back of your iPhone. **[Join the founders list ↗](https://louisraille.fr/botan)**
+
+[![Botan: founders list open](https://img.shields.io/badge/Botan-founders%20list%20open-FF5A24)](https://louisraille.fr/botan)
 [![Version](https://img.shields.io/github/v/release/Louis-CFM/coucou?filter=v*&label=version&color=0A84FF)](https://github.com/Louis-CFM/coucou/releases)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
 ![iOS 18+](https://img.shields.io/badge/iOS-18%2B-black?logo=apple)
@@ -34,6 +39,14 @@ Some studios showed off gorgeous notch companions… and never let anyone use th
 **Coucou is the open version.** Every line of code is open source under the MIT License: read it, fork it, learn from it. The Coucou name, Mochi and the sounds stay © Louis Raillé (see [License](#license)).
 
 Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment Claude Code needs you.
+
+## Botan: Mochi in real life
+
+<a href="https://louisraille.fr/botan"><img src="docs/media/botan.svg" width="64" alt="Botan" align="right"></a>
+
+Mochi is leaving the notch. **Botan** is my next project: it snaps onto the back of your iPhone, and I'm building it in public.
+
+The founders list is open: join it to follow the build and hear everything first. **[Join the founders ↗](https://louisraille.fr/botan)**
 
 ## Coucou on the Mac: dictation, notes, one window
 
@@ -122,6 +135,8 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 
 **Get it on your iPhone in 3 steps:** install Coucou on your iPhone ([Join the TestFlight beta](https://testflight.apple.com/join/3GpeHv2b) — free, App Store coming soon), turn on **Settings → General → iPhone** in the Mac app (0.1.9 or later), and use the same Apple Account in iCloud on both. Full guide, troubleshooting and build-it-yourself: [docs/IPHONE.md](docs/IPHONE.md).
 
+> 📱 Want Mochi on the *back* of your iPhone too? That's [Botan](https://louisraille.fr/botan): the founders list is open.
+
 ## Coucou for Android
 
 **Coucou for Android** brings Mochi to Android phones. It was built by [Rhytam Biswas (@Rhytam23)](https://github.com/Rhytam23) and lives in [`android/`](android/).
@@ -133,7 +148,7 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 - 🧩 **Home-screen widgets** — nine of them, from a tiny Mochi to a big card with plan usage and quick buttons. Orange when something waits for you, blue while it works, green when it's done. Read-only: a request is always decided in the app.
 - 🔒 **Local and private** — the phone talks straight to your computer on your Wi-Fi, paired with a QR code and a pinned certificate. The phone link is **off by default**, and nothing listens until you turn it on.
 
-**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. Download the signed APK from the [latest Android release](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
+**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. Download the signed APK from the [latest Android release](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.5.0). Android needs Coucou on **Windows or Linux**, or Coucou 0.6.0 or later on the **Mac** (GitHub build), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
 
 <table>
 <tr>
@@ -152,6 +167,7 @@ macOS releases are published as `v*` tags. See [CHANGELOG.md](CHANGELOG.md) for 
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [0.6.1](https://github.com/Louis-CFM/coucou/releases/tag/v0.6.1) | Nov 19, 2026 | Mochi light on 120 Hz Macs (60 fps open, 30 folded), Botan founders list, crash fixes for speech permission and Flow on macOS 27 |
 | [0.6.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.6.0) | Nov 12, 2026 | Start a Claude Code session from the notch, drop a file on a session, ⌘⇧2 screenshot copied, approve Antigravity commands, Android phone link, Coucoudoro |
 | [0.5.8](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.8) | Oct 31, 2026 | Fixes by @Ohualtex: approvals and questions stay put, desktop Mochi stays visible, dropped files no longer overwrite each other |
 | [0.5.7](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.7) | Oct 31, 2026 | Mail in the notch: search, filters, reading, automatic sorting with rules and Undo, mail plans from the chat; search the settings; Coucou in a corner of the screen |
@@ -202,6 +218,8 @@ Coucou for Android, by [@Rhytam23](https://github.com/Rhytam23), is released und
 
 | Android | Date | Highlights |
 |---------|------|------------|
+| [0.5.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.5.0) | Nov 13, 2026 | Swipe the island up to put it away, nothing lost with the swipe (quiet notifications), hide the island in Do Not Disturb, six more languages (16 translations), a steadier relay link for testers |
+| [0.4.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.4.0) | Nov 3, 2026 | Works with a Mac as well as with Windows and Linux; the island sits in the middle again at a lower screen resolution |
 | [0.3.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0) | Oct 22, 2026 | A light theme and your phone's colours, nine more languages (Arabic right to left), quick actions, a Team widget, Share to Coucou, the weekly recap, a per-agent mute |
 | [0.2.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0) | Oct 13, 2026 | Nine home-screen widgets: Mochi, your agents, plan usage and quick buttons, coloured by state |
 | [0.1.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) | Oct 11, 2026 | First release: your agents, approvals with your fingerprint, answers and chat, linked to Windows or Linux |
@@ -232,7 +250,7 @@ Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md
 
 ### Android
 
-1. **Download** `Coucou-Android-0.3.0.apk` from the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0) on your phone (Android 11 or later) and open it. Android asks once to allow installs from your browser or file manager. You can also [build it from source](#build-from-source).
+1. **Download** `Coucou-Android-0.5.0.apk` from the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.5.0) on your phone (Android 11 or later) and open it. Android asks once to allow installs from your browser or file manager. You can also [build it from source](#build-from-source).
 2. **On your computer**, install Coucou **0.4.0 or later** for [Windows](#windows) or [Linux](#linux): **Settings → Android phone**, turn on **Phone link**. If Windows asks about the firewall, allow Coucou on private networks.
 3. **Show pairing code** and scan it with the app. The phone and the computer must be on the same Wi-Fi.
 
@@ -551,7 +569,7 @@ Want to add or improve a translation? Open a PR with changes to `NotchBuddy/Reso
 
 ## Credits
 
-Built by [Louis Raillé](https://louisraille.fr) with Claude Code.
+Built by [Louis Raillé](https://louisraille.fr) with Claude Code. Next up: [Botan](https://louisraille.fr/botan), Mochi in real life.
 Coucou for Android and the phone link by [Rhytam Biswas (@Rhytam23)](https://github.com/Rhytam23).
 Thanks to everyone who sent a pull request — see [contributors](https://github.com/Louis-CFM/coucou/graphs/contributors).
 Inspired by the notch-companion concepts shared by design studios — this project is independent and not affiliated with any of them.
@@ -565,6 +583,6 @@ Inspired by the notch-companion concepts shared by design studios — this proje
 
 **If Mochi made you smile, a ⭐ helps a lot.**
 
-[Website](https://louis-cfm.github.io/coucou/) · [Privacy](https://louis-cfm.github.io/coucou/privacy.html) · [Terms](https://louis-cfm.github.io/coucou/terms.html) · [Support](https://louis-cfm.github.io/coucou/support.html)
+[Website](https://louis-cfm.github.io/coucou/) · [Botan](https://louisraille.fr/botan) · [Privacy](https://louis-cfm.github.io/coucou/privacy.html) · [Terms](https://louis-cfm.github.io/coucou/terms.html) · [Support](https://louis-cfm.github.io/coucou/support.html)
 
 </div>

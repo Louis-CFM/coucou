@@ -25,14 +25,14 @@
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 #[cfg(windows)]
-use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
+use tokio::net::windows::named_pipe::NamedPipeServer;
 use tokio::sync::mpsc;
 
 use crate::agy_approvals;
@@ -64,6 +64,17 @@ pub enum Reply {
 pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
+static RELAY_ERROR: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
+
+/// Last error encountered while opening the hook relay pipe/socket, if any.
+pub fn relay_error() -> Option<String> {
+    RELAY_ERROR.lock().unwrap().clone()
+}
+
+fn set_relay_error(app: &AppHandle, err: Option<String>) {
+    *RELAY_ERROR.lock().unwrap() = err.clone();
+    let _ = app.emit("pipe-error", err);
+}
 
 /// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
 #[cfg(windows)]
@@ -75,35 +86,47 @@ pub fn pipe_name() -> String {
 
 #[cfg(windows)]
 pub fn start(app: AppHandle) {
+    use std::os::windows::io::AsRawHandle;
+
     tauri::async_runtime::spawn(async move {
         let name = pipe_name();
         // first_pipe_instance also means we refuse to join a pipe somebody else
         // already owns under our name, rather than serving on top of it.
-        let mut server = match ServerOptions::new().first_pipe_instance(true).create(&name) {
+        let mut server = match crate::platform::create_private_pipe(&name, true) {
             Ok(s) => s,
             Err(err) => {
-                log::line(format!("cannot open the relay pipe: {err}"));
+                let msg = format!("cannot open the relay pipe: {err}");
+                log::line(&msg);
+                set_relay_error(&app, Some(msg));
                 return;
             }
         };
+        set_relay_error(&app, None);
         loop {
             if server.connect().await.is_err() {
                 // A failed instance never connects again (#853): listen on a fresh one.
-                if let Ok(fresh) = ServerOptions::new().create(&name) {
+                if let Ok(fresh) = crate::platform::create_private_pipe(&name, false) {
                     server = fresh;
                 }
                 tokio::time::sleep(Duration::from_millis(200)).await;
                 continue;
             }
             // Hand the connected instance to a task and listen on a fresh one.
-            let next = match ServerOptions::new().create(&name) {
+            let next = match crate::platform::create_private_pipe(&name, false) {
                 Ok(s) => s,
                 Err(err) => {
-                    log::line(format!("cannot reopen the relay pipe: {err}"));
+                    let msg = format!("cannot reopen the relay pipe: {err}");
+                    log::line(&msg);
+                    set_relay_error(&app, Some(msg));
                     return;
                 }
             };
             let connected = std::mem::replace(&mut server, next);
+            // Refuse clients that do not run under our own user SID (Linux/macOS parity).
+            if !crate::platform::pipe_client_is_same_user(connected.as_raw_handle()) {
+                log::line("refused a relay connection from another user");
+                continue;
+            }
             let app = app.clone();
             tauri::async_runtime::spawn(async move { handle(app, connected).await });
         }
@@ -117,7 +140,9 @@ pub fn start(app: AppHandle) {
 
     tauri::async_runtime::spawn(async move {
         let Some(path) = crate::platform::relay_socket_path() else {
-            log::line("no private runtime directory ($XDG_RUNTIME_DIR) — Claude Code hooks are inactive");
+            let msg = "no private runtime directory ($XDG_RUNTIME_DIR) — Claude Code hooks are inactive".to_string();
+            log::line(&msg);
+            set_relay_error(&app, Some(msg));
             return;
         };
         // A socket file left behind by a crash answers nothing and can go. One
@@ -125,7 +150,9 @@ pub fn start(app: AppHandle) {
         // first_pipe_instance on Windows, we refuse to serve on top of it.
         if path.exists() {
             if std::os::unix::net::UnixStream::connect(&path).is_ok() {
-                log::line("another Coucou already serves the relay socket");
+                let msg = "another Coucou already serves the relay socket".to_string();
+                log::line(&msg);
+                set_relay_error(&app, Some(msg));
                 return;
             }
             let _ = std::fs::remove_file(&path);
@@ -133,10 +160,13 @@ pub fn start(app: AppHandle) {
         let listener = match UnixListener::bind(&path) {
             Ok(l) => l,
             Err(err) => {
-                log::line(format!("cannot open the relay socket: {err}"));
+                let msg = format!("cannot open the relay socket: {err}");
+                log::line(&msg);
+                set_relay_error(&app, Some(msg));
                 return;
             }
         };
+        set_relay_error(&app, None);
         // The runtime directory is already 0700; this is belt and braces.
         let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
         let uid = unsafe { libc::getuid() };

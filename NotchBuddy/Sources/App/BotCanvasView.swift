@@ -16,9 +16,13 @@ struct BotCanvasView: View {
     @StateObject private var engine = BotEngine()
 
     var body: some View {
-        // Display refresh rate — every frame on a 60 Hz screen, every frame on ProMotion.
-        // MochiFrameClock.advance accumulates the step debt so Mochi's speed never changes.
-        TimelineView(.animation(paused: state.mode == .hidden || paused)) { timeline in
+        // 60 fps while the island is open, 30 folded in the notch (#1116: at the display rate a
+        // ProMotion Mac redrew him 120 times a second, 35-60 % CPU and as much in WindowServer,
+        // even folded). Each drawn frame runs the engine steps of the display frames it skipped,
+        // so Mochi moves at the same pace on every screen.
+        let fps = MochiFrameClock.fps(open: state.mode == .expanded)
+        TimelineView(.animation(minimumInterval: MochiFrameClock.interval(fps: fps),
+                                paused: state.mode == .hidden || paused)) { timeline in
             // The Canvas must capture the frame's date: a closure that doesn't change from
             // one tick to the next is not redrawn, and Mochi froze.
             let frame = timeline.date
@@ -107,7 +111,7 @@ struct BotCanvasView: View {
                 else if engine.voiceSubState != .none { engine.voiceSubState = .none }
                 #endif
 
-                MochiFrameClock.advance(engine)
+                MochiFrameClock.advance(engine, fps: fps)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
                 // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
@@ -257,13 +261,15 @@ struct MiniBotCanvasView: View {
 
 
     var body: some View {
-        // Display refresh rate. Paused in island views that are not shown.
-        TimelineView(.animation(paused: !viewActive)) { timeline in
+        // 30 fps: the minis are small, and several draw at once (#1116). Paused in island
+        // views that are not shown.
+        TimelineView(.animation(minimumInterval: MochiFrameClock.interval(fps: MochiFrameClock.miniFPS),
+                                paused: !viewActive)) { timeline in
             let frame = timeline.date   // see BotCanvasView: redraw on every tick
             Canvas { context, size in
                 _ = frame
                 engine.setDancing(isDancing)
-                MochiFrameClock.advance(engine)
+                MochiFrameClock.advance(engine, fps: MochiFrameClock.miniFPS)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
                 engine.draw(context: ctx, size: size)
@@ -294,34 +300,31 @@ struct MiniBotCanvasView: View {
 
 // MARK: - Frame clock
 
-/// Mochi's engine has always moved one `update(dt: 0.05)` per display frame (its look,
-/// colour, springs and particles are tuned to that). Drawing slower than the display must
-/// not slow Mochi down: each drawn frame runs the steps of the display frames it skipped.
+/// Mochi's engine moves one `update(dt: 0.05)` per 60 Hz frame: his look, colour, springs and
+/// particles are tuned to that. He is drawn at most 60 times a second (30 folded and for the
+/// minis), so a 120 Hz screen no longer doubles his speed and his CPU cost (#1116), and a frame
+/// drawn at 30 fps runs two steps. A fixed number of steps per drawn frame, not the measured
+/// time between renders: that jitter froze him (0 steps) or made him jump (2+) several times
+/// a second.
 @MainActor
 enum MochiFrameClock {
-    /// The island screen's refresh rate, looked up at most every 2 s.
-    private static var fpsCache: (value: Double, at: CFTimeInterval) = (60, -10)
-    static var displayFPS: Double {
-        let now = CACurrentMediaTime()
-        if now - fpsCache.at > 2 {
-            let fps = IslandWindowController.islandScreen().maximumFramesPerSecond
-            fpsCache = (Double(min(120, max(30, fps))), now)
-        }
-        return fpsCache.value
-    }
+    /// The rate the engine is tuned to.
+    static let engineFPS: Double = 60
+    /// The mini Mochis (pills, compact island, corner).
+    static let miniFPS: Double = 30
+
+    /// The main Mochi: 60 while the island is open, 30 folded in the notch.
+    static func fps(open: Bool) -> Double { open ? 60 : 30 }
 
     /// minimumInterval for a target rate, 10 % short: display frames come every 16.6 ms
     /// with jitter, and an interval of exactly 1/60 s skipped every other one (30 fps on a
     /// 60 Hz screen). 60 on a 60 Hz screen draws every frame; on ProMotion, one in two.
     static func interval(fps: Double) -> TimeInterval { 0.9 / fps }
 
-    /// One engine step per drawn frame, exactly as before the frame clock (9 October): a
-    /// perfectly regular rhythm. The step-debt version measured the time between renders,
-    /// and its jitter made frames with 0 steps (Mochi froze) and frames with 2 or more
-    /// (Mochi jumped), several times a second: the stutter when the island opens and when
-    /// Mochi follows the pointer. Mochi draws at the display rate, so one step per frame
-    /// is one step per display frame, which is what his motion is tuned to.
-    static func advance(_ engine: BotEngine) {
-        engine.update(dt: 0.05)
+    /// Engine steps for one frame drawn at `fps`: 1 at 60, 2 at 30.
+    static func steps(fps: Double) -> Int { max(1, Int((engineFPS / fps).rounded())) }
+
+    static func advance(_ engine: BotEngine, fps: Double = 60) {
+        for _ in 0..<steps(fps: fps) { engine.update(dt: 0.05) }
     }
 }

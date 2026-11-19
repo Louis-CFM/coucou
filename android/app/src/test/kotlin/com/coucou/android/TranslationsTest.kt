@@ -20,6 +20,12 @@ class TranslationsTest {
         "zh-Hans" to listOf("other"), "hi" to listOf("one", "other"), "bn" to listOf("one", "other"),
         "ru" to listOf("one", "few", "many", "other"), "id" to listOf("other"), "ar" to listOf("zero", "one", "two", "few", "many", "other"),
         "tr" to listOf("one", "other"),
+        "de" to listOf("one", "other"),
+        "ja" to listOf("other"),
+        "ko" to listOf("other"),
+        "zh-Hant" to listOf("other"),
+        "th" to listOf("other"),
+        "it" to listOf("one", "many", "other"),
     )
 
     @Test fun thereIsAtLeastOneLanguage() = assertTrue(files.isNotEmpty())
@@ -58,10 +64,12 @@ class TranslationsTest {
             // The same word in the language (French "Licences", "Services", "Standard").
             "licences_title", "services_title", "vibration_standard", "recap_sessions",
         )
+        // These are also German words (and "Computer" is Italian too). Keep the exceptions local to their language so other translations remain checked.
+        val germanSameAsEnglish = setOf("settings_section_computer", "session_details", "diag_problem", "channel_updates", "theme_system", "motion_system")
         for (f in files) {
             val t = JSONObject(f.readText()).getJSONObject("strings")
             val same = english.keys().asSequence().filter { t.getString(it) == english.getString(it) }.toList()
-            for (k in same) assertTrue("${f.name}: $k is still the English text", k in allowed || english.getString(k).length <= 5)
+            for (k in same) assertTrue("${f.name}: $k is still the English text", k in allowed || english.getString(k).length <= 5 || (f.nameWithoutExtension == "de" && k in germanSameAsEnglish) || (f.nameWithoutExtension == "it" && k == "settings_section_computer"))
         }
     }
 

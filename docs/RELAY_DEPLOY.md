@@ -44,6 +44,10 @@ Notes:
 
 ## 2. Set up the computer (Windows or Linux)
 
+The **Away from home Wi-Fi** block is hidden in Settings until a relay is ready for everyone. To see it, quit Coucou and start
+it with `COUCOU_RELAY_SETTINGS=1`: in PowerShell, `$env:COUCOU_RELAY_SETTINGS="1"` then start Coucou from that window; on Linux, from a terminal,
+`COUCOU_RELAY_SETTINGS=1 coucou` (or the path to the AppImage instead of `coucou`). Once the relay is turned on, the block stays visible without it.
+
 1. Settings > **Android phone**. Turn **Phone link** on.
 2. In the block **Away from home Wi-Fi**:
    - **Relay address**: `wss://coucou-link.<your-name>.workers.dev` (it must start with `wss://`), press **Save address**.

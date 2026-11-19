@@ -56,6 +56,8 @@ export interface PhoneRelayStatus {
   url: string;
   hasAccess: boolean;
   state: PhoneRelayState;
+  /** The relay settings are shown: for testers (COUCOU_RELAY_SETTINGS=1), or when a relay is already on. */
+  shown: boolean;
 }
 
 /** Session details for the phone: the switch (off by default). */
@@ -624,6 +626,7 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+  relayError?: string | null;
 }
 
 /** One agent other than Claude Code, as agents.rs reports it. */

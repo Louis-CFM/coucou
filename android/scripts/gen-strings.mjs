@@ -32,6 +32,12 @@ export const LANGUAGES = [
   { tag: "id", qualifier: "in", name: "Bahasa Indonesia", plural: ["other"] },
   { tag: "ar", qualifier: "ar", name: "العربية", plural: ["zero", "one", "two", "few", "many", "other"] },
   { tag: "tr", qualifier: "tr", name: "Türkçe", plural: ["one", "other"] },
+  { tag: "de", qualifier: "de", name: "Deutsch", plural: ["one", "other"] },
+  { tag: "ja", qualifier: "ja", name: "日本語", plural: ["other"] },
+  { tag: "ko", qualifier: "ko", name: "한국어", plural: ["other"] },
+  { tag: "zh-Hant", qualifier: "b+zh+Hant", name: "繁體中文", plural: ["other"] },
+  { tag: "th", qualifier: "th", name: "ภาษาไทย", plural: ["other"] },
+  { tag: "it", qualifier: "it", name: "Italiano", plural: ["one", "many", "other"] },
 ];
 const ENGLISH_PLURAL = ["one", "other"];
 

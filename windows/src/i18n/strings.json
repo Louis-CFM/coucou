@@ -1277,6 +1277,21 @@
    "ko": "앗, Claude 계정에 결제 문제가 있어요.",
    "ja": "Claude アカウントの請求に問題があります。"
   },
+  "Botan: Mochi is leaving the notch.": {
+   "zh-Hans": "Botan：Mochi 要离开刘海了。",
+   "hi": "Botan: Mochi नॉच से बाहर आ रहा है।",
+   "es": "Botan: Mochi sale del notch.",
+   "ar": "Botan: يغادر Mochi النوتش.",
+   "fr": "Botan : Mochi quitte le notch.",
+   "bn": "Botan: Mochi নচ ছেড়ে বেরিয়ে আসছে।",
+   "pt-BR": "Botan: o Mochi está saindo do notch.",
+   "ru": "Botan: Mochi покидает вырез.",
+   "id": "Botan: Mochi keluar dari notch.",
+   "de": "Botan: Mochi verlässt die Notch.",
+   "tr": "Botan: Mochi çentikten çıkıyor.",
+   "ko": "Botan: Mochi가 노치를 떠나요.",
+   "ja": "Botan：Mochi がノッチを飛び出します。"
+  },
   "Both use Claude, on your Claude plan through Claude Code or with your own key: only the words go to Anthropic, never your voice, which stays on your Mac. If Claude doesn't answer in time, the words are pasted as heard. Through Claude Code it takes a little longer than with a key.": {
    "zh-Hans": "两者都使用 Claude：通过 Claude Code 使用你的套餐，或使用你自己的密钥。只有文字会发送给 Anthropic，声音始终留在你的 Mac 上。如果 Claude 没有及时回复，就按听到的原文粘贴。通过 Claude Code 会比用密钥稍慢一些。",
    "hi": "दोनों Claude का उपयोग करते हैं, Claude Code के ज़रिए आपके प्लान पर या आपकी अपनी कुंजी से: सिर्फ़ शब्द Anthropic को जाते हैं, आपकी आवाज़ कभी नहीं, वह आपके Mac पर रहती है। अगर Claude समय पर जवाब न दे, तो शब्द जैसे सुने गए वैसे पेस्ट होते हैं। Claude Code के ज़रिए कुंजी की तुलना में थोड़ा ज़्यादा समय लगता है।",
@@ -4801,6 +4816,21 @@
    "tr": "Entegrasyonlar",
    "ko": "연동",
    "ja": "連携"
+  },
+  "Join the founders": {
+   "zh-Hans": "加入创始成员",
+   "hi": "फ़ाउंडर्स में शामिल हों",
+   "es": "Únete a los fundadores",
+   "ar": "انضم إلى المؤسسين",
+   "fr": "Rejoindre les founders",
+   "bn": "ফাউন্ডারদের দলে যোগ দিন",
+   "pt-BR": "Entrar para os fundadores",
+   "ru": "Стать основателем",
+   "id": "Gabung jadi founder",
+   "de": "Founder werden",
+   "tr": "Kuruculara katıl",
+   "ko": "파운더로 참여하기",
+   "ja": "ファウンダーに参加する"
   },
   "Journal": {
    "zh-Hans": "记录",

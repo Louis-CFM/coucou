@@ -147,6 +147,8 @@
     "approval_hint": "在手机上“允许”需要指纹或屏幕锁定，“拒绝”则不需要。",
     "overlay_title": "在其他应用上方显示 Mochi",
     "overlay_hint": "代理工作时，屏幕顶部会落下一座灵动岛，然后再收起。",
+    "overlay_dnd_title": "勿扰模式下隐藏灵动岛",
+    "overlay_dnd_hint": "勿扰模式开启时，屏幕顶部不会落下任何内容。请求仍会以通知的形式送达。",
     "msg_overlay_permission": "请为 Coucou 允许“显示在其他应用上层”，然后返回。",
     "settings_title": "设置",
     "settings_sound": "Mochi 的声音",
@@ -169,6 +171,7 @@
     "notif_question": "有一个问题",
     "notif_ratelimit": "达到用量上限",
     "island_answer_on_pc": "点按以打开 Coucou，或在电脑上回答",
+    "island_dismiss": "收起灵动岛",
     "state_ready": "就绪",
     "state_working": "工作中",
     "state_thinking": "思考中",
@@ -288,7 +291,9 @@
     "pair_confirm_body": "你的网络上的 %1$s:%2$d。只与属于你自己的电脑配对。",
     "pair_confirm_relay": "它也可以通过位于 %1$s 的中继，从其他网络连接到你的电脑。只有当这个中继是你自己搭建的，才可以配对。",
     "pair_confirm_replace": "这会替换你当前连接的电脑。",
+    "pair_confirm_fingerprint": "证书指纹：%1$s",
     "pair_confirm_ok": "配对",
+    "msg_pair_verify_failed": "无法验证新电脑，已保留当前连接。",
     "wardrobe_title": "Mochi 的衣橱",
     "wardrobe_note": "选择 Mochi 在这部手机上穿什么。",
     "wardrobe_follow": "与我的电脑相同",
@@ -456,11 +461,23 @@
     "mute_agents_hint": "所选代理的完成、失败和达到上限通知将保持安静。请求和问题始终会送达。"
   },
   "plurals": {
-    "widget_n_waiting": {"other": "%1$d 个等待中"},
-    "glance_requests": {"other": "%1$d 个请求待批准"},
-    "glance_questions": {"other": "%1$d 个来自代理的问题"},
-    "glance_stopped": {"other": "%1$d 个代理已停止"},
-    "glance_working_many": {"other": "%1$d 个代理正在工作"},
-    "spoken_waiting_you": {"other": "%1$d 个在等你"}
+    "widget_n_waiting": {
+      "other": "%1$d 个等待中"
+    },
+    "glance_requests": {
+      "other": "%1$d 个请求待批准"
+    },
+    "glance_questions": {
+      "other": "%1$d 个来自代理的问题"
+    },
+    "glance_stopped": {
+      "other": "%1$d 个代理已停止"
+    },
+    "glance_working_many": {
+      "other": "%1$d 个代理正在工作"
+    },
+    "spoken_waiting_you": {
+      "other": "%1$d 个在等你"
+    }
   }
 }

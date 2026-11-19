@@ -11,10 +11,17 @@ import { t } from "../i18n/i18n";
 type Toggle = (on: boolean, onChange: (v: boolean) => void) => HTMLElement;
 
 /**
- * The relay block ("Away from home Wi-Fi") is hidden until a relay is ready to use: the code and its tests stay, and
- * turning this on shows it again. Nothing else changes.
+ * The relay block ("Away from home Wi-Fi") is hidden until a relay is ready to use: the code and its tests stay.
+ * Testers who start Coucou with COUCOU_RELAY_SETTINGS=1 see it (docs/RELAY_DEPLOY.md), and so does anyone whose relay
+ * is already on. Nothing else changes.
  */
-const SHOW_RELAY_SETTINGS = false;
+function relaySlot(makeToggle: Toggle, refreshPairing: () => void): HTMLElement {
+  const slot = h("div", {});
+  void Bridge.phoneRelayStatus().then((status) => {
+    if (status?.shown) slot.replaceWith(relayBlock(makeToggle, refreshPairing));
+  });
+  return slot;
+}
 
 export function phoneSection(on: boolean, makeToggle: Toggle, settings: Settings): HTMLElement {
   const detail = h("div", {});
@@ -64,7 +71,7 @@ export function phoneSection(on: boolean, makeToggle: Toggle, settings: Settings
       h("div", { class: "hint", text: t("The phone connects to {address}", { address }) }),
       h("div", { class: "hint", text: t("If Windows asks about the firewall, allow Coucou on private networks. The phone and this computer must be on the same Wi-Fi.") }),
       h("div", { class: "hint", text: t("Your phone finds this computer again by itself when the network changes. It is announced on your local network only while this switch is on. Some hotspots and guest networks block this.") }),
-      ...(SHOW_RELAY_SETTINGS ? [relayBlock(makeToggle, () => void refreshPairing())] : []),
+      relaySlot(makeToggle, () => void refreshPairing()),
       detailsBlock(makeToggle),
       answersBlock(makeToggle),
       diffsBlock(makeToggle),
@@ -138,7 +145,7 @@ function relayBlock(makeToggle: Toggle, changed: () => void): HTMLElement {
   const state = h("div", { class: "hint" });
   const address = h("input", { type: "text", placeholder: "wss://", style: "width:100%", autocomplete: "off", spellcheck: "false" }) as HTMLInputElement;
   const access = h("input", { type: "password", style: "width:100%", autocomplete: "off", spellcheck: "false" }) as HTMLInputElement;
-  let current: PhoneRelayStatus = { enabled: false, url: "", hasAccess: false, state: "off" };
+  let current: PhoneRelayStatus = { enabled: false, url: "", hasAccess: false, state: "off", shown: true };
 
   const show = (status: PhoneRelayStatus | null) => {
     if (!status) return;
