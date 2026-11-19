@@ -950,7 +950,17 @@ struct DiffCardView: View {
             return
         }
         #endif
-        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        let fileURL = URL(fileURLWithPath: path)
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir),
+              !isDir.boolValue,
+              fileURL.pathExtension.lowercased() != "app",
+              let values = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
+              values.isRegularFile == true,
+              values.isSymbolicLink != true else {
+            return
+        }
+        NSWorkspace.shared.open(fileURL)
     }
 }
 
