@@ -97,7 +97,7 @@ final class AnalyzerDictation: @unchecked Sendable {
     /// supported, or not installed on this Mac): MacDictation listens then, as before.
     static func locales(for language: String) async -> [Locale]? {
         guard SpeechTranscriber.isAvailable else { return nil }
-        let wanted = language == MacDictation.automatic ? MacDictation.automaticLocales() : [Locale(identifier: language)]
+        let wanted = language == MacDictation.automatic ? await MacDictation.automaticLocales() : [Locale(identifier: language)]
         guard !wanted.isEmpty else { return nil }
         let installed = Set(await SpeechTranscriber.installedLocales.map { $0.identifier(.bcp47) })
         var out: [Locale] = []

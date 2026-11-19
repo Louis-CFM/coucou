@@ -16,6 +16,8 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- Optional, asked only when the user turns on the pill that drops from the top of the screen. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Hides non-system overlays over sensitive approval, question, chat, and pairing screens (API 31+). -->
+    <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.1 — November 19, 2026
+
+- **Mochi no longer weighs down 120 Hz Macs** — on a ProMotion screen Mochi was redrawn 120 times a second, even folded in the notch: 35 to 60 % CPU, and as much again in WindowServer. He is now drawn at 60 fps while the island is open and 30 folded, the mini Mochis at 30, with the same motion on every screen; on a ProMotion Mac he also stops moving twice as fast (#1116, found by @liztim17)
+- **Botan, the founders list** — the "Your Coucou so far" step of the card shown after an update has one more line: *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). Botan is Mochi on a little device that snaps onto the back of your iPhone. The Coucou page has the same link
+- **No crash when Coucou asks for speech recognition** (#1128 by @luchdom)
+- **Flow on macOS 27** — Flow no longer crashes when it reads your keyboard layouts (#1110 by @chennurivarun)
+- **Flow pastes your words as heard** when the clean-up model answers or refuses instead of rewriting them (#1124 by @liztim17)
+- **Hermes approvals** also work when Hermes is installed as a shell script that starts Python (#1080 by @liztim17)
+- **Open terminal without VS Code** — the ↗ button opens the session's terminal when VS Code isn't installed, instead of nothing (#679, #1079 by @InesZenkri)
+- **Long pill names** no longer run under Mochi (#1058 by @pterisaur)
+- **Security hygiene** — the copied Android pairing link is marked as concealed for clipboard managers, and the editor fallback only opens a regular file (#1102 by @Ohualtex)
+- **iPhone** — the app no longer waits on "Connecting to iCloud" at every launch: it keeps what it last synced and fetches only the changes (#1096 by @Ohualtex, in the next iPhone build)
+
 ## 0.6.0 — November 12, 2026
 
 - **Start a Claude Code session from the notch** *(GitHub build)* — the terminal tab in the island's header, or ⌃⌥N: pick the project (the folders your sessions ran in, or any folder), type or dictate what Claude should do, and your terminal opens there with Claude Code and your words. Terminal, iTerm2, Ghostty, kitty, WezTerm and Alacritty; the prompt is never written into a command line
@@ -28,6 +41,8 @@ Fixes:
 
 ## Windows and Linux 0.6.0 — Unreleased
 
+- **The n8n card fills in on start** and shows each new execution, with its sound (#1093, #1095 by @Ohualtex)
+- **Hardening** — the hook pipe only accepts your own account, Coucou's folders are restricted to you, and the hook relay is checked by its SHA-256 (#1076, #1100 by @Ohualtex)
 - **Start a Claude Code session from the island** — the terminal tab in the island's header: pick the project (the folders your sessions ran in, or any folder), say what Claude should do, and your terminal opens there with Claude Code and your words. Windows Terminal or PowerShell on Windows; your own terminal on Linux. The prompt is never written into a command line
 - **Drop a file on a session** — drag a file over the island and let go on one of the sessions listed on the right of the drop card: its window comes forward and the file's path lands in its prompt
 - **Approve Antigravity commands from the island** *(optional)* — the Mac's setting comes to Windows and Linux: turn on Settings → Agents → Antigravity → **Approve commands from the notch**, and a shell command that none of your Antigravity rules covers waits for you on the approval card: **Allow**, **Deny**, or **Reply in terminal** for Antigravity's own prompt. Commands your rules allow or deny are left to Antigravity, and with no answer in 2 min, or Coucou closed, Antigravity asks in its terminal as before. Reinstall the Antigravity hooks once, then restart Antigravity: its command hook now waits up to 2 min
@@ -51,6 +66,7 @@ Fixes:
 - **Settings → General follows changes made from the island**, and a failed drop's note no longer reopens a folded island (#695, #696 by @mahach666)
 - **Instant page switches in Settings** *(Linux)* (#906 by @RomainBrocheton)
 - **The finished card goes away when a new prompt comes** (#587) and **the GitHub week strip is graded against its own week** (#611), by @rollecode
+- **Botan, the founders list** — the second step of the card shown after an update has one more line, *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). The card is a little taller for it
 
 ## Android 0.6.0 — Unreleased
 

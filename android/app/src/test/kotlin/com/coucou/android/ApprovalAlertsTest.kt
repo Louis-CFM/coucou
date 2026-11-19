@@ -70,7 +70,7 @@ class ApprovalAlertsTest {
         assertFalse(block.contains("IMPORTANCE_LOW") || block.contains("IMPORTANCE_NONE") || block.contains("IMPORTANCE_MIN"))
         assertTrue(src.contains("!keepScreenOff) wakeScreen()"))
         // The notification is posted whatever the choices are.
-        assertTrue(src.contains("runCatching { nm.notify(id, n) }"))
+        assertTrue(src.contains("runCatching { nm.notify(NotificationIds.approvalTag(r.fingerprint), NotificationIds.APPROVAL_ID, n) }"))
     }
 
     @Test fun settingsShowBothChoices() {

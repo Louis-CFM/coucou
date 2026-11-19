@@ -29,7 +29,9 @@ struct DesktopBotView: View {
     @ObservedObject var viewState: DesktopBotViewState
 
     var body: some View {
-        TimelineView(.animation(paused: viewState.paused)) { timeline in
+        // 60 fps like the open island (see MochiFrameClock, #1116).
+        TimelineView(.animation(minimumInterval: MochiFrameClock.interval(fps: 60),
+                                paused: viewState.paused)) { timeline in
             Canvas { ctx, size in
                 _ = timeline.date   // force redraw every tick (see BotCanvasView)
 

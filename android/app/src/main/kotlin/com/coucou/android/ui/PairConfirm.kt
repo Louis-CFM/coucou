@@ -24,6 +24,7 @@ fun PairConfirm(model: AppModel, link: String) {
         text = {
             Text(
                 stringResource(R.string.pair_confirm_body, p.host, p.port) +
+                    "\n\n" + stringResource(R.string.pair_confirm_fingerprint, p.formattedFingerprint()) +
                     // The relay's host is shown too: a code that points somewhere else is visible before anything is stored.
                     (p.relay?.relayUrl()?.host?.let { "\n\n" + stringResource(R.string.pair_confirm_relay, it) } ?: "") +
                     if (model.isPaired) "\n\n" + stringResource(R.string.pair_confirm_replace) else "",

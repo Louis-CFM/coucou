@@ -2791,6 +2791,21 @@
       "ko": "미리 보기가 오래됐어요. 아무것도 쓰지 않았으니 새 변경 사항을 확인해 주세요.",
       "ja": "プレビューが古くなっています。何も書き込んでいません — 新しい差分を確認してください。"
     },
+    "The hook relay could not start ({error}). Hooks will not reach Coucou.": {
+      "zh-Hans": "Hook 中继无法启动（{error}）。Hooks 将无法连接到 Coucou。",
+      "hi": "हुक रिले शुरू नहीं हो सका ({error})। हुक Coucou तक नहीं पहुँच पाएँगे।",
+      "es": "No se pudo iniciar el relay de hooks ({error}). Los hooks no llegarán a Coucou.",
+      "ar": "تعذّر بدء مرحّل الـ hooks ({error}). لن تصل الـ hooks إلى Coucou.",
+      "fr": "Le relais des hooks n'a pas pu démarrer ({error}). Les hooks n'atteindront pas Coucou.",
+      "bn": "হুক রিলে চালু করা যায়নি ({error})। হুকগুলো Coucou-এ পৌঁছাবে না।",
+      "pt-BR": "Não foi possível iniciar o relay dos hooks ({error}). Os hooks não chegarão ao Coucou.",
+      "ru": "Не удалось запустить ретранслятор хуков ({error}). Хуки не будут доходить до Coucou.",
+      "id": "Relay hook tidak dapat dimulai ({error}). Hook tidak akan sampai ke Coucou.",
+      "de": "Der Hook-Relay konnte nicht gestartet werden ({error}). Hooks erreichen Coucou nicht.",
+      "tr": "Hook aracısı başlatılamadı ({error}). Hook'lar Coucou'ya ulaşmayacak.",
+      "ko": "훅 릴레이를 시작할 수 없습니다 ({error}). 훅이 Coucou에 전달되지 않습니다.",
+      "ja": "フックリレーを起動できませんでした（{error}）。フックは Coucou に届きません。"
+    },
     "The relay isn't installed yet.": {
       "zh-Hans": "中继尚未安装。",
       "hi": "रिले अभी इंस्टॉल नहीं है।",

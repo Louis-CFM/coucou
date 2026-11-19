@@ -86,6 +86,10 @@ final class WhatsNewCenter: ObservableObject {
         NSWorkspace.shared.open(WhatsNew.coffeeURL)
     }
 
+    func openBotan() {
+        NSWorkspace.shared.open(WhatsNew.botanURL)
+    }
+
     func openReleasePage() {
         NSWorkspace.shared.open(WhatsNew.releasePage(release?.version ?? MacUpdater.currentVersion))
     }
@@ -172,6 +176,7 @@ struct WhatsNewCardView: View {
             .foregroundColor(Color(hex: "#8E939C"))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
+        BotanLink { center.openBotan() }
         Spacer(minLength: 0)
         HStack(spacing: 8) {
             PrimaryButton(verbatim: "☕ " + String(localized: "whatsnew.coffee")) { center.openCoffee() }
@@ -194,6 +199,56 @@ struct WhatsNewCardView: View {
                 }
             }
         }
+    }
+}
+
+/// "Botan: Mochi is leaving the notch. Join the founders ↗": one line, the founders list on louisraille.fr.
+private struct BotanLink: View {
+    let action: () -> Void
+    @State private var hovered = false
+
+    private static let orange = Color(hex: "#FF5A24")
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                BotanMark()
+                    .frame(width: 12, height: 12)
+                Text(String(localized: "whatsnew.botan"))
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: hovered ? "#D5D8DE" : "#B4B8C0"))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(String(localized: "whatsnew.botan.join") + " ↗")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Self.orange.opacity(hovered ? 1 : 0.9))
+                    .underline(hovered)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+    }
+}
+
+/// Botan's mark, as on louisraille.fr/botan: a ring, its dot off-centre, looking at the tilted pill.
+private struct BotanMark: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let s = min(size.width, size.height) / 953.64
+            ctx.scaleBy(x: s, y: s)
+            ctx.translateBy(x: -664.68, y: -437.68)
+            let orange = GraphicsContext.Shading.color(Color(hex: "#FF5A24"))
+            ctx.stroke(Path(ellipseIn: CGRect(x: 745, y: 745, width: 510, height: 510)), with: orange, lineWidth: 90)
+            ctx.fill(Path(ellipseIn: CGRect(x: 1070.92 - 81, y: 944.59 - 81, width: 162, height: 162)), with: orange)
+            var pill = ctx
+            pill.translateBy(x: 1424.34, y: 668.47)
+            pill.rotate(by: .degrees(-34.95))
+            pill.fill(Path(roundedRect: CGRect(x: -172.5, y: -94.78, width: 345, height: 189.56), cornerRadius: 94.78), with: orange)
+        }
+        .accessibilityHidden(true)
     }
 }
 
