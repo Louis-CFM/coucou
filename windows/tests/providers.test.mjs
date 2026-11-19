@@ -12,7 +12,7 @@ const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 
 test("the ids and key names match the Rust side and the Mac", () => {
   assert.deepEqual(PROVIDERS.map((p) => p.id), [
-    "anthropic", "google", "openai", "openrouter", "ollama", "lmstudio", "custom", "cursor", "copilot",
+    "anthropic", "google", "openai", "openrouter", "requesty", "ollama", "lmstudio", "custom", "cursor", "copilot",
   ]);
   // Cursor and Copilot answer only through the subscription: no key, no address.
   assert.equal(providerDef("cursor").key, null);
@@ -20,6 +20,7 @@ test("the ids and key names match the Rust side and the Mac", () => {
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
   assert.equal(providerDef("openrouter").key, "openrouter-api-key");
+  assert.equal(providerDef("requesty").key, "requesty-api-key");
   assert.equal(providerDef("ollama").key, null);
   // An unknown id (an older or newer settings.json) falls back to Claude.
   assert.equal(providerDef("nope").id, "anthropic");
@@ -41,16 +42,16 @@ test("Claude's model is the existing setting; the others are kept per provider",
 
 test("model servers show in the picker once connected, or while in use", () => {
   const ids = (s) => visibleProviders(s).map((p) => p.id);
-  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter"]);
-  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "ollama"]);
-  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom"]);
+  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter", "requesty"]);
+  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "requesty", "ollama"]);
+  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "requesty", "custom"]);
 });
 
 test("Cursor and Copilot show once their subscription is on, or while in use", () => {
   const ids = (s, on) => visibleProviders(s, on).map((p) => p.id);
-  assert.deepEqual(ids(settings(), new Set(["cursor"])), ["anthropic", "google", "openai", "openrouter", "cursor"]);
-  assert.deepEqual(ids(settings({ chatSubscriptions: { copilot: true } })), ["anthropic", "google", "openai", "openrouter", "copilot"]);
-  assert.deepEqual(ids(settings({ chatProvider: "copilot" })), ["anthropic", "google", "openai", "openrouter", "copilot"]);
+  assert.deepEqual(ids(settings(), new Set(["cursor"])), ["anthropic", "google", "openai", "openrouter", "requesty", "cursor"]);
+  assert.deepEqual(ids(settings({ chatSubscriptions: { copilot: true } })), ["anthropic", "google", "openai", "openrouter", "requesty", "copilot"]);
+  assert.deepEqual(ids(settings({ chatProvider: "copilot" })), ["anthropic", "google", "openai", "openrouter", "requesty", "copilot"]);
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {
@@ -60,6 +61,7 @@ test("the saved model is kept when offered, else a sensible one is picked", () =
   assert.equal(pickModel(providerDef("openai"), ["gpt-4o", "gpt-5-mini"], "gone"), "gpt-5-mini");
   assert.equal(pickModel(providerDef("ollama"), ["llama3.2", "qwen"], ""), "llama3.2");
   assert.equal(pickModel(providerDef("openrouter"), ["a/b", "openrouter/auto"], "gone"), "openrouter/auto");
+  assert.equal(pickModel(providerDef("requesty"), ["claude-sonnet-5", "gpt-5.4-mini"], "gone"), "gpt-5.4-mini");
   assert.equal(pickModel(google, [], "x"), null);
 });
 
