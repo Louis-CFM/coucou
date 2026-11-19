@@ -2,6 +2,7 @@
 
 ## 0.6.1 — Unreleased
 
+- **Mochi no longer weighs down 120 Hz Macs** — on a ProMotion screen Mochi was redrawn 120 times a second, even folded in the notch: 35 to 60 % CPU, and as much again in WindowServer. He is now drawn at 60 fps while the island is open and 30 folded, the mini Mochis at 30, with the same motion on every screen; on a ProMotion Mac he also stops moving twice as fast (#1116, found by @liztim17)
 - **Botan, the founders list** — the "Your Coucou so far" step of the card shown after an update has one more line: *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). Botan is Mochi on a little device that snaps onto the back of your iPhone. The Coucou page has the same link
 
 ## 0.6.0 — November 12, 2026
