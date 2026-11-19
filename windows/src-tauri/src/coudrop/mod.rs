@@ -75,6 +75,7 @@ pub struct CoudropManager {
     pub last_accept_status: Mutex<Option<(String, bool, u64)>>, // (transferId, accepted, protocolVersion)
     pub done_notify: Arc<Notify>,
     pub last_done_status: Mutex<Option<(String, String)>>,
+    pub last_reject_status: Mutex<Option<(String, String)>>,
     pub data_server: Mutex<Option<Arc<server::DataServer>>>,
 }
 
@@ -94,6 +95,7 @@ impl Default for CoudropManager {
             last_accept_status: Mutex::new(None),
             done_notify: Arc::new(Notify::new()),
             last_done_status: Mutex::new(None),
+            last_reject_status: Mutex::new(None),
             data_server: Mutex::new(None),
         }
     }
@@ -105,7 +107,8 @@ pub async fn get_or_init_data_server(app: &AppHandle, manager: &CoudropManager) 
     if let Some(ref srv) = *lock {
         return Ok(srv.clone());
     }
-    let srv = server::DataServer::start(Some(app.clone()), server::DEFAULT_DATA_PORT).await?;
+    let tls_acceptor = app.try_state::<PhoneLink>().and_then(|l| l.tls_acceptor());
+    let srv = server::DataServer::start(Some(app.clone()), server::DEFAULT_DATA_PORT, tls_acceptor).await?;
     *lock = Some(srv.clone());
     Ok(srv)
 }
@@ -506,22 +509,30 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
         }
         "dropReject" => {
             let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
-            *manager.last_accept_status.lock().await = Some((transfer_id, false, 1));
+            let reason = msg["reason"].as_str().unwrap_or("rejected").to_string();
+            *manager.last_accept_status.lock().await = Some((transfer_id.clone(), false, 1));
+            *manager.last_reject_status.lock().await = Some((transfer_id, reason));
             manager.accept_notify.notify_waiters();
+            manager.done_notify.notify_waiters();
             let _ = app.emit("coudrop-reject", msg);
         }
         "dropProgress" => {
             let _ = app.emit("coudrop-peer-progress", msg);
         }
         "dropCancel" => {
-            let transfer_id = msg["transferId"].as_str().unwrap_or("");
-            if let Some(transfer) = manager.incoming.lock().await.remove(transfer_id) {
+            let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
+            let reason = msg["reason"].as_str().unwrap_or("cancelled").to_string();
+            manager.is_cancelled.store(true, Ordering::SeqCst);
+            *manager.last_reject_status.lock().await = Some((transfer_id.clone(), reason));
+            manager.accept_notify.notify_waiters();
+            manager.done_notify.notify_waiters();
+            if let Some(transfer) = manager.incoming.lock().await.remove(&transfer_id) {
                 drop(transfer.file);
                 let _ = tokio::fs::remove_file(&transfer.temp_path).await;
             }
             if let Ok(data_server) = get_or_init_data_server(app, &manager).await {
-                data_server.remove_download(transfer_id).await;
-                if let Some(upload) = data_server.remove_upload(transfer_id).await {
+                data_server.remove_download(&transfer_id).await;
+                if let Some(upload) = data_server.remove_upload(&transfer_id).await {
                     let _ = tokio::fs::remove_file(&upload.temp_path).await;
                 }
             }
@@ -710,26 +721,35 @@ pub async fn coudrop_send_files(
             }
         };
 
-        if accepted && peer_proto_ver >= 2 {
+        let done_res: Result<(), String> = if accepted && peer_proto_ver >= 2 {
             // ── COUDROP PROTOCOL V2: DIRECT HIGH-SPEED BINARY STREAM ─────────
             // Phone connects to GET /coudrop/v2/download/{transfer_id}
-            // DataServer handles streaming with 512 KiB buffer and updates progress.
+            // DataServer handles streaming with adaptive buffer and updates progress.
             let done_fut = async {
                 loop {
                     if state.is_cancelled.load(Ordering::SeqCst) {
-                        return false;
+                        return Err("Transfer cancelled by user".to_string());
+                    }
+                    if let Some((id, reason)) = state.last_reject_status.lock().await.take() {
+                        if id == transfer_id {
+                            return Err(format!("Transfer rejected by phone: {reason}"));
+                        }
                     }
                     if let Some((id, _hash)) = state.last_done_status.lock().await.take() {
                         if id == transfer_id {
-                            return true;
+                            return Ok(());
                         }
                     }
                     state.done_notify.notified().await;
                 }
             };
 
-            let _ = tokio::time::timeout(Duration::from_secs(3600), done_fut).await;
+            let res = match tokio::time::timeout(Duration::from_secs(3600), done_fut).await {
+                Ok(r) => r,
+                Err(_) => Err("Transfer timed out waiting for phone completion".to_string()),
+            };
             data_server.remove_download(&transfer_id).await;
+            res
         } else {
             // ── FALLBACK: V1 CHUNKED BASE64 TLS FRAMING ───────────────────────
             data_server.remove_download(&transfer_id).await;
@@ -870,15 +890,32 @@ pub async fn coudrop_send_files(
 
             let done_fut = async {
                 loop {
+                    if state.is_cancelled.load(Ordering::SeqCst) {
+                        return Err("Transfer cancelled by user".to_string());
+                    }
+                    if let Some((id, reason)) = state.last_reject_status.lock().await.take() {
+                        if id == transfer_id {
+                            return Err(format!("Transfer rejected by phone: {reason}"));
+                        }
+                    }
                     if let Some((id, _hash)) = state.last_done_status.lock().await.take() {
                         if id == transfer_id {
-                            return true;
+                            return Ok(());
                         }
                     }
                     state.done_notify.notified().await;
                 }
             };
-            let _ = tokio::time::timeout(Duration::from_secs(8), done_fut).await;
+            match tokio::time::timeout(Duration::from_secs(15), done_fut).await {
+                Ok(r) => r,
+                Err(_) => Err("Transfer timed out waiting for phone acknowledgement".to_string()),
+            }
+        };
+
+        if let Err(e) = done_res {
+            state.is_sending.store(false, Ordering::SeqCst);
+            *state.current_transfer_id.lock().await = None;
+            return Err(e);
         }
 
         let path_str = path.to_string_lossy().to_string();
@@ -967,6 +1004,8 @@ pub async fn coudrop_cancel_transfer(
     state.is_cancelled.store(true, Ordering::SeqCst);
     state.is_paused.store(false, Ordering::SeqCst);
     state.pause_notify.notify_waiters();
+    state.done_notify.notify_waiters();
+    state.accept_notify.notify_waiters();
 
     let id = match transfer_id {
         Some(i) => i,

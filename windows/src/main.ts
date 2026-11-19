@@ -19,8 +19,10 @@ import { WhatsNew } from "./whats-new/controller";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 import { GlobalNotifications } from "./core/notifications";
 import { GlobalWelcomeMessages } from "./core/welcome";
+import { Diagnostics } from "./core/diagnostics";
 import { nearbyTransferManager } from "./components/islandcn/transfer-adapter";
 import { BatteryMonitor } from "./islandcn";
+import { CompanionOrchestrator } from "./companion/orchestrator";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
 function applyLanguage() {
@@ -31,8 +33,10 @@ async function main() {
   const root = document.getElementById("root");
   if (!root) return;
 
+  Diagnostics.record("boot_start");
   void Sound.preload();
   void GlobalWelcomeMessages.initIdentity();
+  void CompanionOrchestrator.probeHealth("ollama", GlobalWelcomeMessages.localEndpoint);
 
   // Before the island exists: its canvases size their bitmaps from the pixel
   // ratio once, so the zoom correction has to land first. If zoom was adjusted,
@@ -47,6 +51,7 @@ async function main() {
   }
 
   const boot = await Bridge.boot();
+  Diagnostics.record("boot_bridge_ready");
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
     if (boot.battery) {
@@ -207,6 +212,7 @@ async function main() {
   await onEvent<null>("recap-check", checkRecap);
 
   if (IS_TAURI) {
+    Diagnostics.record("intro_launch");
     island.launchIntro();
   }
 

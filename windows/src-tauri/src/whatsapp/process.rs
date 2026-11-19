@@ -15,9 +15,10 @@ struct Running {
     last_start: Option<Instant>,
     /// What the running GOWA was started with: changed, it is restarted; same, left alone.
     launched_with: Option<String>,
+    start_count: u32,
 }
 
-static STATE: Mutex<Running> = Mutex::new(Running { child: None, last_start: None, launched_with: None });
+static STATE: Mutex<Running> = Mutex::new(Running { child: None, last_start: None, launched_with: None, start_count: 0 });
 
 /// Where GOWA keeps its own WhatsApp session (its database, not Coucou's), and where Coucou
 /// puts the binary it installs: the link survives restarts.
@@ -93,8 +94,13 @@ pub fn sync(wanted: bool, binary: &str, url: &str, credential: &str) -> bool {
             return true;
         }
         stop_locked(&mut s); // waits for it to let go of the port and its database
-    } else if s.launched_with.as_deref() == Some(&signature) && s.last_start.is_some_and(|t| t.elapsed() < Duration::from_secs(60)) {
-        return true;
+    } else if s.launched_with.as_deref() == Some(&signature) {
+        // Shorter 10s cooldown for the first 3 start attempts to avoid delaying startup;
+        // drops to 60s cooldown if it repeatedly crashes.
+        let cooldown = if s.start_count < 3 { Duration::from_secs(10) } else { Duration::from_secs(60) };
+        if s.last_start.is_some_and(|t| t.elapsed() < cooldown) {
+            return true;
+        }
     }
     let dir = working_dir();
     if let Err(err) = crate::platform::ensure_private_dir(&dir) {
@@ -123,11 +129,13 @@ pub fn sync(wanted: bool, binary: &str, url: &str, credential: &str) -> bool {
             s.child = Some(child);
             s.last_start = Some(Instant::now());
             s.launched_with = Some(signature);
+            s.start_count = s.start_count.saturating_add(1);
             true
         }
         Err(err) => {
             crate::log::line(format!("whatsapp: GOWA could not start: {err}"));
             s.last_start = Some(Instant::now());
+            s.start_count = s.start_count.saturating_add(1);
             false
         }
     }
@@ -135,6 +143,7 @@ pub fn sync(wanted: bool, binary: &str, url: &str, credential: &str) -> bool {
 
 fn stop_locked(s: &mut Running) {
     s.launched_with = None;
+    s.start_count = 0;
     let Some(mut child) = s.child.take() else { return };
     if !matches!(child.try_wait(), Ok(None)) {
         return;

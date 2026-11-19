@@ -163,6 +163,30 @@ class NearbyTransferManager {
     }
   }
 
+  private mapErrorReason(rawReason: string): string {
+    if (!rawReason) return "Connection interrupted";
+    if (rawReason.includes("insufficient_storage")) {
+      return "Not enough phone storage";
+    } else if (rawReason.includes("checksum_mismatch")) {
+      return "File verification failed";
+    } else if (rawReason.includes("SocketTimeoutException") || rawReason.toLowerCase().includes("timeout")) {
+      return "Transfer timed out (Wi-Fi stalled)";
+    } else if (rawReason.includes("ConnectException")) {
+      return "Connection refused by phone";
+    } else if (rawReason.includes("Cleartext HTTP traffic") || rawReason.includes("not permitted")) {
+      return "Cleartext HTTP traffic blocked";
+    } else if (rawReason.includes("SocketException") || rawReason.toLowerCase().includes("reset") || rawReason.toLowerCase().includes("abort")) {
+      return "Connection reset by network";
+    } else if (rawReason.includes("io_error") || rawReason.includes("save_error")) {
+      return "Could not save file to disk";
+    } else if (rawReason.toLowerCase().includes("rejected")) {
+      return "Declined by phone";
+    } else if (rawReason.trim().length > 0) {
+      return rawReason.replace(/^(download_error|upload_error|network_error):\s*/i, "").slice(0, 60);
+    }
+    return "Connection interrupted";
+  }
+
   init(): void {
     if (this.initialized) return;
     this.initialized = true;
@@ -511,38 +535,69 @@ class NearbyTransferManager {
     });
 
     // 5. Transfer cancelled
-    void onEvent("coudrop-cancel", () => {
+    void onEvent<{ transferId?: string; reason?: string }>("coudrop-cancel", (payload) => {
       this.clearDismissTimer();
       if (this.activeTransfer) {
-        logDebug("TRANSFER_CANCELLED", { transferId: this.activeTransfer.id });
-        this.activeTransfer = {
-          ...this.activeTransfer,
-          status: "cancelled",
-        };
-        this.notifyImmediate();
-        this.dismissTimer = window.setTimeout(() => {
-          logDebug("ACTIVITY_UNMOUNTED", { transferId: this.activeTransfer?.id, reason: "cancel_dismiss" });
-          this.activeTransfer = null;
+        const rawReason = payload?.reason || "";
+        const isExplicitUserCancel =
+          rawReason === "user_cancelled" ||
+          rawReason === "cancelled_by_user" ||
+          rawReason === "cancelled_by_desktop" ||
+          rawReason === "cancelled" ||
+          rawReason === "";
+
+        if (isExplicitUserCancel) {
+          logDebug("TRANSFER_CANCELLED", { transferId: this.activeTransfer.id, rawReason });
+          this.activeTransfer = {
+            ...this.activeTransfer,
+            status: "cancelled",
+            errorMessage: "Cancelled by user",
+          };
           this.notifyImmediate();
-        }, 1200);
+          this.dismissTimer = window.setTimeout(() => {
+            logDebug("ACTIVITY_UNMOUNTED", { transferId: this.activeTransfer?.id, reason: "cancel_dismiss" });
+            this.activeTransfer = null;
+            this.notifyImmediate();
+          }, 1500);
+        } else {
+          // Failure or abort masquerading as cancel: map accurately to failed!
+          const friendlyReason = this.mapErrorReason(rawReason);
+          logDebug("TRANSFER_FAILED", { transferId: this.activeTransfer.id, rawReason, friendlyReason });
+          this.activeTransfer = {
+            ...this.activeTransfer,
+            status: "failed",
+            errorMessage: friendlyReason,
+          };
+          this.notifyImmediate();
+          this.dismissTimer = window.setTimeout(() => {
+            logDebug("ACTIVITY_UNMOUNTED", { transferId: this.activeTransfer?.id, reason: "failed_dismiss" });
+            this.activeTransfer = null;
+            this.notifyImmediate();
+          }, 6500);
+        }
       }
     });
 
     // 6. Transfer rejected / failed
-    void onEvent("coudrop-reject", () => {
+    void onEvent<{ transferId?: string; reason?: string }>("coudrop-reject", (payload) => {
       this.clearDismissTimer();
       if (this.activeTransfer) {
-        logDebug("TRANSFER_FAILED", { transferId: this.activeTransfer.id });
+        const rawReason = payload?.reason || "";
+        const friendlyReason = this.mapErrorReason(rawReason);
+
+        logDebug("TRANSFER_FAILED", { transferId: this.activeTransfer.id, rawReason, friendlyReason });
         this.activeTransfer = {
           ...this.activeTransfer,
           status: "failed",
+          errorMessage: friendlyReason,
         };
         this.notifyImmediate();
+        // Give the user ample time to read why the transfer failed (6.5s)
         this.dismissTimer = window.setTimeout(() => {
           logDebug("ACTIVITY_UNMOUNTED", { transferId: this.activeTransfer?.id, reason: "failed_dismiss" });
           this.activeTransfer = null;
           this.notifyImmediate();
-        }, 1200);
+        }, 6500);
       }
     });
 
@@ -660,6 +715,10 @@ class NearbyTransferManager {
     this.activeTransfer = null;
     this.notifyImmediate();
   }
+
+  dismiss(): void {
+    this.clear();
+  }
 }
 
 export const nearbyTransferManager = new NearbyTransferManager();
@@ -669,4 +728,5 @@ export const subscribeActiveTransfer = (listener: TransferListener) => nearbyTra
 export const pauseTransfer = (id?: string) => nearbyTransferManager.pause(id);
 export const resumeTransfer = (id?: string) => nearbyTransferManager.resume(id);
 export const cancelTransfer = (id?: string) => nearbyTransferManager.cancel(id);
+export const dismissTransfer = () => nearbyTransferManager.dismiss();
 export const simulateTransfer = (mock: Partial<ActiveNearbyTransfer>) => nearbyTransferManager.simulateTransfer(mock);

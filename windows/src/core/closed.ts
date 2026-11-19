@@ -39,6 +39,8 @@ export interface ClosedContent {
   text: string;
   /** A coloured dot before the text (the plan's gauge colour, focus phase, or app branding). */
   dot: string | null;
+  /** An optional application icon (SVG string or markup) rendered inline before the text. */
+  icon?: string | null;
   /** A note before the text (what plays). */
   note: boolean;
   /** True when displaying an active notification in the small notch. */
@@ -57,7 +59,7 @@ export interface ClosedInputs {
   /** The song playing, if one plays on a declared music pill. */
   music: { title: string; artist: string } | null;
   /** Active notification (WhatsApp, social apps, system toast) to display in the small notch. */
-  notification?: { text: string; dot: string } | null;
+  notification?: { text: string; dot: string | null; icon?: string | null } | null;
   /** Active personal welcome-back message with Mochi on the left. */
   welcome?: { text: string; bot: boolean } | null;
 }
@@ -92,12 +94,16 @@ export function closedContent(style: ClosedIsland, input: ClosedInputs): ClosedC
 
   // Active notification takes top priority in the small notch (Dynamic Island morph)
   if (input.notification && input.notification.text) {
-    return {
+    const res: ClosedContent = {
       text: input.notification.text,
       dot: input.notification.dot,
       note: false,
       isNotification: true,
     };
+    if (input.notification.icon !== undefined) {
+      res.icon = input.notification.icon;
+    }
+    return res;
   }
 
   const plain = (text: string): ClosedContent => ({ text, dot: null, note: false });

@@ -72,6 +72,7 @@ interface LinkListener {
 interface DesktopLink {
     val approvals: ApprovalBook
     val desktopHost: String get() = ""
+    val certSha256: String get() = ""
     fun start()
     fun stop()
     /** Try the connection again now (the network changed); the demo has nothing to retry. */
@@ -276,6 +277,7 @@ class LinkClient(
     override fun chatReset() { queue(ClientMsg.ChatReset) }
 
     override val desktopHost: String get() = pairing.host
+    override val certSha256: String get() = pairing.certSha256
 
     override fun dropAccept(transferId: String): Boolean = dropAccept(transferId, 1, 0, "", 0L)
     override fun dropAccept(transferId: String, protocolVersion: Int, dataPort: Int, token: String, offset: Long): Boolean =

@@ -6,6 +6,7 @@ import { NearbyTransferActivity } from "./nearby-transfer-activity";
 import {
   type ActiveNearbyTransfer,
   cancelTransfer,
+  dismissTransfer,
   getActiveTransfer,
   nearbyTransferWords,
   pauseTransfer,
@@ -117,7 +118,7 @@ export const NearbyTransferView = React.memo(function NearbyTransferView({ trans
   // ── 2. Cancelled or Failed State ───────────────────────────────────────────
   if (cancelled || error) {
     const statusTitle = cancelled ? "Transfer cancelled" : "Transfer failed";
-    const statusReason = cancelled ? "Cancelled by user" : (transfer.errorMessage || "Connection interrupted");
+    const statusReason = cancelled ? (transfer.errorMessage || "Cancelled by user") : (transfer.errorMessage || "Connection interrupted");
     return (
       <div className={`nearby-transfer-activity-view status-${transfer.status}`}>
         {/* Left: Device Glyph with warning/cancel badge */}
@@ -142,9 +143,17 @@ export const NearbyTransferView = React.memo(function NearbyTransferView({ trans
           </div>
         </div>
 
-        {/* Right: Stopped icon */}
+        {/* Right: Stopped icon (click to dismiss immediately) */}
         <div className="nearby-transfer-trail">
-          <div className="nearby-transfer-stopped-icon" title={statusTitle} aria-label={statusTitle}>
+          <div
+            className="nearby-transfer-stopped-icon"
+            title="Dismiss"
+            aria-label="Dismiss"
+            onClick={dismissTransfer}
+            role="button"
+            tabIndex={0}
+            style={{ cursor: "pointer" }}
+          >
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />

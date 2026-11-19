@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
 import com.coucou.android.link.DesktopLink
+import com.coucou.android.link.PinnedTrustManager
 import com.coucou.android.link.ServerMsg
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -17,8 +18,12 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
 
 /**
  * CouDrop High-Performance Transfer Engine (FileTransferReceiver).
@@ -80,13 +85,22 @@ class FileTransferReceiver(
         if (offer.protocolVersion >= 2 && offer.dataPort > 0) {
             // ── COUDROP PROTOCOL V2: DIRECT HIGH-SPEED BINARY DOWNLOAD ──────
             try {
-                val tempFile = File(context.cacheDir, "vayli_drop_${offer.transferId}.tmp")
-                if (tempFile.exists()) tempFile.delete()
+                val safeName = offer.name.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+                val tempFile = File(context.cacheDir, "coudrop_${safeName}_${offer.size}.tmp")
+                val existingBytes = if (tempFile.exists() && tempFile.length() > 0 && (offer.size <= 0 || tempFile.length() < offer.size)) {
+                    tempFile.length()
+                } else {
+                    if (tempFile.exists() && offer.size > 0 && tempFile.length() >= offer.size) {
+                        tempFile.delete()
+                    }
+                    0L
+                }
 
                 // Accept transfer with Protocol V2
                 currentLink.dropAccept(offer.transferId, protocolVersion = 2)
-                notifications.showProgress(offer.transferId, offer.name, 0, offer.size)
-                onTransferProgress?.invoke(record, 0f)
+                val initialProgress = if (offer.size > 0) (existingBytes.toFloat() / offer.size).coerceIn(0f, 0.99f) else 0f
+                notifications.showProgress(offer.transferId, offer.name, existingBytes, offer.size)
+                onTransferProgress?.invoke(record, initialProgress)
 
                 executor.execute {
                     downloadV2(offer, tempFile, record)
@@ -131,33 +145,72 @@ class FileTransferReceiver(
     private fun downloadV2(offer: ServerMsg.DropOffer, tempFile: File, record: CoudropRecord) {
         val currentLink = link() ?: return
         val host = currentLink.desktopHost.ifBlank { "127.0.0.1" }
-        val url = URL("http://$host:${offer.dataPort}/coudrop/v2/download/${offer.transferId}")
+        val certSha256 = currentLink.certSha256
+        val useTls = certSha256.isNotBlank()
+        val scheme = if (useTls) "https" else "http"
+        val url = URL("$scheme://$host:${offer.dataPort}/coudrop/v2/download/${offer.transferId}")
 
         var conn: HttpURLConnection? = null
         var inStream: BufferedInputStream? = null
         var outStream: BufferedOutputStream? = null
 
         try {
+            val existingBytes = if (tempFile.exists() && tempFile.length() > 0 && (offer.size <= 0 || tempFile.length() < offer.size)) {
+                tempFile.length()
+            } else {
+                0L
+            }
+
             conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
-                connectTimeout = 10000
-                readTimeout = 60000
+                connectTimeout = 15000
+                readTimeout = 120000
                 setRequestProperty("X-Coudrop-Token", offer.token)
+                if (existingBytes > 0) {
+                    setRequestProperty("Range", "bytes=$existingBytes-")
+                }
                 setRequestProperty("Connection", "close")
             }
 
+            if (conn is HttpsURLConnection && useTls) {
+                val sslCtx = SSLContext.getInstance("TLS").apply {
+                    init(null, arrayOf(PinnedTrustManager(certSha256)), SecureRandom())
+                }
+                conn.sslSocketFactory = sslCtx.socketFactory
+                conn.hostnameVerifier = HostnameVerifier { hostname, _ ->
+                    hostname == host || hostname == "127.0.0.1" || hostname == "localhost"
+                }
+            }
+
             val respCode = conn.responseCode
+            val isResume = respCode == 206 && existingBytes > 0
             if (respCode !in 200..299) {
                 throw IllegalStateException("Computer returned HTTP $respCode for binary download")
             }
 
-            inStream = BufferedInputStream(conn.inputStream, 512 * 1024)
-            outStream = BufferedOutputStream(FileOutputStream(tempFile), 512 * 1024)
-
             val digest = MessageDigest.getInstance("SHA-256")
+            val bytesReceived: Long
+
+            if (isResume) {
+                tempFile.inputStream().buffered(512 * 1024).use { fis ->
+                    val buf = ByteArray(512 * 1024)
+                    var n: Int
+                    while (fis.read(buf).also { n = it } != -1) {
+                        digest.update(buf, 0, n)
+                    }
+                }
+                outStream = BufferedOutputStream(FileOutputStream(tempFile, true), 512 * 1024)
+                bytesReceived = existingBytes
+            } else {
+                outStream = BufferedOutputStream(FileOutputStream(tempFile, false), 512 * 1024)
+                bytesReceived = 0L
+            }
+
+            inStream = BufferedInputStream(conn.inputStream, 512 * 1024)
+
             val buffer = ByteArray(512 * 1024)
             var bytesRead: Int
-            var bytesReceived = 0L
+            var totalReceived = bytesReceived
             var lastNotifyTime = System.currentTimeMillis()
 
             while (cancelledTransfers[offer.transferId] != true) {
@@ -165,13 +218,13 @@ class FileTransferReceiver(
                 if (bytesRead == -1) break
                 outStream.write(buffer, 0, bytesRead)
                 digest.update(buffer, 0, bytesRead)
-                bytesReceived += bytesRead
+                totalReceived += bytesRead
 
                 val now = System.currentTimeMillis()
                 val elapsed = now - lastNotifyTime
                 if (elapsed >= 250) {
-                    val prog = if (offer.size > 0) (bytesReceived.toFloat() / offer.size).coerceIn(0f, 0.99f) else 0f
-                    notifications.showProgress(offer.transferId, offer.name, bytesReceived, offer.size)
+                    val prog = if (offer.size > 0) (totalReceived.toFloat() / offer.size).coerceIn(0f, 0.99f) else 0f
+                    notifications.showProgress(offer.transferId, offer.name, totalReceived, offer.size)
                     onTransferProgress?.invoke(record, prog)
                     lastNotifyTime = now
                 }
@@ -204,21 +257,29 @@ class FileTransferReceiver(
 
             val completedRecord = record.copy(
                 status = TransferStatus.COMPLETED,
-                size = bytesReceived,
+                size = totalReceived,
                 uriString = savedUri?.toString(),
                 sha256 = computedSha256,
             )
             historyStore.addRecord(completedRecord)
             onTransferComplete?.invoke(completedRecord)
 
-            notifications.showComplete(offer.transferId, offer.name, bytesReceived, savedUri, offer.mimeType)
+            notifications.showComplete(offer.transferId, offer.name, totalReceived, savedUri, offer.mimeType)
             currentLink.dropDone(offer.transferId, computedSha256)
         } catch (e: Exception) {
             Log.e("CoudropReceiver", "V2 download failed for ${offer.name}", e)
-            tempFile.delete()
+            val isInterruption = e is java.io.IOException || e is java.net.SocketException || e is java.net.SocketTimeoutException
+            if (!isInterruption) {
+                tempFile.delete()
+            }
             notifications.dismiss(offer.transferId)
-            onTransferFailed?.invoke(offer.transferId, "download_error: ${e.message}")
-            currentLink.dropReject(offer.transferId, "download_error: ${e.message}")
+            val errReason = when (e) {
+                is java.net.SocketTimeoutException -> "timeout: Wi-Fi connection timed out"
+                is java.io.IOException -> "network_error: ${e.message ?: "connection interrupted"}"
+                else -> "download_error: ${e.message ?: "unknown"}"
+            }
+            onTransferFailed?.invoke(offer.transferId, errReason)
+            currentLink.dropReject(offer.transferId, errReason)
         } finally {
             runCatching { inStream?.close() }
             runCatching { outStream?.close() }

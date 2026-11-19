@@ -259,6 +259,21 @@ impl PhoneLink {
             log::line("phone link: stopped");
         }
     }
+
+    #[allow(dead_code)]
+    pub fn identity(&self) -> Option<pairing::Identity> {
+        self.running.lock().unwrap().as_ref().map(|r| r.identity.clone())
+    }
+
+    pub fn tls_acceptor(&self) -> Option<tokio_rustls::TlsAcceptor> {
+        if let Some(r) = self.running.lock().unwrap().as_ref() {
+            server::tls_acceptor(&r.identity).ok()
+        } else if let Ok(identity) = pairing::load_or_create_identity(&*self.store) {
+            server::tls_acceptor(&identity).ok()
+        } else {
+            None
+        }
+    }
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────

@@ -283,8 +283,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   padding: 0 16px;
+  box-sizing: border-box;
   font-family: var(--font);
   font-size: 12px;
   font-weight: 600;
@@ -304,6 +304,19 @@ body {
   transition: opacity 0.3s ease-out 0.12s;
 }
 
+/* Unified flex container for mathematically centered icon & text group */
+#island-closed .closed-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 #island.has-battery #island-closed {
   padding-right: 78px;
 }
@@ -320,21 +333,75 @@ body {
   padding-left: 44px;
 }
 
+/* Active notification & welcome companion banners: zero offsets from has-battery/has-bot */
+#island-closed.notification,
+#island-closed.welcome,
+#island.has-battery #island-closed.notification,
+#island.has-bot #island-closed.notification,
+#island.has-battery #island-closed.welcome,
+#island.has-bot #island-closed.welcome,
+#island.style-island.has-battery #island-closed.notification,
+#island.style-island.has-bot #island-closed.notification,
+#island.style-island.has-battery #island-closed.welcome,
+#island.style-island.has-bot #island-closed.welcome {
+  padding: 0 16px !important;
+  justify-content: center !important;
+}
+
+#island.style-island #island-closed.notification,
+#island.style-island #island-closed.welcome {
+  padding: 0 20px !important;
+}
+
+#island-closed .bot-slot {
+  flex: 0 0 auto;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+#island-closed .notif-icon {
+  flex: 0 0 auto;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  line-height: 1;
+}
+
+#island-closed .notif-icon svg,
+#island-closed .notif-icon img {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 #island-closed .text {
   white-space: nowrap;
-  overflow: visible;
-  text-overflow: clip;
+  overflow: hidden;
+  text-overflow: ellipsis;
   min-width: 0;
-  flex-shrink: 0;
+  flex: 0 1 auto;
   text-align: center;
-  margin: 0 auto;
+  margin: 0 !important;
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
 }
 
 #island-closed .dot {
   flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
+  display: none;
 }
 
 /* ── Dynamic Island Battery Indicator ─────────────────────────────────── */
@@ -481,7 +548,7 @@ body {
   text-align: center;
 }
 
-#island-closed.with-bot {
+#island-closed.with-bot:not(.welcome) {
   justify-content: center;
   padding-left: 36px;
   padding-right: 36px;
@@ -495,7 +562,7 @@ body {
   letter-spacing: -0.01em;
   color: #f5f6f8;
   text-align: center;
-  margin: 0 auto;
+  margin: 0;
 }
 
 /* Dynamic Island (floating pill) perfected padding and typography */
@@ -511,7 +578,7 @@ body {
   line-height: 1;
 }
 
-#island.style-island #island-closed.with-bot {
+#island.style-island #island-closed.with-bot:not(.welcome) {
   padding-left: 44px;
   padding-right: 22px;
 }
@@ -519,8 +586,12 @@ body {
 #island-closed.welcome {
   pointer-events: auto;
   cursor: pointer;
-  justify-content: center;
+  justify-content: center !important;
   text-align: center;
+}
+
+#island-closed.welcome .bot-slot {
+  display: inline-flex;
 }
 
 #island-closed.notification .dot {

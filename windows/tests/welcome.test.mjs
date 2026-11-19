@@ -182,3 +182,30 @@ test("Dismiss clears active message", () => {
   mgr.dismiss();
   assert.equal(mgr.active(), null);
 });
+
+test("Launch greeting formats correctly and produces valid closedContent structure", async () => {
+  const mgr = WelcomeMessageManager.shared;
+  mgr.detectedGreetingName = "Madhan";
+  mgr["hasGreetedOnLaunch"] = false;
+  mgr.onAppLaunch();
+  const active = mgr.active();
+  assert.ok(active, "Active greeting message must exist on launch");
+  assert.equal(active.bot, true, "Greeting must request bot avatar");
+  assert.match(active.text, /Madhan/);
+
+  // Test closedContent produces isWelcome = true
+  const { closedContent } = await import("../src/core/closed.ts");
+  const content = closedContent("mochi", {
+    now: new Date(),
+    locale: "en",
+    planUsage: null,
+    music: null,
+    welcome: { text: active.text, bot: active.bot },
+  });
+
+  assert.ok(content);
+  assert.equal(content.isWelcome, true);
+  assert.equal(content.bot, true);
+  assert.equal(content.text, active.text);
+  mgr.dismiss();
+});

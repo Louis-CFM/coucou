@@ -6,17 +6,22 @@ import android.provider.OpenableColumns
 import android.util.Base64
 import android.util.Log
 import com.coucou.android.link.DesktopLink
+import com.coucou.android.link.PinnedTrustManager
 import com.coucou.android.link.ServerMsg
 import java.io.BufferedOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
 
 /**
  * CouDrop High-Performance Transfer Engine (FileTransferSender).
@@ -144,13 +149,16 @@ class FileTransferSender(
                         val token = acceptMsg!!.token
                         val offset = acceptMsg!!.offset.coerceAtLeast(0L)
                         val host = currentLink.desktopHost.ifBlank { "127.0.0.1" }
-                        val url = URL("http://$host:$port/coudrop/v2/upload/$transferId")
+                        val certSha256 = currentLink.certSha256
+                        val useTls = certSha256.isNotBlank()
+                        val scheme = if (useTls) "https" else "http"
+                        val url = URL("$scheme://$host:$port/coudrop/v2/upload/$transferId")
 
                         val conn = (url.openConnection() as HttpURLConnection).apply {
                             requestMethod = "POST"
                             doOutput = true
-                            connectTimeout = 10000
-                            readTimeout = 60000
+                            connectTimeout = 15000
+                            readTimeout = 120000
                             setRequestProperty("X-Coudrop-Token", token)
                             if (offset > 0L) {
                                 setRequestProperty("X-Coudrop-Offset", offset.toString())
@@ -161,6 +169,16 @@ class FileTransferSender(
                                 setFixedLengthStreamingMode(bytesToSend)
                             } else {
                                 setChunkedStreamingMode(512 * 1024)
+                            }
+                        }
+
+                        if (conn is HttpsURLConnection && useTls) {
+                            val sslCtx = SSLContext.getInstance("TLS").apply {
+                                init(null, arrayOf(PinnedTrustManager(certSha256)), SecureRandom())
+                            }
+                            conn.sslSocketFactory = sslCtx.socketFactory
+                            conn.hostnameVerifier = HostnameVerifier { hostname, _ ->
+                                hostname == host || hostname == "127.0.0.1" || hostname == "localhost"
                             }
                         }
 
@@ -267,14 +285,19 @@ class FileTransferSender(
                         notifications.showComplete(transferId, meta.name, actualSize, uri, meta.mimeType)
                         onComplete?.invoke(record.copy(status = TransferStatus.COMPLETED, sha256 = finalSha256))
                     } else {
-                        currentLink.dropCancel(transferId, "cancelled")
+                        currentLink.dropCancel(transferId, "user_cancelled")
                     }
                 } catch (e: Exception) {
                     Log.e("CoudropSender", "Transfer failed for $uri", e)
                     pendingAccepts.remove(transferId)
                     pendingDone.remove(transferId)
-                    onError?.invoke(transferId, e.message ?: "Transfer failed")
-                    currentLink.dropCancel(transferId, e.message ?: "error")
+                    val errReason = when (e) {
+                        is java.net.SocketTimeoutException -> "timeout: Wi-Fi connection timed out"
+                        is java.io.IOException -> "network_error: ${e.message ?: "connection interrupted"}"
+                        else -> "upload_error: ${e.message ?: "unknown"}"
+                    }
+                    onError?.invoke(transferId, errReason)
+                    currentLink.dropReject(transferId, errReason)
                 } finally {
                     runCatching { stream?.close() }
                     activeTransfers.remove(transferId)

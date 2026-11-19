@@ -100,7 +100,16 @@ export class CompanionOrchestrator {
       endpoint = undefined;
     } else if (settings.routingMode === "auto") {
       // Check Ollama health status
-      const ollamaHealth = this.healthCache.get("ollama");
+      let ollamaHealth = this.healthCache.get("ollama");
+      if (!ollamaHealth) {
+        // Fast non-blocking probe on first demand if not already cached
+        try {
+          const probePromise = this.probeHealth("ollama", localEndpoint);
+          const timeoutPromise = new Promise<null>((r) => setTimeout(() => r(null), 500));
+          const res = await Promise.race([probePromise, timeoutPromise]);
+          ollamaHealth = res ?? this.healthCache.get("ollama");
+        } catch {}
+      }
       const isOllamaOffline = ollamaHealth?.state === "OFFLINE";
 
       if (isOllamaOffline && consent.consentedProviders[cloudProvider] && !consent.consentRevoked) {

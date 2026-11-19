@@ -1,6 +1,17 @@
 // Windows System Notification Listener for the Small Notch (#1055 & Dynamic Island).
 // Actively monitors system notifications (WhatsApp Desktop, Telegram, Discord, Slack, Mail, System Alerts)
 // and emits "system-notification" events to the webview to morph the small notch.
+//
+// Fix: replaced single last_seen_id tracking with a HashSet so that:
+//  1. Cold-start: populate seen_ids from first scan WITHOUT emitting anything (prevents
+//     stale Action Center toasts from firing as "new" on every launch).
+//  2. Each subsequent poll: iterate ALL items in the collection (not just GetAt(size-1))
+//     so notifications are never skipped when multiple arrive in one 1500 ms window.
+//  3. HashSet reconciliation: after processing, rebuild seen_ids from the current
+//     collection so dismissed notifications are automatically forgotten (prevents the
+//     dismissed-item index shift that caused stale re-emission in the original code).
+
+use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
@@ -48,7 +59,10 @@ fn run_listener(app: AppHandle) {
         return;
     }
 
-    let mut last_seen_id: u32 = 0;
+    // IDs already present at startup — these are pre-existing Action Center toasts,
+    // not new arrivals. Populated on the first poll without emitting any events.
+    let mut seen_ids: HashSet<u32> = HashSet::new();
+    let mut cold_start = true;
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1500));
@@ -63,51 +77,59 @@ fn run_listener(app: AppHandle) {
             continue;
         };
 
-        if size == 0 {
-            continue;
-        }
+        // Collect every notification ID currently in Action Center.
+        let mut current_ids: HashSet<u32> = HashSet::with_capacity(size as usize);
 
-        if let Ok(latest) = notifs.GetAt(size - 1) {
-            if let Ok(id) = latest.Id() {
-                if id != last_seen_id {
-                    last_seen_id = id;
+        for i in 0..size {
+            let Ok(notif) = notifs.GetAt(i) else { continue };
+            let Ok(id) = notif.Id() else { continue };
+            current_ids.insert(id);
 
-                    let mut app_name = "System".to_string();
-                    let mut title: Option<String> = None;
-                    let mut body: Option<String> = None;
+            // Cold start: snapshot what is already there — no emission.
+            if cold_start {
+                continue;
+            }
 
-                    if let Ok(app_info) = latest.AppInfo() {
-                        if let Ok(display_info) = app_info.DisplayInfo() {
-                            if let Ok(name) = display_info.DisplayName() {
-                                let s = name.to_string();
-                                if !s.is_empty() {
-                                    app_name = s;
-                                }
-                            }
+            // Already processed: skip.
+            if seen_ids.contains(&id) {
+                continue;
+            }
+
+            // New notification: extract and emit.
+            let mut app_name = "System".to_string();
+            let mut title: Option<String> = None;
+            let mut body: Option<String> = None;
+
+            if let Ok(app_info) = notif.AppInfo() {
+                if let Ok(display_info) = app_info.DisplayInfo() {
+                    if let Ok(name) = display_info.DisplayName() {
+                        let s = name.to_string();
+                        if !s.is_empty() {
+                            app_name = s;
                         }
                     }
+                }
+            }
 
-                    if let Ok(toast) = latest.Notification() {
-                        if let Ok(visual) = toast.Visual() {
-                            if let Ok(bindings) = visual.Bindings() {
-                                if let Ok(binding_size) = bindings.Size() {
-                                    if binding_size > 0 {
-                                        if let Ok(binding) = bindings.GetAt(0) {
-                                            if let Ok(texts) = binding.GetTextElements() {
-                                                if let Ok(text_count) = texts.Size() {
-                                                    if text_count > 0 {
-                                                        if let Ok(t0) = texts.GetAt(0) {
-                                                            if let Ok(hstring) = t0.Text() {
-                                                                title = Some(hstring.to_string());
-                                                            }
-                                                        }
+            if let Ok(toast) = notif.Notification() {
+                if let Ok(visual) = toast.Visual() {
+                    if let Ok(bindings) = visual.Bindings() {
+                        if let Ok(binding_size) = bindings.Size() {
+                            if binding_size > 0 {
+                                if let Ok(binding) = bindings.GetAt(0) {
+                                    if let Ok(texts) = binding.GetTextElements() {
+                                        if let Ok(text_count) = texts.Size() {
+                                            if text_count > 0 {
+                                                if let Ok(t0) = texts.GetAt(0) {
+                                                    if let Ok(hstring) = t0.Text() {
+                                                        title = Some(hstring.to_string());
                                                     }
-                                                    if text_count > 1 {
-                                                        if let Ok(t1) = texts.GetAt(1) {
-                                                            if let Ok(hstring) = t1.Text() {
-                                                                body = Some(hstring.to_string());
-                                                            }
-                                                        }
+                                                }
+                                            }
+                                            if text_count > 1 {
+                                                if let Ok(t1) = texts.GetAt(1) {
+                                                    if let Ok(hstring) = t1.Text() {
+                                                        body = Some(hstring.to_string());
                                                     }
                                                 }
                                             }
@@ -117,18 +139,21 @@ fn run_listener(app: AppHandle) {
                             }
                         }
                     }
-
-                    let payload = SystemNotificationPayload {
-                        app: app_name,
-                        title,
-                        body,
-                        color: None,
-                    };
-
-                    let _ = app.emit("system-notification", payload);
                 }
             }
+
+            let payload = SystemNotificationPayload { app: app_name, title, body, color: None };
+            let _ = app.emit("system-notification", payload);
         }
+
+        // After the first scan completes, we are past cold start.
+        if cold_start {
+            cold_start = false;
+        }
+
+        // Reconcile: replace seen_ids with the current live set.
+        // Dismissed notifications drop out automatically; no stale IDs accumulate.
+        seen_ids = current_ids;
     }
 }
 

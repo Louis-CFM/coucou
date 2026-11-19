@@ -167,6 +167,12 @@ export function buildCoudrop(_actions: ViewActions): ViewHost {
       State.coudropProgress = null;
       sync();
     });
+
+    void onEvent("coudrop-reject", () => {
+      isSending = false;
+      State.coudropProgress = null;
+      sync();
+    });
   }
 
   async function sendFiles(paths: string[]) {

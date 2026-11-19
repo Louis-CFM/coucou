@@ -70,3 +70,76 @@ test("NotchNotificationQueue clear removes all items", () => {
   queue.clear();
   assert.equal(queue.active(), null);
 });
+
+test("NotchNotificationQueue deduplicates dual ingestion (toast + whatsapp-pill)", () => {
+  const queue = NotchNotificationQueue.shared;
+  queue.clear();
+  // 1. WinRT toast arrives with app, title, and body
+  queue.push({ app: "WhatsApp", title: "Alice", body: "Hello from phone" });
+  assert.equal(queue.active()?.count, 1);
+  assert.equal(queue.active()?.raw.body, "Hello from phone");
+
+  // 2. WhatsApp pill event arrives for same message without body
+  queue.push({ app: "WhatsApp", title: "Alice", color: "#25D366" });
+  assert.equal(queue.active()?.count, 1, "Count should remain 1 (no double counting)");
+  assert.equal(queue.active()?.raw.body, "Hello from phone", "Original body preserved");
+
+  // 3. Reverse order: pill arrives first, then toast
+  queue.clear();
+  queue.push({ app: "WhatsApp", title: "Bob" });
+  assert.equal(queue.active()?.count, 1);
+  queue.push({ app: "WhatsApp", title: "Bob", body: "Are you there?" });
+  assert.equal(queue.active()?.count, 1, "Count should remain 1");
+  assert.equal(queue.active()?.raw.body, "Are you there?", "Body enriched from toast");
+});
+
+test("NotchNotification dynamic content handling: icons, short/long titles, and iconless mode", () => {
+  const queue = NotchNotificationQueue.shared;
+  queue.clear();
+
+  // A. Application icon resolution (e.g. Snipping Tool)
+  queue.push({ app: "Snipping Tool", title: "Screenshot", body: "Captured" });
+  let active = queue.active();
+  assert.ok(active);
+  assert.equal(active.app, "Snipping Tool");
+  assert.equal(active.text, "Snipping Tool · 1 msg");
+  assert.ok(active.icon && active.icon.includes("<svg"), "Snipping Tool has SVG vector icon");
+
+  // B. Short notification title
+  queue.clear();
+  queue.push({ app: "Mail", title: "Hi" });
+  active = queue.active();
+  assert.ok(active);
+  assert.equal(active.text, "Mail · 1 msg");
+
+  // C. Long notification title in detailed mode
+  queue.clear();
+  queue.previewMode = "detailed";
+  const longBody = "This is a very long notification message that tests ellipsis truncation and zero-shift layout bounds";
+  queue.push({ app: "System", title: "Security Alert", body: longBody });
+  active = queue.active();
+  assert.ok(active);
+  assert.ok(active.text.includes(longBody));
+  queue.previewMode = "summary";
+
+  // D. Notification without icon explicitly
+  queue.clear();
+  queue.push({ app: "Terminal", title: "Build done", icon: null });
+  active = queue.active();
+  assert.ok(active);
+  assert.equal(active.icon, null, "Icon explicitly omitted");
+  assert.equal(active.text, "Terminal · 1 msg");
+
+  // E. Rapid notification replacement (queue sequencing)
+  queue.clear();
+  for (let i = 1; i <= 5; i++) {
+    queue.push({ app: `App${i}`, title: `Notification ${i}`, icon: null });
+  }
+  assert.equal(queue.active()?.app, "App1");
+  queue.dismiss();
+  assert.equal(queue.active()?.app, "App2");
+  queue.dismiss();
+  assert.equal(queue.active()?.app, "App3");
+  queue.clear();
+  assert.equal(queue.active(), null);
+});

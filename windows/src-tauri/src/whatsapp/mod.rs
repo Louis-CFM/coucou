@@ -507,13 +507,18 @@ fn start_listener(gen: u64, port: u16, kind: Kind, secret: String) {
 fn spawn_ticker(gen: u64) {
     spawn(async move {
         let mut last = Instant::now();
+        // Fast-startup counter: for the first 6 ticks (≈30 s) we use a 2 s sleep instead of 5 s
+        // so GOWA is detected as Connected sooner and the entire 3-minute cold-start gap collapses.
+        let mut startup_ticks: u8 = 0;
+        const STARTUP_FAST_TICKS: u8 = 6;
         loop {
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            let sleep_secs = if startup_ticks < STARTUP_FAST_TICKS { 2 } else { 5 };
+            tokio::time::sleep(Duration::from_secs(sleep_secs)).await;
             if ctl().generation != gen {
                 break;
             }
-            // Back from sleep (the 5 s took far longer): nothing is trusted, the gateway may have
-            // restarted without Coucou's webhook.
+            // Back from sleep (the interval took far longer): nothing is trusted, the gateway may
+            // have restarted without Coucou's webhook.
             if last.elapsed() > Duration::from_secs(30) {
                 let mut c = ctl();
                 if c.webhook == WebhookState::Registered {
@@ -522,6 +527,9 @@ fn spawn_ticker(gen: u64) {
                 c.last_webhook = None;
             }
             last = Instant::now();
+            if startup_ticks < STARTUP_FAST_TICKS {
+                startup_ticks += 1;
+            }
             on_tick();
         }
     });
@@ -536,11 +544,15 @@ fn on_tick() {
         let mut c = ctl();
         c.tick += 1;
         if c.link != LinkState::Connected {
-            // Every 5 s while linking (QR, gateway coming up); every 30 s once the gateway has
-            // been down for a minute.
+            // Refresh status every tick while linking (QR, gateway coming up).
+            // After 12 consecutive failures (≈60 s of unreachable), drop to every 6th tick (≈30 s)
+            // to avoid hammering a gateway that is clearly not running.
+            // poll_now stays false until Connected: we cannot poll messages that haven't been
+            // authenticated yet, but we no longer delay refresh at all during startup.
             (!(c.failures > 12 && c.tick % 6 != 0), false)
         } else {
-            // Every minute: still linked? Every 20 s: new messages, unless the webhook delivers.
+            // Every minute: health-check still linked? Every 20 s: poll for new messages (fallback
+            // when no webhook delivery arrives, e.g. during webhook re-registration after a wake).
             (c.tick % 12 == 0, c.tick % 4 == 0)
         }
     };
@@ -746,27 +758,45 @@ fn received(gen: u64, kind: Kind, body: &[u8]) {
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 /// The last hours of history, once linked: kept, but nothing counts as new.
+/// Exception: messages sent within the last 2 minutes are treated as live arrivals
+/// so they are announced normally. This covers the GOWA cold-start window where
+/// WhatsApp authenticates while Coucou has already been running.
 async fn backfill(provider: &Arc<Provider>, gen: u64) {
     let me = ctl().me.clone();
     let since = gateway::now_ms() - 12 * 3600 * 1000;
     let Ok(messages) = provider.recent_messages(since, me.as_deref()).await else { return };
-    let groups = {
+    let recency_cutoff_ms = gateway::now_ms() - 2 * 60 * 1000;
+    let (fresh, groups) = {
         let mut c = ctl();
         if c.generation != gen {
             return;
         }
         let filters = c.filters();
-        // History: kept, never counted as unread, never announced.
-        let chats: Vec<String> = messages.iter().map(|m| model::normalized(&m.chat)).collect();
+        let mut fresh_key: Option<String> = None;
+        let mut groups = Vec::new();
         for message in messages {
-            c.inbox.add(message, &filters, None, true);
+            let key = model::normalized(&message.chat);
+            let from_me = message.from_me;
+            let is_historical = message.date < recency_cutoff_ms || from_me;
+            let outcome = c.inbox.add(message, &filters, None, is_historical);
+            if let Some(g) = needs_name(&mut c, &key) {
+                groups.push(g);
+            }
+            if !is_historical && outcome == Outcome::Notify && !from_me {
+                fresh_key = Some(key);
+            }
         }
-        let groups = chats.iter().filter_map(|chat| needs_name(&mut c, chat)).collect::<Vec<_>>();
         c.last_poll_ms = gateway::now_ms();
-        groups
+        let name = fresh_key.map(|key| {
+            c.inbox
+                .conversations
+                .get(&key)
+                .map(|conv| conv.name.clone())
+                .unwrap_or_else(|| model::display_number(&key))
+        });
+        (name, groups)
     };
-    name_groups(provider.clone(), gen, groups);
-    changed();
+    after_ingest(gen, fresh, groups);
 }
 
 fn poll() {

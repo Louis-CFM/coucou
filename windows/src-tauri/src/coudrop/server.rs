@@ -12,6 +12,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
+use tokio_rustls::TlsAcceptor;
 
 // ── Shared transfer data types ────────────────────────────────────────────────
 
@@ -175,8 +176,113 @@ pub fn open_file(path: &Path) -> Result<(), String> {
 
 // ── CouDrop Protocol V2: High-Performance Dedicated DataServer ────────────────
 
-pub const STREAMING_BUFFER_SIZE: usize = 512 * 1024; // 512 KiB buffer
+#[allow(dead_code)]
+pub const STREAMING_BUFFER_SIZE: usize = 512 * 1024; // 512 KiB default buffer
 pub const DEFAULT_DATA_PORT: u16 = 47822;
+
+/// Tunes low-level TCP socket buffers on Windows to 2 MiB and enables SO_KEEPALIVE for maximum reliability over Wi-Fi.
+#[cfg(windows)]
+fn tune_tcp_socket(stream: &tokio::net::TcpStream) {
+    use std::os::windows::io::AsRawSocket;
+    let raw = stream.as_raw_socket();
+    #[link(name = "ws2_32")]
+    extern "system" {
+        fn setsockopt(
+            s: usize,
+            level: i32,
+            optname: i32,
+            optval: *const i8,
+            optlen: i32,
+        ) -> i32;
+    }
+    const SOL_SOCKET: i32 = 0xffff;
+    const SO_SNDBUF: i32 = 0x1001;
+    const SO_RCVBUF: i32 = 0x1002;
+    const SO_KEEPALIVE: i32 = 0x0008;
+    let buf_size: i32 = 2 * 1024 * 1024; // 2 MiB socket buffer
+    let keepalive_on: i32 = 1;
+    unsafe {
+        let _ = setsockopt(raw as usize, SOL_SOCKET, SO_RCVBUF, &buf_size as *const i32 as *const i8, std::mem::size_of::<i32>() as i32);
+        let _ = setsockopt(raw as usize, SOL_SOCKET, SO_SNDBUF, &buf_size as *const i32 as *const i8, std::mem::size_of::<i32>() as i32);
+        let _ = setsockopt(raw as usize, SOL_SOCKET, SO_KEEPALIVE, &keepalive_on as *const i32 as *const i8, std::mem::size_of::<i32>() as i32);
+    }
+}
+
+#[cfg(not(windows))]
+fn tune_tcp_socket(_stream: &tokio::net::TcpStream) {}
+
+/// A 1.5-second sliding window throughput estimator that eliminates instantaneous Wi-Fi ACK jitter
+/// while retaining fast adaptation to actual bandwidth changes.
+#[derive(Debug, Clone)]
+pub struct RollingSpeedEstimator {
+    samples: std::collections::VecDeque<(std::time::Instant, u64)>,
+    window_duration: std::time::Duration,
+}
+
+impl RollingSpeedEstimator {
+    pub fn new(window_secs: f64) -> Self {
+        Self {
+            samples: std::collections::VecDeque::with_capacity(16),
+            window_duration: std::time::Duration::from_secs_f64(window_secs),
+        }
+    }
+
+    pub fn update(&mut self, total_bytes: u64, now: std::time::Instant) -> u64 {
+        self.samples.push_back((now, total_bytes));
+        while let Some(&(time, _)) = self.samples.front() {
+            if now.duration_since(time) > self.window_duration && self.samples.len() > 2 {
+                self.samples.pop_front();
+            } else {
+                break;
+            }
+        }
+        if self.samples.len() < 2 {
+            return 0;
+        }
+        let (oldest_time, oldest_bytes) = self.samples.front().unwrap();
+        let elapsed = now.duration_since(*oldest_time).as_secs_f64();
+        if elapsed <= 0.05 {
+            return 0;
+        }
+        let bytes_delta = total_bytes.saturating_sub(*oldest_bytes);
+        (bytes_delta as f64 / elapsed) as u64
+    }
+}
+
+/// Computes an optimal streaming chunk size based on total transfer payload size.
+pub fn adaptive_chunk_size(total_bytes: u64) -> usize {
+    if total_bytes > 128 * 1024 * 1024 {
+        1024 * 1024 // 1 MiB for large files (> 128 MB)
+    } else if total_bytes > 16 * 1024 * 1024 {
+        512 * 1024 // 512 KiB for medium files (16 MB - 128 MB)
+    } else {
+        256 * 1024 // 256 KiB for small files (< 16 MB)
+    }
+}
+
+/// Purges abandoned `.coudrop_*.tmp` files from interrupted or crashed transfers older than `max_age`.
+pub fn purge_stale_temp_files(dir: &Path, max_age: std::time::Duration) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let now = std::time::SystemTime::now();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(file_name) = path.file_name().and_then(|f| f.to_str()) {
+                if file_name.starts_with(".coudrop_") && file_name.ends_with(".tmp") {
+                    if let Ok(meta) = entry.metadata() {
+                        if let Ok(modified) = meta.modified() {
+                            if let Ok(age) = now.duration_since(modified) {
+                                if age > max_age {
+                                    let _ = std::fs::remove_file(&path);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct ActiveDownload {
@@ -202,6 +308,7 @@ pub struct ActiveUpload {
 pub struct DataServer {
     port: u16,
     app: Option<AppHandle>,
+    tls_acceptor: Option<TlsAcceptor>,
     active_downloads: Arc<Mutex<HashMap<String, ActiveDownload>>>,
     active_uploads: Arc<Mutex<HashMap<String, ActiveUpload>>>,
     #[allow(dead_code)]
@@ -209,9 +316,16 @@ pub struct DataServer {
 }
 
 impl DataServer {
-    /// Starts the DataServer on `preferred_port` (default 47822).
+    /// Starts the DataServer on `preferred_port` (default 47822) with optional TLS support.
     /// If preferred port is in use, seamlessly binds to an OS-assigned free port (port 0).
-    pub async fn start(app: Option<AppHandle>, preferred_port: u16) -> Result<Arc<Self>, String> {
+    pub async fn start(
+        app: Option<AppHandle>,
+        preferred_port: u16,
+        tls_acceptor: Option<TlsAcceptor>,
+    ) -> Result<Arc<Self>, String> {
+        // Clean up any stale incomplete temp files from interrupted prior sessions
+        purge_stale_temp_files(&coudrop_dir(), std::time::Duration::from_secs(6 * 3600));
+
         let listener = match TcpListener::bind(("0.0.0.0", preferred_port)).await {
             Ok(l) => l,
             Err(_) => TcpListener::bind(("0.0.0.0", 0))
@@ -228,6 +342,7 @@ impl DataServer {
         let server = Arc::new(Self {
             port,
             app,
+            tls_acceptor,
             active_downloads: active_downloads.clone(),
             active_uploads: active_uploads.clone(),
             shutdown_tx: shutdown_tx.clone(),
@@ -243,7 +358,7 @@ impl DataServer {
                             Ok((stream, _peer_addr)) => {
                                 let srv_clone = srv.clone();
                                 tokio::spawn(async move {
-                                    srv_clone.handle_connection(stream).await;
+                                    srv_clone.handle_incoming_stream(stream).await;
                                 });
                             }
                             Err(e) => {
@@ -324,9 +439,41 @@ impl DataServer {
         }
     }
 
-    async fn handle_connection(&self, mut stream: TcpStream) {
+    async fn handle_incoming_stream(&self, stream: TcpStream) {
         let _ = stream.set_nodelay(true);
+        tune_tcp_socket(&stream);
 
+        // Connection sniffing: peek at first 3 bytes to detect TLS ClientHello (0x16, 0x03)
+        let mut peek_buf = [0u8; 3];
+        let is_tls = if let Ok(n) = stream.peek(&mut peek_buf).await {
+            n >= 2 && peek_buf[0] == 0x16 && peek_buf[1] == 0x03
+        } else {
+            false
+        };
+
+        if is_tls {
+            if let Some(ref acceptor) = self.tls_acceptor {
+                match acceptor.accept(stream).await {
+                    Ok(tls_stream) => {
+                        self.handle_connection(tls_stream).await;
+                    }
+                    Err(e) => {
+                        eprintln!("[coudrop-server] TLS handshake error: {e}");
+                    }
+                }
+            } else {
+                eprintln!("[coudrop-server] TLS ClientHello received but no TLS acceptor configured; falling back to direct stream");
+                self.handle_connection(stream).await;
+            }
+        } else {
+            self.handle_connection(stream).await;
+        }
+    }
+
+    async fn handle_connection<S>(&self, mut stream: S)
+    where
+        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send,
+    {
         // Read HTTP request header
         let mut header_buf = Vec::with_capacity(4096);
         let mut temp_buf = [0u8; 1024];
@@ -417,15 +564,17 @@ impl DataServer {
         }
     }
 
-    async fn handle_upload(
+    async fn handle_upload<S>(
         &self,
-        mut stream: TcpStream,
+        mut stream: S,
         transfer_id: &str,
         token: &str,
         offset: u64,
         content_length: Option<u64>,
         leftover: &[u8],
-    ) {
+    ) where
+        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send,
+    {
         let upload = {
             let uploads = self.active_uploads.lock().await;
             match uploads.get(transfer_id).cloned() {
@@ -444,8 +593,9 @@ impl DataServer {
         }
 
         let total_bytes = content_length.unwrap_or(upload.size);
+        let chunk_size = adaptive_chunk_size(total_bytes);
 
-        let mut file = match tokio::fs::OpenOptions::new()
+        let file = match tokio::fs::OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(offset == 0)
@@ -461,39 +611,63 @@ impl DataServer {
             }
         };
 
+        let mut buffered_file = tokio::io::BufWriter::with_capacity(chunk_size, file);
         let mut digest_ctx = ring::digest::Context::new(&SHA256);
         let mut body_bytes_read = offset;
 
         // Process leftover bytes from initial buffer
         if !leftover.is_empty() {
-            if file.write_all(leftover).await.is_err() {
+            if buffered_file.write_all(leftover).await.is_err() {
                 return;
             }
             digest_ctx.update(leftover);
             body_bytes_read += leftover.len() as u64;
         }
 
-        let mut buf = vec![0u8; STREAMING_BUFFER_SIZE];
-        let mut last_progress_time = std::time::Instant::now();
-        let mut last_progress_bytes = body_bytes_read;
+        // Bounded producer-consumer channel: decouples high-speed socket reads from disk writes + hashing.
+        // A depth of 4 provides smooth pipelined execution while bounding in-flight memory to ~4 MB.
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(4);
+
+        let writer_handle = tokio::spawn(async move {
+            let mut file = buffered_file;
+            let mut digest = digest_ctx;
+            while let Some(chunk) = rx.recv().await {
+                if let Err(e) = file.write_all(&chunk).await {
+                    return Err(format!("Disk write error: {e}"));
+                }
+                digest.update(&chunk);
+            }
+            if let Err(e) = file.flush().await {
+                return Err(format!("Disk flush error: {e}"));
+            }
+            Ok(hex_encode(digest.finish().as_ref()))
+        });
+
+        let mut speed_estimator = RollingSpeedEstimator::new(1.5);
+        let mut last_progress_emit = std::time::Instant::now();
 
         while total_bytes == 0 || body_bytes_read < total_bytes {
+            let to_read = if total_bytes > 0 {
+                std::cmp::min(chunk_size as u64, total_bytes - body_bytes_read) as usize
+            } else {
+                chunk_size
+            };
+            let mut buf = vec![0u8; to_read];
             let n = match stream.read(&mut buf).await {
                 Ok(0) => break,
                 Ok(n) => n,
                 Err(_) => break,
             };
-
-            if file.write_all(&buf[..n]).await.is_err() {
-                break;
-            }
-            digest_ctx.update(&buf[..n]);
+            buf.truncate(n);
             body_bytes_read += n as u64;
 
+            if tx.send(buf).await.is_err() {
+                break;
+            }
+
             let now = std::time::Instant::now();
-            let elapsed = (now - last_progress_time).as_secs_f64();
-            if elapsed >= 0.25 {
-                let speed = ((body_bytes_read.saturating_sub(last_progress_bytes)) as f64 / elapsed) as u64;
+            if now.duration_since(last_progress_emit).as_secs_f64() >= 0.25 {
+                let speed = speed_estimator.update(body_bytes_read, now);
                 let progress = if total_bytes > 0 {
                     (body_bytes_read as f64 / total_bytes as f64).min(0.99)
                 } else {
@@ -518,33 +692,48 @@ impl DataServer {
                         is_paused: Some(false),
                     });
                 }
-                last_progress_time = now;
-                last_progress_bytes = body_bytes_read;
+                last_progress_emit = now;
             }
         }
 
-        let _ = file.flush().await;
-        drop(file);
+        drop(tx); // EOF to writer
 
-        let hash_str = hex_encode(digest_ctx.finish().as_ref());
-        *upload.completed_sha256.lock().await = Some(hash_str.clone());
-
-        // Send 200 OK back to phone
-        let resp = format!(
-            "HTTP/1.1 200 OK\r\nX-Coudrop-Sha256: {}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
-            hash_str
-        );
-        let _ = stream.write_all(resp.as_bytes()).await;
-        let _ = stream.flush().await;
+        match writer_handle.await {
+            Ok(Ok(hash_str)) => {
+                if total_bytes > 0 && body_bytes_read < total_bytes {
+                    eprintln!("[coudrop-server] Upload stream interrupted: received {}/{} bytes", body_bytes_read, total_bytes);
+                    let _ = stream.write_all(b"HTTP/1.1 400 Bad Request\r\nX-Coudrop-Error: incomplete_stream\r\nConnection: close\r\n\r\n").await;
+                    let _ = stream.flush().await;
+                    return;
+                }
+                *upload.completed_sha256.lock().await = Some(hash_str.clone());
+                let resp = format!(
+                    "HTTP/1.1 200 OK\r\nX-Coudrop-Sha256: {}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    hash_str
+                );
+                let _ = stream.write_all(resp.as_bytes()).await;
+                let _ = stream.flush().await;
+            }
+            Ok(Err(err)) => {
+                eprintln!("[coudrop-server] Writer error for upload {}: {}", transfer_id, err);
+                let _ = stream.write_all(b"HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n").await;
+            }
+            Err(e) => {
+                eprintln!("[coudrop-server] Writer task failed for upload {}: {}", transfer_id, e);
+                let _ = stream.write_all(b"HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n").await;
+            }
+        }
     }
 
-    async fn handle_download(
+    async fn handle_download<S>(
         &self,
-        mut stream: TcpStream,
+        mut stream: S,
         transfer_id: &str,
         token: &str,
         offset: u64,
-    ) {
+    ) where
+        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send,
+    {
         let download = {
             let downloads = self.active_downloads.lock().await;
             match downloads.get(transfer_id).cloned() {
@@ -579,39 +768,64 @@ impl DataServer {
         }
 
         let remaining = download.size.saturating_sub(offset);
-        let resp_header = format!(
-            "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-            remaining
-        );
+        let chunk_size = adaptive_chunk_size(remaining);
+
+        let resp_header = if offset > 0 {
+            let last_byte = download.size.saturating_sub(1);
+            format!(
+                "HTTP/1.1 206 Partial Content\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\nContent-Range: bytes {}-{}/{}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n\r\n",
+                remaining, offset, last_byte, download.size
+            )
+        } else {
+            format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n\r\n",
+                remaining
+            )
+        };
 
         if stream.write_all(resp_header.as_bytes()).await.is_err() {
             return;
         }
 
-        let mut digest_ctx = ring::digest::Context::new(&SHA256);
-        let mut buf = vec![0u8; STREAMING_BUFFER_SIZE];
+        let mut buffered_file = tokio::io::BufReader::with_capacity(chunk_size, file);
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(4);
+
+        // Pipelined Reader & Hasher task: reads disk blocks and updates SHA-256 in parallel with network sends
+        let reader_handle = tokio::spawn(async move {
+            let mut digest_ctx = ring::digest::Context::new(&SHA256);
+            let mut read_total = 0u64;
+            while read_total < remaining {
+                let to_read = std::cmp::min(chunk_size as u64, remaining - read_total) as usize;
+                let mut buf = vec![0u8; to_read];
+                let n = match buffered_file.read(&mut buf).await {
+                    Ok(0) => break,
+                    Ok(n) => n,
+                    Err(_) => break,
+                };
+                buf.truncate(n);
+                digest_ctx.update(&buf);
+                read_total += n as u64;
+                if tx.send(buf).await.is_err() {
+                    break;
+                }
+            }
+            hex_encode(digest_ctx.finish().as_ref())
+        });
+
         let mut bytes_sent = 0u64;
-        let mut last_progress_time = std::time::Instant::now();
-        let mut last_progress_bytes = 0u64;
+        let mut speed_estimator = RollingSpeedEstimator::new(1.5);
+        let mut last_progress_emit = std::time::Instant::now();
 
-        while bytes_sent < remaining {
-            let to_read = std::cmp::min(buf.len() as u64, remaining - bytes_sent) as usize;
-            let n = match file.read(&mut buf[..to_read]).await {
-                Ok(0) => break,
-                Ok(n) => n,
-                Err(_) => break,
-            };
-
-            if stream.write_all(&buf[..n]).await.is_err() {
+        while let Some(chunk) = rx.recv().await {
+            let n = chunk.len() as u64;
+            if stream.write_all(&chunk).await.is_err() {
                 break;
             }
-            digest_ctx.update(&buf[..n]);
-            bytes_sent += n as u64;
+            bytes_sent += n;
 
             let now = std::time::Instant::now();
-            let elapsed = (now - last_progress_time).as_secs_f64();
-            if elapsed >= 0.25 {
-                let speed = ((bytes_sent.saturating_sub(last_progress_bytes)) as f64 / elapsed) as u64;
+            if now.duration_since(last_progress_emit).as_secs_f64() >= 0.25 {
+                let speed = speed_estimator.update(bytes_sent, now);
                 let progress = if download.size > 0 {
                     ((offset + bytes_sent) as f64 / download.size as f64).min(0.99)
                 } else {
@@ -636,15 +850,16 @@ impl DataServer {
                         is_paused: Some(false),
                     });
                 }
-                last_progress_time = now;
-                last_progress_bytes = bytes_sent;
+                last_progress_emit = now;
             }
         }
 
         let _ = stream.flush().await;
 
-        let hash_str = hex_encode(digest_ctx.finish().as_ref());
-        *download.completed_sha256.lock().await = Some(hash_str);
+        let hash_str = reader_handle.await.unwrap_or_default();
+        if bytes_sent >= remaining && !hash_str.is_empty() {
+            *download.completed_sha256.lock().await = Some(hash_str);
+        }
     }
 }
 
@@ -680,9 +895,36 @@ mod tests {
         assert_eq!(decoded, original);
     }
 
+    #[test]
+    fn test_adaptive_chunk_size_scaling() {
+        assert_eq!(adaptive_chunk_size(10 * 1024 * 1024), 256 * 1024); // < 16 MB -> 256 KiB
+        assert_eq!(adaptive_chunk_size(64 * 1024 * 1024), 512 * 1024); // 16 MB - 128 MB -> 512 KiB
+        assert_eq!(adaptive_chunk_size(500 * 1024 * 1024), 1024 * 1024); // > 128 MB -> 1 MiB
+        assert_eq!(adaptive_chunk_size(5 * 1024 * 1024 * 1024), 1024 * 1024); // 5 GB -> 1 MiB
+    }
+
+    #[test]
+    fn test_rolling_speed_estimator_smoothing() {
+        let mut est = RollingSpeedEstimator::new(1.5);
+        let start = std::time::Instant::now();
+
+        // Single sample: speed is 0
+        assert_eq!(est.update(1000, start), 0);
+
+        // Advance 0.5s with 50 MB
+        let t1 = start + std::time::Duration::from_millis(500);
+        let speed1 = est.update(50 * 1024 * 1024, t1);
+        assert!(speed1 > 90_000_000, "speed should be around 100 MB/s");
+
+        // Advance another 0.5s with another 50 MB (total 100 MB in 1.0s)
+        let t2 = start + std::time::Duration::from_millis(1000);
+        let speed2 = est.update(100 * 1024 * 1024, t2);
+        assert!(speed2 > 90_000_000 && speed2 < 110_000_000);
+    }
+
     #[tokio::test]
     async fn test_dataserver_upload_download() {
-        let server = DataServer::start(None, 0).await.expect("start server");
+        let server = DataServer::start(None, 0, None).await.expect("start server");
         let port = server.port();
         assert!(port > 0);
 
