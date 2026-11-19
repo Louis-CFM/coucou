@@ -4,6 +4,10 @@
 
 - **Botan, the founders list** — the "Your Coucou so far" step of the card shown after an update has one more line: *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). Botan is Mochi on a little device that snaps onto the back of your iPhone. The Coucou page has the same link
 
+Fixes:
+
+- **Cursor Agent's reply on the finished card** *(macOS)* — Cursor's agent runs your Claude Code hooks, so its sessions already show on the Cursor pill, but the finished card had no headline: Cursor's stop event carries no last message. The relay now reads the turn's reply from the end of Cursor's transcript (`~/.cursor/…`), as Claude Code sends it
+
 ## 0.6.0 — November 12, 2026
 
 - **Start a Claude Code session from the notch** *(GitHub build)* — the terminal tab in the island's header, or ⌃⌥N: pick the project (the folders your sessions ran in, or any folder), type or dictate what Claude should do, and your terminal opens there with Claude Code and your words. Terminal, iTerm2, Ghostty, kitty, WezTerm and Alacritty; the prompt is never written into a command line

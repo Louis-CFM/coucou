@@ -105,7 +105,10 @@ The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigr
 GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`),
 Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
-the main pill; session support is coming in a future version.
+the main pill. On macOS, Cursor's agent runs your Claude Code hooks: once they are installed
+(Settings → Claude Code → **Install hooks**), Cursor Agent sessions show on the Cursor pill, and the
+finished card shows the reply, which the relay reads from Cursor's transcript. Codex hooks are
+installed from Settings → Codex.
 
 Claude Desktop (`agent_claude-desktop`, every build) is there as well. Claude Code sessions started from the Claude desktop app's Code tab carry `CLAUDE_CODE_ENTRYPOINT=claude-desktop`; the relay tags them `coucou_agent: claude-desktop` on its own (an explicit `--agent` still wins), so nothing extra is installed. Declare the pill to keep it after the session ends; the ↗ button opens the Claude app.
 
