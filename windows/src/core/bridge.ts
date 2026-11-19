@@ -404,6 +404,10 @@ export const Bridge = {
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /** Opens the system file picker for the drop card; null when cancelled. */
+  pickDropFile: () => call<string | null>("pick_drop_file"),
+  /** Writes a pasted clipboard image into the inbox. */
+  ingestClipboardImage: (bytes: number[]) => call<DroppedFile>("ingest_clipboard_image", { bytes }),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   /** Whether Claude can answer: the API key, or else the user's own Claude Code. */

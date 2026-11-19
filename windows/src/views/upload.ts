@@ -5,6 +5,7 @@
 // action the spec asks for: ask a question about it.
 
 import { h, clear } from "./dom";
+import { Bridge } from "../core/bridge";
 import { State } from "../core/state";
 import type { ViewActions, ViewHost } from "./views";
 import { N_, t, tl } from "../i18n/i18n";
@@ -42,6 +43,21 @@ export function buildUpload(): ViewHost {
     frame,
     h("div", { class: "drop-body" }, title, tags),
   );
+  let picking = false;
+  card.style.cursor = "pointer";
+  card.addEventListener("click", () => {
+    if (picking) return;
+    picking = true;
+    void Bridge.pickDropFile()
+      .then((path) => {
+        if (path && typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+          window.dispatchEvent(new CustomEvent("coucou-file-picked", { detail: path }));
+        }
+      })
+      .finally(() => {
+        picking = false;
+      });
+  });
   const el = h("div", { class: "view" }, card);
 
   return {

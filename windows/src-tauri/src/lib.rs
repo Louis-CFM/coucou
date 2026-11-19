@@ -610,6 +610,24 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
+/// Opens the system file picker for the drop card and allows the chosen path.
+#[tauri::command]
+async fn pick_drop_file(app: AppHandle) -> Option<String> {
+    let title = i18n::t("Drop your files here");
+    let picked = tauri::async_runtime::spawn_blocking(move || platform::pick_file(&app, &title))
+        .await
+        .ok()
+        .flatten()?;
+    files::allow_dropped([picked.clone()]);
+    Some(picked)
+}
+
+/// Writes a pasted clipboard image into the inbox and reports its metadata back.
+#[tauri::command]
+fn ingest_clipboard_image(bytes: Vec<u8>) -> Result<DroppedFile, String> {
+    files::ingest_bytes("pasted-image.png", &bytes)
+}
+
 /// The island may only ask whether a key exists — never read it.
 #[tauri::command]
 fn secret_present(key: String) -> bool {
@@ -957,6 +975,8 @@ pub fn run() {
             local_set_key,
             chat_reset,
             ingest_file,
+            pick_drop_file,
+            ingest_clipboard_image,
             secret_present,
             claude_ready,
             subscription_status,

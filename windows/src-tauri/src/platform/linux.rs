@@ -338,6 +338,10 @@ pub fn pick_folder(_app: &AppHandle, start: Option<&str>, title: &str) -> Option
     None
 }
 
+pub fn pick_file(_app: &AppHandle, _title: &str) -> Option<String> {
+    None
+}
+
 /// Our own `which`: the first executable file named `stem` on $PATH.
 pub fn find_on_path(stem: &str) -> Option<PathBuf> {
     let dirs = std::env::var_os("PATH")?;

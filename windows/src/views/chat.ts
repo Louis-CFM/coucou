@@ -355,8 +355,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     sync() {
       const file = State.droppedFile;
       const wantChip = file?.name ?? "";
-      if (chipRow.dataset.label !== wantChip) {
-        chipRow.dataset.label = wantChip;
+      const wantKey = file ? `${file.name}:${file.path}` : "";
+      if (chipRow.dataset.label !== wantKey) {
+        chipRow.dataset.label = wantKey;
         clear(chipRow);
         if (wantChip) chipRow.append(contextChip(wantChip));
       }
