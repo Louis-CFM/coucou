@@ -126,7 +126,7 @@ the row is there when a computer is paired, and says what is missing.
 - Dictating the prompt. The text field takes whatever keyboard the phone has; Coucou adds no microphone.
 - Seeing the terminal, or typing into the session afterwards. The session shows on Home like any other, and its requests
   arrive as usual.
-- The Mac (see below). The relay needs nothing new: the same messages travel through it.
+- The Mac: Windows and Linux only, as agreed. The relay needs nothing new: the same messages travel through it.
 
 ### Where the code is
 
@@ -137,21 +137,6 @@ the row is there when a computer is paired, and says what is missing.
 - Phone: `link/Protocol.kt` and `LinkClient.kt` (the messages), `core/LaunchFlow.kt` (the states, pure, tested),
   `ui/LaunchSheet.kt`, one row on Home.
 - `docs/ANDROID_LINK.md` describes the capability.
-
-### What the Mac would need (not built)
-
-The Mac already has both halves: `SessionLauncher` (the projects and `launch(prompt:)`) and the Android link
-(`AndroidLink/`). To offer `launch` it would need:
-
-1. a switch in *Settings → Android phone*, off by default (`AndroidLinkSettings`), read for every connection and request;
-2. `launch` in `AndroidLinkCaps`, and the `projects` line in `AndroidLinkHub` (names and salted ids of
-   `SessionLauncher.projects`), sent to a phone that has the capability and again when the list changes;
-3. the `launch` message in `AndroidLinkServer`, with the same checks and reasons as `hub.rs`, ending in the existing
-   launcher for the chosen folder (today `launch(prompt:)` starts in the launcher's current folder, so it needs a variant
-   that takes the folder without changing the user's own choice);
-4. the same tests as the Rust ones in `scripts/test-android-link.sh`.
-
-The phone needs no change for it.
 
 ### Decisions you may want changed
 

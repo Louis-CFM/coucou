@@ -286,7 +286,7 @@ sent nothing about it, and its `launch` messages are an unknown type: ignored an
   nothing. If no `launchResult` comes within 10 seconds the phone says so and does not claim the session started.
 - Old and new together: a computer that does not know `launch` does not offer it and ignores the message, and the phone says "Your
   computer doesn't offer this yet"; an older phone never asks, so a newer computer sends it nothing new.
-- Windows and Linux only for now. The Mac does not offer `launch` (what it would need is in `docs/ANDROID_0_6_PLAN.md`).
+- Windows and Linux only for now. The Mac does not offer `launch`.
 
 ## Admission (what a flood cannot do)
 
