@@ -22,7 +22,7 @@ enum IslandView: String, CaseIterable {
 
 // MARK: - Bot State
 
-enum BotState: String, CaseIterable {
+enum BotState: String, CaseIterable, Codable {
     case idle, working, thinking, searching
     case approval, question, error, finished
     case ratelimit, sleeping, dizzy
