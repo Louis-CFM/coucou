@@ -551,6 +551,18 @@ body {
   z-index: 2;
 }
 
+.pin-btn {
+  position: absolute;
+  top: 8px;
+  right: 30px;
+  z-index: 2;
+}
+
+.pin-btn.pinned {
+  color: var(--amber);
+  background: rgba(251, 191, 36, 0.15);
+}
+
 /* Folds a waiting permission card or question away without answering it. */
 .fold {
   position: absolute;

@@ -120,6 +120,17 @@ pub struct Settings {
     /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
     /// what a webview sends back is ignored. The Mac's key is the same.
     pub agy_approvals_enabled: bool,
+    /// Third-party agents registered by the user (Issue #592).
+    pub custom_agents: Vec<CustomAgent>,
+}
+
+/// A third-party agent registered by the user (Issue #592).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomAgent {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -192,6 +203,7 @@ impl Default for Settings {
             show_clock: false,
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
+            custom_agents: Vec::new(),
         }
     }
 }
@@ -494,7 +506,8 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
   "closedIsland": "music",
-  "agyApprovalsEnabled": true
+  "agyApprovalsEnabled": true,
+  "customAgents": [{"id": "deepseek", "name": "DeepSeek Work"}]
 }"##;
 
     fn custom() -> Value {
@@ -746,6 +759,23 @@ mod tests {
         // The language too: "" (follow the system) when absent, as it comes otherwise.
         assert_eq!(parse(&custom_with("language", None)).unwrap().language, "");
         assert_eq!(parse(&custom_with("language", Some(json!("xx")))).unwrap().language, "xx");
+    }
+
+    #[test]
+    fn custom_agents_parse_and_persist() {
+        let loaded = parse(&custom_with("customAgents", Some(serde_json::json!([
+            { "id": "deepseek", "name": "DeepSeek Work" },
+            { "id": "runner" }
+        ])))).unwrap();
+        assert_eq!(loaded.custom_agents.len(), 2);
+        assert_eq!(loaded.custom_agents[0].id, "deepseek");
+        assert_eq!(loaded.custom_agents[0].name.as_deref(), Some("DeepSeek Work"));
+        assert_eq!(loaded.custom_agents[1].id, "runner");
+        assert_eq!(loaded.custom_agents[1].name, None);
+
+        // A missing customAgents field defaults to empty vec
+        let loaded_empty = parse(&custom_with("customAgents", None)).unwrap();
+        assert!(loaded_empty.custom_agents.is_empty());
     }
 
     #[test]
@@ -1018,6 +1048,7 @@ mod tests {
                 "showClock",
                 "closedIsland",
                 "agyApprovalsEnabled",
+                "customAgents",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
