@@ -50,6 +50,8 @@ export interface ApprovalInfo {
   command: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
   questions?: AskedQuestion[];
+  /** Claude Code offered a "don't ask again" rule for this request. */
+  canAlways: boolean;
 }
 
 /** One question of an AskUserQuestion call. */

@@ -111,6 +111,8 @@ struct Event {
     name: String,
     /// For Claude Code's AskUserQuestion, the question as it was asked.
     question: Option<Value>,
+    /// The agent's own "don't ask again" rules for this request, if it sent any.
+    suggestions: Option<Value>,
 }
 
 fn main() {
@@ -127,7 +129,7 @@ fn main() {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
-        print(reply::stdout(&args.agent, name, None, None));
+        print(reply::stdout(&args.agent, name, None, None, None));
         std::process::exit(0);
     };
 
@@ -165,7 +167,13 @@ fn main() {
     // cmd) can be the one ended, leaving us orphaned: its going ends us too.
     let parent = if waits_for_answer { parent() } else { None };
     let decision = wait(&rx, budget, extended, || parent.as_ref().is_some_and(|p| p.gone()));
-    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    print(reply::stdout(
+        &args.agent,
+        &event.name,
+        decision.as_deref(),
+        event.question.as_ref(),
+        event.suggestions.as_ref(),
+    ));
     std::process::exit(0);
 }
 
@@ -267,6 +275,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))
         .then(|| map.get("tool_input").cloned())
         .flatten();
+    let suggestions = map.get("permission_suggestions").cloned();
 
     // Every string is capped, except the edit text of a finished Edit /
     // MultiEdit / Write, which the live diff needs whole (within its own limits).
@@ -274,7 +283,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question })
+    Some(Event { line, name, question, suggestions })
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events

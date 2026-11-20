@@ -46,7 +46,7 @@ export interface ViewActions {
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
   openUrl(url: string): void;
-  decide(d: "allow" | "deny"): void;
+  decide(d: "allow" | "always" | "deny"): void;
   /** Answers the question Claude Code asked: question text → chosen label. */
   answer(answers: Record<string, string | string[]>): void;
   /** Hands the pending request back to the terminal. */
@@ -563,7 +563,7 @@ function buildApproval(actions: ViewActions): ViewHost {
   // moments after a new request appears are ignored.
   let shownFor: string | null = null;
   let shownAt = 0;
-  const guarded = (d: "allow" | "deny") => () => {
+  const guarded = (d: "allow" | "always" | "deny") => () => {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
@@ -585,20 +585,21 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once per kind of card. Rebuilding them between a
-      // mouse-down and a mouse-up would swallow the click. "Always" is gone until
-      // the remembered-rules list exists to back it. Antigravity waits on the card:
-      // a third button hands the command back to its own prompt in the terminal,
-      // where its "Always allow" lives (as on the Mac).
+      // Built once per kind of card. Rebuilding them between a mouse-down and a
+      // mouse-up would swallow the click. Antigravity waits on the card: a third
+      // button hands the command back to its own prompt in the terminal, where its
+      // "Always allow" lives (as on the Mac). Otherwise "Always" shows up only when
+      // the agent sent its own "don't ask again" rule to carry back.
       const agy = State.pendingApproval?.pillId === "agent_antigravity";
-      const key = agy ? "agy" : "built";
+      const key = agy ? "agy" : State.pendingApproval?.canAlways ? "always" : "once";
       if (rowKey === key) return;
       rowKey = key;
       clear(row);
-      row.append(
-        btn(tl("Deny"), "secondary", guarded("deny"), "N"),
-        btn(tl("Allow"), "primary", guarded("allow"), "Y"),
-      );
+      row.append(btn(tl("Deny"), "secondary", guarded("deny"), "N"));
+      if (key === "always") {
+        row.append(btn(tl("Always"), "secondary", guarded("always")));
+      }
+      row.append(btn(tl("Allow"), "primary", guarded("allow"), "Y"));
       if (agy) row.append(btn(tl("Reply in terminal"), "secondary", inTerminal));
     },
   };
