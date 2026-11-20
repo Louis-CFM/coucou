@@ -118,6 +118,8 @@ export interface Settings {
   screen: string;
   autostart: boolean;
   hooksInstalled: boolean;
+  /** CLI used for new sessions and the in-app Claude Code relay. */
+  claudeCli: "claude" | "fcc-claude";
   /** Claude model used by the chat. */
   model: string;
   /** Show the Claude plan pill (5 h and weekly limits) in the island's header. */
@@ -190,6 +192,7 @@ export const DEFAULT_SETTINGS: Settings = {
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
+  claudeCli: "claude",
   model: "claude-opus-5",
   showPlanInNotch: false,
   showPlanInCompactIsland: false,

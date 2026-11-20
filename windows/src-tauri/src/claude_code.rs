@@ -42,9 +42,23 @@ pub struct Request<'a> {
     pub timeout: Duration,
 }
 
-/// The Claude Code CLI, when it is installed.
+/// The selected CLI name. Unknown persisted values fail closed instead of
+/// silently switching the user to a different provider.
+fn cli_name(selection: &str) -> Option<&'static str> {
+    match selection {
+        "claude" => Some("claude"),
+        "fcc-claude" => Some("fcc-claude"),
+        _ => None,
+    }
+}
+
+fn exe_for(selection: &str) -> Option<PathBuf> {
+    platform::cli_candidates(cli_name(selection)?).into_iter().next()
+}
+
+/// The selected Claude Code CLI, when it is installed.
 pub fn exe() -> Option<PathBuf> {
-    platform::cli_candidates("claude").into_iter().next()
+    exe_for(&settings::load().claude_cli)
 }
 
 pub fn available() -> bool {
@@ -58,12 +72,13 @@ pub fn models() -> Vec<ModelInfo> {
 
 /// Runs `claude -p` once and returns the text of its answer, or why there is none.
 pub async fn ask(request: &Request<'_>) -> Result<String, String> {
-    let exe = exe().ok_or_else(|| t("Claude Code is not installed."))?;
+    let selection = settings::load().claude_cli;
+    let exe = exe_for(&selection).ok_or_else(|| "The selected Claude Code command is not installed.".to_string())?;
     let workdir = settings::local_dir().join("relay");
     std::fs::create_dir_all(&workdir).map_err(|e| e.to_string())?;
 
     let mut cmd = tokio::process::Command::new(&exe);
-    cmd.args(args(request))
+    cmd.args(args(request, selection == "claude", selection == "fcc-claude"))
         .current_dir(&workdir)
         .env_remove("CLAUDECODE")
         .stdin(Stdio::piped())
@@ -100,20 +115,12 @@ pub async fn ask(request: &Request<'_>) -> Result<String, String> {
     })
 }
 
-fn args(request: &Request<'_>) -> Vec<OsString> {
-    let mut out: Vec<OsString> = [
-        "-p",
-        "--output-format",
-        "json",
-        "--model",
-        request.model,
-        "--system-prompt",
-        request.system,
-        "--tools",
-    ]
-    .iter()
-    .map(OsString::from)
-    .collect();
+fn args(request: &Request<'_>, use_requested_model: bool, load_user_settings: bool) -> Vec<OsString> {
+    let mut out: Vec<OsString> = ["-p", "--output-format", "json"].iter().map(OsString::from).collect();
+    if use_requested_model {
+        out.extend(["--model", request.model].iter().map(OsString::from));
+    }
+    out.extend(["--system-prompt", request.system, "--tools"].iter().map(OsString::from));
     out.push(request.tools.join(",").into());
     if !request.tools.is_empty() {
         out.push("--allowedTools".into());
@@ -123,7 +130,10 @@ fn args(request: &Request<'_>) -> Vec<OsString> {
         out.push("--add-dir".into());
         out.push(dir.as_os_str().to_owned());
     }
-    for flag in ["--setting-sources", "", "--strict-mcp-config", "--no-session-persistence", "--disable-slash-commands"] {
+    if !load_user_settings {
+        out.extend(["--setting-sources", ""].iter().map(OsString::from));
+    }
+    for flag in ["--strict-mcp-config", "--no-session-persistence", "--disable-slash-commands"] {
         out.push(flag.into());
     }
     out
@@ -180,6 +190,14 @@ mod tests {
     }
 
     #[test]
+    fn only_known_cli_selections_resolve() {
+        assert_eq!(cli_name("claude"), Some("claude"));
+        assert_eq!(cli_name("fcc-claude"), Some("fcc-claude"));
+        assert_eq!(cli_name("anything-else"), None);
+        assert_eq!(exe_for("anything-else"), None);
+    }
+
+    #[test]
     fn a_run_loads_no_settings_and_only_the_tools_it_is_given() {
         let request = Request {
             model: "claude-x",
@@ -189,7 +207,7 @@ mod tests {
             read_dir: None,
             timeout: Duration::from_secs(1),
         };
-        let a = strings(&args(&request));
+        let a = strings(&args(&request, true, false));
         assert_eq!(&a[..8], ["-p", "--output-format", "json", "--model", "claude-x", "--system-prompt", "sys", "--tools"]);
         assert_eq!(a[8], "");
         assert!(!a.contains(&"--allowedTools".to_string()));
@@ -202,12 +220,30 @@ mod tests {
 
         let inbox = PathBuf::from("/tmp/inbox");
         let request = Request { tools: &["WebSearch", "Read"], read_dir: Some(&inbox), ..request };
-        let a = strings(&args(&request));
+        let a = strings(&args(&request, true, false));
         assert_eq!(a[8], "WebSearch,Read");
         let allowed = a.iter().position(|x| x == "--allowedTools").unwrap();
         assert_eq!(a[allowed + 1], "WebSearch,Read");
         let dir = a.iter().position(|x| x == "--add-dir").unwrap();
         assert_eq!(a[dir + 1], "/tmp/inbox");
+    }
+
+    #[test]
+    fn a_fcc_relay_keeps_its_configured_model() {
+        let request = Request {
+            model: "claude-x",
+            system: "sys",
+            prompt: "hi",
+            tools: &[],
+            read_dir: None,
+            timeout: Duration::from_secs(1),
+        };
+        let a = strings(&args(&request, false, true));
+        assert!(!a.contains(&"--model".to_string()));
+        assert!(!a.contains(&"--setting-sources".to_string()));
+        assert!(a.contains(&"--strict-mcp-config".to_string()));
+        assert!(a.contains(&"--no-session-persistence".to_string()));
+        assert!(a.contains(&"--disable-slash-commands".to_string()));
     }
 
     #[test]
