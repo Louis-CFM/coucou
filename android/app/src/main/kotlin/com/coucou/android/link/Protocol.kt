@@ -18,7 +18,7 @@ object Protocol {
     /** One message never exceeds this; a longer line is a protocol error. */
     const val MAX_LINE_BYTES = 64 * 1024
     /** Optional features this app understands; the desktop offers back the ones it has switched on. */
-    val CAPABILITIES = listOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay")
+    val CAPABILITIES = listOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay", "drop")
     const val CAP_CHAT = "chat"
     /** Steps, last line, project folder name and colour of each session. */
     const val CAP_DETAILS = "details"
@@ -36,6 +36,8 @@ object Protocol {
     const val CAP_SERVICES = "services"
     /** The computer's relay switch is on: it sends the new access key when the user replaces it (docs/RELAY_LINK.md). */
     const val CAP_RELAY = "relay"
+    /** Vayli Drop: Zero-QR device-aware peer-to-peer file transfer over authenticated Coucou link. */
+    const val CAP_DROP = "drop"
     /** A week has 10 080 minutes; no count of a week is larger than the computer's own caps. */
     const val RECAP_MAX_MINUTES = 10_080
     const val RECAP_MAX_SESSIONS = 100_000
@@ -164,6 +166,56 @@ sealed interface ServerMsg {
     /** [reason] is a fixed code (off, busy, rate, auth...); [message] a fixed sentence written by the computer. */
     data class ChatError(val id: String, val reason: String, val message: String) : ServerMsg
     data class Error(val code: String, val message: String) : ServerMsg
+
+    /** Vayli Drop: file offer from desktop. */
+    data class DropOffer(
+        val transferId: String,
+        val name: String,
+        val size: Long,
+        val sha256: String,
+        val mimeType: String = "application/octet-stream",
+        val protocolVersion: Int = 1,
+        val dataPort: Int = 0,
+        val token: String = "",
+    ) : ServerMsg
+    /** Vayli Drop: file chunk data (base64). */
+    data class DropChunk(
+        val transferId: String,
+        val index: Int,
+        val total: Int,
+        val data: String,
+    ) : ServerMsg
+    /** Vayli Drop: cancel transfer. */
+    data class DropCancel(
+        val transferId: String,
+        val reason: String = "cancelled",
+        val origin: String = "windows",
+    ) : ServerMsg
+    /** Vayli Drop: pause transfer. */
+    data class DropPause(
+        val transferId: String,
+        val origin: String = "windows",
+    ) : ServerMsg
+    /** Vayli Drop: resume transfer. */
+    data class DropResume(
+        val transferId: String,
+        val origin: String = "windows",
+        val offset: Long = 0L,
+    ) : ServerMsg
+    /** Vayli Drop: desktop accepted the phone's file offer. */
+    data class DropAccept(
+        val transferId: String,
+        val protocolVersion: Int = 1,
+        val dataPort: Int = 0,
+        val token: String = "",
+        val offset: Long = 0L,
+    ) : ServerMsg
+    /** Vayli Drop: desktop rejected the phone's file offer. */
+    data class DropReject(val transferId: String, val reason: String) : ServerMsg
+    /** Vayli Drop: desktop reports transfer progress. */
+    data class DropProgress(val transferId: String, val bytes: Long, val total: Long) : ServerMsg
+    /** Vayli Drop: desktop verified transfer with SHA-256. */
+    data class DropDone(val transferId: String, val sha256: String) : ServerMsg
 }
 
 sealed interface ClientMsg {
@@ -181,6 +233,45 @@ sealed interface ClientMsg {
     data class ChatCancel(val id: String) : ClientMsg
     /** New chat: the computer forgets its side of the conversation and stops a running answer. */
     data object ChatReset : ClientMsg
+
+    /** Vayli Drop: phone accepted the file offer. */
+    data class DropAccept(
+        val transferId: String,
+        val protocolVersion: Int = 1,
+        val dataPort: Int = 0,
+        val token: String = "",
+        val offset: Long = 0L,
+    ) : ClientMsg
+    /** Vayli Drop: phone rejected the file offer. */
+    data class DropReject(val transferId: String, val reason: String) : ClientMsg
+    /** Vayli Drop: transfer progress. */
+    data class DropProgress(val transferId: String, val bytes: Long, val total: Long) : ClientMsg
+    /** Vayli Drop: transfer complete and verified with SHA-256. */
+    data class DropDone(val transferId: String, val sha256: String) : ClientMsg
+    /** Vayli Drop: transfer cancelled by phone. */
+    data class DropCancel(val transferId: String, val reason: String = "cancelled", val origin: String = "android") : ClientMsg
+    /** Vayli Drop: transfer paused by phone. */
+    data class DropPause(val transferId: String, val origin: String = "android") : ClientMsg
+    /** Vayli Drop: transfer resumed by phone. */
+    data class DropResume(val transferId: String, val origin: String = "android", val offset: Long = 0L) : ClientMsg
+    /** Vayli Drop: file offer from phone to desktop. */
+    data class DropOffer(
+        val transferId: String,
+        val name: String,
+        val size: Long,
+        val sha256: String,
+        val mimeType: String = "application/octet-stream",
+        val protocolVersion: Int = 1,
+        val dataPort: Int = 0,
+        val token: String = "",
+    ) : ClientMsg
+    /** Vayli Drop: file chunk data (base64) from phone to desktop. */
+    data class DropChunk(
+        val transferId: String,
+        val index: Int,
+        val total: Int,
+        val data: String,
+    ) : ClientMsg
 }
 
 object Wire {
@@ -203,6 +294,31 @@ object Wire {
             is ClientMsg.ChatSend -> o.put("type", "chatSend").put("id", m.id).put("model", m.model).put("text", m.text)
             is ClientMsg.ChatCancel -> o.put("type", "chatCancel").put("id", m.id)
             ClientMsg.ChatReset -> o.put("type", "chatReset")
+
+            is ClientMsg.DropAccept -> {
+                o.put("type", "dropAccept").put("transferId", m.transferId)
+                if (m.protocolVersion > 1) {
+                    o.put("protocolVersion", m.protocolVersion)
+                    if (m.dataPort > 0) o.put("dataPort", m.dataPort)
+                    if (m.token.isNotEmpty()) o.put("token", m.token)
+                    if (m.offset > 0L) o.put("offset", m.offset)
+                }
+            }
+            is ClientMsg.DropReject -> o.put("type", "dropReject").put("transferId", m.transferId).put("reason", m.reason)
+            is ClientMsg.DropProgress -> o.put("type", "dropProgress").put("transferId", m.transferId).put("bytes", m.bytes).put("bytesReceived", m.bytes).put("total", m.total)
+            is ClientMsg.DropDone -> o.put("type", "dropDone").put("transferId", m.transferId).put("sha256", m.sha256)
+            is ClientMsg.DropCancel -> o.put("type", "dropCancel").put("transferId", m.transferId).put("reason", m.reason).put("origin", m.origin)
+            is ClientMsg.DropPause -> o.put("type", "dropPause").put("transferId", m.transferId).put("origin", m.origin)
+            is ClientMsg.DropResume -> o.put("type", "dropResume").put("transferId", m.transferId).put("origin", m.origin).put("offset", m.offset)
+            is ClientMsg.DropOffer -> {
+                o.put("type", "dropOffer").put("transferId", m.transferId).put("name", m.name).put("size", m.size).put("sha256", m.sha256).put("mimeType", m.mimeType)
+                if (m.protocolVersion > 1) {
+                    o.put("protocolVersion", m.protocolVersion)
+                    if (m.dataPort > 0) o.put("dataPort", m.dataPort)
+                    if (m.token.isNotEmpty()) o.put("token", m.token)
+                }
+            }
+            is ClientMsg.DropChunk -> o.put("type", "dropChunk").put("transferId", m.transferId).put("index", m.index).put("total", m.total).put("data", m.data)
         }
         return o.toString()
     }
@@ -240,6 +356,47 @@ object Wire {
                 "chatDone" -> ServerMsg.ChatDone(chatId(o), if (o.has("text")) o.getString("text") else null)
                 "chatError" -> ServerMsg.ChatError(chatId(o), o.optString("reason", "internal"), o.optString("message", ""))
                 "error" -> ServerMsg.Error(o.optString("code", ""), o.optString("message", ""))
+
+                "dropOffer" -> ServerMsg.DropOffer(
+                    transferId = o.getString("transferId"),
+                    name = o.getString("name"),
+                    size = o.getLong("size"),
+                    sha256 = o.optString("sha256", ""),
+                    mimeType = o.optString("mimeType", "application/octet-stream"),
+                    protocolVersion = o.optInt("protocolVersion", 1),
+                    dataPort = o.optInt("dataPort", 0),
+                    token = o.optString("token", ""),
+                )
+                "dropChunk" -> ServerMsg.DropChunk(
+                    transferId = o.getString("transferId"),
+                    index = o.getInt("index"),
+                    total = o.getInt("total"),
+                    data = o.getString("data"),
+                )
+                "dropCancel" -> ServerMsg.DropCancel(
+                    transferId = o.getString("transferId"),
+                    reason = o.optString("reason", "cancelled"),
+                    origin = o.optString("origin", "windows"),
+                )
+                "dropPause" -> ServerMsg.DropPause(
+                    transferId = o.getString("transferId"),
+                    origin = o.optString("origin", "windows"),
+                )
+                "dropResume" -> ServerMsg.DropResume(
+                    transferId = o.getString("transferId"),
+                    origin = o.optString("origin", "windows"),
+                    offset = o.optLong("offset", 0L),
+                )
+                "dropAccept" -> ServerMsg.DropAccept(
+                    transferId = o.getString("transferId"),
+                    protocolVersion = o.optInt("protocolVersion", 1),
+                    dataPort = o.optInt("dataPort", 0),
+                    token = o.optString("token", ""),
+                    offset = o.optLong("offset", 0L),
+                )
+                "dropReject" -> ServerMsg.DropReject(o.getString("transferId"), o.optString("reason", "rejected"))
+                "dropProgress" -> ServerMsg.DropProgress(o.getString("transferId"), o.getLong("bytes"), o.getLong("total"))
+                "dropDone" -> ServerMsg.DropDone(o.getString("transferId"), o.getString("sha256"))
                 else -> null
             }
         } catch (_: JSONException) {

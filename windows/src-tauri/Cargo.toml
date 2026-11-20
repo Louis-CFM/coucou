@@ -1,7 +1,8 @@
 [package]
 name = "coucou"
+default-run = "coucou"
 description = "Coucou for Windows and Linux — Mochi lives at the top of your screen"
-authors = ["Louis Raille"]
+authors = ["Madhan Kumar"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -92,6 +93,12 @@ windows = { version = "0.61", features = [
   "Win32_UI_WindowsAndMessaging",
   # Flow dictation's keyboard hook.
   "Win32_System_LibraryLoader",
+  # System notifications listener for the small notch
+  "UI_Notifications",
+  "UI_Notifications_Management",
+  "ApplicationModel",
+  # Smart notch window and monitor detection
+  "Win32_Graphics_Gdi",
 ] }
 # The clipboard for Flow dictation, kept out of the clipboard history. MIT/Apache-2.0.
 arboard = { version = "3.6", default-features = false }

@@ -93,6 +93,8 @@ pub fn read() -> Option<Value> {
     {
         let mut kill = Command::new("taskkill");
         kill.args(["/T", "/F", "/PID", &child.id().to_string()]);
+        kill.stdout(std::process::Stdio::null());
+        kill.stderr(std::process::Stdio::null());
         platform::no_console(&mut kill);
         let _ = kill.status();
     }

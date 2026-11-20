@@ -97,6 +97,59 @@ export interface IntegrationInfo {
   configured: boolean;
 }
 
+export type NotchVisibility = "always" | "smart" | "minimal" | "hidden";
+
+export function resolveVisibility(settings: Partial<Settings>): NotchVisibility {
+  if (settings.visibility) return settings.visibility;
+  if (settings.closedIsland === "hidden") return "hidden";
+  if (settings.smartNotch) return "smart";
+  return "always";
+}
+
+export type NotchStyle = "notch" | "island";
+
+export function resolveNotchStyle(settings: Partial<Settings>): NotchStyle {
+  if (settings.notchStyle === "island" || settings.notchStyle === "notch") {
+    return settings.notchStyle;
+  }
+  return "notch";
+}
+
+export function resolveNotchScale(settings: Partial<Settings>): number {
+  if (typeof settings.notchScale === "number" && !isNaN(settings.notchScale)) {
+    return Math.min(1.3, Math.max(0.7, settings.notchScale));
+  }
+  return 1.0;
+}
+
+export function resolveShowBattery(settings: Partial<Settings>): boolean {
+  return settings.showBattery !== false;
+}
+
+export function resolveShowBatteryPercentage(settings: Partial<Settings>): boolean {
+  return settings.showBatteryPercentage !== false;
+}
+
+export function resolveShowTabChat(settings: Partial<Settings>): boolean {
+  return settings.showTabChat !== false;
+}
+
+export function resolveShowTabShelf(settings: Partial<Settings>): boolean {
+  return settings.showTabShelf !== false;
+}
+
+export function resolveShowTabDrop(settings: Partial<Settings>): boolean {
+  return settings.showTabDrop !== false;
+}
+
+export function resolveShowTabCoudrop(settings: Partial<Settings>): boolean {
+  return settings.showTabCoudrop !== false;
+}
+
+export function resolveShowTabLaunch(settings: Partial<Settings>): boolean {
+  return settings.showTabLaunch !== false;
+}
+
 export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
@@ -109,6 +162,28 @@ export interface Settings {
   showClock: boolean;
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
   closedIsland: string;
+  /** Notch visibility mode: "always" on screen, "smart" tucking over maximized apps, "minimal" tab, or "hidden". */
+  visibility: NotchVisibility;
+  /** Notch physical style: "notch" (attached to screen edge) or "island" (floating Dynamic Island pill). */
+  notchStyle: NotchStyle;
+  /** Scale factor for the resting notch / island (0.7 to 1.3, default 1.0). */
+  notchScale: number;
+  /** Show dynamic battery indicator in the resting notch / island. */
+  showBattery?: boolean;
+  /** Show numeric percentage next to battery glyph. */
+  showBatteryPercentage?: boolean;
+  /** Show Ask (AI chat) tab in the expanded island header. */
+  showTabChat?: boolean;
+  /** Show File Shelf (folder) tab in the expanded island header. */
+  showTabShelf?: boolean;
+  /** Show Drop & Upload (plus) tab in the expanded island header. */
+  showTabDrop?: boolean;
+  /** Show Coudrop (peer-to-peer file transfer) tab in the expanded island header. */
+  showTabCoudrop?: boolean;
+  /** Show Terminal (Claude Code launch) tab in the expanded island header. */
+  showTabLaunch?: boolean;
+  /** Smart notch: full on the desktop, tucked away over maximized apps. */
+  smartNotch: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -167,6 +242,14 @@ export interface Settings {
   phoneDetails?: boolean;
   /** Which models the phone may use, "provider/model". Rust owns it too. */
   phoneChatModels?: string[];
+  /** Automatically open files received via Coudrop in default app. */
+  coudropAutoOpen?: boolean;
+  /** Play sound effects on Coudrop send/receive complete. */
+  coudropSound?: boolean;
+  /** Show desktop notification when a file is received via Coudrop. */
+  coudropNotify?: boolean;
+  /** User-configured folder where files received via Coudrop are saved. Empty = default. */
+  coudropDownloadDir?: string;
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -182,6 +265,12 @@ export const DEFAULT_SETTINGS: Settings = {
   alertsFromAllPills: false,
   showClock: false,
   closedIsland: "mochi",
+  visibility: "smart",
+  notchStyle: "notch",
+  notchScale: 1.0,
+  showBattery: true,
+  showBatteryPercentage: true,
+  smartNotch: true,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
@@ -205,6 +294,11 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  coudropAutoOpen: false,
+  coudropSound: true,
+  coudropNotify: true,
+  coudropDownloadDir: "",
+  showTabCoudrop: true,
 };
 
 type Listener = () => void;
@@ -276,7 +370,33 @@ class AppState {
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;
 
+  // ── Coudrop / Vayli Drop State ───────────────────────────────────────────
+  coudropPhase:
+    | "idle"
+    | "initializing"
+    | "firewall_notice"
+    | "waiting_qr"
+    | "qr_ready"
+    | "connected"
+    | "receiving"
+    | "completed"
+    | "expired"
+    | "cancelled"
+    | "error" = "idle";
+  coudropRemainingSeconds = 600;
+  coudropQrSvg: string | null = null;
+  coudropConnected: boolean = false;
+  coudropConnectedDevice: string | null = null;
+  coudropReceivedFiles: Array<{ name: string; path: string; size: number }> = [];
+  coudropHistoryCleared: boolean = false;
+  coudropLastReceivedFile: { name: string; path: string; size: number } | null = null;
+  coudropProgress: { name: string; progress: number; bytesRead: number; totalBytes: number } | null = null;
+
   lastActivity = performance.now();
+
+  /** True when the active foreground application window is maximized / fullscreen. */
+  foregroundMaximized = false;
+  foregroundApp: string | null = null;
 
   settings: Settings = { ...DEFAULT_SETTINGS };
 

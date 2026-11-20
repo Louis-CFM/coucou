@@ -66,6 +66,7 @@ class FakeElement {
   }
   setAttribute(k, v) {
     this.attributes.set(k, String(v));
+    if (k === "class") this.className = String(v);
   }
   getAttribute(k) {
     return this.attributes.get(k) ?? null;

@@ -82,4 +82,40 @@ class ProtocolTest {
         assertEquals(ServerMsg.ApprovalResolved(fp), Wire.decodeServer("""{"type":"approvalResolved","fingerprint":"$fp"}"""))
         assertEquals(ServerMsg.Welcome(1, "PC", "windows"), Wire.decodeServer("""{"type":"welcome","v":1,"desktop":"PC","os":"windows"}"""))
     }
+
+    @Test fun decodesDropMessages() {
+        val offer = Wire.decodeServer("""{"type":"dropOffer","transferId":"tx-123","name":"photo.png","size":1024,"sha256":"abc123","mimeType":"image/png"}""") as ServerMsg.DropOffer
+        assertEquals("tx-123", offer.transferId)
+        assertEquals("photo.png", offer.name)
+        assertEquals(1024L, offer.size)
+        assertEquals("abc123", offer.sha256)
+        assertEquals("image/png", offer.mimeType)
+
+        val chunk = Wire.decodeServer("""{"type":"dropChunk","transferId":"tx-123","index":0,"total":1,"data":"AQID"}""") as ServerMsg.DropChunk
+        assertEquals("tx-123", chunk.transferId)
+        assertEquals(0, chunk.index)
+        assertEquals(1, chunk.total)
+        assertEquals("AQID", chunk.data)
+
+        val cancel = Wire.decodeServer("""{"type":"dropCancel","transferId":"tx-123","reason":"user"}""") as ServerMsg.DropCancel
+        assertEquals("tx-123", cancel.transferId)
+        assertEquals("user", cancel.reason)
+    }
+
+    @Test fun encodesDropClientMessages() {
+        val accept = Wire.encode(ClientMsg.DropAccept("tx-123"))
+        assertTrue(accept.contains(""""type":"dropAccept"""") && accept.contains(""""transferId":"tx-123""""))
+
+        val reject = Wire.encode(ClientMsg.DropReject("tx-123", "no disk"))
+        assertTrue(reject.contains(""""type":"dropReject"""") && reject.contains(""""reason":"no disk""""))
+
+        val prog = Wire.encode(ClientMsg.DropProgress("tx-123", 512, 1024))
+        assertTrue(prog.contains(""""type":"dropProgress"""") && (prog.contains(""""bytesReceived":512""") || prog.contains(""""bytes":512""")))
+
+        val done = Wire.encode(ClientMsg.DropDone("tx-123", "abc123sha"))
+        assertTrue(done.contains(""""type":"dropDone"""") && done.contains(""""sha256":"abc123sha""""))
+
+        val cancel = Wire.encode(ClientMsg.DropCancel("tx-123"))
+        assertTrue(cancel.contains(""""type":"dropCancel""""))
+    }
 }

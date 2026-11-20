@@ -2,6 +2,81 @@
   "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 14 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.6.1",
+      "items": [
+        {
+          "icon": "shield",
+          "title": {
+            "en": "Security hardening",
+            "zh-Hans": "安全加固",
+            "hi": "सुरक्षा सुदृढ़ीकरण",
+            "es": "Refuerzo de seguridad",
+            "ar": "تعزيز الأمان",
+            "fr": "Renforcement de la sécurité",
+            "bn": "নিরাপত্তা সুদৃঢ়করণ",
+            "pt-BR": "Reforço de segurança",
+            "ru": "Повышение безопасности",
+            "id": "Penguatan keamanan",
+            "de": "Sicherheitsoptimierung",
+            "tr": "Güvenlik güçlendirmesi",
+            "ko": "보안 강화",
+            "ja": "セキュリティの強化"
+          },
+          "detail": {
+            "en": "Authenticated hook relay pipe, private directories, and hash-verified components.",
+            "zh-Hans": "身份验证的 Hook 中继管道、专用目录及哈希验证组件。",
+            "hi": "प्रमाणीकृत हुक रिले पाइप, निजी निर्देशिकाएं, और हैश-सत्यापित घटक।",
+            "es": "Canal de retransmisión de hooks autenticado, directorios privados y verificación por hash.",
+            "ar": "أنبوب مرحل hooks موثق، وأدلة خاصة، ومكونات موثقة بالتجزئة.",
+            "fr": "Canal de relais des hooks authentifié, répertoires privés et composants vérifiés par empreinte.",
+            "bn": "প্রমাণীকৃত হুক রিলে পাইপ, ব্যক্তিগত ডিরেক্টরি এবং হ্যাশ-যাচাইকৃত উপাদান।",
+            "pt-BR": "Canal de retransmissão de hooks autenticado, diretórios privados e verificação por hash.",
+            "ru": "Аутентификация канала хуков, приватные каталоги и проверка компонентов по хешу.",
+            "id": "Pipa relay hook terotentikasi, direktori privat, dan komponen terverifikasi hash.",
+            "de": "Authentifizierte Hook-Relay-Pipe, private Verzeichnisse und hash-geprüfte Komponenten.",
+            "tr": "Kimliği doğrulanmış hook aracısı kanalı, özel dizinler ve hash ile doğrulanmış bileşenler.",
+            "ko": "인증된 훅 릴레이 파이프, 개인 디렉토리 및 해시 검증 구성 요소.",
+            "ja": "認証済みフックリレーパイプ、プライベートディレクトリ、およびハッシュ検証済みコンポーネント。"
+          }
+        },
+        {
+          "icon": "bolt",
+          "title": {
+            "en": "n8n integration improvements",
+            "zh-Hans": "n8n 集成改进",
+            "hi": "n8n एकीकरण में सुधार",
+            "es": "Mejoras en la integración de n8n",
+            "ar": "تحسينات تكامل n8n",
+            "fr": "Améliorations de l'intégration n8n",
+            "bn": "n8n ইন্টিগ্রেশন উন্নতি",
+            "pt-BR": "Melhorias na integração n8n",
+            "ru": "Улучшения интеграции n8n",
+            "id": "Peningkatan integrasi n8n",
+            "de": "Verbesserungen der n8n-Integration",
+            "tr": "n8n entegrasyonu iyileştirmeleri",
+            "ko": "n8n 연동 개선",
+            "ja": "n8n 連携の改善"
+          },
+          "detail": {
+            "en": "Immediate execution updates and seamless connection status.",
+            "zh-Hans": "即时执行更新及无缝连接状态。",
+            "hi": "त्वरित निष्पादन अपडेट और निर्बाध कनेक्शन स्थिति।",
+            "es": "Actualizaciones de ejecución inmediatas y estado de conexión fluido.",
+            "ar": "تحديثات فورية للتنفيذ وحالة اتصال سلسة.",
+            "fr": "Mises à jour d'exécution immédiates et état de connexion fluide.",
+            "bn": "অবিলম্বে এক্সিকিউশন আপডেট এবং মসৃণ সংযোগ স্থিতি।",
+            "pt-BR": "Atualizações de execução imediatas e status de conexão fluido.",
+            "ru": "Мгновенные обновления выполнения и плавный статус подключения.",
+            "id": "Pembaruan eksekusi instan dan status koneksi yang mulus.",
+            "de": "Sofortige Ausführungsaktualisierungen und nahtloser Verbindungsstatus.",
+            "tr": "Anında çalıştırma güncellemeleri ve sorunsuz bağlantı durumu.",
+            "ko": "즉각적인 실행 업데이트 및 원활한 연결 상태.",
+            "ja": "即時の実行更新とスムーズな接続ステータス。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.6.0",
       "items": [
         {

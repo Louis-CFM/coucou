@@ -15,6 +15,8 @@
   --hub-on-accent: #170c04;
   --hub-green: #34d399;
   --hub-red: #ff453a;
+  --font-sub: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-desc: var(--font-sub);
 }
 
 body.hub-window {
@@ -23,12 +25,15 @@ body.hub-window {
   font: 400 13px/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
   height: 100vh;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
 }
 
 #hub {
   display: flex;
   height: 100vh;
+  background: radial-gradient(circle at 10% 10%, rgba(35, 38, 45, 0.45), transparent 45%), #0c0d0f;
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
@@ -39,8 +44,17 @@ body.hub-window {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 18px 12px 12px;
+  padding: 20px 12px 12px;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  background: rgba(20, 21, 24, 0.78);
+  backdrop-filter: blur(40px) saturate(190%);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 10;
 }
 
 .hub-brand {
@@ -49,95 +63,138 @@ body.hub-window {
   gap: 10px;
   padding: 4px 8px 14px;
   font: 700 18px var(--font);
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .hub-brand canvas {
   width: 28px;
   height: 28px;
+  flex-shrink: 0;
 }
 
 /* ── Settings search field & results ── */
 .hub-search {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 10px;
-  margin: 0 4px 10px;
-  background: var(--hub-card);
-  border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-sizing: border-box;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  flex: 0 0 32px !important;
+  flex-shrink: 0 !important;
+  padding: 0 10px !important;
+  margin: 0 0 12px 0 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-radius: 9px !important;
+  border: 2px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 6px rgba(0, 0, 0, 0.18) !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+}
+
+.hub-search:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 3px 10px rgba(0, 0, 0, 0.28) !important;
 }
 
 .hub-search:focus-within {
-  border-color: rgba(110, 86, 207, 0.6);
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(251, 146, 60, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
 }
 
-.hub-search svg.hub-search-icon {
-  width: 13px;
-  height: 13px;
-  flex: 0 0 13px;
-  fill: none;
-  stroke: var(--hub-muted);
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.hub-search svg.hub-search-icon,
+.hub-search > svg:first-child {
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 14px !important;
+  fill: rgba(255, 255, 255, 0.45) !important;
+  stroke: none !important;
+  display: block !important;
+  transition: fill 0.18s ease !important;
 }
 
-.hub-search-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  color: var(--hub-text);
-  font: 400 13px var(--font);
-  outline: none;
-  padding: 0;
+.hub-search:hover svg.hub-search-icon,
+.hub-search:hover > svg:first-child,
+.hub-search:focus-within svg.hub-search-icon,
+.hub-search:focus-within > svg:first-child {
+  fill: rgba(255, 255, 255, 0.9) !important;
 }
 
-/* The window's text fields (settings.css, input[type="text"]) weigh more than
-   one class and drew a second box inside this one: the field is the box. */
 .hub-search .hub-search-input,
-.hub-search .hub-search-input:focus {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  outline: none;
-  height: auto;
-  padding: 0;
-  margin: 0;
-  border-radius: 0;
+.hub-search .hub-search-input:focus,
+.hub-search input[type="text"],
+.hub-search input[type="text"]:focus,
+.hub-search-input {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: var(--hub-text, #f5f6f8) !important;
+  font-family: var(--font-sub, "Inter", -apple-system, BlinkMacSystemFont, sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
+.hub-search input::placeholder,
+.hub-search .hub-search-input::placeholder,
 .hub-search-input::placeholder {
-  color: var(--hub-muted);
+  color: rgba(255, 255, 255, 0.4) !important;
+  font-family: var(--font-sub, "Inter", sans-serif) !important;
+  font-size: 13px !important;
+  letter-spacing: -0.01em !important;
 }
 
 .hub-search-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--hub-muted);
-  cursor: pointer;
-  border-radius: 50%;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  cursor: pointer !important;
+  border-radius: 50% !important;
+  transition: all 0.15s ease !important;
+}
+
+.hub-search-clear.visible {
+  display: flex !important;
 }
 
 .hub-search-clear:hover {
-  color: var(--hub-text);
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: #fff !important;
+  transform: scale(1.08) !important;
 }
 
 .hub-search-clear svg {
-  width: 11px;
-  height: 11px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
+  width: 10px !important;
+  height: 10px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
 }
 
 .hub-search-empty {
@@ -202,7 +259,7 @@ body.hub-window {
 }
 
 .hub-search-row-subtitle {
-  font: 400 11px var(--font);
+  font: 400 11px var(--font-sub);
   color: var(--hub-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -215,10 +272,10 @@ body.hub-window {
     box-shadow: 0 0 0 0 transparent;
   }
   30% {
-    box-shadow: 0 0 0 2px var(--hub-accent, #6e56cf), 0 0 16px rgba(110, 86, 207, 0.6);
+    box-shadow: 0 0 0 2px var(--hub-accent, #fb923c), 0 0 16px rgba(251, 146, 60, 0.5);
   }
   75% {
-    box-shadow: 0 0 0 2px var(--hub-accent, #6e56cf), 0 0 16px rgba(110, 86, 207, 0.6);
+    box-shadow: 0 0 0 2px var(--hub-accent, #fb923c), 0 0 16px rgba(251, 146, 60, 0.5);
   }
   100% {
     box-shadow: 0 0 0 0 transparent;
@@ -227,6 +284,36 @@ body.hub-window {
 
 .hub-card-glowing {
   animation: hub-card-glow 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.hub-groups {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.hub-nav-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  box-sizing: border-box;
+  will-change: transform, opacity;
+}
+
+.hub-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .hub-group {
@@ -238,6 +325,8 @@ body.hub-window {
 }
 
 .hub-item {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -249,6 +338,10 @@ body.hub-window {
   color: #c7cad0;
   font: 500 13.5px var(--font);
   text-align: start;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: none;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 
 .hub-item svg {
@@ -260,22 +353,30 @@ body.hub-window {
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: 0.9;
+  opacity: 0.85;
+  transition: stroke 0.15s ease, opacity 0.15s ease;
 }
 
 .hub-item:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
-  transform: none;
+  color: #fff;
+  transform: translateX(2px);
 }
 
 .hub-item:active:not(:disabled) {
-  transform: none;
+  transform: scale(0.96) !important;
+  transition-duration: 0.08s !important;
 }
 
 .hub-item.on {
-  background: rgba(255, 255, 255, 0.09);
-  color: var(--hub-text);
+  background: transparent;
+  color: #fff;
   font-weight: 600;
+}
+
+.hub-item.on svg {
+  opacity: 1;
+  stroke: #fff;
 }
 
 .hub-side .spacer {
@@ -311,10 +412,13 @@ body.hub-window {
 .hub-panel {
   flex: 1 1 auto;
   min-width: 0;
-  margin: 12px 12px 12px 0;
-  border-radius: 22px;
-  background: var(--hub-panel);
-  border: 1px solid var(--hub-line);
+  margin: 10px 12px 12px 10px;
+  border-radius: 18px;
+  background: rgba(14, 15, 17, 0.82);
+  backdrop-filter: blur(45px) saturate(180%);
+  -webkit-backdrop-filter: blur(45px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -324,6 +428,26 @@ body.hub-window {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 24px 28px 28px;
+}
+
+/* ── Clean Hidden Scrollbars (Full scroll function remains active) ── */
+.hub-scroll,
+.hub-side,
+.hub-search-results,
+.hub-panel,
+#settings-root {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.hub-scroll::-webkit-scrollbar,
+.hub-side::-webkit-scrollbar,
+.hub-search-results::-webkit-scrollbar,
+.hub-panel::-webkit-scrollbar,
+#settings-root::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .hub-page {
@@ -358,7 +482,7 @@ body.hub-window {
   border-radius: 18px;
   overflow: hidden;
   flex: 0 0 auto;
-  border: 1px solid var(--hero-line, rgba(255, 255, 255, 0.1));
+  border: 2px solid var(--hero-line, rgba(255, 255, 255, 0.1));
 }
 
 .hub-hero.compact {
@@ -403,7 +527,7 @@ body.hub-window {
 }
 
 .hub-hero p {
-  font-size: 14px;
+  font: 400 14px/1.45 var(--font-sub);
   color: #b7bbc2;
   max-width: 420px;
 }
@@ -426,13 +550,22 @@ body.hub-window {
 }
 
 .hub-card {
-  background: var(--hub-card);
-  border: 1px solid var(--hub-line);
-  border-radius: 14px;
-  padding: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.24s ease;
+}
+
+.hub-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .hub-row {
@@ -440,6 +573,12 @@ body.hub-window {
   align-items: center;
   gap: 14px;
   min-height: 30px;
+}
+
+.hub-row > .hub-segmented,
+.hub-row > .hub-select,
+.hub-row > .dd-trigger {
+  flex-shrink: 0;
 }
 
 .hub-row .text {
@@ -462,8 +601,9 @@ body.hub-window {
 
 .hub-divider {
   height: 1px;
-  background: var(--hub-line);
-  margin: 0 -2px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 0;
+  margin-inline-start: 16px;
 }
 
 .hub-keycap {
@@ -483,20 +623,44 @@ button.hub-btn {
   font: 600 12.5px var(--font);
   background: rgba(255, 255, 255, 0.09);
   color: var(--hub-text);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+button.hub-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  transform: scale(1.025);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+button.hub-btn:active:not(:disabled) {
+  transform: scale(0.96) !important;
+  transition-duration: 0.08s !important;
 }
 
 button.hub-btn.primary {
   background: var(--hub-accent);
   color: var(--hub-on-accent);
+  border-color: rgba(251, 146, 60, 0.4);
 }
 
 button.hub-btn.primary:hover:not(:disabled) {
   background: #fdab63;
+  transform: scale(1.025);
+  box-shadow: 0 4px 14px rgba(251, 146, 60, 0.4);
 }
 
 button.hub-btn.danger {
   background: rgba(255, 69, 58, 0.14);
   color: #ff8a80;
+  border-color: rgba(255, 69, 58, 0.25);
+}
+
+button.hub-btn.danger:hover:not(:disabled) {
+  background: rgba(255, 69, 58, 0.22);
+  transform: scale(1.025);
 }
 
 button.hub-btn.small {
@@ -527,12 +691,12 @@ button.hub-icon svg {
 }
 
 .hub-input,
-.hub-select,
+select.hub-select,
 .hub-textarea {
   font: 400 13px var(--font);
   color: var(--hub-text);
   background: var(--hub-field);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.08);
   border-radius: 9px;
   padding: 7px 10px;
   outline: none;
@@ -540,7 +704,7 @@ button.hub-icon svg {
 
 .hub-input:focus,
 .hub-textarea:focus,
-.hub-select:focus {
+select.hub-select:focus {
   border-color: rgba(251, 146, 60, 0.6);
 }
 
@@ -550,25 +714,274 @@ button.hub-icon svg {
   width: 100%;
 }
 
+/* ── Apple-Grade macOS Segmented Control ── */
 .hub-segmented {
-  display: inline-flex;
-  padding: 2px;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.06);
-  gap: 2px;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 32px !important;
+  padding: 3px !important;
+  border-radius: 9px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+  gap: 0 !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  flex-shrink: 0 !important;
+  width: auto !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
 }
 
-.hub-segmented button {
-  border-radius: 7px;
-  padding: 5px 14px;
+/* Sliding Liquid Glass Indicator (The Thumb) */
+.hub-segmented-indicator {
+  position: absolute !important;
+  top: 3px !important;
+  bottom: 3px !important;
+  left: 0 !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  will-change: transform, width, opacity !important;
+  box-sizing: border-box !important;
+  opacity: 0;
+}
+
+/* Static fallback before first JS layout measurement */
+.hub-segmented:not(.has-indicator) button.on,
+.hub-segmented:not(.has-indicator) .hub-segmented-item.on {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+/* Segment Buttons */
+.hub-segmented button,
+.hub-segmented .hub-segmented-item {
+  position: relative !important;
+  z-index: 2 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  padding: 0 13px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.68) !important;
+  font-family: var(--font-sub, "Inter", -apple-system, BlinkMacSystemFont, sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: color 0.16s ease !important;
+}
+
+/* Subtle separator between inactive adjacent segments */
+.hub-segmented button:not(:first-of-type)::before,
+.hub-segmented .hub-segmented-item:not(:first-of-type)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+/* Hide separator next to the active or hovered segment */
+.hub-segmented button.on::before,
+.hub-segmented .hub-segmented-item.on::before,
+.hub-segmented button.on + button::before,
+.hub-segmented .hub-segmented-item.on + .hub-segmented-item::before,
+.hub-segmented button:hover::before,
+.hub-segmented .hub-segmented-item:hover::before,
+.hub-segmented button:hover + button::before,
+.hub-segmented .hub-segmented-item:hover + .hub-segmented-item::before {
+  opacity: 0 !important;
+}
+
+.hub-segmented button:hover:not(.on),
+.hub-segmented .hub-segmented-item:hover:not(.on) {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  transform: none !important;
+}
+
+.hub-segmented button:active,
+.hub-segmented .hub-segmented-item:active {
+  transform: scale(0.96) !important;
+  transition-duration: 0.08s !important;
+}
+
+.hub-segmented button.on,
+.hub-segmented .hub-segmented-item.on {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* ── Apple-grade Spring Switch ── */
+.switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  flex: 0 0 38px;
+  padding: 0;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.switch:hover {
+  transform: scale(1.04);
+}
+
+.switch:active {
+  transform: scale(0.95);
+  transition-duration: 0.08s !important;
+}
+
+.switch.on {
+  background: var(--hub-green, #34d399);
+  border-color: rgba(52, 211, 153, 0.4);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.35);
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.switch:active::after {
+  width: 20px !important;
+}
+
+.switch.on::after {
+  transform: translateX(16px);
+}
+
+.switch.on:active::after {
+  transform: translateX(12px) !important;
+  width: 20px !important;
+}
+
+/* ── macOS Sequoia Capsule Range Slider ───────────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--hub-accent, #fb923c) 0%,
+    var(--hub-accent, #fb923c) var(--pct, 50%),
+    rgba(255, 255, 255, 0.15) var(--pct, 50%),
+    rgba(255, 255, 255, 0.15) 100%
+  );
+  width: 150px;
+  cursor: pointer;
+  outline: none;
+  border: none;
+  margin: 6px 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.35),
+    0 0 1px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 #ffffff;
+  cursor: pointer;
+  margin-top: -6px;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(1.18);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.45),
+    0 0 1px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 #ffffff;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
   background: transparent;
-  color: #c7cad0;
-  font: 500 12.5px var(--font);
 }
 
-.hub-segmented button.on {
-  background: rgba(255, 255, 255, 0.14);
-  color: var(--hub-text);
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: none;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.35),
+    0 0 1px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 #ffffff;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
+
+input[type="range"]:active::-moz-range-thumb {
+  transform: scale(1.18);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.45),
+    0 0 1px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 #ffffff;
 }
 
 .hub-radio {
@@ -610,7 +1023,7 @@ button.hub-icon svg {
   border-radius: 12px;
   padding: 12px 14px;
   background: rgba(247, 179, 43, 0.1);
-  border: 1px solid rgba(247, 179, 43, 0.22);
+  border: 2px solid rgba(247, 179, 43, 0.22);
   color: #f5d28a;
   font-size: 12.5px;
 }
@@ -643,7 +1056,7 @@ button.hub-icon svg {
 
 .hub-entries {
   background: var(--hub-card);
-  border: 1px solid var(--hub-line);
+  border: 2px solid var(--hub-line);
   border-radius: 14px;
   overflow: hidden;
 }
@@ -652,7 +1065,7 @@ button.hub-icon svg {
   display: flex;
   gap: 18px;
   padding: 16px 18px;
-  border-top: 1px solid var(--hub-line);
+  border-top: 2px solid var(--hub-line);
 }
 
 .hub-entry:first-child {
@@ -725,7 +1138,7 @@ button.hub-icon svg {
   position: relative;
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid var(--glow-line, rgba(255, 255, 255, 0.1));
+  border: 2px solid var(--glow-line, rgba(255, 255, 255, 0.1));
 }
 
 .hub-glow canvas {
@@ -782,7 +1195,7 @@ button.hub-icon svg {
 
 .hub-stat {
   background: var(--hub-card);
-  border: 1px solid var(--hub-line);
+  border: 2px solid var(--hub-line);
   border-radius: 14px;
   padding: 16px 18px;
   display: flex;
@@ -802,7 +1215,22 @@ button.hub-icon svg {
 
 .hub-stat .sub {
   color: var(--hub-muted);
-  font-size: 12px;
+  font: 400 12px var(--font-sub);
+}
+
+.hub-hero p,
+.hub-search-row-subtitle,
+.hub-stat .sub,
+.hub-label,
+.hub-search-empty,
+.sub,
+.subtitle,
+.desc,
+.description,
+.hint,
+.detail,
+small {
+  font-family: var(--font-sub);
 }
 
 .hub-chart-row {
@@ -817,7 +1245,7 @@ button.hub-icon svg {
   align-items: flex-end;
   gap: 4px;
   height: 180px;
-  border-bottom: 1px dashed rgba(251, 146, 60, 0.35);
+  border-bottom: 2px dashed rgba(251, 146, 60, 0.35);
 }
 
 .hub-bars i {
@@ -923,7 +1351,7 @@ button.hub-icon svg {
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-top: 1px solid var(--hub-line);
+  border-top: 2px solid var(--hub-line);
 }
 
 .hub-list-row:first-child {
@@ -957,12 +1385,12 @@ button.hub-icon svg {
   min-height: 420px;
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid var(--hub-line);
+  border: 2px solid var(--hub-line);
   background: rgba(0, 0, 0, 0.18);
 }
 
 .hub-notes-list {
-  border-inline-end: 1px solid var(--hub-line);
+  border-inline-end: 2px solid var(--hub-line);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -1147,30 +1575,9 @@ button.hub-icon svg {
   flex: 0 0 auto;
 }
 
-/* Scrollbars as on the Mac: a thin rounded thumb that floats on the page, no
-   arrows and no track. (Chromium ignores these once scrollbar-width or
-   scrollbar-color is set on the element, so those stay unset.) */
+/* ── Global Scrollbars: Clean & Hidden (Scroll function active) ── */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-  background: transparent;
-}
-::-webkit-scrollbar-track,
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-::-webkit-scrollbar-button {
-  display: none;
-  width: 0;
-  height: 0;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
-  border: 3px solid transparent;
-  border-radius: 999px;
-  background-clip: padding-box;
-  min-height: 36px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.coucou.android.R
 import com.coucou.android.app.AppModel
 import com.coucou.android.core.ChatMessage
@@ -125,16 +126,16 @@ private fun ChatEmpty(state: ChatTabState, onHome: () -> Unit, onSettings: () ->
     Column(Modifier.fillMaxSize().padding(horizontal = Gutter)) {
         ScreenTitle(stringResource(R.string.chat_title), null)
         Column(
-            Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
+            Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
         ) {
             MochiView(engine, Modifier.size(120.dp))
             Text(
-                stringResource(chatStateTitle(state)), Modifier.padding(top = 16.dp),
-                style = TypeScale.TITLE.style(t.text.c()).copy(textAlign = TextAlign.Center),
+                stringResource(chatStateTitle(state)), Modifier.padding(top = 18.dp),
+                style = TypeScale.TITLE.style(t.text.c()).copy(textAlign = TextAlign.Center, letterSpacing = (-0.3).sp),
             )
             Text(
-                stringResource(chatStateBody(state)), Modifier.padding(top = 8.dp, bottom = 20.dp),
+                stringResource(chatStateBody(state)), Modifier.padding(top = 8.dp, bottom = 24.dp),
                 style = TypeScale.BODY.style(t.textDim.c()).copy(textAlign = TextAlign.Center),
             )
             when (ChatTab.action(state)) {
@@ -147,9 +148,8 @@ private fun ChatEmpty(state: ChatTabState, onHome: () -> Unit, onSettings: () ->
 }
 
 /**
- * Chat with the computer's AI providers, like the PC's chat panel: your messages on the right, the
- * answers as plain light Markdown, three dots while waiting, the model above the box. The computer's
- * API key is used on the computer; this screen only ever has text.
+ * Chat with the computer's AI providers, designed with an Apple iMessage conversational aesthetic:
+ * your messages on the right, responses formatted in clean Markdown on the left, and smooth typing pulse.
  */
 @Composable
 fun ChatScreen(model: AppModel, onHome: () -> Unit, onSettings: () -> Unit) {
@@ -167,8 +167,6 @@ fun ChatScreen(model: AppModel, onHome: () -> Unit, onSettings: () -> Unit) {
     }
 
     val tabState = model.chatTabState
-    // Text shared from another app waits for a chat that can take it: it goes in the box (never sent), or is dropped with a word if the
-    // computer does not offer chat. While the computer is not reachable yet it stays, for a couple of minutes.
     val sharedChatOff = stringResource(R.string.share_chat_off)
     LaunchedEffect(tabState, model.shareVersion) {
         when (tabState) {
@@ -177,7 +175,7 @@ fun ChatScreen(model: AppModel, onHome: () -> Unit, onSettings: () -> Unit) {
             else -> {}
         }
     }
-    // Nothing to chat with and nothing to read: say why, calmly, with the one thing to do about it.
+
     if (tabState != ChatTabState.READY && messages.isEmpty()) {
         ChatEmpty(tabState, onHome, onSettings)
         return
@@ -190,18 +188,29 @@ fun ChatScreen(model: AppModel, onHome: () -> Unit, onSettings: () -> Unit) {
                 if (messages.isNotEmpty()) {
                     Text(
                         stringResource(R.string.chat_clear),
-                        Modifier.heightIn(min = Spacing.MIN_TOUCH.dp).clickable(role = Role.Button) { confirmClear = true }.padding(horizontal = 12.dp, vertical = 14.dp),
-                        style = TypeScale.LABEL.style(tokens().textDim.c()), maxLines = 1,
+                        Modifier
+                            .heightIn(min = Spacing.MIN_TOUCH.dp)
+                            .clickable(role = Role.Button) { confirmClear = true }
+                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                        style = TypeScale.LABEL.style(tokens().textDim.c()).copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
                     )
                 }
             },
         )
-        Text(
-            stringResource(R.string.chat_note), Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-            style = TypeScale.SECONDARY.style(tokens().textDim.c()),
-        )
+
+        // API Key security note chip
+        Row(
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.chat_note),
+                style = TypeScale.SECONDARY.style(tokens().textDim.c()),
+            )
+        }
+
         if (!model.chatAvailable) {
-            // The conversation stays readable; the reason sits above it.
             Panel(Modifier.padding(vertical = 4.dp)) {
                 Column(Modifier.padding(Gutter), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(chatStateTitle(tabState)), style = TypeScale.HEADLINE.style(tokens().text.c()))
@@ -209,6 +218,7 @@ fun ChatScreen(model: AppModel, onHome: () -> Unit, onSettings: () -> Unit) {
                 }
             }
         }
+
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (messages.isEmpty()) {
                 Text(
@@ -216,11 +226,16 @@ fun ChatScreen(model: AppModel, onHome: () -> Unit, onSettings: () -> Unit) {
                     style = TypeScale.BODY.style(tokens().textDim.c()).copy(textAlign = TextAlign.Center),
                 )
             } else {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Gap)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     items(messages, key = { it.id }) { m -> Bubble(m) }
                 }
             }
         }
+
         Composer(
             model, text, refusal,
             onText = { text = it; refusal = null },
@@ -248,31 +263,34 @@ fun ChatScreen(model: AppModel, onHome: () -> Unit, onSettings: () -> Unit) {
 
 @Composable
 private fun Bubble(m: ChatMessage) {
+    val t = tokens()
     if (m.role == ChatRole.USER) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             SelectionContainer {
                 Text(
                     m.text,
                     Modifier.widthIn(max = 300.dp)
-                        .clip(RoundedCornerShape(18.dp, 18.dp, 6.dp, 18.dp))
-                        .background(tokens().panel2.c())
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    style = TypeScale.BODY.style(tokens().text.c()),
+                        .clip(RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp))
+                        .background(t.panel2.c())
+                        .border(1.dp, t.line.c(), RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp))
+                        .padding(horizontal = 16.dp, vertical = 11.dp),
+                    style = TypeScale.BODY.style(t.text.c()).copy(lineHeight = 22.sp),
                 )
             }
         }
         return
     }
+
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (m.text.isEmpty() && m.status == ChatStatus.STREAMING) TypingDots()
         else if (m.text.isNotEmpty()) SelectionContainer { MarkdownText(m.text) }
         if (m.status == ChatStatus.FAILED) {
-            Text(reasonText(m.reason), style = TypeScale.SECONDARY.style(tokens().danger.c()))
+            Text(reasonText(m.reason), style = TypeScale.SECONDARY.style(t.danger.c()))
         }
     }
 }
 
-/** The three dots of the PC's chat; they only move while this is on screen. */
+/** The three dots of the animated typing indicator. */
 @Composable
 private fun TypingDots() {
     val transition = rememberInfiniteTransition(label = "typing")
@@ -285,7 +303,7 @@ private fun TypingDots() {
             val on = phase.toInt() == i
             Box(
                 Modifier.size(8.dp).clip(CircleShape)
-                    .background(tokens().textDim.c().copy(alpha = if (on) 1f else 0.35f)),
+                    .background(tokens().textDim.c().copy(alpha = if (on) 1f else 0.3f)),
             )
         }
     }
@@ -307,8 +325,8 @@ private fun MarkdownText(text: String) {
                 }
                 is MdBlock.Code -> Text(
                     b.text,
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(code)
-                        .border(1.dp, t.line.c(), RoundedCornerShape(12.dp)).padding(12.dp),
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(code)
+                        .border(1.dp, t.line.c(), RoundedCornerShape(14.dp)).padding(14.dp),
                     style = TypeScale.MONO.style(t.text.c()).copy(fontFamily = FontFamily.Monospace),
                 )
             }
@@ -332,13 +350,14 @@ private fun Composer(model: AppModel, text: String, refusal: ChatSession.Refusal
     val limit = Protocol.CHAT_MAX_TEXT
     val length = text.trim().length
     val t = tokens()
+
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ModelChip(model)
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = text, onValueChange = { onText(it.take(limit + 200)) }, modifier = Modifier.weight(1f),
                 placeholder = { Text(stringResource(R.string.chat_placeholder), color = t.textFaint.c()) },
-                maxLines = 4, shape = RoundedCornerShape(26.dp), enabled = model.chatAvailable,
+                maxLines = 4, shape = RoundedCornerShape(24.dp), enabled = model.chatAvailable,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = t.panel.c(), unfocusedContainerColor = t.panel.c(), disabledContainerColor = t.panel.c(),
                     focusedBorderColor = t.textDim.c(), unfocusedBorderColor = t.line.c(), disabledBorderColor = t.line.c(),
@@ -351,7 +370,7 @@ private fun Composer(model: AppModel, text: String, refusal: ChatSession.Refusal
                 val canSend = model.chatAvailable && length in 1..limit
                 val send = stringResource(R.string.chat_send)
                 Box(
-                    Modifier.alpha(if (canSend) 1f else 0.4f).size(56.dp).clip(CircleShape).background(t.primaryButton.c())
+                    Modifier.alpha(if (canSend) 1f else 0.35f).size(56.dp).clip(CircleShape).background(t.primaryButton.c())
                         .clickable(enabled = model.chatAvailable && length in 1..limit, role = Role.Button, onClick = onSend)
                         .semantics { contentDescription = send },
                     contentAlignment = Alignment.Center,
@@ -372,7 +391,7 @@ private fun Composer(model: AppModel, text: String, refusal: ChatSession.Refusal
     }
 }
 
-/** The model above the box, like the PC's: tap to pick another of the ones the computer allows. */
+/** The model above the box: Apple-style capsule selector. */
 @Composable
 private fun ModelChip(model: AppModel) {
     var open by remember { mutableStateOf(false) }
@@ -382,10 +401,15 @@ private fun ModelChip(model: AppModel) {
     Box {
         Row(
             Modifier.heightIn(min = Spacing.MIN_TOUCH.dp).clip(CircleShape).background(t.panel2.c())
-                .clickable(enabled = models.size > 1, role = Role.Button) { open = true }.padding(horizontal = 14.dp),
+                .clickable(enabled = models.size > 1, role = Role.Button) { open = true }.padding(horizontal = 14.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.chat_model, current?.label ?: "—"), style = TypeScale.LABEL.style(t.text.c()), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                stringResource(R.string.chat_model, current?.label ?: "—"),
+                style = TypeScale.LABEL.style(t.text.c()).copy(fontWeight = FontWeight.Medium),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (models.size > 1) CoucouIcon(IconKind.CHEVRON, tint = t.textDim.c(), size = 16.dp, modifier = Modifier.rotate(90f), mirror = false)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

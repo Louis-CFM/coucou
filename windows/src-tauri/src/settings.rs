@@ -115,11 +115,25 @@ pub struct Settings {
     /// the screen wakes it). Kept as it comes, like `mochi_outfit`: the island
     /// reads what it doesn't know as "mochi".
     pub closed_island: String,
+    /// Smart notch behavior: full on desktop, tucked away over maximized apps.
+    pub smart_notch: bool,
+    pub visibility: Option<String>,
+    pub notch_style: Option<String>,
+    pub notch_scale: Option<f64>,
+    pub show_battery: Option<bool>,
+    pub show_battery_percentage: Option<bool>,
+    pub show_tab_chat: Option<bool>,
+    pub show_tab_shelf: Option<bool>,
+    pub show_tab_drop: Option<bool>,
+    pub show_tab_launch: Option<bool>,
     /// Settings → Agents → Antigravity → Approve commands from the notch: a shell command
     /// none of Antigravity's rules covers waits for Allow / Deny on the island
     /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
     /// what a webview sends back is ignored. The Mac's key is the same.
     pub agy_approvals_enabled: bool,
+    /// User-configured folder where files received via Coudrop are saved.
+    /// Empty string means the default (%USERPROFILE%\Downloads\Coudrop).
+    pub coudrop_download_dir: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -191,7 +205,18 @@ impl Default for Settings {
             phone_relay_url: String::new(),
             show_clock: false,
             closed_island: "mochi".into(),
+            smart_notch: true,
+            visibility: Some("smart".into()),
+            notch_style: Some("notch".into()),
+            notch_scale: Some(1.0),
+            show_battery: Some(true),
+            show_battery_percentage: Some(true),
+            show_tab_chat: Some(true),
+            show_tab_shelf: Some(true),
+            show_tab_drop: Some(true),
+            show_tab_launch: Some(true),
             agy_approvals_enabled: false,
+            coudrop_download_dir: String::new(),
         }
     }
 }
@@ -494,7 +519,18 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
   "closedIsland": "music",
-  "agyApprovalsEnabled": true
+  "smartNotch": false,
+  "visibility": "minimal",
+  "notchStyle": "island",
+  "notchScale": 1.2,
+  "showBattery": false,
+  "showBatteryPercentage": false,
+  "showTabChat": false,
+  "showTabShelf": false,
+  "showTabDrop": false,
+  "showTabLaunch": false,
+  "agyApprovalsEnabled": true,
+  "coudropDownloadDir": "D:\\Downloads\\Custom"
 }"##;
 
     fn custom() -> Value {
@@ -1017,7 +1053,18 @@ mod tests {
                 "phoneRelayUrl",
                 "showClock",
                 "closedIsland",
+                "smartNotch",
+                "visibility",
+                "notchStyle",
+                "notchScale",
+                "showBattery",
+                "showBatteryPercentage",
+                "showTabChat",
+                "showTabShelf",
+                "showTabDrop",
+                "showTabLaunch",
                 "agyApprovalsEnabled",
+                "coudropDownloadDir",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

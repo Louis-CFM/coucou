@@ -178,6 +178,19 @@ pub mod tests {
     use std::collections::HashMap;
     use std::sync::Mutex;
 
+    #[test]
+    fn check_lan_address() {
+        let addr = lan_address();
+        println!("LAN ADDRESS RESULT: {:?}", addr);
+        let s = std::net::UdpSocket::bind("0.0.0.0:0");
+        println!("Bind: {:?}", s);
+        if let Ok(s) = s {
+            println!("Connect 192.0.2.1:9: {:?}", s.connect("192.0.2.1:9"));
+            println!("Connect 8.8.8.8:80: {:?}", s.connect("8.8.8.8:80"));
+            println!("Local addr: {:?}", s.local_addr());
+        }
+    }
+
     #[derive(Default)]
     pub struct MemStore(pub Mutex<HashMap<String, String>>);
     impl SecretStore for MemStore {

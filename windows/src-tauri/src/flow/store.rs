@@ -19,6 +19,9 @@ pub struct Entry {
     /// Milliseconds since 1970.
     pub date: u64,
     pub text: String,
+    /// What was heard from the microphone before AI cleanup/rewrite.
+    #[serde(default)]
+    pub heard: Option<String>,
     /// The app it was pasted in ("Slack"), when known.
     #[serde(default)]
     pub app: Option<String>,
@@ -281,7 +284,12 @@ impl Store {
         self.history.first().map(|e| e.text.clone()).or_else(|| self.last_unkept.clone())
     }
 
+    #[allow(dead_code)]
     pub fn record(&mut self, text: &str, app: Option<&str>, seconds: f64, day: Day, now: u64) -> Option<Entry> {
+        self.record_full(text, None, app, seconds, day, now)
+    }
+
+    pub fn record_full(&mut self, text: &str, heard: Option<&str>, app: Option<&str>, seconds: f64, day: Day, now: u64) -> Option<Entry> {
         let count = text::word_count(text) as u64;
         if count == 0 {
             return None;
@@ -298,7 +306,15 @@ impl Store {
             self.last_unkept = Some(text.to_string());
             return None;
         }
-        let entry = Entry { id: new_id(), date: now, text: text.to_string(), app: app.map(String::from), words: count, seconds };
+        let entry = Entry {
+            id: new_id(),
+            date: now,
+            text: text.to_string(),
+            heard: heard.map(String::from),
+            app: app.map(String::from),
+            words: count,
+            seconds,
+        };
         self.history.insert(0, entry.clone());
         self.prune(now);
         self.save_history();

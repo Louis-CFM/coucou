@@ -115,7 +115,8 @@ impl Chat {
 /// has one worth using (identity.rs), and only claims web search where the
 /// provider runs it (Claude).
 pub fn system_prompt(web_search: bool) -> String {
-    let base = system_prompt_for(crate::identity::first_name(), web_search);
+    let name = crate::identity::first_name();
+    let base = system_prompt_for(name.as_deref(), web_search);
     // The chat's Mail switch is on for this turn: how to write a mail plan.
     if crate::mail::MAIL_TURN.load(std::sync::atomic::Ordering::Relaxed) {
         return base + crate::mail::plan::INSTRUCTIONS;

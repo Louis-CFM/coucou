@@ -8,6 +8,7 @@ import { FlowBridge, type AppStyle, type Style } from "../../core/flow";
 import type { HubContext } from "../shell";
 import { pageSave } from "../save";
 import { card, divider, iconButton, label, row, select, toggle } from "../ui";
+import { dropdown } from "../../views/dropdown";
 
 export function styleOptions(): [Style, string][] {
   return [["verbatim", t("As said")], ["natural", t("Natural")], ["polished", t("Polished")]];
@@ -60,25 +61,69 @@ export async function stylesPage(page: HTMLElement, ctx: HubContext) {
   stylesCard.dataset.anchor = "flow.styles";
   page.append(stylesCard);
 
-  // "Add an app": the apps with a window right now.
-  const add = h("select", { class: "hub-select" }) as HTMLSelectElement;
+  // "Add an app": the apps with a window right now, using Liquid Glass dropdown.
+  const selectFallback = h("select", {
+    class: "hub-select",
+    style: "display:none;position:absolute;opacity:0;pointer-events:none",
+    tabIndex: -1,
+    "aria-hidden": "true",
+  }) as HTMLSelectElement;
+
+  const addBtn = h("button", {
+    class: "dd-trigger hub-select",
+    type: "button",
+  },
+    h("span", { class: "dd-trigger-text", text: `+ ${t("Add an app")}` }),
+    selectFallback,
+  ) as HTMLButtonElement;
+
+  const chevron = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  chevron.setAttribute("viewBox", "0 0 24 24");
+  chevron.setAttribute("width", "12");
+  chevron.setAttribute("height", "12");
+  chevron.setAttribute("fill", "none");
+  chevron.setAttribute("stroke", "currentColor");
+  chevron.setAttribute("stroke-width", "2.5");
+  chevron.setAttribute("stroke-linecap", "round");
+  const cp = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  cp.setAttribute("d", "M6 9l6 6 6-6");
+  chevron.append(cp);
+  addBtn.append(chevron);
+
   const fillAdd = async () => {
-    clear(add);
-    add.append(h("option", { value: "", text: `+ ${t("Add an app")}` }));
+    while (selectFallback.firstChild) selectFallback.removeChild(selectFallback.firstChild);
+    selectFallback.append(h("option", { value: "", text: `+ ${t("Add an app")}` }));
     const running = ((await FlowBridge.runningApps()) ?? []).filter((a) => !styles.some((s) => s.id === a.id));
-    if (running.length === 0) add.append(h("option", { value: "-", text: t("No other open app"), disabled: true }));
-    for (const a of running) add.append(h("option", { value: `${a.id}\n${a.name}`, text: a.name }));
-    add.value = "";
+    if (running.length === 0) selectFallback.append(h("option", { value: "-", text: t("No other open app"), disabled: true }));
+    for (const a of running) selectFallback.append(h("option", { value: `${a.id}\n${a.name}`, text: a.name }));
+    selectFallback.value = "";
   };
-  add.addEventListener("focus", () => void fillAdd());
-  add.addEventListener("change", async () => {
-    const [id, name] = add.value.split("\n");
+
+  selectFallback.addEventListener("change", async () => {
+    const [id, name] = selectFallback.value.split("\n");
     if (!id || id === "-") return;
     await save([...styles, { id, name: name ?? id, style: ctx.status.prefs.defaultStyle }]);
     void fillAdd();
   });
   void fillAdd();
-  page.append(h("div", { class: "hub-row" }, label(t("Style per app")), h("span", { class: "spacer", style: "flex:1" }), add));
+
+  addBtn.addEventListener("click", async () => {
+    await fillAdd();
+    const running = ((await FlowBridge.runningApps()) ?? []).filter((a) => !styles.some((s) => s.id === a.id));
+    const entries = running.length === 0
+      ? [{ label: t("No other open app"), disabled: true, onClick: () => {} }]
+      : running.map((a) => ({
+          label: a.name,
+          onClick: async () => {
+            await save([...styles, { id: a.id, name: a.name ?? a.id, style: ctx.status.prefs.defaultStyle }]);
+            void fillAdd();
+          },
+        }));
+    const menu = dropdown(entries);
+    menu.open(addBtn);
+  });
+
+  page.append(h("div", { class: "hub-row" }, label(t("Style per app")), h("span", { class: "spacer", style: "flex:1" }), addBtn));
   page.append(card(perApp));
   drawApps();
 }

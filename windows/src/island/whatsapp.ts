@@ -6,6 +6,7 @@
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { GlobalNotifications } from "../core/notifications";
 import { WHATSAPP_ID, WhatsApp, type WaIslandView } from "../core/whatsapp";
 import type { BotEmoteName } from "../core/layout";
 
@@ -63,6 +64,7 @@ export function handlePillEvent(island: WhatsAppHost, e: WaPillEvent, now = perf
         island.emote("happy");
         Sound.play("pop");
       }
+      GlobalNotifications.push({ app: "WhatsApp", title: e.name, color: "#25D366" });
       island.reveal();
       if (resetTimer != null) window.clearTimeout(resetTimer);
       resetTimer = window.setTimeout(() => {

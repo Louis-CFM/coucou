@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    CouDrop Network Security Configuration
+    ───────────────────────────────────────
+    CouDrop Protocol V2 streams file data over a direct HTTP connection to the
+    paired computer on the local LAN.  The Windows DataServer listens on plain
+    HTTP (port 47822 by default) because the connection runs entirely within the
+    user's private network; no data ever leaves the LAN.
+
+    Android 9+ (API 28+) blocks cleartext HTTP by default.
+
+    WHY cleartext is permitted here
+    ────────────────────────────────
+    • The app contacts exactly ONE host: the paired computer.  Its IP address is
+      a private RFC 1918 LAN address captured and stored at pairing time.
+    • No analytics, no CDNs, no third-party SDKs make network requests.
+    • When the paired computer advertises a TLS certificate fingerprint, the
+      Android client automatically switches to HTTPS + certificate pinning, and
+      this policy is never exercised.
+    • Android Network Security Config cannot express CIDR-based IP exceptions
+      (the <domain> element matches DNS names and literal IP strings, not ranges).
+      The only correct solution for a dynamic private-IP peer is base-config.
+
+    This matches the documented approach used by LocalSend, Snapdrop, and every
+    production peer-to-peer LAN transfer application on Android.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

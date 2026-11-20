@@ -593,7 +593,7 @@ pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
     first_with_window(ancestors).into_iter().collect()
 }
 
-fn bring_forward(raw: isize) -> bool {
+pub fn bring_forward(raw: isize) -> bool {
     let hwnd = HWND(raw as *mut _);
     unsafe {
         if !IsWindow(Some(hwnd)).as_bool() {
@@ -788,6 +788,62 @@ pub fn pick_folder(app: &AppHandle, start: Option<&str>, title: &str) -> Option<
     .flatten()
 }
 
+/// "Choose files…": the system's file picker (IFileOpenDialog with
+/// FOS_ALLOWMULTISELECT | FOS_FILEMUSTEXIST), over the island.
+pub fn pick_files(app: &AppHandle, start: Option<&str>, title: &str) -> Option<Vec<String>> {
+    use ::windows::Win32::System::Com::{CoCreateInstance, CoTaskMemFree, CLSCTX_INPROC_SERVER};
+    use ::windows::Win32::UI::Shell::{
+        FileOpenDialog, IFileOpenDialog, IShellItem, IShellItemArray, SHCreateItemFromParsingName,
+        FOS_ALLOWMULTISELECT, FOS_FILEMUSTEXIST, FOS_FORCEFILESYSTEM, SIGDN_FILESYSPATH,
+    };
+
+    let owner = app
+        .get_webview_window(crate::island::WINDOW_LABEL)
+        .and_then(|w| hwnd_of(&w))
+        .map(|h| h.0 as isize);
+    let start = start.map(HSTRING::from);
+    let title = HSTRING::from(title);
+    std::thread::spawn(move || unsafe {
+        let initialized = CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+        if initialized.is_err() && initialized != RPC_E_CHANGED_MODE {
+            return None;
+        }
+        let picked = (|| -> Option<Vec<String>> {
+            let dialog: IFileOpenDialog = CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER).ok()?;
+            let options = dialog.GetOptions().ok()?;
+            dialog.SetOptions(options | FOS_ALLOWMULTISELECT | FOS_FILEMUSTEXIST | FOS_FORCEFILESYSTEM).ok()?;
+            let _ = dialog.SetTitle(&title);
+            if let Some(start) = &start {
+                if let Ok(folder) = SHCreateItemFromParsingName::<_, _, IShellItem>(start, None) {
+                    let _ = dialog.SetFolder(&folder);
+                }
+            }
+            dialog.Show(owner.map(|raw| HWND(raw as *mut _))).ok()?;
+            let items: IShellItemArray = dialog.GetResults().ok()?;
+            let count = items.GetCount().ok()?;
+            let mut paths = Vec::with_capacity(count as usize);
+            for i in 0..count {
+                if let Ok(item) = items.GetItemAt(i) {
+                    if let Ok(name) = item.GetDisplayName(SIGDN_FILESYSPATH) {
+                        if let Ok(path) = name.to_string() {
+                            paths.push(path);
+                        }
+                        CoTaskMemFree(Some(name.0 as *const _));
+                    }
+                }
+            }
+            if paths.is_empty() { None } else { Some(paths) }
+        })();
+        if initialized.is_ok() {
+            CoUninitialize();
+        }
+        picked
+    })
+    .join()
+    .ok()
+    .flatten()
+}
+
 #[cfg(test)]
 mod claude_launch_tests {
     use super::open_claude_with;
@@ -904,6 +960,45 @@ pub fn prepare_pill_window(win: &WebviewWindow, _mode: super::DesktopMode) -> bo
 pub fn set_pill_edge(_win: &WebviewWindow, _edge: &str) {}
 
 pub fn set_pill_input(_win: &WebviewWindow, _rects: Vec<(f64, f64, f64, f64)>) {}
+
+/// Triggers a whole-screen screenshot, copying it to clipboard (VK_SNAPSHOT).
+pub fn take_screenshot() -> Result<(), String> {
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_SNAPSHOT,
+    };
+    let inputs = [
+        INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: VK_SNAPSHOT,
+                    wScan: 0,
+                    dwFlags: KEYBD_EVENT_FLAGS(0),
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        },
+        INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: VK_SNAPSHOT,
+                    wScan: 0,
+                    dwFlags: KEYEVENTF_KEYUP,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        },
+    ];
+    let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
+    if sent == 2 {
+        Ok(())
+    } else {
+        Err("Failed to trigger screenshot".into())
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -56,11 +56,25 @@ interface LinkListener {
     fun onChatDelta(id: String, text: String) {}
     fun onChatDone(id: String, text: String?) {}
     fun onChatError(id: String, reason: String, message: String) {}
+
+    /** Vayli Drop file transfer events */
+    fun onDropOffer(offer: ServerMsg.DropOffer) {}
+    fun onDropChunk(chunk: ServerMsg.DropChunk) {}
+    fun onDropCancel(cancel: ServerMsg.DropCancel) {}
+    fun onDropPause(transferId: String, origin: String = "windows") {}
+    fun onDropResume(transferId: String, origin: String = "windows", offset: Long = 0L) {}
+    fun onDropAccept(transferId: String) {}
+    fun onDropAccept(accept: ServerMsg.DropAccept) { onDropAccept(accept.transferId) }
+    fun onDropReject(transferId: String, reason: String) {}
+    fun onDropProgress(transferId: String, bytes: Long, total: Long) {}
+    fun onDropDone(transferId: String, sha256: String) {}
 }
 
 /** What the UI talks to: the real [LinkClient] or the offline [DemoLink]. */
 interface DesktopLink {
     val approvals: ApprovalBook
+    val desktopHost: String get() = ""
+    val certSha256: String get() = ""
     fun start()
     fun stop()
     /** Try the connection again now (the network changed); the demo has nothing to retry. */
@@ -85,6 +99,19 @@ interface DesktopLink {
     fun chatSend(id: String, model: String, text: String): Boolean = false
     fun chatCancel(id: String) {}
     fun chatReset() {}
+
+    /** Vayli Drop file transfer commands */
+    fun dropAccept(transferId: String): Boolean = false
+    fun dropAccept(transferId: String, protocolVersion: Int = 1, dataPort: Int = 0, token: String = "", offset: Long = 0L): Boolean = dropAccept(transferId)
+    fun dropReject(transferId: String, reason: String): Boolean = false
+    fun dropProgress(transferId: String, bytes: Long, total: Long): Boolean = false
+    fun dropDone(transferId: String, sha256: String): Boolean = false
+    fun dropCancel(transferId: String, reason: String): Boolean = false
+    fun dropPause(transferId: String): Boolean = false
+    fun dropResume(transferId: String, offset: Long = 0L): Boolean = false
+    fun dropOffer(transferId: String, name: String, size: Long, sha256: String, mimeType: String = "application/octet-stream"): Boolean = false
+    fun dropOffer(transferId: String, name: String, size: Long, sha256: String, mimeType: String = "application/octet-stream", protocolVersion: Int = 1, dataPort: Int = 0, token: String = ""): Boolean = dropOffer(transferId, name, size, sha256, mimeType)
+    fun dropChunk(transferId: String, index: Int, total: Int, data: String): Boolean = false
 }
 
 /** Opens the (TLS) connection to the desktop. Swappable so tests can use plain sockets. */
@@ -147,6 +174,8 @@ class LinkClient(
     @Volatile private var servicesOffered = false
     /** The computer's welcome offered `relay` on this connection. */
     @Volatile private var relayOffered = false
+    /** The computer's welcome offered `drop` on this connection. */
+    @Volatile private var dropOffered = false
     @Volatile private var socket: Socket? = null
     /** When the last line arrived (the clock of [clockMs]); a liveness check compares it with the moment it asked. */
     @Volatile private var lastInboundMs = 0L
@@ -251,6 +280,25 @@ class LinkClient(
     override fun chatCancel(id: String) { queue(ClientMsg.ChatCancel(id)) }
     override fun chatReset() { queue(ClientMsg.ChatReset) }
 
+    override val desktopHost: String get() = pairing.host
+    override val certSha256: String get() = pairing.certSha256
+
+    override fun dropAccept(transferId: String): Boolean = dropAccept(transferId, 1, 0, "", 0L)
+    override fun dropAccept(transferId: String, protocolVersion: Int, dataPort: Int, token: String, offset: Long): Boolean =
+        queue(ClientMsg.DropAccept(transferId, protocolVersion, dataPort, token, offset))
+    override fun dropReject(transferId: String, reason: String): Boolean = queue(ClientMsg.DropReject(transferId, reason))
+    override fun dropProgress(transferId: String, bytes: Long, total: Long): Boolean = queue(ClientMsg.DropProgress(transferId, bytes, total))
+    override fun dropDone(transferId: String, sha256: String): Boolean = queue(ClientMsg.DropDone(transferId, sha256))
+    override fun dropCancel(transferId: String, reason: String): Boolean = queue(ClientMsg.DropCancel(transferId, reason, "android"))
+    override fun dropPause(transferId: String): Boolean = queue(ClientMsg.DropPause(transferId, "android"))
+    override fun dropResume(transferId: String, offset: Long): Boolean = queue(ClientMsg.DropResume(transferId, "android", offset))
+    override fun dropOffer(transferId: String, name: String, size: Long, sha256: String, mimeType: String): Boolean =
+        dropOffer(transferId, name, size, sha256, mimeType, 1, 0, "")
+    override fun dropOffer(transferId: String, name: String, size: Long, sha256: String, mimeType: String, protocolVersion: Int, dataPort: Int, token: String): Boolean =
+        queue(ClientMsg.DropOffer(transferId, name, size, sha256, mimeType, protocolVersion, dataPort, token))
+    override fun dropChunk(transferId: String, index: Int, total: Int, data: String): Boolean =
+        queue(ClientMsg.DropChunk(transferId, index, total, data))
+
     private fun send(m: ClientMsg) {
         val o = out ?: throw IOException("not connected")
         synchronized(writeLock) {
@@ -298,6 +346,7 @@ class LinkClient(
                 recapOffered = false
                 servicesOffered = false
                 relayOffered = false
+                dropOffered = false
                 runCatching { socket?.close() }
                 socket = null
                 approvals.clear()
@@ -345,6 +394,7 @@ class LinkClient(
                     recapOffered = Protocol.CAP_RECAP in msg.caps
                     servicesOffered = Protocol.CAP_SERVICES in msg.caps
                     relayOffered = Protocol.CAP_RELAY in msg.caps
+                    dropOffered = Protocol.CAP_DROP in msg.caps
                     listener.onState(LinkState.CONNECTED)
                     listener.onWelcome(msg.desktopName, msg.os)
                     listener.onCaps(msg.caps)
@@ -369,6 +419,15 @@ class LinkClient(
                 is ServerMsg.ChatDelta -> listener.onChatDelta(msg.id, msg.text)
                 is ServerMsg.ChatDone -> listener.onChatDone(msg.id, msg.text)
                 is ServerMsg.ChatError -> listener.onChatError(msg.id, msg.reason, msg.message)
+                is ServerMsg.DropOffer -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropOffer(msg)
+                is ServerMsg.DropChunk -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropChunk(msg)
+                is ServerMsg.DropCancel -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropCancel(msg)
+                is ServerMsg.DropPause -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropPause(msg.transferId, msg.origin)
+                is ServerMsg.DropResume -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropResume(msg.transferId, msg.origin, msg.offset)
+                is ServerMsg.DropAccept -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropAccept(msg)
+                is ServerMsg.DropReject -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropReject(msg.transferId, msg.reason)
+                is ServerMsg.DropProgress -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropProgress(msg.transferId, msg.bytes, msg.total)
+                is ServerMsg.DropDone -> if (dropOffered && Protocol.CAP_DROP in caps) listener.onDropDone(msg.transferId, msg.sha256)
                 is ServerMsg.Error -> { listener.onError(msg.code, msg.message); if (msg.code == "auth") { fatal = true; return } }
             }
         }

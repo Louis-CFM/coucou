@@ -110,4 +110,3 @@ test("n8n card: shows workflow from initial seed and after 60s auto-clear", () =
     State.focusId = prevFocus;
   }
 });
-

@@ -338,6 +338,32 @@ pub fn pick_folder(_app: &AppHandle, start: Option<&str>, title: &str) -> Option
     None
 }
 
+pub fn pick_files(_app: &AppHandle, start: Option<&str>, title: &str) -> Option<Vec<String>> {
+    let start = start.map(str::to_string).unwrap_or_else(|| home_dir().to_string_lossy().to_string());
+    let pickers: [(&str, Vec<String>); 2] = [
+        (
+            "zenity",
+            vec!["--file-selection".into(), "--multiple".into(), "--separator=\n".into(), format!("--title={title}"), format!("--filename={start}/")],
+        ),
+        ("kdialog", vec!["--title".into(), title.into(), "--multiple".into(), "--separate-output".into(), "--getopenfilename".into(), start.clone()]),
+    ];
+    for (name, args) in pickers {
+        let Some(program) = find_on_path(name) else { continue };
+        let mut cmd = Command::new(program);
+        cmd.args(&args);
+        let out = no_console(&mut cmd).output().ok()?;
+        if !out.status.success() {
+            continue;
+        }
+        let text = String::from_utf8_lossy(&out.stdout);
+        let lines: Vec<String> = text.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        if !lines.is_empty() {
+            return Some(lines);
+        }
+    }
+    None
+}
+
 /// Our own `which`: the first executable file named `stem` on $PATH.
 pub fn find_on_path(stem: &str) -> Option<PathBuf> {
     let dirs = std::env::var_os("PATH")?;
@@ -1106,6 +1132,10 @@ fn apply_rects(gw: &impl IsA<gtk::Widget>, rects: &[(f64, f64, f64, f64)]) {
         ));
     }
     gdk_window.input_shape_combine_region(&region, 0, 0);
+}
+
+pub fn take_screenshot() -> Result<(), String> {
+    Ok(())
 }
 
 #[cfg(test)]

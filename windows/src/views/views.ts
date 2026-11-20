@@ -5,7 +5,15 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import {
+  State,
+  type AgentTask,
+  resolveShowTabChat,
+  resolveShowTabShelf,
+  resolveShowTabDrop,
+  resolveShowTabCoudrop,
+  resolveShowTabLaunch,
+} from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -24,12 +32,16 @@ import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
 import { buildWhatsNew } from "./whatsnew";
 import { buildLaunch } from "./launch";
-import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
+import { buildFileShelf } from "./fileshelf";
+import { buildCoudrop } from "./coudrop";
+import { buildSpotifyCard } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { MAIL_ID } from "../core/mail";
 import { buildMailCard } from "./mail";
+import { buildCoucoudoroCard, COUCOUDORO_ID } from "./coucoudoro";
+import { CoucoudoroController } from "../core/coucoudoro";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
@@ -54,7 +66,7 @@ export interface ViewActions {
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
-  openSettingsWindow(): void;
+  openSettingsWindow(page?: string): void;
   blip(): void;
   /** Wardrobe click: keeps the outfit ("auto" and "none" included). */
   chooseOutfit(selection: OutfitSelection): void;
@@ -77,6 +89,10 @@ export interface ViewHost {
   tick?(nowMs: number): boolean | void;
   /** Ctrl+O / Ctrl+E while the view is on screen (island/shortcuts.ts). */
   command?(command: ViewCommand): void;
+  /** Window-level or native file drop handler when this view is active. */
+  onFileDrop?(paths: string[]): boolean | void;
+  /** Window-level or native file drag hover state when this view is active. */
+  onDragOver?(isOver: boolean): void;
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────
@@ -122,6 +138,8 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 17));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubbleRound, 19));
+  const tabShelf = h("button", { class: "tab", title: "File Shelf", onclick: () => go("fileshelf") }, svg(ICONS.folder, 17));
+  const tabCoudrop = h("button", { class: "tab coudrop-tab", title: "Coudrop", onclick: () => go("coudrop") }, svg(ICONS.phoneArrowUp, 16));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 16));
   // A new Claude Code session, in a project, from here (Mac: the terminal tab).
   const tabLaunch = h(
@@ -141,6 +159,15 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
   let codexShown = false;
 
+  // Active integration Mochi pills, placed directly to the left of the Settings gear.
+  const mochiPills = h("div", { class: "header-mochi-pills" });
+  interface HeaderPillEntry {
+    pill: HTMLElement;
+    canvasSlot: HTMLElement;
+    badgeWrap: HTMLElement;
+  }
+  const pillMap = new Map<string, HeaderPillEntry>();
+
   function go(v: IslandViewName) {
     actions.blip();
     actions.setView(v);
@@ -149,8 +176,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, closeBtn),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabShelf, tabCoudrop, tabDrop, tabLaunch),
+    h("div", { class: "header-actions" }, planPills, mochiPills, gearBtn, soundBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -158,8 +185,35 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
+
+      const showChat = resolveShowTabChat(State.settings);
+      const showShelf = resolveShowTabShelf(State.settings);
+      const showCoudrop = resolveShowTabCoudrop(State.settings);
+      const showDrop = resolveShowTabDrop(State.settings);
+      const showLaunch = resolveShowTabLaunch(State.settings);
+
+      tabChat.style.display = showChat ? "" : "none";
+      tabShelf.style.display = showShelf ? "" : "none";
+      tabCoudrop.style.display = showCoudrop ? "" : "none";
+      tabDrop.style.display = showDrop ? "" : "none";
+      tabLaunch.style.display = showLaunch ? "" : "none";
+
+      // If user disables a tab they are currently viewing, gracefully fall back to overview
+      const isCurrentTabHidden =
+        (v === "prompt" && !showChat) ||
+        (v === "fileshelf" && !showShelf) ||
+        (v === "coudrop" && !showCoudrop) ||
+        (v === "upload" && !showDrop) ||
+        (v === "launch" && !showLaunch);
+
+      if (isCurrentTabHidden) {
+        actions.setView("overview");
+      }
+
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
+      tabShelf.classList.toggle("on", v === "fileshelf");
+      tabCoudrop.classList.toggle("on", v === "coudrop");
       tabDrop.classList.toggle("on", v === "upload");
       tabLaunch.classList.toggle("on", v === "launch");
       gearBtn.classList.toggle("on", v === "settings");
@@ -169,9 +223,89 @@ export function buildHeader(actions: ViewActions): ViewHost {
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerLine : ICONS.speakerSlashLine, 18, { stroke: 1.6 }));
       closeBtn.style.display = State.pendingApproval ? "none" : "";
       syncPlanPills();
-      el.style.opacity = v === "confused" ? "0" : "1";
+      syncMochiPills();
+      const live = State.mode === "expanded";
+      el.style.display = live ? "flex" : "none";
+      el.style.visibility = live ? "visible" : "hidden";
+      el.style.opacity = (!live || v === "confused") ? "0" : "1";
+      el.style.pointerEvents = live ? "auto" : "none";
     },
   };
+
+  function syncMochiPills() {
+    const tasks = State.tasks;
+
+    // Prune entries that no longer exist in State.tasks
+    for (const [id, entry] of pillMap) {
+      if (!tasks.some((t) => t.id === id)) {
+        entry.pill.remove();
+        pillMap.delete(id);
+      }
+    }
+
+    // Add or update pills for all active tasks (showing only the cute mini Mochi bot)
+    for (const t of tasks) {
+      let entry = pillMap.get(t.id);
+      if (!entry) {
+        const bot = createMiniBot(t, 18, t.id === SPOTIFY_ID ? () => State.spotifyPlaying : undefined);
+        const badgeWrap = h("span", { class: "header-mochi-badge-wrap" });
+        const pill = h(
+          "div",
+          {
+            class: "header-mochi-pill",
+            title: t.name,
+            onclick: (e: Event) => {
+              e.stopPropagation();
+              actions.blip();
+              actions.setFocus(t.id);
+              if (State.view !== "overview") actions.setView("overview");
+            },
+          },
+          bot,
+          badgeWrap,
+        );
+        entry = { pill, canvasSlot: bot, badgeWrap };
+        pillMap.set(t.id, entry);
+      }
+
+      // Re-order in DOM to match State.tasks
+      mochiPills.append(entry.pill);
+
+      // Active focus state & styling
+      const isFocused = t.id === State.focusId;
+      entry.pill.classList.toggle("active", isFocused);
+      entry.pill.title = t.id === COUCOUDORO_ID && CoucoudoroController.shared.snapshot.phase !== "idle"
+        ? `${t.name} (${CoucoudoroController.shared.clock()})`
+        : t.name;
+
+      if (isFocused) {
+        entry.pill.style.borderColor = `${t.color}cc`;
+        entry.pill.style.background = `${t.color}2e`;
+        entry.pill.style.boxShadow = `0 0 10px ${t.color}4d`;
+      } else {
+        entry.pill.style.borderColor = `${t.color}33`;
+        entry.pill.style.background = "rgba(255, 255, 255, 0.04)";
+        entry.pill.style.boxShadow = "";
+      }
+
+      // Badge indicator (approval, finished, error)
+      const currentBadge = t.pillBadge ?? "";
+      if (entry.pill.dataset.badge !== currentBadge) {
+        entry.pill.dataset.badge = currentBadge;
+        clear(entry.badgeWrap);
+        if (t.pillBadge) {
+          const colors = { approval: "#F5A524", finished: "#22C55E", error: "#F4505E" } as const;
+          const icons = { approval: ICONS.bang, finished: ICONS.check, error: ICONS.xmark } as const;
+          const inner = h("i", { style: `background:${colors[t.pillBadge]}` }, svg(icons[t.pillBadge], 5, { stroke: t.pillBadge === "finished" ? 3 : 0 }));
+          const badge = h("div", { class: "pill-badge" }, inner);
+          badge.style.boxShadow = `0 0 4px ${colors[t.pillBadge]}99`;
+          entry.badgeWrap.append(badge);
+        }
+      }
+    }
+
+    pruneMiniBots();
+  }
 
   function syncPlanPills() {
     const claudeOn = claudePillVisible();
@@ -214,33 +348,29 @@ function buildOverview(actions: ViewActions): ViewHost {
     svg(ICONS.arrowUpRight, 12),
   );
   const left = card(null, leftBody, jump);
-  const pills = h("div", { class: "pills" });
-  const right = card(null, pills);
   // Opened from a plan pill in the header: stands in for the left card.
   const plan = new PlanCard();
   let planTimer: number | null = null;
-  // Spotify's card and pill are kept and updated in place: the progress bar
+  // Spotify's card is kept and updated in place: the progress bar
   // runs on, and a slider being dragged must not be rebuilt under the pointer.
   const spotifyCard = buildSpotifyCard();
-  let spotifyPill: SpotifyPillHost | null = null;
   // WhatsApp's card too: its reply field keeps the draft and the keyboard while messages arrive.
   // Mail's card too (classic Outlook): the search field keeps its text and the keyboard.
   const mailCard = buildMailCard({ keyboard: (on) => actions.keyboard(on) });
+  const coucoudoroCard = buildCoucoudoroCard();
   const whatsappCard = buildWhatsAppCard({
-    openSettings: () => actions.openSettingsWindow(),
+    openSettings: () => actions.openSettingsWindow("integrations"),
     keyboard: (on) => actions.keyboard(on),
     holdOpen: (on) => actions.holdOpen(on),
   });
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
-    h("div", { class: "right" }, right),
   );
 
-  let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "mail" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "mail" | "coucoudoro" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -276,7 +406,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       cardKey = "";
       State.notify();
     },
-    openSettings: () => actions.openSettingsWindow(),
+    openSettings: () => actions.openSettingsWindow("integrations"),
   };
 
   /** The countdowns move every 30 s while a card is open, and only then. */
@@ -414,6 +544,15 @@ function buildOverview(actions: ViewActions): ViewHost {
           cardKey = "";
         }
         whatsappCard.sync();
+      } else if (task && task.id === COUCOUDORO_ID) {
+        // Coucoudoro timer card: work, rest, pause and stop (#1055).
+        if (mode !== "coucoudoro") {
+          clear(leftBody);
+          leftBody.append(coucoudoroCard.el);
+          mode = "coucoudoro";
+          cardKey = "";
+        }
+        coucoudoroCard.sync();
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
@@ -429,7 +568,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
-      jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
+      jump.style.display = detailOpen || mode === "plan" || mode === "diff" || mode === "coucoudoro" || mode === "spotify" ? "none" : "";
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];
@@ -437,24 +576,6 @@ function buildOverview(actions: ViewActions): ViewHost {
       if (State.cardSelection != null && State.cardSelection >= rows.length) State.cardSelection = null;
       highlightRow(rows, State.cardSelection, State.cardSelection !== shownSelection);
       shownSelection = State.cardSelection;
-
-      const others = State.otherTasks.slice(0, 4);
-      const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
-      if (pillKey !== pillIds) {
-        pillIds = pillKey;
-        clear(pills);
-        spotifyPill = null;
-        for (const t of others) {
-          if (t.id === SPOTIFY_ID) {
-            spotifyPill = buildSpotifyPill(t, () => actions.setFocus(t.id));
-            pills.append(spotifyPill.el);
-          } else {
-            pills.append(buildPill(t, actions));
-          }
-        }
-        pruneMiniBots();
-      }
-      spotifyPill?.sync();
     },
   };
 }
@@ -471,48 +592,6 @@ export function hasSessionTicker(task: AgentTask): boolean {
   const isSession = category === "workspace" || category === "agent" ||
     (category == null && task.id.startsWith("agent_"));
   return isSession && (task.state !== "idle" || task.steps.length > 0);
-}
-
-function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? pillDefinition(task.id)!.name : task.name;
-  const canvas = createMiniBot(task, 24);
-  const pill = h(
-    "div",
-    { class: "pill", onclick: () => actions.setFocus(task.id) },
-    canvas,
-    h("span", { class: "lbl", text: label }),
-  );
-  pill.style.borderColor = `${task.color}24`;
-  pill.addEventListener("mouseenter", () => {
-    pill.style.background = `${task.color}2e`;
-    pill.style.borderColor = `${task.color}8c`;
-    pill.style.boxShadow = `0 2px 10px ${task.color}59`;
-    (pill.querySelector(".lbl") as HTMLElement).style.color = lighten(task.color, 0.3);
-  });
-  pill.addEventListener("mouseleave", () => {
-    pill.style.background = "";
-    pill.style.borderColor = `${task.color}24`;
-    pill.style.boxShadow = "";
-    (pill.querySelector(".lbl") as HTMLElement).style.color = "";
-  });
-
-  if (task.pillBadge) {
-    const colors = { approval: "#F5A524", finished: "#22C55E", error: "#F4505E" } as const;
-    const icons = { approval: ICONS.bang, finished: ICONS.check, error: ICONS.xmark } as const;
-    const inner = h("i", { style: `background:${colors[task.pillBadge]}` }, svg(icons[task.pillBadge], 6, { stroke: task.pillBadge === "finished" ? 3 : 0 }));
-    const badge = h("div", { class: "pill-badge" }, inner);
-    badge.style.boxShadow = `0 0 4px ${colors[task.pillBadge]}99`;
-    pill.append(badge);
-  }
-  return pill;
-}
-
-function lighten(hex: string, amount: number): string {
-  const v = parseInt(hex.replace("#", ""), 16);
-  const c = [(v >> 16) & 255, (v >> 8) & 255, v & 255].map((x) =>
-    Math.min(255, Math.round(x + amount * 255)),
-  );
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
 // ── Empty ─────────────────────────────────────────────────────────────────────
@@ -793,8 +872,18 @@ function buildSettings(actions: ViewActions): ViewHost {
   const segButtons = [10, 15, 30].map((s) =>
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
-  const claudeBadge = h("span", { class: "status-badge" });
-  const apiBadge = h("span", { class: "status-badge" });
+  const claudeBadge = h("button", {
+    class: "status-badge link-btn",
+    style: "cursor:pointer;background:none;border:none;padding:0;color:inherit;font:inherit;display:inline-flex;align-items:center;gap:6px",
+    title: tl("Settings…"),
+    onclick: () => actions.openSettingsWindow("claude"),
+  });
+  const apiBadge = h("button", {
+    class: "status-badge link-btn",
+    style: "cursor:pointer;background:none;border:none;padding:0;color:inherit;font:inherit;display:inline-flex;align-items:center;gap:6px",
+    title: tl("Settings…"),
+    onclick: () => actions.openSettingsWindow("chat"),
+  });
 
   const rows = h(
     "div",
@@ -815,9 +904,9 @@ function buildSettings(actions: ViewActions): ViewHost {
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
-        style: "color:#8e939c;font-size:11.5px",
+        style: "color:#8e939c;font-size:11.5px;cursor:pointer",
         text: tl("Settings…"),
-        onclick: () => actions.openSettingsWindow(),
+        onclick: () => actions.openSettingsWindow("general"),
       }),
     ),
   );
@@ -840,7 +929,8 @@ function buildSettings(actions: ViewActions): ViewHost {
         h("span", { text: "Claude Code" }),
       );
       clear(apiBadge);
-      apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      const apiColor = s.model ? "#22C55E" : "#F4505E";
+      apiBadge.append(dot(apiColor, 6), h("span", { text: "API" }));
     },
   };
 }
@@ -882,6 +972,8 @@ export function buildViews(
   map.set("update", buildUpdate());
   map.set("whatsNew", buildWhatsNew());
   map.set("launch", buildLaunch(actions));
+  map.set("fileshelf", buildFileShelf(actions));
+  map.set("coudrop", buildCoudrop(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

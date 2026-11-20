@@ -13,22 +13,28 @@ import {
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { closedIsland } from "../core/closed";
 import type { UpdateStatus } from "../core/update";
-import { SOUND_NAMES } from "../core/sound";
+import { Sound, SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
-import { h, clear } from "../views/dom";
+import { h, clear, svg } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { claudeModelControl } from "./claude-models";
 import { agentsSection } from "./agents";
+import { appearanceSection } from "./appearance";
 import { phoneSection } from "./phone";
+import { coudropSettingsSection } from "./coudrop";
+import { GlobalWelcomeMessages } from "../core/welcome";
+import { CompanionMemory } from "../companion/memory";
 import { whatsappSection } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
+import { CoucoudoroController } from "../core/coucoudoro";
 import { updateRows, updatesListener } from "./updates";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
+import { dropdownSelect } from "../views/dropdown";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
 } from "../i18n/i18n";
@@ -44,7 +50,7 @@ let version = "";
 const windowRoot = document.getElementById("hub")!;
 /** Where the Notch page being shown draws its sections. */
 let root: HTMLElement = windowRoot;
-let hub: { redraw(): void; current(): PageId } | null = null;
+let hub: { redraw(): void; current(): PageId; show(page: PageId, targetAnchor?: string): Promise<void> } | null = null;
 
 async function save() {
   await Bridge.saveSettings(settings);
@@ -59,10 +65,13 @@ function pickColor(next: Record<string, string>) {
 // ── Reusable bits ─────────────────────────────────────────────────────────────
 
 function toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement {
-  const el = h("button", { class: on ? "switch on" : "switch", "aria-pressed": on });
+  const el = h("button", { class: on ? "switch on" : "switch", "aria-pressed": on, type: "button" });
   el.addEventListener("click", () => {
     const next = !el.classList.contains("on");
     el.classList.toggle("on", next);
+    el.setAttribute("aria-pressed", String(next));
+    Sound.resume();
+    Sound.play("tick");
     onChange(next);
   });
   return el;
@@ -269,7 +278,7 @@ function claudeSection(status: HookStatus): HTMLElement {
 const PLAN_SETTINGS_TEXT = {
   get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
   get claudeCli() { return t("The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app."); },
-  get showClaude() { return t("Show in notch"); },
+  get showClaude() { return t("Show Claude plan in the notch"); },
   get showClaudeCompact() { return t("Show in compact island"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
@@ -335,7 +344,7 @@ function planSection(status: HookStatus): HTMLElement {
       }),
       h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
-      h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaudeCompact }), swCompact),
+      h("div", { class: "row", style: "display: none !important;" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaudeCompact }), swCompact),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),
         statusDot(status.planRelayInstalled),
@@ -519,10 +528,9 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
  */
 function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   const slots = h("div", { class: "hint" });
-  const main = h("select", {}) as HTMLSelectElement;
-  for (const def of mainPillChoices()) main.append(h("option", { value: def.id, text: def.name }));
-  main.addEventListener("change", () => {
-    const next = chooseMainPill(settings, main.value);
+  const pillChoices: [string, string][] = mainPillChoices().map((def) => [def.id, def.name]);
+  const main = dropdownSelect(pillChoices, settings.mainPill, (chosenId) => {
+    const next = chooseMainPill(settings, chosenId);
     if (!next) return;
     settings.mainPill = next.mainPill;
     settings.activeIntegrations = next.activeIntegrations;
@@ -576,6 +584,10 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
       const pills = availablePills().filter((p) => p.category === cat.id);
       if (pills.length === 0) continue;
       groups.append(h("div", { class: "pill-group" }, h("h3", { text: t(cat.title) }), ...pills.map(row)));
+    }
+    const timerPills = availablePills().filter((p) => p.id === "integration_coucoudoro");
+    if (timerPills.length > 0) {
+      groups.append(h("div", { class: "pill-group" }, h("h3", { text: t("Services") }), ...timerPills.map(row)));
     }
   }
   declaredViews.push(draw);
@@ -897,6 +909,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Local countdown: work, then rest, on repeat, until you stop (#1055).
+  { id: "integration_coucoudoro", name: "Coucoudoro", color: "#0EA5E9", fields: [],
+    hint: N_("Work, then rest, on repeat, until you stop. Turn the Coucoudoro pill on to use it.") },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -975,6 +990,46 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
     }
+    if (def.id === "integration_coucoudoro") {
+      const ctrl = CoucoudoroController.shared;
+      ctrl.loadConfig();
+      const workInput = h("input", {
+        type: "number",
+        min: "1",
+        max: "60",
+        value: String(Math.round(ctrl.config.work / 60)),
+        style: "width:54px;padding:3px 6px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#fff;font-size:12px;text-align:center",
+      }) as HTMLInputElement;
+      const restInput = h("input", {
+        type: "number",
+        min: "1",
+        max: "60",
+        value: String(Math.round(ctrl.config.rest / 60)),
+        style: "width:54px;padding:3px 6px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#fff;font-size:12px;text-align:center",
+      }) as HTMLInputElement;
+      workInput.addEventListener("change", () => {
+        const val = Math.max(1, Math.min(60, parseInt(workInput.value, 10) || 25));
+        ctrl.config.work = val * 60;
+        workInput.value = String(val);
+        ctrl.saveConfig();
+      });
+      restInput.addEventListener("change", () => {
+        const val = Math.max(1, Math.min(60, parseInt(restInput.value, 10) || 5));
+        ctrl.config.rest = val * 60;
+        restInput.value = String(val);
+        ctrl.saveConfig();
+      });
+      rows.append(
+        h("div", { class: "row", style: "gap:8px;align-items:center;padding:2px 0" },
+          h("label", { style: "font-size:12px;color:rgba(255,255,255,0.8)", text: t("Work") }),
+          workInput,
+          h("span", { style: "font-size:11px;color:#8E939C", text: t("min") }),
+          h("label", { style: "font-size:12px;color:rgba(255,255,255,0.8);margin-left:10px", text: t("Rest") }),
+          restInput,
+          h("span", { style: "font-size:11px;color:#8E939C", text: t("min") }),
+        ),
+      );
+    }
 
     list.append(
       h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
@@ -1020,14 +1075,272 @@ function whatsappSections(): HTMLElement[] {
  * elsewhere (the island's own settings change sound, volume and auto-close).
  */
 let generalSync: (() => void) | null = null;
+let appearanceSync: (() => void) | null = null;
+
+function buildCompanionCareCard(): HTMLElement {
+  const card = h("div", {
+    class: "coudrop-group",
+    style: "margin: 8px 0;",
+  });
+
+  const previewBtn = h("button", {
+    class: "coudrop-mac-btn",
+    text: "Preview message",
+    onclick: () => {
+      GlobalWelcomeMessages.triggerPreview();
+    },
+  });
+
+  const headerRow = h(
+    "div",
+    { class: "coudrop-group-row", style: "background: rgba(255, 255, 255, 0.02);" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Companion & Care" }),
+      h("span", {
+        class: "coudrop-row-desc",
+        text: "Mochi shares heartwarming greetings, hydration reminders, posture check-ins, and circadian awareness in the Dynamic Island Notch.",
+      }),
+    ),
+    previewBtn,
+  );
+
+  const nameInput = h("input", {
+    type: "text",
+    value: GlobalWelcomeMessages.preferredName,
+    placeholder: GlobalWelcomeMessages.detectedGreetingName ? `e.g. ${GlobalWelcomeMessages.detectedGreetingName}` : "Your preferred name",
+    style: "width: 140px; font-family: var(--font-sub); font-size: 12px;",
+  }) as HTMLInputElement;
+
+  const descSpan = h("span", {
+    class: "coudrop-row-desc",
+    text: GlobalWelcomeMessages.detectedGreetingName
+      ? `Auto-detected: ${GlobalWelcomeMessages.detectedGreetingName}. Enter a custom name to override, or leave blank to use auto-detected.`
+      : "By default, CouCou uses your Windows account name. Enter a preferred name to personalize your companion messages.",
+  });
+
+  nameInput.addEventListener("input", () => {
+    const val = nameInput.value.trim();
+    GlobalWelcomeMessages.preferredName = val;
+  });
+
+  const resetBtn = h("button", {
+    class: "coudrop-mac-btn",
+    text: "Reset",
+    style: "font-size: 11px; padding: 2px 8px;",
+    onclick: () => {
+      nameInput.value = "";
+      GlobalWelcomeMessages.preferredName = "";
+      updateIdentityDisplay();
+    },
+  });
+
+  const updateIdentityDisplay = () => {
+    nameInput.placeholder = GlobalWelcomeMessages.detectedGreetingName
+      ? `e.g. ${GlobalWelcomeMessages.detectedGreetingName}`
+      : "Your preferred name";
+    descSpan.textContent = GlobalWelcomeMessages.detectedGreetingName
+      ? `Auto-detected: ${GlobalWelcomeMessages.detectedGreetingName}. Enter a custom name to override, or leave blank to use auto-detected.`
+      : "By default, CouCou uses your Windows account name. Enter a preferred name to personalize your companion messages.";
+  };
+
+  GlobalWelcomeMessages.subscribe(updateIdentityDisplay);
+
+  const nameInputGroup = h(
+    "div",
+    { style: "display: flex; align-items: center; gap: 6px;" },
+    nameInput,
+    resetBtn,
+  );
+
+  const nameRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Preferred name" }),
+      descSpan,
+    ),
+    nameInputGroup,
+  );
+
+  const companionSw = toggle(GlobalWelcomeMessages.enabled, (v) => {
+    GlobalWelcomeMessages.enabled = v;
+    GlobalWelcomeMessages.saveState();
+  });
+
+  const companionRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Companion messages" }),
+      h("span", { class: "coudrop-row-desc", text: "Greets you upon launch and when returning from a break." }),
+    ),
+    companionSw,
+  );
+
+  const wellnessSw = toggle(GlobalWelcomeMessages.wellnessEnabled, (v) => {
+    GlobalWelcomeMessages.wellnessEnabled = v;
+    GlobalWelcomeMessages.saveState();
+  });
+
+  const wellnessRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Wellness & hydration nudges" }),
+      h("span", {
+        class: "coudrop-row-desc",
+        text: "Ambient reminders to drink water, roll shoulders, and rest eyes during continuous work.",
+      }),
+    ),
+    wellnessSw,
+  );
+
+  const intvOptions: [string, string][] = [
+    ["30", "Every 30 minutes"],
+    ["45", "Every 45 minutes"],
+    ["60", "Every 60 minutes"],
+  ];
+  const intvSelect = dropdownSelect(
+    intvOptions,
+    String(GlobalWelcomeMessages.hydrationIntervalMinutes || 45),
+    (v) => {
+      GlobalWelcomeMessages.hydrationIntervalMinutes = Number(v) || 45;
+      GlobalWelcomeMessages.saveState();
+    },
+    { ariaLabel: "Hydration interval", style: "min-width: 165px;" },
+  );
+
+  const intvRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Hydration interval" }),
+      h("span", { class: "coudrop-row-desc", text: "Frequency of gentle ambient hydration nudges during active screen time." }),
+    ),
+    intvSelect,
+  );
+
+  // ── AI Generation Engine (Routing Mode) ──
+  const routingOptions: [string, string][] = [
+    ["auto", "Auto (Local + Fallback)"],
+    ["local_only", "Local AI Only (Ollama)"],
+    ["cloud_only", "Cloud AI Only"],
+    ["classic", "Classic (Deterministic)"],
+  ];
+  const routingSelect = dropdownSelect(
+    routingOptions,
+    GlobalWelcomeMessages.routingMode || "auto",
+    (v) => {
+      GlobalWelcomeMessages.routingMode = v as any;
+      GlobalWelcomeMessages.saveState();
+    },
+    { ariaLabel: "AI generation engine", style: "min-width: 195px;" },
+  );
+
+  const routingRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "AI generation engine" }),
+      h("span", { class: "coudrop-row-desc", text: "Runs dynamic on-device local AI via Ollama, consented Cloud APIs, or instant classic fallback." }),
+    ),
+    routingSelect,
+  );
+
+  // ── Mochi Personality Mode ──
+  const personalityOptions: [string, string][] = [
+    ["warm_playful", "Warm & Playful"],
+    ["witty_sarcastic", "Witty & Sarcastic"],
+    ["zen_mindful", "Zen & Mindful"],
+    ["focus_coach", "Focus & Productivity Coach"],
+  ];
+  const personalitySelect = dropdownSelect(
+    personalityOptions,
+    GlobalWelcomeMessages.personalityMode || "warm_playful",
+    (v) => {
+      GlobalWelcomeMessages.personalityMode = v as any;
+      GlobalWelcomeMessages.saveState();
+    },
+    { ariaLabel: "Mochi personality", style: "min-width: 215px;" },
+  );
+
+  const personalityRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Mochi personality" }),
+      h("span", { class: "coudrop-row-desc", text: "Choose Mochi's companion tone and conversational style in the Dynamic Island." }),
+    ),
+    personalitySelect,
+  );
+
+  // ── Memory & Diagnostics ──
+  const memoryDesc = h("span", {
+    class: "coudrop-row-desc",
+    text: `Cached messages: ${CompanionMemory.count} in memory. Exact duplicate & phrase repetition prevention active.`,
+  });
+
+  const clearMemBtn = h("button", {
+    class: "coudrop-mac-btn",
+    text: "Clear Memory",
+    style: "font-size: 11px; padding: 2px 8px;",
+    onclick: () => {
+      CompanionMemory.clear();
+      memoryDesc.textContent = `Cached messages: 0 in memory. Exact duplicate & phrase repetition prevention active.`;
+    },
+  });
+
+  const memoryRow = h(
+    "div",
+    { class: "coudrop-group-row" },
+    h(
+      "div",
+      { class: "coudrop-row-label-group" },
+      h("span", { class: "coudrop-row-title", text: "Companion memory" }),
+      memoryDesc,
+    ),
+    clearMemBtn,
+  );
+
+  card.append(headerRow, nameRow, companionRow, routingRow, personalityRow, wellnessRow, intvRow, memoryRow);
+  return card;
+}
 
 function generalSection(): HTMLElement {
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
   }) as HTMLInputElement;
+
+  const updateVolumeFill = () => {
+    const min = Number(volume.min) || 0;
+    const max = Number(volume.max) || 0.2;
+    const val = Number(volume.value) || 0;
+    const pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+    volume.style.setProperty("--pct", `${pct}%`);
+  };
+  updateVolumeFill();
+
   volume.addEventListener("input", () => {
+    updateVolumeFill();
     settings.soundVolume = Number(volume.value);
+    Sound.setVolume(settings.soundVolume);
+    Sound.resume();
+    Sound.play("tick");
     void save();
   });
 
@@ -1057,30 +1370,32 @@ function generalSection(): HTMLElement {
   });
 
   // The closed island (core/closed.ts): what stays at the top of the screen.
-  const closed = h("select", {}) as HTMLSelectElement;
-  closed.append(
-    h("option", { value: "mochi", text: t("Mochi, as on a Mac without a notch") }),
-    h("option", { value: "time", text: t("The time") }),
-    h("option", { value: "datetime", text: t("The date and the time") }),
-    h("option", { value: "claude", text: t("Claude usage") }),
-    h("option", { value: "music", text: t("What's playing") }),
-    h("option", { value: "empty", text: t("Nothing, just the island") }),
-    h("option", { value: "hidden", text: t("Hide the island") }),
-  );
-  closed.value = closedIsland(settings.closedIsland);
-  closed.addEventListener("change", () => {
-    settings.closedIsland = closed.value;
+  const closedOptions: [string, string][] = [
+    ["mochi", t("Mochi, as on a Mac without a notch")],
+    ["time", t("The time")],
+    ["datetime", t("The date and the time")],
+    ["claude", t("Claude usage")],
+    ["music", t("What's playing")],
+    ["coucoudoro", t("Coucoudoro timer")],
+    ["empty", t("Nothing, just the island")],
+    ["hidden", t("Hide the island")],
+  ];
+  const closed = dropdownSelect(closedOptions, closedIsland(settings.closedIsland), (v) => {
+    settings.closedIsland = v;
     void save();
   });
 
-  const screen = h("select", {}) as HTMLSelectElement;
-  screen.append(
-    h("option", { value: "primary", text: t("Main display") }),
-    h("option", { value: "cursor", text: t("Display under the cursor") }),
-  );
-  screen.value = settings.screen;
+  const screenOptions: [string, string][] = [
+    ["primary", t("Main display")],
+    ["cursor", t("Display under the cursor")],
+  ];
+  const screen = dropdownSelect(screenOptions, settings.screen, (v) => {
+    settings.screen = v;
+    void save();
+  });
   void Bridge.listMonitors().then((list) => {
-    for (const m of list ?? []) screen.append(h("option", { value: m.key, text: m.label }));
+    const extra: [string, string][] = (list ?? []).map((m) => [m.key, m.label]);
+    screen.setOptions([...screenOptions, ...extra]);
     // Set again now the option exists. A display saved under an older key (moved,
     // resized, or saved before names were kept) is shown by its place or its
     // name; one that is gone shows as the main one.
@@ -1094,20 +1409,23 @@ function generalSection(): HTMLElement {
       saved;
     if (!screen.value) screen.value = "primary";
   });
-  screen.addEventListener("change", () => {
-    settings.screen = screen.value;
-    void save();
-  });
 
   const sound = toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); });
   const openOnHover = toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); });
   const autostart = toggle(settings.autostart, (v) => { settings.autostart = v; void save(); });
+
+  let smartCardSync: (() => void) | null = null;
+  const smartNotchCard = buildSmartNotchCard(settings, save, (sync) => { smartCardSync = sync; });
+
   generalSync = () => {
     setSwitch(sound, settings.soundEnabled);
     setSwitch(openOnHover, settings.openOnHover);
     setSwitch(autostart, settings.autostart);
-    // A field being edited keeps what is in it; it catches up when it is left.
-    if (document.activeElement !== volume) volume.value = String(settings.soundVolume);
+    smartCardSync?.();
+    if (document.activeElement !== volume) {
+      volume.value = String(settings.soundVolume);
+      updateVolumeFill();
+    }
     if (document.activeElement !== autoClose) {
       autoClose.value = String(Math.round(settings.autoCloseInterval));
     }
@@ -1146,6 +1464,8 @@ function generalSection(): HTMLElement {
       closed,
     ),
     h("div", { class: "hint", text: t("A PC has no notch: once closed, a small island stays at the top of the screen. Hover it to bring Coucou back. Hidden, move the pointer to the very top of the screen.") }),
+    smartNotchCard,
+    buildCompanionCareCard(),
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
@@ -1171,16 +1491,92 @@ function generalSection(): HTMLElement {
  * Both windows and the tray switch in place, without a restart.
  */
 function languageRow(): HTMLElement {
-  const select = h("select", {}) as HTMLSelectElement;
-  select.append(h("option", { value: "", text: t("System") }));
-  for (const { code, name } of LANGUAGES) select.append(h("option", { value: code, text: name, lang: code }));
-  select.value = LANGUAGES.some((l) => l.code === settings.language) ? settings.language : "";
-  select.addEventListener("change", () => {
-    settings.language = select.value;
+  const langOptions: [string, string][] = [
+    ["", t("System")],
+    ...LANGUAGES.map((l) => [l.code, l.name] as [string, string]),
+  ];
+  const currentLang = LANGUAGES.some((l) => l.code === settings.language) ? settings.language : "";
+  const select = dropdownSelect(langOptions, currentLang, (v) => {
+    settings.language = v;
     void save();
     applyLanguage();
   });
   return h("div", { class: "row" }, h("label", { text: t("Language") }), select);
+}
+
+/**
+ * Settings → General → Smart Notch card:
+ * Full on the desktop; tucked away over maximized apps.
+ */
+function buildSmartNotchCard(
+  settings: Settings,
+  save: () => Promise<void>,
+  onRegisterSync: (sync: () => void) => void,
+): HTMLElement {
+  const switchEl = toggle(settings.smartNotch, (v) => {
+    settings.smartNotch = v;
+    syncCard();
+    void save();
+  });
+
+  const card = h(
+    "div",
+    {
+      class: `smart-notch-card${settings.smartNotch ? " active" : ""}`,
+      onclick: (e: Event) => {
+        if (!(e.target as HTMLElement).closest(".switch")) {
+          settings.smartNotch = !settings.smartNotch;
+          setSwitch(switchEl, settings.smartNotch);
+          syncCard();
+          Sound.resume();
+          Sound.play("tick");
+          void save();
+        }
+      },
+    },
+    h(
+      "div",
+      { class: "smart-notch-preview" },
+      h(
+        "div",
+        { class: "preview-pane preview-desktop" },
+        h("div", { class: "screen-edge" }),
+        h("div", { class: "notch-full" }),
+      ),
+      h(
+        "div",
+        { class: "preview-pane preview-maximized" },
+        h(
+          "div",
+          { class: "max-app-window" },
+          h(
+            "div",
+            { class: "notch-tucked" },
+            svg("M6 9l6 6 6-6", 9, { stroke: 2.2 }),
+          ),
+        ),
+      ),
+    ),
+    h(
+      "div",
+      { class: "smart-notch-info" },
+      h(
+        "div",
+        { class: "smart-notch-header" },
+        h("h4", { text: t("Smart") }),
+        switchEl,
+      ),
+      h("p", { class: "smart-notch-desc", text: t("Full on the desktop; tucked away over maximized apps.") }),
+    ),
+  );
+
+  function syncCard() {
+    card.classList.toggle("active", settings.smartNotch);
+    setSwitch(switchEl, settings.smartNotch);
+  }
+
+  onRegisterSync(syncCard);
+  return card;
 }
 
 // ── Shortcuts section ─────────────────────────────────────────────────────────
@@ -1471,8 +1867,22 @@ async function main() {
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
   applyDirection();
+
+  const resolveTarget = (raw: string | null | undefined): PageId => {
+    if (!raw) return "general";
+    if (raw === "claude") return "agents";
+    if (raw === "api") return "chat";
+    if (raw === "settings") return "general";
+    if (raw === "flowsettings") return "flowsettings";
+    return raw as PageId;
+  };
+
+  const initialTarget = (await Bridge.targetHubPage()) || (window.location.hash ? window.location.hash.replace(/^#/, "") : null);
+  const initialPage = resolveTarget(initialTarget);
+
   hub = await startHub(windowRoot, {
     version,
+    initialPage,
     flowPages: FLOW_PAGE_RENDERERS,
     renderNotch: async (page, container) => {
       notchPage = page;
@@ -1480,6 +1890,42 @@ async function main() {
       await render();
     },
   });
+
+  const applyHash = () => {
+    if (window.location.hash) {
+      const raw = window.location.hash.replace(/^#/, "");
+      void hub?.show(resolveTarget(raw));
+    }
+  };
+  window.addEventListener("hashchange", applyHash);
+
+  if (!Bridge.boot) {
+    // fallback check
+  }
+  if (typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window)) {
+    const backBtn = h("a", {
+      href: "/index.html",
+      class: "hub-back-to-notch",
+      style: "position:fixed;bottom:18px;right:18px;background:rgba(255,255,255,0.12);color:#fff;padding:8px 14px;border-radius:999px;font:500 12px var(--font);text-decoration:none;z-index:9999;backdrop-filter:blur(12px);border:2px solid rgba(255,255,255,0.2);display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.5);transition:transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease",
+      text: "← Back to Notch",
+    });
+    backBtn.addEventListener("mouseenter", () => {
+      backBtn.style.background = "rgba(255,255,255,0.22)";
+      backBtn.style.transform = "scale(1.05)";
+    });
+    backBtn.addEventListener("mouseleave", () => {
+      backBtn.style.background = "rgba(255,255,255,0.12)";
+      backBtn.style.transform = "scale(1)";
+    });
+    backBtn.addEventListener("mousedown", () => {
+      backBtn.style.transform = "scale(0.95)";
+    });
+    backBtn.addEventListener("mouseup", () => {
+      backBtn.style.transform = "scale(1.05)";
+    });
+    document.body.append(backBtn);
+  }
+
   onLanguageChange(() => {
     applyDirection();
     hub?.redraw();
@@ -1492,6 +1938,7 @@ async function main() {
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
     generalSync?.();
+    appearanceSync?.();
     for (const redraw of declaredViews) redraw();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
@@ -1546,14 +1993,17 @@ async function render() {
   localRedraw = null;
   shortcutsListener = null;
   generalSync = null;
+  appearanceSync = null;
   clear(root);
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
     general: () => [generalSection()],
-    pills: () => [activePillsSection(connected)],
+    appearance: () => [appearanceSection(settings, save, toggle, setSwitch, buildSmartNotchCard, (sync) => { appearanceSync = sync; })],
+    pills: () => [activePillsSection(connected), planSection(status)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
     chat: () => [subscriptionsSection(), apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
     integrations: () => [integrationsSection(present), ...whatsappSections()],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
+    coudrop: () => [coudropSettingsSection(toggle, settings, save)],
     shortcuts: () => [shortcutsSection(shortcutReport)],
   };
   root.append(...(sections[notchPage]?.() ?? []));

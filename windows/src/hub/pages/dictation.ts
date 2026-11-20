@@ -39,7 +39,12 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
   }, "primary");
   record.prepend(h("span", { class: "hub-rec", style: "background:#170c04;box-shadow:none;margin-inline-end:8px" }));
   const alertLine = h("div", { class: "hub-note" });
-  const hello = status.userName ? t("Hello {0}", { 0: status.userName }) : t("Hello");
+  const device = status.deviceName?.trim() || "";
+  const user = status.userName?.trim() || "";
+  const nameWithDevice = user
+    ? (device && user.toLowerCase() !== device.toLowerCase() ? `${user} (${device})` : user)
+    : device;
+  const hello = nameWithDevice ? t("Hello {0}", { 0: nameWithDevice }) : t("Hello");
   page.append(ctx.hero("dictation", hello, t("Hold {0} anywhere, speak, let go: it's pasted.", { 0: key }), [record]));
   page.append(alertLine);
 
@@ -79,7 +84,12 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
       }
       const when = h("div", { class: "when" }, h("span", { text: time(e.date) }));
       if (e.app) when.append(h("span", { class: "hub-tag", text: e.app, title: e.app }));
-      const tools = h("div", { class: "tools" },
+      const hasHeard = Boolean(e.heard && e.heard.trim() !== e.text.trim());
+      const tools = h("div", { class: "tools" });
+      if (hasHeard) {
+        tools.append(iconButton("copy", t("Copy as heard"), () => void FlowBridge.copy(e.heard!)));
+      }
+      tools.append(
         iconButton("copy", t("Copy"), () => void FlowBridge.copy(e.text)),
         iconButton("trash", t("Delete"), () => {
           void saveHistory(async () => {
@@ -89,7 +99,16 @@ export async function dictationPage(page: HTMLElement, ctx: HubContext) {
           });
         }),
       );
-      group!.append(h("div", { class: "hub-entry" }, when, h("div", { class: "words", text: e.text }), tools));
+      const wordsCol = h("div", { class: "words" }, h("div", { text: e.text }));
+      if (hasHeard) {
+        wordsCol.append(
+          h("div", { class: "hub-heard", style: "margin-top:5px;font-size:12px;opacity:0.65;display:flex;flex-direction:column;gap:1px" },
+            h("span", { style: "font-size:10px;text-transform:uppercase;letter-spacing:0.5px;opacity:0.75", text: t("As heard") }),
+            h("span", { text: e.heard ?? "" }),
+          ),
+        );
+      }
+      group!.append(h("div", { class: "hub-entry" }, when, wordsCol, tools));
     }
   }
 

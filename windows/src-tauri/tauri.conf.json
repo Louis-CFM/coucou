@@ -1,27 +1,27 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Coucou",
-  "version": "0.5.9",
+  "version": "0.6.1",
   "identifier": "fr.louisraille.coucou",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "pnpm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "pnpm run build",
     "frontendDist": "../dist"
   },
   "app": {
     "withGlobalTauri": false,
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost",
-      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420"
+      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420 ws://127.0.0.1:1420 http://127.0.0.1:1420"
     },
     "windows": [
       {
         "label": "island",
         "title": "Coucou",
         "url": "index.html",
-        "width": 240,
-        "height": 6,
+        "width": 720,
+        "height": 320,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -29,7 +29,7 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "focus": false,
-        "visible": true,
+        "visible": false,
         "center": false,
         "maximizable": false,
         "minimizable": false,
@@ -49,7 +49,8 @@
       "icons/icon.ico"
     ],
     "resources": { "../target/release/coucou-hook.exe": "coucou-hook.exe" },
-    "copyright": "© Louis Raille",
+    "publisher": "Madhan Kumar",
+    "copyright": "© Madhan Kumar",
     "category": "DeveloperTool",
     "shortDescription": "Mochi lives at the top of your screen",
     "longDescription": "Coucou puts Mochi at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",

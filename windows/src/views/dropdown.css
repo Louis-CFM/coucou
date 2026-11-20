@@ -1,0 +1,284 @@
+/* ── Liquid Glass Dropdown Menu ──────────────────────────────────────────────
+   Platform-native macOS dark dropdown feel: frosted glass panel, subtle
+   borders, smooth spring animations, and keyboard navigation support.
+   Used via src/views/dropdown.ts — no React, no Tailwind required.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Panel (the floating popup) ── */
+.dd-panel {
+  position: fixed;
+  z-index: 100000;
+  isolation: isolate;
+  pointer-events: auto;
+  min-width: 125px;
+  max-width: 280px;
+  padding: 4px;
+  background: rgba(22, 23, 26, 0.92);
+  backdrop-filter: blur(32px) saturate(200%) brightness(1.08);
+  -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 12px 32px rgba(0, 0, 0, 0.65),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  /* Framer Motion manages jelly spring transforms & opacity */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  outline: none;
+  /* Ensure Inter for all dropdown text */
+  font-family: var(--font-sub, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+  box-sizing: border-box;
+}
+
+.dd-panel::-webkit-scrollbar {
+  width: 5px;
+}
+
+.dd-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dd-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+.dd-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+/* ── Separator ── */
+.dd-separator {
+  height: 1.5px;
+  margin: 5px 2px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+/* ── Section label ── */
+.dd-label {
+  padding: 7px 11px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  user-select: none;
+}
+
+/* ── Menu item button ── */
+.dd-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  text-align: start;
+  cursor: default;
+  outline: none;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
+}
+
+.dd-item:hover,
+.dd-item:focus {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  transform: translateX(1.5px);
+}
+
+.dd-item:active {
+  background: rgba(255, 255, 255, 0.07);
+  transform: scale(0.97);
+}
+
+/* Danger variant (Quit, Delete, Remove…) */
+.dd-item.dd-danger {
+  color: rgba(255, 90, 80, 0.9);
+}
+
+.dd-item.dd-danger:hover,
+.dd-item.dd-danger:focus {
+  background: rgba(255, 69, 58, 0.14);
+  color: #ff5a50;
+}
+
+/* Disabled state */
+.dd-item.dd-disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Checkmark column (always present for alignment) ── */
+.dd-check-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: var(--hub-accent, #fb923c);
+}
+
+/* ── Icon column ── */
+.dd-icon-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.1s ease;
+}
+
+.dd-icon-col svg {
+  width: 13px;
+  height: 13px;
+}
+
+.dd-item:hover .dd-icon-col,
+.dd-item:focus .dd-icon-col {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dd-item.dd-danger .dd-icon-col {
+  color: rgba(255, 90, 80, 0.75);
+}
+
+.dd-item.dd-danger:hover .dd-icon-col,
+.dd-item.dd-danger:focus .dd-icon-col {
+  color: #ff5a50;
+}
+
+/* ── Item label (flex: 1 to push shortcut right) ── */
+.dd-item-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Keyboard shortcut hint ── */
+.dd-shortcut {
+  flex-shrink: 0;
+  font-family: var(--font-sub, "Inter", sans-serif);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.dd-item:hover .dd-shortcut,
+.dd-item:focus .dd-shortcut {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Pre-wired trigger button ── */
+.dd-trigger,
+button.dd-trigger,
+button.hub-select.dd-trigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  height: 32px !important;
+  padding: 0 12px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-family: var(--font-sub, "Inter", sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  -webkit-font-smoothing: antialiased !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+.dd-trigger:hover,
+button.dd-trigger:hover,
+button.hub-select.dd-trigger:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  transform: none !important;
+}
+
+.dd-trigger:focus-visible,
+button.dd-trigger:focus-visible,
+button.hub-select.dd-trigger:focus-visible,
+.dd-trigger.open,
+button.dd-trigger.open,
+button.hub-select.dd-trigger.open {
+  border-color: rgba(251, 146, 60, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+.dd-trigger:active,
+button.dd-trigger:active,
+button.hub-select.dd-trigger:active {
+  background: rgba(255, 255, 255, 0.05) !important;
+  transform: scale(0.96) !important;
+}
+
+.dd-trigger svg {
+  opacity: 0.65;
+  transition: opacity 0.15s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  flex-shrink: 0;
+}
+
+.dd-trigger:hover svg {
+  opacity: 0.95;
+}
+
+.dd-trigger-text {
+  flex: 1;
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+button.hub-select.dd-trigger {
+  min-width: 175px;
+  max-width: 280px;
+}
+
+/* Rotate chevron when open with elastic spring scale */
+.dd-trigger.open svg:last-child {
+  transform: rotate(180deg) scale(1.1) !important;
+}

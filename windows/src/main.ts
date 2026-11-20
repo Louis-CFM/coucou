@@ -17,6 +17,12 @@ import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
 import { WhatsNew } from "./whats-new/controller";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
+import { GlobalNotifications } from "./core/notifications";
+import { GlobalWelcomeMessages } from "./core/welcome";
+import { Diagnostics } from "./core/diagnostics";
+import { nearbyTransferManager } from "./components/islandcn/transfer-adapter";
+import { BatteryMonitor } from "./islandcn";
+import { CompanionOrchestrator } from "./companion/orchestrator";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
 function applyLanguage() {
@@ -27,7 +33,10 @@ async function main() {
   const root = document.getElementById("root");
   if (!root) return;
 
+  Diagnostics.record("boot_start");
   void Sound.preload();
+  void GlobalWelcomeMessages.initIdentity();
+  void CompanionOrchestrator.probeHealth("ollama", GlobalWelcomeMessages.localEndpoint);
 
   // Before the island exists: its canvases size their bitmaps from the pixel
   // ratio once, so the zoom correction has to land first. If zoom was adjusted,
@@ -41,14 +50,15 @@ async function main() {
     }
   }
 
-  const island = new Island(root);
-  // The dev previews (dev/*.html) drive the island from the console.
-  if (import.meta.env.DEV) Object.assign(window, { __island: island, __state: State });
-
   const boot = await Bridge.boot();
+  Diagnostics.record("boot_bridge_ready");
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
+    if (boot.battery) {
+      BatteryMonitor.initialize(boot.battery);
+    }
   }
+
   // A language change redraws the island in place: the texts given as tl(…)
   // relabel themselves (views/dom.ts) and the views redraw the rest on this
   // sync. Nothing is rebuilt, so tasks, steps and the chat stay as they are.
@@ -56,6 +66,21 @@ async function main() {
   applyLanguage();
   // Rust shows the tray and its errors in the same language as the webview.
   void Bridge.setSystemLanguages(systemLanguages());
+
+  const island = new Island(root);
+
+  // The dev previews (dev/*.html) drive the island from the console.
+  if (import.meta.env.DEV) {
+    Object.assign(window, {
+      __island: island,
+      __state: State,
+      __welcome: GlobalWelcomeMessages,
+      __notifications: GlobalNotifications,
+      __nearbyTransfer: nearbyTransferManager,
+      __batteryMonitor: BatteryMonitor,
+    });
+  }
+
   island.applySettings();
   State.loadIntegrationTasks();
   if (boot && !boot.cursorPoll) island.followPageCursor();
@@ -180,17 +205,42 @@ async function main() {
   island.onGreetingDone = () => {
     checkRecap();
     whatsNew();
+    GlobalWelcomeMessages.onAppLaunch();
   };
   window.setTimeout(whatsNew, 8000);
   island.onWake = checkRecap;
   await onEvent<null>("recap-check", checkRecap);
 
-  island.launch();
+  if (IS_TAURI) {
+    Diagnostics.record("intro_launch");
+    island.launchIntro();
+  }
 
-  // In a plain browser there is no wake strip behind the cursor: make the whole
-  // page wake the island so the visuals can be checked with `npm run dev`.
+  // In a plain browser there is no wake strip behind the cursor:
   if (!IS_TAURI) {
-    document.addEventListener("click", () => Sound.resume(), { once: true });
+    document.documentElement.style.background = "#0c0d12";
+    document.body.style.background = "#0c0d12";
+
+    window.addEventListener("keydown", (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === "w" || e.key === "W") {
+        island.fsm.forceHidden();
+        GlobalWelcomeMessages.onUserReturned(15);
+      } else if (e.key === "n" || e.key === "N") {
+        island.fsm.forceHidden();
+        GlobalNotifications.push({ app: "WhatsApp", title: "Alice", body: "Hello!" });
+      } else if (e.key === "h" || e.key === "H") {
+        if (State.mode === "hidden") {
+          island.wakeFromClosed();
+        } else {
+          island.fsm.forceHidden();
+        }
+      }
+    });
+
+    // In browser mode, stay in resting closed notch by default to showcase the Balanced Dynamic Island.
+    // Press H to toggle wake/closed, W for Welcome Back message, N for Notification.
   }
 }
 

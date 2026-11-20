@@ -419,7 +419,8 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let outcome = paste::paste(&final_text, terminal);
     let entry = {
         let mut store = flow.store.lock().unwrap();
-        store.record(&final_text, front.map(|(_, n)| n.as_str()), seconds, store::today(), store::now_ms())
+        let heard = if raw.trim() != final_text.trim() { Some(raw.as_str()) } else { None };
+        store.record_full(&final_text, heard, front.map(|(_, n)| n.as_str()), seconds, store::today(), store::now_ms())
     };
     let _ = app.emit_to(crate::HUB_LABEL, "flow-history", entry);
     match outcome {
@@ -471,10 +472,13 @@ pub struct FlowStatus {
     autostarted: bool,
     /// The user's first name, for "Hello Louis".
     user_name: Option<String>,
+    /// Device / computer name (e.g. "MADHAN").
+    device_name: Option<String>,
 }
 
 #[tauri::command]
 pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
+    let identity = crate::identity::detect();
     FlowStatus {
         prefs: flow.store.lock().unwrap().prefs.clone(),
         models: speech::status(),
@@ -486,9 +490,8 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
         mics: audio::input_devices(),
         platform: if cfg!(windows) { "windows" } else { "linux" },
         autostarted: crate::launched_at_login(),
-        user_name: crate::platform::user_full_name()
-            .and_then(|n| n.split_whitespace().next().map(String::from))
-            .filter(|n| !n.is_empty()),
+        user_name: identity.detected_greeting_name.clone(),
+        device_name: identity.device_name.clone(),
     }
 }
 

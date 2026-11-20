@@ -9,9 +9,11 @@ mod claude;
 mod claude_code;
 mod cli_relay;
 mod codex_plan;
+mod companion_ai;
 mod config_file;
 mod desktop;
 mod files;
+mod fileshelf;
 mod flow;
 mod github;
 mod herdr;
@@ -20,6 +22,7 @@ mod i18n;
 mod identity;
 mod integrations;
 mod calcom;
+mod coudrop;
 mod island;
 mod launch;
 mod local_chat;
@@ -27,17 +30,21 @@ mod log;
 mod mail;
 mod net;
 mod notes;
+mod notifications;
 mod openai_compat;
 mod phone_link;
 mod pipe;
 mod platform;
+mod power;
 #[cfg(target_os = "linux")]
 mod portal;
+mod presence;
 mod recap;
 mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod smart_notch;
 mod sounds;
 mod speech;
 mod spotify;
@@ -79,6 +86,7 @@ pub struct BootInfo {
     /// False where the OS has no global cursor (Wayland): the page then reports
     /// the cursor from its own mouse events.
     cursor_poll: bool,
+    battery: power::BatteryStatusDto,
 }
 
 #[tauri::command]
@@ -89,12 +97,18 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     settings.hooks_installed = hooks_status.installed;
     settings.plan_relay_installed = hooks_status.plan_relay_installed;
     let screen = island::screen_info(&app, &settings.screen);
+    let battery = power::get_authoritative_status();
+    log::line(format!(
+        "[coucou] boot() providing initial battery snapshot: {}% (charging: {}, has_battery: {})",
+        battery.percent, battery.charging, battery.has_battery
+    ));
     BootInfo {
         settings,
         screen,
         version: env!("CARGO_PKG_VERSION").to_string(),
         hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
         cursor_poll: platform::CURSOR_POLL,
+        battery,
     }
 }
 
@@ -217,6 +231,21 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     let size = *shared.gate.collapsed_size.lock().unwrap();
     island::apply_geometry(&app, &pref, collapsed.then_some(size));
+}
+
+/// Notifies Rust that the island webview has mounted, its intro/assets are ready,
+/// and the transparent composition frame is drawn. This allows showing the native
+/// window smoothly with zero black flashes or un-hydrated clipping.
+#[tauri::command]
+fn island_ready(app: AppHandle, shared: State<Shared>) {
+    if let Some(win) = island::window(&app) {
+        let pref = shared.settings.lock().unwrap().screen.clone();
+        let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
+        let size = *shared.gate.collapsed_size.lock().unwrap();
+        island::apply_geometry(&app, &pref, collapsed.then_some(size));
+        let _ = win.show();
+        log::line("[coucou] island_ready received — native window shown smoothly");
+    }
 }
 
 /// The panel is laid out in CSS px against the window's own scale. If the webview
@@ -739,6 +768,12 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
     }
 }
 
+/// Takes a whole-screen screenshot, copied to clipboard.
+#[tauri::command]
+fn quick_screenshot() -> Result<(), String> {
+    platform::take_screenshot()
+}
+
 // ── Settings window ───────────────────────────────────────────────────────────
 
 /// WebView2 allows exactly one browser environment per app, and its options are
@@ -826,6 +861,13 @@ fn hub_shown() -> bool {
     HUB_SHOWN.load(Ordering::Relaxed)
 }
 
+static TARGET_HUB_PAGE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+#[tauri::command]
+fn target_hub_page() -> Option<String> {
+    TARGET_HUB_PAGE.lock().ok().and_then(|mut g| g.take())
+}
+
 pub fn show_settings_window(app: &AppHandle) {
     show_hub(app, Some("general"));
 }
@@ -833,30 +875,52 @@ pub fn show_settings_window(app: &AppHandle) {
 /// Shows the Coucou window, on `page` when given ("dictation", "notes",
 /// "settings", "general", "shortcuts"…).
 pub fn show_hub(app: &AppHandle, page: Option<&str>) {
+    if let Some(target) = page {
+        if let Ok(mut g) = TARGET_HUB_PAGE.lock() {
+            *g = Some(target.to_string());
+        }
+    }
     let Some(win) = app.get_webview_window(HUB_LABEL) else {
         // Creating it at startup can fail on some machines (WebView2
         // 0x80070578, #775): try again now, on the main thread, where
         // window creation can't deadlock a command.
         log::line("Coucou window missing, creating it again");
         let handle = app.clone();
+        let target_page = page.map(str::to_string);
         let _ = app.run_on_main_thread(move || {
             create_settings_window(&handle);
             if let Some(win) = handle.get_webview_window(HUB_LABEL) {
+                if let Some(p) = target_page {
+                    let _ = handle.emit("hub-page", p.clone());
+                    let _ = win.emit_to(HUB_LABEL, "hub-page", p.clone());
+                    let _ = win.emit("hub-page", p);
+                }
                 webview_memory::set_low(&win, false);
+                let _ = win.unminimize();
                 let _ = win.show();
                 let _ = win.set_focus();
+                #[cfg(windows)]
+                if let Ok(hwnd) = win.hwnd() {
+                    platform::bring_forward(hwnd.0 as isize);
+                }
                 set_hub_shown(&win, true);
             }
         });
         return;
     };
     if let Some(page) = page {
+        let _ = app.emit("hub-page", page.to_string());
+        let _ = win.emit_to(HUB_LABEL, "hub-page", page.to_string());
         let _ = win.emit("hub-page", page.to_string());
     }
     webview_memory::set_low(&win, false);
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+    #[cfg(windows)]
+    if let Ok(hwnd) = win.hwnd() {
+        platform::bring_forward(hwnd.0 as isize);
+    }
     set_hub_shown(&win, true);
 }
 
@@ -904,6 +968,8 @@ pub fn run() {
         .manage(Chat::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
+        .manage(coudrop::CoudropManager::default())
+        .manage(companion_ai::CompanionAiState::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             mail::mail_refresh,
@@ -924,6 +990,7 @@ pub fn run() {
             set_system_languages,
             set_collapsed,
             set_island_rect,
+            island_ready,
             focus_window,
             reposition,
             fit_zoom,
@@ -975,9 +1042,11 @@ pub fn run() {
             github_refresh,
             open_n8n,
             open_settings_window,
+            target_hub_page,
             set_paused,
             shortcuts_status,
             shortcuts_suspend,
+            quick_screenshot,
             phone_link::phone_link_status,
             phone_link::phone_link_set_enabled,
             phone_link::phone_link_pairing,
@@ -1089,6 +1158,38 @@ pub fn run() {
             update::update_dismiss,
             update::update_install,
             update::update_open_page,
+            notifications::check_notification_access,
+            notifications::request_notification_access,
+            presence::get_system_presence,
+            identity::get_user_identity,
+            smart_notch::get_foreground_window_state,
+            power::get_battery_status,
+            power::refresh_battery_status,
+            coudrop::coudrop_start_receive,
+            coudrop::coudrop_cancel,
+            coudrop::coudrop_status,
+            coudrop::coudrop_get_device,
+            coudrop::coudrop_send_files,
+            coudrop::coudrop_cancel_send,
+            coudrop::coudrop_pause_transfer,
+            coudrop::coudrop_resume_transfer,
+            coudrop::coudrop_cancel_transfer,
+            coudrop::coudrop_get_active_transfer,
+            coudrop::coudrop_get_history,
+            coudrop::coudrop_open_folder,
+            coudrop::coudrop_open_file,
+            coudrop::coudrop_stage_send_files,
+            coudrop::coudrop_pick_download_dir,
+            coudrop::coudrop_set_download_dir,
+            coudrop::coudrop_get_download_dir,
+            coudrop::coudrop_pick_files,
+            fileshelf::fileshelf_pick_files,
+            fileshelf::fileshelf_open_file,
+            fileshelf::fileshelf_reveal_file,
+            fileshelf::fileshelf_get_file_info,
+            companion_ai::companion_ai_generate,
+            companion_ai::companion_ai_cancel,
+            companion_ai::companion_probe_health,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1101,6 +1202,7 @@ pub fn run() {
             desktop::setup(&handle);
             flow::setup(&handle);
             notes::setup(&handle);
+            power::setup(&handle);
 
             if let Some(win) = island::window(&handle) {
                 // Where Tauri takes the drop itself (Linux), its paths are the
@@ -1114,7 +1216,20 @@ pub fn run() {
                 #[cfg(windows)]
                 webview_drop::install(&handle);
                 island::apply_geometry(&handle, &loaded.screen, None);
-                let _ = win.show();
+
+                // Do not show the window immediately while WebView2 initializes transparent DirectComposition.
+                // The webview signals `island_ready` once the intro and canvas are painted.
+                // Failsafe: if the renderer does not signal within 4 seconds, reveal anyway.
+                let win_fallback = win.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(4000));
+                    if let Ok(is_vis) = win_fallback.is_visible() {
+                        if !is_vis {
+                            let _ = win_fallback.show();
+                            crate::log::line("[coucou] window shown by startup fallback timer");
+                        }
+                    }
+                });
             }
             gate.collapsed.store(false, Ordering::Relaxed);
             // Nothing drawn yet, so nothing takes the mouse until the page
@@ -1134,6 +1249,9 @@ pub fn run() {
             spotify::sync(&handle, &loaded.active_integrations);
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
+            notifications::start(&handle);
+            presence::start(&handle);
+            smart_notch::start(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());

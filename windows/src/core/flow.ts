@@ -81,12 +81,14 @@ export interface FlowStatus {
   platform: "windows" | "linux";
   autostarted: boolean;
   userName?: string | null;
+  deviceName?: string | null;
 }
 
 export interface FlowEntry {
   id: string;
   date: number;
   text: string;
+  heard?: string | null;
   app?: string | null;
   words: number;
   seconds: number;

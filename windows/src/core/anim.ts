@@ -54,36 +54,56 @@ export class Spring {
   zeta: number;
 
   constructor(value: number, response = 0.5, damping = 0.72) {
-    this.value = value;
-    this.target = value;
-    this.omega = (2 * Math.PI) / response;
-    this.zeta = damping;
+    const val = Number.isFinite(value) ? value : 0;
+    this.value = val;
+    this.target = val;
+    const r = Math.max(0.001, Number.isFinite(response) ? response : 0.5);
+    const d = Math.max(0, Number.isFinite(damping) ? damping : 0.72);
+    this.omega = (2 * Math.PI) / r;
+    this.zeta = d;
   }
 
   configure(response: number, damping: number) {
-    this.omega = (2 * Math.PI) / response;
-    this.zeta = damping;
+    const r = Math.max(0.001, Number.isFinite(response) ? response : 0.5);
+    const d = Math.max(0, Number.isFinite(damping) ? damping : 0.72);
+    this.omega = (2 * Math.PI) / r;
+    this.zeta = d;
   }
 
   set(value: number) {
-    this.value = value;
-    this.target = value;
+    const val = Number.isFinite(value) ? value : 0;
+    this.value = val;
+    this.target = val;
     this.velocity = 0;
   }
 
   get settled(): boolean {
+    if (!Number.isFinite(this.value) || !Number.isFinite(this.target) || !Number.isFinite(this.velocity)) {
+      return true;
+    }
     return Math.abs(this.target - this.value) < 0.01 && Math.abs(this.velocity) < 0.05;
   }
 
   step(dt: number) {
-    const steps = Math.max(1, Math.ceil(dt / (1 / 240)));
-    const h = dt / steps;
+    if (!Number.isFinite(dt) || dt <= 0) return;
+    const clampedDt = Math.min(dt, 0.1);
+    if (!Number.isFinite(this.value) || !Number.isFinite(this.target) || !Number.isFinite(this.velocity)) {
+      this.value = Number.isFinite(this.target) ? this.target : 0;
+      this.velocity = 0;
+      return;
+    }
+    const steps = Math.max(1, Math.ceil(clampedDt / (1 / 240)));
+    const h = clampedDt / steps;
     for (let i = 0; i < steps; i++) {
       const acc =
         this.omega * this.omega * (this.target - this.value) -
         2 * this.zeta * this.omega * this.velocity;
       this.velocity += acc * h;
       this.value += this.velocity * h;
+    }
+    if (!Number.isFinite(this.value) || !Number.isFinite(this.velocity)) {
+      this.value = this.target;
+      this.velocity = 0;
     }
   }
 }
@@ -108,34 +128,43 @@ export class Tracked {
     return this.spring.value;
   }
 
+  get target(): number {
+    return this.spring.target;
+  }
+
   get animating(): boolean {
     return this.mode !== "idle";
   }
 
   jump(v: number) {
-    this.spring.set(v);
+    const val = Number.isFinite(v) ? v : 0;
+    this.spring.set(val);
     this.mode = "idle";
   }
 
   /** Spring to `v` (open / grow). */
   springTo(v: number, response = 0.5, damping = 0.72) {
+    const val = Number.isFinite(v) ? v : 0;
     this.spring.configure(response, damping);
-    this.spring.target = v;
+    this.spring.target = val;
     this.mode = "spring";
   }
 
   /** Timed curve to `v` (close / shrink), no overshoot. */
   curveTowards(v: number, durationMs = 340, now = performance.now()) {
-    this.curveFrom = this.spring.value;
-    this.curveTo = v;
-    this.curveStart = now;
-    this.curveDur = durationMs;
-    this.spring.target = v;
+    const val = Number.isFinite(v) ? v : 0;
+    const dur = Math.max(1, Number.isFinite(durationMs) ? durationMs : 340);
+    this.curveFrom = Number.isFinite(this.spring.value) ? this.spring.value : val;
+    this.curveTo = val;
+    this.curveStart = Number.isFinite(now) ? now : performance.now();
+    this.curveDur = dur;
+    this.spring.target = val;
     this.spring.velocity = 0;
     this.mode = "curve";
   }
 
   step(dt: number, now = performance.now()) {
+    if (!Number.isFinite(dt) || dt <= 0) return;
     if (this.mode === "spring") {
       this.spring.step(dt);
       if (this.spring.settled) {
@@ -144,9 +173,11 @@ export class Tracked {
         this.mode = "idle";
       }
     } else if (this.mode === "curve") {
-      const p = clamp((now - this.curveStart) / this.curveDur, 0, 1);
+      const curNow = Number.isFinite(now) ? now : performance.now();
+      const p = clamp((curNow - this.curveStart) / this.curveDur, 0, 1);
       this.spring.value = lerp(this.curveFrom, this.curveTo, closeCurve(p));
-      if (p >= 1) {
+      if (p >= 1 || !Number.isFinite(this.spring.value)) {
+        this.spring.value = this.curveTo;
         this.spring.velocity = 0;
         this.mode = "idle";
       }

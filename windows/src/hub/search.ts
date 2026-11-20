@@ -113,6 +113,10 @@ export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
   { id: "general.recap", page: "general", title: "Weekly recap", terms: ["Keep a history of my coding sessions", "Hide project names in shared images", "Clear history"] },
   { id: "general.language", page: "general", title: "Language", terms: ["Restart Coucou"] },
 
+  // Notch → Appearance
+  { id: "appearance.wardrobe", page: "appearance", title: "Wardrobe", terms: ["Mochi's outfit", "Outfits", "Party hat", "Santa hat", "Crown", "Follow the seasons"] },
+  { id: "appearance.notch", page: "appearance", title: "Notch appearance", terms: ["Style", "Notch", "Island", "Dynamic Island", "Size", "Smart notch", "Closed island shows", "Show clock in the island", "Open on hover", "Theme", "Display"] },
+
   // Notch → Pills, Agents, Chat, Integrations, Phone, Voice, Shortcuts
   { id: "pills.main", page: "pills", title: "settings.main-pill", terms: ["Active pills"] },
   { id: "agents.claude", page: "agents", title: "hooks.claude-code.title", terms: ["Answer questions and permissions from terminal sessions in the notch"] },
@@ -125,7 +129,7 @@ export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
   { id: "agents.opencode", page: "agents", title: "plugin.opencode.title", terms: [] },
   { id: "agents.amp", page: "agents", title: "plugin.amp.title", terms: [] },
   { id: "agents.hermes", page: "agents", title: "plugin.hermes.title", terms: ["plugin.hermes.approvals"] },
-  { id: "agents.plan", page: "agents", title: "plan.title", terms: ["plan.show-in-notch", "Show Codex plan in the notch"] },
+  { id: "agents.plan", page: "agents", title: "plan.title", terms: ["plan.show-in-notch", "Show Claude plan in the notch", "Show Codex plan in the notch"] },
   { id: "chat.subscriptions", page: "chat", title: "chat.subscriptions.title", terms: ["chat.subscriptions.use"] },
   { id: "chat.anthropic", page: "chat", title: "chat.anthropic-api.title", terms: ["chat.model", "Anthropic", "Claude"] },
   { id: "chat.others", page: "chat", title: "chat.other-providers.title", terms: ["Google AI", "OpenAI", "DeepSeek", "Gemini"] },
@@ -140,6 +144,7 @@ export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
     ],
   },
   { id: "phone.android", page: "phone", title: "phone.title", terms: ["phone.status", "phone.pairing", "phone.approvals"] },
+  { id: "coudrop.transfer", page: "coudrop", title: "Coudrop", terms: ["coudrop", "drop", "quick share", "file transfer", "send files", "downloads", "peer to peer", "airdrop"] },
   { id: "voice.wake", page: "voice", title: "«\u202FOK Coucou\u202F» — voice wake word", terms: ["Enable voice command", "Request permissions"] },
   { id: "voice.language", page: "voice", title: "Language", terms: ["voice.listen-language", "voice.language"] },
   { id: "voice.tts", page: "voice", title: "voice.tts-engine", terms: ["voice.tts-gender", "voice.tts-test"] },

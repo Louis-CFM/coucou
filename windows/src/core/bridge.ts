@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import { DEFAULT_SETTINGS, type Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { UpdateStatus } from "./update";
@@ -32,6 +32,7 @@ export interface BootInfo {
   hookPath: string;
   /** False where the OS has no global cursor (Wayland): see Island.followPageCursor. */
   cursorPoll: boolean;
+  battery: BatteryStatusDto;
 }
 
 /** The phone link (src-tauri/src/phone_link): how it is, never its secrets. */
@@ -57,6 +58,64 @@ export interface PhoneRelayStatus {
   state: PhoneRelayState;
   /** The relay settings are shown: for testers (COUCOU_RELAY_SETTINGS=1), or when a relay is already on. */
   shown: boolean;
+}
+
+export interface VayliDropDevice {
+  connected: boolean;
+  name: string;
+  canDrop: boolean;
+}
+
+/** Coudrop local P2P session info */
+export interface CoudropSessionInfo {
+  active: boolean;
+  token: string;
+  port: number;
+  host: string;
+  url: string;
+  qrSvg: string;
+  computerName: string;
+  remainingSeconds: number;
+  connectedDevice: string | null;
+}
+
+export interface CoudropReceivedFile {
+  name: string;
+  path: string;
+  size: number;
+}
+
+export interface CoudropProgress {
+  transferId?: string;
+  name: string;
+  bytesRead: number;
+  totalBytes: number;
+  progress: number;
+  speedBytesPerSec?: number;
+  timeRemainingSeconds?: number;
+  direction?: "send" | "receive";
+  isPaused?: boolean;
+}
+
+export interface ActiveTransferInfo {
+  id: string;
+  direction: "send" | "receive";
+  name: string;
+  totalBytes: number;
+  bytesTransferred: number;
+  progress: number;
+  speedBytesPerSec: number;
+  timeRemainingSeconds?: number;
+  isPaused: boolean;
+  status: string;
+}
+
+export interface FileShelfItemInfo {
+  path: string;
+  name: string;
+  size: number;
+  exists: boolean;
+  extension: string;
 }
 
 /** Session details for the phone: the switch (off by default). */
@@ -206,11 +265,43 @@ export interface PhoneAnswersStatus {
 }
 
 export const Bridge = {
-  boot: () => call<BootInfo>("boot"),
+  boot: async (): Promise<BootInfo | null> => {
+    if (!IS_TAURI) {
+      let storedSettings: Settings = { ...DEFAULT_SETTINGS };
+      try {
+        const raw = localStorage.getItem("coucou_settings");
+        if (raw) storedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      } catch {}
+      return {
+        settings: storedSettings,
+        screen: { x: 0, y: 0, width: window.innerWidth || 1920, height: window.innerHeight || 1080, scale: window.devicePixelRatio || 1 },
+        version: "0.6.1",
+        hookPath: "",
+        cursorPoll: false,
+        battery: {
+          hasBattery: true,
+          level: 0.8,
+          percent: 80,
+          charging: true,
+          acConnected: true,
+          timeRemainingSeconds: undefined,
+        },
+      };
+    }
+    return call<BootInfo>("boot");
+  },
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
   setSystemLanguages: (languages: string[]) => call<void>("set_system_languages", { languages }),
 
-  saveSettings: (settings: Settings) => call<void>("save_settings", { settings }),
+  saveSettings: async (settings: Settings): Promise<void | null> => {
+    if (!IS_TAURI) {
+      try {
+        localStorage.setItem("coucou_settings", JSON.stringify(settings));
+      } catch {}
+      return null;
+    }
+    return call<void>("save_settings", { settings });
+  },
 
   /** Shrink the window down to the invisible wake strip (hidden) or back to full. */
   /** Folds the window to `width`×`height` (the closed island) or grows it back to the panel. */
@@ -223,6 +314,9 @@ export const Bridge = {
    */
   setIslandRect: (x: number, y: number, width: number, height: number) =>
     call<void>("set_island_rect", { x, y, width, height }),
+
+  /** Notifies native host that renderer DOM, intro, and first transparent frame are painted. */
+  islandReady: () => call<void>("island_ready"),
 
   /** Give the window keyboard focus (chat field) and take it away again. */
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
@@ -248,6 +342,9 @@ export const Bridge = {
   revealSoundsFolder: () => call<void>("reveal_sounds_folder"),
   /** Tells the island to read the sounds folder again ("sounds-changed"). */
   reloadSounds: () => call<void>("reload_sounds"),
+
+  /** Whole-screen screenshot, copied to clipboard (#7578fa6). */
+  quickScreenshot: () => call<void>("quick_screenshot"),
 
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
@@ -283,7 +380,23 @@ export const Bridge = {
 
   quit: () => call<void>("quit_app"),
 
-  openSettingsWindow: () => call<void>("open_settings_window"),
+  openSettingsWindow: (page?: string) => {
+    if (!IS_TAURI) {
+      const url = `/settings.html${page ? `#${page}` : ""}`;
+      try {
+        const w = window.open(url, "_blank");
+        if (!w || w.closed || typeof w.closed === "undefined") {
+          window.location.href = url;
+        }
+      } catch {
+        window.location.href = url;
+      }
+      return Promise.resolve(null);
+    }
+    return call<void>("open_settings_window", { page: page ?? null });
+  },
+
+  targetHubPage: () => call<string>("target_hub_page"),
 
   /** Writes to %LOCALAPPDATA%\Coucou\coucou.log, next to the Rust lines. */
   log: (message: string) => call<void>("log_line", { message }),
@@ -384,6 +497,32 @@ export const Bridge = {
   phoneLinkPublishQuestion: (question: PhoneLinkQuestion | null) => call<void>("phone_link_publish_question", { question }),
   /** What Mochi wears ("auto" or an outfit), for phones that asked for it. */
   phoneLinkPublishPrefs: (outfit: string) => call<void>("phone_link_publish_prefs", { outfit }),
+
+  // ── Coudrop / Vayli Drop (Zero-QR Local File Transfer) ────────────────────
+  coudropGetDevice: () => call<VayliDropDevice>("coudrop_get_device"),
+  coudropSendFiles: (paths: string[]) => call<void>("coudrop_send_files", { paths }),
+  coudropCancelSend: () => call<void>("coudrop_cancel_send"),
+  coudropPauseTransfer: (transferId?: string) => call<void>("coudrop_pause_transfer", { transferId: transferId ?? null }),
+  coudropResumeTransfer: (transferId?: string) => call<void>("coudrop_resume_transfer", { transferId: transferId ?? null }),
+  coudropCancelTransfer: (transferId?: string) => call<void>("coudrop_cancel_transfer", { transferId: transferId ?? null }),
+  coudropGetActiveTransfer: () => call<ActiveTransferInfo | null>("coudrop_get_active_transfer"),
+  coudropGetHistory: () => call<CoudropReceivedFile[]>("coudrop_get_history"),
+  coudropStartReceive: () => callOrThrow<CoudropSessionInfo>("coudrop_start_receive"),
+  coudropCancel: () => call<void>("coudrop_cancel"),
+  coudropStatus: () => call<CoudropSessionInfo | null>("coudrop_status"),
+  coudropOpenFolder: () => call<void>("coudrop_open_folder"),
+  coudropPickDownloadDir: () => call<string | null>("coudrop_pick_download_dir"),
+  coudropSetDownloadDir: (path: string) => call<void>("coudrop_set_download_dir", { path }),
+  coudropGetDownloadDir: () => call<string>("coudrop_get_download_dir"),
+  coudropPickFiles: () => call<string[]>("coudrop_pick_files"),
+  coudropOpenFile: (path: string) => call<void>("coudrop_open_file", { path }),
+  coudropStageSendFiles: (paths: string[]) => call<string[]>("coudrop_stage_send_files", { paths }),
+
+  // ── File Shelf (Desk) ──────────────────────────────────────────────────────
+  fileshelfPickFiles: () => call<string[]>("fileshelf_pick_files"),
+  fileshelfOpenFile: (path: string) => call<void>("fileshelf_open_file", { path }),
+  fileshelfRevealFile: (path: string) => call<void>("fileshelf_reveal_file", { path }),
+  fileshelfGetFileInfo: (paths: string[]) => call<FileShelfItemInfo[]>("fileshelf_get_file_info", { paths }),
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
@@ -523,7 +662,50 @@ export const Bridge = {
   updateInstall: () => call<void>("update_install"),
   /** The release's page on github.com. */
   updateOpenPage: () => call<void>("update_open_page"),
+
+  // ── Smart Notch (src-tauri/src/smart_notch.rs) ───────────────────────────
+  /** Foreground window state (Smart Notch): whether the active foreground app is maximized or on desktop. */
+  getForegroundWindowState: () =>
+    call<{ isMaximized: boolean; isDesktop: boolean; app: string | null }>("get_foreground_window_state"),
+
+  // ── Power & Battery Status (src-tauri/src/power.rs) ────────────────────────
+  /** Hardware battery & power status from Windows Win32 API. */
+  getBatteryStatus: () => call<BatteryStatusDto>("get_battery_status"),
+  /** Force-refresh hardware battery & power status from Windows Win32 API. */
+  refreshBatteryStatus: () => call<BatteryStatusDto>("refresh_battery_status"),
+
+  // ── Windows User Identity (src-tauri/src/identity.rs) ─────────────────────
+  /** Authoritative Windows system user identity (Flow Dictation & Mochi Companion). */
+  getUserIdentity: () => call<UserIdentityDto>("get_user_identity"),
+
+  // ── Companion AI Orchestration (src-tauri/src/companion_ai.rs) ───────────
+  companionAiGenerate: (requestId: string, contextVersion: number, payload: unknown) =>
+    call<any>("companion_ai_generate", { requestId, contextVersion, payload }),
+  companionAiCancel: (requestId: string) =>
+    call<boolean>("companion_ai_cancel", { requestId }),
+  companionProbeHealth: (provider: string, endpoint?: string) =>
+    call<any>("companion_probe_health", { provider, endpoint }),
 };
+
+export interface UserIdentityDto {
+  windowsDisplayName?: string | null;
+  windowsAccountName?: string | null;
+  detectedGreetingName?: string | null;
+  deviceName?: string | null;
+  isResolved: boolean;
+  authoritativeGreetingName?: string | null;
+  identityVersion?: string | null;
+  isCustomPreferred?: boolean;
+}
+
+export interface BatteryStatusDto {
+  hasBattery: boolean;
+  level: number;
+  percent: number;
+  charging: boolean;
+  acConnected: boolean;
+  timeRemainingSeconds?: number;
+}
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
 
@@ -711,7 +893,8 @@ export async function onDragDrop(handler: (e: DragDropPayload) => void) {
   };
   const onLeave = (e: DragEvent) => {
     if (!hasFiles(e) || depth === 0) return;
-    if (--depth === 0) handler({ type: "leave" });
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) handler({ type: "leave" });
   };
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -721,19 +904,27 @@ export async function onDragDrop(handler: (e: DragDropPayload) => void) {
       handler({ type: "drop", paths: [] });
       return;
     }
-    webview.postMessageWithAdditionalObjects("coucou-file-drop", files);
+    try {
+      webview.postMessageWithAdditionalObjects("coucou-file-drop", files);
+    } catch (err) {
+      console.error("[bridge] Failed to post dropped files to WebView2:", err);
+      const paths = Array.from(files)
+        .map((f) => (f as unknown as { path?: string }).path || f.name)
+        .filter(Boolean);
+      handler({ type: "drop", paths });
+    }
   };
 
-  window.addEventListener("dragenter", onEnter);
-  window.addEventListener("dragover", onOver);
-  window.addEventListener("dragleave", onLeave);
-  window.addEventListener("drop", onDrop);
+  window.addEventListener("dragenter", onEnter, true);
+  window.addEventListener("dragover", onOver, true);
+  window.addEventListener("dragleave", onLeave, true);
+  window.addEventListener("drop", onDrop, true);
   const unlisten = await listen<DragDropPayload>("file-drag", (e) => handler(e.payload));
   return () => {
-    window.removeEventListener("dragenter", onEnter);
-    window.removeEventListener("dragover", onOver);
-    window.removeEventListener("dragleave", onLeave);
-    window.removeEventListener("drop", onDrop);
+    window.removeEventListener("dragenter", onEnter, true);
+    window.removeEventListener("dragover", onOver, true);
+    window.removeEventListener("dragleave", onLeave, true);
+    window.removeEventListener("drop", onDrop, true);
     unlisten();
   };
 }

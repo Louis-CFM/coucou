@@ -18,13 +18,13 @@ mod admission;
 mod chat;
 mod chat_backend;
 mod discovery;
-mod hub;
+pub mod hub;
 #[cfg(test)]
 mod interop;
-mod pairing;
+pub(crate) mod pairing;
 mod relay_client;
 mod relay_crypto;
-mod server;
+pub(crate) mod server;
 #[cfg(test)]
 mod tests;
 
@@ -56,6 +56,7 @@ impl SecretStore for Keystore {
 /// A phone's decision, applied as a click on the island would be.
 struct TauriHost {
     app: AppHandle,
+    drop_tx: tokio::sync::mpsc::UnboundedSender<serde_json::Value>,
 }
 
 impl Host for TauriHost {
@@ -79,6 +80,14 @@ impl Host for TauriHost {
         pipe::answer(&self.app, request_id, word);
         // The card on the island closes; it was answered elsewhere.
         let _ = self.app.emit_to(island::WINDOW_LABEL, "phone-link-decided", request_id.to_string());
+    }
+
+    fn drop_event(&self, event_type: &str, payload: &serde_json::Value) {
+        let _ = self.app.emit(&format!("coudrop-{event_type}"), payload);
+    }
+
+    fn handle_drop_message(&self, msg: &serde_json::Value) {
+        let _ = self.drop_tx.send(msg.clone());
     }
 }
 
@@ -122,7 +131,7 @@ impl server::Features for TauriFeatures {
 
 pub struct PhoneLink {
     app: AppHandle,
-    hub: Arc<Hub>,
+    pub hub: Arc<Hub>,
     /// Chat from the phone; offered to phones only while the user's switch is on (chat.rs).
     chat: Arc<chat::ChatLink>,
     store: Arc<dyn SecretStore>,
@@ -136,9 +145,20 @@ pub struct PhoneLink {
 
 impl PhoneLink {
     pub fn new(app: AppHandle) -> Self {
+        let (drop_tx, mut drop_rx) = tokio::sync::mpsc::unbounded_channel::<serde_json::Value>();
+        let app_drop = app.clone();
+        tauri::async_runtime::spawn(async move {
+            while let Some(msg) = drop_rx.recv().await {
+                crate::coudrop::handle_drop_message(&app_drop, &msg).await;
+            }
+        });
+
         Self {
             chat: chat::ChatLink::new(Arc::new(chat_backend::AppChat::new(app.clone()))),
-            hub: Hub::new(Arc::new(TauriHost { app: app.clone() })),
+            hub: Hub::new(Arc::new(TauriHost {
+                app: app.clone(),
+                drop_tx,
+            })),
             app,
             store: Arc::new(Keystore),
             advertiser: discovery::Advertiser::new(Arc::new(discovery::MdnsPublisher::new())),
@@ -237,6 +257,21 @@ impl PhoneLink {
         if let Some(r) = self.running.lock().unwrap().take() {
             r.handle.stop();
             log::line("phone link: stopped");
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn identity(&self) -> Option<pairing::Identity> {
+        self.running.lock().unwrap().as_ref().map(|r| r.identity.clone())
+    }
+
+    pub fn tls_acceptor(&self) -> Option<tokio_rustls::TlsAcceptor> {
+        if let Some(r) = self.running.lock().unwrap().as_ref() {
+            server::tls_acceptor(&r.identity).ok()
+        } else if let Ok(identity) = pairing::load_or_create_identity(&*self.store) {
+            server::tls_acceptor(&identity).ok()
+        } else {
+            None
         }
     }
 }

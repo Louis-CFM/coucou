@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.coucou.android.core.MotionPolicy
@@ -70,7 +71,7 @@ fun TypeStep.style(color: Color = Color.Unspecified) =
 
 /**
  * The island panel: `panel` colour, a thin border, radius 20. With [wash], a soft glow of that colour
- * rises from the bottom edge (the PC's `.wash`). No shadow: depth comes from the border and the glow.
+ * rises from the bottom edge (the PC's `.wash`). Depth comes from the crisp border and soft ambient wash.
  */
 @Composable
 fun Panel(modifier: Modifier = Modifier, wash: Color? = null, content: @Composable ColumnScope.() -> Unit) {
@@ -93,7 +94,7 @@ internal fun DrawScope.drawWash(color: Color, alpha: Float) {
     )
 }
 
-/** The hero panel at the top of Home: black, hanging from the screen's top edge. */
+/** The hero panel at the top of Home: hanging from the screen's top edge with Apple-inspired curvature. */
 @Composable
 fun HeroPanel(modifier: Modifier = Modifier, wash: Color? = null, content: @Composable ColumnScope.() -> Unit) {
     val t = tokens()
@@ -132,7 +133,7 @@ fun PillButton(
     }
     Row(
         modifier.alpha(if (enabled) 1f else 0.4f).heightIn(min = Spacing.MIN_TOUCH.dp).clip(CircleShape).background(bg.c())
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 22.dp),
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 20.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -141,28 +142,32 @@ fun PillButton(
     }
 }
 
-/** A small read-only label: the project folder, a model name. Not a button. */
+/** A small read-only capsule label: project name, model badge, or status chip. */
 @Composable
 fun Chip(text: String, modifier: Modifier = Modifier, tint: Color? = null) {
     val t = tokens()
+    val bg = tint?.copy(alpha = 0.15f) ?: t.panel2.c()
+    val fg = tint ?: t.text.c()
     Row(
-        modifier.heightIn(min = 28.dp).clip(CircleShape).background(tint?.copy(alpha = 0.16f) ?: t.panel2.c()).padding(horizontal = 12.dp),
+        modifier.heightIn(min = 28.dp).clip(CircleShape).background(bg).padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        Text(text, style = TypeScale.LABEL.style(tint ?: t.text.c()), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, style = TypeScale.LABEL.style(fg).copy(fontWeight = FontWeight.Medium), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** The small heading above a panel, in sentence case. */
+/** The small heading above a panel, in iOS grouped style. */
 @Composable
 fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     Text(
-        text, modifier.padding(start = 4.dp, top = 8.dp), style = TypeScale.LABEL.style(tokens().textDim.c()),
+        text.uppercase(), modifier.padding(start = 6.dp, top = 12.dp, bottom = 4.dp),
+        style = TypeScale.LABEL.style(tokens().textDim.c()).copy(letterSpacing = 0.7.sp, fontWeight = FontWeight.SemiBold),
         maxLines = 1, overflow = TextOverflow.Ellipsis,
     )
 }
 
-/** A row inside a panel: a title, an optional hint under it, something at the end. Tappable when [onClick] is given. */
+/** An iOS grouped row inside a panel: title, optional hint under it, trailing accessory. Tappable when [onClick] is given. */
 @Composable
 fun ListRow(
     title: String, modifier: Modifier = Modifier, hint: String? = null, onClick: (() -> Unit)? = null,
@@ -172,26 +177,34 @@ fun ListRow(
     Row(
         modifier.fillMaxWidth().heightIn(min = 56.dp)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
-            .padding(horizontal = Spacing.INSIDE.dp, vertical = Spacing.SCALE[2].dp),
+            .padding(horizontal = Spacing.INSIDE.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(Spacing.GAP.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = TypeScale.BODY.style(t.text.c()).copy(fontWeight = FontWeight.SemiBold))
-            if (hint != null) Text(hint, style = TypeScale.SECONDARY.style(t.textDim.c()))
+            Text(title, style = TypeScale.BODY.style(t.text.c()).copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (hint != null) Text(hint, style = TypeScale.SECONDARY.style(t.textDim.c()), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         trailing?.invoke(this)
     }
 }
 
-/** The thin line between two rows of one panel. */
+/** The thin line between two rows of one panel. Optional [startIndent] for iOS grouped table style. */
 @Composable
-fun RowDivider() {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(tokens().line.c()))
+fun RowDivider(startIndent: Dp = 0.dp) {
+    Box(
+        Modifier.fillMaxWidth().padding(start = startIndent).height(0.8.dp).background(tokens().line.c()),
+    )
 }
 
-/** The coloured dot of an agent or a connection. */
+/** The coloured status dot with subtle halo for Apple-grade clarity. */
 @Composable
 fun StateDot(color: Color, modifier: Modifier = Modifier) {
-    Box(modifier.size(8.dp).clip(CircleShape).background(color))
+    Box(
+        modifier.size(10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(10.dp).clip(CircleShape).background(color.copy(alpha = 0.22f)))
+        Box(Modifier.size(6.dp).clip(CircleShape).background(color))
+    }
 }

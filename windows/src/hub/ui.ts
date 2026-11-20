@@ -2,7 +2,10 @@
 // switches, segmented controls. Same look as the Mac's (FlowHub.swift).
 
 import { h } from "../views/dom";
+import { dropdownSelect, type DropdownSelect } from "../views/dropdown";
+import { animate, MACOS_JELLY } from "./motion";
 import { t } from "../i18n/i18n";
+import { Sound } from "../core/sound";
 import type { FlowKeyId } from "../core/flow";
 
 /** Stroke icons on a 24×24 grid, standing in for the Mac's SF Symbols. */
@@ -15,6 +18,7 @@ export const HUB_ICONS: Record<string, string> = {
   text: "M3.5 18 8 6l4.5 12M5 14h6M17.5 11a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6zM20.3 10.8V18",
   sliders: "M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4",
   gear: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7",
+  palette: "M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2zM8.5 7.5h.01M13.5 6.5h.01M17.5 10.5h.01M6.5 12.5h.01",
   grid: "M4.5 4.5h6v6h-6zM13.5 4.5h6v6h-6zM4.5 13.5h6v6h-6zM13.5 13.5h6v6h-6z",
   terminal: "M3.5 5.5h17v13h-17zM7 10l3 2.5L7 15M12.5 15H17",
   chat: "M4 5.5h16v10H10l-4 3.5v-3.5H4z",
@@ -95,37 +99,133 @@ export function button(text: string, onclick: () => void, kind: "" | "primary" |
   }) as HTMLButtonElement;
 }
 
-/** The settings window's switch, so both windows look alike. */
+/** The settings window's switch, matching Apple spring physics. */
 export function toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement {
-  const el = h("button", { class: on ? "switch on" : "switch", "aria-pressed": on });
+  const el = h("button", { class: on ? "switch on" : "switch", "aria-pressed": on, type: "button" });
   el.addEventListener("click", () => {
     const next = !el.classList.contains("on");
     el.classList.toggle("on", next);
     el.setAttribute("aria-pressed", String(next));
+    Sound.resume();
+    Sound.play("tick");
     onChange(next);
   });
   return el;
 }
 
+/**
+ * Apple-grade Liquid Glass Segmented Control with buttery smooth jelly physics
+ * and a sliding specular thumb indicator matching macOS Sequoia System Settings.
+ */
 export function segmented<T extends string>(options: [T, string][], value: T, onChange: (v: T) => void): HTMLElement {
-  const el = h("div", { class: "hub-segmented" });
+  const el = h("div", { class: "hub-segmented", role: "radiogroup" });
+  const indicator = h("div", { class: "hub-segmented-indicator" });
+  el.append(indicator);
+
+  const buttons = new Map<T, HTMLButtonElement>();
+  let currentValue = value;
+  let initialized = false;
+  let lastX = 0;
+
+  function updateIndicator(animated = true) {
+    const activeBtn = buttons.get(currentValue);
+    if (!activeBtn) return;
+
+    const targetX = activeBtn.offsetLeft;
+    const targetW = activeBtn.offsetWidth;
+
+    // In mock DOM / non-visual test environments where layout hasn't computed
+    if (typeof targetW !== "number" || targetW <= 0) {
+      return;
+    }
+
+    el.classList.add("has-indicator");
+    indicator.style.width = `${targetW}px`;
+
+    if (!initialized || !animated) {
+      indicator.style.transform = `translateX(${targetX}px)`;
+      indicator.style.opacity = "1";
+      initialized = true;
+      lastX = targetX;
+      return;
+    }
+
+    const dx = targetX - lastX;
+    lastX = targetX;
+
+    // Dynamic horizontal inertia squash & stretch
+    const stretch = Math.min(1.16, 1 + Math.abs(dx) * 0.0009);
+    const squish = Math.max(0.91, 1 - Math.abs(dx) * 0.0005);
+
+    animate(
+      indicator,
+      {
+        x: targetX,
+        width: targetW,
+        scaleX: dx !== 0 ? [1, stretch, 0.985, 1] : 1,
+        scaleY: dx !== 0 ? [1, squish, 1.015, 1] : 1,
+        opacity: 1,
+      },
+      MACOS_JELLY.indicator
+    );
+
+    // Subtle tactile pop on active text
+    animate(
+      activeBtn,
+      { scale: [0.97, 1.03, 1] },
+      MACOS_JELLY.snappy
+    );
+  }
+
   for (const [id, text] of options) {
-    const b = h("button", { class: id === value ? "on" : "", text });
+    const isCurrent = id === value;
+    const b = h("button", {
+      class: `hub-segmented-item ${isCurrent ? "on" : ""}`,
+      text,
+      type: "button",
+      role: "radio",
+      "aria-checked": String(isCurrent),
+    }) as HTMLButtonElement;
+
     b.addEventListener("click", () => {
-      for (const other of el.querySelectorAll("button")) other.classList.toggle("on", other === b);
+      if (currentValue === id) return;
+      currentValue = id;
+      for (const other of el.querySelectorAll("button")) {
+        const active = other === b;
+        other.classList.toggle("on", active);
+        other.setAttribute("aria-checked", String(active));
+      }
+      updateIndicator(true);
+      Sound.resume();
+      Sound.play("blip");
       onChange(id);
     });
+
+    buttons.set(id, b);
     el.append(b);
   }
+
+  // Initial layout synchronization
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => {
+      updateIndicator(false);
+      setTimeout(() => updateIndicator(false), 50);
+    });
+  }
+
+  // Recalibrate on container resize to stay pixel-locked
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => {
+      if (initialized) updateIndicator(false);
+    });
+    ro.observe(el);
+  }
+
   return el;
 }
 
-export function select<T extends string>(options: [T, string][], value: T, onChange: (v: T) => void): HTMLSelectElement {
-  const el = h("select", { class: "hub-select" }) as HTMLSelectElement;
-  for (const [id, text] of options) el.append(h("option", { value: id, text }));
-  el.value = value;
-  el.addEventListener("change", () => onChange(el.value as T));
-  return el;
+export function select<T extends string>(options: [T, string][], value: T, onChange: (v: T) => void): DropdownSelect<T> {
+  return dropdownSelect(options, value, onChange, { class: "hub-select" });
 }
 
 /** One key of a shortcut, as it is printed on the keyboard. */

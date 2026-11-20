@@ -1,8 +1,8 @@
 # Coucou — name, character and artwork
 
-Copyright (c) 2026 Louis Raillé. All rights reserved, except as stated below.
+Copyright (c) 2026 Madhan Kumar. All rights reserved, except as stated below.
 
-The [MIT License](LICENSE) covers the **source code** of Coucou. It does **not** cover the brand and the artwork listed here, which remain the property of Louis Raillé:
+The [MIT License](LICENSE) covers the **source code** of Coucou. It does **not** cover the brand and the artwork listed here, which remain the property of Madhan Kumar:
 
 - the names **“Coucou”** and **“Mochi”**;
 - the **Mochi character** — its design, look, expressions and animations as a character;
