@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Yandex Music pill** *(macOS, GitHub build)* — title and artist, a progress bar you drag to seek, play/pause and previous/next, read from the system's Now Playing (no permission, no account; no cover or volume), and Mochi dances while it plays
+- **Yandex Music pill** *(Windows)* — the same pill and card, cover included, read from the system media controls; the volume comes from the Windows mixer; **Open Yandex Music** goes through its `yandexmusic:` link, else **Get Yandex Music** opens its download page
+
 ## 0.6.1 — November 19, 2026
 
 - **Mochi no longer weighs down 120 Hz Macs** — on a ProMotion screen Mochi was redrawn 120 times a second, even folded in the notch: 35 to 60 % CPU, and as much again in WindowServer. He is now drawn at 60 fps while the island is open and 30 folded, the mini Mochis at 30, with the same motion on every screen; on a ProMotion Mac he also stops moving twice as fast (#1116, found by @liztim17)
