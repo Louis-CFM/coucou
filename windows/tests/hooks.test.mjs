@@ -301,7 +301,7 @@ test("an Antigravity command Coucou puts on the card waits there on its own pill
   hook({ ...payload, hook_event_name: "PermissionRequest", request_id: "a1" });
   assert.deepEqual(State.pendingApproval, {
     requestId: "a1", sessionId: "s1", pillId: "agent_antigravity", tool: "run_command",
-    command: "run_command · npm install",
+    command: "run_command · npm install", canAlways: false,
   });
   assert.deepEqual(sent("approval_ack"), [{ requestId: "a1" }]);
   assert.deepEqual(sent("approval_decline"), []);
@@ -325,6 +325,7 @@ test("Codex, Copilot CLI, Muse Code and OpenCode get the card on their own pill"
     const id = `agent_${agent}`;
     assert.deepEqual(State.pendingApproval, {
       requestId: `r-${agent}`, sessionId: "s1", pillId: id, tool: "Bash", command: "Bash · npm publish",
+      canAlways: false,
     });
     assert.deepEqual(sent("approval_ack"), [{ requestId: `r-${agent}` }]);
     assert.deepEqual(sent("approval_decline"), []);
@@ -512,6 +513,7 @@ test("a permission request puts the card up, says exactly what it authorises, an
     pillId: CLAUDE,
     tool: "Write",
     command: "Write · C:\\Users\\me\\proj\\.env",
+    canAlways: false,
   });
   assert.deepEqual(sent("approval_ack"), [{ requestId: "r1" }]);
   assert.deepEqual(sent("approval_decline"), []);
