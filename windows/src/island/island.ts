@@ -1087,6 +1087,8 @@ export class Island {
     // Only keys typed into the island itself land here, never Escape typed in
     // a terminal — so it may fold a waiting card away, as Escape in the notch
     // does on macOS.
+    this.wireDrag();
+
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && State.mode === "expanded") {
         if (State.pendingApproval) this.foldApproval();
@@ -1100,6 +1102,37 @@ export class Island {
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
     if (!IS_TAURI) this.followPageCursor();
+  }
+
+  /**
+   * A press on the island that moves a few pixels drags the whole window; a press
+   * that stays put is still a click. Controls, text fields and Mochi himself (he
+   * has his own drag, out to the desktop) keep their own input.
+   */
+  private wireDrag() {
+    const NO_DRAG = "button, input, textarea, select, a, [contenteditable], [data-no-drag]";
+    let press: { x: number; y: number } | null = null;
+
+    this.islandEl.addEventListener("mousedown", (e) => {
+      if (e.button !== 0 || this.isBotHit(e.clientX, e.clientY)) return;
+      if ((e.target as Element).closest(NO_DRAG)) return;
+      press = { x: e.screenX, y: e.screenY };
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!press) return;
+      if ((e.buttons & 1) === 0) {
+        press = null;
+        return;
+      }
+      if (Math.hypot(e.screenX - press.x, e.screenY - press.y) < DRAG_THRESHOLD) return;
+      press = null;
+      void Bridge.startIslandDrag().then(() => Bridge.saveIslandPosition());
+    });
+
+    window.addEventListener("mouseup", () => {
+      press = null;
+    });
   }
 
   /**
