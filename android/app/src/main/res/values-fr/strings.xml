@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d sur ton réseau. N\'associe qu\'un ordinateur qui t\'appartient.</string>
     <string name="pair_confirm_relay">Il peut aussi joindre ton ordinateur depuis d\'autres réseaux via le relais à l\'adresse %1$s. N\'associe que si tu as mis en place ce relais toi-même.</string>
     <string name="pair_confirm_replace">Cela remplace l\'ordinateur auquel tu es connecté actuellement.</string>
+    <string name="pair_confirm_fingerprint">Empreinte du certificat : %1$s</string>
     <string name="pair_confirm_ok">Associer</string>
+    <string name="msg_pair_verify_failed">Impossible de vérifier le nouvel ordinateur. La connexion actuelle a été conservée.</string>
     <string name="wardrobe_title">La garde-robe de Mochi</string>
     <string name="wardrobe_note">Choisis ce que Mochi porte sur ce téléphone.</string>
     <string name="wardrobe_follow">Comme mon ordinateur</string>

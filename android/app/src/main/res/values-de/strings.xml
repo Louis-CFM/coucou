@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d in deinem Netzwerk. Kopple nur mit einem Computer, der dir gehört.</string>
     <string name="pair_confirm_relay">Dein Computer kann auch aus anderen Netzwerken über das Relay unter %1$s erreicht werden. Kopple nur, wenn du dieses Relay selbst eingerichtet hast.</string>
     <string name="pair_confirm_replace">Dies ersetzt den Computer, mit dem du derzeit verbunden bist.</string>
+    <string name="pair_confirm_fingerprint">Zertifikats-Fingerabdruck: %1$s</string>
     <string name="pair_confirm_ok">Koppeln</string>
+    <string name="msg_pair_verify_failed">Der neue Computer konnte nicht überprüft werden. Ihre aktuelle Verbindung wurde beibehalten.</string>
     <string name="wardrobe_title">Mochis Kleiderschrank</string>
     <string name="wardrobe_note">Wähle, was Mochi auf diesem Telefon trägt.</string>
     <string name="wardrobe_follow">Wie auf meinem Computer</string>

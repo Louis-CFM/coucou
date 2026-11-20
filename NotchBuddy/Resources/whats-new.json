@@ -2,6 +2,128 @@
   "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 16 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.6.1",
+      "items": [
+        {
+          "icon": "bolt",
+          "title": {
+            "en": "Lighter on 120 Hz Macs",
+            "fr": "Plus léger sur les Mac 120 Hz",
+            "es": "Más ligero en Mac de 120 Hz",
+            "pt-BR": "Mais leve em Macs de 120 Hz",
+            "ru": "Легче для Mac со 120 Гц",
+            "zh-Hans": "在 120 Hz Mac 上更轻快",
+            "hi": "120 Hz Mac पर हल्का",
+            "ar": "أخف على أجهزة Mac بتردد 120 هرتز",
+            "bn": "120 Hz Mac-এ আরও হালকা",
+            "id": "Lebih ringan di Mac 120 Hz",
+            "de": "Leichter auf Macs mit 120 Hz",
+            "tr": "120 Hz Mac'lerde daha hafif",
+            "th": "เบาขึ้นบน Mac 120 Hz",
+            "zh-Hant": "在 120 Hz Mac 上更輕快",
+            "ko": "120Hz Mac에서 더 가볍게",
+            "ja": "120 Hz の Mac でより軽く"
+          },
+          "detail": {
+            "en": "Mochi draws at 60 fps open and 30 folded: far less CPU, same motion.",
+            "fr": "Mochi s'affiche à 60 i/s ouvert et 30 replié : bien moins de CPU, même mouvement.",
+            "es": "Mochi se dibuja a 60 fps abierto y 30 plegado: mucha menos CPU, el mismo movimiento.",
+            "pt-BR": "Mochi é desenhado a 60 fps aberto e 30 recolhido: muito menos CPU, o mesmo movimento.",
+            "ru": "Mochi рисуется с 60 fps в открытом виде и 30 в свёрнутом: гораздо меньше нагрузки на CPU, те же движения.",
+            "zh-Hans": "Mochi 展开时 60 帧、收起时 30 帧：CPU 占用大降，动作不变。",
+            "hi": "Mochi खुला होने पर 60 fps और मुड़ा होने पर 30 पर बनता है: CPU बहुत कम, हरकत वही।",
+            "ar": "يُرسم Mochi بمعدل 60 إطارًا مفتوحًا و30 مطويًا: استهلاك أقل بكثير للمعالج، والحركة نفسها.",
+            "bn": "Mochi খোলা অবস্থায় 60 fps আর ভাঁজ করা অবস্থায় 30-এ আঁকা হয়: CPU অনেক কম, নড়াচড়া একই।",
+            "id": "Mochi digambar 60 fps saat terbuka dan 30 saat terlipat: CPU jauh lebih ringan, gerakan sama.",
+            "de": "Mochi läuft geöffnet mit 60 fps und eingeklappt mit 30: viel weniger CPU, gleiche Bewegung.",
+            "tr": "Mochi açıkken 60, kapalıyken 30 fps çiziliyor: çok daha az CPU, aynı hareket.",
+            "th": "Mochi วาดที่ 60 fps ตอนเปิด และ 30 ตอนพับ: ใช้ CPU น้อยลงมาก การเคลื่อนไหวเหมือนเดิม",
+            "zh-Hant": "Mochi 展開時 60 幀、收起時 30 幀：CPU 用量大減，動作不變。",
+            "ko": "Mochi가 열렸을 때 60fps, 접혔을 때 30fps로 그려져요: CPU는 훨씬 적게, 움직임은 그대로.",
+            "ja": "Mochi は開いているとき 60 fps、たたんだとき 30 fps で描画。CPU 負荷を大きく減らし、動きはそのまま。"
+          }
+        },
+        {
+          "icon": "heart",
+          "title": {
+            "en": "Botan: Mochi is leaving the notch",
+            "fr": "Botan : Mochi sort du notch",
+            "es": "Botan: Mochi sale del notch",
+            "pt-BR": "Botan: o Mochi está saindo do notch",
+            "ru": "Botan: Mochi покидает вырез",
+            "zh-Hans": "Botan：Mochi 要离开刘海了",
+            "hi": "Botan: Mochi नॉच से बाहर आ रहा है",
+            "ar": "Botan: Mochi يغادر النوتش",
+            "bn": "Botan: Mochi নচ ছেড়ে বেরোচ্ছে",
+            "id": "Botan: Mochi keluar dari notch",
+            "de": "Botan: Mochi verlässt die Notch",
+            "tr": "Botan: Mochi çentikten çıkıyor",
+            "th": "Botan: Mochi กำลังออกจากรอยบาก",
+            "zh-Hant": "Botan：Mochi 要離開瀏海了",
+            "ko": "Botan: Mochi가 노치를 떠나요",
+            "ja": "Botan：Mochi がノッチを飛び出す"
+          },
+          "detail": {
+            "en": "The founders list is open: find the link on the next step.",
+            "fr": "La liste des founders est ouverte : le lien est à l'étape suivante.",
+            "es": "La lista de fundadores está abierta: el enlace está en el siguiente paso.",
+            "pt-BR": "A lista de fundadores está aberta: o link está na próxima etapa.",
+            "ru": "Список основателей открыт: ссылка на следующем шаге.",
+            "zh-Hans": "创始成员名单已开放：链接在下一步。",
+            "hi": "फ़ाउंडर्स सूची खुली है: लिंक अगले चरण में है।",
+            "ar": "قائمة المؤسسين مفتوحة: تجد الرابط في الخطوة التالية.",
+            "bn": "ফাউন্ডারদের তালিকা খোলা: লিঙ্কটি পরের ধাপে।",
+            "id": "Daftar founders sudah dibuka: tautannya ada di langkah berikutnya.",
+            "de": "Die Founders-Liste ist offen: Den Link gibt es im nächsten Schritt.",
+            "tr": "Kurucular listesi açık: bağlantı bir sonraki adımda.",
+            "th": "รายชื่อผู้ก่อตั้งเปิดแล้ว: ลิงก์อยู่ในขั้นตอนถัดไป",
+            "zh-Hant": "創始成員名單已開放：連結在下一步。",
+            "ko": "파운더 명단이 열렸어요: 링크는 다음 단계에 있어요.",
+            "ja": "ファウンダーズリストを受付中。リンクは次のステップに。"
+          }
+        },
+        {
+          "icon": "bug",
+          "title": {
+            "en": "Fixes from the community",
+            "fr": "Correctifs de la communauté",
+            "es": "Correcciones de la comunidad",
+            "pt-BR": "Correções da comunidade",
+            "ru": "Исправления от сообщества",
+            "zh-Hans": "社区带来的修复",
+            "hi": "समुदाय से सुधार",
+            "ar": "إصلاحات من المجتمع",
+            "bn": "কমিউনিটির সংশোধন",
+            "id": "Perbaikan dari komunitas",
+            "de": "Korrekturen aus der Community",
+            "tr": "Topluluktan düzeltmeler",
+            "th": "การแก้ไขจากชุมชน",
+            "zh-Hant": "社群帶來的修正",
+            "ko": "커뮤니티의 수정 사항",
+            "ja": "コミュニティからの修正"
+          },
+          "detail": {
+            "en": "No more crash on speech permission or Flow on macOS 27, and long pill names fit.",
+            "fr": "Plus de plantage à la permission vocale ni de Flow sur macOS 27, et les noms longs tiennent.",
+            "es": "Sin bloqueos en el permiso de voz ni en Flow en macOS 27, y los nombres largos caben.",
+            "pt-BR": "Sem travar na permissão de voz nem no Flow no macOS 27, e nomes longos cabem.",
+            "ru": "Больше никаких сбоев при разрешении на речь и во Flow на macOS 27, длинные имена помещаются.",
+            "zh-Hans": "语音权限和 macOS 27 上的 Flow 不再崩溃，长名称也放得下了。",
+            "hi": "वॉइस अनुमति और macOS 27 पर Flow में अब क्रैश नहीं, और लंबे नाम भी आ जाते हैं।",
+            "ar": "لا مزيد من التعطل عند إذن الكلام أو في Flow على macOS 27، والأسماء الطويلة تتسع.",
+            "bn": "ভয়েস অনুমতি বা macOS 27-এ Flow-তে আর ক্র্যাশ নেই, লম্বা নামও আঁটে।",
+            "id": "Tak ada lagi crash saat izin suara atau Flow di macOS 27, dan nama panjang muat.",
+            "de": "Kein Absturz mehr bei der Spracherlaubnis oder in Flow auf macOS 27, lange Namen passen.",
+            "tr": "Ses izninde ve macOS 27'de Flow'da artık çökme yok, uzun adlar sığıyor.",
+            "th": "ไม่แครชอีกตอนขอสิทธิ์เสียงหรือ Flow บน macOS 27 และชื่อยาวก็พอดี",
+            "zh-Hant": "語音權限和 macOS 27 上的 Flow 不再當機，長名稱也放得下了。",
+            "ko": "음성 권한과 macOS 27의 Flow에서 더 이상 멈추지 않고, 긴 이름도 들어가요.",
+            "ja": "音声の許可や macOS 27 の Flow でのクラッシュを解消。長い名前も収まるように。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.6.0",
       "items": [
         {

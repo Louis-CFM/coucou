@@ -32,5 +32,6 @@ footer{color:var(--dim);font-size:13px;margin-top:56px;border-top:1px solid var(
 @keyframes steam{0%{opacity:0;transform:translateY(4px)}40%{opacity:.7}100%{opacity:0;transform:translateY(-6px)}}
 .tip-text{flex:1;font-size:14px;color:var(--dim);line-height:1.5}.tip-text b{color:var(--ink)}
 .tip-btn{margin:0;white-space:nowrap}
+.tip.botan{margin-top:10px}.botan-mark{flex:none;margin:0 6px}.botan-btn{background:#ff5a24;border-color:#ff5a24;color:#fff}
 @media (max-width:560px){.tip{flex-wrap:wrap;justify-content:center;text-align:center}.tip-text{flex-basis:100%}}
 @media (prefers-reduced-motion:reduce){.tip-mochi .steam path{animation:none;opacity:.6}}

@@ -291,7 +291,9 @@
     "pair_confirm_body": "Ağındaki %1$s:%2$d. Yalnızca sana ait bir bilgisayarla eşleştir.",
     "pair_confirm_relay": "%1$s adresindeki aktarıcı üzerinden başka ağlardan da bilgisayarına ulaşabilir. Yalnızca bu aktarıcıyı kendin kurduysan eşleştir.",
     "pair_confirm_replace": "Şu anda bağlı olduğun bilgisayarın yerini alır.",
+    "pair_confirm_fingerprint": "Sertifika parmak izi: %1$s",
     "pair_confirm_ok": "Eşleştir",
+    "msg_pair_verify_failed": "Yeni bilgisayar doğrulanamadı. Mevcut bağlantınız korundu.",
     "wardrobe_title": "Mochi'nin gardırobu",
     "wardrobe_note": "Mochi'nin bu telefonda ne giyeceğini seç.",
     "wardrobe_follow": "Bilgisayarımla aynı",
@@ -459,11 +461,29 @@
     "mute_agents_hint": "Seçtiğin ajanların tamamlanma, başarısızlık ve sınır bildirimleri sessiz kalır. İstekler ve sorular her zaman iletilir."
   },
   "plurals": {
-    "widget_n_waiting": {"one": "%1$d öğe bekliyor", "other": "%1$d öğe bekliyor"},
-    "glance_requests": {"one": "Onay bekleyen %1$d istek", "other": "Onay bekleyen %1$d istek"},
-    "glance_questions": {"one": "Ajanlardan %1$d soru", "other": "Ajanlardan %1$d soru"},
-    "glance_stopped": {"one": "%1$d ajan durdu", "other": "%1$d ajan durdu"},
-    "glance_working_many": {"one": "%1$d ajan çalışıyor", "other": "%1$d ajan çalışıyor"},
-    "spoken_waiting_you": {"one": "%1$d öğe seni bekliyor", "other": "%1$d öğe seni bekliyor"}
+    "widget_n_waiting": {
+      "one": "%1$d öğe bekliyor",
+      "other": "%1$d öğe bekliyor"
+    },
+    "glance_requests": {
+      "one": "Onay bekleyen %1$d istek",
+      "other": "Onay bekleyen %1$d istek"
+    },
+    "glance_questions": {
+      "one": "Ajanlardan %1$d soru",
+      "other": "Ajanlardan %1$d soru"
+    },
+    "glance_stopped": {
+      "one": "%1$d ajan durdu",
+      "other": "%1$d ajan durdu"
+    },
+    "glance_working_many": {
+      "one": "%1$d ajan çalışıyor",
+      "other": "%1$d ajan çalışıyor"
+    },
+    "spoken_waiting_you": {
+      "one": "%1$d öğe seni bekliyor",
+      "other": "%1$d öğe seni bekliyor"
+    }
   }
 }

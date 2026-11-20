@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d sulla tua rete. Associa solo un computer di tua proprietà.</string>
     <string name="pair_confirm_relay">Può raggiungere il computer anche da altre reti tramite il relay su %1$s. Associa solo se hai configurato tu questo relay.</string>
     <string name="pair_confirm_replace">Sostituisce il computer attualmente collegato.</string>
+    <string name="pair_confirm_fingerprint">Impronta del certificato: %1$s</string>
     <string name="pair_confirm_ok">Associa</string>
+    <string name="msg_pair_verify_failed">Impossibile verificare il nuovo computer. Connessione attuale mantenuta.</string>
     <string name="wardrobe_title">Il guardaroba di Mochi</string>
     <string name="wardrobe_note">Scegli cosa indossa Mochi su questo telefono.</string>
     <string name="wardrobe_follow">Come sul computer</string>

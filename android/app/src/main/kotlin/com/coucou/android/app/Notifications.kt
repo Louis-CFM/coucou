@@ -17,6 +17,7 @@ import com.coucou.android.core.ApprovalChannels
 import com.coucou.android.core.ApprovalSheetPlan
 import com.coucou.android.core.Glance
 import com.coucou.android.core.GlanceTone
+import com.coucou.android.core.NotificationIds
 import com.coucou.android.core.OverlayPolicy
 import com.coucou.android.core.OngoingGate
 import com.coucou.android.core.SafeText
@@ -161,9 +162,8 @@ class Notifications(private val context: Context) {
     fun showApproval(r: ApprovalRequest, agentName: String, alert: OverlayPolicy.ApprovalAlert = OverlayPolicy.ApprovalAlert.HEADS_UP) {
         val channel = if (alert == OverlayPolicy.ApprovalAlert.QUIET) CH_APPROVAL_QUIET else ApprovalChannels.id(vibration)
         Log.d("CoucouOverlay", "approval notification: $alert")
-        val id = idFor(r.fingerprint)
         val deny = PendingIntent.getBroadcast(
-            context, id, Intent(context, ActionReceiver::class.java).setAction(ACTION_DENY).putExtra(EXTRA_FP, r.fingerprint),
+            context, NotificationIds.requestCode("deny:${r.fingerprint}"), Intent(context, ActionReceiver::class.java).setAction(ACTION_DENY).putExtra(EXTRA_FP, r.fingerprint),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val publicVersion = Notification.Builder(context, channel)
@@ -179,14 +179,14 @@ class Notifications(private val context: Context) {
             .setPublicVersion(publicVersion)
             .setAutoCancel(true)
             .setTimeoutAfter(com.coucou.android.link.Protocol.APPROVAL_TTL_MS)
-            .setContentIntent(open(r.fingerprint, false, id))
+            .setContentIntent(open(r.fingerprint, false, NotificationIds.requestCode("open:${r.fingerprint}")))
             .addAction(Notification.Action.Builder(null, context.getString(R.string.action_deny), deny).build())
             .apply {
                 // A command the phone cannot show in full is answered on the computer: no Allow here.
-                if (ApprovalSheetPlan.canAllowHere(r)) addAction(Notification.Action.Builder(null, context.getString(R.string.action_allow), open(r.fingerprint, true, id + 1)).build())
+                if (ApprovalSheetPlan.canAllowHere(r)) addAction(Notification.Action.Builder(null, context.getString(R.string.action_allow), open(r.fingerprint, true, NotificationIds.requestCode("allow:${r.fingerprint}"))).build())
             }
             .build()
-        runCatching { nm.notify(id, n) } // POST_NOTIFICATIONS may be denied: the in-app card still works
+        runCatching { nm.notify(NotificationIds.approvalTag(r.fingerprint), NotificationIds.APPROVAL_ID, n) } // POST_NOTIFICATIONS may be denied: the in-app card still works
         if (alert == OverlayPolicy.ApprovalAlert.HEADS_UP && !keepScreenOff) wakeScreen()
     }
 
@@ -202,7 +202,7 @@ class Notifications(private val context: Context) {
             .acquire(WAKE_MS)
     }
 
-    fun cancelApproval(fp: String) = nm.cancel(idFor(fp))
+    fun cancelApproval(fp: String) = nm.cancel(NotificationIds.approvalTag(fp), NotificationIds.APPROVAL_ID)
 
     /** An agent finished, failed, hit a limit or asks something. Quiet: Mochi's own sound and the pill are the alerts. */
     fun showStatus(pillId: String, agentName: String, state: BotState, statusText: String) {
@@ -228,22 +228,20 @@ class Notifications(private val context: Context) {
             .setAutoCancel(true)
             .setContentIntent(open(null, false, 0))
             .build()
-        runCatching { nm.notify(STATUS_TAG, statusId(pillId), n) }
+        runCatching { nm.notify(NotificationIds.statusTag(pillId), NotificationIds.STATUS_ID, n) }
     }
 
-    fun cancelStatus(pillId: String) = runCatching { nm.cancel(STATUS_TAG, statusId(pillId)) }
+    fun cancelStatus(pillId: String) = runCatching { nm.cancel(NotificationIds.statusTag(pillId), NotificationIds.STATUS_ID) }
 
     /** Coucou is on screen: the notices are redundant. */
     fun cancelAllStatus() {
-        runCatching { nm.activeNotifications.filter { it.tag == STATUS_TAG }.forEach { nm.cancel(it.tag, it.id) } }
+        runCatching { nm.activeNotifications.filter { NotificationIds.isStatusTag(it.tag) }.forEach { nm.cancel(it.tag, it.id) } }
     }
-
-    private fun statusId(pillId: String) = pillId.hashCode() and 0x3fffffff
 
     /** Opens the app on the biometric prompt for this request (the same as tapping Allow in the notification). */
     fun openAllow(fp: String) {
         Log.d("CoucouLaunch", "open the app on Allow (tap on the pill)")
-        runCatching { open(fp, true, idFor(fp) + 1).send() }
+        runCatching { open(fp, true, NotificationIds.requestCode("allow:$fp")).send() }
     }
 
     fun openApp() {
@@ -256,13 +254,10 @@ class Notifications(private val context: Context) {
         private const val WAKE_MS = 6_000L
         const val CH_APPROVAL_QUIET = "approvals_quiet"
         const val CH_UPDATES = "updates"
-        private const val STATUS_TAG = "status"
-        const val ONGOING_ID = 1
+        const val ONGOING_ID = NotificationIds.ONGOING_ID
         const val ACTION_DENY = "com.coucou.android.DENY"
         const val EXTRA_FP = "fingerprint"
         const val EXTRA_ALLOW = "allow"
-        /** Even ids for the request, +1 for its Allow action; never collides with ONGOING_ID. */
-        fun idFor(fp: String) = (fp.hashCode() and 0x3fffffff) * 2 + 2
     }
 }
 

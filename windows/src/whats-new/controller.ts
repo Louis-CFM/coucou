@@ -154,6 +154,10 @@ class WhatsNewController {
     void Bridge.openUrl(url);
   }
 
+  openBotan(url: string) {
+    void Bridge.openUrl(url);
+  }
+
   done() {
     this.host?.collapse();
   }

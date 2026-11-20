@@ -291,7 +291,9 @@
     "pair_confirm_body": "%1$s:%2$d di jaringanmu. Pasangkan hanya dengan komputer milikmu sendiri.",
     "pair_confirm_relay": "Komputer itu juga dapat dijangkau dari jaringan lain lewat relai di %1$s. Pasangkan hanya jika kamu sendiri yang menyiapkan relai itu.",
     "pair_confirm_replace": "Ini menggantikan komputer yang sedang terhubung denganmu sekarang.",
+    "pair_confirm_fingerprint": "Sidik jari sertifikat: %1$s",
     "pair_confirm_ok": "Pasangkan",
+    "msg_pair_verify_failed": "Tidak dapat memverifikasi komputer baru. Koneksi Anda saat ini tetap dipertahankan.",
     "wardrobe_title": "Lemari Mochi",
     "wardrobe_note": "Pilih apa yang dipakai Mochi di ponsel ini.",
     "wardrobe_follow": "Sama seperti komputerku",
@@ -459,11 +461,23 @@
     "mute_agents_hint": "Pemberitahuan selesai, gagal, dan batas dari agen yang kamu pilih tetap senyap. Permintaan dan pertanyaan selalu masuk."
   },
   "plurals": {
-    "widget_n_waiting": {"other": "%1$d menunggu"},
-    "glance_requests": {"other": "%1$d permintaan untuk disetujui"},
-    "glance_questions": {"other": "%1$d pertanyaan dari agen"},
-    "glance_stopped": {"other": "%1$d agen berhenti"},
-    "glance_working_many": {"other": "%1$d agen sedang bekerja"},
-    "spoken_waiting_you": {"other": "%1$d menunggumu"}
+    "widget_n_waiting": {
+      "other": "%1$d menunggu"
+    },
+    "glance_requests": {
+      "other": "%1$d permintaan untuk disetujui"
+    },
+    "glance_questions": {
+      "other": "%1$d pertanyaan dari agen"
+    },
+    "glance_stopped": {
+      "other": "%1$d agen berhenti"
+    },
+    "glance_working_many": {
+      "other": "%1$d agen sedang bekerja"
+    },
+    "spoken_waiting_you": {
+      "other": "%1$d menunggumu"
+    }
   }
 }

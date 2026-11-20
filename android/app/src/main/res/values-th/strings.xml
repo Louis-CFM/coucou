@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d ในเครือข่ายของคุณ จับคู่เฉพาะกับคอมพิวเตอร์ที่คุณเป็นเจ้าของ</string>
     <string name="pair_confirm_relay">ยังเชื่อมต่อคอมพิวเตอร์จากเครือข่ายอื่นผ่านรีเลย์ที่ %1$s ได้ จับคู่เฉพาะเมื่อคุณตั้งค่ารีเลย์นั้นเอง</string>
     <string name="pair_confirm_replace">การดำเนินการนี้จะแทนที่คอมพิวเตอร์ที่เชื่อมต่ออยู่</string>
+    <string name="pair_confirm_fingerprint">ลายนิ้วมือใบรับรอง: %1$s</string>
     <string name="pair_confirm_ok">จับคู่</string>
+    <string name="msg_pair_verify_failed">ไม่สามารถยืนยันคอมพิวเตอร์เครื่องใหม่ได้ ยังคงใช้การเชื่อมต่อปัจจุบันอยู่</string>
     <string name="wardrobe_title">ตู้เสื้อผ้าของ Mochi</string>
     <string name="wardrobe_note">เลือกสิ่งที่ Mochi สวมใส่บนโทรศัพท์เครื่องนี้</string>
     <string name="wardrobe_follow">เหมือนบนคอมพิวเตอร์</string>

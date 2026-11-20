@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">你的网络上的 %1$s:%2$d。只与属于你自己的电脑配对。</string>
     <string name="pair_confirm_relay">它也可以通过位于 %1$s 的中继，从其他网络连接到你的电脑。只有当这个中继是你自己搭建的，才可以配对。</string>
     <string name="pair_confirm_replace">这会替换你当前连接的电脑。</string>
+    <string name="pair_confirm_fingerprint">证书指纹：%1$s</string>
     <string name="pair_confirm_ok">配对</string>
+    <string name="msg_pair_verify_failed">无法验证新电脑，已保留当前连接。</string>
     <string name="wardrobe_title">Mochi 的衣橱</string>
     <string name="wardrobe_note">选择 Mochi 在这部手机上穿什么。</string>
     <string name="wardrobe_follow">与我的电脑相同</string>

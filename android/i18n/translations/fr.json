@@ -291,7 +291,9 @@
     "pair_confirm_body": "%1$s:%2$d sur ton réseau. N'associe qu'un ordinateur qui t'appartient.",
     "pair_confirm_relay": "Il peut aussi joindre ton ordinateur depuis d'autres réseaux via le relais à l'adresse %1$s. N'associe que si tu as mis en place ce relais toi-même.",
     "pair_confirm_replace": "Cela remplace l'ordinateur auquel tu es connecté actuellement.",
+    "pair_confirm_fingerprint": "Empreinte du certificat : %1$s",
     "pair_confirm_ok": "Associer",
+    "msg_pair_verify_failed": "Impossible de vérifier le nouvel ordinateur. La connexion actuelle a été conservée.",
     "wardrobe_title": "La garde-robe de Mochi",
     "wardrobe_note": "Choisis ce que Mochi porte sur ce téléphone.",
     "wardrobe_follow": "Comme mon ordinateur",
@@ -459,11 +461,35 @@
     "mute_agents_hint": "Les notices de fin, d'échec et de limite des agents choisis restent silencieuses. Les demandes et les questions arrivent toujours."
   },
   "plurals": {
-    "widget_n_waiting": {"one": "%1$d en attente", "many": "%1$d en attente", "other": "%1$d en attente"},
-    "glance_requests": {"one": "%1$d demande à approuver", "many": "%1$d de demandes à approuver", "other": "%1$d demandes à approuver"},
-    "glance_questions": {"one": "%1$d question d'un agent", "many": "%1$d de questions d'agents", "other": "%1$d questions d'agents"},
-    "glance_stopped": {"one": "%1$d agent arrêté", "many": "%1$d d'agents arrêtés", "other": "%1$d agents arrêtés"},
-    "glance_working_many": {"one": "%1$d agent travaille", "many": "%1$d d'agents travaillent", "other": "%1$d agents travaillent"},
-    "spoken_waiting_you": {"one": "%1$d en attente de toi", "many": "%1$d en attente de toi", "other": "%1$d en attente de toi"}
+    "widget_n_waiting": {
+      "one": "%1$d en attente",
+      "many": "%1$d en attente",
+      "other": "%1$d en attente"
+    },
+    "glance_requests": {
+      "one": "%1$d demande à approuver",
+      "many": "%1$d de demandes à approuver",
+      "other": "%1$d demandes à approuver"
+    },
+    "glance_questions": {
+      "one": "%1$d question d'un agent",
+      "many": "%1$d de questions d'agents",
+      "other": "%1$d questions d'agents"
+    },
+    "glance_stopped": {
+      "one": "%1$d agent arrêté",
+      "many": "%1$d d'agents arrêtés",
+      "other": "%1$d agents arrêtés"
+    },
+    "glance_working_many": {
+      "one": "%1$d agent travaille",
+      "many": "%1$d d'agents travaillent",
+      "other": "%1$d agents travaillent"
+    },
+    "spoken_waiting_you": {
+      "one": "%1$d en attente de toi",
+      "many": "%1$d en attente de toi",
+      "other": "%1$d en attente de toi"
+    }
   }
 }

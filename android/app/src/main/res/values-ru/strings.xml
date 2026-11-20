@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">%1$s:%2$d в твоей сети. Связывай только компьютер, который принадлежит тебе.</string>
     <string name="pair_confirm_relay">Он также может связаться с твоим компьютером из других сетей через ретранслятор %1$s. Связывай, только если ты сам настроил этот ретранслятор.</string>
     <string name="pair_confirm_replace">Это заменит компьютер, к которому ты сейчас подключён.</string>
+    <string name="pair_confirm_fingerprint">Отпечаток сертификата: %1$s</string>
     <string name="pair_confirm_ok">Связать</string>
+    <string name="msg_pair_verify_failed">Не удалось проверить новый компьютер. Текущее подключение сохранено.</string>
     <string name="wardrobe_title">Гардероб Mochi</string>
     <string name="wardrobe_note">Выбери, что носит Mochi на этом телефоне.</string>
     <string name="wardrobe_follow">Как на моём компьютере</string>

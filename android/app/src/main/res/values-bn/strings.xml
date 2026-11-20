@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">আপনার নেটওয়ার্কে %1$s:%2$d। শুধু নিজের কম্পিউটারের সাথে যুক্ত করুন।</string>
     <string name="pair_confirm_relay">এটি %1$s-এর রিলের মাধ্যমে অন্য নেটওয়ার্ক থেকেও আপনার কম্পিউটারে পৌঁছাতে পারে। সেই রিলে নিজে বানালে তবেই যুক্ত করুন।</string>
     <string name="pair_confirm_replace">এটি আপনি এখন যে কম্পিউটারের সাথে সংযুক্ত তার জায়গা নেয়।</string>
+    <string name="pair_confirm_fingerprint">শংসাপত্রের ফিঙ্গারপ্রিন্ট: %1$s</string>
     <string name="pair_confirm_ok">যুক্ত করুন</string>
+    <string name="msg_pair_verify_failed">নতুন কম্পিউটারটি যাচাই করা যায়নি। আপনার বর্তমান সংযোগ বজায় রাখা হয়েছে।</string>
     <string name="wardrobe_title">Mochi-র পোশাকের আলমারি</string>
     <string name="wardrobe_note">এই ফোনে Mochi কী পরবে তা বেছে নিন।</string>
     <string name="wardrobe_follow">আমার কম্পিউটারের মতো</string>

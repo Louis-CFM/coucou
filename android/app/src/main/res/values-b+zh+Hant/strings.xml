@@ -292,7 +292,9 @@
     <string name="pair_confirm_body">網路上的 %1$s:%2$d。請只與你擁有的電腦配對。</string>
     <string name="pair_confirm_relay">也可透過位於 %1$s 的中繼服務，從其他網路連接到你的電腦。只有在此中繼服務是你自行設定時才配對。</string>
     <string name="pair_confirm_replace">這將取代目前連接的電腦。</string>
+    <string name="pair_confirm_fingerprint">憑證指紋：%1$s</string>
     <string name="pair_confirm_ok">配對</string>
+    <string name="msg_pair_verify_failed">無法驗證新電腦，已保留目前的連線。</string>
     <string name="wardrobe_title">Mochi 的衣櫥</string>
     <string name="wardrobe_note">選擇 Mochi 在這支手機上穿戴的服飾。</string>
     <string name="wardrobe_follow">與電腦相同</string>
