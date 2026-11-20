@@ -279,7 +279,9 @@ sent nothing about it, and its `launch` messages are an unknown type: ignored an
   check that the folder exists, and the prompt handed over the same way, **never written into a command line** (an environment variable
   on Linux, a temporary file read and deleted by PowerShell on Windows). There is no second launcher.
 - **Claude Code always starts in the standard permission mode** (`claude --permission-mode default`), whatever the computer's own
-  Claude Code settings say: a phone can never start a session that doesn't ask for approval. The island's own launch is unchanged.
+  Claude Code settings say: a phone can never start a session that doesn't ask for approval. On Linux it is started as `command claude`,
+  so an alias or a shell function in the user's .bashrc or .zshrc cannot add a flag of its own; on Windows `Get-Command -CommandType
+  Application` already skips them. The island's own launch is unchanged.
 - The answer goes to the phone that asked. A `launch` whose `id` is not valid is ignored (there is nothing to answer to); the same `id`
   twice starts one session. The prompt is never logged, on either side, and the phone does not keep it.
 - **The phone asks for its screen lock (fingerprint, pattern, PIN) before it sends**, like Allow; with no screen lock set up it sends

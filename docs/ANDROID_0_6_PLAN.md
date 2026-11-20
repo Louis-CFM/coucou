@@ -147,7 +147,8 @@ the row is there when a computer is paired, and says what is missing.
    terminal to type.
 3. **Decided (Louis, 19 November): a session started from the phone always starts in the standard permission mode**,
    with `--permission-mode default`, whatever the computer's own Claude Code settings say, so it always asks for approval
-   and the requests arrive on the phone as usual. The island's own launch is unchanged. In `launch.rs` this is
+   and the requests arrive on the phone as usual. On Linux it runs as `command claude`, so a shell alias or function cannot
+   add a flag (Louis, 20 November). The island's own launch is unchanged. In `launch.rs` this is
    `Origin::Phone` and `launch_from_phone`, tested in `a_session_from_the_phone_always_starts_in_the_standard_permission_mode`.
 4. **The list is the island's whole list**, including a folder the user picked by hand there, not only folders sessions ran in.
 5. **Two folders with the same name look the same on the phone** (the path is never sent). Rare with ten projects.

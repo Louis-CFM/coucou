@@ -53,6 +53,19 @@ impl Origin {
             Origin::Phone => " --permission-mode default",
         }
     }
+
+    /// How the Linux shell names Claude Code. From a phone, `command claude`:
+    /// the program on $PATH, never an alias or a shell function from the
+    /// user's .bashrc or .zshrc, which could add a flag of its own (an alias
+    /// with --dangerously-skip-permissions, say). The island keeps `claude`,
+    /// as it ships today. Windows already skips them for both, with
+    /// Get-Command -CommandType Application.
+    pub fn shell_claude(self) -> &'static str {
+        match self {
+            Origin::Island => "claude",
+            Origin::Phone => "command claude",
+        }
+    }
 }
 
 /// The prompt as it is handed over: trimmed, on one line.
@@ -84,8 +97,8 @@ pub fn sh_quote(s: &str) -> String {
 /// shell again in the project once Claude Code quits.
 #[cfg_attr(windows, allow(dead_code))]
 pub fn shell_command(shell: &str, has_prompt: bool, origin: Origin) -> Vec<String> {
-    let flags = origin.claude_flags();
-    let run = if has_prompt { format!(r#"claude{flags} "$COUCOU_PROMPT""#) } else { format!("claude{flags}") };
+    let (claude, flags) = (origin.shell_claude(), origin.claude_flags());
+    let run = if has_prompt { format!(r#"{claude}{flags} "$COUCOU_PROMPT""#) } else { format!("{claude}{flags}") };
     vec![shell.to_string(), "-lic".to_string(), format!("{run}; exec {} -l", sh_quote(shell))]
 }
 
@@ -448,19 +461,27 @@ mod tests {
         // overrides them for this session: it asks for approval, and the requests reach the phone as usual.
         assert_eq!(Origin::Phone.claude_flags(), " --permission-mode default");
         assert_eq!(Origin::Island.claude_flags(), "", "the island's own launch is unchanged");
+        // On Linux the phone's session skips the user's aliases and shell functions: an alias such as
+        // claude='claude --dangerously-skip-permissions' in .zshrc never reaches it.
+        assert_eq!(Origin::Phone.shell_claude(), "command claude");
+        assert_eq!(Origin::Island.shell_claude(), "claude", "the island's own launch is unchanged");
 
         // Linux, with and without a prompt; the prompt stays in the environment.
         assert_eq!(
             shell_command("/bin/zsh", true, Origin::Phone),
-            s(&["/bin/zsh", "-lic", r#"claude --permission-mode default "$COUCOU_PROMPT"; exec /bin/zsh -l"#])
+            s(&["/bin/zsh", "-lic", r#"command claude --permission-mode default "$COUCOU_PROMPT"; exec /bin/zsh -l"#])
         );
         assert_eq!(
             shell_command("/bin/bash", false, Origin::Phone),
-            s(&["/bin/bash", "-lic", "claude --permission-mode default; exec /bin/bash -l"])
+            s(&["/bin/bash", "-lic", "command claude --permission-mode default; exec /bin/bash -l"])
+        );
+        assert_eq!(
+            shell_command("/usr/bin/fish", true, Origin::Phone),
+            s(&["/usr/bin/fish", "-lic", r#"command claude --permission-mode default "$COUCOU_PROMPT"; exec /usr/bin/fish -l"#])
         );
         let nasty = r#"--dangerously-skip-permissions "x"; claude --permission-mode bypassPermissions"#;
         let spawn = linux_spawn("/usr/bin/kitty", "/bin/zsh", "/home/me/p", nasty, Origin::Phone);
-        assert_eq!(spawn.args.last().unwrap(), r#"claude --permission-mode default "$COUCOU_PROMPT"; exec /bin/zsh -l"#);
+        assert_eq!(spawn.args.last().unwrap(), r#"command claude --permission-mode default "$COUCOU_PROMPT"; exec /bin/zsh -l"#);
         assert!(spawn.args.iter().all(|a| !a.contains("dangerously") && !a.contains("bypass")), "{:?}", spawn.args);
         assert_eq!(spawn.env, vec![("COUCOU_PROMPT".to_string(), nasty.to_string())]);
 
