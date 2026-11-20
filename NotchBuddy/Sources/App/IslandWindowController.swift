@@ -1790,7 +1790,12 @@ extension IslandWindowController {
            runner.info.webSearchEnabled, runner.info.hasWebKey, VoiceSettings.speakEnabled {
             // A web search takes a few seconds: say so instead of going quiet.
             VoiceSpeaker.shared.onDidFinish = nil
-            let wait = VoiceSettings.language == "fr" ? "Je regarde." : "Let me check."
+            let wait: String
+            switch VoiceSettings.lang {
+            case .fr: wait = "Je regarde."
+            case .pt: wait = "Deixa eu ver."
+            case .en: wait = "Let me check."
+            }
             VoiceSpeaker.shared.speak(wait, locale: VoiceSettings.answerLocale)
         }
 
@@ -2029,7 +2034,7 @@ extension IslandWindowController {
         // answer in mine ("You're speaking French. Want me to answer in French?").
         if !expectAnswer, !ClaudeVoiceBrain.isActive, !VoiceSettings.languageOfferDone,
            let spoken = VoiceEngine.shared.speechLocale?.language.languageCode?.identifier,
-           ["fr", "en"].contains(spoken), spoken != VoiceSettings.language,
+           ["fr", "en", "pt"].contains(spoken), spoken != VoiceSettings.language,
            VoiceEngine.shared.isEnabled {
             VoiceSettings.languageOfferDone = true
             let offer = VoiceActionRunner.shared.offerLanguageSwitch(to: spoken)
@@ -2070,8 +2075,13 @@ extension IslandWindowController {
             return false
         }
         appendAppLog("nb.log", "[Voice] Claude turn \(Int(Date().timeIntervalSince(t0) * 1000)) ms\(reply.acted ? ", acted" : "")")
-        let fr = VoiceSettings.language == "fr"
-        let text = reply.text.isEmpty ? (fr ? "C'est fait." : "Done.") : reply.text
+        let done: String
+        switch VoiceSettings.lang {
+        case .fr: done = "C'est fait."
+        case .pt: done = "Pronto."
+        case .en: done = "Done."
+        }
+        let text = reply.text.isEmpty ? done : reply.text
         VoiceTranscriptHistory.shared.record(transcript: transcript, note: text, origin: .brain)
         consecutiveFailures = 0
         if reply.acted { NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy) }
@@ -2098,9 +2108,12 @@ extension IslandWindowController {
         if state.soundEnabled { SoundEngine.shared.play("approve") }
         fsm.openedExternally()
         expand(to: .mail)
-        let fr = VoiceSettings.language == "fr"
-        let text = fr ? "\(url.lastPathComponent) est en pièce jointe. Tu n'as plus qu'à cliquer sur Envoyer."
-                      : "\(url.lastPathComponent) is attached. Just click Send."
+        let text: String
+        switch VoiceSettings.lang {
+        case .fr: text = "\(url.lastPathComponent) est en pièce jointe. Tu n'as plus qu'à cliquer sur Envoyer."
+        case .pt: text = "\(url.lastPathComponent) está anexado. É só clicar em Enviar."
+        case .en: text = "\(url.lastPathComponent) is attached. Just click Send."
+        }
         if VoiceSettings.speakEnabled {
             VoiceSpeaker.shared.onDidFinish = nil
             VoiceSpeaker.shared.speak(text, locale: VoiceSettings.answerLocale)

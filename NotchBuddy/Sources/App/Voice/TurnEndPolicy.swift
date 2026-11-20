@@ -15,13 +15,17 @@ enum TurnEndPolicy {
 
     /// Returns the silence timeout given the current *normalised* partial transcript.
     /// Call with `IntentParser.normalise(rawTranscript)`.
-    static func silenceDelay(for transcript: String, longAnswer: Bool = false) -> TimeInterval {
+    /// `portuguese` adds the Portuguese linkers, which collide with English words
+    /// ("no", "do", "as"): only set it when the user speaks Portuguese.
+    static func silenceDelay(for transcript: String, longAnswer: Bool = false,
+                             portuguese: Bool = false) -> TimeInterval {
         if longAnswer { return answerSilence }
         guard !transcript.trimmingCharacters(in: .whitespaces).isEmpty else {
             return baseSilence
         }
         let lastWord = transcript.split(separator: " ").last.map(String.init) ?? ""
-        return extendingWords.contains(lastWord) ? extendedSilence : baseSilence
+        if extendingWords.contains(lastWord) { return extendedSilence }
+        return portuguese && ptExtendingWords.contains(lastWord) ? extendedSilence : baseSilence
     }
 
     /// Phrases that end the conversation window.
@@ -29,6 +33,10 @@ enum TurnEndPolicy {
     static let conversationEndPhrases: Set<String> = [
         "merci", "c est bon", "c'est bon", "that s all", "that's all", "stop",
         "laisse tomber", "annule", "annuler", "cancel", "never mind", "bye", "au revoir",
+        // PT (plain and accented: the end-phrase check only lowercases and strips punctuation)
+        // ("pode parar" and "e isso" are left out: they open normal sentences and partials would end the turn)
+        "obrigado", "obrigada", "valeu", "so isso", "só isso",
+        "cancela", "deixa pra la", "deixa pra lá", "tchau", "ate mais", "até mais",
     ]
 
     // Words that suggest the utterance is mid-thought and should get extra silence.
@@ -52,6 +60,17 @@ enum TurnEndPolicy {
         // EN bare action verbs
         "add", "remove", "disable", "enable", "play", "start",
         "increase", "decrease", "set",
+    ]
+
+    /// Portuguese linkers and bare verbs, used only when the user speaks Portuguese.
+    static let ptExtendingWords: Set<String> = [
+        // PT conjunctions / thinking out loud / articles / prepositions
+        "e", "mas", "ou", "entao", "depois", "tipo", "ne", "ahn",
+        "o", "os", "as", "um", "uma", "do", "da", "dos", "das", "no", "na", "em", "com",
+        "pra", "para", "pro",
+        // PT bare action verbs
+        "adiciona", "tira", "remove", "coloca", "bota", "toca", "liga", "desliga",
+        "aumenta", "abaixa", "diminui",
     ]
 }
 #endif
