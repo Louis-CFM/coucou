@@ -35,6 +35,9 @@ class FileTransferSender(
 ) {
     private val executor = Executors.newSingleThreadExecutor()
     private val activeTransfers = ConcurrentHashMap<String, Boolean>()
+    private val pausedTransfers = ConcurrentHashMap<String, Boolean>()
+    private val cancelledTransfers = ConcurrentHashMap<String, Boolean>()
+    private val activeConnections = ConcurrentHashMap<String, HttpURLConnection>()
     private val pendingAccepts = ConcurrentHashMap<String, (Boolean, String, ServerMsg.DropAccept?) -> Unit>()
     private val pendingDone = ConcurrentHashMap<String, (Boolean, String) -> Unit>()
 
@@ -171,6 +174,7 @@ class FileTransferSender(
                                 setChunkedStreamingMode(512 * 1024)
                             }
                         }
+                        activeConnections[transferId] = conn
 
                         if (conn is HttpsURLConnection && useTls) {
                             val sslCtx = SSLContext.getInstance("TLS").apply {
@@ -199,7 +203,16 @@ class FileTransferSender(
 
                         val outStream = BufferedOutputStream(conn.outputStream, 512 * 1024)
                         try {
-                            while (activeTransfers[transferId] == true) {
+                            while (activeTransfers[transferId] == true && cancelledTransfers[transferId] != true) {
+                                while (pausedTransfers[transferId] == true && cancelledTransfers[transferId] != true) {
+                                    try {
+                                        Thread.sleep(100)
+                                    } catch (_: InterruptedException) {
+                                        break
+                                    }
+                                }
+                                if (cancelledTransfers[transferId] == true) break
+
                                 val read = stream.read(buffer)
                                 if (read == -1) break
                                 outStream.write(buffer, 0, read)
@@ -209,7 +222,8 @@ class FileTransferSender(
                                 val now = System.currentTimeMillis()
                                 val elapsed = now - lastNotifyTime
                                 if (elapsed >= 250) {
-                                    val speedMBps = if (elapsed > 0) ((bytesTransferred - lastNotifyBytes) / (1024.0 * 1024.0)) / (elapsed / 1000.0) else 0.0
+                                    val isP = pausedTransfers[transferId] == true
+                                    val speedMBps = if (elapsed > 0 && !isP) ((bytesTransferred - lastNotifyBytes) / (1024.0 * 1024.0)) / (elapsed / 1000.0) else 0.0
                                     val prog = if (actualSize > 0) (bytesTransferred.toFloat() / actualSize).coerceIn(0f, 0.99f) else 0f
                                     notifications.showProgress(transferId, meta.name, bytesTransferred, actualSize)
                                     onProgress?.invoke(record, prog, speedMBps)
@@ -217,9 +231,16 @@ class FileTransferSender(
                                     lastNotifyBytes = bytesTransferred
                                 }
                             }
+                            if (cancelledTransfers[transferId] == true) {
+                                return@execute
+                            }
                             outStream.flush()
                         } finally {
                             runCatching { outStream.close() }
+                        }
+
+                        if (cancelledTransfers[transferId] == true) {
+                            return@execute
                         }
 
                         val respCode = conn.responseCode
@@ -238,7 +259,16 @@ class FileTransferSender(
                         val totalChunks = if (actualSize > 0) Math.ceil(actualSize.toDouble() / buffer.size).toInt().coerceAtLeast(1) else 1
                         val startTime = System.currentTimeMillis()
 
-                        while (activeTransfers[transferId] == true && stream.read(buffer).also { bytesRead = it } != -1) {
+                        while (activeTransfers[transferId] == true && cancelledTransfers[transferId] != true && stream.read(buffer).also { bytesRead = it } != -1) {
+                            while (pausedTransfers[transferId] == true && cancelledTransfers[transferId] != true) {
+                                try {
+                                    Thread.sleep(100)
+                                } catch (_: InterruptedException) {
+                                    break
+                                }
+                            }
+                            if (cancelledTransfers[transferId] == true) break
+
                             digest.update(buffer, 0, bytesRead)
                             val base64Data = Base64.encodeToString(buffer, 0, bytesRead, Base64.NO_WRAP)
                             currentLink.dropChunk(
@@ -252,16 +282,19 @@ class FileTransferSender(
                             chunkIndex++
 
                             val elapsedSec = (System.currentTimeMillis() - startTime) / 1000.0
-                            val speedMBps = if (elapsedSec > 0.05) (bytesTransferred / (1024.0 * 1024.0)) / elapsedSec else 0.0
+                            val speedMBps = if (elapsedSec > 0.05 && pausedTransfers[transferId] != true) (bytesTransferred / (1024.0 * 1024.0)) / elapsedSec else 0.0
                             val prog = if (actualSize > 0) (bytesTransferred.toFloat() / actualSize).coerceIn(0f, 0.99f) else 0f
 
                             notifications.showProgress(transferId, meta.name, bytesTransferred, actualSize)
                             onProgress?.invoke(record, prog, speedMBps)
                         }
+                        if (cancelledTransfers[transferId] == true) {
+                            return@execute
+                        }
                         finalSha256 = digest.digest().joinToString("") { "%02x".format(it) }
                     }
 
-                    if (activeTransfers[transferId] == true) {
+                    if (activeTransfers[transferId] == true && cancelledTransfers[transferId] != true) {
                         // Wait for desktop dropDone acknowledgement
                         val doneLatch = CountDownLatch(1)
                         var isDoneConfirmed = true
@@ -284,10 +317,12 @@ class FileTransferSender(
 
                         notifications.showComplete(transferId, meta.name, actualSize, uri, meta.mimeType)
                         onComplete?.invoke(record.copy(status = TransferStatus.COMPLETED, sha256 = finalSha256))
-                    } else {
-                        currentLink.dropCancel(transferId, "user_cancelled")
                     }
                 } catch (e: Exception) {
+                    if (cancelledTransfers[transferId] == true) {
+                        Log.i("CoudropSender", "Transfer $transferId cancelled by user, ignoring socket abort")
+                        return@execute
+                    }
                     Log.e("CoudropSender", "Transfer failed for $uri", e)
                     pendingAccepts.remove(transferId)
                     pendingDone.remove(transferId)
@@ -300,7 +335,10 @@ class FileTransferSender(
                     currentLink.dropReject(transferId, errReason)
                 } finally {
                     runCatching { stream?.close() }
+                    activeConnections.remove(transferId)
                     activeTransfers.remove(transferId)
+                    pausedTransfers.remove(transferId)
+                    cancelledTransfers.remove(transferId)
                 }
             }
         }
@@ -324,10 +362,36 @@ class FileTransferSender(
         pendingDone[transferId]?.invoke(true, "")
     }
 
+    fun pause(transferId: String) {
+        pausedTransfers[transferId] = true
+    }
+
+    fun resume(transferId: String) {
+        pausedTransfers.remove(transferId)
+    }
+
     fun cancel(transferId: String) {
+        cancelledTransfers[transferId] = true
         activeTransfers.remove(transferId)
+        pausedTransfers.remove(transferId)
         pendingAccepts.remove(transferId)
         pendingDone.remove(transferId)
+        activeConnections.remove(transferId)?.let { conn ->
+            try { conn.disconnect() } catch (_: Exception) {}
+        }
+        notifications.dismiss(transferId)
         link()?.dropCancel(transferId, "user_cancelled")
+    }
+
+    fun onRemoteCancel(transferId: String, reason: String) {
+        cancelledTransfers[transferId] = true
+        activeTransfers.remove(transferId)
+        pausedTransfers.remove(transferId)
+        pendingAccepts.remove(transferId)
+        pendingDone.remove(transferId)
+        activeConnections.remove(transferId)?.let { conn ->
+            try { conn.disconnect() } catch (_: Exception) {}
+        }
+        notifications.dismiss(transferId)
     }
 }

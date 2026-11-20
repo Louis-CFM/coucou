@@ -177,6 +177,8 @@ fun CoudropScreen(
                 CoudropTransferCard(
                     state = activeState,
                     onCancel = { model.coudropManager.cancel(it) },
+                    onPause = { model.coudropManager.pause(it) },
+                    onResume = { model.coudropManager.resume(it) },
                 )
             }
         }

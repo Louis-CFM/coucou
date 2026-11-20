@@ -318,17 +318,27 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
         }
         "dropPause" => {
             let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
+            let origin = msg["origin"].as_str().unwrap_or("phone");
             manager.is_paused.store(true, Ordering::SeqCst);
+            if let Ok(data_server) = get_or_init_data_server(app, &manager).await {
+                data_server.pause_transfer(&transfer_id).await;
+            }
             let _ = app.emit("coudrop-transfer-paused", serde_json::json!({
-                "transferId": transfer_id
+                "transferId": transfer_id,
+                "origin": origin
             }));
         }
         "dropResume" => {
             let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
+            let origin = msg["origin"].as_str().unwrap_or("phone");
             manager.is_paused.store(false, Ordering::SeqCst);
             manager.pause_notify.notify_waiters();
+            if let Ok(data_server) = get_or_init_data_server(app, &manager).await {
+                data_server.resume_transfer(&transfer_id).await;
+            }
             let _ = app.emit("coudrop-transfer-resumed", serde_json::json!({
-                "transferId": transfer_id
+                "transferId": transfer_id,
+                "origin": origin
             }));
         }
         "dropDone" => {
@@ -511,19 +521,26 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
             let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
             let reason = msg["reason"].as_str().unwrap_or("rejected").to_string();
             *manager.last_accept_status.lock().await = Some((transfer_id.clone(), false, 1));
-            *manager.last_reject_status.lock().await = Some((transfer_id, reason));
+            *manager.last_reject_status.lock().await = Some((transfer_id.clone(), reason.clone()));
             manager.accept_notify.notify_waiters();
             manager.done_notify.notify_waiters();
-            let _ = app.emit("coudrop-reject", msg);
+            if let Ok(data_server) = get_or_init_data_server(app, &manager).await {
+                data_server.cancel_transfer(&transfer_id).await;
+            }
+            let _ = app.emit("coudrop-reject", serde_json::json!({
+                "transferId": transfer_id,
+                "reason": reason
+            }));
         }
         "dropProgress" => {
             let _ = app.emit("coudrop-peer-progress", msg);
         }
         "dropCancel" => {
             let transfer_id = msg["transferId"].as_str().unwrap_or("").to_string();
-            let reason = msg["reason"].as_str().unwrap_or("cancelled").to_string();
+            let reason = msg["reason"].as_str().unwrap_or("cancelled_by_user").to_string();
+            let origin = msg["origin"].as_str().unwrap_or("phone").to_string();
             manager.is_cancelled.store(true, Ordering::SeqCst);
-            *manager.last_reject_status.lock().await = Some((transfer_id.clone(), reason));
+            *manager.last_reject_status.lock().await = Some((transfer_id.clone(), reason.clone()));
             manager.accept_notify.notify_waiters();
             manager.done_notify.notify_waiters();
             if let Some(transfer) = manager.incoming.lock().await.remove(&transfer_id) {
@@ -531,12 +548,13 @@ pub async fn handle_drop_message(app: &AppHandle, msg: &serde_json::Value) {
                 let _ = tokio::fs::remove_file(&transfer.temp_path).await;
             }
             if let Ok(data_server) = get_or_init_data_server(app, &manager).await {
-                data_server.remove_download(&transfer_id).await;
-                if let Some(upload) = data_server.remove_upload(&transfer_id).await {
-                    let _ = tokio::fs::remove_file(&upload.temp_path).await;
-                }
+                data_server.cancel_transfer(&transfer_id).await;
             }
-            let _ = app.emit("coudrop-cancel", msg);
+            let _ = app.emit("coudrop-cancel", serde_json::json!({
+                "transferId": transfer_id,
+                "origin": origin,
+                "reason": reason
+            }));
         }
         _ => {}
     }
@@ -957,13 +975,17 @@ pub async fn coudrop_pause_transfer(
         None => state.current_transfer_id.lock().await.clone().unwrap_or_default(),
     };
     if !id.is_empty() {
+        if let Ok(data_server) = get_or_init_data_server(&app, &state).await {
+            data_server.pause_transfer(&id).await;
+        }
         let pause_msg = serde_json::json!({
             "type": "dropPause",
             "transferId": id.clone(),
+            "origin": "windows"
         }).to_string();
         let _ = link.hub.send_drop_async(&pause_msg).await;
     }
-    let _ = app.emit("coudrop-transfer-paused", serde_json::json!({ "transferId": id }));
+    let _ = app.emit("coudrop-transfer-paused", serde_json::json!({ "transferId": id, "origin": "windows" }));
     Ok(())
 }
 
@@ -982,13 +1004,17 @@ pub async fn coudrop_resume_transfer(
         None => state.current_transfer_id.lock().await.clone().unwrap_or_default(),
     };
     if !id.is_empty() {
+        if let Ok(data_server) = get_or_init_data_server(&app, &state).await {
+            data_server.resume_transfer(&id).await;
+        }
         let resume_msg = serde_json::json!({
             "type": "dropResume",
             "transferId": id.clone(),
+            "origin": "windows"
         }).to_string();
         let _ = link.hub.send_drop_async(&resume_msg).await;
     }
-    let _ = app.emit("coudrop-transfer-resumed", serde_json::json!({ "transferId": id }));
+    let _ = app.emit("coudrop-transfer-resumed", serde_json::json!({ "transferId": id, "origin": "windows" }));
     Ok(())
 }
 
@@ -1021,16 +1047,14 @@ pub async fn coudrop_cancel_transfer(
 
         // Clean up DataServer if V2 was used
         if let Ok(data_server) = get_or_init_data_server(&app, &state).await {
-            data_server.remove_download(&id).await;
-            if let Some(upload) = data_server.remove_upload(&id).await {
-                let _ = tokio::fs::remove_file(&upload.temp_path).await;
-            }
+            data_server.cancel_transfer(&id).await;
         }
 
         let cancel_msg = serde_json::json!({
             "type": "dropCancel",
             "transferId": id.clone(),
-            "reason": "cancelled_by_user"
+            "reason": "cancelled_by_user",
+            "origin": "windows"
         }).to_string();
         let _ = link.hub.send_drop_async(&cancel_msg).await;
     } else {
@@ -1047,7 +1071,11 @@ pub async fn coudrop_cancel_transfer(
     *state.current_transfer_size.lock().await = 0;
     *state.current_transfer_direction.lock().await = None;
 
-    let _ = app.emit("coudrop-cancel", serde_json::json!({ "transferId": id }));
+    let _ = app.emit("coudrop-cancel", serde_json::json!({
+        "transferId": id,
+        "origin": "windows",
+        "reason": "cancelled_by_user"
+    }));
     Ok(())
 }
 

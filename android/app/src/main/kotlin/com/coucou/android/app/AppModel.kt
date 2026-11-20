@@ -928,7 +928,15 @@ class AppModel(private val context: Context) : LinkListener {
     }
 
     override fun onDropCancel(cancel: com.coucou.android.link.ServerMsg.DropCancel) {
-        fileReceiver.onCancel(cancel)
+        coudropManager.onRemoteCancel(cancel.transferId, cancel.reason, cancel.origin)
+    }
+
+    override fun onDropPause(transferId: String, origin: String) {
+        coudropManager.onRemotePause(transferId, origin)
+    }
+
+    override fun onDropResume(transferId: String, origin: String, offset: Long) {
+        coudropManager.onRemoteResume(transferId, origin, offset)
     }
 
     override fun onDropAccept(accept: com.coucou.android.link.ServerMsg.DropAccept) {

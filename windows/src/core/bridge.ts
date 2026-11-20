@@ -275,7 +275,7 @@ export const Bridge = {
       return {
         settings: storedSettings,
         screen: { x: 0, y: 0, width: window.innerWidth || 1920, height: window.innerHeight || 1080, scale: window.devicePixelRatio || 1 },
-        version: "0.6.0",
+        version: "0.6.1",
         hookPath: "",
         cursorPoll: false,
         battery: {
@@ -795,6 +795,7 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+  relayError?: string | null;
 }
 
 /** One agent other than Claude Code, as agents.rs reports it. */

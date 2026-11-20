@@ -13,6 +13,7 @@ enum class TransferDirection {
 enum class TransferStatus {
     PENDING,
     IN_PROGRESS,
+    PAUSED,
     COMPLETED,
     FAILED,
     CANCELLED,

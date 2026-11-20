@@ -43,13 +43,16 @@ private fun formatBytes(bytes: Long): String {
 fun CoudropTransferCard(
     state: ActiveTransferUiState,
     onCancel: (String) -> Unit,
+    onPause: ((String) -> Unit)? = null,
+    onResume: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val t = tokens()
     val record = state.record
     val pct = (state.progress * 100).toInt().coerceIn(0, 100)
     val isSending = record.direction == TransferDirection.OUTGOING
-    val speedText = if (state.speedMBps > 0.05) " • %.1f MB/s".format(state.speedMBps) else ""
+    val isPaused = state.isPaused || record.status == com.coucou.android.drop.TransferStatus.PAUSED
+    val speedText = if (!isPaused && state.speedMBps > 0.05) " • %.1f MB/s".format(state.speedMBps) else if (isPaused) " • Paused" else ""
 
     Box(
         modifier = modifier
@@ -66,7 +69,7 @@ fun CoudropTransferCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = if (isSending) "Sending ${record.name}" else "Receiving ${record.name}",
+                    text = if (isPaused) "Paused · ${record.name}" else if (isSending) "Sending ${record.name}" else "Receiving ${record.name}",
                     style = TypeScale.BODY.style(t.text.c()).copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -85,7 +88,7 @@ fun CoudropTransferCard(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(CircleShape),
-                color = StatusColors.online,
+                color = if (isPaused) StatusColors.busy else StatusColors.online,
                 trackColor = t.secondaryButton.c(),
             )
 
@@ -100,11 +103,30 @@ fun CoudropTransferCard(
                     style = TypeScale.SECONDARY.style(t.textDim.c()),
                 )
 
-                PillButton(
-                    text = "Cancel",
-                    onClick = { onCancel(record.id) },
-                    kind = PillKind.DANGER,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (isPaused) {
+                        if (onResume != null) {
+                            PillButton(
+                                text = "Resume",
+                                onClick = { onResume(record.id) },
+                                kind = PillKind.NORMAL,
+                            )
+                        }
+                    } else {
+                        if (onPause != null) {
+                            PillButton(
+                                text = "Pause",
+                                onClick = { onPause(record.id) },
+                                kind = PillKind.NORMAL,
+                            )
+                        }
+                    }
+                    PillButton(
+                        text = "Cancel",
+                        onClick = { onCancel(record.id) },
+                        kind = PillKind.DANGER,
+                    )
+                }
             }
         }
     }

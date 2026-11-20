@@ -241,9 +241,9 @@ class NowPlayingBar {
   }
 }
 
-/** NowPlayingIconButton: an icon that brightens under the pointer. */
+/** NowPlayingIconButton: equal-dimension 26x26px transport button with refined macOS feedback. */
 function iconButton(icon: string, size: number, stroke: number, onClick: () => void): HTMLElement {
-  const b = h("button", { class: "np-icon" }, svg(icon, size, stroke ? { stroke } : {}));
+  const b = h("button", { class: "np-ctrl-btn" }, svg(icon, size, stroke ? { stroke } : {}));
   b.addEventListener("click", onClick);
   return b;
 }
@@ -257,19 +257,48 @@ export interface SpotifyCardHost {
 export function buildSpotifyCard(): SpotifyCardHost {
   const green = SPOTIFY_GREEN;
 
-  // Now playing: artwork row, progress row, controls row.
+  // Now playing: 2-column macOS hero layout (Art + 4-row Console)
   const art = h("div", { class: "np-art" });
   const artImg = h("img", { alt: "", draggable: "false" }) as HTMLImageElement;
-  const artNote = svg(ICONS.musicNote, 16);
+  const artNote = svg(ICONS.musicNote, 28);
   artNote.style.color = `${green}b3`;
   art.append(artNote, artImg);
   art.addEventListener("click", () => void Bridge.spotifyOpen());
   const title = h("span", { class: "np-title" });
-  const subtitle = h("div", { class: "np-sub" });
-  const head = h("div", { class: "np-head" },
-    art,
-    h("div", { class: "np-text" }, h("div", { class: "np-title-row" }, dot(green, 6), title), subtitle),
+
+  // 6-bar audio pulse wave (islandcn LevelMeter / PlayerMeter)
+  const pulseBars: HTMLElement[] = [];
+  const envelope = [0.5, 1, 0.7, 0.4, 0.6, 0.35];
+  for (let i = 0; i < 6; i++) {
+    const bar = h("span", { class: "np-pulse-bar" });
+    const hi = envelope[i];
+    const lo = Math.max(0.12, hi * 0.35);
+    const dur = (0.42 + (((i + 5) * 17) % 10) * 0.05).toFixed(2);
+    const delay = (-(((i + 9) * 23) % 10) * 0.08).toFixed(2);
+    bar.style.setProperty("--np-lo", String(lo));
+    bar.style.setProperty("--np-hi", String(hi));
+    bar.style.setProperty("--np-dur", `${dur}s`);
+    bar.style.setProperty("--np-delay", `${delay}s`);
+    pulseBars.push(bar);
+  }
+  const pulseWave = h("div", { class: "np-pulse-wave", title: t("Playing") }, ...pulseBars);
+
+  // Refined macOS Open Spotify Action Pill
+  const openPill = h(
+    "button",
+    {
+      class: "np-open-pill",
+      title: t("Open Spotify"),
+      onclick: () => void Bridge.spotifyOpen(),
+    },
+    svg(ICONS.spotify, 11),
+    h("span", { class: "np-open-label", text: "Spotify" }),
+    svg(ICONS.arrowUpRight, 8),
   );
+  const activityBay = h("div", { class: "np-activity-bay" }, pulseWave, openPill);
+
+  const titleRow = h("div", { class: "np-row-title" }, title, activityBay);
+  const subtitle = h("div", { class: "np-sub" });
 
   let dragFraction: number | null = null;
   const elapsed = h("span", { class: "np-time elapsed" });
@@ -287,36 +316,69 @@ export function buildSpotifyCard(): SpotifyCardHost {
   );
   const progressRow = h("div", { class: "np-progress" }, elapsed, progress.el, remaining);
 
-  const shuffle = iconButton(ICONS.shuffle, 10, 2.2, () => setFlag("shuffle", !Spotify.state.shuffle));
-  const prev = iconButton(ICONS.backward, 11, 0, () => void Bridge.spotifyControl("previous"));
-  const next = iconButton(ICONS.forward, 11, 0, () => void Bridge.spotifyControl("next"));
-  const repeat = iconButton(ICONS.repeat, 10, 2.2, () => setFlag("repeat", !Spotify.state.repeat));
+  // Symmetrical, equal-dimension 26x26px playback controls
+  const shuffle = iconButton(ICONS.shuffle, 12, 2.2, () => setFlag("shuffle", !Spotify.state.shuffle));
+  const prev = iconButton(ICONS.backward, 12, 0, () => void Bridge.spotifyControl("previous"));
+  const play = h("button", { class: "np-ctrl-btn np-play-btn", onclick: togglePlay });
+  const next = iconButton(ICONS.forward, 12, 0, () => void Bridge.spotifyControl("next"));
+  const repeat = iconButton(ICONS.repeat, 12, 2.2, () => setFlag("repeat", !Spotify.state.repeat));
   prev.style.color = "#C5C8CD";
   next.style.color = "#C5C8CD";
-  const play = h("button", { class: "np-play", onclick: togglePlay });
   const volIcon = h("span", { class: "np-vol-icon" });
   const volume = new NowPlayingBar(
     (f) => setVolume(f * 100),
     (f) => setVolume(f * 100),
   );
   const volumeBox = h("div", { class: "np-volume" }, volIcon, volume.el);
-  const controls = h("div", { class: "np-controls" },
-    h("div", { class: "np-buttons" }, shuffle, prev, play, next, repeat),
-    h("div", { class: "grow" }),
-    volumeBox,
-  );
-  const playingEl = h("div", { class: "np-card" }, head, progressRow, controls);
+  const spacer = h("div", { class: "np-controls-spacer" });
+  const buttons = h("div", { class: "np-buttons" }, shuffle, prev, play, next, repeat);
+  const controlsRow = h("div", { class: "np-controls" }, spacer, buttons, volumeBox);
+  const consoleEl = h("div", { class: "np-console" }, titleRow, subtitle, controlsRow, progressRow);
+  const playingEl = h("div", { class: "np-card" }, art, consoleEl);
 
-  // Idle: the same layout as the other idle cards.
+  // Idle: premium macOS-style horizontal layout.
+  // Left: Avatar zone reserving space for Mochi (#bot-canvas) with ambient glow
+  const idleGlow = h("div", { class: "sp-avatar-glow" });
+  const idleAvatarZone = h("div", { class: "sp-idle-avatar-zone" }, idleGlow);
+
+  // Identity row: green dot + "Spotify" bold + "Integration" muted
+  const idleSub = h("span", { class: "sp-identity-badge" });
+  const idleIdentity = h("div", { class: "sp-identity" },
+    dot(green, 6),
+    h("span", { class: "sp-identity-name", text: "Spotify" }),
+    idleSub,
+  );
+
+  // Status row: connection dot + status text
   const idleDot = dot("#22C55E", 5);
-  const idleText = h("span");
-  const idleAction = h("button", { class: "link-btn", style: `color:${green}d9` });
+  const idleText = h("span", { class: "sp-status-text" });
+  const idleStatusRow = h("div", { class: "sp-status-row" }, idleDot, idleText);
+
+  // Header bar: unified single line containing Identity and Status with subtle bullet divider
+  const idleHeaderSep = h("span", { class: "sp-header-sep", text: "·" });
+  const idleHeader = h("div", { class: "sp-idle-header" }, idleIdentity, idleHeaderSep, idleStatusRow);
+
+  // Primary and secondary copy
+  const idleHeadline = h("div", { class: "sp-headline", text: "Your music, your space." });
+  const idleSubtitle = h("div", { class: "sp-subtitle" });
+  const idleTextGroup = h("div", { class: "sp-idle-text-group" }, idleHeadline, idleSubtitle);
+
+  // Open Spotify CTA button
+  const idleAction = h("button", { class: "sp-open-btn" });
   idleAction.addEventListener("click", () => void Bridge.spotifyOpen());
-  const idleSub = h("span");
-  const idleEl = h("div", { class: "int-card" },
-    h("div", { class: "int-head" }, dot(green, 7), h("b", { text: "Spotify" }), idleSub),
-    h("div", { class: "int-status" }, idleDot, idleText),
-    h("div", { class: "int-actions" }, idleAction),
+  const idleActionWrap = h("div", { class: "sp-idle-actions" }, idleAction);
+
+  // Right-hand content panel
+  const idleContent = h("div", { class: "sp-idle-content" },
+    idleHeader,
+    idleTextGroup,
+    idleActionWrap,
+  );
+
+  // Main horizontal flex composition: Left (Avatar Zone) + Right (Content Panel)
+  const idleEl = h("div", { class: "sp-idle-card" },
+    idleAvatarZone,
+    idleContent,
   );
 
   const el = h("div", { class: "np-root" });
@@ -379,6 +441,10 @@ export function buildSpotifyCard(): SpotifyCardHost {
     progress.enabled = !isAd(track) && track.duration > 0;
     paintProgress();
 
+    pulseWave.dataset.active = s.playing ? "true" : "false";
+    pulseWave.title = s.playing ? t("Playing") : t("Paused");
+    pulseWave.style.display = isAd(track) ? "none" : "";
+
     shuffle.style.color = s.shuffle ? green : "#6B7079";
     shuffle.title = s.shuffle ? t("Shuffle on") : t("Shuffle off");
     repeat.style.color = s.repeat ? green : "#6B7079";
@@ -388,8 +454,8 @@ export function buildSpotifyCard(): SpotifyCardHost {
     if (playIcon !== s.playing) {
       playIcon = s.playing;
       clear(play);
-      const icon = svg(s.playing ? ICONS.pause : ICONS.play, 9);
-      if (!s.playing) icon.style.transform = "translateX(1px)";
+      const icon = svg(s.playing ? ICONS.pause : ICONS.play, 13);
+      if (!s.playing) icon.style.transform = "translateX(0.5px)";
       play.append(icon);
     }
     play.title = s.playing ? t("Pause") : t("Play");
@@ -406,10 +472,18 @@ export function buildSpotifyCard(): SpotifyCardHost {
 
   function syncIdle() {
     const installed = Spotify.state.installed || Spotify.state.running;
+    // Status dot: green = running/installed, red = not installed
     idleDot.style.background = installed ? "#22C55E" : "#F4505E";
+    // Status text: preserved exactly for test assertions and i18n
     idleText.textContent = installed ? t("Not playing") : t("Spotify not installed");
+    // Action button: preserved for test assertions
     idleAction.textContent = installed ? t("Open Spotify") : t("Get Spotify");
+    // Identity badge: "Integration" or pill subtitle
     idleSub.textContent = t(pillDefinition(SPOTIFY_ID)?.subtitle ?? N_("Integration"));
+    // Subtitle below the headline
+    idleSubtitle.textContent = installed
+      ? t("Nothing playing right now.")
+      : t("Install Spotify to listen here.");
   }
 
   return {

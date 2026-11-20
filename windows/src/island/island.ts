@@ -17,6 +17,7 @@ import { Sound } from "../core/sound";
 import { State, resolveNotchScale, resolveNotchStyle, resolveShowBattery, resolveShowBatteryPercentage, type NotchStyle } from "../core/state";
 import { createBatteryElement, updateBatteryElement, BatteryMonitor, type BatteryState } from "../islandcn";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
+import { WHATSAPP_ID } from "../core/whatsapp";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { GlobalWorkStreak } from "../mochi/work-streak";
@@ -257,6 +258,7 @@ export class Island {
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
+        this.animateGeometry();
         // A pill with a waiting request opens on its card: going back to it
         // after looking at another pill brings the card up again.
         const req = State.pendingApproval;
@@ -1204,6 +1206,9 @@ export class Island {
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
+    if (State.mode === "expanded" && State.view === "overview" && State.focusTask?.id === WHATSAPP_ID) {
+      h = VIEW_LAYOUTS.coudrop.height;
+    }
     const r = State.mode === "expanded" ? (isIsland ? 28 : EXPANDED_CORNER) : (isIsland ? 999 : ROUNDED_CORNER);
     return { w, h, r };
   }
@@ -2086,6 +2091,9 @@ export class Island {
 
   private updateBotTargets() {
     let p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
+    if (State.mode === "expanded" && State.view === "overview" && State.focusTask?.id === WHATSAPP_ID) {
+      p = { cx: 68, cy: 141, diameter: 58, opacity: 1 };
+    }
     const welcome = GlobalWelcomeMessages.active();
     const notif = GlobalNotifications.active();
     const style = closedIsland(State.settings.closedIsland);
@@ -2318,6 +2326,11 @@ export class Island {
   // ── DOM sync ────────────────────────────────────────────────────────────────
 
   private syncDom() {
+    const target = this.targetSize();
+    if (Math.abs(target.w - this.width.target) > 0.5 || Math.abs(target.h - this.height.target) > 0.5) {
+      this.animateGeometry();
+    }
+
     const showTransfer = this.transferActive;
     this.activityHostEl.classList.toggle("active", showTransfer);
     this.activityHostEl.style.display = showTransfer ? "flex" : "none";

@@ -418,3 +418,94 @@ test("Apple Dynamic Island UI refinement: completed and active transfer state co
   assert.equal(activeSendWords.action, "Sending project_specs.pdf");
   assert.equal(activeSendWords.party, "To Maya's MacBook");
 });
+
+test("Bidirectional cancellation and error sanitization guarantees", async () => {
+  nearbyTransferManager.clear();
+  let latest = null;
+  const unsubscribe = subscribeActiveTransfer((transfer) => {
+    latest = transfer;
+  });
+
+  // 1. Mobile-initiated cancellation (Issue A fix verification)
+  simulateTransfer({
+    id: "tx-mobile-cancel",
+    direction: "receive",
+    itemName: "movie.mkv",
+    totalBytes: 9000000000,
+    bytesTransferred: 100000000,
+    progress: 0.01,
+    status: "in_progress",
+  });
+  assert.equal(latest.status, "in_progress");
+
+  // Phone cancels transfer
+  emit("coudrop-cancel", {
+    transferId: "tx-mobile-cancel",
+    origin: "phone",
+    reason: "cancelled_by_user",
+  });
+
+  assert.equal(latest.status, "cancelled");
+  assert.equal(latest.cancelOrigin, "phone");
+  assert.equal(latest.errorMessage, "Cancelled from phone");
+
+  // 2. Late progress arriving after cancellation must be rejected
+  emit("coudrop-progress", {
+    transferId: "tx-mobile-cancel",
+    bytesRead: 200000000,
+    totalBytes: 9000000000,
+    progress: 0.02,
+  });
+  assert.equal(latest.status, "cancelled", "Late progress must not revive a cancelled transfer");
+  assert.equal(latest.errorMessage, "Cancelled from phone");
+
+  // 3. Desktop-initiated cancellation (Issue B fix verification)
+  simulateTransfer({
+    id: "tx-desktop-cancel",
+    direction: "send",
+    itemName: "backup.iso",
+    totalBytes: 4000000000,
+    bytesTransferred: 500000000,
+    progress: 0.12,
+    status: "in_progress",
+  });
+  assert.equal(latest.status, "in_progress");
+
+  await cancelTransfer("tx-desktop-cancel");
+  assert.equal(latest.status, "cancelled");
+  assert.equal(latest.cancelOrigin, "desktop");
+  assert.equal(latest.errorMessage, "Cancelled from PC");
+
+  // 4. Sanitization of raw OkHttp state errors (Never display internal state: 2)
+  simulateTransfer({
+    id: "tx-state2-test",
+    direction: "receive",
+    itemName: "large_file.dat",
+    totalBytes: 50000000,
+  });
+
+  emit("coudrop-reject", {
+    transferId: "tx-state2-test",
+    reason: "upload_error: state: 2",
+  });
+  assert.equal(latest.status, "failed");
+  assert.notEqual(latest.errorMessage, "state: 2", "Must never expose internal state: 2");
+  assert.equal(latest.errorMessage, "Transfer interrupted");
+
+  // Another variant: java.lang.IllegalStateException: state: 2
+  simulateTransfer({
+    id: "tx-state2-variant",
+    direction: "receive",
+    itemName: "large_file2.dat",
+    totalBytes: 50000000,
+  });
+
+  emit("coudrop-reject", {
+    transferId: "tx-state2-variant",
+    reason: "java.lang.IllegalStateException: state: 2",
+  });
+  assert.equal(latest.status, "failed");
+  assert.equal(latest.errorMessage, "Transfer interrupted");
+
+  unsubscribe();
+});

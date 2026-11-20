@@ -42,6 +42,8 @@ class FileTransferReceiver(
 ) {
     private val executor = Executors.newCachedThreadPool()
     private val cancelledTransfers = ConcurrentHashMap<String, Boolean>()
+    private val pausedTransfers = ConcurrentHashMap<String, Boolean>()
+    private val activeConnections = ConcurrentHashMap<String, HttpURLConnection>()
 
     private class ActiveTransfer(
         val transferId: String,
@@ -171,6 +173,7 @@ class FileTransferReceiver(
                 }
                 setRequestProperty("Connection", "close")
             }
+            activeConnections[offer.transferId] = conn
 
             if (conn is HttpsURLConnection && useTls) {
                 val sslCtx = SSLContext.getInstance("TLS").apply {
@@ -214,6 +217,15 @@ class FileTransferReceiver(
             var lastNotifyTime = System.currentTimeMillis()
 
             while (cancelledTransfers[offer.transferId] != true) {
+                while (pausedTransfers[offer.transferId] == true && cancelledTransfers[offer.transferId] != true) {
+                    try {
+                        Thread.sleep(100)
+                    } catch (_: InterruptedException) {
+                        break
+                    }
+                }
+                if (cancelledTransfers[offer.transferId] == true) break
+
                 bytesRead = inStream.read(buffer)
                 if (bytesRead == -1) break
                 outStream.write(buffer, 0, bytesRead)
@@ -267,6 +279,12 @@ class FileTransferReceiver(
             notifications.showComplete(offer.transferId, offer.name, totalReceived, savedUri, offer.mimeType)
             currentLink.dropDone(offer.transferId, computedSha256)
         } catch (e: Exception) {
+            if (cancelledTransfers[offer.transferId] == true) {
+                Log.i("CoudropReceiver", "Transfer ${offer.transferId} cancelled by user, cleaning up temp file")
+                tempFile.delete()
+                notifications.dismiss(offer.transferId)
+                return
+            }
             Log.e("CoudropReceiver", "V2 download failed for ${offer.name}", e)
             val isInterruption = e is java.io.IOException || e is java.net.SocketException || e is java.net.SocketTimeoutException
             if (!isInterruption) {
@@ -284,6 +302,8 @@ class FileTransferReceiver(
             runCatching { inStream?.close() }
             runCatching { outStream?.close() }
             conn?.disconnect()
+            activeConnections.remove(offer.transferId)
+            pausedTransfers.remove(offer.transferId)
             cancelledTransfers.remove(offer.transferId)
         }
     }
@@ -315,9 +335,35 @@ class FileTransferReceiver(
         }
     }
 
+    fun pause(transferId: String) {
+        pausedTransfers[transferId] = true
+    }
+
+    fun resume(transferId: String) {
+        pausedTransfers.remove(transferId)
+    }
+
+    fun cancel(transferId: String) {
+        cancelledTransfers[transferId] = true
+        pausedTransfers.remove(transferId)
+        activeConnections.remove(transferId)?.let { conn ->
+            try { conn.disconnect() } catch (_: Exception) {}
+        }
+        cleanup(transferId, "user_cancelled")
+        link()?.dropCancel(transferId, "user_cancelled")
+    }
+
+    fun onRemoteCancel(transferId: String, reason: String) {
+        cancelledTransfers[transferId] = true
+        pausedTransfers.remove(transferId)
+        activeConnections.remove(transferId)?.let { conn ->
+            try { conn.disconnect() } catch (_: Exception) {}
+        }
+        cleanup(transferId, reason)
+    }
+
     fun onCancel(cancel: ServerMsg.DropCancel) {
-        cancelledTransfers[cancel.transferId] = true
-        cleanup(cancel.transferId, cancel.reason)
+        onRemoteCancel(cancel.transferId, cancel.reason)
     }
 
     private fun completeTransfer(transfer: ActiveTransfer) {

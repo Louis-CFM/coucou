@@ -292,6 +292,10 @@ pub struct ActiveDownload {
     pub token: String,
     pub size: u64,
     pub completed_sha256: Arc<Mutex<Option<String>>>,
+    pub is_paused: Arc<std::sync::atomic::AtomicBool>,
+    pub is_cancelled: Arc<std::sync::atomic::AtomicBool>,
+    pub pause_notify: Arc<tokio::sync::Notify>,
+    pub abort_handle: Arc<Mutex<Option<tokio::task::AbortHandle>>>,
 }
 
 #[derive(Clone)]
@@ -303,6 +307,10 @@ pub struct ActiveUpload {
     pub size: u64,
     pub expected_sha256: String,
     pub completed_sha256: Arc<Mutex<Option<String>>>,
+    pub is_paused: Arc<std::sync::atomic::AtomicBool>,
+    pub is_cancelled: Arc<std::sync::atomic::AtomicBool>,
+    pub pause_notify: Arc<tokio::sync::Notify>,
+    pub abort_handle: Arc<Mutex<Option<tokio::task::AbortHandle>>>,
 }
 
 pub struct DataServer {
@@ -382,6 +390,10 @@ impl DataServer {
 
     pub async fn register_download(&self, transfer_id: String, name: String, path: PathBuf, token: String, size: u64) -> Arc<Mutex<Option<String>>> {
         let completed_sha256 = Arc::new(Mutex::new(None));
+        let is_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let is_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let pause_notify = Arc::new(tokio::sync::Notify::new());
+        let abort_handle = Arc::new(Mutex::new(None));
         self.active_downloads.lock().await.insert(
             transfer_id.clone(),
             ActiveDownload {
@@ -391,6 +403,10 @@ impl DataServer {
                 token,
                 size,
                 completed_sha256: completed_sha256.clone(),
+                is_paused,
+                is_cancelled,
+                pause_notify,
+                abort_handle,
             },
         );
         completed_sha256
@@ -406,6 +422,10 @@ impl DataServer {
         expected_sha256: String,
     ) -> Arc<Mutex<Option<String>>> {
         let completed_sha256 = Arc::new(Mutex::new(None));
+        let is_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let is_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let pause_notify = Arc::new(tokio::sync::Notify::new());
+        let abort_handle = Arc::new(Mutex::new(None));
         self.active_uploads.lock().await.insert(
             transfer_id.clone(),
             ActiveUpload {
@@ -416,9 +436,50 @@ impl DataServer {
                 size,
                 expected_sha256,
                 completed_sha256: completed_sha256.clone(),
+                is_paused,
+                is_cancelled,
+                pause_notify,
+                abort_handle,
             },
         );
         completed_sha256
+    }
+
+    pub async fn pause_transfer(&self, transfer_id: &str) {
+        if let Some(d) = self.active_downloads.lock().await.get(transfer_id) {
+            d.is_paused.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+        if let Some(u) = self.active_uploads.lock().await.get(transfer_id) {
+            u.is_paused.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
+    pub async fn resume_transfer(&self, transfer_id: &str) {
+        if let Some(d) = self.active_downloads.lock().await.get(transfer_id) {
+            d.is_paused.store(false, std::sync::atomic::Ordering::SeqCst);
+            d.pause_notify.notify_waiters();
+        }
+        if let Some(u) = self.active_uploads.lock().await.get(transfer_id) {
+            u.is_paused.store(false, std::sync::atomic::Ordering::SeqCst);
+            u.pause_notify.notify_waiters();
+        }
+    }
+
+    pub async fn cancel_transfer(&self, transfer_id: &str) {
+        if let Some(d) = self.active_downloads.lock().await.remove(transfer_id) {
+            d.is_cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
+            d.pause_notify.notify_waiters();
+            if let Some(handle) = d.abort_handle.lock().await.take() {
+                handle.abort();
+            }
+        }
+        if let Some(u) = self.active_uploads.lock().await.remove(transfer_id) {
+            u.is_cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
+            u.pause_notify.notify_waiters();
+            if let Some(handle) = u.abort_handle.lock().await.take() {
+                handle.abort();
+            }
+        }
     }
 
     pub async fn remove_download(&self, transfer_id: &str) -> Option<ActiveDownload> {
@@ -613,6 +674,23 @@ impl DataServer {
 
         let mut buffered_file = tokio::io::BufWriter::with_capacity(chunk_size, file);
         let mut digest_ctx = ring::digest::Context::new(&SHA256);
+        if offset > 0 && upload.temp_path.exists() {
+            if let Ok(mut pre_f) = tokio::fs::File::open(&upload.temp_path).await {
+                let mut pre_buf = vec![0u8; 512 * 1024];
+                let mut pre_read = 0u64;
+                while pre_read < offset {
+                    let to_read = std::cmp::min(pre_buf.len() as u64, offset - pre_read) as usize;
+                    match pre_f.read(&mut pre_buf[..to_read]).await {
+                        Ok(0) => break,
+                        Ok(n) => {
+                            digest_ctx.update(&pre_buf[..n]);
+                            pre_read += n as u64;
+                        }
+                        Err(_) => break,
+                    }
+                }
+            }
+        }
         let mut body_bytes_read = offset;
 
         // Process leftover bytes from initial buffer
@@ -642,11 +720,25 @@ impl DataServer {
             }
             Ok(hex_encode(digest.finish().as_ref()))
         });
+        *upload.abort_handle.lock().await = Some(writer_handle.abort_handle());
 
         let mut speed_estimator = RollingSpeedEstimator::new(1.5);
         let mut last_progress_emit = std::time::Instant::now();
 
         while total_bytes == 0 || body_bytes_read < total_bytes {
+            if upload.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                break;
+            }
+            while upload.is_paused.load(std::sync::atomic::Ordering::SeqCst) {
+                if upload.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                    break;
+                }
+                upload.pause_notify.notified().await;
+            }
+            if upload.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                break;
+            }
+
             let to_read = if total_bytes > 0 {
                 std::cmp::min(chunk_size as u64, total_bytes - body_bytes_read) as usize
             } else {
@@ -667,13 +759,14 @@ impl DataServer {
 
             let now = std::time::Instant::now();
             if now.duration_since(last_progress_emit).as_secs_f64() >= 0.25 {
-                let speed = speed_estimator.update(body_bytes_read, now);
+                let is_p = upload.is_paused.load(std::sync::atomic::Ordering::SeqCst);
+                let speed = if is_p { 0 } else { speed_estimator.update(body_bytes_read, now) };
                 let progress = if total_bytes > 0 {
                     (body_bytes_read as f64 / total_bytes as f64).min(0.99)
                 } else {
                     0.0
                 };
-                let eta = if speed > 0 && total_bytes > body_bytes_read {
+                let eta = if !is_p && speed > 0 && total_bytes > body_bytes_read {
                     Some((total_bytes - body_bytes_read) / speed)
                 } else {
                     None
@@ -689,7 +782,7 @@ impl DataServer {
                         speed_bytes_per_sec: Some(speed),
                         time_remaining_seconds: eta,
                         direction: Some("receive".to_string()),
-                        is_paused: Some(false),
+                        is_paused: Some(is_p),
                     });
                 }
                 last_progress_emit = now;
@@ -697,6 +790,12 @@ impl DataServer {
         }
 
         drop(tx); // EOF to writer
+
+        if upload.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+            let _ = writer_handle.await;
+            let _ = tokio::fs::remove_file(&upload.temp_path).await;
+            return;
+        }
 
         match writer_handle.await {
             Ok(Ok(hash_str)) => {
@@ -790,11 +889,43 @@ impl DataServer {
         let mut buffered_file = tokio::io::BufReader::with_capacity(chunk_size, file);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(4);
 
-        // Pipelined Reader & Hasher task: reads disk blocks and updates SHA-256 in parallel with network sends
+        let dl_for_reader = download.clone();
+        let dl_path = download.path.clone();
         let reader_handle = tokio::spawn(async move {
             let mut digest_ctx = ring::digest::Context::new(&SHA256);
+            if offset > 0 && dl_path.exists() {
+                if let Ok(mut pre_f) = tokio::fs::File::open(&dl_path).await {
+                    let mut pre_buf = vec![0u8; 512 * 1024];
+                    let mut pre_read = 0u64;
+                    while pre_read < offset {
+                        let to_read = std::cmp::min(pre_buf.len() as u64, offset - pre_read) as usize;
+                        match pre_f.read(&mut pre_buf[..to_read]).await {
+                            Ok(0) => break,
+                            Ok(n) => {
+                                digest_ctx.update(&pre_buf[..n]);
+                                pre_read += n as u64;
+                            }
+                            Err(_) => break,
+                        }
+                    }
+                }
+            }
+
             let mut read_total = 0u64;
             while read_total < remaining {
+                if dl_for_reader.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                    break;
+                }
+                while dl_for_reader.is_paused.load(std::sync::atomic::Ordering::SeqCst) {
+                    if dl_for_reader.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                        break;
+                    }
+                    dl_for_reader.pause_notify.notified().await;
+                }
+                if dl_for_reader.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                    break;
+                }
+
                 let to_read = std::cmp::min(chunk_size as u64, remaining - read_total) as usize;
                 let mut buf = vec![0u8; to_read];
                 let n = match buffered_file.read(&mut buf).await {
@@ -811,12 +942,26 @@ impl DataServer {
             }
             hex_encode(digest_ctx.finish().as_ref())
         });
+        *download.abort_handle.lock().await = Some(reader_handle.abort_handle());
 
         let mut bytes_sent = 0u64;
         let mut speed_estimator = RollingSpeedEstimator::new(1.5);
         let mut last_progress_emit = std::time::Instant::now();
 
         while let Some(chunk) = rx.recv().await {
+            if download.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                break;
+            }
+            while download.is_paused.load(std::sync::atomic::Ordering::SeqCst) {
+                if download.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                    break;
+                }
+                download.pause_notify.notified().await;
+            }
+            if download.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                break;
+            }
+
             let n = chunk.len() as u64;
             if stream.write_all(&chunk).await.is_err() {
                 break;
@@ -825,13 +970,14 @@ impl DataServer {
 
             let now = std::time::Instant::now();
             if now.duration_since(last_progress_emit).as_secs_f64() >= 0.25 {
-                let speed = speed_estimator.update(bytes_sent, now);
+                let is_p = download.is_paused.load(std::sync::atomic::Ordering::SeqCst);
+                let speed = if is_p { 0 } else { speed_estimator.update(bytes_sent, now) };
                 let progress = if download.size > 0 {
                     ((offset + bytes_sent) as f64 / download.size as f64).min(0.99)
                 } else {
                     1.0
                 };
-                let eta = if speed > 0 && remaining > bytes_sent {
+                let eta = if !is_p && speed > 0 && remaining > bytes_sent {
                     Some((remaining - bytes_sent) / speed)
                 } else {
                     None
@@ -847,7 +993,7 @@ impl DataServer {
                         speed_bytes_per_sec: Some(speed),
                         time_remaining_seconds: eta,
                         direction: Some("send".to_string()),
-                        is_paused: Some(false),
+                        is_paused: Some(is_p),
                     });
                 }
                 last_progress_emit = now;
@@ -855,6 +1001,11 @@ impl DataServer {
         }
 
         let _ = stream.flush().await;
+
+        if download.is_cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+            let _ = reader_handle.await;
+            return;
+        }
 
         let hash_str = reader_handle.await.unwrap_or_default();
         if bytes_sent >= remaining && !hash_str.is_empty() {

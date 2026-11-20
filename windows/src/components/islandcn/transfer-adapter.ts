@@ -69,6 +69,7 @@ export interface ActiveNearbyTransfer {
   speedBytesPerSec?: number;
   timeRemainingSeconds?: number;
   isPaused?: boolean;
+  cancelOrigin?: "phone" | "desktop" | "system";
   src?: string;
   accent?: string;
   startTime: number;
@@ -165,7 +166,9 @@ class NearbyTransferManager {
 
   private mapErrorReason(rawReason: string): string {
     if (!rawReason) return "Connection interrupted";
-    if (rawReason.includes("insufficient_storage")) {
+    if (rawReason.includes("state: 2") || rawReason.includes("IllegalStateException") || rawReason.includes("STATE_OPEN_REQUEST_BODY")) {
+      return "Transfer interrupted";
+    } else if (rawReason.includes("insufficient_storage")) {
       return "Not enough phone storage";
     } else if (rawReason.includes("checksum_mismatch")) {
       return "File verification failed";
@@ -271,8 +274,19 @@ class NearbyTransferManager {
       direction?: TransferDirection;
       isPaused?: boolean;
     }>("coudrop-progress", (prog) => {
-      this.clearDismissTimer();
       if (!prog) return;
+
+      // Terminal state guard: strictly ignore late progress events if transfer is already terminal
+      if (
+        this.activeTransfer &&
+        (this.activeTransfer.status === "completed" ||
+          this.activeTransfer.status === "cancelled" ||
+          this.activeTransfer.status === "failed")
+      ) {
+        return;
+      }
+
+      this.clearDismissTimer();
 
       const incomingId = prog.transferId || prog.id;
       const incomingName = prog.name || prog.fileName;
@@ -535,30 +549,44 @@ class NearbyTransferManager {
     });
 
     // 5. Transfer cancelled
-    void onEvent<{ transferId?: string; reason?: string }>("coudrop-cancel", (payload) => {
+    void onEvent<{ transferId?: string; reason?: string; origin?: string }>("coudrop-cancel", (payload) => {
       this.clearDismissTimer();
       if (this.activeTransfer) {
         const rawReason = payload?.reason || "";
+        const rawOrigin = (payload?.origin || "").toLowerCase();
+        const cancelOrigin: "phone" | "desktop" | "system" =
+          rawOrigin === "desktop" || rawOrigin === "windows" || rawReason.includes("desktop")
+            ? "desktop"
+            : rawOrigin === "phone" || rawOrigin === "android" || rawReason.includes("phone")
+            ? "phone"
+            : "phone";
+
         const isExplicitUserCancel =
           rawReason === "user_cancelled" ||
           rawReason === "cancelled_by_user" ||
           rawReason === "cancelled_by_desktop" ||
+          rawReason === "cancelled_by_phone" ||
           rawReason === "cancelled" ||
-          rawReason === "";
+          rawReason === "" ||
+          payload?.origin !== undefined;
 
         if (isExplicitUserCancel) {
-          logDebug("TRANSFER_CANCELLED", { transferId: this.activeTransfer.id, rawReason });
+          const cancelMsg = cancelOrigin === "desktop" ? "Cancelled from PC" : "Cancelled from phone";
+          logDebug("TRANSFER_CANCELLED", { transferId: this.activeTransfer.id, rawReason, origin: cancelOrigin });
           this.activeTransfer = {
             ...this.activeTransfer,
             status: "cancelled",
-            errorMessage: "Cancelled by user",
+            cancelOrigin,
+            errorMessage: cancelMsg,
+            isPaused: false,
+            speedBytesPerSec: 0,
           };
           this.notifyImmediate();
           this.dismissTimer = window.setTimeout(() => {
             logDebug("ACTIVITY_UNMOUNTED", { transferId: this.activeTransfer?.id, reason: "cancel_dismiss" });
             this.activeTransfer = null;
             this.notifyImmediate();
-          }, 1500);
+          }, 3000);
         } else {
           // Failure or abort masquerading as cancel: map accurately to failed!
           const friendlyReason = this.mapErrorReason(rawReason);
@@ -567,6 +595,8 @@ class NearbyTransferManager {
             ...this.activeTransfer,
             status: "failed",
             errorMessage: friendlyReason,
+            isPaused: false,
+            speedBytesPerSec: 0,
           };
           this.notifyImmediate();
           this.dismissTimer = window.setTimeout(() => {
@@ -668,6 +698,8 @@ class NearbyTransferManager {
       this.activeTransfer = {
         ...this.activeTransfer,
         status: "cancelled",
+        cancelOrigin: "desktop",
+        errorMessage: "Cancelled from PC",
         isPaused: false,
         speedBytesPerSec: 0,
       };
@@ -675,7 +707,7 @@ class NearbyTransferManager {
       this.dismissTimer = window.setTimeout(() => {
         this.activeTransfer = null;
         this.notifyImmediate();
-      }, 1000);
+      }, 3000);
     }
 
     const id = transferId ?? current?.id;

@@ -7,6 +7,7 @@ import { DeterministicCatalog } from "../src/companion/catalog.ts";
 
 test("DeterministicCatalog resolves valid static fallback candidate in <1ms", () => {
   const snapshot = ContextIntelligence.capture("greeting_return", 300);
+  DeterministicCatalog.resolveFallback(snapshot); // Warm up JIT
   const start = performance.now();
   const fallback = DeterministicCatalog.resolveFallback(snapshot);
   const duration = performance.now() - start;

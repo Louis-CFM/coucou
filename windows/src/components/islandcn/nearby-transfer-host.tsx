@@ -118,7 +118,9 @@ export const NearbyTransferView = React.memo(function NearbyTransferView({ trans
   // ── 2. Cancelled or Failed State ───────────────────────────────────────────
   if (cancelled || error) {
     const statusTitle = cancelled ? "Transfer cancelled" : "Transfer failed";
-    const statusReason = cancelled ? (transfer.errorMessage || "Cancelled by user") : (transfer.errorMessage || "Connection interrupted");
+    const statusReason = cancelled
+      ? (transfer.errorMessage || (transfer.cancelOrigin === "desktop" ? "Cancelled from PC" : "Cancelled from phone"))
+      : (transfer.errorMessage || "Connection interrupted");
     return (
       <div className={`nearby-transfer-activity-view status-${transfer.status}`}>
         {/* Left: Device Glyph with warning/cancel badge */}

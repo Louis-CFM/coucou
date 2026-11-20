@@ -166,7 +166,6 @@
       "ko": "이미 파일 전송이 진행 중입니다.",
       "ja": "ファイル転送は既に進行中です。"
     },
-
     "Show in folder": {
       "zh-Hans": "在文件夹中显示",
       "hi": "फ़ोल्डर में दिखाएँ",
@@ -180,7 +179,7 @@
       "de": "Im Ordner anzeigen",
       "tr": "Klasörde göster",
       "ko": "폴더에서 보기",
-      "ja": "フォルダーで表示"
+      "ja": "フォルダで表示"
     },
     "Open folder in Explorer": {
       "zh-Hans": "在文件资源管理器中打开文件夹",
@@ -193,7 +192,7 @@
       "ru": "Открыть папку в Проводнике",
       "id": "Buka folder di Explorer",
       "de": "Ordner im Explorer öffnen",
-      "tr": "Klasörü Gezgin'de aç" ,
+      "tr": "Klasörü Gezgin'de aç",
       "ko": "파일 탐색기에서 폴더 열기",
       "ja": "エクスプローラーでフォルダーを開く"
     },
@@ -2806,21 +2805,6 @@
       "tr": "Haftanı paylaş",
       "ko": "이번 주 자랑하기",
       "ja": "1 週間を共有"
-    },
-    "Show in folder": {
-      "zh-Hans": "在文件夹中显示",
-      "hi": "फ़ोल्डर में दिखाएँ",
-      "es": "Mostrar en la carpeta",
-      "ar": "إظهار في المجلد",
-      "fr": "Afficher dans le dossier",
-      "bn": "ফোল্ডারে দেখান",
-      "pt-BR": "Mostrar na pasta",
-      "ru": "Показать в папке",
-      "id": "Tampilkan di folder",
-      "de": "Im Ordner anzeigen",
-      "tr": "Klasörde göster",
-      "ko": "폴더에서 보기",
-      "ja": "フォルダで表示"
     },
     "Show other coding agents in the island. Coucou adds its entries to each agent's own config: you see the exact change and where the backup goes before anything is written, and uninstalling removes only what Coucou added.": {
       "zh-Hans": "在岛中显示其他编程代理。Coucou 会把自己的条目添加到各代理的配置中：写入之前，你会看到确切的改动和备份位置；卸载只会移除 Coucou 添加的内容。",
@@ -7954,6 +7938,51 @@
       "tr": "Son aktarımlar",
       "ko": "최근 전송",
       "ja": "最近の転送"
+    },
+    "Nothing playing right now.": {
+      "zh-Hans": "目前没有播放任何内容。",
+      "hi": "अभी कुछ नहीं चल रहा है।",
+      "es": "Nada suena por ahora.",
+      "ar": "لا يوجد شيء يُشغَّل الآن.",
+      "fr": "Rien ne joue pour l’instant.",
+      "bn": "এখন কিছু বাজছে না।",
+      "pt-BR": "Nada tocando agora.",
+      "ru": "Сейчас ничего не играет.",
+      "id": "Tidak ada yang dimainkan sekarang.",
+      "de": "Gerade läuft nichts.",
+      "tr": "Şu anda hiçbir şey çalmıyor.",
+      "ko": "현재 재생 중인 항목이 없습니다.",
+      "ja": "現在再生中の曲はありません。"
+    },
+    "Install Spotify to listen here.": {
+      "zh-Hans": "安装 Spotify 在这里收听。",
+      "hi": "यहाँ सुनने के लिए Spotify इंस्टॉल करें।",
+      "es": "Instala Spotify para escuchar aquí.",
+      "ar": "ثبِّت Spotify للاستماع هنا.",
+      "fr": "Installe Spotify pour écouter ici.",
+      "bn": "এখানে শুনতে Spotify ইনস্টল করুন।",
+      "pt-BR": "Instale o Spotify para ouvir aqui.",
+      "ru": "Установите Spotify, чтобы слушать здесь.",
+      "id": "Instal Spotify untuk mendengarkan di sini.",
+      "de": "Installiere Spotify, um hier zu hören.",
+      "tr": "Burada dinlemek için Spotify’ı yükle.",
+      "ko": "여기서 듣려면 Spotify를 설치하세요.",
+      "ja": "ここで聴くには Spotify をインストールしてください。"
+    },
+    "The hook relay could not start ({error}). Hooks will not reach Coucou.": {
+      "zh-Hans": "Hook 中继无法启动（{error}）。Hooks 将无法连接到 Coucou。",
+      "hi": "हुक रिले शुरू नहीं हो सका ({error})। हुक Coucou तक नहीं पहुँच पाएँगे।",
+      "es": "No se pudo iniciar el relay de hooks ({error}). Los hooks no llegarán a Coucou.",
+      "ar": "تعذّر بدء مرحّل الـ hooks ({error}). لن تصل الـ hooks إلى Coucou.",
+      "fr": "Le relais des hooks n'a pas pu démarrer ({error}). Les hooks n'atteindront pas Coucou.",
+      "bn": "হুক রিলে চালু করা যায়নি ({error})। হুকগুলো Coucou-এ পৌঁছাবে না।",
+      "pt-BR": "Não foi possível iniciar o relay dos hooks ({error}). Os hooks não chegarão ao Coucou.",
+      "ru": "Не удалось запустить ретранслятор хуков ({error}). Хуки не будут доходить до Coucou.",
+      "id": "Relay hook tidak dapat dimulai ({error}). Hook tidak akan sampai ke Coucou.",
+      "de": "Der Hook-Relay konnte nicht gestartet werden ({error}). Hooks erreichen Coucou nicht.",
+      "tr": "Hook aracısı başlatılamadı ({error}). Hook'lar Coucou'ya ulaşmayacak.",
+      "ko": "훅 릴레이를 시작할 수 없습니다 ({error}). 훅이 Coucou에 전달되지 않습니다.",
+      "ja": "フックリレーを起動できませんでした（{error}）。フックは Coucou に届きません。"
     }
   }
 }

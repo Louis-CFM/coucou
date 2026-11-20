@@ -13,6 +13,7 @@ data class ActiveTransferUiState(
     val record: CoudropRecord,
     val progress: Float = 0f,
     val speedMBps: Double = 0.0,
+    val isPaused: Boolean = false,
     val error: String? = null,
 )
 
@@ -112,9 +113,60 @@ class CoudropManager(
         reloadHistory()
     }
 
+    fun pause(transferId: String) {
+        sender.pause(transferId)
+        receiver.pause(transferId)
+        linkProvider()?.dropPause(transferId)
+        activeMap[transferId]?.let { state ->
+            val pausedRecord = state.record.copy(status = TransferStatus.PAUSED)
+            activeMap[transferId] = state.copy(record = pausedRecord, isPaused = true, speedMBps = 0.0)
+            _activeTransfers.value = HashMap(activeMap)
+        }
+    }
+
+    fun resume(transferId: String) {
+        sender.resume(transferId)
+        receiver.resume(transferId)
+        linkProvider()?.dropResume(transferId)
+        activeMap[transferId]?.let { state ->
+            val resumedRecord = state.record.copy(status = TransferStatus.IN_PROGRESS)
+            activeMap[transferId] = state.copy(record = resumedRecord, isPaused = false)
+            _activeTransfers.value = HashMap(activeMap)
+        }
+    }
+
+    fun onRemotePause(transferId: String, origin: String = "windows") {
+        sender.pause(transferId)
+        receiver.pause(transferId)
+        activeMap[transferId]?.let { state ->
+            val pausedRecord = state.record.copy(status = TransferStatus.PAUSED)
+            activeMap[transferId] = state.copy(record = pausedRecord, isPaused = true, speedMBps = 0.0)
+            _activeTransfers.value = HashMap(activeMap)
+        }
+    }
+
+    fun onRemoteResume(transferId: String, origin: String = "windows", offset: Long = 0L) {
+        sender.resume(transferId)
+        receiver.resume(transferId)
+        activeMap[transferId]?.let { state ->
+            val resumedRecord = state.record.copy(status = TransferStatus.IN_PROGRESS)
+            activeMap[transferId] = state.copy(record = resumedRecord, isPaused = false)
+            _activeTransfers.value = HashMap(activeMap)
+        }
+    }
+
+    fun onRemoteCancel(transferId: String, reason: String = "cancelled", origin: String = "windows") {
+        sender.onRemoteCancel(transferId, reason)
+        receiver.onRemoteCancel(transferId, reason)
+        activeMap.remove(transferId)
+        _activeTransfers.value = HashMap(activeMap)
+        historyStore.updateStatus(transferId, TransferStatus.CANCELLED)
+        reloadHistory()
+    }
+
     fun cancel(transferId: String) {
         sender.cancel(transferId)
-        receiver.onCancel(ServerMsg.DropCancel(transferId, "cancelled"))
+        receiver.cancel(transferId)
         activeMap.remove(transferId)
         _activeTransfers.value = HashMap(activeMap)
         historyStore.updateStatus(transferId, TransferStatus.CANCELLED)

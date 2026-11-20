@@ -128,6 +128,10 @@ export class Tracked {
     return this.spring.value;
   }
 
+  get target(): number {
+    return this.spring.target;
+  }
+
   get animating(): boolean {
     return this.mode !== "idle";
   }

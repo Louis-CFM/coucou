@@ -189,6 +189,18 @@ sealed interface ServerMsg {
     data class DropCancel(
         val transferId: String,
         val reason: String = "cancelled",
+        val origin: String = "windows",
+    ) : ServerMsg
+    /** Vayli Drop: pause transfer. */
+    data class DropPause(
+        val transferId: String,
+        val origin: String = "windows",
+    ) : ServerMsg
+    /** Vayli Drop: resume transfer. */
+    data class DropResume(
+        val transferId: String,
+        val origin: String = "windows",
+        val offset: Long = 0L,
     ) : ServerMsg
     /** Vayli Drop: desktop accepted the phone's file offer. */
     data class DropAccept(
@@ -237,7 +249,11 @@ sealed interface ClientMsg {
     /** Vayli Drop: transfer complete and verified with SHA-256. */
     data class DropDone(val transferId: String, val sha256: String) : ClientMsg
     /** Vayli Drop: transfer cancelled by phone. */
-    data class DropCancel(val transferId: String, val reason: String = "cancelled") : ClientMsg
+    data class DropCancel(val transferId: String, val reason: String = "cancelled", val origin: String = "android") : ClientMsg
+    /** Vayli Drop: transfer paused by phone. */
+    data class DropPause(val transferId: String, val origin: String = "android") : ClientMsg
+    /** Vayli Drop: transfer resumed by phone. */
+    data class DropResume(val transferId: String, val origin: String = "android", val offset: Long = 0L) : ClientMsg
     /** Vayli Drop: file offer from phone to desktop. */
     data class DropOffer(
         val transferId: String,
@@ -291,7 +307,9 @@ object Wire {
             is ClientMsg.DropReject -> o.put("type", "dropReject").put("transferId", m.transferId).put("reason", m.reason)
             is ClientMsg.DropProgress -> o.put("type", "dropProgress").put("transferId", m.transferId).put("bytes", m.bytes).put("bytesReceived", m.bytes).put("total", m.total)
             is ClientMsg.DropDone -> o.put("type", "dropDone").put("transferId", m.transferId).put("sha256", m.sha256)
-            is ClientMsg.DropCancel -> o.put("type", "dropCancel").put("transferId", m.transferId).put("reason", m.reason)
+            is ClientMsg.DropCancel -> o.put("type", "dropCancel").put("transferId", m.transferId).put("reason", m.reason).put("origin", m.origin)
+            is ClientMsg.DropPause -> o.put("type", "dropPause").put("transferId", m.transferId).put("origin", m.origin)
+            is ClientMsg.DropResume -> o.put("type", "dropResume").put("transferId", m.transferId).put("origin", m.origin).put("offset", m.offset)
             is ClientMsg.DropOffer -> {
                 o.put("type", "dropOffer").put("transferId", m.transferId).put("name", m.name).put("size", m.size).put("sha256", m.sha256).put("mimeType", m.mimeType)
                 if (m.protocolVersion > 1) {
@@ -358,6 +376,16 @@ object Wire {
                 "dropCancel" -> ServerMsg.DropCancel(
                     transferId = o.getString("transferId"),
                     reason = o.optString("reason", "cancelled"),
+                    origin = o.optString("origin", "windows"),
+                )
+                "dropPause" -> ServerMsg.DropPause(
+                    transferId = o.getString("transferId"),
+                    origin = o.optString("origin", "windows"),
+                )
+                "dropResume" -> ServerMsg.DropResume(
+                    transferId = o.getString("transferId"),
+                    origin = o.optString("origin", "windows"),
+                    offset = o.optLong("offset", 0L),
                 )
                 "dropAccept" -> ServerMsg.DropAccept(
                     transferId = o.getString("transferId"),
