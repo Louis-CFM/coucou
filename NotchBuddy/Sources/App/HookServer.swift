@@ -272,6 +272,8 @@ final class HookServer: @unchecked Sendable {
             if !display.cwd.isEmpty { task.sessionCwd = display.cwd }
             if task.pill == "integration_claude" { task.hostApp = display.hostApp }
             if !display.bundleId.isEmpty { task.sessionBundleId = display.bundleId }
+            if !display.tty.isEmpty { task.sessionTty = display.tty }
+            if !display.itermSessionId.isEmpty { task.sessionItermId = display.itermSessionId }
         }
         if state.tasks[index] != task { state.tasks[index] = task }
     }
@@ -286,6 +288,10 @@ final class HookServer: @unchecked Sendable {
             var task = AgentTask(id: id, name: value.title, color: client.color, state: waiting ?? value.state,
                                  steps: [], source: client.source, isIntegration: client.isIntegration)
             task.hostApp = client.hostApp
+            task.sessionCwd = client.sessionCwd
+            task.sessionBundleId = client.sessionBundleId
+            task.sessionTty = client.sessionTty
+            task.sessionItermId = client.sessionItermId
             let at = (state.tasks.lastIndex(where: { $0.pill == client.pill }) ?? state.tasks.count - 1) + 1
             withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.tasks.insert(task, at: at) }
         }
@@ -643,6 +649,8 @@ final class HookServer: @unchecked Sendable {
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
+        let tty         = payload["tty"]          as? String ?? ""
+        let itermSessionId = payload["iterm_session_id"] as? String ?? ""
         #if !APPSTORE
         if (name == "SessionStart" || name == "UserPromptSubmit") && (payload["coucou_agent"] as? String ?? "").isEmpty {
             SessionLauncher.shared.remember(folder: cwd, terminal: bundleId)
@@ -703,7 +711,8 @@ final class HookServer: @unchecked Sendable {
             session: sessionId,
             projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
             cwd: isExternalAgent ? "" : cwd,
-            hostApp: hostApp, bundleId: bundleId)
+            hostApp: hostApp, bundleId: bundleId,
+            tty: tty, itermSessionId: itermSessionId)
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
@@ -952,10 +961,14 @@ final class HookServer: @unchecked Sendable {
     /// ID format: "agent_<name>" — never collides with "integration_*" pills.
     /// Inserted right after integration_claude so it appears in the visible prefix(4).
     @MainActor
-    private func upsertExternalAgent(id: String, name: String, bundleId: String) {
+    private func upsertExternalAgent(id: String, name: String, bundleId: String,
+                                     cwd: String = "", tty: String = "", itermSessionId: String = "") {
         let state = AppState.shared
         if let existingIdx = state.tasks.firstIndex(where: { $0.id == id }) {
+            if !cwd.isEmpty { state.tasks[existingIdx].sessionCwd = cwd }
             if !bundleId.isEmpty { state.tasks[existingIdx].sessionBundleId = bundleId }
+            if !tty.isEmpty { state.tasks[existingIdx].sessionTty = tty }
+            if !itermSessionId.isEmpty { state.tasks[existingIdx].sessionItermId = itermSessionId }
             return
         }
         let color: String
@@ -965,7 +978,10 @@ final class HookServer: @unchecked Sendable {
             color = IslandConst.colorForProject(name)
         }
         var task = AgentTask(id: id, name: name, color: color, state: .idle, steps: [], source: .agent)
+        if !cwd.isEmpty { task.sessionCwd = cwd }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
+        if !tty.isEmpty { task.sessionTty = tty }
+        if !itermSessionId.isEmpty { task.sessionItermId = itermSessionId }
         if let claudeIdx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) {
             state.tasks.insert(task, at: claudeIdx + 1)
         } else {
@@ -1165,7 +1181,9 @@ final class HookServer: @unchecked Sendable {
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
                                                         cwd: cwd, hostApp: terminalHost?.bundleId,
-                                                        bundleId: bundleId),
+                                                        bundleId: bundleId,
+                                                        tty: payload["tty"] as? String ?? "",
+                                                        itermSessionId: payload["iterm_session_id"] as? String ?? ""),
                    working: true, externalAgent: nil)
         syncPill(pillId)
         SoundEngine.shared.play("approval")
@@ -1258,8 +1276,10 @@ final class HookServer: @unchecked Sendable {
         // Same display as the session's other events (processEvent: an external agent pill).
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: "antigravity",
-                                                        cwd: "", hostApp: nil,
-                                                        bundleId: payload["bundle_id"] as? String ?? ""),
+                                                        cwd: payload["cwd"] as? String ?? "", hostApp: nil,
+                                                        bundleId: payload["bundle_id"] as? String ?? "",
+                                                        tty: payload["tty"] as? String ?? "",
+                                                        itermSessionId: payload["iterm_session_id"] as? String ?? ""),
                    working: true, externalAgent: "antigravity")
         AppState.shared.updateTask(id: pillId, state: .approval)
         SoundEngine.shared.play("approval")
@@ -1437,7 +1457,9 @@ final class HookServer: @unchecked Sendable {
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
                                                         cwd: cwd, hostApp: terminalHost?.bundleId,
-                                                        bundleId: bundleId),
+                                                        bundleId: bundleId,
+                                                        tty: payload["tty"] as? String ?? "",
+                                                        itermSessionId: payload["iterm_session_id"] as? String ?? ""),
                    working: true, externalAgent: nil)
         syncPill(pillId)
         SoundEngine.shared.play("approval")
@@ -1477,10 +1499,12 @@ final class HookServer: @unchecked Sendable {
                             working: Bool, externalAgent: String?) {
         sessions.note(pill: pill, display: display, working: working)
         if let externalAgent {
-            upsertExternalAgent(id: pill, name: externalAgent, bundleId: display.bundleId)
+            upsertExternalAgent(id: pill, name: externalAgent, bundleId: display.bundleId,
+                                cwd: display.cwd, tty: display.tty, itermSessionId: display.itermSessionId)
         } else {
             upsertWorkspaceTask(id: pill, projectName: display.projectName, cwd: display.cwd,
                                 hostApp: display.hostApp, bundleId: display.bundleId,
+                                tty: display.tty, itermSessionId: display.itermSessionId,
                                 session: display.session)
         }
     }
@@ -1493,7 +1517,9 @@ final class HookServer: @unchecked Sendable {
     /// still running), so a second session under the same client cannot rename the card,
     /// or send "Open terminal" elsewhere, out from under the first.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String) {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "",
+                                     hostApp: String? = nil, bundleId: String = "",
+                                     tty: String = "", itermSessionId: String = "", session: String) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
@@ -1501,6 +1527,8 @@ final class HookServer: @unchecked Sendable {
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
             if PillCatalog.basePillId(id) == "integration_claude" { state.tasks[idx].hostApp = hostApp }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
+            if !tty.isEmpty { state.tasks[idx].sessionTty = tty }
+            if !itermSessionId.isEmpty { state.tasks[idx].sessionItermId = itermSessionId }
             return
         }
         // Transient: create and insert after the main pill
@@ -1510,7 +1538,10 @@ final class HookServer: @unchecked Sendable {
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
         if task.pill == "integration_claude" { task.hostApp = hostApp }
+        if !cwd.isEmpty { task.sessionCwd = cwd }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
+        if !tty.isEmpty { task.sessionTty = tty }
+        if !itermSessionId.isEmpty { task.sessionItermId = itermSessionId }
         // A session's own pill goes after its client's other pills, so they stay together.
         if let sibling = state.tasks.lastIndex(where: { $0.pill == task.pill }) {
             state.tasks.insert(task, at: sibling + 1)
@@ -3941,6 +3972,27 @@ def term_program(env):
         return 'vscode'
     return term
 
+def session_tty():
+    for stream in (sys.stderr, sys.stdout):
+        try:
+            fd = stream.fileno()
+            if os.isatty(fd):
+                return os.ttyname(fd)
+        except Exception:
+            pass
+    try:
+        import subprocess
+        out = subprocess.check_output(
+            ['/bin/ps', '-o', 'tty=', '-p', str(os.getppid())],
+            timeout=0.5,
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+        if out and out != '??':
+            return out if out.startswith('/dev/') else '/dev/' + out
+    except Exception:
+        pass
+    return ''
+
 def main():
     raw = b''
     payload = {}
@@ -4004,6 +4056,7 @@ def main():
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+        payload.setdefault('tty', session_tty())
         if 'cwd' not in payload or not payload['cwd']:
             paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
             if isinstance(paths, list) and paths:
@@ -4072,6 +4125,7 @@ def main():
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    payload.setdefault('tty', session_tty())
     if 'cwd' not in payload or not payload['cwd']:
         paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
         if isinstance(paths, list) and paths:
@@ -4361,6 +4415,27 @@ def term_program(env):
         return 'vscode'
     return term
 
+def session_tty():
+    for stream in (sys.stderr, sys.stdout):
+        try:
+            fd = stream.fileno()
+            if os.isatty(fd):
+                return os.ttyname(fd)
+        except Exception:
+            pass
+    try:
+        import subprocess
+        out = subprocess.check_output(
+            ['/bin/ps', '-o', 'tty=', '-p', str(os.getppid())],
+            timeout=0.5,
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+        if out and out != '??':
+            return out if out.startswith('/dev/') else '/dev/' + out
+    except Exception:
+        pass
+    return ''
+
 def main():
     raw = b''
     payload = {}
@@ -4424,6 +4499,7 @@ def main():
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+        payload.setdefault('tty', session_tty())
         if 'cwd' not in payload or not payload['cwd']:
             paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
             if isinstance(paths, list) and paths:
@@ -4491,6 +4567,7 @@ def main():
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    payload.setdefault('tty', session_tty())
     if 'cwd' not in payload or not payload['cwd']:
         paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
         if isinstance(paths, list) and paths:

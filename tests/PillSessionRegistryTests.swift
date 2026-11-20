@@ -224,16 +224,22 @@ enum PillSessionRegistryTests {
             reg.note(pill: claude,
                      display: PillSessionRegistry.Display(session: "a", projectName: "coucou",
                                                           cwd: "/tmp/coucou",
-                                                          hostApp: "com.googlecode.iterm2"),
+                                                          hostApp: "com.googlecode.iterm2",
+                                                          tty: "/dev/ttys001",
+                                                          itermSessionId: "w0t0p0:AAA"),
                      working: true)
             reg.note(pill: claude,
                      display: PillSessionRegistry.Display(session: "b", projectName: "lokil",
                                                           cwd: "/tmp/lokil",
-                                                          hostApp: "com.apple.Terminal"),
+                                                          hostApp: "com.apple.Terminal",
+                                                          tty: "/dev/ttys002"),
                      working: true)
             check("A's terminal shown", reg.displayOwner(of: claude)?.hostApp == "com.googlecode.iterm2")
+            check("A's tty shown", reg.displayOwner(of: claude)?.tty == "/dev/ttys001")
+            check("A's iTerm id shown", reg.displayOwner(of: claude)?.itermSessionId == "w0t0p0:AAA")
             _ = reg.endSession(pill: claude, session: "a")
             check("B's terminal once A ends", reg.displayOwner(of: claude)?.hostApp == "com.apple.Terminal")
+            check("B's tty once A ends", reg.displayOwner(of: claude)?.tty == "/dev/ttys002")
             check("B's folder once A ends", reg.displayOwner(of: claude)?.cwd == "/tmp/lokil")
         }
 
