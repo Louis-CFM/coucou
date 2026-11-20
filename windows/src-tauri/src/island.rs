@@ -245,6 +245,52 @@ fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
     displays.iter().position(at)
 }
 
+/// The display holding the point, or else the one sharing its x, so a window dragged
+/// past the top edge still lands on the screen it was dragged to.
+fn monitor_for(app: &AppHandle, x: i32, y: i32) -> Option<Monitor> {
+    let monitors = app.available_monitors().ok()?;
+    monitors
+        .iter()
+        .find(|m| monitor_contains(m, x as f64, y as f64))
+        .or_else(|| {
+            monitors.iter().find(|m| {
+                let p = m.position();
+                x >= p.x && x < p.x + m.size().width as i32
+            })
+        })
+        .cloned()
+}
+
+/// Top-left corner for a window of `pw`×`ph` whose top-centre sits at (`cx`, `top`),
+/// kept fully inside the monitor.
+fn place_on(m: &Monitor, cx: i32, top: i32, pw: u32, ph: u32) -> (i32, i32) {
+    let p = m.position();
+    let s = m.size();
+    let x = (cx - pw as i32 / 2).min(p.x + s.width as i32 - pw as i32).max(p.x);
+    let y = top.min(p.y + s.height as i32 - ph as i32).max(p.y);
+    (x, y)
+}
+
+/// Where the user left the window, snapped back onto a screen if a drag ended off it.
+pub fn remember_position(app: &AppHandle) -> Option<[i32; 2]> {
+    let win = window(app)?;
+    let pos = win.outer_position().ok()?;
+    let size = win.outer_size().ok()?;
+    let cx = pos.x + size.width as i32 / 2;
+    let m = monitor_for(app, cx, pos.y)?;
+    let (x, y) = place_on(&m, cx, pos.y, size.width, size.height);
+    if (x, y) != (pos.x, pos.y) {
+        let _ = win.set_position(PhysicalPosition::new(x, y));
+    }
+    Some([x + size.width as i32 / 2, y])
+}
+
+pub fn start_drag(app: &AppHandle) {
+    if let Some(win) = window(app) {
+        let _ = win.start_dragging();
+    }
+}
+
 /// The display the island lives on: a chosen one, the primary one, or the one
 /// under the cursor.
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
@@ -436,8 +482,15 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: Option<(f64, f64)>
     let (lw, lh) = collapsed.map(clamp_collapsed).unwrap_or((PANEL_W, PANEL_H));
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y + top_inset(&m);
+    let saved = app.try_state::<crate::Shared>().and_then(|s| s.settings.lock().unwrap().island_pos);
+    let dragged = saved.and_then(|[cx, top]| monitor_for(app, cx, top).map(|dm| (dm, cx, top)));
+    let (placed_on, x, y) = match &dragged {
+        Some((dm, cx, top)) => {
+            let (x, y) = place_on(dm, *cx, *top, pw, ph);
+            (dm, x, y)
+        }
+        None => (&m, mp.x + (ms.width as i32 - pw as i32) / 2, mp.y + top_inset(&m)),
+    };
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -448,7 +501,9 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: Option<(f64, f64)>
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
-    let (lx, ly) = logical_origin(&m);
+    // A drag can move the island onto a different display than `pref` names:
+    // pin to the one it actually landed on.
+    let (lx, ly) = logical_origin(placed_on);
     platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));

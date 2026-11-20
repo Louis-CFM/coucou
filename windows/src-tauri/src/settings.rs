@@ -120,6 +120,9 @@ pub struct Settings {
     /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
     /// what a webview sends back is ignored. The Mac's key is the same.
     pub agy_approvals_enabled: bool,
+    /// Top-centre of the island window where the user dragged it, in physical
+    /// desktop pixels. None keeps the default place at the top of the screen.
+    pub island_pos: Option<[i32; 2]>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -192,6 +195,7 @@ impl Default for Settings {
             show_clock: false,
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
+            island_pos: None,
         }
     }
 }
@@ -494,7 +498,8 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
   "closedIsland": "music",
-  "agyApprovalsEnabled": true
+  "agyApprovalsEnabled": true,
+  "islandPos": [100, 200]
 }"##;
 
     fn custom() -> Value {
@@ -1018,6 +1023,7 @@ mod tests {
                 "showClock",
                 "closedIsland",
                 "agyApprovalsEnabled",
+                "islandPos",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
