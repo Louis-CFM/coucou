@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/*]
   pull_request:
     branches: [main]
 
@@ -190,6 +190,18 @@ jobs:
 
       - name: Codex automatic-review filter tests
         run: bash scripts/test-codex-auto-review.sh
+
+      - name: Test MCP Scanner
+        run: bash scripts/test-mcp-scanner.sh
+
+      - name: Test MCP Client
+        run: bash scripts/test-mcp-client.sh
+
+      - name: Test MCP Coordinator
+        run: bash scripts/test-mcp-coordinator.sh
+
+      - name: Test MCP HTTP Client
+        run: bash scripts/test-mcp-http.sh
 
       - name: Build
         run: |
