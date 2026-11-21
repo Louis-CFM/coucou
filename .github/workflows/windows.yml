@@ -1,16 +1,28 @@
 name: Windows
 
 # Builds the Windows app and publishes the installer.
-# Triggered by tags like `windows-v0.1.0`; the macOS workflows are untouched.
+# Triggered by tags like `windows-v0.1.0`, by hand, and by pull requests
+# that touch windows/ or this file (build and test only); the macOS and Linux
+# workflows are untouched.
+#
+# Two jobs on purpose. `build` runs npm, cargo and packaging tooling with a
+# read-only token that is not kept on disk. Only `publish`, which runs none of
+# that code, may write to the repo.
 
 on:
   push:
     tags:
       - 'windows-v*'
   workflow_dispatch:
+  # Build and test only. A pull request never uploads release artifacts and never
+  # reaches the publish job, and a fork's token is read-only anyway.
+  pull_request:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/windows.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 # Publishing is on: Microsoft reviewed the Defender false positive
 # (Trojan:Win32/Wacatac.H!ml) and removed the detection. Before pushing a
@@ -23,12 +35,17 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.pack.outputs.version }}
+      publish: ${{ steps.gate.outputs.publish }}
     defaults:
       run:
         working-directory: windows
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
@@ -79,24 +96,32 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           Get-ChildItem release | Format-Table Name, Length
 
+      # Gate: decide whether this run publishes.
+      # Only a windows-v* tag pushed to the repo itself may reach the publish
+      # job; pull requests and branch pushes stop here. The repo's env:
+      # PUBLISH is the kill switch (see the comment above).
+      - name: Gate: decide whether this run publishes
+        id: gate
+        shell: pwsh
+        run: |
+          if ('${{ env.PUBLISH }}' -eq 'true' -and '${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/windows-v') }}' -eq 'true') {
+            "publish=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "publish=false" >> $env:GITHUB_OUTPUT
+          }
+
       # Upload only on a manual run or when publishing a release.
       # The repo is public, so artifacts are downloadable by any signed-in GitHub
       # user; the condition keeps them off automatic tag builds while downloads
       # are paused. retention-days: 3 limits exposure.
       - uses: actions/upload-artifact@v7
-        if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.publish == 'true'
         with:
-          name: Coucou-Windows-setup
-          path: windows/release/Coucou-Windows-${{ steps.pack.outputs.version }}-setup.exe
-          retention-days: 3
-
-      # MSI installer generated via WiX toolset. Bypasses NSIS extractor false-positives
-      # and provides clean native Windows Installer deployment.
-      - uses: actions/upload-artifact@v7
-        if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
-        with:
-          name: Coucou-Windows-msi
-          path: windows/release/Coucou-Windows-${{ steps.pack.outputs.version }}.msi
+          name: Coucou-Windows
+          path: |
+            windows/release/Coucou-Windows-*
+            windows/release/Coucou-Windows.msi
+            windows/release/Coucou-Windows-setup.exe
           retention-days: 3
 
       # The unsigned NSIS installer is what Defender false-positives on, so the
@@ -104,7 +129,7 @@ jobs:
       # coucou-hook.exe next to coucou.exe, which is exactly this layout, so the
       # portable pair runs with working Claude Code hooks and no installer.
       - uses: actions/upload-artifact@v7
-        if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.publish == 'true'
         with:
           name: Coucou-Windows-portable
           path: |
@@ -112,13 +137,30 @@ jobs:
             windows/target/release/coucou-hook.exe
           retention-days: 3
 
+  publish:
+    needs: build
+    # Checked again here, so a pull request can never get this far whatever
+    # the build job reports.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/windows-v') && needs.build.outputs.publish == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      # Only for the windows-latest tag below; nothing from the repo is run.
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: Coucou-Windows
+          path: windows/release
+
       - name: Publish the release
-        if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $v = "${{ steps.pack.outputs.version }}"
+          $v = "${{ needs.build.outputs.version }}"
           $notes = @"
           Coucou for Windows $v — Mochi at the top of your screen.
 
@@ -131,19 +173,18 @@ jobs:
           # button points at /releases/latest. A Windows tag would silently send
           # Mac users to the .exe. The macOS `v*` releases own that slot.
           gh release create "${{ github.ref_name }}" `
-            "release/Coucou-Windows-$v-setup.exe" `
-            "release/Coucou-Windows-$v.msi" `
+            "windows/release/Coucou-Windows-$v-setup.exe" `
+            "windows/release/Coucou-Windows-$v.msi" `
             --title "Coucou for Windows $v" `
             --notes $notes `
             --latest=false
 
       - name: Update the rolling windows-latest release
-        if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $v = "${{ steps.pack.outputs.version }}"
+          $v = "${{ needs.build.outputs.version }}"
           $exists = gh release view windows-latest 2>$null
           if ($LASTEXITCODE -eq 0) {
             # The tag has to follow the release, or windows-latest keeps pointing
@@ -152,11 +193,11 @@ jobs:
             git tag -f windows-latest "${{ github.sha }}"
             git push -f origin windows-latest
             gh release edit windows-latest --title "Coucou for Windows (latest)" --notes "Always the newest Windows build — currently $v."
-            gh release upload windows-latest "release/Coucou-Windows-setup.exe" "release/Coucou-Windows.msi" --clobber
+            gh release upload windows-latest "windows/release/Coucou-Windows-setup.exe" "windows/release/Coucou-Windows.msi" --clobber
           } else {
             gh release create windows-latest `
-              "release/Coucou-Windows-setup.exe" `
-              "release/Coucou-Windows.msi" `
+              "windows/release/Coucou-Windows-setup.exe" `
+              "windows/release/Coucou-Windows.msi" `
               --title "Coucou for Windows (latest)" `
               --notes "Always the newest Windows build — currently $v." `
               --latest=false
