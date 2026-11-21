@@ -398,15 +398,29 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
         pill::update(app, |s| s.phase = "idle".into());
         return Ok(());
     }
-    let (prepared, style, cleanup, words, key) = {
+    let (prepared, style, cleanup, words, key, dictation_language) = {
         let store = flow.store.lock().unwrap();
         let app_id = front.map(|(id, _)| id.as_str());
-        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key.codes(&store.prefs.key_combo))
+        (
+            store.prepare(&raw),
+            store.style_for(app_id),
+            store.prefs.cleanup,
+            store.words.words.clone(),
+            store.prefs.key.codes(&store.prefs.key_combo),
+            store.prefs.dictation_language.clone(),
+        )
     };
     let mut written = prepared.text.clone();
-    if cleanup && style != store::Style::Verbatim && cleanup::has_key() {
+    let language = store::dictation_language_name(&dictation_language);
+    if cleanup && cleanup::should_clean(&prepared.text, style, cleanup::has_key(), language) {
         let app_name = front.map(|(_, n)| n.clone());
-        let cleaned = tauri::async_runtime::block_on(cleanup::clean(&prepared.text, style, app_name.as_deref(), &words));
+        let cleaned = tauri::async_runtime::block_on(cleanup::clean(
+            &prepared.text,
+            style,
+            app_name.as_deref(),
+            &words,
+            language,
+        ));
         if text::keeps_marks(&cleaned, &prepared.snippets) {
             written = cleaned;
         }
