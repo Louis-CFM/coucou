@@ -645,7 +645,7 @@ struct GreetingCanvasView: View {
             Canvas { context, size in
                 context.withCGContext { cgCtx in
                     drawGreeting(cgCtx, size: size, t: t, tc: tc,
-                                 compact: IslandRestingLayout(width: state.notchWidth + 160,
+                                 compact: IslandRestingLayout(width: state.notchWidth + CompactWidth.extra,
                                                               height: state.notchHeight))
                 }
             }

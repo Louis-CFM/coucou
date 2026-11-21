@@ -53,6 +53,12 @@ const COMPACT = {
   miniGridCenterX: COMPACT_W - 40,
 };
 
+/** The folded island the greeting lands in follows Settings → General → Folded island width. */
+export function setGreetingCompactWidth(w: number) {
+  COMPACT.width = w;
+  COMPACT.miniGridCenterX = w - 40;
+}
+
 // ── Easing ────────────────────────────────────────────────────────────────────
 
 const E = {
