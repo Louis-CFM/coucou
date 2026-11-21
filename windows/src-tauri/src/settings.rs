@@ -120,6 +120,8 @@ pub struct Settings {
     /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
     /// what a webview sends back is ignored. The Mac's key is the same.
     pub agy_approvals_enabled: bool,
+    /// Mochi's eyes follow the mouse pointer. On by default.
+    pub eyes_follow_pointer: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -151,7 +153,7 @@ impl Default for Settings {
             auto_close_interval: 15.0,
             open_on_hover: false,
             alerts_from_all_pills: false,
-            absence_interval: 180.0,
+            absence_interval: 60.0,
             active_integrations: vec![
                 "integration_resend".into(),
                 "integration_n8n".into(),
@@ -192,6 +194,7 @@ impl Default for Settings {
             show_clock: false,
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
+            eyes_follow_pointer: true,
         }
     }
 }
@@ -248,6 +251,10 @@ fn note(message: String) {
 /// The settings held in the bytes of a settings.json, or `None` when there is
 /// nothing usable in them. Split from `load_from` so it can be tested without a
 /// file.
+fn clamp_absence(v: f64) -> f64 {
+    if v.is_finite() { v.clamp(1.0, 300.0) } else { 60.0 }
+}
+
 fn parse(bytes: &[u8]) -> Option<Settings> {
     // PowerShell 5 and Notepad write a UTF-8 BOM, and serde_json refuses it.
     let text = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
@@ -258,7 +265,9 @@ fn parse(bytes: &[u8]) -> Option<Settings> {
         return None;
     };
     let whole = serde_json::from_value(Value::Object(fields.clone()));
-    Some(whole.unwrap_or_else(|_| salvage(fields)))
+    let mut parsed: Settings = whole.unwrap_or_else(|_| salvage(fields));
+    parsed.absence_interval = clamp_absence(parsed.absence_interval);
+    Some(parsed)
 }
 
 /// Settings from the fields of a settings.json that does not load as a whole.
@@ -459,7 +468,7 @@ mod tests {
   "autoCloseInterval": 30.0,
   "openOnHover": true,
   "alertsFromAllPills": true,
-  "absenceInterval": 60.0,
+  "absenceInterval": 120.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
@@ -494,7 +503,8 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
   "closedIsland": "music",
-  "agyApprovalsEnabled": true
+  "agyApprovalsEnabled": true,
+  "eyesFollowPointer": false
 }"##;
 
     fn custom() -> Value {
@@ -1018,6 +1028,7 @@ mod tests {
                 "showClock",
                 "closedIsland",
                 "agyApprovalsEnabled",
+                "eyesFollowPointer",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
@@ -1077,5 +1088,20 @@ mod tests {
         let loaded = load_from(&file);
         assert!(loaded.sound_volume >= 0.0);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+    #[test]
+    fn eyes_follow_pointer_defaults_when_missing() {
+        let mut obj = custom().as_object().unwrap().clone();
+        obj.remove("eyesFollowPointer");
+        let s: Settings = serde_json::from_value(Value::Object(obj)).unwrap();
+        assert_eq!(s.eyes_follow_pointer, true);
+    }
+
+    #[test]
+    fn absence_interval_is_clamped_and_defaults() {
+        assert_eq!(Settings::default().absence_interval, 60.0);
+        assert_eq!(parse(&custom_with("absenceInterval", Some(json!(0.2)))).unwrap().absence_interval, 1.0);
+        assert_eq!(parse(&custom_with("absenceInterval", Some(json!(999.0)))).unwrap().absence_interval, 300.0);
+        assert_eq!(parse(&custom_with("absenceInterval", Some(json!(12.0)))).unwrap().absence_interval, 12.0);
     }
 }
