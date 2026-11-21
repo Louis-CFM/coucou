@@ -316,7 +316,7 @@ nix run github:Louis-CFM/coucou
 
 Flakes not turned on yet? Add `--extra-experimental-features 'nix-command flakes'` after `nix`.
 
-**Install it** from your system flake:
+**Install it** in three lines. In your system's `flake.nix`, add the input and its module:
 
 ```nix
 {
@@ -329,18 +329,23 @@ Flakes not turned on yet? Add `--extra-experimental-features 'nix-command flakes
     nixosConfigurations.my-machine = nixpkgs.lib.nixosSystem {
       modules = [
         ./configuration.nix
-        ({ pkgs, ... }: {
-          environment.systemPackages = [
-            coucou.packages.${pkgs.stdenv.hostPlatform.system}.default
-          ];
-        })
+        coucou.nixosModules.default
       ];
     };
   };
 }
 ```
 
-Then `sudo nixos-rebuild switch`. With Home Manager, the same package goes in `home.packages`. To build it against your own nixpkgs rather than the one pinned in Coucou's `flake.lock`, add `coucou.inputs.nixpkgs.follows = "nixpkgs";` (the flake is tested with nixos-unstable).
+Then in `configuration.nix`:
+
+```nix
+programs.coucou.enable = true;
+programs.coucou.desktopShortcut = true;   # optional: a launcher on your desktop
+```
+
+and `sudo nixos-rebuild switch`. Coucou shows up in your applications menu; with `desktopShortcut`, its launcher lands in your desktop folder (`~/Desktop`, `~/Bureau`…) at your next login. No unfree setting is needed: the module uses the flake's own package. To build it against your own nixpkgs rather than the one pinned in Coucou's `flake.lock`, add `coucou.inputs.nixpkgs.follows = "nixpkgs";` (the flake is tested with nixos-unstable).
+
+Without the module, the package is `coucou.packages.${pkgs.stdenv.hostPlatform.system}.default`, for `environment.systemPackages` or Home Manager's `home.packages`.
 
 **Or through the overlay**, as `pkgs.coucou`. Your nixpkgs then has to allow it (see *License* below):
 
@@ -354,7 +359,7 @@ environment.systemPackages = [ pkgs.coucou ];
 
 **Good to know**
 
-- **License.** The package is marked unfree: the code is MIT, but the name, Mochi, the icon and the sounds are not (see [LICENSE-ASSETS.md](LICENSE-ASSETS.md)). Building it for yourself is allowed, which is what the flake does; it also keeps Coucou off public binary caches. The flake's `packages` allow it on their own; with the overlay, your config decides.
+- **License.** The package is marked unfree: the code is MIT, but the name, Mochi, the icon and the sounds are not (see [LICENSE-ASSETS.md](LICENSE-ASSETS.md)). Building it for yourself is allowed, which is what the flake does; it also keeps Coucou off public binary caches. The flake's module and `packages` allow it on their own; with the overlay, your config decides.
 - **Claude Code hooks** work as on any Linux. Coucou copies its relay to `~/.local/share/coucou/bin/` at each launch, so the hooks in `~/.claude/settings.json` keep working across updates and garbage collections. **Start at login** and the shortcut commands in Settings use `coucou` from your `PATH`, for the same reason.
 - **API keys** go to the Secret Service. GNOME and Plasma have one; on Hyprland, Sway and other window managers, add `services.gnome.gnome-keyring.enable = true;`.
 - **On Wayland**, Flow dictation and global shortcuts go through `xdg-desktop-portal`, which the NixOS GNOME, Plasma and Hyprland modules turn on for you.

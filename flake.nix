@@ -3,8 +3,10 @@
   description = "Coucou: Mochi lives at the top of your screen and keeps an eye on your AI coding agents";
 
   # Try it:          nix run github:Louis-CFM/coucou
-  # On NixOS, add the flake to your inputs, then:
-  #   environment.systemPackages = [ inputs.coucou.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+  # On NixOS, add the flake to your inputs and coucou.nixosModules.default to your
+  # modules, then in configuration.nix:
+  #   programs.coucou.enable = true;
+  #   programs.coucou.desktopShortcut = true;   # optional: launcher on the desktop
   # Through the overlay instead, allow it in your own nixpkgs config, since the
   # artwork is not free (see meta.license in linux/nix/package.nix):
   #   nixpkgs.overlays = [ inputs.coucou.overlays.default ];
@@ -41,6 +43,9 @@
         coucou = pkgs.callPackage ./linux/nix/package.nix { };
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.coucou;
       });
+
+      # `programs.coucou.enable = true;` (see linux/nix/nixos-module.nix).
+      nixosModules.default = import ./linux/nix/nixos-module.nix self;
 
       overlays.default = final: prev: {
         coucou = final.callPackage ./linux/nix/package.nix { };
