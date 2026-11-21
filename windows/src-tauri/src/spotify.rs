@@ -32,7 +32,7 @@ pub const DOWNLOAD_URL: &str = "https://www.spotify.com/download/windows/";
 const STATE_EVENT: &str = "spotify";
 const ARTWORK_EVENT: &str = "spotify-artwork";
 /// The biggest cover we read (Spotify's are 640 px JPEGs, ~100 KB).
-const ARTWORK_LIMIT: usize = 3 * 1024 * 1024;
+pub(crate) const ARTWORK_LIMIT: usize = 3 * 1024 * 1024;
 
 // ── Values ────────────────────────────────────────────────────────────────────
 
@@ -160,7 +160,7 @@ impl PlayerState {
         }
     }
 
-    fn anchor(&mut self, position: f64, now_ms: f64) {
+    pub(crate) fn anchor(&mut self, position: f64, now_ms: f64) {
         self.position = position.max(0.0);
         self.position_at = now_ms;
     }
@@ -394,19 +394,19 @@ pub fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
-fn data_url(bytes: &[u8]) -> Option<String> {
+pub(crate) fn data_url(bytes: &[u8]) -> Option<String> {
     let mime = sniff_image(bytes)?;
     Some(format!("data:{mime};base64,{}", crate::claude::base64_for(bytes)))
 }
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct Artwork {
-    art_url: String,
-    data_url: String,
+pub(crate) struct Artwork {
+    pub(crate) art_url: String,
+    pub(crate) data_url: String,
 }
 
-fn now_ms() -> f64 {
+pub(crate) fn now_ms() -> f64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs_f64() * 1000.0)
@@ -420,8 +420,8 @@ fn emit_state(app: &AppHandle, state: &PlayerState) {
 
 // ── Commands ──────────────────────────────────────────────────────────────────
 
-/// The player as it is now, read again from Spotify (the card coming on
-/// screen: seeks made in Spotify's own window are never signalled).
+/// The player as it is now, read again from Spotify (the card coming on screen:
+/// seeks made in Spotify's own window are never signalled).
 #[tauri::command]
 pub async fn spotify_refresh(app: AppHandle) -> Option<PlayerState> {
     #[cfg(target_os = "linux")]
@@ -458,8 +458,7 @@ pub async fn spotify_control(app: AppHandle, action: String, value: Option<f64>)
     }
 }
 
-/// "Open Spotify": brings it forward, or starts it. Without Spotify, its
-/// download page. True when Spotify was reached or started.
+/// "Open Spotify": brings it forward, or starts it.
 #[tauri::command]
 pub async fn spotify_open() -> bool {
     #[cfg(target_os = "linux")]
@@ -498,9 +497,13 @@ pub fn spotify_installed() -> bool {
 pub fn sync(app: &AppHandle, active_integrations: &[String]) {
     let on = active_integrations.iter().any(|id| id == PILL_ID);
     #[cfg(target_os = "linux")]
-    linux::sync(app, on);
+    {
+        linux::sync(app, on);
+    }
     #[cfg(windows)]
-    win::sync(app, on);
+    {
+        win::sync(app, on);
+    }
     #[cfg(not(any(target_os = "linux", windows)))]
     let _ = (app, on);
 }
@@ -1355,14 +1358,23 @@ pub fn is_spotify_app(app_id: &str) -> bool {
     app_id.to_ascii_lowercase().contains("spotify")
 }
 
+/// YouTube Music PWA (Chromium deterministic app ID across Brave/Chrome/Edge)
+/// or desktop clients such as th-ch/youtube-music and ytmdesktop.
+pub(crate) fn is_ytmusic_app(app_id: &str) -> bool {
+    let lower = app_id.to_ascii_lowercase();
+    lower.contains("cinhimbnkkghhklpknlkffjgod")
+        || lower.contains("youtube music")
+        || lower.contains("ytmdesktop")
+}
+
 /// Windows durations and timeline positions: 100 ns ticks → seconds.
-pub fn ticks_to_secs(ticks: i64) -> f64 {
+pub(crate) fn ticks_to_secs(ticks: i64) -> f64 {
     ticks.max(0) as f64 / 10_000_000.0
 }
 
 /// A Windows DateTime (100 ns ticks since 1601) → Unix milliseconds. Zero is
 /// "never updated".
-pub fn windows_time_to_unix_ms(universal: i64) -> Option<f64> {
+pub(crate) fn windows_time_to_unix_ms(universal: i64) -> Option<f64> {
     const UNIX_EPOCH_TICKS: i64 = 116_444_736_000_000_000;
     (universal > 0).then(|| (universal - UNIX_EPOCH_TICKS) as f64 / 10_000.0)
 }
@@ -1371,7 +1383,7 @@ pub fn windows_time_to_unix_ms(universal: i64) -> Option<f64> {
 /// nothing is loaded. Windows gives no Spotify URI, so the id is made from the
 /// tags; an ad comes with a title and nothing else, and gets an ad id so the
 /// page treats it as the Mac does.
-pub fn windows_track(title: &str, artist: &str, album: &str, duration: f64) -> Option<Track> {
+pub(crate) fn windows_track(title: &str, artist: &str, album: &str, duration: f64) -> Option<Track> {
     let title = title.trim();
     if title.is_empty() {
         return None;
@@ -1443,8 +1455,9 @@ mod win {
         state: PlayerState,
     }
 
-    static SHARED: LazyLock<Mutex<Shared>> =
-        LazyLock::new(|| Mutex::new(Shared { generation: 0, active: false, wake: None, state: PlayerState::default() }));
+    static SHARED: LazyLock<Mutex<Shared>> = LazyLock::new(|| {
+        Mutex::new(Shared { generation: 0, active: false, wake: None, state: PlayerState::default() })
+    });
 
     /// Covers already read, by the track's art key; the newest last.
     static ART: LazyLock<Mutex<VecDeque<(String, String)>>> = LazyLock::new(|| Mutex::new(VecDeque::new()));

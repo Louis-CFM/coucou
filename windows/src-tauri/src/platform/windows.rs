@@ -699,6 +699,56 @@ fn open_claude_with(
     focus() || squirrel() || protocol()
 }
 
+/// Focuses a running YouTube Music PWA/desktop window, launches its Start Menu
+/// PWA shortcut if installed, or falls back to opening music.youtube.com.
+pub fn open_ytmusic() -> bool {
+    let pids: Vec<u32> = process_table()
+        .into_iter()
+        .filter(|(_, p)| {
+            matches!(
+                p.exe.to_ascii_lowercase().as_str(),
+                "brave.exe" | "chrome.exe" | "msedge.exe" | "youtube music.exe" | "ytmdesktop.exe"
+            )
+        })
+        .map(|(pid, _)| pid)
+        .collect();
+
+    if let Some((hwnd, _, _)) = top_windows().into_iter().find(|(_, owner, title)| {
+        pids.contains(owner) && (title == "YouTube Music" || title.ends_with(" - YouTube Music"))
+    }) {
+        bring_forward(hwnd);
+        return true;
+    }
+
+    if let Some(appdata) = std::env::var_os("APPDATA") {
+        let programs = PathBuf::from(appdata)
+            .join("Microsoft")
+            .join("Windows")
+            .join("Start Menu")
+            .join("Programs");
+        let direct = programs.join("YouTube Music.lnk");
+        if direct.is_file() {
+            open_url(&direct.to_string_lossy());
+            return true;
+        }
+        if let Ok(entries) = std::fs::read_dir(&programs) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let lnk = path.join("YouTube Music.lnk");
+                    if lnk.is_file() {
+                        open_url(&lnk.to_string_lossy());
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    open_url("https://music.youtube.com/");
+    false
+}
+
 /// The MSIX manifest registers `claude`; let Windows resolve its current install.
 fn activate_claude_protocol() -> bool {
     unsafe {

@@ -402,6 +402,10 @@ fn open_claude_with(
     desktop() || binary() || protocol()
 }
 
+pub fn open_ytmusic() -> bool {
+    false
+}
+
 /// Where a CLI such as `codex` or `claude` may be, best first: $PATH, then the
 /// usual per-user install folders, which a desktop launch often leaves out of
 /// $PATH (the native installers' ~/.local/bin, npm's global prefix, Volta, Bun,
