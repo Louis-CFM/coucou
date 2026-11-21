@@ -7578,6 +7578,21 @@
       "tr": "Yalnızca dikte ederken, bir görüşmeyi kaydederken veya mesaj gelince görünür. Dikte tuşu yine çalışır.",
       "ko": "받아쓰기하거나 통화를 녹음하거나 메시지가 올 때만 표시됩니다. 받아쓰기 키는 그대로 작동합니다.",
       "ja": "音声入力中、通話の録音中、メッセージが届いたときだけ表示されます。音声入力キーはそのまま使えます。"
+    },
+    "When set to a specific language, clean-up keeps short or misdetected phrases in that language.": {
+      "zh-Hans": "设为特定语言时，润色会将简短或误识别的短语保持为该语言。",
+      "hi": "किसी विशिष्ट भाषा पर सेट होने पर, क्लीन-अप छोटे या गलत पहचाने गए वाक्यांशों को उसी भाषा में रखता है।",
+      "es": "Al fijar un idioma específico, la limpieza mantiene en ese idioma las frases cortas o mal detectadas.",
+      "ar": "عند تعيين لغة محددة، يحافظ التحسين على العبارات القصيرة أو المكتشفة بالخطأ بتلك اللغة.",
+      "fr": "Lorsque qu'une langue est définie, la réécriture conserve dans cette langue les phrases courtes ou mal détectées.",
+      "bn": "নির্দিষ্ট ভাষা সেট করা থাকলে, ক্লিন-আপ ছোট বা ভুল শনাক্ত হওয়া বাক্যাংশগুলোকে সেই ভাষায় রাখে।",
+      "pt-BR": "Ao definir um idioma específico, a limpeza mantém frases curtas ou mal detectadas nesse idioma.",
+      "ru": "Если выбран конкретный язык, очистка сохраняет короткие или неверно распознанные фразы на этом языке.",
+      "id": "Saat bahasa tertentu dipilih, pembersihan mempertahankan frasa pendek atau yang salah terdeteksi dalam bahasa tersebut.",
+      "de": "Ist eine feste Sprache gewählt, hält die Bereinigung kurze oder falsch erkannte Phrasen in dieser Sprache.",
+      "tr": "Belirli bir dil seçildiğinde temizleme kısa veya yanlış algılanan ifadeleri o dilde tutar.",
+      "ko": "특정 언어로 설정하면 짧은 문장이나 잘못 감지된 구문도 해당 언어로 유지해 정리합니다.",
+      "ja": "特定の言語を設定すると、短いフレーズや誤検出された語句もその言語のまま整形します。"
     }
   }
 }

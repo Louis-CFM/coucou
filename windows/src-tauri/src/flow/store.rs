@@ -118,6 +118,9 @@ pub struct Prefs {
     pub voice_gender: String,
     /// One short press of the key starts hands-free dictation, instead of two.
     pub one_tap_hands_free: bool,
+    /// Empty string = Auto-detect; otherwise an ISO 639-1 code (e.g. "fr", "en")
+    /// to keep clean-up output in that language and recover short misdetections.
+    pub dictation_language: String,
 }
 
 impl Default for Prefs {
@@ -139,7 +142,41 @@ impl Default for Prefs {
             voice_output: "system".into(),
             voice_gender: "female".into(),
             one_tap_hands_free: false,
+            dictation_language: String::new(),
         }
+    }
+}
+
+/// Maps a stored `dictationLanguage` ISO 639-1 code to the English language name
+/// passed to Claude clean-up, or `None` when set to Auto-detect (`""`) or unknown.
+pub fn dictation_language_name(code: &str) -> Option<&'static str> {
+    match code.trim().to_ascii_lowercase().as_str() {
+        "en" => Some("English"),
+        "fr" => Some("French"),
+        "es" => Some("Spanish"),
+        "de" => Some("German"),
+        "it" => Some("Italian"),
+        "pt" => Some("Portuguese"),
+        "nl" => Some("Dutch"),
+        "pl" => Some("Polish"),
+        "ru" => Some("Russian"),
+        "tr" => Some("Turkish"),
+        "uk" => Some("Ukrainian"),
+        "cs" => Some("Czech"),
+        "ro" => Some("Romanian"),
+        "hu" => Some("Hungarian"),
+        "sv" => Some("Swedish"),
+        "da" => Some("Danish"),
+        "fi" => Some("Finnish"),
+        "el" => Some("Greek"),
+        "bg" => Some("Bulgarian"),
+        "hr" => Some("Croatian"),
+        "sk" => Some("Slovak"),
+        "sl" => Some("Slovenian"),
+        "et" => Some("Estonian"),
+        "lv" => Some("Latvian"),
+        "lt" => Some("Lithuanian"),
+        _ => None,
     }
 }
 
@@ -608,5 +645,15 @@ mod tests {
         assert_eq!(p.key, FlowKey::RightAlt);
         assert_eq!(p.keep_days, 30);
         assert!(p.open_at_launch);
+        assert!(p.dictation_language.is_empty());
+    }
+
+    #[test]
+    fn dictation_language_name_maps_supported_codes() {
+        assert_eq!(dictation_language_name(""), None);
+        assert_eq!(dictation_language_name("  auto "), None);
+        assert_eq!(dictation_language_name("FR"), Some("French"));
+        assert_eq!(dictation_language_name("tr"), Some("Turkish"));
+        assert_eq!(dictation_language_name("lt"), Some("Lithuanian"));
     }
 }
