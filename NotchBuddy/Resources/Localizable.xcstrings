@@ -1,6 +1,194 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "A click on a session's pill brings its terminal or editor forward, as Open terminal does." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "النقر على حبة جلسة يُظهر طرفيتها أو محررها في المقدمة، كما يفعل فتح الطرفية."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কোনো সেশনের পিলে ক্লিক করলে তার টার্মিনাল বা এডিটর সামনে আসে, টার্মিনাল খুলুন-এর মতো।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Klick auf die Pille einer Sitzung holt ihr Terminal oder ihren Editor nach vorn, wie Terminal öffnen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un clic en la píldora de una sesión trae al frente su terminal o editor, como Abrir terminal."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un clic sur la pastille d'une session met son terminal ou son éditeur au premier plan, comme Ouvrir le terminal."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "किसी सेशन की पिल पर क्लिक करने से उसका टर्मिनल या एडिटर सामने आ जाता है, जैसे टर्मिनल खोलें करता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klik pada pil sesi membawa terminal atau editornya ke depan, seperti Buka terminal."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "セッションのピルをクリックすると、「ターミナルを開く」と同じようにそのターミナルやエディタを前面に出します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세션 알약을 클릭하면 터미널 열기처럼 그 터미널이나 편집기를 앞으로 가져와요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um clique na pílula de uma sessão traz o terminal ou o editor dela para a frente, como Abrir terminal."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щелчок по пилюле сеанса выводит вперёд его терминал или редактор, как «Открыть терминал»."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คลิกที่ป้ายของเซสชันเพื่อนำเทอร์มินัลหรือเอดิเตอร์ของมันขึ้นมาด้านหน้า เหมือนกับเปิดเทอร์มินัล"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir oturumun hapına tıklamak, Terminali aç gibi terminalini ya da düzenleyicisini öne getirir."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击会话的标签会把它的终端或编辑器调到前面，和“打开终端”一样。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點一下工作階段的標籤，會把它的終端機或編輯器帶到最前面，和「開啟終端機」一樣。"
+          }
+        }
+      }
+    },
+    "Clicking an agent opens its window" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "النقر على وكيل يفتح نافذته"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এজেন্টে ক্লিক করলে তার উইন্ডো খোলে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Klick auf einen Agenten öffnet sein Fenster"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al hacer clic en un agente se abre su ventana"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cliquer sur un agent ouvre sa fenêtre"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एजेंट पर क्लिक करने से उसकी विंडो खुलती है"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mengeklik agen membuka jendelanya"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "エージェントをクリックするとそのウインドウを開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "에이전트를 클릭하면 창이 열려요"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clicar em um agente abre a janela dele"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щелчок по агенту открывает его окно"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คลิกเอเจนต์เพื่อเปิดหน้าต่างของมัน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir ajana tıklamak penceresini açar"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击代理即打开其窗口"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點一下代理程式即開啟其視窗"
+          }
+        }
+      }
+    },
     "coucoudoro.hint" : {
       "localizations" : {
         "ar" : {

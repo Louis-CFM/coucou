@@ -108,6 +108,8 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// A click on an agent's pill brings its terminal or editor forward too. Off by default.
+    pub click_opens_window: bool,
     /// What the closed island shows at the top of the screen, where the Mac
     /// has its notch: "mochi" (the Mac's island on a screen without a notch),
     /// "time", "datetime", "claude" (the plan's usage), "music" (what plays),
@@ -190,6 +192,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            click_opens_window: false,
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
         }
@@ -493,6 +496,7 @@ mod tests {
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
+  "clickOpensWindow": true,
   "closedIsland": "music",
   "agyApprovalsEnabled": true
 }"##;
@@ -1016,6 +1020,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "clickOpensWindow",
                 "closedIsland",
                 "agyApprovalsEnabled",
             ]

@@ -107,6 +107,8 @@ export interface Settings {
   alertsFromAllPills: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
+  /** A click on an agent's pill brings its terminal or editor forward too. */
+  clickOpensWindow: boolean;
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
   closedIsland: string;
   absenceInterval: number;
@@ -181,6 +183,7 @@ export const DEFAULT_SETTINGS: Settings = {
   openOnHover: false,
   alertsFromAllPills: false,
   showClock: false,
+  clickOpensWindow: false,
   closedIsland: "mochi",
   absenceInterval: 180,
   activeIntegrations: [
