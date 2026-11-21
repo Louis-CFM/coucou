@@ -125,14 +125,74 @@ extension CLIRelay {
     /// Runs the tool once and returns the text of its answer.
     static func ask(_ cli: SubscriptionCLI, _ request: CLIRequest) async throws -> String {
         guard let exe = CLILocator.shared.path(cli) else { throw CLIFailure.notInstalled(cli.displayName) }
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let workdir = support.appendingPathComponent("NotchBuddy/relay", isDirectory: true)
         return try await ask(cli, request, exe: exe, workdir: workdir)
     }
 
     /// One run of the executable at `exe`, read as `cli`, in `workdir`. Apart from the above so
     /// scripts/test-cli-relay-run.sh can run it on stand-in tools.
     static func ask(_ cli: SubscriptionCLI, _ request: CLIRequest, exe: String, workdir: URL) async throws -> String {
+        let run = try launch(cli, request, exe: exe, workdir: workdir)
+        return try await run.answer(cli.promptOnStdin ? fullPrompt(cli, request) : "", within: request.timeout)
+    }
+
+    /// Starts the tool before its prompt is known (Flow: when the dictation key goes down) and
+    /// writes `head`, the prompt's first bytes, at once: Claude Code gives up on a stdin that
+    /// stays empty for 3 s. `Pending.finish` writes the rest and waits for the answer. Only for
+    /// the tools that read their prompt on stdin; nil for the others or when it can't start.
+    static func start(_ cli: SubscriptionCLI, _ request: CLIRequest, head: String) -> Pending? {
+        guard cli.promptOnStdin, let exe = CLILocator.shared.path(cli) else { return nil }
+        return try? start(cli, request, head: head, exe: exe, workdir: workdir)
+    }
+
+    /// `start` with a given executable and folder, for the tests.
+    static func start(_ cli: SubscriptionCLI, _ request: CLIRequest, head: String, exe: String, workdir: URL) throws -> Pending {
+        let run = try launch(cli, request, exe: exe, workdir: workdir)
+        run.write(head)
+        return Pending(cli: cli, request: request, run: run)
+    }
+
+    /// A run started ahead of its prompt (`start`).
+    final class Pending: Sendable {
+        let cli: SubscriptionCLI
+        /// What it was started with; its prompt is not used.
+        let request: CLIRequest
+        fileprivate let run: Run
+
+        fileprivate init(cli: SubscriptionCLI, request: CLIRequest, run: Run) {
+            self.cli = cli
+            self.request = request
+            self.run = run
+            // One kept but never finished goes away after a while.
+            DispatchQueue.global().asyncAfter(deadline: .now() + Self.lifetime) { [weak run] in
+                if let run, !run.answering { run.stop() }
+            }
+        }
+
+        /// One dropped without being finished is stopped, rather than left to read an empty prompt.
+        deinit { run.stop() }
+
+        /// How long a run started ahead waits for the rest of its prompt.
+        static let lifetime: TimeInterval = 600
+
+        /// Still there, waiting: one that quit before the rest came is no use.
+        var isRunning: Bool { run.process.isRunning }
+
+        /// Writes the rest of the prompt; the request's time limit starts now.
+        func finish(_ rest: String) async throws -> String {
+            try await run.answer(rest, within: request.timeout)
+        }
+
+        /// Not needed after all (cancelled, too few words, settings changed): stopped.
+        func cancel() { run.stop() }
+    }
+
+    private static var workdir: URL {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return support.appendingPathComponent("NotchBuddy/relay", isDirectory: true)
+    }
+
+    /// The process, started, both pipes being read.
+    private static func launch(_ cli: SubscriptionCLI, _ request: CLIRequest, exe: String, workdir: URL) throws -> Run {
         try FileManager.default.createDirectory(at: workdir, withIntermediateDirectories: true)
         var request = request
         if cli == .gemini && !request.web {
@@ -141,7 +201,7 @@ extension CLIRelay {
             request.noWebPolicy = policy
         }
 
-        let run = Run()
+        let run = Run(cli)
         run.process.executableURL = URL(fileURLWithPath: exe)
         run.process.arguments = arguments(cli, request)
         run.process.currentDirectoryURL = workdir
@@ -158,52 +218,77 @@ extension CLIRelay {
         run.process.standardInput = run.input
         run.process.standardOutput = run.output
         run.process.standardError = run.errors
-        let stdin = cli.promptOnStdin ? Data(fullPrompt(cli, request).utf8) : Data()
-        let timeout = request.timeout
-
-        return try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do { try run.process.run() } catch {
-                    continuation.resume(throwing: CLIFailure.failed("Could not start \(cli.displayName): \(error.localizedDescription)"))
-                    return
-                }
-                let timer = DispatchWorkItem { run.stop() }
-                DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
-                if !stdin.isEmpty { run.input.fileHandleForWriting.write(stdin) }
-                try? run.input.fileHandleForWriting.close()
-                // Read both pipes to the end before waiting, so a long answer can't fill one and stall.
-                let group = DispatchGroup()
-                group.enter()
-                DispatchQueue.global().async { run.stderrData = run.errors.fileHandleForReading.readDataToEndOfFile(); group.leave() }
-                let stdoutData = run.output.fileHandleForReading.readDataToEndOfFile()
-                group.wait()
-                run.process.waitUntilExit()
-                timer.cancel()
-                if run.timedOut || run.process.terminationReason == .uncaughtSignal {
-                    continuation.resume(throwing: CLIFailure.timedOut(cli.displayName))
-                    return
-                }
-                switch parse(cli, stdout: stdoutData, stderr: run.stderrData, exitCode: run.process.terminationStatus) {
-                case .success(let text): continuation.resume(returning: text)
-                case .failure(let failure): continuation.resume(throwing: failure)
-                }
-            }
+        do { try run.start() } catch {
+            throw CLIFailure.failed("Could not start \(cli.displayName): \(error.localizedDescription)")
         }
+        return run
     }
 
     /// One run's process and pipes, handed between the queues that drive it.
-    private final class Run: @unchecked Sendable {
+    fileprivate final class Run: @unchecked Sendable {
+        let cli: SubscriptionCLI
         let process = Process()
         let input = Pipe(), output = Pipe(), errors = Pipe()
-        var stderrData = Data()
+        private let reading = DispatchGroup()
         private let lock = NSLock()
+        private var stdoutData = Data(), stderrData = Data()
         private var stopped = false
+        private var answered = false
+
+        init(_ cli: SubscriptionCLI) { self.cli = cli }
 
         var timedOut: Bool { lock.withLock { stopped } }
+        var answering: Bool { lock.withLock { answered } }
 
-        /// Past the time limit: asked to stop, then killed a second later if it is still there
-        /// (a tool may take its time to quit, or never get the request: a process started from
-        /// a dispatch thread can inherit that signal blocked).
+        /// Both pipes are read to the end from the start, so neither can fill up and stall the
+        /// tool, however long it waits for its prompt or however long its answer.
+        func start() throws {
+            try process.run()
+            for isOut in [true, false] {
+                reading.enter()
+                DispatchQueue.global().async { [self] in
+                    let data = (isOut ? output : errors).fileHandleForReading.readDataToEndOfFile()
+                    lock.withLock { if isOut { stdoutData = data } else { stderrData = data } }
+                    reading.leave()
+                }
+            }
+        }
+
+        /// A tool that already quit can't take it: the write fails instead of raising
+        /// (SIGPIPE is ignored by the app).
+        func write(_ text: String) {
+            guard !text.isEmpty else { return }
+            try? input.fileHandleForWriting.write(contentsOf: Data(text.utf8))
+        }
+
+        /// Writes the rest of the prompt, closes stdin and waits for the answer, `timeout` at most.
+        func answer(_ rest: String, within timeout: TimeInterval) async throws -> String {
+            lock.withLock { answered = true }
+            return try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async { [self] in
+                    let timer = DispatchWorkItem { self.stop() }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
+                    write(rest)
+                    try? input.fileHandleForWriting.close()
+                    reading.wait()
+                    process.waitUntilExit()
+                    timer.cancel()
+                    if timedOut || process.terminationReason == .uncaughtSignal {
+                        continuation.resume(throwing: CLIFailure.timedOut(cli.displayName))
+                        return
+                    }
+                    let (out, err) = lock.withLock { (stdoutData, stderrData) }
+                    switch parse(cli, stdout: out, stderr: err, exitCode: process.terminationStatus) {
+                    case .success(let text): continuation.resume(returning: text)
+                    case .failure(let failure): continuation.resume(throwing: failure)
+                    }
+                }
+            }
+        }
+
+        /// Past the time limit, or not needed: asked to stop, then killed a second later if it is
+        /// still there (a tool may take its time to quit, or never get the request: a process
+        /// started from a dispatch thread can inherit that signal blocked).
         func stop() {
             guard process.isRunning else { return }
             lock.withLock { stopped = true }
