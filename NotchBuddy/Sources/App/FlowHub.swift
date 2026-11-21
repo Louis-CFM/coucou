@@ -34,26 +34,28 @@ enum HubPage: String, CaseIterable, Identifiable {
         notchPages.first { $0.settingsSection == section } ?? .general
     }
 
-    var title: String {
+    var title: String { NSLocalizedString(titleKey, comment: "") }
+
+    var titleKey: String {
         switch self {
-        case .general:      return String(localized: "General")
-        case .pills:        return String(localized: "Active pills")
-        case .agents:       return String(localized: "Agents")
-        case .chat:         return String(localized: "Chat")
-        case .integrations: return String(localized: "Integrations")
-        case .voice:        return String(localized: "Voice")
-        case .shortcuts:    return String(localized: "Shortcuts")
-        case .dictation:  return String(localized: "hub.page.dictation")
-        case .notes:      return String(localized: "hub.page.notes")
-        case .insights:   return String(localized: "hub.page.insights")
-        case .dictionary: return String(localized: "hub.page.dictionary")
-        case .snippets:   return String(localized: "hub.page.snippets")
-        case .styles:     return String(localized: "hub.page.styles")
-        case .settings:   return String(localized: "hub.page.settings")
-        case .mailOverview: return String(localized: "hub.mail.overview")
-        case .mailRules:    return String(localized: "hub.mail.rules")
-        case .mailBanned:   return String(localized: "hub.mail.banned")
-        case .mailVIP:      return String(localized: "hub.mail.vip")
+        case .general:      return "General"
+        case .pills:        return "Active pills"
+        case .agents:       return "Agents"
+        case .chat:         return "Chat"
+        case .integrations: return "Integrations"
+        case .voice:        return "Voice"
+        case .shortcuts:    return "Shortcuts"
+        case .dictation:  return "hub.page.dictation"
+        case .notes:      return "hub.page.notes"
+        case .insights:   return "hub.page.insights"
+        case .dictionary: return "hub.page.dictionary"
+        case .snippets:   return "hub.page.snippets"
+        case .styles:     return "hub.page.styles"
+        case .settings:   return "hub.page.settings"
+        case .mailOverview: return "hub.mail.overview"
+        case .mailRules:    return "hub.mail.rules"
+        case .mailBanned:   return "hub.mail.banned"
+        case .mailVIP:      return "hub.mail.vip"
         }
     }
 
@@ -286,7 +288,7 @@ private struct HubSidebar: View {
 
             ScrollView {
                 if !search.query.trimmingCharacters(in: .whitespaces).isEmpty {
-                    HubSearchResults(router: router)
+                    HubSearchResults()
                 } else {
                     VStack(alignment: .leading, spacing: 2) {
                         HubSidebarHeader(text: "Flow")
