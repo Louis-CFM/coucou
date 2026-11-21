@@ -63,6 +63,21 @@ enum ApprovalQueueTests {
         _ = same.enqueue(entry(1)); _ = same.enqueue(entry(2, tool: "Edit"))
         precondition(!same.hasMixedSources)
 
+        // Timed-out waiting reminders (#1117): isolated per pill + session, cleared on progression hooks
+        var timed = ApprovalQueue()
+        timed.markTimedOut(pillId: "integration_claude", sessionKey: "s1")
+        timed.markTimedOut(pillId: "integration_claude", sessionKey: "s2")
+        precondition(timed.hasTimedOut(forPill: "integration_claude"))
+        precondition(timed.timedOutSessions(forPill: "integration_claude") == ["s1", "s2"])
+        precondition(!timed.hasTimedOut(forPill: "agent_cursor"))
+        precondition(!timed.clearTimedOut(byEvent: "PreToolUse", pillId: "integration_claude", sessionKey: "s1"),
+                     "PreToolUse must not clear a timed-out wait reminder")
+        precondition(timed.timedOutSessions(forPill: "integration_claude").contains("s1"))
+        precondition(timed.clearTimedOut(byEvent: "PostToolUse", pillId: "integration_claude", sessionKey: "s1"))
+        precondition(timed.timedOutSessions(forPill: "integration_claude") == ["s2"])
+        precondition(timed.clearTimedOut(byEvent: "SessionEnd", pillId: "integration_claude", sessionKey: "s2"))
+        precondition(!timed.hasTimedOut(forPill: "integration_claude"))
+
         print("pass")
     }
 }

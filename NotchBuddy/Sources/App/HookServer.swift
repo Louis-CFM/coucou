@@ -126,7 +126,7 @@ final class HookServer: @unchecked Sendable {
     /// The next request in line then takes the card; when none is left the card closes,
     /// with `note` for three seconds if one is given.
     @MainActor
-    private func removeApproval(id: UUID, answer json: String? = nil, note: String? = nil) {
+    private func removeApproval(id: UUID, answer json: String? = nil, note: String? = nil, timedOut: Bool = false) {
         guard let entry = approvals.remove(id: id) else { return }
         let age = Int(Date().timeIntervalSince(entry.received))
         nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Coucou" } ?? note ?? "dropped")")
@@ -143,9 +143,19 @@ final class HookServer: @unchecked Sendable {
         }
 
         let state = AppState.shared
-        // The session's pill leaves its approval state; a popped-out one folds back soon after.
+        let sessionKey = Self.boardKey(entry.sessionId, pill: entry.pillId, cwd: entry.cwd)
+        if timedOut {
+            approvals.markTimedOut(pillId: entry.pillId, sessionKey: sessionKey)
+        } else {
+            approvals.clearTimedOut(pillId: entry.pillId, sessionKey: sessionKey)
+        }
+        // When timed out, the session stays marked waiting until a later hook moves it on (#1117).
         syncPill(entry.pillId)
-        if !approvals.entries.contains(where: { $0.displayPill == entry.displayPill }) {
+        if timedOut {
+            AppState.shared.updateTask(id: entry.displayPill, state: .approval)
+            setPillBadge(id: entry.displayPill, badge: .approval)
+        } else if !approvals.entries.contains(where: { $0.displayPill == entry.displayPill })
+            && !approvals.hasTimedOut(forPill: entry.pillId) {
             clearPillBadge(id: entry.displayPill)
         }
         if approvals.head != nil {
@@ -195,6 +205,9 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func waitingSessions(pill: String) -> [String: BotState] {
         var waiting: [String: BotState] = [:]
+        for sessionKey in approvals.timedOutSessions(forPill: pill) {
+            waiting[sessionKey] = .approval
+        }
         for q in questions.entries where q.pillId == pill { waiting[q.sessionId] = .question }
         for a in approvals.entries where a.pillId == pill {
             waiting[Self.boardKey(a.sessionId, pill: pill, cwd: a.cwd)] = .approval
@@ -709,11 +722,23 @@ final class HookServer: @unchecked Sendable {
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
             ? "\(agentId)+\(cwd)"
             : sessionId
+        let boardSessionKey = Self.boardKey(sessionId, pill: agentId, cwd: cwd)
 
         #if PHONE_LINK
         // The iPhone's "last turn" (prompt, actions, diffs, answer).
         if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
         #endif
+
+        // A post-decision event clears any "still waiting" reminder left by an earlier timeout (#1117).
+        if approvals.clearTimedOut(byEvent: name, pillId: agentId, sessionKey: boardSessionKey) {
+            let badgeTarget = board.poppedPill(pill: agentId, session: boardSessionKey) ?? agentId
+            if !approvals.entries.contains(where: { $0.displayPill == badgeTarget }),
+               !approvals.hasTimedOut(forPill: agentId),
+               let idx = state.tasks.firstIndex(where: { $0.id == badgeTarget }),
+               state.tasks[idx].pillBadge == .approval {
+                clearPillBadge(id: badgeTarget)
+            }
+        }
 
         // Waiting permission requests: an event that settles one (its tool finished, or its
         // turn ended) takes it off the card, then is processed normally.
@@ -745,6 +770,7 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionStart":
             activeSessionId = sessionId
+            approvals.clearTimedOut(pillId: agentId, sessionKey: boardSessionKey)
             upsertTask(pill: agentId, display: display, working: false,
                        externalAgent: isExternalAgent ? validAgent : nil)
             note { $0.finalLine = nil }
@@ -1160,6 +1186,8 @@ final class HookServer: @unchecked Sendable {
             }
             return
         }
+        let boardSessionKey = Self.boardKey(sessionId, pill: pillId, cwd: cwd)
+        approvals.clearTimedOut(pillId: pillId, sessionKey: boardSessionKey)
         activeSessionId = sessionId
 
         upsertTask(pill: pillId,
@@ -1189,7 +1217,7 @@ final class HookServer: @unchecked Sendable {
         let waitTimeout: Double = (isCopilotRequest || isMuseRequest) ? 110 : 115
         DispatchQueue.main.asyncAfter(deadline: .now() + waitTimeout) { [weak self] in
             guard let self, self.approvals.contains(id: entryId) else { return }
-            self.removeApproval(id: entryId, note: self.waitingNote(pill: capturedPillId))
+            self.removeApproval(id: entryId, note: self.waitingNote(pill: capturedPillId), timedOut: true)
         }
 
         showApprovalHead()
@@ -1253,6 +1281,8 @@ final class HookServer: @unchecked Sendable {
         // Tells the hook the card is up, so it waits for a click instead of giving up after a
         // few seconds. Written before anything else can answer or close this fd.
         sendLine(fd: fd, text: #"{"pending":true}"#)
+        let boardSessionKey = Self.boardKey(sessionId, pill: pillId, cwd: cwd)
+        approvals.clearTimedOut(pillId: pillId, sessionKey: boardSessionKey)
         activeSessionId = sessionId
 
         // Same display as the session's other events (processEvent: an external agent pill).
@@ -1279,7 +1309,7 @@ final class HookServer: @unchecked Sendable {
         // Give up before Antigravity does: the hook then answers "ask" and Antigravity asks itself.
         DispatchQueue.main.asyncAfter(deadline: .now() + waitSeconds) { [weak self] in
             guard let self, self.approvals.contains(id: entryId) else { return }
-            self.removeApproval(id: entryId, note: self.waitingNote(pill: pillId))
+            self.removeApproval(id: entryId, note: self.waitingNote(pill: pillId), timedOut: true)
         }
 
         showApprovalHead()
@@ -1408,6 +1438,7 @@ final class HookServer: @unchecked Sendable {
         // A session that shares its pill with another pops out into a pill of its own while
         // it waits (SessionBoard), so the question shows under its own title.
         let key = Self.boardKey(sessionId, pill: pillId, cwd: cwd)
+        approvals.clearTimedOut(pillId: pillId, sessionKey: key)
         var entry = QueuedQuestion(id: UUID(), fd: fd, sessionId: key,
                                    pillId: pillId, projectName: projectName, cwd: cwd, question: parsed)
         if questions.count < QuestionQueue.maxPending
