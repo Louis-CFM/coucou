@@ -21,7 +21,7 @@ import Foundation
 // start them: there the chat still needs a key.
 
 enum SubscriptionCLI: String, CaseIterable, Sendable {
-    case claude, antigravity, gemini, codex, cursor, copilot
+    case claude, antigravity, gemini, codex, cursor, copilot, hermes
 
     var displayName: String {
         switch self {
@@ -31,6 +31,7 @@ enum SubscriptionCLI: String, CaseIterable, Sendable {
         case .codex:       "Codex CLI"
         case .cursor:      "Cursor CLI"
         case .copilot:     "Copilot CLI"
+        case .hermes:      "Hermes"
         }
     }
 
@@ -43,6 +44,7 @@ enum SubscriptionCLI: String, CaseIterable, Sendable {
         case .codex:       ["codex"]
         case .cursor:      ["cursor-agent", "agent"]
         case .copilot:     ["copilot"]
+        case .hermes:      ["hermes"]
         }
     }
 
@@ -55,6 +57,7 @@ enum SubscriptionCLI: String, CaseIterable, Sendable {
         case .codex:       "codex login"
         case .cursor:      "cursor-agent login"
         case .copilot:     "copilot"
+        case .hermes:      "hermes"
         }
     }
 
@@ -67,6 +70,7 @@ enum SubscriptionCLI: String, CaseIterable, Sendable {
         case .codex:       "https://developers.openai.com/codex/cli"
         case .cursor:      "https://cursor.com/cli"
         case .copilot:     "https://docs.github.com/copilot/how-tos/copilot-cli"
+        case .hermes:      "https://github.com/nousresearch/hermes-agent"
         }
     }
 
@@ -86,9 +90,10 @@ struct CLIRequest: Sendable {
     /// Gemini CLI only: a policy file that denies its web tools (written by the runner).
     var noWebPolicy: URL?
     var timeout: TimeInterval
-    /// Claude Code only: false and the model answers straight away (Flow's clean-up has
-    /// nothing to think about, and every second counts).
+    /// Claude Code and Hermes: false disables deep thinking/reasoning so replies stay fast.
     var thinking = true
+    /// Hermes only: optional `--provider` flag.
+    var provider: String? = nil
 }
 
 enum CLIFailure: LocalizedError, Equatable {
@@ -173,6 +178,13 @@ enum CLIRelay {
             out += r.web ? ["--available-tools", "web_fetch", "--allow-all-urls"] : ["--available-tools", "view"]
             if let model { out += ["--model", model] }
             return out
+
+        case .hermes:
+            var out = ["-z", fullPrompt(cli, r)]
+            if let model { out += ["-m", model] }
+            if !r.thinking { out += ["--reasoning", "none"] }
+            if let provider = r.provider.flatMap({ $0.isEmpty ? nil : $0 }) { out += ["--provider", provider] }
+            return out
         }
     }
 
@@ -192,7 +204,7 @@ enum CLIRelay {
             result = parseResponseObject(cli, stdout, stderr)
         case .codex:
             result = parseCodexEvents(cli, stdout)
-        case .copilot:
+        case .copilot, .hermes:
             let text = String(decoding: stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
             result = exitCode == 0 && !text.isEmpty ? .success(text) : .failure(.noAnswer(cli.displayName))
         }

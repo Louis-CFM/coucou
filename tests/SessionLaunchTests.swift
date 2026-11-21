@@ -12,6 +12,11 @@ enum SessionLaunchTests {
         precondition(s.contains("claude \"$COUCOU_PROMPT\""), "Claude Code gets the prompt from the variable")
         let empty = LaunchScript.script(prompt: "   ", folder: "/tmp")
         precondition(empty.contains("-lic 'claude; exec $SHELL -l'"), "no prompt: plain claude")
+        let hermesScript = LaunchScript.script(prompt: "inspect tests", folder: "/tmp", agent: .hermes)
+        precondition(hermesScript.contains("export COUCOU_PROMPT='inspect tests'") && hermesScript.contains("hermes \"$COUCOU_PROMPT\""),
+                     "Hermes launch runs hermes with COUCOU_PROMPT")
+        let hermesEmpty = LaunchScript.script(prompt: "", folder: "/tmp", agent: .hermes)
+        precondition(hermesEmpty.contains("-lic 'hermes; exec $SHELL -l'"), "Hermes empty prompt launches interactive hermes")
 
         precondition(LaunchScript.way(for: "com.apple.Terminal") == .open)
         precondition(LaunchScript.way(for: "com.mitchellh.ghostty") == .args(["-e", "%s"]))
