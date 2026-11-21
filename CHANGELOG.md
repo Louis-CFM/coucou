@@ -13,6 +13,10 @@
 - **Security hygiene** — the copied Android pairing link is marked as concealed for clipboard managers, and the editor fallback only opens a regular file (#1102 by @Ohualtex)
 - **iPhone** — the app no longer waits on "Connecting to iCloud" at every launch: it keeps what it last synced and fetches only the changes (#1096 by @Ohualtex, in the next iPhone build)
 
+Fixes:
+
+- **Cursor Agent's reply on the finished card** *(macOS)* — Cursor's agent runs your Claude Code hooks, so its sessions already show on the Cursor pill, but the finished card had no headline: Cursor's stop event carries no last message. The relay now reads the turn's reply from the end of Cursor's transcript (`~/.cursor/…`), as Claude Code sends it
+
 ## 0.6.0 — November 12, 2026
 
 - **Start a Claude Code session from the notch** *(GitHub build)* — the terminal tab in the island's header, or ⌃⌥N: pick the project (the folders your sessions ran in, or any folder), type or dictate what Claude should do, and your terminal opens there with Claude Code and your words. Terminal, iTerm2, Ghostty, kitty, WezTerm and Alacritty; the prompt is never written into a command line
