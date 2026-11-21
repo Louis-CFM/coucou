@@ -58,7 +58,38 @@ export interface FlowPrefs {
   muteOthers: boolean;
   /** One short press of the key starts hands-free dictation, instead of two. */
   oneTapHandsFree: boolean;
+  /** Empty = Automatic; otherwise a Parakeet ISO 639-1 code to pin clean-up language. */
+  dictationLanguage: string;
 }
+
+/** Supported Parakeet v3 dictation languages (ISO 639-1 code and native/display label). */
+export const DICTATION_LANGUAGES: [string, string][] = [
+  ["en", "English (en)"],
+  ["fr", "Français (fr)"],
+  ["es", "Español (es)"],
+  ["de", "Deutsch (de)"],
+  ["it", "Italiano (it)"],
+  ["pt", "Português (pt)"],
+  ["nl", "Nederlands (nl)"],
+  ["pl", "Polski (pl)"],
+  ["ru", "Русский (ru)"],
+  ["tr", "Türkçe (tr)"],
+  ["uk", "Українська (uk)"],
+  ["cs", "Čeština (cs)"],
+  ["ro", "Română (ro)"],
+  ["hu", "Magyar (hu)"],
+  ["sv", "Svenska (sv)"],
+  ["da", "Dansk (da)"],
+  ["fi", "Suomi (fi)"],
+  ["el", "Ελληνικά (el)"],
+  ["bg", "Български (bg)"],
+  ["hr", "Hrvatski (hr)"],
+  ["sk", "Slovenčina (sk)"],
+  ["sl", "Slovenščina (sl)"],
+  ["et", "Eesti (et)"],
+  ["lv", "Latviešu (lv)"],
+  ["lt", "Lietuvių (lt)"],
+];
 
 export type ModelState =
   | { state: "missing" }
