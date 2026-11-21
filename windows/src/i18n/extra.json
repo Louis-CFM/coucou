@@ -7578,6 +7578,36 @@
       "tr": "Yalnızca dikte ederken, bir görüşmeyi kaydederken veya mesaj gelince görünür. Dikte tuşu yine çalışır.",
       "ko": "받아쓰기하거나 통화를 녹음하거나 메시지가 올 때만 표시됩니다. 받아쓰기 키는 그대로 작동합니다.",
       "ja": "音声入力中、通話の録音中、メッセージが届いたときだけ表示されます。音声入力キーはそのまま使えます。"
+    },
+    "Let the phone start Claude Code sessions": {
+      "zh-Hans": "允许手机启动 Claude Code 会话",
+      "hi": "फ़ोन को Claude Code सत्र शुरू करने दें",
+      "es": "Permitir que el teléfono inicie sesiones de Claude Code",
+      "ar": "السماح للهاتف ببدء جلسات Claude Code",
+      "fr": "Laisser le téléphone lancer des sessions Claude Code",
+      "bn": "ফোনকে Claude Code সেশন শুরু করতে দিন",
+      "pt-BR": "Permitir que o celular inicie sessões do Claude Code",
+      "ru": "Разрешить телефону запускать сессии Claude Code",
+      "id": "Izinkan ponsel memulai sesi Claude Code",
+      "de": "Telefon darf Claude Code-Sitzungen starten",
+      "tr": "Telefonun Claude Code oturumu başlatmasına izin ver",
+      "ko": "휴대폰에서 Claude Code 세션 시작 허용",
+      "ja": "スマートフォンから Claude Code セッションを開始できるようにする"
+    },
+    "From the phone you pick one of your recent projects and say what Claude should do; your terminal opens here with Claude Code, as from the island. The phone sees the projects' folder names only and asks for your fingerprint or screen lock each time.": {
+      "zh-Hans": "在手机上选择一个最近的项目并说明 Claude 要做什么；终端会在这台电脑上打开并启动 Claude Code，就像从灵动岛启动一样。手机只能看到项目的文件夹名称，并且每次都需要指纹或锁屏验证。",
+      "hi": "फ़ोन से आप अपने हाल के प्रोजेक्ट में से एक चुनते हैं और बताते हैं कि Claude को क्या करना है; आपका टर्मिनल यहाँ Claude Code के साथ खुलता है, जैसे आइलैंड से। फ़ोन को सिर्फ़ प्रोजेक्ट के फ़ोल्डर के नाम दिखते हैं और हर बार फ़िंगरप्रिंट या स्क्रीन लॉक माँगा जाता है।",
+      "es": "Desde el teléfono eliges uno de tus proyectos recientes y dices qué debe hacer Claude; tu terminal se abre aquí con Claude Code, como desde la isla. El teléfono solo ve los nombres de las carpetas de los proyectos y pide tu huella o el bloqueo de pantalla cada vez.",
+      "ar": "من الهاتف تختار أحد مشاريعك الأخيرة وتقول ما يجب أن يفعله Claude؛ تُفتح الطرفية هنا مع Claude Code كما من الجزيرة. لا يرى الهاتف سوى أسماء مجلدات المشاريع ويطلب بصمتك أو قفل الشاشة في كل مرة.",
+      "fr": "Depuis le téléphone, tu choisis l'un de tes projets récents et tu dis ce que Claude doit faire ; ton terminal s'ouvre ici avec Claude Code, comme depuis l'île. Le téléphone ne voit que les noms des dossiers des projets et demande ton empreinte ou le verrouillage d'écran à chaque fois.",
+      "bn": "ফোন থেকে আপনি সাম্প্রতিক প্রজেক্টগুলোর একটি বেছে নিয়ে বলেন Claude কী করবে; আপনার টার্মিনাল এখানে Claude Code নিয়ে খোলে, আইল্যান্ড থেকে যেমন খোলে। ফোন শুধু প্রজেক্টের ফোল্ডারের নাম দেখে এবং প্রতিবার আপনার ফিঙ্গারপ্রিন্ট বা স্ক্রিন লক চায়।",
+      "pt-BR": "No celular você escolhe um dos seus projetos recentes e diz o que o Claude deve fazer; seu terminal abre aqui com o Claude Code, como pela ilha. O celular vê apenas os nomes das pastas dos projetos e pede sua digital ou o bloqueio de tela todas as vezes.",
+      "ru": "С телефона вы выбираете один из недавних проектов и пишете, что должен сделать Claude; терминал открывается здесь с Claude Code, как с острова. Телефон видит только названия папок проектов и каждый раз просит отпечаток пальца или блокировку экрана.",
+      "id": "Dari ponsel, Anda memilih salah satu proyek terbaru dan mengatakan apa yang harus dilakukan Claude; terminal Anda terbuka di sini dengan Claude Code, seperti dari pulau. Ponsel hanya melihat nama folder proyek dan setiap kali meminta sidik jari atau kunci layar Anda.",
+      "de": "Am Telefon wählst du eines deiner letzten Projekte und sagst, was Claude tun soll; dein Terminal öffnet sich hier mit Claude Code, wie von der Insel aus. Das Telefon sieht nur die Ordnernamen der Projekte und fragt jedes Mal nach Fingerabdruck oder Bildschirmsperre.",
+      "tr": "Telefondan son projelerinden birini seçer ve Claude'un ne yapacağını söylersin; terminalin burada Claude Code ile açılır, adadan olduğu gibi. Telefon yalnızca projelerin klasör adlarını görür ve her seferinde parmak izini veya ekran kilidini ister.",
+      "ko": "휴대폰에서 최근 프로젝트 중 하나를 고르고 Claude가 할 일을 말하면, 아일랜드에서처럼 이 컴퓨터에서 터미널이 Claude Code와 함께 열려요. 휴대폰에는 프로젝트의 폴더 이름만 보이고, 매번 지문이나 화면 잠금으로 확인해요.",
+      "ja": "スマートフォンで最近のプロジェクトを選び、Claude にしてほしいことを伝えると、アイランドからと同じように、このコンピュータでターミナルが Claude Code とともに開きます。スマートフォンに見えるのはプロジェクトのフォルダ名だけで、毎回、指紋認証か画面ロックで確認します。"
     }
   }
 }

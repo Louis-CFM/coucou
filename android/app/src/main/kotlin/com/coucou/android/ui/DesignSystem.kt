@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.coucou.android.core.MotionPolicy
@@ -111,11 +112,12 @@ enum class PillKind { PRIMARY, SECONDARY, DANGER }
 /**
  * The PC's buttons: one white (dark theme) pill for the main action, grey pills for the rest, and a
  * grey pill with a red label for what is destructive. 48 dp high, whatever the font size.
+ * [sidePadding]: 22 dp by default; a narrow pill sharing a row with others (a choice row) passes less, so its label isn't cut.
  */
 @Composable
 fun PillButton(
     text: String, onClick: () -> Unit, modifier: Modifier = Modifier, kind: PillKind = PillKind.SECONDARY,
-    enabled: Boolean = true, onDark: Boolean = false, icon: (@Composable () -> Unit)? = null,
+    enabled: Boolean = true, onDark: Boolean = false, icon: (@Composable () -> Unit)? = null, sidePadding: Dp = 22.dp,
 ) {
     val t = tokens()
     // [onDark]: on a hero surface (the hero panel, a sheet, the island): the tokens in force there, dark on the island whatever the theme.
@@ -132,7 +134,7 @@ fun PillButton(
     }
     Row(
         modifier.alpha(if (enabled) 1f else 0.4f).heightIn(min = Spacing.MIN_TOUCH.dp).clip(CircleShape).background(bg.c())
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 22.dp),
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = sidePadding),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {

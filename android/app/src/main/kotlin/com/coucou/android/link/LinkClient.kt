@@ -52,6 +52,10 @@ interface LinkListener {
     fun onConnectFailed(consecutive: Int) {}
     /** A link that had been working ended without the user asking for it (not for a wrong token or version: see [onError]). */
     fun onLinkLost(reason: LostReason) {}
+    /** The projects a new Claude Code session can start in (only with the `launch` capability); may be empty. */
+    fun onProjects(projects: List<LaunchProject>) {}
+    /** The computer's answer to a `launch` this phone sent: started ([ok]) or refused with a [reason] word. */
+    fun onLaunchResult(id: String, ok: Boolean, reason: String) {}
     fun onChatModels(models: List<ChatModel>) {}
     fun onChatDelta(id: String, text: String) {}
     fun onChatDone(id: String, text: String?) {}
@@ -78,6 +82,12 @@ interface DesktopLink {
 
     /** Asks for the lines of a file in a session's list; false if the link is down or the computer did not offer `diffs`. */
     fun getDiff(pillId: String, fileId: Long): Boolean = false
+
+    /**
+     * Asks the computer for a new Claude Code session in [project] (an id of the list it sent) with [prompt]; false if the link is down
+     * or the computer did not offer `launch`. The answer arrives through the listener. The lock check is the caller's, before this.
+     */
+    fun launch(id: String, project: String, prompt: String): Boolean = false
 
     // Chat through the computer (docs/ANDROID_LINK.md). Not offered by the demo.
     fun chatModels() {}
@@ -147,6 +157,8 @@ class LinkClient(
     @Volatile private var servicesOffered = false
     /** The computer's welcome offered `relay` on this connection. */
     @Volatile private var relayOffered = false
+    /** The computer offered `launch` on this connection. */
+    @Volatile private var launchOffered = false
     @Volatile private var socket: Socket? = null
     /** When the last line arrived (the clock of [clockMs]); a liveness check compares it with the moment it asked. */
     @Volatile private var lastInboundMs = 0L
@@ -246,6 +258,9 @@ class LinkClient(
     override fun answer(fingerprint: String, picks: List<List<String>>): Boolean =
         answersOffered && Protocol.CAP_ANSWERS in caps && queue(ClientMsg.Answer(fingerprint, picks))
 
+    override fun launch(id: String, project: String, prompt: String): Boolean =
+        launchOffered && Protocol.CAP_LAUNCH in caps && queue(ClientMsg.Launch(id, project, prompt))
+
     override fun chatModels() { queue(ClientMsg.ChatModels) }
     override fun chatSend(id: String, model: String, text: String) = queue(ClientMsg.ChatSend(id, model, text))
     override fun chatCancel(id: String) { queue(ClientMsg.ChatCancel(id)) }
@@ -298,6 +313,7 @@ class LinkClient(
                 recapOffered = false
                 servicesOffered = false
                 relayOffered = false
+                launchOffered = false
                 runCatching { socket?.close() }
                 socket = null
                 approvals.clear()
@@ -345,6 +361,7 @@ class LinkClient(
                     recapOffered = Protocol.CAP_RECAP in msg.caps
                     servicesOffered = Protocol.CAP_SERVICES in msg.caps
                     relayOffered = Protocol.CAP_RELAY in msg.caps
+                    launchOffered = Protocol.CAP_LAUNCH in msg.caps
                     listener.onState(LinkState.CONNECTED)
                     listener.onWelcome(msg.desktopName, msg.os)
                     listener.onCaps(msg.caps)
@@ -365,6 +382,9 @@ class LinkClient(
                 is ServerMsg.RelayAccess -> if (relayOffered && Protocol.CAP_RELAY in caps) listener.onRelayAccess(msg.access)
                 is ServerMsg.Prefs -> if (prefsOffered && Protocol.CAP_PREFS in caps) listener.onPrefs(msg.outfit)
                 ServerMsg.Pong -> {}
+                // Only on a connection that was offered `launch`: a computer that did not offer it cannot fill the list.
+                is ServerMsg.Projects -> if (launchOffered && Protocol.CAP_LAUNCH in caps) listener.onProjects(msg.projects)
+                is ServerMsg.LaunchResult -> if (launchOffered && Protocol.CAP_LAUNCH in caps) listener.onLaunchResult(msg.id, msg.ok, msg.reason)
                 is ServerMsg.ChatModels -> listener.onChatModels(msg.models)
                 is ServerMsg.ChatDelta -> listener.onChatDelta(msg.id, msg.text)
                 is ServerMsg.ChatDone -> listener.onChatDone(msg.id, msg.text)

@@ -156,6 +156,8 @@ private fun <T> ChoiceRow(title: String, options: List<Pair<T, String>>, selecte
                     label, { onSelect(value) },
                     Modifier.weight(1f).semantics { this.selected = value == selected; role = Role.RadioButton },
                     if (value == selected) PillKind.PRIMARY else PillKind.SECONDARY,
+                    // Three pills share the row (about 90 dp each on a 360 dp phone): the default 22 dp a side cut "Standard" to "Stan…".
+                    sidePadding = 8.dp,
                 )
             }
         }
@@ -309,6 +311,17 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
                     CoucouSlider(
                         value = s.volume, onChange = { model.updateSettings(s.copy(volume = SoundVolume.clamp(it))) },
                         valueRange = 0f..SoundVolume.MAX, enabled = s.soundOn, label = stringResource(R.string.settings_volume),
+                    )
+                }
+                RowDivider()
+                SettingSwitch(stringResource(R.string.spoken_title), stringResource(R.string.spoken_hint), s.spokenAlerts) {
+                    model.updateSettings(s.copy(spokenAlerts = it))
+                }
+                if (s.spokenAlerts && model.spokenNoVoice) {
+                    Text(
+                        stringResource(R.string.spoken_no_voice),
+                        Modifier.padding(horizontal = Spacing.INSIDE.dp).padding(bottom = 12.dp),
+                        style = TypeScale.SECONDARY.style(t.textDim.c()),
                     )
                 }
             }

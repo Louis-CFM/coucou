@@ -18,7 +18,7 @@ object Protocol {
     /** One message never exceeds this; a longer line is a protocol error. */
     const val MAX_LINE_BYTES = 64 * 1024
     /** Optional features this app understands; the desktop offers back the ones it has switched on. */
-    val CAPABILITIES = listOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay")
+    val CAPABILITIES = listOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay", "launch")
     const val CAP_CHAT = "chat"
     /** Steps, last line, project folder name and colour of each session. */
     const val CAP_DETAILS = "details"
@@ -36,6 +36,12 @@ object Protocol {
     const val CAP_SERVICES = "services"
     /** The computer's relay switch is on: it sends the new access key when the user replaces it (docs/RELAY_LINK.md). */
     const val CAP_RELAY = "relay"
+    /** Starting a Claude Code session on the computer, in one of the projects it lists (its switch must be on). */
+    const val CAP_LAUNCH = "launch"
+    /** The computer lists at most this many projects. */
+    const val MAX_PROJECTS = 10
+    /** What the computer accepts as the words for a new session; longer is refused there, so it is refused here first. */
+    const val LAUNCH_MAX_TEXT = 4000
     /** A week has 10 080 minutes; no count of a week is larger than the computer's own caps. */
     const val RECAP_MAX_MINUTES = 10_080
     const val RECAP_MAX_SESSIONS = 100_000
@@ -89,6 +95,12 @@ data class ServiceLine(val label: String, val detail: String)
 
 /** What one service's pill shows: a headline, why, up to three lines. Read-only. */
 data class ServiceCard(val id: String, val title: String, val headline: String, val reason: String?, val items: List<ServiceLine>)
+
+/**
+ * A project the computer offers for a new Claude Code session. [name] is a folder name, never a path; [id] is the computer's own name
+ * for it (it says nothing about the path) and is all the phone ever sends back.
+ */
+data class LaunchProject(val id: String, val name: String)
 
 /** A file an agent changed. [name] is a file name, never a path. */
 data class FileChange(val id: Long, val name: String, val added: Int, val removed: Int, val tooLarge: Boolean = false, val isNew: Boolean = false)
@@ -156,6 +168,10 @@ sealed interface ServerMsg {
         val tooLarge: Boolean, val gone: Boolean, val truncated: Boolean, val part: Int, val parts: Int, val lines: List<DiffRow>,
     ) : ServerMsg
     data object Pong : ServerMsg
+    /** The projects a new session can start in (only with the `launch` capability). */
+    data class Projects(val projects: List<LaunchProject>) : ServerMsg
+    /** The computer's answer to a `launch`: started, or refused with a reason word. */
+    data class LaunchResult(val id: String, val ok: Boolean, val reason: String) : ServerMsg
     data class ChatModels(val models: List<ChatModel>) : ServerMsg
     /** [text] is appended to the answer being written. */
     data class ChatDelta(val id: String, val text: String) : ServerMsg
@@ -181,6 +197,8 @@ sealed interface ClientMsg {
     data class ChatCancel(val id: String) : ClientMsg
     /** New chat: the computer forgets its side of the conversation and stops a running answer. */
     data object ChatReset : ClientMsg
+    /** Start a Claude Code session in [project] (an id of the computer's list, never a path) with [prompt]. */
+    data class Launch(val id: String, val project: String, val prompt: String) : ClientMsg
 }
 
 object Wire {
@@ -203,6 +221,7 @@ object Wire {
             is ClientMsg.ChatSend -> o.put("type", "chatSend").put("id", m.id).put("model", m.model).put("text", m.text)
             is ClientMsg.ChatCancel -> o.put("type", "chatCancel").put("id", m.id)
             ClientMsg.ChatReset -> o.put("type", "chatReset")
+            is ClientMsg.Launch -> o.put("type", "launch").put("id", m.id).put("project", m.project).put("prompt", m.prompt)
         }
         return o.toString()
     }
@@ -235,6 +254,8 @@ object Wire {
                 "prefs" -> o.optString("outfit", "").takeIf { it in Wardrobe.SELECTIONS }?.let { ServerMsg.Prefs(it) }
                 "relayAccess" -> o.optString("access", "").takeIf(RelayPairing::isSecret)?.let { ServerMsg.RelayAccess(it) }
                 "pong" -> ServerMsg.Pong
+                "projects" -> ServerMsg.Projects(projects(o.getJSONArray("projects")))
+                "launchResult" -> ServerMsg.LaunchResult(chatId(o), o.getBoolean("ok"), oneLine(o.optString("reason", ""), 32))
                 "chatModels" -> ServerMsg.ChatModels(o.getJSONArray("models").objects().mapNotNull(::chatModel))
                 "chatDelta" -> ServerMsg.ChatDelta(chatId(o), o.getString("text"))
                 "chatDone" -> ServerMsg.ChatDone(chatId(o), if (o.has("text")) o.getString("text") else null)
@@ -268,6 +289,20 @@ object Wire {
         "integration_stripe", "integration_github", "integration_vercel", "integration_n8n",
         "integration_resend", "integration_notion", "integration_calcom",
     )
+
+    /** At most [Protocol.MAX_PROJECTS], each with a well-formed id (once) and a folder name; anything else is dropped. */
+    private fun projects(a: JSONArray): List<LaunchProject> {
+        val out = ArrayList<LaunchProject>()
+        for (i in 0 until a.length()) {
+            if (out.size >= Protocol.MAX_PROJECTS) break
+            val o = a.optJSONObject(i) ?: continue
+            val id = o.optString("id", "")
+            val name = folderName(o.optString("name", "")) ?: continue
+            if (!isChatId(id) || out.any { it.id == id }) continue
+            out.add(LaunchProject(id, name))
+        }
+        return out
+    }
 
     private fun oneLine(s: String, max: Int) = s.filter { !it.isISOControl() }.trim().take(max)
 

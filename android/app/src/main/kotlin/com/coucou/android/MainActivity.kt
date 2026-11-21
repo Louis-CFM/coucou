@@ -112,6 +112,8 @@ import com.coucou.android.ui.MessagePanel
 import com.coucou.android.ui.PairingScreen
 import com.coucou.android.ui.DiffSheet
 import com.coucou.android.ui.QuestionSheet
+import com.coucou.android.ui.LaunchRow
+import com.coucou.android.ui.LaunchSheet
 import com.coucou.android.ui.ServicesPanel
 import com.coucou.android.ui.UsagePanel
 import com.coucou.android.ui.RecapPanel
@@ -143,6 +145,8 @@ class MainActivity : ComponentActivity() {
     /** The approval the user closed without deciding (the sheet stays down for it), and the session whose question is open. */
     private var closedApproval by mutableStateOf<String?>(null)
     private var questionPill by mutableStateOf<String?>(null)
+    /** The "New Claude Code session" sheet is open. */
+    private var launchOpen by mutableStateOf(false)
     private var confirming = false
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(com.coucou.android.app.AppLanguage.wrap(newBase))
@@ -196,6 +200,7 @@ class MainActivity : ComponentActivity() {
                                 onSession = { detailPill = it; screen = Screen.SESSION },
                                 onScan = { screen = Screen.SCAN }, onReview = { closedApproval = null }, onQuestion = { questionPill = it },
                                 onHistory = { screen = Screen.HISTORY }, onDiagnostics = { screen = Screen.DIAGNOSTICS },
+                                onLaunch = { model.launchReset(); launchOpen = true },
                             )
                         }
                         }
@@ -210,10 +215,14 @@ class MainActivity : ComponentActivity() {
                         if (pending != null && screen != Screen.SCAN) ApprovalSheet(model, pending, onAllow = ::approve, onDismiss = { closedApproval = pending.fingerprint })
                         questionPill?.let { QuestionSheet(model, it, onDismiss = { questionPill = null }, onSend = ::sendAnswer) }
                         DiffSheet(model)
+                        if (launchOpen && screen == Screen.HOME && model.mode == Mode.PAIRED) {
+                            LaunchSheet(model, onDismiss = { launchOpen = false; model.launchReset() }, onSend = ::sendLaunch)
+                        }
                         // Pairing, chat, an approval and a question never show in screenshots or in the recent-apps card.
                         val secure = SecureScreens.needed(
                             screen, pairing = model.mode == Mode.NONE, approvalSheetShown = pending != null && screen != Screen.SCAN,
                             questionSheetShown = questionPill != null, pairConfirmShown = model.pairRequest != null,
+                            launchSheetShown = launchOpen && screen == Screen.HOME && model.mode == Mode.PAIRED,
                         )
                         SideEffect {
                             if (secure) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -312,6 +321,20 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    /**
+     * A new Claude Code session on the computer: only after the same screen-lock check as Allow. The lock prompt shows the project and
+     * the start of the words; nothing about them is logged or stored.
+     */
+    private fun sendLaunch(project: com.coucou.android.link.LaunchProject, prompt: String) {
+        if (confirming) return
+        confirming = true
+        BiometricGate.confirm(
+            this, getString(R.string.launch_confirm_title), com.coucou.android.core.LaunchFlow.summary(project, prompt), getString(R.string.msg_need_lock),
+            onSuccess = { confirming = false; model.launchSend(project.id, prompt) },
+            onFail = { confirming = false; if (it.isNotBlank()) model.message = it },
+        )
+    }
+
     /** Allow: only after the biometric / screen-lock check. */
     private fun approve(r: ApprovalRequest) {
         if (confirming) return // a second tap must not open a second prompt
@@ -329,6 +352,7 @@ class MainActivity : ComponentActivity() {
 private fun Home(
     model: AppModel, onApprove: (ApprovalRequest) -> Unit, onOverlay: (Boolean) -> Unit, onSession: (String) -> Unit,
     onScan: () -> Unit, onHistory: () -> Unit, onReview: () -> Unit, onQuestion: (String) -> Unit, onDiagnostics: () -> Unit,
+    onLaunch: () -> Unit,
 ) {
     val engines = remember { HashMap<String, MochiEngine>() }
     val miniEngines = remember { HashMap<String, MochiEngine>() }
@@ -422,6 +446,9 @@ private fun Home(
                 }
             }
         }
+
+        // A paired computer: start a Claude Code session there. The sheet says what is missing when the computer does not offer it.
+        if (model.mode == Mode.PAIRED) item { Box(Modifier.padding(horizontal = Gutter)) { LaunchRow(onLaunch) } }
 
         if (model.recap != null) item { Box(Modifier.padding(horizontal = Gutter)) { RecapPanel(model.recap) } }
         if (model.usage != null) item { Box(Modifier.padding(horizontal = Gutter)) { UsagePanel(model.usage) } }

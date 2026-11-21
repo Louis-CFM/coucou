@@ -72,6 +72,14 @@ impl Host for TauriHost {
         let _ = self.app.emit_to(island::WINDOW_LABEL, "phone-link-decided", request_id.to_string());
     }
 
+    fn launch(&self, folder: &str, prompt: &str) -> bool {
+        // The island's own launcher (launch.rs): the same terminal, the same way of handing the prompt over (never in a
+        // command line), the same check that the folder exists. Claude Code always starts in the standard permission
+        // mode, whatever the computer's settings say, so it asks for approval. The prompt is not logged.
+        log::line("phone link: a phone asked for a new Claude Code session");
+        crate::launch::launch_from_phone(folder, prompt)
+    }
+
     fn decide(&self, request_id: &str, allow: bool) {
         let word = if allow { "allow" } else { "deny" };
         log::line(format!("phone link: decision id={request_id} {word}"));
@@ -112,6 +120,9 @@ impl server::Features for TauriFeatures {
     }
     fn relay(&self) -> bool {
         self.app.state::<Shared>().settings.lock().unwrap().phone_relay
+    }
+    fn launch(&self) -> bool {
+        self.app.state::<Shared>().settings.lock().unwrap().phone_launch
     }
     fn services(&self) -> Vec<String> {
         // Only ids the link knows, whatever the file held.
@@ -673,6 +684,56 @@ pub fn phone_recap_set_enabled(
     log::line(format!("phone link: weekly recap on the phone {}", if enabled { "on" } else { "off" }));
     let _ = app.emit("settings-changed", updated);
     Ok(RecapStatus { enabled })
+}
+
+// ── Starting a Claude Code session from the phone: the switch (Settings → Android phone) ──
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchStatus {
+    pub enabled: bool,
+}
+
+#[tauri::command]
+pub fn phone_launch_status(shared: State<Shared>) -> LaunchStatus {
+    LaunchStatus { enabled: shared.settings.lock().unwrap().phone_launch }
+}
+
+/// "Let the phone start Claude Code sessions". Off by default. A change disconnects the phones once so they reconnect and are
+/// told (or not) about the capability. The phone confirms every start with its screen lock.
+#[tauri::command]
+pub fn phone_launch_set_enabled(
+    app: AppHandle,
+    window: WebviewWindow,
+    link: State<PhoneLink>,
+    shared: State<Shared>,
+    enabled: bool,
+) -> Result<LaunchStatus, String> {
+    only_settings(&window)?;
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        current.phone_launch = enabled;
+        if let Err(err) = settings::save(&current) {
+            log::line(format!("could not save settings: {err}"));
+        }
+        current.clone()
+    };
+    link.hub.kick_all("closed", "launch setting changed");
+    log::line(format!("phone link: starting sessions from the phone {}", if enabled { "on" } else { "off" }));
+    let _ = app.emit("settings-changed", updated);
+    Ok(LaunchStatus { enabled })
+}
+
+/// The island's projects (the folders its sessions ran in), for phones that have `launch`. The phone is told their folder
+/// names; the paths stay in the hub.
+#[tauri::command]
+pub fn phone_link_publish_projects(window: WebviewWindow, link: State<PhoneLink>, projects: Vec<String>) -> Result<(), String> {
+    only_island(&window)?;
+    if link.running.lock().unwrap().is_none() {
+        return Ok(());
+    }
+    link.hub.publish_projects(projects);
+    Ok(())
 }
 
 // ── Service cards on the phone: one tick per service (Settings → Android phone) ──

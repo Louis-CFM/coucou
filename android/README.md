@@ -34,7 +34,7 @@ A release build (R8 shrinking and obfuscation, resources shrunk, `android.util.L
 Without a computer: open the app and tap *Try the demo*. Or run the pretend computer (fake sessions, a fake approval; a test tool):
 
 ```bash
-node tools/dev-desktop.mjs --host <LAN IP>     # prints a pairing link; flags: --details --answers --diffs --usage --services --fake-chat
+node tools/dev-desktop.mjs --host <LAN IP>     # prints a pairing link; flags: --details --answers --diffs --usage --services --fake-chat --launch
 ```
 
 The desktop side is in `windows/src-tauri/src/phone_link`; the protocol is `docs/ANDROID_LINK.md`, the internet relay
@@ -55,6 +55,16 @@ The desktop side is in `windows/src-tauri/src/phone_link`; the protocol is `docs
 - **Island over other apps** (optional, off by default): a black island from the camera cut-out drops while an agent works, shows
   the result for 10 s and goes back up with the computer's motion. Needs Android's "Display over other apps". Rules are pure and
   tested (`core/Island*.kt`); `ui/IslandOverlay.kt` draws.
+- **Spoken alerts** (Settings > Sound, off by default): the phone says one short line with Android's own voice when an agent needs you
+  (a permission request or a question) or finishes, like "Claude Code needs your approval". The agent and the kind of event, never a
+  command, a file name or a message, and it never answers anything. Silent in Do Not Disturb, on silent or vibrate, during a call, and
+  when the phone has no offline voice for the app's language; a finish also follows the muted agents and the quiet hours. No network,
+  no library, no microphone. Rules in `core/SpokenAlerts.kt` (pure, tested); `app/SpokenAlerts.kt` speaks.
+- **New Claude Code session** (a row on Home once a computer is paired; the computer must allow it, Settings > Android phone > "Let the
+  phone start Claude Code sessions", off by default; Windows and Linux): pick one of the projects the computer lists (folder names, never
+  a path), write what Claude should do, and Send, which asks for the fingerprint or screen lock like Allow. The sheet says what became of
+  it (sent, refused and why, no answer) or what is missing (the computer does not offer it yet, no project yet, not connected). The words
+  are not stored or logged. Rules in `core/LaunchFlow.kt` (pure, tested), `ui/LaunchSheet.kt`; protocol in `docs/ANDROID_LINK.md`.
 - **Chat** (a tab, when the computer offers it), **session details**, **file changes** and **plan usage** are opt-in switches on the
   computer (Settings > Android phone), all off by default; the phone is told only what it asks for and the computer allows.
 - **Pairing**: scan the QR code with the in-app camera (CameraX + zxing, offline) or paste the link; a scan or a `coucou://pair`
@@ -91,7 +101,7 @@ The desktop side is in `windows/src-tauri/src/phone_link`; the protocol is `docs
    asks about the firewall, allow Coucou on **private** networks (a network marked *Public* blocks the phone).
 4. **Show pairing code**, then scan the QR code with the app (or paste the link). The phone and the computer must be on the same Wi-Fi.
 5. Optional, each with its own switch on the same page: session details, answers to questions, file changes, chat through the
-   computer's own keys, plan usage, services.
+   computer's own keys, plan usage, services, starting Claude Code sessions from the phone.
 
 What to know when you try approvals from the phone:
 
@@ -116,7 +126,7 @@ For testing without a cable once the phone has been connected by USB once: `adb 
    If macOS asks to find devices on your local network, allow it.
 3. **Show pairing code**, then scan the QR code with the app (or paste the link). The phone and the Mac must be on the same Wi-Fi.
 4. Optional, each with its own switch on the same page: session details, answers to Claude Code's questions, plan usage. Chat, file
-   changes, services, the weekly recap and the relay are not available from a Mac yet.
+   changes, services, the weekly recap, the relay and starting a session from the phone are not available from a Mac yet.
 
 Allow still asks for your fingerprint or screen lock on the phone, and only the request still waiting on the Mac can be answered.
 Turning the switch off stops the listener and the announcement at once. As on Windows, Claude Code must be in a mode that asks for

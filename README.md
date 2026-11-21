@@ -217,6 +217,7 @@ Coucou for Android, by [@Rhytam23](https://github.com/Rhytam23), is released und
 
 | Android | Date | Highlights |
 |---------|------|------------|
+| 0.6.0 | Unreleased | Start a Claude Code session on your computer from the phone, spoken alerts when an agent needs you or finishes |
 | [0.5.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.5.0) | Nov 13, 2026 | Swipe the island up to put it away, nothing lost with the swipe (quiet notifications), hide the island in Do Not Disturb, six more languages (16 translations), a steadier relay link for testers |
 | [0.4.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.4.0) | Nov 3, 2026 | Works with a Mac as well as with Windows and Linux; the island sits in the middle again at a lower screen resolution |
 | [0.3.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.3.0) | Oct 22, 2026 | A light theme and your phone's colours, nine more languages (Arabic right to left), quick actions, a Team widget, Share to Coucou, the weekly recap, a per-agent mute |

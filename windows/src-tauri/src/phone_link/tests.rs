@@ -28,8 +28,14 @@ fn block_on<F: Future>(f: F) -> F::Output {
 }
 
 #[derive(Default)]
-struct Recorder(Mutex<Vec<(String, bool)>>, Mutex<Vec<(String, Value)>>, Mutex<Vec<(u64, String, u64)>>);
+struct Recorder(Mutex<Vec<(String, bool)>>, Mutex<Vec<(String, Value)>>, Mutex<Vec<(u64, String, u64)>>, Mutex<Vec<(String, String)>>);
 impl Host for Recorder {
+    /// Stands in for the island's launcher: records the folder and the prompt it was handed. A folder named
+    /// "…/broken" does not open, as when no terminal starts.
+    fn launch(&self, folder: &str, prompt: &str) -> bool {
+        self.3.lock().unwrap().push((folder.to_string(), prompt.to_string()));
+        !folder.ends_with("broken")
+    }
     fn get_diff(&self, sub_id: u64, pill_id: &str, file_id: u64) {
         self.2.lock().unwrap().push((sub_id, pill_id.to_string(), file_id));
     }
@@ -1916,6 +1922,298 @@ fn over_the_wire_a_10000_character_command_is_flagged_and_allow_does_nothing() {
     });
 }
 
+// ── Starting a Claude Code session from the phone (cap `launch`) ──
+
+mod launch {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    use super::*;
+    use crate::phone_link::hub::{LAUNCHES_PER_10_MIN, MAX_PROMPT_CHARS};
+    use crate::phone_link::server::Features;
+
+    struct Switch(AtomicBool);
+    impl Features for Switch {
+        fn details(&self) -> bool {
+            false
+        }
+        fn launch(&self) -> bool {
+            self.0.load(Ordering::SeqCst)
+        }
+    }
+
+    const COUCOU: &str = "/home/someone/code/coucou";
+    const SITE: &str = r"C:\Users\someone\Sites\my site";
+
+    async fn rig(on: bool) -> (Rig, Arc<Switch>) {
+        let switch = Arc::new(Switch(AtomicBool::new(on)));
+        let rig = Rig::start_full(None, switch.clone()).await;
+        rig.hub.publish_projects(vec![COUCOU.into(), SITE.into()]);
+        (rig, switch)
+    }
+
+    async fn phone(rig: &Rig, caps: Option<Value>) -> (Client, Value) {
+        let mut c = Client::connect(rig.port, &rig.fingerprint).await.unwrap();
+        let mut hello = json!({ "type": "hello", "v": 1, "token": TOKEN, "device": "Test phone" });
+        if let Some(caps) = caps {
+            hello["caps"] = caps;
+        }
+        c.send(hello).await;
+        let welcome = c.expect("welcome").await;
+        (c, welcome)
+    }
+
+    /// A phone that negotiated `launch`, and the list it was sent.
+    async fn ready(rig: &Rig) -> (Client, Vec<Value>) {
+        let (mut c, welcome) = phone(rig, Some(json!(["launch"]))).await;
+        assert_eq!(welcome["caps"], json!(["launch"]));
+        let list = c.expect("projects").await["projects"].as_array().unwrap().clone();
+        (c, list)
+    }
+
+    fn launched(rig: &Rig) -> Vec<(String, String)> {
+        rig.host.3.lock().unwrap().clone()
+    }
+
+    fn ask(id: &str, project: &Value, prompt: &str) -> Value {
+        json!({ "type": "launch", "id": id, "project": project, "prompt": prompt })
+    }
+
+    #[test]
+    fn launch_is_offered_only_while_the_switch_is_on_and_the_phone_asked() {
+        block_on(async {
+            let (on, _) = rig(true).await;
+            let (_c, welcome) = phone(&on, Some(json!(["launch"]))).await;
+            assert_eq!(welcome["caps"], json!(["launch"]));
+            let (_c, welcome) = phone(&on, None).await;
+            assert!(welcome.get("caps").is_none(), "a phone that did not ask is offered nothing");
+            let (off, _) = rig(false).await;
+            let (_c, welcome) = phone(&off, Some(json!(["launch"]))).await;
+            assert!(welcome.get("caps").is_none(), "off by default: {welcome}");
+        });
+    }
+
+    #[test]
+    fn the_phone_is_told_folder_names_and_ids_never_a_path() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            let (mut c, _) = phone(&rig, Some(json!(["launch"]))).await;
+            let line = c.expect("projects").await;
+            let list = line["projects"].as_array().unwrap();
+            assert_eq!(list.len(), 2);
+            assert_eq!(list[0]["name"], "coucou");
+            assert_eq!(list[1]["name"], "my site");
+            for p in list {
+                assert_eq!(p.as_object().unwrap().len(), 2, "an id and a name, nothing else: {p}");
+                let id = p["id"].as_str().unwrap();
+                assert!(id.len() == 16 && id.bytes().all(|b| b.is_ascii_hexdigit()), "{id}");
+            }
+            let text = line.to_string();
+            for secret in ["someone", "/home", "Users", "code", "Sites", "C:"] {
+                assert!(!text.contains(secret), "{secret} left the computer: {text}");
+            }
+            // A change reaches the phone; the same list again does not.
+            rig.hub.publish_projects(vec![COUCOU.into()]);
+            assert_eq!(c.expect("projects").await["projects"].as_array().unwrap().len(), 1);
+        });
+    }
+
+    #[test]
+    fn a_paired_phone_starts_a_session_in_a_listed_project_with_its_words() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            let (mut c, list) = ready(&rig).await;
+            let prompt = r#"fix the "login" bug; rm -rf / && echo $HOME `id` $(id)"#;
+            c.send(ask("a1", &list[0]["id"], prompt)).await;
+            assert_eq!(c.expect("launchResult").await, json!({ "type": "launchResult", "id": "a1", "ok": true }));
+            // The launcher got the computer's own path for that id, and the words exactly: they are data, handed to the
+            // island's launcher, which never writes them into a command line (launch.rs has the tests for that).
+            assert_eq!(launched(&rig), vec![(COUCOU.to_string(), prompt.to_string())]);
+            c.send(ask("a2", &list[1]["id"], "line one\nline two")).await;
+            assert_eq!(c.expect("launchResult").await["ok"], true);
+            assert_eq!(launched(&rig)[1], (SITE.to_string(), "line one line two".to_string()));
+        });
+    }
+
+    #[test]
+    fn the_phone_can_never_name_a_folder_itself() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            let (mut c, list) = ready(&rig).await;
+            let tries = [json!(COUCOU), json!("/"), json!("coucou"), json!("../.."), json!(""), json!("0000000000000000"), json!(7), Value::Null];
+            for (i, project) in tries.iter().enumerate() {
+                c.send(ask(&format!("p{i}"), project, "do it")).await;
+                let r = c.expect("launchResult").await;
+                assert_eq!((r["ok"].clone(), r["reason"].clone()), (json!(false), json!("unknown_project")), "{project}");
+            }
+            // Extra fields change nothing: there is no way to pass a path, a command or an option.
+            let mut extra = ask("p-extra", &list[0]["id"], "do it");
+            extra["folder"] = json!("/etc");
+            extra["path"] = json!("/etc");
+            extra["command"] = json!("rm -rf /");
+            extra["args"] = json!(["--dangerously-skip-permissions"]);
+            c.send(extra).await;
+            assert_eq!(c.expect("launchResult").await["ok"], true);
+            assert_eq!(launched(&rig), vec![(COUCOU.to_string(), "do it".to_string())]);
+        });
+    }
+
+    #[test]
+    fn a_prompt_must_say_something_and_fit() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            let (mut c, list) = ready(&rig).await;
+            c.send(ask("e1", &list[0]["id"], "  \n\t ")).await;
+            assert_eq!(c.expect("launchResult").await["reason"], "empty");
+            c.send(json!({ "type": "launch", "id": "e2", "project": list[0]["id"] })).await;
+            assert_eq!(c.expect("launchResult").await["reason"], "empty");
+            c.send(ask("e3", &list[0]["id"], &"é".repeat(MAX_PROMPT_CHARS + 1))).await;
+            assert_eq!(c.expect("launchResult").await["reason"], "too_long");
+            assert!(launched(&rig).is_empty());
+            c.send(ask("e4", &list[0]["id"], &"é".repeat(MAX_PROMPT_CHARS))).await;
+            assert_eq!(c.expect("launchResult").await["ok"], true);
+            // A control character never reaches the launcher.
+            c.send(ask("e5", &list[0]["id"], "a\u{0}b\u{1b}[31mc")).await;
+            assert_eq!(c.expect("launchResult").await["ok"], true);
+            assert_eq!(launched(&rig)[1].1, "a b [31mc");
+        });
+    }
+
+    #[test]
+    fn a_phone_without_the_capability_is_not_heard_and_not_answered() {
+        block_on(async {
+            // An older phone, or one that did not ask: nothing about projects, and its `launch` is an unknown message.
+            let (rig, _) = rig(true).await;
+            let (mut plain, _) = phone(&rig, None).await;
+            plain.expect("sessions").await;
+            plain.send(ask("x1", &json!("0000000000000000"), "do it")).await;
+            plain.send(json!({ "type": "ping" })).await;
+            assert_eq!(plain.recv().await.unwrap()["type"], "pong", "no projects line and no launchResult before the pong");
+            assert!(launched(&rig).is_empty());
+
+            // The switch off: a phone that asks is offered nothing and is not heard either, even with a real id.
+            let (off, switch) = self::rig(false).await;
+            let (mut c, welcome) = phone(&off, Some(json!(["launch"]))).await;
+            assert!(welcome.get("caps").is_none());
+            c.expect("sessions").await;
+            switch.0.store(true, Ordering::SeqCst);
+            let (_seer, list) = ready(&off).await;
+            c.send(ask("x2", &list[0]["id"], "do it")).await;
+            c.send(json!({ "type": "ping" })).await;
+            assert_eq!(c.recv().await.unwrap()["type"], "pong");
+            assert!(launched(&off).is_empty());
+        });
+    }
+
+    #[test]
+    fn the_switch_is_read_again_for_every_message() {
+        block_on(async {
+            let (rig, switch) = rig(true).await;
+            let (mut c, list) = ready(&rig).await;
+            switch.0.store(false, Ordering::SeqCst);
+            c.send(ask("s1", &list[0]["id"], "do it")).await;
+            let r = c.expect("launchResult").await;
+            assert_eq!((r["ok"].clone(), r["reason"].clone()), (json!(false), json!("off")));
+            assert!(launched(&rig).is_empty());
+        });
+    }
+
+    #[test]
+    fn someone_who_is_not_paired_starts_nothing() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            // No hello at all, then a hello with a wrong token: neither reaches the hub.
+            let mut silent = Client::connect(rig.port, &rig.fingerprint).await.unwrap();
+            silent.send(ask("n1", &json!("0000000000000000"), "do it")).await;
+            assert!(silent.recv().await.is_none());
+            let mut wrong = Client::connect(rig.port, &rig.fingerprint).await.unwrap();
+            wrong.send(json!({ "type": "hello", "v": 1, "token": "not-the-token-0123456789ab", "caps": ["launch"] })).await;
+            assert_eq!(wrong.recv().await.unwrap()["code"], "auth");
+            wrong.send(ask("n2", &json!("0000000000000000"), "do it")).await;
+            assert!(wrong.recv().await.is_none());
+            assert!(launched(&rig).is_empty());
+        });
+    }
+
+    #[test]
+    fn the_same_message_twice_starts_one_session_and_a_bad_id_none() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            let (mut c, list) = ready(&rig).await;
+            c.send(ask("dup", &list[0]["id"], "once")).await;
+            assert_eq!(c.expect("launchResult").await["ok"], true);
+            c.send(ask("dup", &list[0]["id"], "once")).await;
+            for bad in ["", "has space", "ünï", &"x".repeat(65)] {
+                c.send(ask(bad, &list[0]["id"], "never")).await;
+            }
+            c.send(json!({ "type": "ping" })).await;
+            assert_eq!(c.recv().await.unwrap()["type"], "pong");
+            assert_eq!(launched(&rig).len(), 1);
+        });
+    }
+
+    #[test]
+    fn a_terminal_that_does_not_open_is_reported_and_the_rate_is_limited() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            rig.hub.publish_projects(vec![COUCOU.into(), "/home/someone/broken".into()]);
+            let (mut c, list) = ready(&rig).await;
+            c.send(ask("f1", &list[1]["id"], "do it")).await;
+            let r = c.expect("launchResult").await;
+            assert_eq!((r["ok"].clone(), r["reason"].clone()), (json!(false), json!("failed")));
+            for i in 1..LAUNCHES_PER_10_MIN {
+                c.send(ask(&format!("r{i}"), &list[0]["id"], "do it")).await;
+                assert_eq!(c.expect("launchResult").await["ok"], true, "start {i}");
+            }
+            c.send(ask("r-last", &list[0]["id"], "do it")).await;
+            assert_eq!(c.expect("launchResult").await["reason"], "rate");
+            assert_eq!(launched(&rig).len(), LAUNCHES_PER_10_MIN);
+        });
+    }
+
+    #[test]
+    fn only_the_phone_that_asked_is_answered() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            let (mut asker, list) = ready(&rig).await;
+            let (mut other, _) = ready(&rig).await;
+            asker.send(ask("o1", &list[0]["id"], "do it")).await;
+            assert_eq!(asker.expect("launchResult").await["ok"], true);
+            other.send(json!({ "type": "ping" })).await;
+            assert_eq!(other.recv().await.unwrap()["type"], "pong");
+        });
+    }
+
+    #[test]
+    fn the_list_is_ten_projects_at_most_and_junk_is_dropped() {
+        block_on(async {
+            let (rig, _) = rig(true).await;
+            let mut paths: Vec<String> = vec!["".into(), "/".into(), "/home/me/a\nb".into(), "x".repeat(2000)];
+            paths.extend((0..30).map(|i| format!("/home/me/p{i}")));
+            paths.insert(5, "/home/me/p0".into()); // twice
+            rig.hub.publish_projects(paths);
+            let (_c, list) = ready(&rig).await;
+            assert_eq!(list.len(), 10);
+            assert_eq!(list[0]["name"], "p0");
+            let ids: std::collections::HashSet<&str> = list.iter().map(|p| p["id"].as_str().unwrap()).collect();
+            assert_eq!(ids.len(), 10);
+        });
+    }
+
+    #[test]
+    fn the_app_hands_the_request_to_the_islands_launcher_and_to_nothing_else() {
+        // mod.rs: the phone's request ends in launch::launch_from_phone, the island's own launcher in the standard
+        // permission mode (launch.rs tests the mode). No second launcher, no Command, no shell here.
+        let source = include_str!("mod.rs").replace("\r\n", "\n");
+        let body = source.split("fn launch(&self, folder: &str, prompt: &str) -> bool {").nth(1).unwrap().split("\n    }\n").next().unwrap();
+        assert!(body.contains("crate::launch::launch_from_phone(folder, prompt)"), "{body}");
+        assert!(!body.contains("launch_session"), "never the island's own mode: {body}");
+        assert!(!body.contains("{prompt") && !body.contains("prompt)\")"), "the prompt is not logged: {body}");
+        for file in [source.as_str(), include_str!("hub.rs"), include_str!("server.rs")] {
+            assert!(!file.contains("Command::new"), "the phone link starts no process of its own");
+        }
+    }
+}
+
 // ── Which window may call which command ──
 
 #[test]
@@ -1953,5 +2251,5 @@ fn every_command_that_changes_something_checks_the_calling_window() {
             "{name} changes something but does not check the calling window"
         );
     }
-    assert!(seen >= 25, "the test must see the commands (saw {seen})");
+    assert!(seen >= 28, "the test must see the commands (saw {seen})");
 }
