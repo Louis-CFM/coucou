@@ -78,6 +78,7 @@ windows = { version = "0.61", features = [
   "Win32_System_Variant",
   "Win32_Security",
   "Win32_Security_Authorization",
+  "Win32_Security_Cryptography",
   "Win32_System_Com",
   # "Open terminal": the relay's process tree leads to the session's window.
   "Win32_System_Diagnostics_ToolHelp",
