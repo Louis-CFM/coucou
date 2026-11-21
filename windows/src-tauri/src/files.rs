@@ -62,6 +62,36 @@ fn take_dropped(path: &str) -> bool {
     }
 }
 
+const MAX_PASTE_BYTES: usize = 32 * 1024 * 1024;
+
+fn prepare_inbox_dest(raw_name: &Path) -> Result<(PathBuf, String, PathBuf), String> {
+    let dir = inbox_dir();
+    crate::platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let name = raw_name
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "file".into());
+    let clean = Path::new(&name);
+
+    let mut dest = dir.join(&name);
+    if dest.exists() {
+        let stem = clean.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        let ext = clean.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
+        for i in 2..1000 {
+            let candidate = dir.join(format!("{stem} ({i}){ext}"));
+            if !candidate.exists() {
+                dest = candidate;
+                break;
+            }
+        }
+    }
+
+    Ok((dir, name, dest))
+}
+
 pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     if !take_dropped(source) {
         return Err(crate::i18n::t("Only files dropped on the island can be added."));
@@ -73,27 +103,7 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         return Err(crate::i18n::t("Folders can't be dropped yet."));
     }
 
-    let dir = inbox_dir();
-    crate::platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-
-    let name = src
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| "file".into());
-
-    let mut dest = dir.join(&name);
-    if dest.exists() {
-        let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
-        for i in 2..1000 {
-            let candidate = dir.join(format!("{stem} ({i}){ext}"));
-            if !candidate.exists() {
-                dest = candidate;
-                break;
-            }
-        }
-    }
+    let (dir, name, dest) = prepare_inbox_dest(src)?;
 
     std::fs::copy(src, &dest).map_err(|e| crate::i18n::tf("Cannot copy: {error}", &[("error", &e.to_string())]))?;
     // CopyFileEx carries the source's timestamps across, so a file last edited
@@ -108,6 +118,26 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         name,
         path: dest.to_string_lossy().to_string(),
         size: meta.len(),
+    })
+}
+
+pub fn ingest_bytes(default_name: &str, bytes: &[u8]) -> Result<DroppedFile, String> {
+    if bytes.is_empty() {
+        return Err(crate::i18n::tf("Cannot copy: {error}", &[("error", "empty file")]));
+    }
+    if bytes.len() > MAX_PASTE_BYTES {
+        return Err(crate::i18n::tf("Cannot copy: {error}", &[("error", "file too large")]));
+    }
+
+    let (dir, name, dest) = prepare_inbox_dest(Path::new(default_name))?;
+    std::fs::write(&dest, bytes)
+        .map_err(|e| crate::i18n::tf("Cannot copy: {error}", &[("error", &e.to_string())]))?;
+    sweep(&dir);
+
+    Ok(DroppedFile {
+        name,
+        path: dest.to_string_lossy().to_string(),
+        size: bytes.len() as u64,
     })
 }
 
@@ -176,6 +206,25 @@ mod tests {
         let _ = std::fs::remove_file(&first.path);
         let _ = std::fs::remove_file(&second.path);
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn ingest_bytes_writes_to_inbox_and_avoids_collisions() {
+        assert!(ingest_bytes("pasted-image.png", &[]).is_err(), "empty bytes rejected");
+
+        let first = ingest_bytes("../pasted-image.png", b"\x89PNG\r\n\x1a\n1").unwrap();
+        assert_eq!(first.name, "pasted-image.png");
+        assert_eq!(first.size, 9);
+        assert_eq!(std::fs::read(&first.path).unwrap(), b"\x89PNG\r\n\x1a\n1");
+
+        let second = ingest_bytes("pasted-image.png", b"\x89PNG\r\n\x1a\n2").unwrap();
+        assert_eq!(second.name, "pasted-image.png");
+        assert_ne!(first.path, second.path);
+        assert_eq!(std::fs::read(&first.path).unwrap(), b"\x89PNG\r\n\x1a\n1");
+        assert_eq!(std::fs::read(&second.path).unwrap(), b"\x89PNG\r\n\x1a\n2");
+
+        let _ = std::fs::remove_file(&first.path);
+        let _ = std::fs::remove_file(&second.path);
     }
 }
 

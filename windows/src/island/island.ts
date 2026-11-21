@@ -772,6 +772,9 @@ export class Island {
     State.chatHistory = [];
     void Bridge.chatReset();
 
+    if (!UploadSeq.isActive) {
+      UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
+    }
     UploadSeq.performDrop(State.uploadDuration);
     this.uploadTens = 0;
     this.uploadDone = false;
@@ -1096,6 +1099,45 @@ export class Island {
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
+
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener("coucou-file-picked", (e) => {
+        const path = (e as CustomEvent<string>).detail;
+        if (path && !State.paused) this.swallow(path);
+      });
+
+      window.addEventListener("paste", (e: ClipboardEvent) => {
+        if (State.paused) return;
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        let imageItem: DataTransferItem | null = null;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith("image/")) {
+            imageItem = items[i];
+            break;
+          }
+        }
+        if (!imageItem) return;
+        const file = imageItem.getAsFile();
+        if (!file) return;
+        e.preventDefault();
+        void file
+          .arrayBuffer()
+          .then((buf) => Bridge.ingestClipboardImage(Array.from(new Uint8Array(buf))))
+          .then((dropped) => {
+            if (!dropped) return;
+            State.droppedFile = { name: dropped.name, path: dropped.path };
+            State.promptContext = { kind: "file", name: dropped.name, path: dropped.path };
+            State.chatHistory = [];
+            void Bridge.chatReset();
+            Sound.play("approve");
+            this.engine.triggerEmote("happy");
+            this.setView("prompt");
+            State.notify();
+            this.views.get("prompt")?.focus?.();
+          });
+      });
+    }
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
@@ -1494,11 +1536,14 @@ export class Island {
     }
 
     // The chat and the launch card are the views with a text field, so they
-    // are the only time the island is allowed to take keyboard focus.
+    // are the only time the island is allowed to take keyboard focus (plus the
+    // upload view when opened directly so Ctrl+V can paste screenshots).
+    const takesKeyboard = (v: IslandViewName | null) =>
+      v != null && (TYPING_VIEWS.has(v) || (v === "upload" && !State.fileDragOver));
     if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView != null && TYPING_VIEWS.has(this.lastSyncedView);
+      const wasChat = takesKeyboard(this.lastSyncedView);
       this.lastSyncedView = State.view;
-      if (TYPING_VIEWS.has(State.view)) {
+      if (takesKeyboard(State.view)) {
         const view = State.view;
         void Bridge.focusWindow(true);
         window.setTimeout(() => this.views.get(view)?.focus?.(), 120);
