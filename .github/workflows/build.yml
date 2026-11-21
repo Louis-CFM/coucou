@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # A pull request that only changes Android, Windows, Linux, the relay or docs doesn't build the Mac:
+    # this job builds and tests NotchBuddy/ (Mac and iPhone) with scripts/ and tests/, ~30 min on macOS. A push to main still always builds it.
+    paths:
+      - 'NotchBuddy/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/build.yml'
 
 jobs:
   build:
