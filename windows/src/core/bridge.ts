@@ -231,6 +231,8 @@ export const Bridge = {
 
   /** Give the window keyboard focus (chat field) and take it away again. */
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
+  /** A keyboard shortcut opened the island: it keeps the keyboard until it folds. */
+  grabKeyboard: () => call<void>("grab_keyboard"),
 
   reposition: () => call<void>("reposition"),
   fitZoom: (dpr: number) => call<boolean>("fit_zoom", { dpr }),
