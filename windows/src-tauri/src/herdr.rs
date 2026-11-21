@@ -152,8 +152,13 @@ mod tests {
         assert!(from_payload(&payload("w1:pA", "/home/me/.cargo/bin/herdr", "Ubuntu")).is_some());
     }
 
+    /// The pane list is shared by the whole process, and tests run in parallel:
+    /// the cap test fills it past the limit, which would evict another test's pane.
+    static SHARED_LIST: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn the_pane_list_is_capped() {
+        let _list = SHARED_LIST.lock().unwrap_or_else(|e| e.into_inner());
         let extra = crate::session_window::MAX_SESSIONS + 3;
         for i in 0..extra {
             observe(&json!({ "session_id": format!("herdr-cap-{i}"), "herdr_pane": "w1:pC",
@@ -181,6 +186,7 @@ mod tests {
 
     #[test]
     fn a_session_end_forgets_the_pane() {
+        let _list = SHARED_LIST.lock().unwrap_or_else(|e| e.into_inner());
         let start = json!({ "session_id": "herdr-test-1", "herdr_pane": "w1:pB", "herdr_bin": "/b/herdr",
             "wsl_distro": "Ubuntu" });
         observe(&start, "SessionStart");
