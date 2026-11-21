@@ -334,6 +334,10 @@ final class AppState: ObservableObject {
     @Published var alertsFromAllPills: Bool = false {
         didSet { UserDefaults.standard.set(alertsFromAllPills, forKey: "alertsFromAllPills") }
     }
+    /// No other pill to show on the right: the left card takes the whole island — persisted, off by default
+    @Published var fillIslandWhenAlone: Bool = false {
+        didSet { UserDefaults.standard.set(fillIslandWhenAlone, forKey: "fillIslandWhenAlone") }
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
@@ -591,6 +595,7 @@ final class AppState: ObservableObject {
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
         if let v = ud.object(forKey: "alertsFromAllPills") as? Bool { alertsFromAllPills = v }
+        if let v = ud.object(forKey: "fillIslandWhenAlone") as? Bool { fillIslandWhenAlone = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }
