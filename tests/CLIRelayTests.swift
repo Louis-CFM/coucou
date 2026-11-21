@@ -69,6 +69,16 @@ enum CLIRelayTests {
         precondition(CLIRelay.environment(.claude, flow) == ["MAX_THINKING_TOKENS": "0"])
         precondition(CLIRelay.environment(.claude, request()).isEmpty, "the chat thinks as Claude Code likes")
         precondition(CLIRelay.environment(.codex, flow).isEmpty)
+        // Hermes: one-shot -z prompt arg, optional -m model, --reasoning none, --provider.
+        var hermesReq = request(model: "nous-hermes-3")
+        hermesReq.thinking = false
+        hermesReq.provider = "openrouter"
+        let hermes = CLIRelay.arguments(.hermes, hermesReq)
+        precondition(value(after: "-z", in: hermes)!.hasPrefix("<instructions>\nSYS\n</instructions>"))
+        precondition(value(after: "-m", in: hermes) == "nous-hermes-3")
+        precondition(value(after: "--reasoning", in: hermes) == "none")
+        precondition(value(after: "--provider", in: hermes) == "openrouter")
+        precondition(!SubscriptionCLI.hermes.promptOnStdin && SubscriptionCLI.hermes.binaries == ["hermes"])
     }
 
     static func ok(_ r: Result<String, CLIFailure>) -> String? {
@@ -96,6 +106,7 @@ enum CLIRelayTests {
         """
         precondition(ok(CLIRelay.parse(.codex, stdout: Data(events.utf8), stderr: none, exitCode: 0)) == "Final answer")
         precondition(ok(CLIRelay.parse(.copilot, stdout: Data("  The answer\n".utf8), stderr: none, exitCode: 0)) == "The answer")
+        precondition(ok(CLIRelay.parse(.hermes, stdout: Data("  Hermes reply\n".utf8), stderr: none, exitCode: 0)) == "Hermes reply")
     }
 
     static func failures() {
