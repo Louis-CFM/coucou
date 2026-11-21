@@ -229,16 +229,20 @@ struct OverviewView: View {
             } else {
                 // Top-aligned: a mail open in the Mail card makes the left card taller, downwards
                 // only; the pills on the right keep their place and their height (98 pt).
+                // With fillIslandWhenAlone and no other pill, the left card takes the right card's place.
+                let alone = state.fillIslandWhenAlone && state.gridSlots.isEmpty
                 HStack(alignment: .top, spacing: 10) {
                     // Left card: title row + ticker below + ↗ button overlay
                     leftCard
-                        .frame(width: 322)
+                        .frame(width: alone ? nil : 322)
 
                     // Right card: agent pills
-                    CardBackground(wash: nil) {
-                        AgentPillsView(state: state)
+                    if !alone {
+                        CardBackground(wash: nil) {
+                            AgentPillsView(state: state)
+                        }
+                        .frame(height: 98)
                     }
-                    .frame(height: 98)
                 }
             }
         }

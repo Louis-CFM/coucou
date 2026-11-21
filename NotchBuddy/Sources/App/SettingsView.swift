@@ -408,6 +408,8 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                Toggle(String(localized: "island.fill-alone"), isOn: $state.fillIslandWhenAlone)
+                    .help(String(localized: "island.fill-alone.help"))
             }
             .padding(6)
             .onAppear { refreshConnectedScreens() }
