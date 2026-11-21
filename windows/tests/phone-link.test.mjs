@@ -518,3 +518,38 @@ test("a week with no session publishes nothing to show", async () => {
   await settle();
   assert.deepEqual(sent("phone_link_publish_recap"), [{ recap: {} }]);
 });
+
+// ── The projects a phone may start a session in (cap `launch`) ───────────────
+
+test("the island's projects are published when the link comes up and when they change, and not repeated", async () => {
+  const { Launch } = await import("../src/core/launch.ts");
+  const before = [...Launch.projects];
+  try {
+    Launch.projects = ["/home/me/code/coucou", "/home/me/code/site"];
+    dispose = registerPhoneLink(island);
+    await settle();
+    tick(250);
+    const p = () => sent("phone_link_publish_projects");
+    // The paths go to Rust, which keeps them and tells a phone the folder names only (hub.rs, tested there).
+    assert.deepEqual(p(), [{ projects: ["/home/me/code/coucou", "/home/me/code/site"] }]);
+    State.notify();
+    tick(250);
+    assert.equal(p().length, 1, "the same list is not sent again");
+    Launch.remember("/home/me/code/new-thing");
+    State.notify();
+    tick(250);
+    assert.equal(p().length, 2);
+    assert.equal(p()[1].projects[0], "/home/me/code/new-thing");
+  } finally {
+    Launch.projects = before;
+  }
+});
+
+test("no project is published while the link is off", async () => {
+  status = { ...status, running: false };
+  dispose = registerPhoneLink(island);
+  await settle();
+  State.notify();
+  tick(250);
+  assert.equal(sent("phone_link_publish_projects").length, 0);
+});

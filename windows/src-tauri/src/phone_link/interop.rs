@@ -12,9 +12,12 @@
 //   repair <token>           pair again with a new token (phones are kicked)
 //   chat on|off              the (fake) chat switch; phones learn of it when they connect
 //   details on|off           the "session details" switch, same
+//   launch on|off            the "start Claude Code sessions" switch, same
+//   projects                 publish two sample projects (full paths; only their folder names leave)
 //   quit
 //
 //   DECISION allow|deny <id> printed when a phone's decision is applied
+//   LAUNCH <folder> <prompt> printed when a phone's request reaches the launcher (no terminal is opened here)
 
 use std::io::BufRead;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -37,6 +40,12 @@ impl Host for Printing {
     fn decide(&self, request_id: &str, allow: bool) {
         println!("DECISION {} {request_id}", if allow { "allow" } else { "deny" });
     }
+
+    fn launch(&self, folder: &str, prompt: &str) -> bool {
+        // Where the app would call the island's launcher. The Kotlin test reads the folder the computer chose and the words.
+        println!("LAUNCH {folder} {prompt}");
+        true
+    }
 }
 
 struct Switches {
@@ -44,9 +53,13 @@ struct Switches {
     diffs: AtomicBool,
     usage: AtomicBool,
     recap: AtomicBool,
+    launch: AtomicBool,
     services: std::sync::Mutex<Vec<String>>,
 }
 impl Features for Switches {
+    fn launch(&self) -> bool {
+        self.launch.load(Ordering::SeqCst)
+    }
     fn details(&self) -> bool {
         self.details.load(Ordering::SeqCst)
     }
@@ -123,7 +136,7 @@ fn interop_server() {
         let token = std::env::var("COUCOU_INTEROP_TOKEN").unwrap_or_else(|_| "interop-token-0123456789abcdef".into());
         let hub = Hub::new(Arc::new(Printing));
         let fake = Arc::new(FakeChat { on: AtomicBool::new(false) });
-        let switches = Arc::new(Switches { details: AtomicBool::new(false), diffs: AtomicBool::new(false), usage: AtomicBool::new(false), recap: AtomicBool::new(false), services: std::sync::Mutex::new(Vec::new()) });
+        let switches = Arc::new(Switches { details: AtomicBool::new(false), diffs: AtomicBool::new(false), usage: AtomicBool::new(false), recap: AtomicBool::new(false), launch: AtomicBool::new(false), services: std::sync::Mutex::new(Vec::new()) });
         let shared = server::Shared::with_features(
             hub.clone(), token.clone(), "Rust desktop".into(), Some(ChatLink::new(fake.clone())), switches.clone(),
         );
@@ -214,6 +227,8 @@ fn interop_server() {
                 }
                 (Some("outfit"), Some(value), _) => hub.publish_outfit(value),
                 (Some("details"), Some(state), _) => switches.details.store(state == "on", Ordering::SeqCst),
+                (Some("launch"), Some(state), _) => switches.launch.store(state == "on", Ordering::SeqCst),
+                (Some("projects"), _, _) => hub.publish_projects(vec!["/home/someone/private/coucou".into(), "/home/someone/private/site".into()]),
                 (Some("quit"), _, _) => break,
                 _ => println!("? {line}"),
             }

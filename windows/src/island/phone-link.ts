@@ -8,6 +8,7 @@
 
 import { Bridge, onEvent, type PhoneLinkPlan, type PhoneLinkUsage, type PhoneLinkApproval, type PhoneLinkDiff, type PhoneLinkFile, type PhoneLinkQuestion, type PhoneLinkSession } from "../core/bridge";
 import { fileName, parseDiffStep, type FileDiff } from "../core/diff";
+import { Launch } from "../core/launch";
 import type { PlanUsage, CodexPlanUsage } from "../core/plan";
 import { State } from "../core/state";
 import { parseOutfit } from "../mochi/wardrobe";
@@ -149,6 +150,8 @@ export function registerPhoneLink(island: Island): () => void {
   let lastServices = "";
   /** The week whose recap was last sent (or checked while the switch was off); "" before anything was. */
   let lastRecapWeek = "";
+  /** The projects last sent, as JSON; "" before anything was. */
+  let lastProjects = "";
   let timer: number | null = null;
 
   const publish = () => {
@@ -158,6 +161,7 @@ export function registerPhoneLink(island: Island): () => void {
     publishUsage();
     publishRecap();
     publishServices();
+    publishProjects();
     const snapshot = linkSnapshot();
     const key = JSON.stringify(snapshot);
     if (key === last) return;
@@ -212,6 +216,17 @@ export function registerPhoneLink(island: Island): () => void {
     void Bridge.phoneLinkPublishServices(cards);
   };
 
+  /**
+   * The projects of the island's "New Claude Code session" card (the folders its sessions ran in), for a phone whose
+   * user let it start sessions. Rust tells such a phone their folder names and keeps the paths.
+   */
+  const publishProjects = () => {
+    const key = JSON.stringify(Launch.projects);
+    if (key === lastProjects) return;
+    lastProjects = key;
+    void Bridge.phoneLinkPublishProjects(JSON.parse(key));
+  };
+
   const schedule = () => {
     if (!running || timer != null) return;
     timer = window.setTimeout(publish, DEBOUNCE_MS);
@@ -228,6 +243,7 @@ export function registerPhoneLink(island: Island): () => void {
     lastUsage = "";
     lastServices = "";
     lastRecapWeek = "";
+    lastProjects = "";
     if (running) schedule();
     else if (timer != null) {
       window.clearTimeout(timer);

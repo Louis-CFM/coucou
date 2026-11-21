@@ -157,6 +157,7 @@ class AppModel(private val context: Context) : LinkListener {
         notifier.forgetOngoing()
         WidgetHub.refreshAll(context)
         pushGlance()
+        spoken.checkVoice()
     }
 
     /** What the user chose in Settings (sound, notices, quiet hours). */
@@ -176,6 +177,29 @@ class AppModel(private val context: Context) : LinkListener {
             watchDnd()
             refreshIsland()
         }
+        spoken.setEnabled(settings.spokenAlerts)
+    }
+
+    // ── Spoken alerts (Settings > Sound, off by default) ────────────────────────
+    // One short line in the phone's own voice when an agent needs the user or finishes. The rules are in SpokenAlertPolicy;
+    // the engine exists only while the switch is on.
+
+    /** The switch is on but the phone has no voice of its own for the app's language: Settings says so. */
+    var spokenNoVoice by mutableStateOf(false); private set
+    private val spoken = SpokenAlerts(context) { missing -> main.post { spokenNoVoice = missing } }
+    private val spokenBook = com.coucou.android.core.SpokenAlertBook()
+
+    /** Looks again whether there is a voice (the Settings screen opened, or the language changed). */
+    fun refreshSpokenVoice() = spoken.checkVoice()
+
+    private fun speakAlert(previous: BotState?, s: SessionInfo, minuteOfDay: Int) {
+        // A real computer only: the demo loops through every state.
+        if (mode != Mode.PAIRED || !settings.spokenAlerts) return
+        val kind = com.coucou.android.core.SpokenAlertPolicy.kind(previous, s.state) ?: return
+        val line = com.coucou.android.core.SpokenAlertPolicy.decide(
+            settings.spokenAlerts, previous, s.state, s.pillId, s.agent, settings, minuteOfDay,
+        ) { spoken.phone(dndOn()) } ?: return
+        if (spokenBook.firstTime(s.pillId, kind, android.os.SystemClock.elapsedRealtime())) spoken.say(line)
     }
 
     // ── Do Not Disturb ──────────────────────────────────────────────────────────
@@ -225,6 +249,7 @@ class AppModel(private val context: Context) : LinkListener {
         notifier.applyApprovalSettings(settings.vibration, settings.keepScreenOff)
         com.coucou.android.core.MotionState.choice = settings.motion
         watchDnd()
+        spoken.setEnabled(settings.spokenAlerts)
     }
 
     /** What the computer says Mochi wears ("auto" or an outfit); the last one it told, kept for when it is away. */
@@ -338,7 +363,64 @@ class AppModel(private val context: Context) : LinkListener {
         chatChanged(save = false)
     }
 
+    // ── Starting a Claude Code session on the computer (cap `launch`; rules in core/LaunchFlow.kt) ──
+
+    /** The computer lets this phone start sessions right now (its switch is on and we are connected). */
+    var launchOffered by mutableStateOf(false); private set
+    /** The projects the computer offers: folder names and its own ids, never a path. Held in memory only. */
+    var launchProjects by mutableStateOf<List<com.coucou.android.link.LaunchProject>>(emptyList()); private set
+    /** What became of the request that was sent. Nothing about it is stored or logged. */
+    var launchOutcome by mutableStateOf<com.coucou.android.core.LaunchOutcome>(com.coucou.android.core.LaunchOutcome.Idle); private set
+
+    val launchAvailability: com.coucou.android.core.LaunchAvailability
+        get() = com.coucou.android.core.LaunchFlow.availability(linkState == LinkState.CONNECTED, launchOffered, launchProjects)
+
+    private val launchRandom = java.security.SecureRandom()
+    private val launchTimeout = Runnable { launchOutcome = com.coucou.android.core.LaunchFlow.onSilence(launchOutcome) }
+
+    /**
+     * Sends the request; the lock check has already happened in the UI (BiometricGate). Only a project of the computer's list and the
+     * cleaned words go out. The words are not kept, not logged and not put in the history.
+     */
+    fun launchSend(projectId: String, prompt: String) {
+        if (launchOutcome is com.coucou.android.core.LaunchOutcome.Sending) return
+        val (project, text) = com.coucou.android.core.LaunchFlow.request(launchProjects, projectId, prompt) ?: return
+        val id = com.coucou.android.core.LaunchFlow.newId(launchRandom)
+        main.removeCallbacks(launchTimeout)
+        if (link?.launch(id, project.id, text) == true) {
+            launchOutcome = com.coucou.android.core.LaunchOutcome.Sending(id, project.name)
+            main.postDelayed(launchTimeout, com.coucou.android.core.LaunchFlow.ANSWER_WAIT_MS)
+        } else {
+            launchOutcome = com.coucou.android.core.LaunchOutcome.NotSent
+        }
+    }
+
+    /** The sheet closed, or the user starts over: the last outcome is forgotten. A request on its way is not recalled. */
+    fun launchReset() {
+        if (launchOutcome !is com.coucou.android.core.LaunchOutcome.Sending) launchOutcome = com.coucou.android.core.LaunchOutcome.Idle
+    }
+
+    override fun onProjects(projects: List<com.coucou.android.link.LaunchProject>) {
+        main.post { launchProjects = projects }
+    }
+
+    override fun onLaunchResult(id: String, ok: Boolean, reason: String) {
+        main.post {
+            val next = com.coucou.android.core.LaunchFlow.onResult(launchOutcome, id, ok, reason)
+            if (next != launchOutcome) main.removeCallbacks(launchTimeout)
+            launchOutcome = next
+        }
+    }
+
+    private fun launchLinkLost() {
+        launchOffered = false
+        launchProjects = emptyList()
+        main.removeCallbacks(launchTimeout)
+        launchOutcome = com.coucou.android.core.LaunchFlow.onSilence(launchOutcome)
+    }
+
     private fun chatLinkLost() {
+        launchLinkLost()
         detailsOffered = false
         chatOffered = false
         chatModels = emptyList()
@@ -718,6 +800,7 @@ class AppModel(private val context: Context) : LinkListener {
         chatLinkLost()
         wantAllow = null
         lastState.clear()
+        spokenBook.clear()
         notifier.cancelAllStatus()
     }
 
@@ -787,6 +870,8 @@ class AppModel(private val context: Context) : LinkListener {
             chatOffered = Protocol.CAP_CHAT in caps
             detailsOffered = Protocol.CAP_DETAILS in caps
             diffsOffered = Protocol.CAP_DIFFS in caps
+            launchOffered = Protocol.CAP_LAUNCH in caps
+            if (!launchOffered) launchProjects = emptyList()
             if (Protocol.CAP_USAGE !in caps) usage = null
             if (Protocol.CAP_RECAP !in caps) recap = null
             pushGlance() // the Usage Ring says to turn it on
@@ -852,6 +937,7 @@ class AppModel(private val context: Context) : LinkListener {
                 val a = StatusPolicy.announce(prev, s.state, settings, minute, inForeground, s.pillId)
                 if (a.sound && sound != null) sounds.play(sound)
                 if (a.notify) notifier.showStatus(s.pillId, name, s.state, s.statusText)
+                speakAlert(prev, s, minute)
                 IslandPlan.flash(prev, s, settings, minute, islandAllowed(), this::agentName)?.let { overlay.flash(it) }
                 // The agent moved on: the notice about the last state is stale.
                 if (prev != s.state && s.state !in NEWSWORTHY) notifier.cancelStatus(s.pillId)

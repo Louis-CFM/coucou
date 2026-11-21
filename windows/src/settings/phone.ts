@@ -77,6 +77,7 @@ export function phoneSection(on: boolean, makeToggle: Toggle, settings: Settings
       diffsBlock(makeToggle),
       usageBlock(makeToggle),
       recapBlock(makeToggle),
+      launchBlock(makeToggle),
       servicesBlock(),
       chatBlock(makeToggle, settings),
     );
@@ -382,6 +383,39 @@ function recapBlock(makeToggle: Toggle): HTMLElement {
     {},
     h("div", { class: "row" }, h("label", { text: t("Show my weekly recap on the phone") }), switchEl),
     h("div", { class: "hint", text: t("The phone shows last week's recap: time coding, sessions, files, lines, commands, permissions and the agent you used most. Counts only. The project's name is added only if you also show session details.") }),
+    note,
+  );
+}
+
+/**
+ * Starting a Claude Code session from the phone: off until the user turns it on. The phone picks one of the projects of the island's
+ * "New Claude Code session" card (it is told their folder names, never a path) and sends what Claude should do; the terminal opens here
+ * as from that card. Rust re-reads this switch for every connection and for every request.
+ */
+function launchBlock(makeToggle: Toggle): HTMLElement {
+  const note = h("div", { class: "hint" });
+  const switchEl = makeToggle(false, (next) => {
+    void (async () => {
+      note.textContent = "";
+      try {
+        await Bridge.phoneLaunchSetEnabled(next);
+      } catch (err) {
+        switchEl.classList.remove("on");
+        switchEl.setAttribute("aria-pressed", "false");
+        note.textContent = String(err);
+      }
+    })();
+  });
+  void Bridge.phoneLaunchStatus().then((status) => {
+    if (!status) return;
+    switchEl.classList.toggle("on", status.enabled);
+    switchEl.setAttribute("aria-pressed", String(status.enabled));
+  });
+  return h(
+    "div",
+    {},
+    h("div", { class: "row" }, h("label", { text: t("Let the phone start Claude Code sessions") }), switchEl),
+    h("div", { class: "hint", text: t("From the phone you pick one of your recent projects and say what Claude should do; your terminal opens here with Claude Code, as from the island. The phone sees the projects' folder names only and asks for your fingerprint or screen lock each time.") }),
     note,
   );
 }

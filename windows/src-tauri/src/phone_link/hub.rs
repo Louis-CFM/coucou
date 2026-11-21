@@ -82,6 +82,12 @@ pub trait Host: Send + Sync {
     fn get_diff(&self, _sub_id: u64, _pill_id: &str, _file_id: u64) {}
 
     fn answer(&self, _request_id: &str, _answers: &serde_json::Map<String, serde_json::Value>) {}
+
+    /// A phone asked for a new Claude Code session in `folder` (one of the island's projects, never a path the phone
+    /// typed) with `prompt`. The app opens the terminal with the island's own launcher (launch.rs); true if it started.
+    fn launch(&self, _folder: &str, _prompt: &str) -> bool {
+        false
+    }
 }
 
 /// One file a session changed, as the island has it. Only its name (never a path) is kept.
@@ -515,6 +521,8 @@ struct Sub {
     services: Vec<String>,
     /// When this phone asked for a diff lately (ms), to keep it from flooding the island.
     diff_asks: Vec<u64>,
+    /// The phone asked for `launch` and the user's switch was on when it connected.
+    launch: bool,
 }
 
 /// What a connection may have been offered.
@@ -529,6 +537,8 @@ pub struct Caps {
     pub relay: bool,
     /// The services the user allowed for the phone (empty: the capability is not offered).
     pub services: Vec<String>,
+    /// Starting a Claude Code session from the phone.
+    pub launch: bool,
 }
 
 #[derive(Default)]
@@ -544,6 +554,12 @@ struct Inner {
     recap: Option<RecapLines>,
     /// The service cards the island has, cleaned (all of them: each phone gets only the ones its user allowed).
     services: Vec<ServiceIn>,
+    /// The island's projects (the folders its sessions ran in), for phones that have `launch`. The paths stay here.
+    projects: Vec<Project>,
+    /// When a session was started from a phone lately (ms), all phones together.
+    launches: Vec<u64>,
+    /// The ids of the last `launch` messages handled, so one that arrives twice starts one session.
+    launch_ids: Vec<String>,
     subs: Vec<Sub>,
     next_sub: u64,
 }
@@ -565,11 +581,16 @@ pub enum Outcome {
 pub struct Hub {
     host: Arc<dyn Host>,
     inner: Mutex<Inner>,
+    /// Mixed into the ids of the projects, new at every start: an id says nothing about the path behind it.
+    project_salt: [u8; 16],
 }
 
 impl Hub {
     pub fn new(host: Arc<dyn Host>) -> Arc<Hub> {
-        Arc::new(Hub { host, inner: Mutex::new(Inner::default()) })
+        let mut project_salt = [0u8; 16];
+        // Without randomness the ids are still only names for entries of the list; nothing depends on their secrecy.
+        let _ = ring::rand::SecureRandom::fill(&ring::rand::SystemRandom::new(), &mut project_salt);
+        Arc::new(Hub { host, inner: Mutex::new(Inner::default()), project_salt })
     }
 
     /// The island's current picture. Sends the phones only what changed.
@@ -651,7 +672,7 @@ impl Hub {
 
     /// Like [`subscribe`], for a phone that may also have been offered `answers` and `prefs`.
     pub fn subscribe_with(&self, tx: mpsc::Sender<Out>, now: u64, caps: Caps) -> (u64, Arc<AtomicBool>) {
-        let Caps { details, answers, prefs, diffs, usage, recap, relay, services } = caps;
+        let Caps { details, answers, prefs, diffs, usage, recap, relay, services, launch } = caps;
         let mut inner = self.inner.lock().unwrap();
         expire(&mut inner, now);
         let id = inner.next_sub;
@@ -686,8 +707,12 @@ impl Hub {
                 let _ = tx.try_send(Out::Line(lines.for_phone(details).clone()));
             }
         }
+        if launch {
+            // Always, even empty: the phone then knows there is no project to pick yet.
+            let _ = tx.try_send(Out::Line(projects_line(&inner.projects)));
+        }
         let evicted = Arc::new(AtomicBool::new(false));
-        inner.subs.push(Sub { id, tx, evicted: evicted.clone(), details, answers, prefs, diffs, usage, recap, relay, services, diff_asks: Vec::new() });
+        inner.subs.push(Sub { id, tx, evicted: evicted.clone(), details, answers, prefs, diffs, usage, recap, relay, services, diff_asks: Vec::new(), launch });
         (id, evicted)
     }
 
@@ -758,6 +783,146 @@ impl Hub {
         // Outside the lock: the host answers the agent and touches the island.
         self.host.decide(&request_id, allow);
         Outcome::Applied
+    }
+}
+
+// ── Starting a Claude Code session from the phone (cap `launch`) ──
+
+/// A phone picks a project out of this many at most: the island's own list is ten.
+pub const MAX_PROJECTS: usize = 10;
+/// What Claude should do, in characters. The island's launcher hands it over as one line.
+pub const MAX_PROMPT_CHARS: usize = 4000;
+/// Sessions started from phones, all together, per ten minutes.
+pub const LAUNCHES_PER_10_MIN: usize = 6;
+const LAUNCH_WINDOW_MS: u64 = 10 * 60 * 1000;
+const MAX_PATH_CHARS: usize = 1024;
+const REMEMBERED_LAUNCH_IDS: usize = 32;
+
+/// One of the island's projects. The phone is told `id` and `name` (the folder's name); `path` never leaves the computer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Project {
+    id: String,
+    name: String,
+    path: String,
+}
+
+fn projects_line(projects: &[Project]) -> Arc<str> {
+    let list: Vec<serde_json::Value> = projects.iter().map(|p| json!({ "id": p.id, "name": p.name })).collect();
+    json!({ "type": "projects", "projects": list }).to_string().into()
+}
+
+fn launch_result(id: &str, refused: Option<&str>) -> Arc<str> {
+    match refused {
+        None => json!({ "type": "launchResult", "id": id, "ok": true }),
+        Some(reason) => json!({ "type": "launchResult", "id": id, "ok": false, "reason": reason }),
+    }
+    .to_string()
+    .into()
+}
+
+/// The prompt as it may be handed to the launcher: no control character (a line break becomes a space, as the launcher
+/// would make it), trimmed.
+fn clean_prompt(prompt: &str) -> String {
+    let spaced: String = prompt.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
+    spaced.trim().to_string()
+}
+
+/// 1 to 64 characters of `[A-Za-z0-9_-]`, like a chat id.
+fn valid_launch_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+}
+
+impl Hub {
+    /// The island's projects, most recent first, as full paths. Phones that have `launch` are sent their folder names
+    /// and an id each; the paths stay in the hub. Two identical lists are sent once.
+    pub fn publish_projects(&self, paths: Vec<String>) {
+        let mut projects: Vec<Project> = Vec::new();
+        for path in paths {
+            if projects.len() >= MAX_PROJECTS {
+                break;
+            }
+            if path.is_empty() || path.chars().count() > MAX_PATH_CHARS || path.chars().any(|c| c.is_control()) {
+                continue;
+            }
+            let Some(name) = project_name(&path) else { continue };
+            let mut salted = self.project_salt.to_vec();
+            salted.extend_from_slice(path.as_bytes());
+            let id = hex(&digest::digest(&digest::SHA256, &salted).as_ref()[..8]);
+            if projects.iter().any(|p| p.id == id) {
+                continue;
+            }
+            projects.push(Project { id, name, path });
+        }
+        let mut inner = self.inner.lock().unwrap();
+        if inner.projects == projects {
+            return;
+        }
+        inner.projects = projects;
+        let line = projects_line(&inner.projects);
+        inner.subs.retain(|s| {
+            if !s.launch {
+                return true;
+            }
+            let kept = s.tx.try_send(Out::Line(line.clone())).is_ok();
+            if !kept {
+                s.evicted.store(true, Ordering::SeqCst);
+            }
+            kept
+        });
+    }
+
+    /// A phone asks for a new Claude Code session. Only a phone that has `launch` is heard at all; it is always
+    /// answered with a `launchResult`. `enabled` is the user's switch as it is right now. Refused with a reason:
+    /// `off` (the switch went off), `empty` / `too_long` (the prompt), `unknown_project` (not an id of the list this
+    /// computer offers: the phone can never name a folder itself), `rate`, `failed` (the terminal did not open).
+    pub fn launch(&self, sub_id: u64, id: &str, project: &str, prompt: &str, enabled: bool, now: u64) {
+        if !valid_launch_id(id) {
+            return; // nothing to answer to
+        }
+        let prompt = clean_prompt(prompt);
+        let verdict: Result<String, &'static str> = {
+            let mut inner = self.inner.lock().unwrap();
+            if !inner.subs.iter().any(|s| s.id == sub_id && s.launch) {
+                return;
+            }
+            if inner.launch_ids.iter().any(|seen| seen == id) {
+                return; // the same message twice: one session
+            }
+            inner.launch_ids.push(id.to_string());
+            if inner.launch_ids.len() > REMEMBERED_LAUNCH_IDS {
+                inner.launch_ids.remove(0);
+            }
+            inner.launches.retain(|t| now.saturating_sub(*t) < LAUNCH_WINDOW_MS);
+            if !enabled {
+                Err("off")
+            } else if prompt.is_empty() {
+                Err("empty")
+            } else if prompt.chars().count() > MAX_PROMPT_CHARS {
+                Err("too_long")
+            } else if let Some(path) = inner.projects.iter().find(|p| constant_eq(p.id.as_bytes(), project.as_bytes())).map(|p| p.path.clone()) {
+                if inner.launches.len() >= LAUNCHES_PER_10_MIN {
+                    Err("rate")
+                } else {
+                    inner.launches.push(now);
+                    Ok(path)
+                }
+            } else {
+                Err("unknown_project")
+            }
+        };
+        // Outside the lock: the host opens the terminal.
+        let refused = match verdict {
+            Ok(path) => (!self.host.launch(&path, &prompt)).then_some("failed"),
+            Err(reason) => Some(reason),
+        };
+        let line = launch_result(id, refused);
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(sub) = inner.subs.iter().find(|s| s.id == sub_id) {
+            if sub.tx.try_send(Out::Line(line)).is_err() {
+                sub.evicted.store(true, Ordering::SeqCst);
+                inner.subs.retain(|s| s.id != sub_id);
+            }
+        }
     }
 }
 
