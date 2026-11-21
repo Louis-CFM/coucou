@@ -156,6 +156,8 @@ private fun <T> ChoiceRow(title: String, options: List<Pair<T, String>>, selecte
                     label, { onSelect(value) },
                     Modifier.weight(1f).semantics { this.selected = value == selected; role = Role.RadioButton },
                     if (value == selected) PillKind.PRIMARY else PillKind.SECONDARY,
+                    // Three pills share the row (about 90 dp each on a 360 dp phone): the default 22 dp a side cut "Standard" to "Stan…".
+                    sidePadding = 8.dp,
                 )
             }
         }

@@ -75,6 +75,7 @@ Fixes:
   - **Spoken alerts** *(optional, off by default)* — Settings → Sound → **Spoken alerts**: the phone says one short line with its own voice when an agent needs you or finishes, like "Claude Code needs your approval". It names the agent and the kind of event, never the command, a file name or the message, and it never answers anything. Silent in Do Not Disturb, on silent or vibrate, during a call, and when the phone has no offline voice for the app's language; a finish also follows the agents you muted and your quiet hours. No network, no microphone
   - The texts of both are in the app's 16 languages (written by a machine, listed in `android/i18n/REVIEW.md` for a native speaker to check)
   - **Quiet hours: "To" reads as the end of the hours** in Indonesian, Russian, Simplified Chinese, Bengali, Hindi, Spanish and Brazilian Portuguese; it was the "To" of a message's recipient
+  - **Settings → Vibration for a request: "Standard" is no longer cut to "Stan…"** on a narrow phone; the three choices keep their look with less space inside each pill
 
 ## Android 0.5.0 — November 13, 2026
 
