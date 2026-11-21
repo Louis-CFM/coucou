@@ -39,7 +39,7 @@ Fixes:
 - **Mochi reads the memory pressure** as soon as he comes back on screen (#795 by @orrrrli)
 - **iPhone link**: the relay is sturdier (#1035) and no longer retries a bad device token forever (#1036), by @hasnain-amir
 
-## Windows and Linux 0.6.0 — Unreleased
+## Windows and Linux 0.6.0 — November 21, 2026
 
 - **The n8n card fills in on start** and shows each new execution, with its sound (#1093, #1095 by @Ohualtex)
 - **Hardening** — the hook pipe only accepts your own account, Coucou's folders are restricted to you, and the hook relay is checked by its SHA-256 (#1076, #1100 by @Ohualtex)
@@ -68,7 +68,7 @@ Fixes:
 - **The finished card goes away when a new prompt comes** (#587) and **the GitHub week strip is graded against its own week** (#611), by @rollecode
 - **Botan, the founders list** — the second step of the card shown after an update has one more line, *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). The card is a little taller for it
 
-## Android 0.6.0 — Unreleased
+## Android 0.6.0 — November 21, 2026
 
 - **Coucou for Android 0.6.0**, by @Rhytam23 (versionCode 6)
   - **Start a Claude Code session from your phone** — a row on Home, **New Claude Code session**: pick one of the projects your computer lists, write what Claude should do, and send. Your terminal opens on the computer with Claude Code and your words, and the session shows on the phone like any other. Sending asks for your fingerprint or screen lock, like Allow. The phone sees the projects' folder names only and cannot type a path; the sheet says whether it was sent, refused (and why) or got no answer. It needs Coucou 0.6.0 on Windows or Linux with Settings → Android phone → **Let the phone start Claude Code sessions** turned on (off by default); with an older computer or a Mac the phone says "Your computer doesn't offer this yet" and everything else works as before
