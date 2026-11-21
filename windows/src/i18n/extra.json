@@ -5629,21 +5629,6 @@
       "ko": "Coucou가 답하지 못했어요. 노치 → 채팅에서 Claude 키를 확인해 주세요.",
       "ja": "Coucou は答えられませんでした：ノッチ → チャットで Claude のキーを確認してください。"
     },
-    "Show clock in the island": {
-      "zh-Hans": "在灵动岛中显示时钟",
-      "hi": "आइलैंड में घड़ी दिखाएँ",
-      "es": "Mostrar el reloj en la isla",
-      "ar": "إظهار الساعة في الجزيرة",
-      "fr": "Afficher l'horloge dans l'îlot",
-      "bn": "আইল্যান্ডে ঘড়ি দেখান",
-      "pt-BR": "Mostrar relógio na ilha",
-      "ru": "Показывать часы в острове",
-      "id": "Tampilkan jam di pulau",
-      "de": "Uhr in der Insel anzeigen",
-      "tr": "Adada saati göster",
-      "ko": "아일랜드에 시계 표시",
-      "ja": "アイランドに時計を表示"
-    },
     "The date and the time in the middle of the island when it is compact.": {
       "zh-Hans": "岛收起时，在中间显示日期和时间。",
       "hi": "आइलैंड के छोटे होने पर बीच में तारीख़ और समय दिखता है।",
@@ -7338,36 +7323,6 @@
       "tr": "Hiçbir şey, yalnızca ada",
       "ko": "아무것도, 아일랜드만",
       "ja": "何も表示しない（アイランドのみ）"
-    },
-    "The date and the time": {
-      "zh-Hans": "日期和时间",
-      "hi": "तारीख़ और समय",
-      "es": "La fecha y la hora",
-      "ar": "التاريخ والوقت",
-      "fr": "La date et l'heure",
-      "bn": "তারিখ ও সময়",
-      "pt-BR": "A data e a hora",
-      "ru": "Дата и время",
-      "id": "Tanggal dan waktu",
-      "de": "Datum und Uhrzeit",
-      "tr": "Tarih ve saat",
-      "ko": "날짜와 시간",
-      "ja": "日付と時刻"
-    },
-    "The time": {
-      "zh-Hans": "时间",
-      "hi": "समय",
-      "es": "La hora",
-      "ar": "الوقت",
-      "fr": "L'heure",
-      "bn": "সময়",
-      "pt-BR": "A hora",
-      "ru": "Время",
-      "id": "Waktu",
-      "de": "Die Uhrzeit",
-      "tr": "Saat",
-      "ko": "시간",
-      "ja": "時刻"
     },
     "What's playing": {
       "zh-Hans": "正在播放",

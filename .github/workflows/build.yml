@@ -93,6 +93,9 @@ jobs:
       - name: Test auto-close timing
         run: bash scripts/test-auto-close.sh
 
+      - name: Test the island clock (12 or 24 hours, the date before the time)
+        run: bash scripts/test-island-clock.sh
+
       - name: Test Mac translations (Traditional Chinese coverage, format arguments, catalog keys)
         run: python3 scripts/test-localization.py
 
