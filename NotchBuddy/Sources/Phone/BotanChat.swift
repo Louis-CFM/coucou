@@ -144,7 +144,7 @@ final class BotanChat {
         let code = Locale.current.language.languageCode?.identifier ?? "en"
         let language = Locale(identifier: "en").localizedString(forLanguageCode: code) ?? "English"
         return LanguageModelSession(
-            tools: [AgentsNowTool(), HistoryTool(), ServicesTool(), LastTurnTool()],
+            tools: [AgentsNowTool(), HistoryTool(), ServicesTool(), LastTurnTool(), MoneyTool()],
             instructions: """
             You are Botan: a small, warm and witty character (Mochi) who lives in the user's \
             iPhone and keeps an eye on their Mac for them. You talk like a friend who is a good \
@@ -159,6 +159,9 @@ final class BotanChat {
             sentence, without any tool and without listing data nobody asked for.
             - A question about agents, projects, money, deploys, errors, mail or what happened: \
             call the right tool first, then answer from what it returned.
+            - Money (earned, received, sales, payouts, Stripe): always use the money tool. Its \
+            figures are already added up: repeat them, never add or guess. "Received" is what \
+            customers paid; "Paid out" is what went to the user's bank.
             - Never invent a number, a name or an event. If a tool returns nothing, say so.
             - Reply in the language of the user's message. If it's too short to tell, reply in \
             \(language).
@@ -310,6 +313,57 @@ struct ServicesTool: Tool {
                 }
                 return line
             }.joined(separator: "\n")
+        }
+    }
+}
+
+@available(iOS 26.0, *)
+struct MoneyTool: Tool {
+    let name = "money"
+    let description = "Stripe month by month, already added up by the Mac: received, number of payments, failed payments, refunds, paid out to the bank; and the balance now."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The month asked about: 'this month', 'last month', a month name like 'October', or empty for the last 12 months")
+        var month: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        let asked = arguments.month
+        return await MainActor.run {
+            guard let stripe = PhoneLink.shared.services["integration_stripe"] else { return "Stripe isn't connected on the Mac." }
+            let months = stripe.months ?? []
+            guard !months.isEmpty else {
+                return "The Mac hasn't added up the months yet (it does every 30 minutes). \(stripe.headline)."
+            }
+            let wanted = Self.pick(asked, from: months)
+            let thisMonth = ServicePeriod.key(for: Date())
+            var lines = (wanted.isEmpty ? months : wanted).map { month in
+                let name = ServicePeriod.name(of: month.month) + (month.month == thisMonth ? " (this month, so far)" : "")
+                return name + ": " + month.stats.map { "\($0.label.lowercased()) \($0.value)" }.joined(separator: ", ")
+            }
+            lines.append("Now: \(stripe.headline).")
+            return lines.joined(separator: "\n")
+        }
+    }
+
+    /// The month(s) a few words point at: this or last month, a month name (English or the
+    /// iPhone's language), or "2026-10".
+    private static func pick(_ text: String, from months: [ServiceMonth]) -> [ServiceMonth] {
+        let words = text.lowercased()
+        guard !words.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        if words.contains("last") || words.contains("previous") || words.contains("dernier") || words.contains("précédent") {
+            return Array(months.dropFirst().prefix(1))
+        }
+        if words.contains("this") || words.contains("current") || words.contains("ce mois") || words.contains("en cours") {
+            return Array(months.prefix(1))
+        }
+        return months.filter { month in
+            guard let start = ServicePeriod.range(of: month.month)?.start else { return false }
+            let names = [Locale(identifier: "en"), Locale.current].map {
+                start.formatted(Date.FormatStyle(locale: $0).month(.wide)).lowercased()
+            }
+            return words.contains(month.month) || names.contains { words.contains($0) }
         }
     }
 }

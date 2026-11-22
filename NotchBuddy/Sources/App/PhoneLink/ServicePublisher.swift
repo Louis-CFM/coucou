@@ -73,7 +73,29 @@ final class ServicePublisher {
         log("service publisher off")
     }
 
+    /// Stripe month by month (ServiceAPI.stripeMonths), read again every 30 minutes at most.
+    private(set) var stripeMonths: [ServiceMonth] = []
+    private var stripeMonthsAt: Date?
+    private var readingMonths = false
+
+    private func refreshStripeMonthsIfStale() {
+        guard AppState.shared.stripeLoaded, !readingMonths,
+              stripeMonthsAt.map({ Date().timeIntervalSince($0) > 30 * 60 }) ?? true else { return }
+        readingMonths = true
+        Task {
+            do {
+                stripeMonths = try await ServiceAPI.stripeMonths()
+            } catch {
+                log("Stripe months not read: \(error.localizedDescription)")
+            }
+            stripeMonthsAt = Date()
+            readingMonths = false
+            publish()
+        }
+    }
+
     private func publish() {
+        refreshStripeMonthsIfStale()
         guard !writing else { again = true; return }
         writing = true
         let snapshots = ServiceSnapshots.all(from: AppState.shared)
@@ -148,6 +170,9 @@ enum ServiceSnapshots {
                 var snapshot = snapshot
                 let figures = today(snapshot.pillId, s)
                 snapshot.today = figures.isEmpty ? nil : figures
+                if snapshot.pillId == "integration_stripe", !ServicePublisher.shared.stripeMonths.isEmpty {
+                    snapshot.months = ServicePublisher.shared.stripeMonths
+                }
                 return snapshot
             }
         return Dictionary(uniqueKeysWithValues: built.map { ($0.pillId, $0) })

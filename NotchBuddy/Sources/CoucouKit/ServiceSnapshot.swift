@@ -23,6 +23,12 @@ struct ServiceSection: Codable, Equatable, Sendable {
     var items: [ServiceItem]
 }
 
+struct ServiceMonth: Codable, Equatable, Sendable {
+    /// "2026-10" (ServicePeriod).
+    var month: String
+    var stats: [DetailStat]
+}
+
 struct ServiceSnapshot: Codable, Equatable, Sendable {
     var pillId: String
     var tone: ServiceTone
@@ -35,6 +41,9 @@ struct ServiceSnapshot: Codable, Equatable, Sendable {
     /// Today in one or two figures, for the iPhone's home ("In today 48,00 €", "Deploys 3").
     /// Optional, so snapshots written before it still decode.
     var today: [DetailStat]? = nil
+    /// Month by month, newest first (Stripe: received, payments, failed, paid out), so the
+    /// iPhone can answer "how much this month" with figures added up by the Mac.
+    var months: [ServiceMonth]? = nil
 
     static let recordType = "Service"
 

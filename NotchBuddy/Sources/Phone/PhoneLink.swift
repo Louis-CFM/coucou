@@ -567,9 +567,10 @@ final class PhoneLink {
     /// Asks the Mac to read this service's API now (it answers within ~10 s).
     /// False when no new detail came back in time (Mac asleep, sync off, older build).
     @discardableResult
-    func requestServiceDetail(_ pillId: String) async -> Bool {
+    /// `period`: a month ("2026-10") for services read month by month (Stripe); empty = now.
+    func requestServiceDetail(_ pillId: String, period: String = "") async -> Bool {
         let previous = serviceDetails[pillId]?.fetchedAt
-        guard await sendServiceRequest(kind: ServiceDetail.refreshKind, target: "", pillId: pillId) else { return false }
+        guard await sendServiceRequest(kind: ServiceDetail.refreshKind, target: period, pillId: pillId) else { return false }
         // The new detail usually comes with a push; fetch anyway in case it doesn't.
         for _ in 0..<3 {
             // Screen left (task cancelled): stop rather than fetch back to back.

@@ -97,9 +97,14 @@ final class ServiceDetailRunner {
             return true
         }
 
-        // Several refreshes for one service count once.
+        // Several refreshes for one service count once, for the month asked last.
         var refreshed: Set<String> = []
-        for record in taken.sorted(by: { ($0["requestedAt"] as? Date ?? .distantPast) < ($1["requestedAt"] as? Date ?? .distantPast) }) {
+        let ordered = taken.sorted(by: { ($0["requestedAt"] as? Date ?? .distantPast) < ($1["requestedAt"] as? Date ?? .distantPast) })
+        var lastPeriod: [String: String] = [:]
+        for record in ordered where record["kind"] as? String == ServiceDetail.refreshKind {
+            lastPeriod[record["pillId"] as? String ?? ""] = record.encryptedValues["target"] as? String ?? ""
+        }
+        for record in ordered {
             let pillId = record["pillId"] as? String ?? ""
             let kind = record["kind"] as? String ?? ""
             let target = record.encryptedValues["target"] as? String ?? ""
@@ -107,7 +112,7 @@ final class ServiceDetailRunner {
             guard Date().timeIntervalSince(requestedAt) < maxAge, PillCatalog.phoneServices.contains(pillId) else { continue }
             if kind == ServiceDetail.refreshKind {
                 guard refreshed.insert(pillId).inserted else { continue }
-                await publish(pillId: pillId, lastAction: lastDetails[pillId]?.lastAction)
+                await publish(pillId: pillId, lastAction: lastDetails[pillId]?.lastAction, period: lastPeriod[pillId] ?? "")
             } else {
                 await run(kind: kind, target: target, pillId: pillId)
             }
@@ -134,11 +139,11 @@ final class ServiceDetailRunner {
         log("\(action.title): \(result.ok ? "done" : "failed, \(result.message)")")
         // Give the service a moment, then show where things are.
         try? await Task.sleep(for: .seconds(2))
-        await publish(pillId: pillId, lastAction: result)
+        await publish(pillId: pillId, lastAction: result, period: lastDetails[pillId]?.period ?? "")
     }
 
-    private func publish(pillId: String, lastAction: ServiceActionResult?) async {
-        var detail = await ServiceAPI.detail(for: pillId)
+    private func publish(pillId: String, lastAction: ServiceActionResult?, period: String = "") async {
+        var detail = await ServiceAPI.detail(for: pillId, period: period)
         // The iPhone sync was turned off while the API was read: write nothing.
         guard !Task.isCancelled, pollTask != nil else { return }
         detail.lastAction = lastAction
@@ -256,12 +261,12 @@ enum ServiceAPI {
 
     // MARK: Reading
 
-    static func detail(for pillId: String) async -> ServiceDetail {
+    static func detail(for pillId: String, period: String = "") async -> ServiceDetail {
         do {
             switch pillId {
             case "integration_vercel": return try await vercel()
             case "integration_github": return try await github()
-            case "integration_stripe": return try await stripe()
+            case "integration_stripe": return try await stripe(period: period)
             case "integration_resend": return try await resend()
             case "integration_calcom": return try await calcom()
             case "integration_n8n": return try await n8n()
@@ -523,7 +528,12 @@ enum ServiceAPI {
     }
 
     // Stripe: balance, payments, payouts, subscriptions. Read only.
-    private static func stripe() async throws -> ServiceDetail {
+    /// Stripe, one month at a time ("2026-10"; empty = this month): every payment and payout of
+    /// the month, added up, with the balance and the subscriptions.
+    private static func stripe(period: String) async throws -> ServiceDetail {
+        let month = ServicePeriod.range(of: period) != nil ? period : ServicePeriod.key(for: Date())
+        let (start, end) = ServicePeriod.range(of: month) ?? (start: Date().addingTimeInterval(-30 * 86_400), end: Date())
+        let from = Int(start.timeIntervalSince1970), to = Int(end.timeIntervalSince1970)
         let key = try secret("stripe-api-key", "Stripe")
         let headers = ["Authorization": "Bearer \(key)"]
         let balance = try await request("https://api.stripe.com/v1/balance", headers: headers) as? [String: Any] ?? [:]
@@ -547,10 +557,25 @@ enum ServiceAPI {
             }
         }
 
+        /// Every page of a list (Stripe gives 100 at most per page), up to `pages`.
+        func all(_ path: String, pages: Int) async -> ([[String: Any]], Bool, String?) {
+            var items: [[String: Any]] = []
+            var cursor: String?
+            for _ in 0..<pages {
+                let (page, json, error) = await list(path + (cursor.map { "&starting_after=\($0)" } ?? ""))
+                if let error { return (items, false, error) }
+                items += page
+                guard json["has_more"] as? Bool == true, let last = page.last?["id"] as? String else { return (items, false, nil) }
+                cursor = last
+            }
+            return (items, true, nil)
+        }
+        let range = "created%5Bgte%5D=\(from)&created%5Blt%5D=\(to)"
+
         // Fees and net come with the balance transaction; where a payment came from, with the
         // Checkout session that made it (a payment link, or Checkout on a site).
-        let (charges, _, chargesError) = await list("charges?limit=20&expand%5B%5D=data.balance_transaction")
-        let (sessions, _, _) = await list("checkout/sessions?limit=50&expand%5B%5D=data.payment_link")
+        let (charges, moreCharges, chargesError) = await all("charges?limit=100&\(range)&expand%5B%5D=data.balance_transaction", pages: 10)
+        let (sessions, _, _) = await all("checkout/sessions?limit=100&\(range)&expand%5B%5D=data.payment_link", pages: 3)
         var sessionByIntent: [String: [String: Any]] = [:]
         for session in sessions {
             if let intent = session["payment_intent"] as? String { sessionByIntent[intent] = session }
@@ -611,7 +636,8 @@ enum ServiceAPI {
                               url: "https://dashboard.stripe.com/payments/\(intent ?? c["id"] as? String ?? "")",
                               badge: badge, fields: fields)
         }
-        let (payouts, _, payoutsError) = await list("payouts?limit=5")
+        let (payouts, _, payoutsError) = await all(
+            "payouts?limit=100&arrival_date%5Bgte%5D=\(from)&arrival_date%5Blt%5D=\(to)", pages: 2)
         let payoutItems = payouts.map { p -> DetailItem in
             let status = (p["status"] as? String)?.replacingOccurrences(of: "_", with: " ").capitalized
             let id = p["id"] as? String ?? ""
@@ -673,21 +699,34 @@ enum ServiceAPI {
         let mrrCurrency = monthlyByCurrency[currency] != nil ? currency : (largest?.key ?? currency)
         let monthly = monthlyByCurrency[mrrCurrency] ?? 0
 
-        var sections = [DetailSection(title: "Payments", items: chargeItems, footer: chargesError)]
-        if !payoutItems.isEmpty || payoutsError != nil {
-            sections.append(DetailSection(title: "Payouts", items: payoutItems, footer: payoutsError))
+        // The month added up: what came in, what went to the bank, what failed.
+        let totals = StripeMath.month(charges: charges, payouts: payouts, currency: currency)
+        let shownLimit = 150
+        let name = ServicePeriod.name(of: month)
+        var paymentsFooter = chargesError
+        if paymentsFooter == nil, chargeItems.count > shownLimit || moreCharges {
+            paymentsFooter = "The latest \(shownLimit) of \(chargeItems.count)\(moreCharges ? "+" : "") payments; the figures above count them all."
         }
-        if let subsError { sections.append(DetailSection(title: "Subscriptions", items: [], footer: subsError)) }
+        if paymentsFooter == nil, chargeItems.isEmpty { paymentsFooter = "No payment in \(name)." }
+        var sections = [DetailSection(title: "Payments · \(name)", items: Array(chargeItems.prefix(shownLimit)), footer: paymentsFooter)]
+        sections.append(DetailSection(title: "Payouts · \(name)", items: payoutItems,
+                                      footer: payoutsError ?? (payoutItems.isEmpty ? "No payout reached your bank in \(name)." : nil)))
+        // The account as it is now, whatever the month.
+        var account = [
+            DetailItem(title: money(available, currency), subtitle: "Available now", tone: .ok),
+            DetailItem(title: money(pending, currency), subtitle: "Pending", tone: .idle),
+        ]
+        if subsError == nil {
+            account.append(DetailItem(title: moreSubs ? "\(subs.count)+" : "\(subs.count)", subtitle: "Active subscriptions", tone: .info))
+            account.append(DetailItem(title: money(Int(monthly.rounded()), mrrCurrency), subtitle: "Estimated monthly revenue", tone: .info))
+        }
+        sections.append(DetailSection(title: "Account", items: account, footer: subsError))
         return ServiceDetail(pillId: "integration_stripe",
-                             stats: [DetailStat(label: "Available", value: money(available, currency), tone: .ok),
-                                     DetailStat(label: "Pending", value: money(pending, currency)),
-                                     DetailStat(label: "Subscriptions",
-                                                value: subsError != nil ? "—" : (moreSubs ? "\(subs.count)+" : "\(subs.count)"),
-                                                tone: .info),
-                                     DetailStat(label: "Est. MRR",
-                                                value: subsError != nil ? "—" : money(Int(monthly.rounded()), mrrCurrency),
-                                                tone: .info)],
-                             sections: sections, fetchedAt: Date())
+                             stats: [DetailStat(label: "Received", value: money(totals.received, currency), tone: .ok),
+                                     DetailStat(label: "Payments", value: "\(totals.payments)", tone: .info),
+                                     DetailStat(label: "Failed", value: "\(totals.failed)", tone: totals.failed > 0 ? .error : .idle),
+                                     DetailStat(label: "Paid out", value: money(totals.paidOut, currency), tone: .info)],
+                             sections: sections, fetchedAt: Date(), period: month)
     }
 
     // Resend: the latest emails and how they went, and the domains. Read only.
@@ -1110,6 +1149,103 @@ enum ServiceAPI {
         let token = try secret("github-token", "GitHub")
         return ["Authorization": "Bearer \(token)", "Accept": "application/vnd.github+json",
                 "X-GitHub-Api-Version": "2022-11-28"]
+    }
+}
+
+// MARK: - Stripe, added up
+
+/// What a month of Stripe adds up to. Received = payments that went through and were captured,
+/// minus what was refunded; paid out = payouts that reached the bank in that month.
+enum StripeMath {
+    struct Totals {
+        var received = 0
+        var payments = 0
+        var failed = 0
+        var refunded = 0
+        var paidOut = 0
+    }
+
+    static func month(charges: [[String: Any]], payouts: [[String: Any]], currency: String) -> Totals {
+        var totals = Totals()
+        for charge in charges where (charge["currency"] as? String)?.lowercased() ?? currency == currency {
+            add(charge, to: &totals)
+        }
+        for payout in payouts where (payout["currency"] as? String)?.lowercased() ?? currency == currency
+            && payout["status"] as? String == "paid" {
+            totals.paidOut += payout["amount"] as? Int ?? 0
+        }
+        return totals
+    }
+
+    static func add(_ charge: [String: Any], to totals: inout Totals) {
+        let status = charge["status"] as? String ?? ""
+        if status == "failed" { totals.failed += 1; return }
+        guard status == "succeeded", charge["captured"] as? Bool != false else { return }
+        let refunded = charge["amount_refunded"] as? Int ?? 0
+        totals.payments += 1
+        totals.refunded += refunded
+        totals.received += (charge["amount"] as? Int ?? 0) - refunded
+    }
+}
+
+extension ServiceAPI {
+    /// The last 12 months of Stripe, newest first, for the iPhone (its chat answers from these).
+    /// Payments and payouts only, no expansion: a few light pages.
+    static func stripeMonths() async throws -> [ServiceMonth] {
+        let key = try secret("stripe-api-key", "Stripe")
+        let headers = ["Authorization": "Bearer \(key)"]
+        let calendar = Calendar.current
+        let thisMonth = ServicePeriod.key(for: Date())
+        let oldest = ServicePeriod.shifted(thisMonth, by: -11)
+        guard let since = ServicePeriod.range(of: oldest)?.start else { return [] }
+        let from = Int(since.timeIntervalSince1970)
+
+        func all(_ path: String, pages: Int) async throws -> [[String: Any]] {
+            var items: [[String: Any]] = []
+            var cursor: String?
+            for _ in 0..<pages {
+                let json = try await request("https://api.stripe.com/v1/" + path + (cursor.map { "&starting_after=\($0)" } ?? ""),
+                                             headers: headers) as? [String: Any] ?? [:]
+                let page = json["data"] as? [[String: Any]] ?? []
+                items += page
+                guard json["has_more"] as? Bool == true, let last = page.last?["id"] as? String else { break }
+                cursor = last
+            }
+            return items
+        }
+        let charges = try await all("charges?limit=100&created%5Bgte%5D=\(from)", pages: 40)
+        let payouts = try await all("payouts?limit=100&arrival_date%5Bgte%5D=\(from)", pages: 5)
+
+        // The currency most payments use.
+        var counts: [String: Int] = [:]
+        for charge in charges { counts[(charge["currency"] as? String ?? "eur").lowercased(), default: 0] += 1 }
+        let currency = counts.max { $0.value < $1.value }?.key ?? "eur"
+
+        func monthKey(_ object: [String: Any], _ field: String) -> String? {
+            (object[field] as? Int).map { ServicePeriod.key(for: Date(timeIntervalSince1970: TimeInterval($0)), calendar: calendar) }
+        }
+        var byMonth: [String: StripeMath.Totals] = [:]
+        for charge in charges where (charge["currency"] as? String)?.lowercased() ?? currency == currency {
+            guard let key = monthKey(charge, "created") else { continue }
+            StripeMath.add(charge, to: &byMonth[key, default: StripeMath.Totals()])
+        }
+        for payout in payouts where payout["status"] as? String == "paid"
+            && (payout["currency"] as? String)?.lowercased() ?? currency == currency {
+            guard let key = monthKey(payout, "arrival_date") else { continue }
+            byMonth[key, default: StripeMath.Totals()].paidOut += payout["amount"] as? Int ?? 0
+        }
+        return (0..<12).map { back in
+            let key = ServicePeriod.shifted(thisMonth, by: -back)
+            let t = byMonth[key] ?? StripeMath.Totals()
+            var stats = [
+                DetailStat(label: "Received", value: money(t.received, currency), tone: .ok),
+                DetailStat(label: "Payments", value: "\(t.payments)", tone: .info),
+                DetailStat(label: "Failed", value: "\(t.failed)", tone: t.failed > 0 ? .error : .idle),
+                DetailStat(label: "Paid out", value: money(t.paidOut, currency), tone: .info),
+            ]
+            if t.refunded > 0 { stats.append(DetailStat(label: "Refunded", value: money(t.refunded, currency), tone: .warning)) }
+            return ServiceMonth(month: key, stats: stats)
+        }
     }
 }
 #endif

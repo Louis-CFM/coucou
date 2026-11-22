@@ -177,9 +177,7 @@ struct ChatView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
-                    .background(
-                        LinearGradient(colors: [Color.botan, Color.botan.opacity(0.82)], startPoint: .top, endPoint: .bottom),
-                        in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+                    .yourBubble()
                     .textSelection(.enabled)
             }
         case .botan:
@@ -380,5 +378,18 @@ struct ChatBackdrop: View {
 
     private static func wave(_ t: Double, _ phase: Double, _ amount: Double) -> Float {
         Float(sin(t + phase) * amount)
+    }
+}
+
+private extension View {
+    /// Your bubbles: iOS's glass, tinted with Botan's orange (an orange gradient before iOS 26).
+    @ViewBuilder func yourBubble() -> some View {
+        let shape = RoundedRectangle(cornerRadius: 19, style: .continuous)
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular.tint(Color.botan.opacity(0.75)), in: shape)
+        } else {
+            self.background(LinearGradient(colors: [Color.botan, Color.botan.opacity(0.82)], startPoint: .top, endPoint: .bottom),
+                            in: shape)
+        }
     }
 }
