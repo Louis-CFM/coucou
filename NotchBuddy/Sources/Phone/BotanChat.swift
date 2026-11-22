@@ -25,6 +25,9 @@ final class BotanChat {
 
     private(set) var messages: [ChatMessage] = []
     private(set) var answering = false
+    /// How Mochi looks next to the answer: thinking, a hop when it's done, dizzy on a failure.
+    private(set) var mood: BotState = .idle
+    @ObservationIgnored private var moodTask: Task<Void, Never>?
 
     /// Kept as `AnyObject` so the app still runs on iOS 18 (the model needs iOS 26).
     @ObservationIgnored private var session: AnyObject?
@@ -55,25 +58,44 @@ final class BotanChat {
     func reset() {
         messages = []
         session = nil
+        setMood(.idle)
     }
 
-    func send(_ text: String) async {
+    /// Puts the question and Botan's empty answer on screen. Call it inside `withAnimation`
+    /// from the view, so the screen moves with it; then `respond(to:)`.
+    func begin(_ text: String) -> String? {
         let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, !answering else { return }
-        withAnimation(.spring(duration: 0.45, bounce: 0.18)) {
-            messages.append(ChatMessage(role: .you, text: question))
-            messages.append(ChatMessage(role: .botan, text: ""))
-        }
-        let index = messages.count - 1
+        guard !question.isEmpty, !answering else { return nil }
+        messages.append(ChatMessage(role: .you, text: question))
+        messages.append(ChatMessage(role: .botan, text: ""))
         answering = true
+        setMood(.thinking)
+        return question
+    }
+
+    func respond(to question: String) async {
+        let index = messages.count - 1
         defer { answering = false }
         #if canImport(FoundationModels)
         if #available(iOS 26.0, *) {
             await answer(question, into: index)
+            if messages.indices.contains(index) { setMood(messages[index].failed ? .dizzy : .finished, thenIdle: true) }
             return
         }
         #endif
         fail(index, unavailableReason ?? "Botan can't answer here.")
+        setMood(.dizzy, thenIdle: true)
+    }
+
+    private func setMood(_ state: BotState, thenIdle: Bool = false) {
+        moodTask?.cancel()
+        mood = state
+        guard thenIdle else { return }
+        moodTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            self?.mood = .idle
+        }
     }
 
     private func fail(_ index: Int, _ text: String) {
