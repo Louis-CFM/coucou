@@ -401,12 +401,14 @@ private extension View {
                                    lineWidth: 0.9)
                     .allowsHitTesting(false)
             }
-            .shadow(color: Color.botan.opacity(0.35), radius: 14, y: 5)
+        // The glow is cast by the whole bubble, glass included.
         if #available(iOS 26.0, *) {
             lit.glassEffect(.regular.tint(Color.botan.opacity(0.42)).interactive(), in: shape)
+                .shadow(color: Color.botan.opacity(0.35), radius: 14, y: 5)
         } else {
             lit.background(LinearGradient(colors: [Color.botan, Color.botan.opacity(0.82)], startPoint: .top, endPoint: .bottom),
                            in: shape)
+                .shadow(color: Color.botan.opacity(0.35), radius: 14, y: 5)
         }
     }
 }
