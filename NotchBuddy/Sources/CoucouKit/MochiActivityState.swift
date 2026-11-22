@@ -46,19 +46,19 @@ struct MochiActivityState: Codable, Hashable, Sendable {
 
     static func statusText(state: BotState, urgency: Int, stepIndex: Int, stepCount: Int) -> String {
         switch urgency {
-        case 0: return "waiting for your OK"
-        case 1: return "has a question"
+        case 0: return "Waiting for your OK"
+        case 1: return "Has a question"
         default: break
         }
         switch state {
-        case .working, .thinking, .searching:
-            return stepCount == 0 ? "working" : "working · \(min(stepIndex + 1, stepCount))/\(stepCount)"
-        case .finished: return "✓ done"
-        case .error: return "error"
-        case .ratelimit: return "rate limited"
-        case .sleeping: return "asleep"
-        case .dizzy: return "dizzy"
-        default: return "idle"
+        case .thinking: return "Thinking…"
+        case .working, .searching: return "Working…"
+        case .finished: return "Done"
+        case .error: return "Something failed"
+        case .ratelimit: return "Rate limited"
+        case .sleeping: return "Asleep"
+        case .dizzy: return "Dizzy"
+        default: return "Idle"
         }
     }
 

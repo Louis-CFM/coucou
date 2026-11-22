@@ -294,6 +294,7 @@ targets:
     dependencies:
       - target: CoucouWidgets
       - target: CoucouNotificationContent
+      - target: CoucouNotificationService
     sources:
       - path: Sources/Phone
         type: group
@@ -473,6 +474,51 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.NotificationContent
         PRODUCT_NAME: CoucouNotificationContent
         INFOPLIST_FILE: Resources/InfoNotificationContent.plist
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: 256AUJ9555
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: ""
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+
+  # Fills in the iCloud alert for an approval (agent, project, command): one banner, not two.
+  CoucouNotificationService:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources/NotificationService
+        type: group
+      - path: Sources/CoucouKit
+        type: group
+      - path: Sources/Phone/PendingApprovals.swift
+      - path: Sources/Phone/MacStubs.swift
+      - path: Resources/Privacy/Phone/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    info:
+      path: Resources/InfoNotificationService.plist
+      properties:
+        CFBundleName: CoucouNotificationService
+        CFBundleDisplayName: Botan
+        CFBundleIdentifier: fr.louisraille.Coucou.NotificationService
+        CFBundleVersion: "21"
+        CFBundleShortVersionString: "2.0"
+        CFBundlePackageType: XPC!
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.NotificationService
+        PRODUCT_NAME: CoucouNotificationService
+        INFOPLIST_FILE: Resources/InfoNotificationService.plist
+        CODE_SIGN_ENTITLEMENTS: Resources/CoucouNotificationService.entitlements
         IPHONEOS_DEPLOYMENT_TARGET: "18.0"
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO

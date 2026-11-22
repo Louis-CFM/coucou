@@ -191,6 +191,7 @@ final class PhoneLink {
         _ = await fetchChanges()
         BotanBridge.shared.sessionsChanged()
         LiveActivityLink.shared.sessionsChanged(sessions)
+        sharePendingApprovals()
         await notifyNewApprovals()
         await postEvents()
     }
@@ -201,6 +202,7 @@ final class PhoneLink {
         // Botan first: it is what a locked iPhone shows.
         BotanBridge.shared.sessionsChanged()
         LiveActivityLink.shared.sessionsChanged(sessions)
+        sharePendingApprovals()
         await notifyNewApprovals()
         await postEvents()
         return gotNew
@@ -237,6 +239,8 @@ final class PhoneLink {
         alert.soundName = mochi ? "approval.wav" : "default"
         alert.category = NotificationActions.approvalCategory
         alert.shouldSendContentAvailable = true
+        // The notification service fills in the agent, the project and the command (one banner).
+        alert.shouldSendMutableContent = true
         alert.desiredKeys = ["fingerprint", "pillId"]
         approvals.notificationInfo = alert
         do {
@@ -407,6 +411,16 @@ final class PhoneLink {
     /// that updates the sessions does, so a new approval also gets a local
     /// notification, unless the iCloud one came, or the app is open.
     /// Notifications for requests no longer pending are removed.
+    /// What the notification service needs to fill in an approval's banner (PendingApprovals).
+    private func sharePendingApprovals() {
+        var items: [String: PendingApprovals.Item] = [:]
+        for s in sessions where s.needsApproval && !s.approvalFingerprint.isEmpty {
+            items[s.approvalFingerprint] = .init(agent: s.pillName, project: s.title,
+                                                command: s.approvalCommand, pillId: s.id)
+        }
+        if items != PendingApprovals.load() { PendingApprovals.save(items) }
+    }
+
     private func notifyNewApprovals() async {
         await removeAnsweredNotifications()
         let fresh = sessions.filter {
@@ -416,8 +430,9 @@ final class PhoneLink {
         fresh.forEach { notifiedFingerprints.insert($0.approvalFingerprint) }
         // The app is open: the request is on screen.
         guard UIApplication.shared.applicationState != .active else { return }
-        // Give the iCloud alert a moment to land first, then check the request still waits.
-        try? await Task.sleep(for: .seconds(3))
+        // The iCloud alert (filled in by the notification service) is the one banner. This one
+        // is only for when it never comes: give it time to land, then check the request still waits.
+        try? await Task.sleep(for: .seconds(12))
         _ = await fetchChanges()
         let shown = await Self.shownApprovals().map { $0.fingerprint }
         for session in fresh where !shown.contains(session.approvalFingerprint) {

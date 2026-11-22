@@ -121,6 +121,8 @@ final class LiveActivityRelay {
                 MainActor.assumeIsolated { self?.stateChanged(lead) }
             }
         log(relayURL == nil ? "on, but no relay address yet (relay/README.md)" : "on")
+        // The iPhone's tokens, read now: a start must not wait for a whole iCloud read.
+        Task { await refreshPhones() }
     }
 
     func stop() {
@@ -170,8 +172,10 @@ final class LiveActivityRelay {
             return
         }
         guard lockTask == nil else { return }
+        // Mac unlocked (the Botan app's way): a shorter wait, still enough to skip 3-second turns.
+        let wait = locked ? 20 : 8
         lockTask = Task {
-            try? await Task.sleep(for: .seconds(20))
+            try? await Task.sleep(for: .seconds(wait))
             lockTask = nil
             guard !Task.isCancelled, showsOnPhone, startedAt == nil, let latest, latest.isActive else { return }
             begin(latest)
@@ -191,11 +195,12 @@ final class LiveActivityRelay {
             doneTask?.cancel(); doneTask = nil
             flush()
         } else if doneTask == nil {
-            // Nothing going any more: show "done" for 10 minutes, then leave,
+            // Nothing going any more: show "done", then leave within a minute,
             // unless an agent starts again meanwhile.
             if lead != nil { flush() }
             doneTask = Task {
-                try? await Task.sleep(for: .seconds(10 * 60))
+                // The iPhone shows "Done" and ends it itself; this is for when it can't.
+                try? await Task.sleep(for: .seconds(60))
                 guard !Task.isCancelled else { return }
                 doneTask = nil
                 finish(dismissAfter: 0)
@@ -213,7 +218,8 @@ final class LiveActivityRelay {
         sent = state
         retries = 0
         Task {
-            await refreshPhones()
+            // Tokens already read (at start or on the last push): leave at once. Otherwise read them.
+            if phones.values.allSatisfy({ $0.startToken.isEmpty }) { await refreshPhones() }
             // The Mac unlocked meanwhile: don't leave.
             guard startedAt == start, showsOnPhone else { return }
             startSent = start
