@@ -819,6 +819,15 @@ private func openClaudeDesktopApp() {
     }
 }
 
+/// Settings → General → Clicking an agent opens its window: the session's terminal or app comes
+/// forward as Open terminal brings it. A pill with a waiting request stays on its card.
+@MainActor
+private func openWindowOnPillClick(_ task: AgentTask, state: AppState) {
+    guard state.clickOpensWindow, task.source != .n8n, state.pendingApproval?.pillId != task.id else { return }
+    if task.pill == "agent_claude-desktop" { openClaudeDesktopApp() } else { openSessionApp(task) }
+    NotificationCenter.default.post(name: .islandCollapse, object: nil)
+}
+
 // MARK: - Finished
 
 struct FinishedView: View {
@@ -4328,6 +4337,7 @@ struct AgentPillsView: View {
                 swapping = true
                 state.setFocus(task.id)
                 SoundEngine.shared.play("blip")
+                openWindowOnPillClick(task, state: state)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
             }
         }
@@ -4344,6 +4354,7 @@ struct AgentPillsView: View {
                 swapping = true
                 state.setFocus(task.id)
                 SoundEngine.shared.play("blip")
+                openWindowOnPillClick(task, state: state)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
             }
         }

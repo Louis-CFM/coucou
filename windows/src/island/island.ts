@@ -14,7 +14,7 @@ import {
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type AgentTask } from "../core/state";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -41,6 +41,13 @@ import { UPDATE_BLUE, showsUpdateHint } from "../whats-new/whats-new";
 const BOT_OVERHANG = 40;
 const UPDATE_BLUE_RGB = hexToRGB(UPDATE_BLUE);
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
+
+/** The window a session runs in; sessions from the Claude desktop app live there, not in a terminal. */
+function openSessionWindow(task: AgentTask | null | undefined) {
+  if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
+  else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
+}
+
 /** Extra canvas on each side of Mochi, for the witch hat's brim and the Santa hat's tip. */
 const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
@@ -213,14 +220,14 @@ export class Island {
         // A pill with a waiting request opens on its card: going back to it
         // after looking at another pill brings the card up again.
         const req = State.pendingApproval;
-        if (req?.pillId === id) this.setView(req.questions ? "question" : "approval");
-      },
-      openTerminal: () => {
         const task = State.focusTask;
-        // Sessions from the Claude desktop app live there, not in a terminal.
-        if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
-        else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
+        if (req?.pillId === id) this.setView(req.questions ? "question" : "approval");
+        // Settings → General → Clicking an agent opens its window.
+        else if (State.settings.clickOpensWindow && task && (task.sessionId || task.id === CLAUDE_DESKTOP_ID)) {
+          openSessionWindow(task);
+        }
       },
+      openTerminal: () => openSessionWindow(State.focusTask),
       // The ↗ button — same targets as openAgentTarget() on macOS.
       openTarget: () => {
         const task = State.focusTask;
