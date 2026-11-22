@@ -36,10 +36,6 @@ struct NewTaskView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dictation.stop(); dismiss() }
                 }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focused = false }
-                }
                 if let mac = link.macAgents, !mac.agents.isEmpty, sentTaskId == nil {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Start") { Task { await send(mac) } }
@@ -100,14 +96,28 @@ struct NewTaskView: View {
                         TextField("Fix the failing test, then explain why…", text: $text, axis: .vertical)
                             .lineLimit(4...12)
                             .focused($focused)
-                        Button {
-                            Task { await dictation.toggle(startingFrom: text) }
-                        } label: {
-                            Image(systemName: dictation.isRecording ? "waveform" : "mic.fill")
-                                .foregroundStyle(dictation.isRecording ? Color.red : Color.secondary)
-                                .symbolEffect(.variableColor.iterative, isActive: dictation.isRecording)
+                        VStack(spacing: 14) {
+                            Button {
+                                Task { await dictation.toggle(startingFrom: text) }
+                            } label: {
+                                Image(systemName: dictation.isRecording ? "waveform" : "mic.fill")
+                                    .foregroundStyle(dictation.isRecording ? Color.red : Color.secondary)
+                                    .symbolEffect(.variableColor.iterative, isActive: dictation.isRecording)
+                            }
+                            // Puts the keyboard away, in the field's own style.
+                            if focused {
+                                Button {
+                                    focused = false
+                                } label: {
+                                    Image(systemName: "keyboard.chevron.compact.down")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .transition(.opacity)
+                                .accessibilityLabel("Hide keyboard")
+                            }
                         }
                         .buttonStyle(.borderless)
+                        .animation(.easeOut(duration: 0.2), value: focused)
                     }
                 }
 
