@@ -205,9 +205,19 @@ final class InstructionRunner {
     /// A task still running after this is stopped.
     private static let taskTimeout: Duration = .seconds(30 * 60)
 
+    /// Folders read from the agents' own history (Claude Code, Codex), newest first;
+    /// read again every 5 minutes at most.
+    private var historyFolders: [String] = []
+    private var historyReadAt: Date?
+
     /// The folders agents worked in lately, newest first (kept across launches).
     private func recentProjects() -> [MacAgents.Project] {
+        if historyReadAt.map({ Date().timeIntervalSince($0) > 300 }) ?? true {
+            historyFolders = Self.foldersFromHistory()
+            historyReadAt = Date()
+        }
         var paths = UserDefaults.standard.stringArray(forKey: Self.projectsKey) ?? []
+        for folder in historyFolders.reversed() where !paths.contains(folder) { paths.append(folder) }
         for folder in TurnRecorder.shared.folders() where !paths.contains(folder) { paths.insert(folder, at: 0) }
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         paths = paths.filter { path in
@@ -218,6 +228,67 @@ final class InstructionRunner {
         paths = Array(paths.prefix(Self.maxProjects))
         UserDefaults.standard.set(paths, forKey: Self.projectsKey)
         return paths.map { MacAgents.Project(name: URL(fileURLWithPath: $0).lastPathComponent, path: $0) }
+    }
+
+    /// The working folders of the latest Claude Code and Codex conversations, newest first.
+    /// Each conversation file starts with its `cwd`; only the first bytes are read.
+    nonisolated static func foldersFromHistory() -> [String] {
+        let fm = FileManager.default
+        let home = fm.homeDirectoryForCurrentUser
+        var found: [(date: Date, path: String)] = []
+
+        func cwd(in file: URL) -> String? {
+            guard let handle = try? FileHandle(forReadingFrom: file) else { return nil }
+            defer { try? handle.close() }
+            let head = String(decoding: (try? handle.read(upToCount: 64 * 1024)) ?? Data(), as: UTF8.self)
+            guard let range = head.range(of: #""cwd"\s*:\s*"([^"]+)""#, options: .regularExpression) else { return nil }
+            let match = String(head[range])
+            guard let start = match.dropLast().lastIndex(of: "\"") else { return nil }
+            return String(match[match.index(after: start)..<match.index(before: match.endIndex)])
+                .replacingOccurrences(of: "\\/", with: "/")
+        }
+        func newest(_ files: [URL], _ count: Int) -> [(URL, Date)] {
+            files.compactMap { url -> (URL, Date)? in
+                guard let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+                else { return nil }
+                return (url, date)
+            }
+            .sorted { $0.1 > $1.1 }
+            .prefix(count)
+            .map { $0 }
+        }
+        func list(_ url: URL) -> [URL] {
+            (try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: [.contentModificationDateKey],
+                                         options: [.skipsHiddenFiles])) ?? []
+        }
+
+        // Claude Code: ~/.claude/projects/<folder>/<conversation>.jsonl
+        for (folder, _) in newest(list(home.appendingPathComponent(".claude/projects")), 25) {
+            let conversations = list(folder).filter { $0.pathExtension == "jsonl" }
+            if let latest = newest(conversations, 1).first, let path = cwd(in: latest.0) {
+                found.append((latest.1, path))
+            }
+        }
+        // Codex: ~/.codex/sessions/<year>/<month>/<day>/rollout-….jsonl, newest days first.
+        var files: [URL] = []
+        let sessions = home.appendingPathComponent(".codex/sessions")
+        outer: for year in list(sessions).sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
+            for month in list(year).sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
+                for day in list(month).sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
+                    files += list(day).filter { $0.pathExtension == "jsonl" }
+                    if files.count >= 40 { break outer }
+                }
+            }
+        }
+        for (file, date) in newest(files, 40) {
+            if let path = cwd(in: file) { found.append((date, path)) }
+        }
+
+        var paths: [String] = []
+        for item in found.sorted(by: { $0.date > $1.date }) where !paths.contains(item.path) {
+            paths.append(item.path)
+        }
+        return paths
     }
 
     private func moveToFront(_ path: String) {

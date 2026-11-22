@@ -36,6 +36,10 @@ struct NewTaskView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dictation.stop(); dismiss() }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focused = false }
+                }
                 if let mac = link.macAgents, !mac.agents.isEmpty, sentTaskId == nil {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Start") { Task { await send(mac) } }
@@ -43,6 +47,8 @@ struct NewTaskView: View {
                     }
                 }
             }
+            // A drag or a tap outside the field puts the keyboard away, like Notes.
+            .scrollDismissesKeyboard(.immediately)
             .onChange(of: dictation.transcript) { _, words in
                 if dictation.isRecording { text = dictation.prefix + words }
             }
@@ -75,7 +81,7 @@ struct NewTaskView: View {
                         ForEach(mac.agents, id: \.self) { Text($0.name).tag($0) }
                     }
                     if mac.projects.isEmpty {
-                        Text("No recent folder yet. Work in a project with an agent on your Mac once, it shows up here.")
+                        Text("No recent folder yet. Start can't send a task without one: work in a project with Claude Code or Codex on your Mac, it shows up here within a minute.")
                             .font(.footnote).foregroundStyle(.secondary)
                     } else {
                         Picker("Project", selection: Binding(get: { project(mac)?.path ?? "" },
