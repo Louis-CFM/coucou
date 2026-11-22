@@ -35,7 +35,7 @@ final class BotanLinkService: NSObject, ObservableObject {
     static let eventUUID = CBUUID(string: "b07a0003-6d6f-6368-6900-626f74616e00")   // notify: the button
 
     enum Status: Equatable {
-        case off, bluetoothOff, unauthorized, searching, connecting, linked(String)
+        case off, bluetoothOff, unauthorized, searching, connecting, pairing, linked(String)
     }
 
     @Published private(set) var status: Status = .off
@@ -163,6 +163,13 @@ final class BotanLinkService: NSObject, ObservableObject {
         writing = true
         shown = want
         p.writeValue(data, for: ch, type: .withResponse)
+    }
+
+    /// Writes again in a moment (the pairing code being typed, or a hiccup).
+    private func retryLater() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            MainActor.assumeIsolated { self?.flush() }
+        }
     }
 
     /// The island's picture, as Botan's one screen. The demo is not real: Botan is told nothing runs.
@@ -293,12 +300,9 @@ extension BotanLinkService: @preconcurrency CBCentralManagerDelegate, @preconcur
             central?.cancelPeripheralConnection(peripheral)
             return
         }
-        if Self.knownID == nil {
-            Self.knownID = peripheral.identifier
-            hasKnown = true
-        }
-        status = .linked(peripheral.name ?? "Botan")
-        Self.log("linked")
+        // The first write needs the link encrypted: macOS asks for the code Botan shows the first
+        // time, then remembers it. "Linked" once Botan took a line.
+        status = .pairing
         shown = nil
         publish()
     }
@@ -306,11 +310,38 @@ extension BotanLinkService: @preconcurrency CBCentralManagerDelegate, @preconcur
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         writing = false
         if let error {
+            // Not paired yet (the code is being typed), or a hiccup: try again in a moment.
             Self.log("write failed: \(error.localizedDescription)")
-            shown = nil  // written again with the next change
+            shown = nil
+            retryLater()
             return
         }
+        if case .linked = status {} else {
+            // Botan took a line: the link is paired and encrypted. This Botan is the one from now on.
+            if Self.knownID == nil {
+                Self.knownID = peripheral.identifier
+                hasKnown = true
+            }
+            status = .linked(peripheral.name ?? "Botan")
+            Self.log("linked")
+        }
         flush()  // something changed while this line was on its way
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        // Listening to the button also needs the pairing: asked again until it is done.
+        guard error != nil, characteristic.uuid == Self.eventUUID else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            MainActor.assumeIsolated { self?.listenAgain() }
+        }
+    }
+
+    /// Subscribes to the button again, on the Botan linked now (looked up, not carried along).
+    private func listenAgain() {
+        guard let p = peripheral, p.state == .connected,
+              let ch = p.services?.first(where: { $0.uuid == Self.serviceUUID })?.characteristics?
+                .first(where: { $0.uuid == Self.eventUUID }) else { return }
+        p.setNotifyValue(true, for: ch)
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {

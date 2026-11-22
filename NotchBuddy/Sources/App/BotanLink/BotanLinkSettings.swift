@@ -32,6 +32,7 @@ struct BotanLinkSettingsBox: View {
         switch link.status {
         case .off: return String(localized: "botan.link.status.searching")
         case .searching, .connecting: return String(localized: "botan.link.status.searching")
+        case .pairing: return String(localized: "botan.link.status.pairing")
         case .bluetoothOff: return String(localized: "botan.link.status.bluetooth")
         case .unauthorized: return String(localized: "botan.link.status.unauthorized")
         case .linked(let name): return String(format: String(localized: "botan.link.status.linked %@"), name)

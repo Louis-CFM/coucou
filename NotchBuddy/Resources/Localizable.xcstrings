@@ -105605,6 +105605,106 @@
           }
         }
       }
+    },
+    "botan.link.status.pairing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pairing: type the code shown on Botan when your Mac asks for it."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairage : tape le code affiché sur Botan quand ton Mac le demande."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopplung: Gib den auf Botan angezeigten Code ein, wenn dein Mac danach fragt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparejamiento: escribe el código que muestra Botan cuando tu Mac lo pida."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparelhamento: digite o código mostrado no Botan quando o Mac pedir."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الاقتران: اكتب الرمز الظاهر على Botan عندما يطلبه جهاز Mac."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "পেয়ারিং: আপনার Mac চাইলে Botan-এ দেখানো কোডটি লিখুন।"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पेयरिंग: जब आपका Mac पूछे, तो Botan पर दिखा कोड टाइप करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pemasangan: ketik kode yang tampil di Botan saat Mac Anda memintanya."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペアリング：Mac に求められたら、Botan に表示されたコードを入力してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "페어링: Mac이 요청하면 Botan에 표시된 코드를 입력하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сопряжение: введите код, показанный на Botan, когда Mac его попросит."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การจับคู่: พิมพ์รหัสที่แสดงบน Botan เมื่อ Mac ขอ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eşleştirme: Mac'in istediğinde Botan'da görünen kodu yaz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配对：Mac 请求时，输入 Botan 上显示的代码。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配對：Mac 要求時，輸入 Botan 上顯示的代碼。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

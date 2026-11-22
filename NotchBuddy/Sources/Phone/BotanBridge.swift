@@ -40,7 +40,7 @@ final class BotanBridge: NSObject {
     static let eventUUID = CBUUID(string: "b07a0003-6d6f-6368-6900-626f74616e00")
 
     enum Status: Equatable {
-        case off, bluetoothOff, unauthorized, searching, connecting, linked(String)
+        case off, bluetoothOff, unauthorized, searching, connecting, pairing, linked(String)
     }
 
     private(set) var status: Status = .off
@@ -301,13 +301,9 @@ extension BotanBridge: @preconcurrency CBCentralManagerDelegate, @preconcurrency
             central?.cancelPeripheralConnection(peripheral)
             return
         }
-        // The first Botan met is the one: remembered from now on.
-        if Self.knownID == nil {
-            Self.knownID = peripheral.identifier
-            knownName = peripheral.name ?? "Botan"
-            UserDefaults.standard.set(knownName, forKey: Self.knownKey + "Name")
-        }
-        status = .linked(peripheral.name ?? "Botan")
+        // The first write needs the link encrypted: iOS asks for the code Botan shows the first time,
+        // then remembers it. "Linked" once Botan took a line.
+        status = .pairing
         shown = nil
         sessionsChanged()
     }
@@ -315,10 +311,39 @@ extension BotanBridge: @preconcurrency CBCentralManagerDelegate, @preconcurrency
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         writing = false
         if error != nil {
+            // Not paired yet (the code is being typed), or a hiccup: try again in a moment.
             shown = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                MainActor.assumeIsolated { self?.flush() }
+            }
             return
         }
+        if case .linked = status {} else {
+            // Botan took a line: paired and encrypted. The first Botan paired is the one from now on.
+            if Self.knownID == nil {
+                Self.knownID = peripheral.identifier
+                knownName = peripheral.name ?? "Botan"
+                UserDefaults.standard.set(knownName, forKey: Self.knownKey + "Name")
+            }
+            status = .linked(peripheral.name ?? "Botan")
+        }
         flush()
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        // Listening to the button also needs the pairing: asked again until it is done.
+        guard error != nil, characteristic.uuid == Self.eventUUID else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            MainActor.assumeIsolated { self?.listenAgain() }
+        }
+    }
+
+    /// Subscribes to the button again, on the Botan linked now (looked up, not carried along).
+    private func listenAgain() {
+        guard let p = peripheral, p.state == .connected,
+              let ch = p.services?.first(where: { $0.uuid == Self.serviceUUID })?.characteristics?
+                .first(where: { $0.uuid == Self.eventUUID }) else { return }
+        p.setNotifyValue(true, for: ch)
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {

@@ -62,12 +62,19 @@ actor right before answering the hook, exactly as a click on the island's card d
 screen never answers a newer request. Botan never denies, never types, never answers what it was not
 shown; the Mac's own card keeps working all along.
 
-## Which Botan
+## Pairing, and which Botan
 
-Coucou links to the first Botan it meets and remembers it (its Bluetooth identifier); afterwards it only
-links to that one, so a look-alike device nearby is never linked. "Forget this Botan" (Mac and iPhone
-settings) links the next one met. Next step before Botan ships: a pairing code shown on Botan's screen
-(Bluetooth passkey), so the first link is authenticated too.
+The first time an iPhone or a Mac links, Botan shows a 6-digit code on its screen (a new random one for
+each attempt) and the system asks for it (Bluetooth passkey entry, LE Secure Connections, bonded). Botan's
+characteristics need that encrypted, authenticated link: nothing can be written to its screen or heard
+from its button without it, and nobody can pass for Botan to a device that paired with the real one.
+Coucou says "Pairing: type the code shown on Botan" until Botan takes its first line, and retries the
+write and the subscription every 1.5 s while the code is being typed.
+
+Coucou also remembers the first Botan it paired with (its Bluetooth identifier) and only links to that one.
+"Forget this Botan" (Mac and iPhone settings) links the next one met; to pair again from scratch, also
+remove Botan from the system's Bluetooth settings, and send `forget` to Botan over USB (it clears its
+pairings).
 
 ## The iPhone, locked
 

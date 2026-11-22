@@ -24,6 +24,7 @@ struct AboutView: View {
         switch BotanBridge.shared.status {
         case .off, .searching: return "Looking for it nearby…"
         case .connecting: return "Linking…"
+        case .pairing: return "Type the code shown on Botan"
         case .bluetoothOff: return "Bluetooth is off"
         case .unauthorized: return "Allow Bluetooth in Settings → Coucou"
         case .linked(let name): return "Linked to \(name)"
