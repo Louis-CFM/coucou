@@ -7,5 +7,5 @@ cd "$(dirname "$0")/.."
 TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/coucou-botan-link.XXXXXX")"
 trap 'rm -rf "$TEST_DIR"' EXIT
 swiftc -swift-version 6 -strict-concurrency=complete \
-    NotchBuddy/Sources/App/BotanLink/BotanLinkScreen.swift tests/BotanLinkTests.swift -o "$TEST_DIR/botan-link-tests"
+    NotchBuddy/Sources/CoucouKit/BotanLinkScreen.swift tests/BotanLinkTests.swift -o "$TEST_DIR/botan-link-tests"
 "$TEST_DIR/botan-link-tests"

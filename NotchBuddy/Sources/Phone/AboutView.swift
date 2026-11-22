@@ -12,7 +12,23 @@ struct AboutView: View {
     @AppStorage(PhoneSettings.quietFromKey) private var quietFrom = 22 * 60
     @AppStorage(PhoneSettings.quietToKey) private var quietTo = 8 * 60
     @AppStorage(SpotlightIndex.enabledKey) private var spotlight = true
+    @AppStorage(BotanBridge.enabledKey) private var botan = false
     @State private var currentIcon = AppIconChoice.current
+
+    private var botanLinked: Bool {
+        if case .linked = BotanBridge.shared.status { return true }
+        return false
+    }
+
+    private var botanStatus: String {
+        switch BotanBridge.shared.status {
+        case .off, .searching: return "Looking for it nearby…"
+        case .connecting: return "Linking…"
+        case .bluetoothOff: return "Bluetooth is off"
+        case .unauthorized: return "Allow Bluetooth in Settings → Coucou"
+        case .linked(let name): return "Linked to \(name)"
+        }
+    }
 
     private var version: String {
         let info = Bundle.main.infoDictionary
@@ -56,6 +72,23 @@ struct AboutView: View {
                     }
                 }
                 Button("How to connect your Mac") { showGuide = true }
+            }
+
+            Section {
+                Toggle("Link with Botan", isOn: $botan)
+                    .onChange(of: botan) { _, on in BotanBridge.shared.setEnabled(on) }
+                if botan {
+                    LabeledContent("Botan") {
+                        Text(botanStatus).foregroundStyle(botanLinked ? Color.secondary : Color.orange)
+                    }
+                    if BotanBridge.shared.knownName != nil {
+                        Button("Forget this Botan") { BotanBridge.shared.forget() }
+                    }
+                }
+            } header: {
+                Text("Botan")
+            } footer: {
+                Text("Botan is the little screen with one button on the back of your iPhone. It shows what your agents are doing on your Mac, and its button allows a request or picks an answer without unlocking your iPhone. Keep Coucou in the app switcher so it can stay linked while your iPhone is locked.")
             }
 
             Section {

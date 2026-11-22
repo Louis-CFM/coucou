@@ -39,6 +39,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Coucou uses Bluetooth to show your agents on Botan, the little screen on the back of your iPhone, and to take its button's answer.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Coucou asks for Face ID before allowing a command from your iPhone.</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -54,6 +56,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>bluetooth-central</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

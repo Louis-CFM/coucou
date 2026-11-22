@@ -8,7 +8,8 @@ import Foundation
 //     #token state|label|title|detail        (token: only on approvals and questions)
 //
 // This file is pure: the island's picture in, the line out, and the button's events checked against
-// the request still waiting. The Bluetooth side (BotanLinkService) knows nothing about the rules.
+// the request still waiting. It is shared: the Mac links Botan directly (BotanLinkService), the iPhone
+// links it through iCloud (BotanBridge), and both go by the same rules.
 //
 // The rules that matter:
 //   * one screen at a time, the most urgent first: a permission request, then a question, then an
@@ -99,6 +100,12 @@ enum BotanLinkScreen {
             return BotanScreen(line: sessionLine(s), token: nil, request: nil)
         }
         return BotanScreen(line: compose("idle", "BOTAN", "Mochi is here.", "Nothing running on your Mac."), token: nil, request: nil)
+    }
+
+    /// Botan's heartbeat ("tick", every few seconds while linked): it decides nothing, it only wakes
+    /// a locked iPhone up so it can look for news.
+    static func isTick(_ event: String) -> Bool {
+        event.trimmingCharacters(in: .whitespacesAndNewlines) == "tick"
     }
 
     /// A button event ("approve|#token", "choose|1|Alloy|#token", "press"), checked against the screen.

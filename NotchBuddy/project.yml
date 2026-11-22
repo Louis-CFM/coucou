@@ -328,12 +328,15 @@ targets:
         UIApplicationSupportsIndirectInputEvents: YES
         UIBackgroundModes:
           - remote-notification
+          # Botan (BotanBridge): keeps the link and takes its button with the iPhone locked.
+          - bluetooth-central
         # Portrait, except a diff opened full screen (PhoneAppDelegate decides).
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: NO
+        NSBluetoothAlwaysUsageDescription: "Coucou uses Bluetooth to show your agents on Botan, the little screen on the back of your iPhone, and to take its button's answer."
         NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
         NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for Claude Code."
         NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of an instruction for Claude Code."

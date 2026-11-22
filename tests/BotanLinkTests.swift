@@ -2,7 +2,7 @@ import Foundation
 
 // Checks what Botan's screen shows for the island's picture, and that its button only ever answers
 // the request still pending (docs/BOTAN_LINK.md). Compiled by scripts/test-botan-link.sh with the pure
-// NotchBuddy/Sources/App/BotanLink/BotanLinkScreen.swift.
+// NotchBuddy/Sources/CoucouKit/BotanLinkScreen.swift.
 
 nonisolated(unsafe) var failures = 0
 func check(_ condition: @autoclosure () -> Bool, _ what: String, line: Int = #line) {
@@ -93,6 +93,8 @@ struct BotanLinkTests {
             if case .ignore = BotanLinkScreen.decision(for: "approve", screen: a) {} else { check(false, "no token, no decision") }
             if case .ignore = BotanLinkScreen.decision(for: "deny|#4f2a9c1e", screen: a) {} else { check(false, "Botan never denies") }
             if case .ignore = BotanLinkScreen.decision(for: "press", screen: a) {} else { check(false, "a plain press decides nothing") }
+            if case .ignore = BotanLinkScreen.decision(for: "tick", screen: a) {} else { check(false, "the heartbeat decides nothing") }
+            check(BotanLinkScreen.isTick("tick\n") && !BotanLinkScreen.isTick("approve|#4f2a9c1e"), "heartbeat")
 
             // The request changed between the screen and the press: the old token answers nothing.
             let b = BotanLinkScreen.screen(sessions: [], approval: BotanApprovalIn(requestId: "AAAABBBB-1", agent: "Claude Code",

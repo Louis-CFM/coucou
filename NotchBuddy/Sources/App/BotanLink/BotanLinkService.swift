@@ -27,6 +27,8 @@ import CoreBluetooth
 final class BotanLinkService: NSObject, ObservableObject {
     static let shared = BotanLinkService()
     static let enabledKey = "botanLinkEnabled"
+    /// The Botan this Mac links to: the first one met, and only that one afterwards.
+    static let knownKey = "botanLinkPeripheral"
 
     static let serviceUUID = CBUUID(string: "b07a0001-6d6f-6368-6900-626f74616e00")
     static let stateUUID = CBUUID(string: "b07a0002-6d6f-6368-6900-626f74616e00")   // write: the line
@@ -37,6 +39,7 @@ final class BotanLinkService: NSObject, ObservableObject {
     }
 
     @Published private(set) var status: Status = .off
+    @Published private(set) var hasKnown = UserDefaults.standard.string(forKey: BotanLinkService.knownKey) != nil
 
     private var central: CBCentralManager?
     private var peripheral: CBPeripheral?
@@ -60,6 +63,20 @@ final class BotanLinkService: NSObject, ObservableObject {
     func setEnabled(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: Self.enabledKey)
         if on { start() } else { stop() }
+    }
+
+    private static var knownID: UUID? {
+        get { UserDefaults.standard.string(forKey: knownKey).flatMap(UUID.init(uuidString:)) }
+        set { UserDefaults.standard.set(newValue?.uuidString, forKey: knownKey) }
+    }
+
+    /// Links the next Botan met instead of the remembered one.
+    func forget() {
+        Self.knownID = nil
+        hasKnown = false
+        if let p = peripheral { central?.cancelPeripheralConnection(p) }
+        lost()
+        Self.log("forgot the remembered Botan")
     }
 
     // MARK: Start and stop
@@ -88,8 +105,8 @@ final class BotanLinkService: NSObject, ObservableObject {
 
     private func scan() {
         guard let central, central.state == .poweredOn else { return }
-        // Already paired at the system level? Take it back without scanning.
-        if let known = central.retrieveConnectedPeripherals(withServices: [Self.serviceUUID]).first {
+        // The remembered Botan: a pending connection, made again by the system when it comes back.
+        if let id = Self.knownID, let known = central.retrievePeripherals(withIdentifiers: [id]).first {
             connect(known)
             return
         }
@@ -193,6 +210,7 @@ final class BotanLinkService: NSObject, ObservableObject {
     // MARK: From Botan's button to the island
 
     private func handle(event: String) {
+        if BotanLinkScreen.isTick(event) { return }  // the Mac is awake anyway
         switch BotanLinkScreen.decision(for: event, screen: shown) {
         case .allow(let requestId):
             // Checked again right before answering the hook: the request must still be the one on the card.
@@ -238,6 +256,8 @@ extension BotanLinkService: @preconcurrency CBCentralManagerDelegate, @preconcur
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
         guard self.peripheral == nil else { return }
+        // Only the remembered Botan, once there is one: a look-alike nearby is never linked.
+        if let id = Self.knownID, id != peripheral.identifier { return }
         Self.log("found \(peripheral.name ?? "Botan")")
         connect(peripheral)
     }
@@ -272,6 +292,10 @@ extension BotanLinkService: @preconcurrency CBCentralManagerDelegate, @preconcur
         guard stateChar != nil else {
             central?.cancelPeripheralConnection(peripheral)
             return
+        }
+        if Self.knownID == nil {
+            Self.knownID = peripheral.identifier
+            hasKnown = true
         }
         status = .linked(peripheral.name ?? "Botan")
         Self.log("linked")

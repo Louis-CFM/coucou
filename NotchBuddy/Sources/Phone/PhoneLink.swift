@@ -26,6 +26,9 @@ struct SessionItem: Identifiable, Codable, Equatable {
     let steps: [String]
     let needsApproval: Bool
     let approvalCommand: String
+    /// The tool asking ("Bash", "Edit"…), for Botan's one line. Optional: sessions cached by an
+    /// earlier version have none, and must still load.
+    let approvalTool: String?
     let approvalFingerprint: String
     /// The Mac runs instructions sent from here for this session (GitHub build, switch on).
     let acceptsInstructions: Bool
@@ -47,6 +50,7 @@ struct SessionItem: Identifiable, Codable, Equatable {
         steps = record.encryptedValues["steps"] as? [String] ?? []
         needsApproval = record["needsApproval"] as? Bool ?? false
         approvalCommand = record.encryptedValues["approvalCommand"] as? String ?? ""
+        approvalTool = record.encryptedValues["approvalTool"] as? String ?? ""
         approvalFingerprint = record["approvalFingerprint"] as? String ?? ""
         acceptsInstructions = record["acceptsInstructions"] as? Bool ?? false
         question = record.encryptedValues["question"] as? String ?? ""
@@ -185,13 +189,16 @@ final class PhoneLink {
         if !subscribed { await subscribe() }
         if subscribed && !approvalsSubscribed { await subscribeToApprovals() }
         _ = await fetchChanges()
+        BotanBridge.shared.sessionsChanged()
         await notifyNewApprovals()
         await postEvents()
     }
 
-    /// Called on a CloudKit push. Returns true when new records arrived.
+    /// Called on a CloudKit push (and on Botan's heartbeat). Returns true when new records arrived.
     func handlePush() async -> Bool {
         let gotNew = await fetchChanges()
+        // Botan first: it is what a locked iPhone shows.
+        BotanBridge.shared.sessionsChanged()
         await notifyNewApprovals()
         await postEvents()
         return gotNew

@@ -17,7 +17,12 @@ struct BotanLinkSettingsBox: View {
                 Toggle(String(localized: "botan.link.toggle"), isOn: $enabled)
                     .onChange(of: enabled) { _, on in link.setEnabled(on) }
                 note(String(localized: "botan.link.description"))
-                if enabled { note(statusText) }
+                if enabled {
+                    note(statusText)
+                    if link.hasKnown {
+                        Button(String(localized: "botan.link.forget")) { link.forget() }
+                    }
+                }
             }
             .padding(6)
         }
