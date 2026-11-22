@@ -336,6 +336,12 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: NO
+        # Botan is set up with AccessorySetupKit (the system sheet): on iOS 26 that lets iOS relaunch
+        # Coucou for Botan even after it was swiped away in the app switcher.
+        NSAccessorySetupKitSupports:
+          - Bluetooth
+        NSAccessorySetupBluetoothServices:
+          - B07A0001-6D6F-6368-6900-626F74616E00
         NSBluetoothAlwaysUsageDescription: "Coucou uses Bluetooth to show your agents on Botan, the little screen on the back of your iPhone, and to take its button's answer."
         NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
         NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for Claude Code."

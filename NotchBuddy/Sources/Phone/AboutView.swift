@@ -22,6 +22,7 @@ struct AboutView: View {
 
     private var botanStatus: String {
         switch BotanBridge.shared.status {
+        case .setup: return "No Botan yet"
         case .off, .searching: return "Looking for it nearby…"
         case .connecting: return "Linking…"
         case .pairing: return "Type the code shown on Botan"
@@ -82,6 +83,9 @@ struct AboutView: View {
                     LabeledContent("Botan") {
                         Text(botanStatus).foregroundStyle(botanLinked ? Color.secondary : Color.orange)
                     }
+                    if BotanBridge.shared.status == .setup {
+                        Button("Find Botan") { BotanBridge.shared.findBotan() }
+                    }
                     if BotanBridge.shared.knownName != nil {
                         Button("Forget this Botan") { BotanBridge.shared.forget() }
                     }
@@ -89,7 +93,7 @@ struct AboutView: View {
             } header: {
                 Text("Botan")
             } footer: {
-                Text("Botan is the little screen with one button on the back of your iPhone. It shows what your agents are doing on your Mac, and its button allows a request or picks an answer without unlocking your iPhone. Keep Coucou in the app switcher so it can stay linked while your iPhone is locked.")
+                Text("Botan is the little screen with one button on the back of your iPhone. It shows what your agents are doing on your Mac, and its button allows a request or picks an answer without unlocking your iPhone. It stays linked with your iPhone locked, and on iOS 26 even after you close Coucou.")
             }
 
             Section {

@@ -88,7 +88,12 @@ pairings).
 - the `tick` wakes the app every 15 s: when iOS holds back iCloud's quiet pushes, the app looks for news
   itself (at most every 8 s);
 - state restoration (`CBCentralManagerOptionRestoreIdentifierKey`): when iOS ends the app to free memory,
-  it relaunches it for Botan. A user who swipes Coucou away in the app switcher stops all of this.
+  it relaunches it for Botan;
+- AccessorySetupKit: Botan is picked once in the system's accessory sheet (Settings → Botan → Find Botan),
+  and Coucou only links to that one (no scanning around). Since iOS 26, iOS relaunches only apps that set
+  their accessory up this way after the user swiped them away in the app switcher (TN3115), so Botan stays
+  linked with Coucou closed. On iOS 18 to 25, a swipe stops the link until Coucou is opened again.
+  "Forget this Botan" removes the accessory (iOS forgets the pairing too).
 
 The screen comes from the sessions the Mac publishes (`SessionItem`): the newest approval (token: the
 approval fingerprint), then the newest question, then the sessions. A press on Botan does not ask for Face

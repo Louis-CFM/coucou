@@ -39,6 +39,14 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAccessorySetupKitSupports</key>
+	<array>
+		<string>Bluetooth</string>
+	</array>
+	<key>NSAccessorySetupBluetoothServices</key>
+	<array>
+		<string>B07A0001-6D6F-6368-6900-626F74616E00</string>
+	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Coucou uses Bluetooth to show your agents on Botan, the little screen on the back of your iPhone, and to take its button's answer.</string>
 	<key>NSFaceIDUsageDescription</key>

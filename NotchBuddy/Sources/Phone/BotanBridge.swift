@@ -1,6 +1,8 @@
+import AccessorySetupKit
 import CoreBluetooth
 import Foundation
 import Observation
+import SwiftUI
 import UIKit
 
 // MARK: - Botan on the iPhone: the bridge (docs/BOTAN_LINK.md)
@@ -15,14 +17,16 @@ import UIKit
 //   * Botan's events wake the app too (bluetooth-central): a press is sent to iCloud right away;
 //   * Botan sends a heartbeat ("tick") every 15 s: when iCloud's quiet pushes are held back by iOS,
 //     the tick wakes the app and it looks for news itself, so Botan is never more than a few seconds late;
-//   * if iOS ends the app to free memory, it relaunches it for Botan (state restoration).
-//   A user who swipes the app away in the app switcher stops all of this, as iOS wants.
+//   * if iOS ends the app to free memory, it relaunches it for Botan (state restoration);
+//   * Botan is set up with AccessorySetupKit (the system's "pair an accessory" sheet): since iOS 26,
+//     that is what lets iOS relaunch the app for Botan even after the app was swiped away in the
+//     app switcher (TN3115). Before iOS 26, a swipe stops the link until the app is opened again.
 //
 // Safety:
 //   * a press only counts with the token of the screen it was pressed on, and only for the request
 //     still pending (BotanLinkScreen.decision); the Mac checks the fingerprint again before applying it;
 //   * Botan allows or picks, never denies or types;
-//   * Coucou links to one Botan: the first one it meets, remembered, and only that one afterwards
+//   * Coucou links to one Botan: the one picked in the system sheet, and only that one afterwards
 //     ("Forget this Botan" to change). A look-alike device nearby is never linked;
 //   * off by default. A press on Botan does not ask for Face ID: that is the point of a button on the
 //     back of the iPhone, and the switch says so.
@@ -40,7 +44,8 @@ final class BotanBridge: NSObject {
     static let eventUUID = CBUUID(string: "b07a0003-6d6f-6368-6900-626f74616e00")
 
     enum Status: Equatable {
-        case off, bluetoothOff, unauthorized, searching, connecting, pairing, linked(String)
+        /// `setup`: no Botan picked yet (the system sheet, from "Find Botan").
+        case off, setup, bluetoothOff, unauthorized, searching, connecting, pairing, linked(String)
     }
 
     private(set) var status: Status = .off
@@ -48,6 +53,9 @@ final class BotanBridge: NSObject {
     private(set) var knownName: String?
 
     @ObservationIgnored private var central: CBCentralManager?
+    @ObservationIgnored private var accessories: ASAccessorySession?
+    /// Show the system sheet as soon as the session is ready (the switch was just turned on).
+    @ObservationIgnored private var pickWhenReady = false
     @ObservationIgnored private var peripheral: CBPeripheral?
     @ObservationIgnored private var stateChar: CBCharacteristic?
     @ObservationIgnored private var shown: BotanScreen?
@@ -68,13 +76,41 @@ final class BotanBridge: NSObject {
         if Self.isEnabled { start() }
     }
 
+    /// From the switch (the app is open): turning it on shows the system sheet when no Botan is set up.
     func setEnabled(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: Self.enabledKey)
-        if on { start() } else { stop() }
+        if on {
+            pickWhenReady = true
+            start()
+        } else {
+            stop()
+        }
     }
 
-    /// Links the next Botan met instead of the remembered one.
+    /// The system sheet that finds Botan nearby ("Find Botan"). The app must be open.
+    func findBotan() {
+        guard let accessories else {
+            pickWhenReady = true
+            start()
+            return
+        }
+        pickWhenReady = false
+        let item = ASPickerDisplayItem(name: "Botan", productImage: Self.pickerImage(), descriptor: Self.descriptor())
+        accessories.showPicker(for: [item]) { error in
+            // Dismissed or failed: the status stays "setup", "Find Botan" tries again.
+            if let error { print("Botan sheet: \(error.localizedDescription)") }
+        }
+    }
+
+    /// Forgets this Botan (also on the iPhone's side), then waits for another to be picked.
     func forget() {
+        if let session = accessories, let accessory = session.accessories.first(where: { $0.bluetoothIdentifier == Self.knownID }) {
+            session.removeAccessory(accessory) { _ in }  // the removed event clears the rest
+        }
+        dropKnown()
+    }
+
+    private func dropKnown() {
         Self.knownID = nil
         knownName = nil
         UserDefaults.standard.removeObject(forKey: Self.knownKey + "Name")
@@ -82,7 +118,57 @@ final class BotanBridge: NSObject {
         peripheral = nil
         stateChar = nil
         shown = nil
+        writing = false
+        if central != nil { status = .setup }
+    }
+
+    /// The Botan set up in the system sheet becomes the one Coucou links to.
+    private func adopt(_ id: UUID, name: String) {
+        guard Self.knownID != id || peripheral == nil else { return }
+        if let p = peripheral, p.identifier != id { central?.cancelPeripheralConnection(p) }
+        peripheral = nil
+        Self.knownID = id
+        knownName = name
+        UserDefaults.standard.set(name, forKey: Self.knownKey + "Name")
         scan()
+    }
+
+    private func handle(accessoryEvent type: ASAccessoryEventType, id: UUID?, name: String?) {
+        switch type {
+        case .activated:
+            // The Botan set up before (or none: a link from before AccessorySetupKit is set up again).
+            if let first = accessories?.accessories.first(where: { $0.bluetoothIdentifier != nil }),
+               let id = first.bluetoothIdentifier {
+                if Self.knownID != id || peripheral == nil { adopt(id, name: first.displayName) }
+            } else {
+                dropKnown()
+                if pickWhenReady { findBotan() }
+            }
+        case .accessoryAdded, .accessoryChanged:
+            if let id { adopt(id, name: name ?? "Botan") }
+        case .accessoryRemoved:
+            if id == nil || id == Self.knownID { dropKnown() }
+        default:
+            break
+        }
+    }
+
+    static func descriptor() -> ASDiscoveryDescriptor {
+        let d = ASDiscoveryDescriptor()
+        d.bluetoothServiceUUID = serviceUUID
+        return d
+    }
+
+    /// Mochi on Botan's black screen, for the system sheet.
+    static func pickerImage() -> UIImage {
+        let view = ZStack {
+            RoundedRectangle(cornerRadius: 36, style: .continuous).fill(Color.black)
+            MochiStill(showBadge: false).padding(34)
+        }
+        .frame(width: 200, height: 200)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 3
+        return renderer.uiImage ?? UIImage()
     }
 
     // MARK: Start and stop
@@ -93,12 +179,24 @@ final class BotanBridge: NSObject {
         // relaunch the app for Botan after ending it to free memory.
         central = CBCentralManager(delegate: self, queue: .main,
                                    options: [CBCentralManagerOptionRestoreIdentifierKey: Self.restoreID])
+        // The system's accessory session: which Botan was picked, and the sheet to pick one.
+        let session = ASAccessorySession()
+        accessories = session
+        session.activate(on: .main) { [weak self] event in
+            let type = event.eventType
+            let id = event.accessory?.bluetoothIdentifier
+            let name = event.accessory?.displayName
+            MainActor.assumeIsolated { self?.handle(accessoryEvent: type, id: id, name: name) }
+        }
     }
 
     private func stop() {
         if let p = peripheral { central?.cancelPeripheralConnection(p) }
         central?.stopScan()
         central = nil
+        accessories?.invalidate()
+        accessories = nil
+        pickWhenReady = false
         peripheral = nil
         stateChar = nil
         shown = nil
@@ -111,14 +209,18 @@ final class BotanBridge: NSObject {
         guard let central, central.state == .poweredOn, peripheral == nil else { return }
         // The remembered Botan: a pending connection never times out on iOS, so it links again
         // by itself when Botan comes back in range or restarts, even with the iPhone locked.
-        if let id = Self.knownID {
-            if let known = central.retrievePeripherals(withIdentifiers: [id]).first {
-                connect(known)
-                return
-            }
+        // Only the Botan picked in the system sheet: no scanning around.
+        guard let id = Self.knownID else {
+            status = .setup
+            return
         }
-        status = .searching
-        central.scanForPeripherals(withServices: [Self.serviceUUID], options: nil)
+        if let known = central.retrievePeripherals(withIdentifiers: [id]).first {
+            connect(known)
+        } else {
+            // Not known to Bluetooth yet: look for it (only accessories set up in the sheet show up).
+            status = .searching
+            central.scanForPeripherals(withServices: [Self.serviceUUID], options: nil)
+        }
     }
 
     private func connect(_ p: CBPeripheral) {
@@ -251,9 +353,8 @@ extension BotanBridge: @preconcurrency CBCentralManagerDelegate, @preconcurrency
 
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
-        guard self.peripheral == nil else { return }
-        // Only the remembered Botan, once there is one.
-        if let id = Self.knownID, id != peripheral.identifier { return }
+        // Only the Botan picked in the system sheet.
+        guard self.peripheral == nil, let id = Self.knownID, id == peripheral.identifier else { return }
         connect(peripheral)
     }
 
@@ -319,13 +420,8 @@ extension BotanBridge: @preconcurrency CBCentralManagerDelegate, @preconcurrency
             return
         }
         if case .linked = status {} else {
-            // Botan took a line: paired and encrypted. The first Botan paired is the one from now on.
-            if Self.knownID == nil {
-                Self.knownID = peripheral.identifier
-                knownName = peripheral.name ?? "Botan"
-                UserDefaults.standard.set(knownName, forKey: Self.knownKey + "Name")
-            }
-            status = .linked(peripheral.name ?? "Botan")
+            // Botan took a line: paired and encrypted.
+            status = .linked(knownName ?? peripheral.name ?? "Botan")
         }
         flush()
     }
