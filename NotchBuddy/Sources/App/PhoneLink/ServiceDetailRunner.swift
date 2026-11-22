@@ -273,6 +273,16 @@ enum ServiceAPI {
         }
     }
 
+    /// One line of an item's page; nil when there is nothing to show (no "—" rows).
+    private static func field(_ label: String, _ value: String?, _ tone: ServiceTone = .idle) -> DetailStat? {
+        guard let value, !value.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        return DetailStat(label: label, value: value, tone: tone)
+    }
+
+    private static func dayText(_ value: Any?) -> String? {
+        date(value)?.formatted(date: .abbreviated, time: .shortened)
+    }
+
     private static func secret(_ name: String, _ service: String) throws -> String {
         guard let value = KeychainStore.shared.get(name), !value.isEmpty else {
             throw Failure(status: 0, message: "No \(service) key on your Mac. Add it in Coucou's Settings.")
@@ -286,7 +296,7 @@ enum ServiceAPI {
         let headers = ["Authorization": "Bearer \(token)", "Accept": "application/json"]
         let deploymentsJSON = try await request("https://api.vercel.com/v6/deployments?limit=20", headers: headers)
         let deployments = (deploymentsJSON as? [String: Any])?["deployments"] as? [[String: Any]] ?? []
-        let projectsJSON = try? await request("https://api.vercel.com/v9/projects?limit=20", headers: headers)
+        let projectsJSON = try? await request("https://api.vercel.com/v9/projects?limit=30", headers: headers)
         let projects = (projectsJSON as? [String: Any])?["projects"] as? [[String: Any]] ?? []
 
         var items: [DetailItem] = []
@@ -328,19 +338,60 @@ enum ServiceAPI {
             }
             let subtitle = [branch, message.split(separator: "\n").first.map(String.init) ?? "", creator]
                 .filter { !$0.isEmpty }.joined(separator: " · ")
+            let buildSeconds: String? = {
+                guard let start = d["buildingAt"] as? Double, let end = d["ready"] as? Double, end > start else { return nil }
+                let seconds = Int((end - start) / 1000)
+                return seconds >= 60 ? "\(seconds / 60) min \(seconds % 60) s" : "\(seconds) s"
+            }()
+            let repo = [meta["githubOrg"] as? String, meta["githubRepo"] as? String].compactMap { $0 }.joined(separator: "/")
+            let fields: [DetailStat] = ([
+                field("State", state.capitalized, tone),
+                field("Target", target == "production" ? "Production" : "Preview"),
+                field("Branch", branch),
+                field("Commit", message.split(separator: "\n").first.map(String.init)),
+                field("Author", (meta["githubCommitAuthorName"] as? String) ?? creator),
+                field("Repository", repo),
+                field("Build time", buildSeconds),
+                field("Created", dayText(d["created"] ?? d["createdAt"])),
+                field("Address", d["url"] as? String),
+            ] as [DetailStat?]).compactMap { $0 }
             items.append(DetailItem(title: name, subtitle: subtitle.isEmpty ? state.capitalized : subtitle, tone: tone,
                                     date: date(d["created"] ?? d["createdAt"]),
-                                    url: (d["url"] as? String).map { "https://\($0)" },
+                                    url: (d["inspectorUrl"] as? String) ?? (d["url"] as? String).map { "https://\($0)" },
                                     badge: target == "production" ? "Production" : (state == "READY" ? "Preview" : state.capitalized),
-                                    actions: actions))
+                                    actions: actions, fields: fields))
         }
-        let projectItems = projects.prefix(20).map { p in
-            DetailItem(title: p["name"] as? String ?? "Project",
-                       subtitle: (p["framework"] as? String).map { $0.capitalized } ?? "",
-                       date: date(p["updatedAt"]))
+        // Every project, each with its page: where it lives, its latest state, its deployments.
+        let projectItems = projects.prefix(30).map { p -> DetailItem in
+            let name = p["name"] as? String ?? "Project"
+            let production = ((p["targets"] as? [String: Any])?["production"] as? [String: Any])
+            let aliases = production?["alias"] as? [String] ?? []
+            let productionURL = aliases.first { !$0.hasSuffix(".vercel.app") } ?? aliases.first
+            let latest = (p["latestDeployments"] as? [[String: Any]])?.first
+            let latestState = ((latest?["readyState"] ?? latest?["state"]) as? String)?.capitalized
+            let git = p["link"] as? [String: Any]
+            let repo = [git?["org"] as? String, git?["repo"] as? String].compactMap { $0 }.joined(separator: "/")
+            let tone: ServiceTone = latestState == "Error" ? .error : latestState == "Ready" ? .ok : latestState == nil ? .idle : .warning
+            let mine = items.filter { $0.title == name }
+            let fields: [DetailStat] = ([
+                field("Production", productionURL),
+                field("Latest", latestState, tone),
+                field("Framework", (p["framework"] as? String)?.capitalized),
+                field("Repository", repo),
+                field("Node", p["nodeVersion"] as? String),
+                field("Updated", dayText(p["updatedAt"])),
+                field("Created", dayText(p["createdAt"])),
+            ] as [DetailStat?]).compactMap { $0 }
+            return DetailItem(title: name,
+                              subtitle: productionURL ?? (p["framework"] as? String).map { $0.capitalized } ?? "",
+                              tone: tone, date: date(p["updatedAt"]),
+                              url: productionURL.map { "https://\($0)" }, badge: latestState,
+                              fields: fields,
+                              sections: mine.isEmpty ? nil : [DetailSection(title: "Deployments", items: mine)])
         }
-        var sections = [DetailSection(title: "Deployments", items: items)]
+        var sections: [DetailSection] = []
         if !projectItems.isEmpty { sections.append(DetailSection(title: "Projects · \(projectItems.count)", items: Array(projectItems))) }
+        sections.append(DetailSection(title: "Latest deployments", items: items))
         return ServiceDetail(pillId: "integration_vercel",
                              stats: [DetailStat(label: "Ready", value: "\(ready)", tone: .ok),
                                      DetailStat(label: "Building", value: "\(building)", tone: building > 0 ? .warning : .idle),
@@ -394,10 +445,11 @@ enum ServiceAPI {
                                                          target: ref)])
         }
 
-        // CI on the repos you pushed to last.
-        let reposJSON = try? await request("https://api.github.com/user/repos?sort=pushed&per_page=5&affiliation=owner,collaborator",
+        // Your repos (the 30 pushed to last); CI on the first 5.
+        let reposJSON = try? await request("https://api.github.com/user/repos?sort=pushed&per_page=30&affiliation=owner,collaborator",
                                            headers: headers)
-        let repos = (reposJSON as? [[String: Any]] ?? []).compactMap { $0["full_name"] as? String }
+        let repoList = reposJSON as? [[String: Any]] ?? []
+        let repos = repoList.prefix(5).compactMap { $0["full_name"] as? String }
         var runItems: [DetailItem] = []
         var failing = 0
         for repo in repos {
@@ -427,11 +479,40 @@ enum ServiceAPI {
             }
         }
 
+        let repoItems = repoList.compactMap { r -> DetailItem? in
+            guard let fullName = r["full_name"] as? String else { return nil }
+            let isPrivate = r["private"] as? Bool ?? false
+            let issues = r["open_issues_count"] as? Int ?? 0
+            let ci = runItems.filter { $0.subtitle.hasPrefix("\(fullName) ·") }
+            let prs = (mineItems + askedItems).filter { $0.subtitle.hasPrefix("\(fullName)#") }
+            let fields: [DetailStat] = ([
+                field("Description", r["description"] as? String),
+                field("Visibility", isPrivate ? "Private" : "Public"),
+                field("Language", r["language"] as? String),
+                field("Stars", "\(r["stargazers_count"] as? Int ?? 0)"),
+                field("Forks", "\(r["forks_count"] as? Int ?? 0)"),
+                field("Open issues and PRs", "\(issues)", issues > 0 ? .info : .idle),
+                field("Default branch", r["default_branch"] as? String),
+                field("Last push", dayText(r["pushed_at"])),
+                field("Created", dayText(r["created_at"])),
+            ] as [DetailStat?]).compactMap { $0 }
+            var inside: [DetailSection] = []
+            if !prs.isEmpty { inside.append(DetailSection(title: "Pull requests", items: prs)) }
+            if !ci.isEmpty { inside.append(DetailSection(title: "CI", items: ci)) }
+            let failing = ci.contains { $0.tone == .error }
+            return DetailItem(title: r["name"] as? String ?? fullName,
+                              subtitle: [r["language"] as? String, isPrivate ? "Private" : nil].compactMap { $0 }.joined(separator: " · "),
+                              tone: failing ? .error : .idle, date: date(r["pushed_at"]),
+                              url: r["html_url"] as? String, badge: failing ? "CI failing" : nil,
+                              fields: fields, sections: inside.isEmpty ? nil : inside)
+        }
+
         var sections: [DetailSection] = []
         if !askedItems.isEmpty { sections.append(DetailSection(title: "Reviews asked of you", items: askedItems)) }
         sections.append(DetailSection(title: "Your pull requests", items: mineItems,
                                       footer: mineItems.isEmpty ? "No open pull request." : nil))
         if !runItems.isEmpty { sections.append(DetailSection(title: "CI on your latest repos", items: runItems)) }
+        if !repoItems.isEmpty { sections.append(DetailSection(title: "Your repos · \(repoItems.count)", items: repoItems)) }
         return ServiceDetail(pillId: "integration_github",
                              stats: [DetailStat(label: "Your PRs", value: "\(mineItems.count)", tone: .info),
                                      DetailStat(label: "Reviews", value: "\(askedItems.count)", tone: askedItems.isEmpty ? .idle : .warning),
@@ -464,7 +545,14 @@ enum ServiceAPI {
             }
         }
 
-        let (charges, _, chargesError) = await list("charges?limit=15")
+        // Fees and net come with the balance transaction; where a payment came from, with the
+        // Checkout session that made it (a payment link, or Checkout on a site).
+        let (charges, _, chargesError) = await list("charges?limit=20&expand%5B%5D=data.balance_transaction")
+        let (sessions, _, _) = await list("checkout/sessions?limit=50&expand%5B%5D=data.payment_link")
+        var sessionByIntent: [String: [String: Any]] = [:]
+        for session in sessions {
+            if let intent = session["payment_intent"] as? String { sessionByIntent[intent] = session }
+        }
         let chargeItems = charges.map { c -> DetailItem in
             let status = c["status"] as? String ?? ""
             let refunded = c["refunded"] as? Bool ?? false
@@ -477,14 +565,68 @@ enum ServiceAPI {
                 : status == "succeeded" ? .ok : status == "failed" ? .error : .warning
             let badge = refunded ? "Refunded" : uncaptured ? "Uncaptured"
                 : partlyRefunded ? "Partly refunded" : status.capitalized
-            return DetailItem(title: money(c["amount"] as? Int ?? 0, c["currency"] as? String ?? currency),
-                              subtitle: who, tone: tone, date: date(c["created"]), badge: badge)
+            let chargeCurrency = c["currency"] as? String ?? currency
+            let txn = c["balance_transaction"] as? [String: Any]
+            let billing = c["billing_details"] as? [String: Any] ?? [:]
+            let card = (c["payment_method_details"] as? [String: Any])?["card"] as? [String: Any]
+            let intent = c["payment_intent"] as? String
+            let session = intent.flatMap { sessionByIntent[$0] }
+            let customer = session?["customer_details"] as? [String: Any]
+            let from: String
+            if let link = session?["payment_link"] as? [String: Any] {
+                let address = (link["url"] as? String)?.replacingOccurrences(of: "https://", with: "")
+                from = address.map { "Payment link · \($0)" } ?? "Payment link"
+            } else if session != nil {
+                from = (session?["mode"] as? String) == "subscription" ? "Checkout · subscription" : "Checkout"
+            } else if c["invoice"] as? String != nil {
+                from = "Invoice"
+            } else {
+                from = "Direct charge"
+            }
+            let cardText = card.map { card -> String in
+                let brand = (card["brand"] as? String ?? "card").capitalized
+                return "\(brand) •••• \(card["last4"] as? String ?? "")"
+            }
+            let country = (card?["country"] as? String) ?? ((billing["address"] as? [String: Any])?["country"] as? String)
+            let fields: [DetailStat] = ([
+                field("Amount", money(c["amount"] as? Int ?? 0, chargeCurrency)),
+                field("Fee", (txn?["fee"] as? Int).map { money($0, chargeCurrency) }),
+                field("Net", (txn?["net"] as? Int).map { money($0, chargeCurrency) }, .ok),
+                field("Refunded", (c["amount_refunded"] as? Int).flatMap { $0 > 0 ? money($0, chargeCurrency) : nil }, .warning),
+                field("Status", badge),
+                field("From", from),
+                field("Customer", (billing["name"] as? String) ?? (customer?["name"] as? String)),
+                field("Email", (billing["email"] as? String) ?? (c["receipt_email"] as? String) ?? (customer?["email"] as? String)),
+                field("Description", c["description"] as? String),
+                field("Paid with", cardText),
+                field("Country", country),
+                field("Date", dayText(c["created"])),
+                field("Available on", dayText(txn?["available_on"])),
+                field("ID", intent ?? c["id"] as? String),
+            ] as [DetailStat?]).compactMap { $0 }
+            return DetailItem(title: money(c["amount"] as? Int ?? 0, chargeCurrency),
+                              subtitle: who, tone: tone, date: date(c["created"]),
+                              url: "https://dashboard.stripe.com/payments/\(intent ?? c["id"] as? String ?? "")",
+                              badge: badge, fields: fields)
         }
         let (payouts, _, payoutsError) = await list("payouts?limit=5")
-        let payoutItems = payouts.map { p in
-            DetailItem(title: money(p["amount"] as? Int ?? 0, p["currency"] as? String ?? currency),
-                       subtitle: "Arrives", tone: (p["status"] as? String) == "failed" ? .error : .info,
-                       date: date(p["arrival_date"]), badge: (p["status"] as? String)?.replacingOccurrences(of: "_", with: " ").capitalized)
+        let payoutItems = payouts.map { p -> DetailItem in
+            let status = (p["status"] as? String)?.replacingOccurrences(of: "_", with: " ").capitalized
+            let id = p["id"] as? String ?? ""
+            let fields: [DetailStat] = ([
+                field("Amount", money(p["amount"] as? Int ?? 0, p["currency"] as? String ?? currency)),
+                field("Status", status),
+                field("Arrives", dayText(p["arrival_date"])),
+                field("Speed", (p["method"] as? String).map { $0 == "instant" ? "Instant" : "Standard" }),
+                field("Description", p["description"] as? String),
+                field("Failure", p["failure_message"] as? String, .error),
+                field("Created", dayText(p["created"])),
+                field("ID", id),
+            ] as [DetailStat?]).compactMap { $0 }
+            return DetailItem(title: money(p["amount"] as? Int ?? 0, p["currency"] as? String ?? currency),
+                              subtitle: "Arrives", tone: (p["status"] as? String) == "failed" ? .error : .info,
+                              date: date(p["arrival_date"]), url: "https://dashboard.stripe.com/payouts/\(id)",
+                              badge: status, fields: fields)
         }
 
         // Active subscriptions, every page (up to 1 000).

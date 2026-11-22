@@ -11,6 +11,8 @@ struct ServiceLiveDetail: View {
     @State private var running: ServiceActionDef?
     @State private var confirming: ServiceActionDef?
     @State private var sentFeedback = 0
+    /// The item opened on its own page (a payment, a repo, a project).
+    @State private var page: DetailItem?
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -38,6 +40,9 @@ struct ServiceLiveDetail: View {
         }
         .animation(.spring(duration: 0.45, bounce: 0.2), value: detail.lastAction)
         .sensoryFeedback(.success, trigger: sentFeedback)
+        .navigationDestination(isPresented: Binding(get: { page != nil }, set: { if !$0 { page = nil } })) {
+            if let page { ServiceItemPage(link: link, pillId: pillId, item: page) }
+        }
         .confirmationDialog(confirming?.title ?? "", isPresented: Binding(get: { confirming != nil },
                                                                          set: { if !$0 { confirming = nil } }),
                             titleVisibility: .visible) {
@@ -97,8 +102,8 @@ struct ServiceLiveDetail: View {
         .glassCard()
     }
 
-    /// One line per item: a tap opens it on the web, its actions sit in the
-    /// "…" menu on the right (or a long press), like Mail and Files.
+    /// One line per item: a tap opens its page (or the web when it has none), its actions sit
+    /// in the "…" menu on the right (or a long press), like Mail and Files.
     private func itemRow(_ item: DetailItem) -> some View {
         HStack(alignment: .center, spacing: 10) {
             Circle().fill(item.tone == .idle ? Color.secondary.opacity(0.5) : item.tone.color).frame(width: 7, height: 7)
@@ -150,14 +155,18 @@ struct ServiceLiveDetail: View {
                     .glassPill(Circle(), interactive: true)
                 }
                 .disabled(running != nil)
-            } else if item.url != nil {
+            } else if item.url != nil || item.hasPage {
                 Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
             }
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture {
-            if let url = item.url.flatMap(URL.init(string:)), url.scheme == "https" { openURL(url) }
+            if item.hasPage {
+                page = item
+            } else if let url = item.url.flatMap(URL.init(string:)), url.scheme == "https" {
+                openURL(url)
+            }
         }
         .contextMenu {
             ForEach(item.actions, id: \.self) { action in

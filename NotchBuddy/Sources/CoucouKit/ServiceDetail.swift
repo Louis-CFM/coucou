@@ -35,6 +35,14 @@ struct DetailItem: Codable, Equatable, Sendable {
     /// A short tag on the right ("Production", "Draft", "Active"…).
     var badge: String? = nil
     var actions: [ServiceActionDef] = []
+    /// Its own page on the iPhone: what it is, field by field ("Fee 0,55 €", "From Payment link"…).
+    /// Optional, so details written before them still decode.
+    var fields: [DetailStat]? = nil
+    /// And the lists inside it (a project's deployments, a repo's CI runs).
+    var sections: [DetailSection]? = nil
+
+    /// Opens a page of its own on the iPhone (instead of going straight to the web).
+    var hasPage: Bool { !(fields ?? []).isEmpty || !(sections ?? []).isEmpty }
 }
 
 struct DetailSection: Codable, Equatable, Sendable {
