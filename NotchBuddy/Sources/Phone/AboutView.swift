@@ -287,7 +287,7 @@ struct OnboardingView: View {
     }
 }
 
-/// Mochi's colors for the Home Screen icon (alternate app icons).
+/// The Home Screen icon: Botan's (the default), or Mochi in a color (alternate app icons).
 enum AppIconChoice: String, CaseIterable, Identifiable {
     case orange = "", blue = "AppIcon-Blue", green = "AppIcon-Green", purple = "AppIcon-Purple",
          pink = "AppIcon-Pink", graphite = "AppIcon-Graphite"
@@ -296,7 +296,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .orange: "Orange"
+        case .orange: "Botan"
         case .blue: "Blue"
         case .green: "Green"
         case .purple: "Purple"
@@ -305,7 +305,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         }
     }
 
-    var previewName: String { "IconPreview-\(title)" }
+    var previewName: String { self == .orange ? "IconPreview-Orange" : "IconPreview-\(title)" }
 
     @MainActor static var current: AppIconChoice {
         AppIconChoice(rawValue: UIApplication.shared.alternateIconName ?? "") ?? .orange
