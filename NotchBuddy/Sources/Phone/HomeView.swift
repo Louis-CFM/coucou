@@ -98,6 +98,9 @@ struct AgentsTab: View {
     /// The link test (builds run from Xcode): slides in from the left, the side of its button.
     @State private var showingTest = false
 
+    /// The curve of iOS's own push (UINavigationController), so the link test moves like Settings.
+    private static let push = Animation.interpolatingSpring(mass: 3, stiffness: 1000, damping: 500, initialVelocity: 0)
+
     /// How far a finger pulled the link test back to the left (0 at rest, negative while pulling).
     @State private var testDrag: CGFloat = 0
 
@@ -124,7 +127,7 @@ struct AgentsTab: View {
                                 .onEnded { drag in
                                     let leaves = drag.translation.width < -width * 0.3
                                         || drag.predictedEndTranslation.width < -width * 0.6
-                                    withAnimation(.spring(duration: 0.4, bounce: 0)) {
+                                    withAnimation(Self.push) {
                                         if leaves { showingTest = false }
                                         testDrag = 0
                                     }
@@ -145,7 +148,7 @@ struct AgentsTab: View {
                     // Leaves the way it came: to the left.
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            withAnimation(.spring(duration: 0.4, bounce: 0)) { showingTest = false }
+                            withAnimation(Self.push) { showingTest = false }
                         } label: {
                             Image(systemName: "chevron.right")
                         }
@@ -251,7 +254,7 @@ struct AgentsTab: View {
                 // Test screens, in builds run from Xcode only.
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        withAnimation(.spring(duration: 0.4, bounce: 0)) { showingTest = true }
+                        withAnimation(Self.push) { showingTest = true }
                     } label: {
                         Image(systemName: "stethoscope")
                     }
