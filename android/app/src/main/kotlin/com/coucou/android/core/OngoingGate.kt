@@ -7,14 +7,14 @@ package com.coucou.android.core
  */
 class OngoingGate {
     /** What the notification would show. */
-    data class Key(val title: String, val detail: String, val lines: List<String>, val argb: Int, val connected: Boolean)
+    data class Key(val title: String, val detail: String, val lines: List<String>, val argb: Int, val connected: Boolean, val agentArgb: Int? = null)
 
     private var last: Key? = null
 
     /** The key for a glance (null: nothing known yet, the notification says "connecting"). */
     fun keyOf(g: Glance?): Key =
-        if (g == null) Key("", "", emptyList(), GlanceTone.CALM.argb, false)
-        else Key(g.headline, g.detail, g.lines.map { "${it.agent}: ${it.text}" }, g.tone.argb, g.connected)
+        if (g == null) Key("", "", emptyList(), GlanceTone.CALM.argb, false, null)
+        else Key(g.headline, g.detail, g.lines.map { "${it.agent}: ${it.text}" }, g.tone.argb, g.connected, g.lines.firstOrNull()?.colorArgb)
 
     /** True the first time and whenever the notification would look different; false for a push that changes nothing. */
     @Synchronized
