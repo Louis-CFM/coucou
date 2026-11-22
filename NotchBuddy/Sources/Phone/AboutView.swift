@@ -86,6 +86,9 @@ struct AboutView: View {
                     if BotanBridge.shared.status == .setup {
                         Button("Find Botan") { BotanBridge.shared.findBotan() }
                     }
+                    if let problem = BotanBridge.shared.problem {
+                        Text(problem).font(.footnote).foregroundStyle(.red).textSelection(.enabled)
+                    }
                     if BotanBridge.shared.knownName != nil {
                         Button("Forget this Botan") { BotanBridge.shared.forget() }
                     }

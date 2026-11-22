@@ -51,6 +51,8 @@ final class BotanBridge: NSObject {
     private(set) var status: Status = .off
     /// The Botan this iPhone links to, once met.
     private(set) var knownName: String?
+    /// What iOS answered when the system sheet could not open or the setup failed (shown in Settings).
+    private(set) var problem: String?
 
     @ObservationIgnored private var central: CBCentralManager?
     @ObservationIgnored private var accessories: ASAccessorySession?
@@ -90,15 +92,20 @@ final class BotanBridge: NSObject {
     /// The system sheet that finds Botan nearby ("Find Botan"). The app must be open.
     func findBotan() {
         guard let accessories else {
+            // No session (ended, or the switch was just turned on): open one, the sheet follows.
             pickWhenReady = true
-            start()
+            if central == nil { start() } else { activateAccessories() }
             return
         }
         pickWhenReady = false
         let item = ASPickerDisplayItem(name: "Botan", productImage: Self.pickerImage(), descriptor: Self.descriptor())
+        problem = nil
         accessories.showPicker(for: [item]) { error in
             // Dismissed or failed: the status stays "setup", "Find Botan" tries again.
-            if let error { print("Botan sheet: \(error.localizedDescription)") }
+            guard let error else { return }
+            let text = Self.describe(error)
+            print("Botan sheet: \(text)")
+            Task { @MainActor in BotanBridge.shared.problem = text }
         }
     }
 
@@ -133,8 +140,19 @@ final class BotanBridge: NSObject {
         scan()
     }
 
-    private func handle(accessoryEvent type: ASAccessoryEventType, id: UUID?, name: String?) {
+    nonisolated static func describe(_ error: Error) -> String {
+        let e = error as NSError
+        return "\(e.localizedDescription) (\(e.domain) \(e.code))"
+    }
+
+    private func handle(accessoryEvent type: ASAccessoryEventType, id: UUID?, name: String?, error: String?) {
+        if let error { problem = error }
         switch type {
+        case .pickerDidPresent:
+            problem = nil
+        case .invalidated:
+            accessories = nil
+            if problem == nil { problem = "The accessory session ended." }
         case .activated:
             // The Botan set up before (or none: a link from before AccessorySetupKit is set up again).
             if let first = accessories?.accessories.first(where: { $0.bluetoothIdentifier != nil }),
@@ -179,14 +197,19 @@ final class BotanBridge: NSObject {
         // relaunch the app for Botan after ending it to free memory.
         central = CBCentralManager(delegate: self, queue: .main,
                                    options: [CBCentralManagerOptionRestoreIdentifierKey: Self.restoreID])
-        // The system's accessory session: which Botan was picked, and the sheet to pick one.
+        activateAccessories()
+    }
+
+    /// The system's accessory session: which Botan was picked, and the sheet to pick one.
+    private func activateAccessories() {
         let session = ASAccessorySession()
         accessories = session
         session.activate(on: .main) { [weak self] event in
             let type = event.eventType
             let id = event.accessory?.bluetoothIdentifier
             let name = event.accessory?.displayName
-            MainActor.assumeIsolated { self?.handle(accessoryEvent: type, id: id, name: name) }
+            let error = event.error.map { Self.describe($0) }
+            MainActor.assumeIsolated { self?.handle(accessoryEvent: type, id: id, name: name, error: error) }
         }
     }
 
