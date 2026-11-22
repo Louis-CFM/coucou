@@ -317,8 +317,8 @@ targets:
     info:
       path: Resources/InfoPhone.plist
       properties:
-        CFBundleName: Coucou
-        CFBundleDisplayName: Coucou
+        CFBundleName: Botan
+        CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou
         CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
@@ -365,6 +365,8 @@ targets:
         PRODUCT_NAME: Coucou
         INFOPLIST_FILE: Resources/InfoPhone.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Botan orange (#FF5A24): the accent of buttons, links and switches.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         # Mochi in other colors, picked in Settings (UIApplication.setAlternateIconName).
         ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Blue AppIcon-Green AppIcon-Purple AppIcon-Pink AppIcon-Graphite"
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
@@ -409,7 +411,7 @@ targets:
       path: Resources/InfoWidgets.plist
       properties:
         CFBundleName: CoucouWidgets
-        CFBundleDisplayName: Coucou
+        CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou.Widgets
         CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
@@ -454,7 +456,7 @@ targets:
       path: Resources/InfoNotificationContent.plist
       properties:
         CFBundleName: CoucouNotificationContent
-        CFBundleDisplayName: Coucou
+        CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou.NotificationContent
         CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"

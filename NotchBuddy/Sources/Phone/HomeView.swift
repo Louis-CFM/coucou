@@ -109,6 +109,7 @@ struct AgentsTab: View {
                                 .scaleEffect(max(0.86, 1 + pull / 500), anchor: .top)
                                 .opacity(max(0, 1 + pull / 160))
                         }
+                    BotanCard()
                     TodayCard(link: link)
                 }
                 .listRowBackground(Color.clear)
@@ -159,7 +160,7 @@ struct AgentsTab: View {
             .animation(.spring(duration: 0.5, bounce: 0.2),
                        value: link.sessions.map { "\($0.id)|\($0.statusText)" })
             .refreshable { await link.refresh() }
-            .navigationTitle("Coucou")
+            .navigationTitle("Botan")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: String.self) { id in
                 SessionDetailView(link: link, sessionId: id)
@@ -575,5 +576,100 @@ struct TodayCard: View {
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+
+/// Botan on the home screen: linked or not, and what its screen shows right now.
+/// Hidden for good with "Not now" by someone who has no Botan.
+struct BotanCard: View {
+    @AppStorage(BotanBridge.enabledKey) private var enabled = false
+    @AppStorage("botanCardHidden") private var hidden = false
+    private var bridge: BotanBridge { BotanBridge.shared }
+
+    var body: some View {
+        if enabled || !hidden {
+            HStack(spacing: 14) {
+                device
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.headline)
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+                action
+            }
+            .padding(14)
+            .glassCard(tint: linked ? nil : .botan)
+            .animation(.spring(duration: 0.4, bounce: 0.2), value: bridge.showing)
+        }
+    }
+
+    private var linked: Bool {
+        if case .linked = bridge.status { return true }
+        return false
+    }
+
+    /// A tiny Botan: its black screen with Mochi in the state it shows, or the Botan sign.
+    private var device: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(Color.black)
+            .frame(width: 54, height: 54)
+            .overlay {
+                if linked, let showing = bridge.showing {
+                    MochiStill(state: showing.state, showBadge: false).padding(9)
+                } else {
+                    BotanSign().foregroundStyle(Color.botan).padding(13)
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+            }
+    }
+
+    private var title: String {
+        guard enabled else { return "Botan" }
+        if linked, let showing = bridge.showing, !showing.title.isEmpty { return showing.title }
+        return "Botan"
+    }
+
+    private var subtitle: String {
+        guard enabled else { return "The little screen with one button on the back of your iPhone." }
+        switch bridge.status {
+        case .linked:
+            if let label = bridge.showing?.label, !label.isEmpty { return "On Botan now · \(label.capitalized)" }
+            return "Linked"
+        case .setup: return "Pick your Botan to link it."
+        case .pairing: return "Type the code shown on Botan."
+        case .connecting, .searching, .off: return "Looking for it nearby…"
+        case .bluetoothOff: return "Bluetooth is off."
+        case .unauthorized: return "Allow Bluetooth in Settings → Botan."
+        }
+    }
+
+    @ViewBuilder
+    private var action: some View {
+        if !enabled {
+            VStack(alignment: .trailing, spacing: 6) {
+                Button("Link") { BotanBridge.shared.setEnabled(true); enabled = true }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.botan)
+                Button("Not now") { hidden = true }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else if bridge.status == .setup {
+            Button("Find") { BotanBridge.shared.findBotan() }
+                .buttonStyle(.borderedProminent)
+                .tint(.botan)
+        } else if linked {
+            Image(systemName: "dot.radiowaves.left.and.right")
+                .foregroundStyle(Color.botan)
+                .symbolEffect(.variableColor.iterative, options: .repeating)
+                .accessibilityLabel("Linked")
+        }
     }
 }

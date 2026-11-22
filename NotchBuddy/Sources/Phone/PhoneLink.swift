@@ -190,6 +190,7 @@ final class PhoneLink {
         if subscribed && !approvalsSubscribed { await subscribeToApprovals() }
         _ = await fetchChanges()
         BotanBridge.shared.sessionsChanged()
+        LiveActivityLink.shared.sessionsChanged(sessions)
         await notifyNewApprovals()
         await postEvents()
     }
@@ -199,6 +200,7 @@ final class PhoneLink {
         let gotNew = await fetchChanges()
         // Botan first: it is what a locked iPhone shows.
         BotanBridge.shared.sessionsChanged()
+        LiveActivityLink.shared.sessionsChanged(sessions)
         await notifyNewApprovals()
         await postEvents()
         return gotNew
@@ -230,7 +232,7 @@ final class PhoneLink {
                                             options: [.firesOnRecordCreation])
         approvals.zoneID = Self.zoneID
         let alert = CKSubscription.NotificationInfo()
-        alert.title = "Coucou"
+        alert.title = "Botan"
         alert.alertBody = "An agent is waiting for your OK"
         alert.soundName = mochi ? "approval.wav" : "default"
         alert.category = NotificationActions.approvalCategory

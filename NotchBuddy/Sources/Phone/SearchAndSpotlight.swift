@@ -110,7 +110,7 @@ enum SpotlightIndex {
         attributes.title = turn.project.isEmpty ? agent : "\(turn.project) · \(agent)"
         let answer = turn.finalMessage.isEmpty ? "" : "\n" + String(turn.finalMessage.prefix(300))
         attributes.contentDescription = turn.headline + answer
-        attributes.keywords = [agent, turn.project, "Coucou"] + turn.files.map(\.name)
+        attributes.keywords = [agent, turn.project, "Botan", "Coucou"] + turn.files.map(\.name)
         let item = CSSearchableItem(uniqueIdentifier: "\(turn.pillId)|\(Int(turn.startedAt.timeIntervalSince1970))",
                                     domainIdentifier: "turns", attributeSet: attributes)
         item.expirationDate = Date().addingTimeInterval(30 * 24 * 3600)

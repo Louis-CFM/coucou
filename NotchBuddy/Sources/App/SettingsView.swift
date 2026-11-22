@@ -152,6 +152,7 @@ struct SettingsView: View {
     #if PHONE_LINK
     @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
     @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
+    @AppStorage(LiveActivityRelay.unlockedKey) private var iPhoneLiveActivityWhileUnlocked = false
     @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
     #endif
     @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
@@ -561,6 +562,10 @@ struct SettingsView: View {
                 Toggle(String(localized: "iphone.live-activity.toggle"), isOn: $iPhoneLiveActivityEnabled)
                     .disabled(!iPhoneSyncEnabled)
                     .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
+                Toggle(String(localized: "iphone.live-activity.unlocked"), isOn: $iPhoneLiveActivityWhileUnlocked)
+                    .disabled(!iPhoneSyncEnabled || !iPhoneLiveActivityEnabled)
+                    .padding(.leading, 18)
+                    .onChange(of: iPhoneLiveActivityWhileUnlocked) { _, on in LiveActivityRelay.shared.setWhileUnlocked(on) }
                 Text(String(localized: "iphone.live-activity.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)

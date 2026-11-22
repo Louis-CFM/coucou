@@ -53,6 +53,23 @@ final class BotanBridge: NSObject {
     private(set) var knownName: String?
     /// What iOS answered when the system sheet could not open or the setup failed (shown in Settings).
     private(set) var problem: String?
+    /// What Botan's screen shows now (the last line it took), for the card on the home screen.
+    private(set) var showing: Showing?
+
+    struct Showing: Equatable {
+        var state: BotState
+        var label: String
+        var title: String
+    }
+
+    /// "[#token ]state|label|title|detail" as the card shows it.
+    static func showing(from line: String) -> Showing? {
+        var rest = Substring(line)
+        if rest.hasPrefix("#"), let space = rest.firstIndex(of: " ") { rest = rest[rest.index(after: space)...] }
+        let fields = rest.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        guard fields.count >= 3 else { return nil }
+        return Showing(state: BotState(rawValue: fields[0]) ?? .idle, label: fields[1], title: fields[2])
+    }
 
     @ObservationIgnored private var central: CBCentralManager?
     @ObservationIgnored private var accessories: ASAccessorySession?
@@ -143,6 +160,7 @@ final class BotanBridge: NSObject {
         peripheral = nil
         stateChar = nil
         shown = nil
+        showing = nil
         writing = false
     }
 
@@ -410,6 +428,7 @@ extension BotanBridge: @preconcurrency CBCentralManagerDelegate, @preconcurrency
     private func relink(_ p: CBPeripheral) {
         stateChar = nil
         shown = nil
+        showing = nil
         writing = false
         guard let central, central.state == .poweredOn else { return }
         if Self.knownID == p.identifier {
@@ -459,6 +478,7 @@ extension BotanBridge: @preconcurrency CBCentralManagerDelegate, @preconcurrency
             // Botan took a line: paired and encrypted.
             status = .linked(knownName ?? peripheral.name ?? "Botan")
         }
+        showing = shown.flatMap { Self.showing(from: $0.line) }
         flush()
     }
 

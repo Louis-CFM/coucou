@@ -27,7 +27,7 @@ struct AboutView: View {
         case .connecting: return "Linking…"
         case .pairing: return "Type the code shown on Botan"
         case .bluetoothOff: return "Bluetooth is off"
-        case .unauthorized: return "Allow Bluetooth in Settings → Coucou"
+        case .unauthorized: return "Allow Bluetooth in Settings → Botan"
         case .linked(let name): return "Linked to \(name)"
         }
     }
@@ -47,12 +47,42 @@ struct AboutView: View {
                         .padding(6)
                         .frame(width: 64, height: 64)
                         .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 16))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Coucou").font(.title3.weight(.semibold))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Image("BotanWordmark")
+                            .resizable().scaledToFit()
+                            .frame(height: 22)
+                            .accessibilityLabel("Botan")
                         Text("Version \(version)").font(.footnote).foregroundStyle(.secondary)
                     }
                 }
                 .padding(.vertical, 4)
+            }
+
+            Section {
+                Toggle("Link with Botan", isOn: $botan)
+                    .onChange(of: botan) { _, on in BotanBridge.shared.setEnabled(on) }
+                if botan {
+                    LabeledContent("Botan") {
+                        Text(botanStatus).foregroundStyle(botanLinked ? Color.secondary : Color.botan)
+                    }
+                    if BotanBridge.shared.status == .setup {
+                        Button("Find Botan") { BotanBridge.shared.findBotan() }
+                    }
+                    if let problem = BotanBridge.shared.problem {
+                        Text(problem).font(.footnote).foregroundStyle(.red).textSelection(.enabled)
+                    }
+                    if BotanBridge.shared.knownName != nil {
+                        Button("Forget this Botan") { BotanBridge.shared.forget() }
+                    }
+                }
+            } header: {
+                Label {
+                    Text("Botan")
+                } icon: {
+                    BotanSign().foregroundStyle(Color.botan).frame(width: 15, height: 15)
+                }
+            } footer: {
+                Text("Botan is the little screen with one button on the back of your iPhone. It shows what your agents are doing on your Mac, and its button allows a request or picks an answer without unlocking your iPhone. It stays linked with your iPhone locked, and on iOS 26 even after you close the app.")
             }
 
             Section("Connection") {
@@ -76,28 +106,6 @@ struct AboutView: View {
                 Button("How to connect your Mac") { showGuide = true }
             }
 
-            Section {
-                Toggle("Link with Botan", isOn: $botan)
-                    .onChange(of: botan) { _, on in BotanBridge.shared.setEnabled(on) }
-                if botan {
-                    LabeledContent("Botan") {
-                        Text(botanStatus).foregroundStyle(botanLinked ? Color.secondary : Color.orange)
-                    }
-                    if BotanBridge.shared.status == .setup {
-                        Button("Find Botan") { BotanBridge.shared.findBotan() }
-                    }
-                    if let problem = BotanBridge.shared.problem {
-                        Text(problem).font(.footnote).foregroundStyle(.red).textSelection(.enabled)
-                    }
-                    if BotanBridge.shared.knownName != nil {
-                        Button("Forget this Botan") { BotanBridge.shared.forget() }
-                    }
-                }
-            } header: {
-                Text("Botan")
-            } footer: {
-                Text("Botan is the little screen with one button on the back of your iPhone. It shows what your agents are doing on your Mac, and its button allows a request or picks an answer without unlocking your iPhone. It stays linked with your iPhone locked, and on iOS 26 even after you close Coucou.")
-            }
 
             Section {
                 Toggle("When an agent finishes or fails", isOn: $notifyDone)
@@ -190,6 +198,7 @@ struct AboutView: View {
 /// First launch: what Coucou needs on the Mac to show anything here.
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(BotanBridge.enabledKey) private var botanOn = false
 
     var body: some View {
         ScrollView {
@@ -199,7 +208,7 @@ struct OnboardingView: View {
                         .frame(width: 88, height: 88)
                     Text("Your agents, in your pocket")
                         .font(.largeTitle.weight(.bold))
-                    Text("Coucou on iPhone shows what Claude Code, Cursor, Codex and your services are doing on your Mac. Three things to set up, once.")
+                    Text("Botan shows what Claude Code, Cursor, Codex and your services are doing on your Mac, through Coucou. Three things to set up, once.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }
@@ -212,9 +221,10 @@ struct OnboardingView: View {
                 step(3, "Same Apple Account",
                      "Sign in to iCloud with the same Apple Account on both. Your sessions go through your private iCloud, encrypted.",
                      icon: "icloud")
+                botanStep
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Then, from here").font(.headline)
-                    Text("• Allow or deny a command, right from the Lock Screen\n• Answer Claude's questions\n• See what Claude did, file by file\n• Mochi in your Dynamic Island when your Mac is locked")
+                    Text("• Allow or deny a command, right from the Lock Screen or with Botan's button\n• Answer Claude's questions\n• See what Claude did, file by file\n• Mochi in your Dynamic Island while your agents work")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -234,6 +244,32 @@ struct OnboardingView: View {
             .padding(.bottom, 12)
         }
         .preferredColorScheme(.dark)
+    }
+
+    /// Step 4, for those who have the box: link it now (the system sheet), or skip.
+    private var botanStep: some View {
+        HStack(alignment: .top, spacing: 14) {
+            BotanSign()
+                .foregroundStyle(Color.botan)
+                .padding(10)
+                .frame(width: 44, height: 44)
+                .background(Color.black, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
+            VStack(alignment: .leading, spacing: 8) {
+                Text("4. Botan, if you have one").font(.headline)
+                Text("The little screen with one button on the back of your iPhone: your agents at a glance, and a press to allow, iPhone locked.")
+                    .font(.callout).foregroundStyle(.secondary)
+                if botanOn {
+                    Label("Linking is on", systemImage: "checkmark.circle.fill")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.green)
+                } else {
+                    Button("Link Botan") { BotanBridge.shared.setEnabled(true) }
+                        .buttonStyle(.bordered)
+                        .tint(.botan)
+                }
+            }
+        }
     }
 
     private func step(_ number: Int, _ title: String, _ text: String, icon: String) -> some View {

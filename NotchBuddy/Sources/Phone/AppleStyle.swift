@@ -1,8 +1,21 @@
 import SwiftUI
 
-// The pieces that make Coucou feel like an Apple app: Liquid Glass on iOS 26
+// The pieces that make Botan feel like an Apple app: Liquid Glass on iOS 26
 // (a frosted material before), the agent's color moving softly behind a
 // session, Apple Pay's drawn checkmark, and symbols that move with the state.
+// Botan's own touches stay few: its orange, its sign and wordmark, and Mochi.
+
+extension Color {
+    /// Botan orange (#FF5A24), also the app's accent color (PhoneAssets, AccentColor).
+    static let botan = Color(red: 1, green: 90 / 255, blue: 36 / 255)
+}
+
+/// The Botan sign (the ring, the eye and the button), in the color around it.
+struct BotanSign: View {
+    var body: some View {
+        Image("BotanSign").resizable().scaledToFit().accessibilityLabel("Botan")
+    }
+}
 
 extension View {
     /// A card in glass (iOS 26) or the dark material Coucou used before.

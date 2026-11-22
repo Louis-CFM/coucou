@@ -54,6 +54,43 @@ final class LiveActivityLink {
         for activity in Activity<MochiActivityAttributes>.activities { watch(activity) }
     }
 
+    /// The running activity follows the sessions from here too, each time the app is awake
+    /// (open, an iCloud push, or Botan's signal every 15 s): no wait for the Mac's push, whose
+    /// updates iOS counts against an hourly budget. The Mac still starts and ends it.
+    func sessionsChanged(_ sessions: [SessionItem]) {
+        guard let activity = Activity<MochiActivityAttributes>.activities.first(where: { $0.activityState == .active }),
+              var next = Self.leadState(sessions) else { return }
+        let current = activity.content.state
+        next.since = current.since
+        guard next != current else { return }
+        Task { await activity.update(ActivityContent(state: next, staleDate: nil)) }
+    }
+
+    /// The most urgent session, as the Mac builds it (LiveActivityRelay.leadState).
+    static func leadState(_ sessions: [SessionItem]) -> MochiActivityState? {
+        let ranked = sessions
+            .filter { PillCatalog.isSession($0.id) }
+            .map { s -> (SessionItem, Int) in
+                (s, MochiActivityState.urgency(state: s.state, waitingForOK: s.needsApproval && !s.approvalFingerprint.isEmpty,
+                                               hasQuestion: s.state == .question))
+            }
+        guard let lead = ranked.min(by: { $0.1 < $1.1 }) else { return nil }
+        let (session, urgency) = lead
+        let others = ranked.filter { $0.0.id != session.id && $0.1 <= 3 }.count
+        return MochiActivityState(
+            pillId: session.id,
+            agent: session.pillName,
+            color: session.color,
+            state: (urgency == 0 ? BotState.approval : session.state).rawValue,
+            statusText: MochiActivityState.statusText(state: session.state, urgency: urgency,
+                                                      stepIndex: session.stepIndex, stepCount: session.steps.count),
+            tone: MochiActivityState.tone(urgency: urgency),
+            stepIndex: max(0, session.stepIndex),
+            stepCount: session.steps.count,
+            others: others,
+            approval: urgency == 0 && !session.approvalFingerprint.isEmpty ? session.approvalFingerprint : nil)
+    }
+
     private func watch(_ activity: Activity<MochiActivityAttributes>) {
         guard watched.insert(activity.id).inserted else { return }
         Task {

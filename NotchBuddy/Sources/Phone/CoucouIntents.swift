@@ -72,9 +72,9 @@ struct CoucouShortcuts: AppShortcutsProvider {
 /// A Focus filter: in a Focus (Sleep, Work…), Coucou can keep quiet about
 /// finished and failed agents and only notify what waits on you.
 struct CoucouFocusFilter: SetFocusFilterIntent {
-    static let title: LocalizedStringResource = "Coucou"
+    static let title: LocalizedStringResource = "Botan"
     static var description: IntentDescription {
-        IntentDescription("Choose what Coucou notifies during this Focus.")
+        IntentDescription("Choose what Botan notifies during this Focus.")
     }
 
     @Parameter(title: "Only approvals and questions", default: false)
