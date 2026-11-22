@@ -700,8 +700,11 @@ struct AttentionCard: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .glassCard()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -763,12 +766,9 @@ struct RecentFeed: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .glassCard()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
