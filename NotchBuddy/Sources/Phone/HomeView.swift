@@ -98,7 +98,65 @@ struct AgentsTab: View {
     /// The link test (builds run from Xcode): slides in from the left, the side of its button.
     @State private var showingTest = false
 
+    /// How far a finger pulled the link test back to the left (0 at rest, negative while pulling).
+    @State private var testDrag: CGFloat = 0
+
     var body: some View {
+        GeometryReader { geo in
+            let width = max(geo.size.width, 1)
+            // 1 with the link test fully in, 0 without: the home moves aside with it, as on a push.
+            let progress = showingTest ? 1 + min(0, testDrag) / width : 0
+            ZStack {
+                agents
+                    .offset(x: width * 0.3 * progress)
+                    .overlay {
+                        Color.black.opacity(0.3 * progress).ignoresSafeArea().allowsHitTesting(false)
+                    }
+                #if DEBUG
+                if showingTest {
+                    testPage
+                        .offset(x: min(0, testDrag))
+                        .shadow(color: .black.opacity(0.45), radius: 14)
+                        .transition(.move(edge: .leading))
+                        .gesture(
+                            DragGesture(minimumDistance: 20)
+                                .onChanged { testDrag = min(0, $0.translation.width) }
+                                .onEnded { drag in
+                                    let leaves = drag.translation.width < -width * 0.3
+                                        || drag.predictedEndTranslation.width < -width * 0.6
+                                    withAnimation(.spring(duration: 0.4, bounce: 0)) {
+                                        if leaves { showingTest = false }
+                                        testDrag = 0
+                                    }
+                                }
+                        )
+                        .zIndex(1)
+                }
+                #endif
+            }
+        }
+    }
+
+    #if DEBUG
+    private var testPage: some View {
+        NavigationStack {
+            LinkTestView(link: link)
+                .toolbar {
+                    // Leaves the way it came: to the left.
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            withAnimation(.spring(duration: 0.4, bounce: 0)) { showingTest = false }
+                        } label: {
+                            Image(systemName: "chevron.right")
+                        }
+                    }
+                }
+        }
+        .background(Color.black)
+    }
+    #endif
+
+    private var agents: some View {
         NavigationStack(path: $path) {
             List {
                 // Mochi, what's going on, Botan's antenna; the OK panel grows out of it.
@@ -201,33 +259,6 @@ struct AgentsTab: View {
                 #endif
             }
         }
-        #if DEBUG
-        .overlay {
-            if showingTest {
-                NavigationStack {
-                    LinkTestView(link: link)
-                        .toolbar {
-                            // Leaves the way it came: to the left.
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button {
-                                    withAnimation(.spring(duration: 0.4, bounce: 0)) { showingTest = false }
-                                } label: {
-                                    Image(systemName: "chevron.right")
-                                }
-                            }
-                        }
-                }
-                .background(Color.black)
-                .transition(.move(edge: .leading))
-                .simultaneousGesture(DragGesture(minimumDistance: 30).onEnded { drag in
-                    if drag.translation.width < -80 {
-                        withAnimation(.spring(duration: 0.4, bounce: 0)) { showingTest = false }
-                    }
-                })
-                .zIndex(1)
-            }
-        }
-        #endif
     }
 }
 
