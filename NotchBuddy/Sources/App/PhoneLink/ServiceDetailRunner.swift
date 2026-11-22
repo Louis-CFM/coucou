@@ -266,6 +266,8 @@ enum ServiceAPI {
             case "integration_calcom": return try await calcom()
             case "integration_n8n": return try await n8n()
             case "integration_notion": return try await notion()
+            case "integration_crypto": return await crypto()
+            case "integration_mail": return await mail()
             default: return ServiceDetail(pillId: pillId, fetchedAt: Date(), error: "Not available from the iPhone yet.")
             }
         } catch {
@@ -705,16 +707,36 @@ enum ServiceAPI {
             default: tone = .info
             }
             let to = (e["to"] as? [String])?.joined(separator: ", ") ?? ""
+            let status = event.replacingOccurrences(of: "_", with: " ").capitalized
+            let fields: [DetailStat] = ([
+                field("Status", status, tone),
+                field("From", e["from"] as? String),
+                field("To", to),
+                field("Cc", (e["cc"] as? [String])?.joined(separator: ", ")),
+                field("Reply to", (e["reply_to"] as? [String])?.joined(separator: ", ")),
+                field("Sent", dayText(e["created_at"])),
+                field("Scheduled for", dayText(e["scheduled_at"])),
+                field("ID", e["id"] as? String),
+            ] as [DetailStat?]).compactMap { $0 }
             return DetailItem(title: e["subject"] as? String ?? "(no subject)", subtitle: to, tone: tone,
-                              date: date(e["created_at"]), badge: event.replacingOccurrences(of: "_", with: " ").capitalized)
+                              date: date(e["created_at"]),
+                              url: (e["id"] as? String).map { "https://resend.com/emails/\($0)" },
+                              badge: status, fields: fields)
         }
         let domainsJSON = try? await request("https://api.resend.com/domains", headers: headers)
         let domains = (domainsJSON as? [String: Any])?["data"] as? [[String: Any]] ?? []
         let domainItems = domains.map { d in
             let status = d["status"] as? String ?? ""
+            let tone: ServiceTone = status == "verified" ? .ok : (status == "failed" ? .error : .warning)
+            let label = status.replacingOccurrences(of: "_", with: " ").capitalized
+            let fields: [DetailStat] = ([
+                field("Status", label, tone),
+                field("Region", d["region"] as? String),
+                field("Added", dayText(d["created_at"])),
+            ] as [DetailStat?]).compactMap { $0 }
             return DetailItem(title: d["name"] as? String ?? "Domain", subtitle: d["region"] as? String ?? "",
-                              tone: status == "verified" ? .ok : (status == "failed" ? .error : .warning),
-                              badge: status.replacingOccurrences(of: "_", with: " ").capitalized)
+                              tone: tone, url: (d["id"] as? String).map { "https://resend.com/domains/\($0)" },
+                              badge: label, fields: fields)
         }
         var sections = [DetailSection(title: "Latest emails", items: emailItems)]
         if !domainItems.isEmpty { sections.append(DetailSection(title: "Domains", items: domainItems)) }
@@ -743,14 +765,33 @@ enum ServiceAPI {
             guard let start = date(b["start"] ?? b["startTime"]) else { return nil }
             if calendar.isDateInToday(start) { today += 1 }
             if start.timeIntervalSince(now) < 7 * 24 * 3600 { week += 1 }
-            let attendee = (b["attendees"] as? [[String: Any]])?.first
+            let attendees = b["attendees"] as? [[String: Any]] ?? []
+            let attendee = attendees.first
             let who = attendee?["name"] as? String ?? attendee?["email"] as? String ?? ""
             let when = start.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
+            let end = date(b["end"] ?? b["endTime"])
+            let minutes = (b["duration"] as? Int) ?? end.map { Int($0.timeIntervalSince(start) / 60) }
+            let meeting = (b["meetingUrl"] as? String) ?? (b["location"] as? String).flatMap { $0.hasPrefix("https://") ? $0 : nil }
+            let guests = attendees.map { a in
+                [a["name"] as? String, (a["email"] as? String).map { "<\($0)>" }].compactMap { $0 }.joined(separator: " ")
+            }
+            let fields: [DetailStat] = ([
+                field("When", start.formatted(date: .complete, time: .shortened)),
+                field("Length", minutes.map { "\($0) min" }),
+                field("With", guests.joined(separator: ", ")),
+                field("Their time zone", attendee?["timeZone"] as? String),
+                field("Where", (b["location"] as? String).flatMap { $0.hasPrefix("https://") ? nil : $0 }),
+                field("Meeting link", meeting?.replacingOccurrences(of: "https://", with: "")),
+                field("Notes", b["description"] as? String),
+                field("Event", (b["eventType"] as? [String: Any])?["slug"] as? String),
+                field("Status", (b["status"] as? String)?.capitalized),
+                field("Booked", dayText(b["createdAt"])),
+            ] as [DetailStat?]).compactMap { $0 }
             return DetailItem(title: b["title"] as? String ?? "Meeting",
                               subtitle: who.isEmpty ? when : "\(when) · \(who)",
                               tone: calendar.isDateInToday(start) ? .warning : .info,
-                              date: start, url: (b["meetingUrl"] as? String) ?? (b["location"] as? String).flatMap { $0.hasPrefix("https://") ? $0 : nil },
-                              badge: (b["status"] as? String)?.capitalized)
+                              date: start, url: meeting,
+                              badge: (b["status"] as? String)?.capitalized, fields: fields)
         }
         return ServiceDetail(pillId: "integration_calcom",
                              stats: [DetailStat(label: "Today", value: "\(today)", tone: today > 0 ? .warning : .idle),
@@ -780,6 +821,55 @@ enum ServiceAPI {
             cursor = page?["nextCursor"] as? String
         } while !(cursor ?? "").isEmpty && workflows.count < 5_000
         var names: [String: String] = [:]
+        for w in workflows {
+            if let id = (w["id"] as? String) ?? (w["id"] as? Int).map(String.init) { names[id] = w["name"] as? String ?? "Workflow" }
+        }
+        let executionsJSON = try? await request("\(base)/api/v1/executions?limit=25", headers: headers)
+        let executions = (executionsJSON as? [String: Any])?["data"] as? [[String: Any]] ?? []
+        var failed = 0
+        var runsByWorkflow: [String: [DetailItem]] = [:]
+        var errorsRead = 0
+        var executionItems: [DetailItem] = []
+        for e in executions {
+            guard let id = (e["id"] as? String) ?? (e["id"] as? Int).map(String.init) else { continue }
+            let workflowId = (e["workflowId"] as? String) ?? (e["workflowId"] as? Int).map(String.init) ?? ""
+            let status = e["status"] as? String ?? ((e["finished"] as? Bool ?? false) ? "success" : "error")
+            let isFailure = status == "error" || status == "crashed" || status == "failed"
+            if isFailure { failed += 1 }
+            // What went wrong, for the 3 latest failures (one more call each).
+            var errorText: String?
+            var failedNode: String?
+            if isFailure && errorsRead < 3 {
+                errorsRead += 1
+                if let full = try? await request("\(base)/api/v1/executions/\(id)?includeData=true", headers: headers) as? [String: Any],
+                   let result = ((full["data"] as? [String: Any])?["resultData"] as? [String: Any]) {
+                    errorText = (result["error"] as? [String: Any])?["message"] as? String
+                    failedNode = result["lastNodeExecuted"] as? String
+                }
+            }
+            let started = date(e["startedAt"])
+            let stopped = date(e["stoppedAt"])
+            let duration = started.flatMap { s in stopped.map { String(format: "%.1f s", $0.timeIntervalSince(s)) } }
+            let fields: [DetailStat] = ([
+                field("Workflow", names[workflowId]),
+                field("Status", status.capitalized, isFailure ? .error : (status == "success" ? .ok : .warning)),
+                field("Error", errorText, .error),
+                field("Stopped at node", failedNode),
+                field("Started by", (e["mode"] as? String)?.capitalized),
+                field("Started", dayText(e["startedAt"])),
+                field("Took", duration),
+                field("Execution", id),
+            ] as [DetailStat?]).compactMap { $0 }
+            let item = DetailItem(title: names[workflowId] ?? "Workflow \(workflowId)",
+                                  subtitle: errorText ?? "Execution \(id)",
+                                  tone: isFailure ? .error : (status == "success" ? .ok : .warning),
+                                  date: started, url: "\(base)/workflow/\(workflowId)/executions/\(id)",
+                                  badge: status.capitalized,
+                                  actions: isFailure ? [ServiceActionDef(kind: "n8n.retry", title: "Retry", symbol: "arrow.clockwise", target: id)] : [],
+                                  fields: fields)
+            executionItems.append(item)
+            runsByWorkflow[workflowId, default: []].append(item)
+        }
         var active = 0
         let workflowItems = workflows.compactMap { w -> DetailItem? in
             guard let id = (w["id"] as? String) ?? (w["id"] as? Int).map(String.init) else { return nil }
@@ -789,27 +879,26 @@ enum ServiceAPI {
             if w["isArchived"] as? Bool ?? false { return nil }
             let isActive = w["active"] as? Bool ?? false
             if isActive { active += 1 }
+            let nodes = w["nodes"] as? [[String: Any]] ?? []
+            let triggers = nodes.filter { ($0["type"] as? String ?? "").lowercased().contains("trigger") }
+                .compactMap { $0["name"] as? String }
+            let tags = (w["tags"] as? [[String: Any]] ?? []).compactMap { $0["name"] as? String }
+            let runs = runsByWorkflow[id] ?? []
+            let fields: [DetailStat] = ([
+                field("Status", isActive ? "Active" : "Off", isActive ? .ok : .idle),
+                field("Starts on", triggers.joined(separator: ", ")),
+                field("Nodes", nodes.isEmpty ? nil : "\(nodes.count)"),
+                field("Tags", tags.joined(separator: ", ")),
+                field("Updated", dayText(w["updatedAt"])),
+                field("Created", dayText(w["createdAt"])),
+            ] as [DetailStat?]).compactMap { $0 }
             return DetailItem(title: name, tone: isActive ? .ok : .idle, date: date(w["updatedAt"]),
                               url: "\(base)/workflow/\(id)", badge: isActive ? "Active" : "Off",
                               actions: [isActive
                                         ? ServiceActionDef(kind: "n8n.deactivate", title: "Turn off", symbol: "pause.circle",
                                                            target: id, destructive: true, confirm: "Stop \(name) from running?")
-                                        : ServiceActionDef(kind: "n8n.activate", title: "Turn on", symbol: "play.circle", target: id)])
-        }
-        let executionsJSON = try? await request("\(base)/api/v1/executions?limit=15", headers: headers)
-        let executions = (executionsJSON as? [String: Any])?["data"] as? [[String: Any]] ?? []
-        var failed = 0
-        let executionItems = executions.compactMap { e -> DetailItem? in
-            guard let id = (e["id"] as? String) ?? (e["id"] as? Int).map(String.init) else { return nil }
-            let workflowId = (e["workflowId"] as? String) ?? (e["workflowId"] as? Int).map(String.init) ?? ""
-            let status = e["status"] as? String ?? ((e["finished"] as? Bool ?? false) ? "success" : "error")
-            let isFailure = status == "error" || status == "crashed" || status == "failed"
-            if isFailure { failed += 1 }
-            return DetailItem(title: names[workflowId] ?? "Workflow \(workflowId)", subtitle: "Execution \(id)",
-                              tone: isFailure ? .error : (status == "success" ? .ok : .warning),
-                              date: date(e["startedAt"]), url: "\(base)/workflow/\(workflowId)/executions/\(id)",
-                              badge: status.capitalized,
-                              actions: isFailure ? [ServiceActionDef(kind: "n8n.retry", title: "Retry", symbol: "arrow.clockwise", target: id)] : [])
+                                        : ServiceActionDef(kind: "n8n.activate", title: "Turn on", symbol: "play.circle", target: id)],
+                              fields: fields, sections: runs.isEmpty ? nil : [DetailSection(title: "Latest runs", items: runs)])
         }
         return ServiceDetail(pillId: "integration_n8n",
                              stats: [DetailStat(label: "Workflows", value: "\(workflowItems.count)"),
@@ -842,9 +931,17 @@ enum ServiceAPI {
             }
             var emoji = ""
             if let icon = object["icon"] as? [String: Any], icon["type"] as? String == "emoji" { emoji = (icon["emoji"] as? String ?? "") + " " }
+            let parent = (object["parent"] as? [String: Any])?["type"] as? String
+            let fields: [DetailStat] = ([
+                field("Kind", kind == "database" ? "Database" : "Page"),
+                field("Edited", dayText(object["last_edited_time"])),
+                field("Created", dayText(object["created_time"])),
+                field("In", parent.map { $0 == "workspace" ? "Workspace" : $0 == "database_id" ? "A database" : "A page" }),
+                field("Archived", (object["archived"] as? Bool ?? false) ? "Yes" : nil, .warning),
+            ] as [DetailStat?]).compactMap { $0 }
             let item = DetailItem(title: emoji + (title.isEmpty ? "Untitled" : title),
                                   date: date(object["last_edited_time"]), url: object["url"] as? String,
-                                  badge: (object["archived"] as? Bool ?? false) ? "Archived" : nil)
+                                  badge: (object["archived"] as? Bool ?? false) ? "Archived" : nil, fields: fields)
             if kind == "database" { databases.append(item) } else { pages.append(item) }
         }
         var sections = [DetailSection(title: "Edited lately", items: pages)]
@@ -855,6 +952,80 @@ enum ServiceAPI {
                                      DetailStat(label: "Pages", value: "\(pages.count)"),
                                      DetailStat(label: "Databases", value: "\(databases.count)")],
                              sections: sections, fetchedAt: Date())
+    }
+
+    // Crypto: the coins the pill follows, from the Mac's latest prices (public data, no key).
+    private static func crypto() async -> ServiceDetail {
+        let (quotes, currency, exchange, updated) = await MainActor.run {
+            (CryptoController.shared.quotes, CryptoSettings.currency, CryptoSettings.exchange,
+             CryptoController.shared.lastUpdate)
+        }
+        guard !quotes.isEmpty else {
+            return ServiceDetail(pillId: "integration_crypto", fetchedAt: Date(),
+                                 error: "Turn on the Crypto pill on your Mac to follow coins here.")
+        }
+        func price(_ v: Double) -> String { "\(ServiceSnapshots.cryptoPrice(v)) \(currency)" }
+        let items = quotes.map { q -> DetailItem in
+            let pair = exchange.pair(q.symbol, currency)
+            let high = q.spark.max(), low = q.spark.min()
+            let fields: [DetailStat] = ([
+                field("Price", price(q.price)),
+                field("24 h", ServiceSnapshots.cryptoChange(q.change), q.change >= 0 ? .ok : .error),
+                field("24 h ago", price(q.open24h)),
+                field("24 h high", high.map(price)),
+                field("24 h low", low.map(price)),
+                field("Exchange", "\(exchange.name) · \(pair)"),
+            ] as [DetailStat?]).compactMap { $0 }
+            return DetailItem(title: q.symbol, subtitle: price(q.price), tone: q.change >= 0 ? .ok : .error,
+                              url: exchange.tradeURL(pair)?.absoluteString,
+                              badge: ServiceSnapshots.cryptoChange(q.change), fields: fields)
+        }
+        let up = quotes.filter { $0.change >= 0 }.count
+        return ServiceDetail(pillId: "integration_crypto",
+                             stats: [DetailStat(label: "Coins", value: "\(quotes.count)"),
+                                     DetailStat(label: "Up", value: "\(up)", tone: .ok),
+                                     DetailStat(label: "Down", value: "\(quotes.count - up)", tone: quotes.count - up > 0 ? .error : .idle)],
+                             sections: [DetailSection(title: "Prices · \(exchange.name)", items: items)],
+                             fetchedAt: updated ?? Date())
+    }
+
+    // Mail: Apple Mail's latest messages, as the Mac reads them (GitHub build).
+    private static func mail() async -> ServiceDetail {
+        #if APPSTORE
+        return ServiceDetail(pillId: "integration_mail", fetchedAt: Date(), error: "Mail is in the GitHub version of Coucou.")
+        #else
+        let (messages, unreadCount, running) = await MainActor.run {
+            (MailController.shared.messages, MailController.shared.unreadCount, MailController.shared.isMailRunning)
+        }
+        guard running || !messages.isEmpty else {
+            return ServiceDetail(pillId: "integration_mail", fetchedAt: Date(), error: "Open Mail on your Mac: Coucou reads it only while it's open.")
+        }
+        let unread = unreadCount ?? messages.filter { !$0.isRead }.count
+        func item(_ m: MailMessage) -> DetailItem {
+            let fields: [DetailStat] = ([
+                field("From", m.senderName),
+                field("Address", m.senderAddress),
+                field("Subject", m.subject),
+                field("Received", m.date.formatted(date: .abbreviated, time: .shortened)),
+                field("Account", m.account),
+                field("Mailbox", m.mailbox),
+                field("Read", m.isRead ? "Yes" : "No", m.isRead ? .idle : .info),
+                field("Flagged", m.isFlagged ? "Yes" : nil, .warning),
+            ] as [DetailStat?]).compactMap { $0 }
+            return DetailItem(title: m.subject.isEmpty ? "(no subject)" : m.subject, subtitle: m.senderName,
+                              tone: m.isFlagged ? .warning : (m.isRead ? .idle : .info), date: m.date,
+                              badge: m.isFlagged ? "Flagged" : (m.isRead ? nil : "Unread"), fields: fields)
+        }
+        let flagged = messages.filter(\.isFlagged)
+        var sections: [DetailSection] = []
+        if !flagged.isEmpty { sections.append(DetailSection(title: "Flagged", items: flagged.map(item))) }
+        sections.append(DetailSection(title: "Latest", items: messages.prefix(30).map(item)))
+        return ServiceDetail(pillId: "integration_mail",
+                             stats: [DetailStat(label: "Unread", value: "\(unread)", tone: unread > 0 ? .info : .idle),
+                                     DetailStat(label: "Flagged", value: "\(flagged.count)", tone: flagged.isEmpty ? .idle : .warning),
+                                     DetailStat(label: "Accounts", value: "\(Set(messages.map(\.account)).count)")],
+                             sections: sections, fetchedAt: Date())
+        #endif
     }
 
     // MARK: Acting

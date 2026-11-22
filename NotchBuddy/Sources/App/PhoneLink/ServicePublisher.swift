@@ -40,13 +40,25 @@ final class ServicePublisher {
             s.$notionPages.map { _ in () }.eraseToAnyPublisher(),
             s.$notionError.map { _ in () }.eraseToAnyPublisher(),
             s.$n8nRuns.map { _ in () }.eraseToAnyPublisher(),
-        ]
+            CryptoController.shared.$quotes.map { _ in () }.eraseToAnyPublisher(),
+        ] + Self.mailChanges
         cancellable = Publishers.MergeMany(changes)
             .debounce(for: .seconds(2), scheduler: RunLoop.main)
             .sink { [weak self] in
                 MainActor.assumeIsolated { self?.publish() }
             }
         log("service publisher on")
+    }
+
+    /// Mail is in the GitHub build only (Apple Events).
+    private static var mailChanges: [AnyPublisher<Void, Never>] {
+        #if APPSTORE
+        return []
+        #else
+        let mail = MailController.shared
+        return [mail.$messages.map { _ in () }.eraseToAnyPublisher(),
+                mail.$unreadCount.map { _ in () }.eraseToAnyPublisher()]
+        #endif
     }
 
     /// Stops and deletes this Mac's services from iCloud.
@@ -130,8 +142,62 @@ final class ServicePublisher {
 @MainActor
 enum ServiceSnapshots {
     static func all(from s: AppState) -> [String: ServiceSnapshot] {
-        let built = [github(s), stripe(s), vercel(s), resend(s), calcom(s), n8n(s), notion(s)].compactMap { $0 }
+        let built = [github(s), stripe(s), vercel(s), resend(s), calcom(s), n8n(s), notion(s), crypto(), mail()]
+            .compactMap { $0 }
         return Dictionary(uniqueKeysWithValues: built.map { ($0.pillId, $0) })
+    }
+
+    // MARK: Crypto
+
+    /// The coins the crypto pill follows (public prices, no account): the first one in the headline,
+    /// a dot that warns when one moves 5 % or more in 24 h.
+    static func crypto() -> ServiceSnapshot? {
+        let c = CryptoController.shared
+        guard c.loaded, let lead = c.quotes.first else { return nil }
+        let currency = CryptoSettings.currency
+        let items = c.quotes.map { q in
+            ServiceItem(title: q.symbol, detail: "\(cryptoPrice(q.price)) \(currency) · \(cryptoChange(q.change))",
+                        tone: q.change >= 0 ? .ok : .error,
+                        url: CryptoSettings.exchange.tradeURL(CryptoSettings.exchange.pair(q.symbol, currency))?.absoluteString)
+        }
+        let mover = c.quotes.max { abs($0.change) < abs($1.change) } ?? lead
+        return ServiceSnapshot(pillId: "integration_crypto",
+                               tone: abs(mover.change) >= 5 ? .warning : .info,
+                               headline: "\(lead.symbol) \(cryptoPrice(lead.price)) \(currency) · \(cryptoChange(lead.change))",
+                               reason: "Biggest move in 24 h: \(mover.symbol) \(cryptoChange(mover.change))",
+                               sections: [ServiceSection(title: "Prices", items: items)], updatedAt: Date())
+    }
+
+    nonisolated static func cryptoPrice(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(value >= 100 ? 0 : value >= 1 ? 2 : 4)))
+    }
+
+    nonisolated static func cryptoChange(_ percent: Double) -> String {
+        (percent >= 0 ? "+" : "") + percent.formatted(.number.precision(.fractionLength(1))) + " %"
+    }
+
+    // MARK: Mail
+
+    /// Apple Mail's inboxes (GitHub build): unread count, flagged and latest messages.
+    static func mail() -> ServiceSnapshot? {
+        #if APPSTORE
+        return nil
+        #else
+        let m = MailController.shared
+        guard m.loaded else { return nil }
+        let unread = m.unreadCount ?? m.messages.filter { !$0.isRead }.count
+        let flagged = m.messages.filter(\.isFlagged)
+        let items = m.messages.prefix(10).map { msg in
+            ServiceItem(title: msg.subject.isEmpty ? "(no subject)" : msg.subject, detail: msg.senderName,
+                        tone: msg.isFlagged ? .warning : (msg.isRead ? .idle : .info), date: msg.date)
+        }
+        return ServiceSnapshot(pillId: "integration_mail",
+                               tone: !flagged.isEmpty ? .warning : (unread > 0 ? .info : .idle),
+                               headline: unread == 0 ? "Inbox read" : "\(unread) unread",
+                               reason: flagged.first.map { "Flagged: \($0.subject) · \($0.senderName)" }
+                                   ?? (unread > 0 ? "\(unread) unread in Mail" : "Nothing new in Mail"),
+                               sections: [ServiceSection(title: "Latest", items: Array(items))], updatedAt: Date())
+        #endif
     }
 
     // MARK: GitHub
