@@ -382,14 +382,31 @@ struct ChatBackdrop: View {
 }
 
 private extension View {
-    /// Your bubbles: iOS's glass, tinted with Botan's orange (an orange gradient before iOS 26).
+    /// Your bubbles: iOS's glass tinted with Botan's orange, lit like a lens: a light rim
+    /// brighter at the top, a soft sheen inside, and an orange glow under it. The tint stays
+    /// light so the glass still shows (an orange gradient before iOS 26).
     @ViewBuilder func yourBubble() -> some View {
         let shape = RoundedRectangle(cornerRadius: 19, style: .continuous)
+        let lit = self
+            .overlay {
+                // The sheen: light caught on the top half of the glass.
+                shape.fill(LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0.04), .clear],
+                                          startPoint: .top, endPoint: .center))
+                    .allowsHitTesting(false)
+            }
+            .overlay {
+                // The rim: bright on top, fading down the sides, a little light again at the bottom.
+                shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.55), .white.opacity(0.08), .white.opacity(0.2)],
+                                                  startPoint: .topLeading, endPoint: .bottomTrailing),
+                                   lineWidth: 0.9)
+                    .allowsHitTesting(false)
+            }
+            .shadow(color: Color.botan.opacity(0.35), radius: 14, y: 5)
         if #available(iOS 26.0, *) {
-            self.glassEffect(.regular.tint(Color.botan.opacity(0.75)), in: shape)
+            lit.glassEffect(.regular.tint(Color.botan.opacity(0.42)).interactive(), in: shape)
         } else {
-            self.background(LinearGradient(colors: [Color.botan, Color.botan.opacity(0.82)], startPoint: .top, endPoint: .bottom),
-                            in: shape)
+            lit.background(LinearGradient(colors: [Color.botan, Color.botan.opacity(0.82)], startPoint: .top, endPoint: .bottom),
+                           in: shape)
         }
     }
 }
