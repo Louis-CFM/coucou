@@ -10,6 +10,22 @@ extension Color {
     static let botan = Color(red: 1, green: 90 / 255, blue: 36 / 255)
 }
 
+extension BotState {
+    /// The color of the moment, as on Botan's screen: blue at work, violet thinking, amber waiting
+    /// for your OK, cyan with a question, red when it failed, green once done. None at rest.
+    var tint: Color? {
+        switch self {
+        case .working, .searching: Color(red: 0.23, green: 0.62, blue: 1)
+        case .thinking: Color(red: 0.55, green: 0.36, blue: 0.96)
+        case .approval: Color(red: 0.96, green: 0.65, blue: 0.14)
+        case .question: Color(red: 0.13, green: 0.83, blue: 0.93)
+        case .error, .ratelimit, .dizzy: Color(red: 0.96, green: 0.31, blue: 0.37)
+        case .finished: Color(red: 0.2, green: 0.83, blue: 0.6)
+        default: nil
+        }
+    }
+}
+
 /// The Botan sign (the ring, the eye and the button), in the color around it.
 struct BotanSign: View {
     var body: some View {

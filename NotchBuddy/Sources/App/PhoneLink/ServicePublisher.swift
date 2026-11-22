@@ -144,7 +144,65 @@ enum ServiceSnapshots {
     static func all(from s: AppState) -> [String: ServiceSnapshot] {
         let built = [github(s), stripe(s), vercel(s), resend(s), calcom(s), n8n(s), notion(s), crypto(), mail()]
             .compactMap { $0 }
+            .map { snapshot -> ServiceSnapshot in
+                var snapshot = snapshot
+                let figures = today(snapshot.pillId, s)
+                snapshot.today = figures.isEmpty ? nil : figures
+                return snapshot
+            }
         return Dictionary(uniqueKeysWithValues: built.map { ($0.pillId, $0) })
+    }
+
+    // MARK: Today
+
+    /// The day so far, per service, for the iPhone's home.
+    static func today(_ pillId: String, _ s: AppState) -> [DetailStat] {
+        let calendar = Calendar.current
+        func isToday(_ date: Date) -> Bool { calendar.isDateInToday(date) }
+        switch pillId {
+        case "integration_stripe":
+            let paid = s.stripePayments.filter { $0.isSuccess && isToday($0.createdAt) }
+            guard let currency = paid.first?.currency ?? s.stripePayments.first?.currency else { return [] }
+            let total = paid.filter { $0.currency == currency }.reduce(0) { $0 + $1.amount }
+            let value = (Double(total) / 100).formatted(.currency(code: currency.uppercased()))
+            return [DetailStat(label: paid.count == 1 ? "1 payment" : "\(paid.count) payments", value: value,
+                               tone: total > 0 ? .ok : .idle)]
+        case "integration_vercel":
+            let deploys = s.vercelDeployments.filter { isToday($0.createdAt) }
+            let failed = deploys.filter { $0.state == "ERROR" }.count
+            return [DetailStat(label: failed > 0 ? "\(failed) failed" : "deploys", value: "\(deploys.count)",
+                               tone: failed > 0 ? .error : deploys.isEmpty ? .idle : .ok)]
+        case "integration_github":
+            guard let pulse = s.githubPulse else { return [] }
+            let failing = pulse.mainCI.filter { $0.ci == .failure }.count
+            return [DetailStat(label: failing > 0 ? "CI failing" : "open PRs",
+                               value: failing > 0 ? "\(failing)" : "\(pulse.myPRs.count)",
+                               tone: failing > 0 ? .error : pulse.toReview.isEmpty ? .info : .warning)]
+        case "integration_calcom":
+            let meetings = s.calcomBookings.filter { $0.isActive && isToday($0.startTime) }
+            return [DetailStat(label: meetings.count == 1 ? "meeting" : "meetings", value: "\(meetings.count)",
+                               tone: meetings.isEmpty ? .idle : .info)]
+        case "integration_n8n":
+            let runs = s.n8nRuns.filter { isToday($0.date) }
+            let failed = runs.filter { !$0.success }.count
+            return [DetailStat(label: failed > 0 ? "\(failed) failed" : "runs", value: "\(runs.count)",
+                               tone: failed > 0 ? .error : runs.isEmpty ? .idle : .ok)]
+        case "integration_resend":
+            let sent = s.resendEmails.filter { isToday($0.createdAt) }
+            return [DetailStat(label: "emails", value: "\(sent.count)", tone: sent.isEmpty ? .idle : .ok)]
+        case "integration_crypto":
+            guard let lead = CryptoController.shared.quotes.first else { return [] }
+            return [DetailStat(label: lead.symbol, value: cryptoChange(lead.change), tone: lead.change >= 0 ? .ok : .error)]
+        case "integration_mail":
+            #if APPSTORE
+            return []
+            #else
+            let unread = MailController.shared.unreadCount ?? 0
+            return [DetailStat(label: "unread", value: "\(unread)", tone: unread > 0 ? .info : .idle)]
+            #endif
+        default:
+            return []
+        }
     }
 
     // MARK: Crypto

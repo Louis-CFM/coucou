@@ -32,6 +32,9 @@ struct ServiceSnapshot: Codable, Equatable, Sendable {
     var reason: String
     var sections: [ServiceSection]
     var updatedAt: Date
+    /// Today in one or two figures, for the iPhone's home ("In today 48,00 €", "Deploys 3").
+    /// Optional, so snapshots written before it still decode.
+    var today: [DetailStat]? = nil
 
     static let recordType = "Service"
 

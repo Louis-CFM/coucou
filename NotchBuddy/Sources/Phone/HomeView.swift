@@ -152,6 +152,15 @@ struct AgentsTab: View {
                         }
                     }
                 }
+
+                // The services that want a look, then what happened lately, all sources together.
+                Section {
+                    AttentionCard(link: link)
+                    RecentFeed(link: link)
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                .listRowSeparator(.hidden)
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
@@ -349,7 +358,9 @@ struct NotchHeader: View {
                 GlassEffectContainer(spacing: 12) {
                     VStack(spacing: 12) {
                         summary
-                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 28))
+                            // Tinted with the color of the moment, like Botan's screen.
+                            .glassEffect(sessions.leadState.tint.map { .regular.tint($0.opacity(0.22)) } ?? .regular,
+                                         in: RoundedRectangle(cornerRadius: 28))
                             .glassEffectID("island", in: glass)
                         if let waiting {
                             panel(waiting)
@@ -408,7 +419,13 @@ struct NotchHeader: View {
     private var summary: some View {
         HStack(spacing: 14) {
             MochiLive(state: sessions.leadState)
-                .frame(width: 52, height: 52)
+                .frame(width: 64, height: 64)
+                .background {
+                    // His glow, in the color of the moment.
+                    if let tint = sessions.leadState.tint {
+                        Circle().fill(tint).blur(radius: 18).opacity(0.55).frame(width: 70, height: 70)
+                    }
+                }
                 .introLanding(.header)
             VStack(alignment: .leading, spacing: 3) {
                 Text(headline)
@@ -538,24 +555,59 @@ struct TodayCard: View {
         link.history.filter { Calendar.current.isDateInToday($0.date) }.count
     }
 
+    private struct Figure: Identifiable {
+        let snapshot: ServiceSnapshot
+        let stat: DetailStat
+        var id: String { snapshot.pillId }
+    }
+
+    /// Each service's day in a figure (from the Mac), in the services' order.
+    private var serviceFigures: [Figure] {
+        PillCatalog.phoneServices.compactMap { id in
+            guard let snapshot = link.services[id], let stat = snapshot.today?.first else { return nil }
+            return Figure(snapshot: snapshot, stat: stat)
+        }
+    }
+
     var body: some View {
         let tally = link.archive.currentTally
-        if !tally.isEmpty || decisionsToday > 0 {
-            HStack(spacing: 0) {
-                stat("\(tally.turns)", tally.turns == 1 ? "turn" : "turns")
-                stat("\(tally.files)", tally.files == 1 ? "file" : "files")
-                VStack(spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text("+\(tally.added)").foregroundStyle(.green)
-                        Text("−\(tally.removed)").foregroundStyle(.red)
+        let figures = serviceFigures
+        if !tally.isEmpty || decisionsToday > 0 || !figures.isEmpty {
+            VStack(spacing: 12) {
+                if !tally.isEmpty || decisionsToday > 0 {
+                    HStack(spacing: 0) {
+                        stat("\(tally.turns)", tally.turns == 1 ? "turn" : "turns")
+                        stat("\(tally.files)", tally.files == 1 ? "file" : "files")
+                        VStack(spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text("+\(tally.added)").foregroundStyle(.green)
+                                Text("−\(tally.removed)").foregroundStyle(.red)
+                            }
+                            .font(.headline.monospacedDigit())
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            Text("lines").font(.caption2).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        stat("\(decisionsToday)", decisionsToday == 1 ? "OK given" : "OKs given")
                     }
-                    .font(.headline.monospacedDigit())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    Text("lines").font(.caption2).foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: .infinity)
-                stat("\(decisionsToday)", decisionsToday == 1 ? "OK given" : "OKs given")
+                if !figures.isEmpty {
+                    if !tally.isEmpty || decisionsToday > 0 { Divider().padding(.horizontal, 14) }
+                    // The services' day: money in, deploys, meetings… one chip each, tap to open.
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(figures) { figure in
+                                Button { link.openPillId = figure.snapshot.pillId } label: {
+                                    chip(figure.snapshot, figure.stat)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                    }
+                    .scrollClipDisabled()
+                }
             }
             .padding(.vertical, 12)
             .glassCard()
@@ -570,6 +622,25 @@ struct TodayCard: View {
         }
     }
 
+    private func chip(_ snapshot: ServiceSnapshot, _ stat: DetailStat) -> some View {
+        HStack(spacing: 8) {
+            Circle().fill(Color(hex: snapshot.color)).frame(width: 9, height: 9)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(stat.value)
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(stat.tone == .idle ? Color.primary : stat.tone.color)
+                    .lineLimit(1)
+                Text("\(snapshot.name) · \(stat.label)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.06), in: Capsule())
+    }
+
     private func stat(_ value: String, _ label: String) -> some View {
         VStack(spacing: 2) {
             Text(value).font(.headline.monospacedDigit())
@@ -579,6 +650,116 @@ struct TodayCard: View {
     }
 }
 
+/// The services that want a look (something failed, something waits on you, or news), each with
+/// why, in a line. Nothing at all when every service is fine.
+struct AttentionCard: View {
+    let link: PhoneLink
+
+    private var flagged: [ServiceSnapshot] {
+        PillCatalog.phoneServices.compactMap { link.services[$0] }
+            .filter { $0.tone == .error || $0.tone == .warning }
+            .sorted { ($0.tone == .error ? 0 : 1) < ($1.tone == .error ? 0 : 1) }
+    }
+
+    var body: some View {
+        let list = flagged
+        if !list.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Needs a look").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                ForEach(list, id: \.pillId) { snapshot in
+                    Button { link.openPillId = snapshot.pillId } label: {
+                        HStack(spacing: 12) {
+                            ServiceMochi(pillId: snapshot.pillId, tone: snapshot.tone, corner: 9).frame(width: 34, height: 34)
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(snapshot.name).font(.callout.weight(.semibold))
+                                    Text(snapshot.tone.label).font(.caption.weight(.semibold)).foregroundStyle(snapshot.tone.color)
+                                }
+                                Text(snapshot.reason).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .glassCard(tint: list.contains { $0.tone == .error } ? .red : .orange)
+        }
+    }
+}
+
+/// What happened lately, every source together (your OKs, payments, deploys, runs, meetings…),
+/// newest first. Tap a line to open where it comes from.
+struct RecentFeed: View {
+    let link: PhoneLink
+
+    private struct Entry: Identifiable {
+        let id: String
+        let pillId: String
+        let title: String
+        let detail: String
+        let date: Date
+        let color: Color
+        let symbol: String?
+    }
+
+    private var entries: [Entry] {
+        var all: [Entry] = link.history.prefix(10).map { log in
+            Entry(id: "decision-\(log.id)", pillId: log.pillId,
+                  title: log.decision == .allow ? "Allowed" : "Denied",
+                  detail: log.summary, date: log.date,
+                  color: log.decision == .allow ? .green : .red,
+                  symbol: log.decision == .allow ? "checkmark.circle.fill" : "xmark.circle.fill")
+        }
+        for (pillId, snapshot) in link.services {
+            for section in snapshot.sections {
+                for (index, item) in section.items.enumerated() {
+                    guard let date = item.date, date <= Date() else { continue }
+                    all.append(Entry(id: "\(pillId)-\(section.title)-\(index)", pillId: pillId,
+                                     title: item.title, detail: "\(snapshot.name) · \(item.detail)",
+                                     date: date, color: item.tone == .idle ? .secondary : item.tone.color, symbol: nil))
+                }
+            }
+        }
+        return Array(all.sorted { $0.date > $1.date }.prefix(6))
+    }
+
+    var body: some View {
+        let list = entries
+        if !list.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Lately").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                ForEach(list) { entry in
+                    Button { link.openPillId = entry.pillId } label: {
+                        HStack(spacing: 10) {
+                            if let symbol = entry.symbol {
+                                Image(systemName: symbol).foregroundStyle(entry.color).frame(width: 16)
+                            } else {
+                                Circle().fill(entry.color).frame(width: 7, height: 7).frame(width: 16)
+                            }
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(entry.title).font(.callout.weight(.medium)).lineLimit(1)
+                                Text(entry.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer(minLength: 4)
+                            Text(entry.date, format: .relative(presentation: .named))
+                                .font(.caption2).foregroundStyle(.tertiary).lineLimit(1).fixedSize()
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .glassCard()
+        }
+    }
+}
 
 /// Botan on the home screen: linked or not, and what its screen shows right now.
 /// Hidden for good with "Not now" by someone who has no Botan.
