@@ -63,7 +63,14 @@ final class LiveActivityLink {
         let current = activity.content.state
         next.since = current.since
         guard next != current else { return }
-        Task { await activity.update(ActivityContent(state: next, staleDate: nil)) }
+        // Only Sendable values cross into the task: the activity is looked up again there.
+        let id = activity.id, state = next
+        Task { await Self.update(id: id, to: state) }
+    }
+
+    private nonisolated static func update(id: String, to state: MochiActivityState) async {
+        guard let activity = Activity<MochiActivityAttributes>.activities.first(where: { $0.id == id }) else { return }
+        await activity.update(ActivityContent(state: state, staleDate: nil))
     }
 
     /// The most urgent session, as the Mac builds it (LiveActivityRelay.leadState).
