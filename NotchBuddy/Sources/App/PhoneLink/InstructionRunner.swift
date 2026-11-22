@@ -44,6 +44,7 @@ final class InstructionRunner {
         log("on: checking for instructions (push, else every 15 s)")
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
+                await self?.publishAgents()
                 await self?.check()
                 // CloudKit pushes reach this Mac (one came in the last half hour): they
                 // trigger the check, the poll is only a safety net. Otherwise every 15 s.
@@ -57,6 +58,10 @@ final class InstructionRunner {
         guard pollTask != nil else { return }
         pollTask?.cancel()
         pollTask = nil
+        published = nil
+        // The iPhone stops offering new tasks.
+        let id = CKRecord.ID(recordName: MacAgents.recordName, zoneID: SessionSnapshot.zoneID)
+        Task { _ = try? await database.modifyRecords(saving: [], deleting: [id]) }
         log("off")
     }
 
@@ -110,6 +115,7 @@ final class InstructionRunner {
     }
 
     private func handle(_ record: CKRecord) {
+        if record["agent"] is String { handleTask(record); return }
         let pillId = record["pillId"] as? String ?? ""
         let createdAt = record["createdAt"] as? Date ?? .distantPast
         let text = (record.encryptedValues["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -185,6 +191,182 @@ final class InstructionRunner {
         } catch {
             log("couldn't start claude: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: New tasks (agent of your choice, in a recent folder)
+
+    /// The agents installed on this Mac and the folders the iPhone may start a task in,
+    /// as last published.
+    private var published: MacAgents?
+    private var tasks: [String: Process] = [:]   // by folder: one task per folder at a time
+    private static let projectsKey = "iPhoneRecentProjects"
+    private static let resultIdsKey = "iPhoneTaskResultIds"
+    private static let maxProjects = 12
+    /// A task still running after this is stopped.
+    private static let taskTimeout: Duration = .seconds(30 * 60)
+
+    /// The folders agents worked in lately, newest first (kept across launches).
+    private func recentProjects() -> [MacAgents.Project] {
+        var paths = UserDefaults.standard.stringArray(forKey: Self.projectsKey) ?? []
+        for folder in TurnRecorder.shared.folders() where !paths.contains(folder) { paths.insert(folder, at: 0) }
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        paths = paths.filter { path in
+            var isDirectory: ObjCBool = false
+            return path != home && path != "/"
+                && FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+        }
+        paths = Array(paths.prefix(Self.maxProjects))
+        UserDefaults.standard.set(paths, forKey: Self.projectsKey)
+        return paths.map { MacAgents.Project(name: URL(fileURLWithPath: $0).lastPathComponent, path: $0) }
+    }
+
+    private func moveToFront(_ path: String) {
+        var paths = UserDefaults.standard.stringArray(forKey: Self.projectsKey) ?? []
+        paths.removeAll { $0 == path }
+        paths.insert(path, at: 0)
+        UserDefaults.standard.set(Array(paths.prefix(Self.maxProjects)), forKey: Self.projectsKey)
+    }
+
+    /// Tells the iPhone what it can start here; written only when it changed.
+    private func publishAgents() async {
+        let now = MacAgents(agents: PhoneAgent.allCases.filter { Self.executable(for: $0) != nil },
+                            projects: recentProjects(), updatedAt: Date())
+        if let published, published.sameContent(as: now) { return }
+        guard let data = try? JSONEncoder().encode(now) else { return }
+        let record = CKRecord(recordType: MacAgents.recordType,
+                              recordID: CKRecord.ID(recordName: MacAgents.recordName, zoneID: SessionSnapshot.zoneID))
+        record.encryptedValues["payload"] = String(decoding: data, as: UTF8.self)
+        do {
+            _ = try await database.modifyRecords(saving: [record], deleting: [], savePolicy: .allKeys)
+            published = now
+            log("agents for the iPhone: \(now.agents.map(\.rawValue).joined(separator: ", ")), \(now.projects.count) folders")
+        } catch {
+            log("couldn't publish the agents: \(error.localizedDescription)")
+        }
+    }
+
+    /// A new task: the agent and the folder come from the iPhone, but the folder must be one
+    /// this Mac published (never any path the iPhone names).
+    private func handleTask(_ record: CKRecord) {
+        let createdAt = record["createdAt"] as? Date ?? .distantPast
+        let taskId = record["taskId"] as? String ?? UUID().uuidString
+        let text = (record.encryptedValues["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let path = record.encryptedValues["project"] as? String ?? ""
+        guard let agent = PhoneAgent(rawValue: record["agent"] as? String ?? "") else { log("ignored: unknown agent"); return }
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        func refuse(_ why: String) {
+            log("task ignored: \(why)")
+            Task { await saveResult(TaskResult(id: taskId, agent: agent, project: name, ok: false, summary: why, endedAt: Date())) }
+        }
+        guard Self.isEnabled else { log("ignored: instructions are off"); return }
+        guard Date().timeIntervalSince(createdAt) < maxAge else { refuse("Sent more than 10 minutes ago."); return }
+        guard !text.isEmpty, text.count <= 8000 else { refuse("Empty or too long."); return }
+        guard recentProjects().contains(where: { $0.path == path }) else { refuse("That folder isn't in this Mac's recent list."); return }
+        guard tasks[path] == nil else { refuse("A task is already running in \(name)."); return }
+        guard let executable = Self.executable(for: agent) else { refuse("\(agent.name) isn't installed on this Mac."); return }
+        runTask(agent: agent, executable: executable, text: text, path: path, taskId: taskId)
+    }
+
+    private func runTask(agent: PhoneAgent, executable: String, text: String, path: String, taskId: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        // No permission flags: each agent follows its own settings, as when it runs without a window
+        // (Codex stays read-only unless its config says otherwise; Cursor turns down what needs an OK).
+        // Claude Code's requests come to the iPhone through Coucou's hooks, as usual.
+        switch agent {
+        case .claude: process.arguments = ["-p", text]
+        case .codex: process.arguments = ["exec", text]
+        case .cursor: process.arguments = ["-p", text, "--output-format", "text"]
+        case .antigravity: process.arguments = ["-p", text]
+        }
+        process.currentDirectoryURL = URL(fileURLWithPath: path)
+        var env = ProcessInfo.processInfo.environment
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        env["PATH"] = [URL(fileURLWithPath: executable).deletingLastPathComponent().path, "/opt/homebrew/bin", "/usr/local/bin",
+                       "/usr/bin", "/bin", "/usr/sbin", "/sbin", "\(home)/.local/bin", env["PATH"] ?? ""].joined(separator: ":")
+        switch agent {
+        case .claude: env["TERM_PROGRAM"] = "vscode"
+        case .cursor: env["__CFBundleIdentifier"] = "com.todesktop.230313mzl4w4u92"
+        default: break
+        }
+        process.environment = env
+        process.standardInput = FileHandle.nullDevice
+        let logURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/NotchBuddy/task-\(agent.rawValue)-last.log")
+        try? FileManager.default.createDirectory(at: logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: logURL.path, contents: nil)
+        let output = try? FileHandle(forWritingTo: logURL)
+        process.standardOutput = output ?? FileHandle.nullDevice
+        process.standardError = output ?? FileHandle.nullDevice
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        process.terminationHandler = { [weak self] finished in
+            try? output?.close()
+            let data = (try? Data(contentsOf: logURL)) ?? Data()
+            let summary = String(String(decoding: data.suffix(1200), as: UTF8.self)
+                .trimmingCharacters(in: .whitespacesAndNewlines).suffix(600))
+            let status = finished.terminationStatus
+            let result = TaskResult(id: taskId, agent: agent, project: name, ok: status == 0,
+                                    summary: summary.isEmpty ? (status == 0 ? "Done." : "Stopped (\(status)).") : summary,
+                                    endedAt: Date())
+            Task { @MainActor in
+                self?.tasks[path] = nil
+                self?.log("task \(status == 0 ? "finished" : "ended with \(status)") (\(agent.rawValue) in \(name))")
+                await self?.saveResult(result)
+            }
+        }
+        do {
+            try process.run()
+            tasks[path] = process
+            moveToFront(path)
+            log("task: \(agent.rawValue) in \(name), \(text.count) chars")
+            let pid = process.processIdentifier
+            Task { [weak self] in
+                try? await Task.sleep(for: Self.taskTimeout)
+                guard let self, let running = self.tasks[path], running.processIdentifier == pid, running.isRunning else { return }
+                self.log("task stopped after 30 min (\(agent.rawValue) in \(name))")
+                running.terminate()
+            }
+        } catch {
+            log("couldn't start \(agent.rawValue): \(error.localizedDescription)")
+            Task { await saveResult(TaskResult(id: taskId, agent: agent, project: name, ok: false,
+                                               summary: "Couldn't start \(agent.name).", endedAt: Date())) }
+        }
+    }
+
+    /// The iPhone shows how the task ended. Only the last 10 results are kept.
+    private func saveResult(_ result: TaskResult) async {
+        guard let data = try? JSONEncoder().encode(result) else { return }
+        let record = CKRecord(recordType: TaskResult.recordType,
+                              recordID: CKRecord.ID(recordName: "taskresult-\(result.id)", zoneID: SessionSnapshot.zoneID))
+        record.encryptedValues["payload"] = String(decoding: data, as: UTF8.self)
+        var ids = UserDefaults.standard.stringArray(forKey: Self.resultIdsKey) ?? []
+        ids.removeAll { $0 == result.id }
+        ids.insert(result.id, at: 0)
+        let old = ids.dropFirst(10).map { CKRecord.ID(recordName: "taskresult-\($0)", zoneID: SessionSnapshot.zoneID) }
+        UserDefaults.standard.set(Array(ids.prefix(10)), forKey: Self.resultIdsKey)
+        _ = try? await database.modifyRecords(saving: [record], deleting: old, savePolicy: .allKeys)
+    }
+
+    /// Where each agent's command usually lives; the app doesn't get the shell's PATH.
+    static func executable(for agent: PhoneAgent) -> String? {
+        switch agent {
+        case .claude: return claudeExecutable()
+        case .codex: return find(["codex"])
+        case .cursor: return find(["cursor-agent"])
+        case .antigravity: return find(["agy"])
+        }
+    }
+
+    private static func find(_ names: [String]) -> String? {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let folders = ["\(home)/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "\(home)/.npm-global/bin",
+                       "\(home)/.bun/bin", "\(home)/.volta/bin", "\(home)/.cargo/bin"]
+        for name in names {
+            for folder in folders where FileManager.default.isExecutableFile(atPath: "\(folder)/\(name)") {
+                return "\(folder)/\(name)"
+            }
+        }
+        return nil
     }
 
     /// Where `claude` usually lives; the app doesn't get the shell's PATH.

@@ -135,6 +135,10 @@ final class PhoneLink {
     var notificationsAllowed: Bool?
     /// A session to open, from a notification, a shortcut or the Control Center.
     var openPillId: String?
+    /// What the Mac can run for a new task (GitHub build with instructions on), nil otherwise.
+    var macAgents: MacAgents?
+    /// How the tasks started here ended, by task id.
+    var taskResults: [String: TaskResult] = [:]
 
     @ObservationIgnored private let container = CKContainer(identifier: PhoneLink.containerID)
     @ObservationIgnored private var database: CKDatabase { container.privateCloudDatabase }
@@ -286,6 +290,9 @@ final class PhoneLink {
                 for (_, result) in changes.modificationResultsByID {
                     if case .success(let mod) = result, add(mod.record) { pageGotNew = true }
                 }
+                for deletion in changes.deletions where deletion.recordType == MacAgents.recordType {
+                    macAgents = nil
+                }
                 for deletion in changes.deletions where deletion.recordType == "Session" {
                     sessions.removeAll { "session-\($0.id)" == deletion.recordID.recordName }
                     pageGotNew = true
@@ -356,6 +363,21 @@ final class PhoneLink {
     }
 
     private func add(_ record: CKRecord) -> Bool {
+        if record.recordType == MacAgents.recordType {
+            if let payload = record.encryptedValues["payload"] as? String,
+               let agents = try? JSONDecoder().decode(MacAgents.self, from: Data(payload.utf8)) {
+                macAgents = agents
+            }
+            return false
+        }
+        if record.recordType == TaskResult.recordType {
+            if let payload = record.encryptedValues["payload"] as? String,
+               let result = try? JSONDecoder().decode(TaskResult.self, from: Data(payload.utf8)) {
+                taskResults[result.id] = result
+                Journal.shared.record(task: result)
+            }
+            return false
+        }
         if record.recordType == TurnSnapshot.recordType {
             guard let payload = record.encryptedValues["payload"] as? String,
                   let turn = try? JSONDecoder().decode(TurnSnapshot.self, from: Data(payload.utf8)) else { return false }
@@ -607,6 +629,28 @@ final class PhoneLink {
         } catch {
             lastPong = "Instruction failed: \(error.localizedDescription)"
             return false
+        }
+    }
+
+    /// A new task for the agent of your choice, in one of the folders the Mac published.
+    /// Returns the task id, or nil when iCloud refused it.
+    func sendTask(_ text: String, agent: PhoneAgent, project: MacAgents.Project) async -> String? {
+        let taskId = UUID().uuidString
+        let record = CKRecord(recordType: "Instruction",
+                              recordID: CKRecord.ID(recordName: "instruction-\(taskId)", zoneID: Self.zoneID))
+        record["pillId"] = agent.pillId
+        record["agent"] = agent.rawValue
+        record["taskId"] = taskId
+        record["createdAt"] = Date()
+        record["deviceName"] = UIDevice.current.name
+        record.encryptedValues["text"] = text
+        record.encryptedValues["project"] = project.path
+        do {
+            _ = try await database.save(record)
+            return taskId
+        } catch {
+            lastPong = "Task failed: \(error.localizedDescription)"
+            return nil
         }
     }
 

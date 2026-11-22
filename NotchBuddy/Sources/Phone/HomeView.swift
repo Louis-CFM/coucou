@@ -97,6 +97,7 @@ struct AgentsTab: View {
     @Namespace private var zoom
     /// The link test (builds run from Xcode): slides in from the left, the side of its button.
     @State private var showingTest = false
+    @State private var showingNewTask = false
 
     /// The curve of iOS's own push (UINavigationController), so the link test moves like Settings.
     private static let push = Animation.interpolatingSpring(mass: 3, stiffness: 1000, damping: 500, initialVelocity: 0)
@@ -242,7 +243,19 @@ struct AgentsTab: View {
                     // The Mochi tile grows into the session, and shrinks back.
                     .navigationTransition(.zoom(sourceID: id, in: zoom))
             }
+            .sheet(isPresented: $showingNewTask) {
+                NewTaskView(link: link)
+                    .presentationDragIndicator(.visible)
+            }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingNewTask = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .accessibilityLabel("New task")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         AboutView(link: link)

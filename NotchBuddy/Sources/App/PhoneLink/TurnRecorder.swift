@@ -36,6 +36,9 @@ final class TurnRecorder {
     }
     private var sessions: [String: (sessionId: String, cwd: String)] = [:]
 
+    /// The folders of the sessions seen since launch (InstructionRunner keeps a longer list).
+    func folders() -> [String] { Array(Set(sessions.values.map(\.cwd).filter { !$0.isEmpty })) }
+
     func start() {
         running = true
         log("turn recorder on")

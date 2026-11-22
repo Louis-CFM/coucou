@@ -60,6 +60,21 @@ final class Journal {
         }
     }
 
+    /// A task started from this iPhone ended.
+    func record(task: TaskResult) {
+        let entry = JournalEntry(id: "task|\(task.id)", kind: .turn, pillId: task.agent.pillId,
+                                 title: task.ok ? "\(task.agent.name) finished" : "\(task.agent.name) stopped",
+                                 detail: [task.project, String(task.summary.split(separator: "\n").last ?? "")]
+                                    .filter { !$0.isEmpty }.joined(separator: " · "),
+                                 date: task.endedAt, tone: task.ok ? .ok : .error, url: nil,
+                                 themes: task.ok ? [.code] : [.code, .errors])
+        guard !entries.contains(entry) else { return }
+        entries.removeAll { $0.id == entry.id }
+        entries.insert(entry, at: 0)
+        entries.sort { $0.date > $1.date }
+        save()
+    }
+
     /// Takes in what the iPhone knows now; writes the file only when something changed.
     func record(decisions: [DecisionLog], turns: [TurnSnapshot], services: [String: ServiceSnapshot]) {
         var byID = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
