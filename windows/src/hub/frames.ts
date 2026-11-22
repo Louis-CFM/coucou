@@ -18,6 +18,26 @@ export function shouldAnimate(live: number, pageVisibility: string, windowShown:
   return live > 0 && windowShown && pageVisibility === "visible";
 }
 
+/** Frames a second the canvases are drawn at. They are slow drifts and walks:
+ *  30 look the same as 60 while the window has the focus, and 10 are plenty
+ *  behind other windows. On Linux, WebKitGTK paints and composites each
+ *  changed canvas in software: at 60 the open window took about half a CPU
+ *  core, at 30/10 about a third and a tenth of one (#792). */
+export const FPS_FOCUSED = 30;
+export const FPS_BACKGROUND = 10;
+
+/** Milliseconds between two drawn frames. */
+export function frameInterval(focused: boolean): number {
+  return 1000 / (focused ? FPS_FOCUSED : FPS_BACKGROUND);
+}
+
+/** Whether the animation frame at `now` is drawn: one `interval` after the
+ *  last drawn one, give or take a quarter of a 60 Hz frame, so that a 60 Hz
+ *  screen draws every other frame and not one in three when they jitter. */
+export function frameDue(now: number, lastDrawn: number, interval: number): boolean {
+  return now - lastDrawn >= interval - 4;
+}
+
 /** Whether a canvas at `box` shows at least one pixel of a `width`×`height`
  *  viewport: one scrolled out of the page, or not laid out, is not drawn. */
 export function onScreen(box: Box, width: number, height: number): boolean {

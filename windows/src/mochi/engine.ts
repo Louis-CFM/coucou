@@ -164,6 +164,9 @@ function starPath(x: CanvasRenderingContext2D, ro: number, ri: number) {
 }
 
 const FONT = `system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif`;
+/** The sleeping z's font, drawn at this size and scaled (see `drawParticles`). */
+const Z_FONT_PX = 32;
+const Z_FONT = `700 ${Z_FONT_PX}px ${FONT}`;
 
 // ── Dance (BotEngine.applyDance, macOS) ──────────────────────────────────────
 
@@ -1327,13 +1330,19 @@ export class BotEngine {
           x.quadraticCurveTo(-sz * 0.8, sz * 0.2, 0, -sz);
           x.fill();
           break;
-        case "z":
+        case "z": {
+          // One font size, scaled to the z's: a z grows as it rises, and a new
+          // size at every frame was a new font for WebKitGTK to resolve and
+          // cache, up to 70 ms a frame for one sleeping Mochi (#792).
+          const scale = (sz * 1.9) / Z_FONT_PX;
           x.fillStyle = "rgb(209,219,235)";
-          x.font = `700 ${sz * 1.9}px ${FONT}`;
+          x.font = Z_FONT;
           x.textAlign = "center";
           x.textBaseline = "middle";
+          x.scale(scale, scale);
           x.fillText("z", 0, 0);
           break;
+        }
       }
       x.restore();
     }
