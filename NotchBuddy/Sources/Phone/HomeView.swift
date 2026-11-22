@@ -110,21 +110,20 @@ struct AgentsTab: View {
                                 .scaleEffect(max(0.86, 1 + pull / 500), anchor: .top)
                                 .opacity(max(0, 1 + pull / 160))
                         }
+                        .homeCardRow()
                 }
-                .homeCardRow()
 
                 if TodayCard.hasContent(link) {
+                    // The card's row only: on the section, the insets would move its title too.
                     Section("Today") {
-                        TodayCard(link: link)
+                        TodayCard(link: link).homeCardRow()
                     }
-                    .homeCardRow()
                 }
 
                 if !AttentionCard.flagged(link).isEmpty {
                     Section("Needs a look") {
-                        AttentionCard(link: link)
+                        AttentionCard(link: link).homeCardRow()
                     }
-                    .homeCardRow()
                 }
 
                 Section("Agents") {
