@@ -382,33 +382,12 @@ struct ChatBackdrop: View {
 }
 
 private extension View {
-    /// Your bubbles: iOS's glass tinted with Botan's orange, lit like a lens: a light rim
-    /// brighter at the top, a soft sheen inside, and an orange glow under it. The tint stays
-    /// light so the glass still shows (an orange gradient before iOS 26).
-    @ViewBuilder func yourBubble() -> some View {
+    /// Your bubbles: the same see-through glass as Botan's, in Botan's orange. The background
+    /// shows through (darker over the black, warmer over the glow), with a faint orange edge.
+    func yourBubble() -> some View {
         let shape = RoundedRectangle(cornerRadius: 19, style: .continuous)
-        let lit = self
-            .overlay {
-                // The sheen: light caught on the top half of the glass.
-                shape.fill(LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0.04), .clear],
-                                          startPoint: .top, endPoint: .center))
-                    .allowsHitTesting(false)
-            }
-            .overlay {
-                // The rim: bright on top, fading down the sides, a little light again at the bottom.
-                shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.55), .white.opacity(0.08), .white.opacity(0.2)],
-                                                  startPoint: .topLeading, endPoint: .bottomTrailing),
-                                   lineWidth: 0.9)
-                    .allowsHitTesting(false)
-            }
-        // The glow is cast by the whole bubble, glass included.
-        if #available(iOS 26.0, *) {
-            lit.glassEffect(.regular.tint(Color.botan.opacity(0.42)).interactive(), in: shape)
-                .shadow(color: Color.botan.opacity(0.35), radius: 14, y: 5)
-        } else {
-            lit.background(LinearGradient(colors: [Color.botan, Color.botan.opacity(0.82)], startPoint: .top, endPoint: .bottom),
-                           in: shape)
-                .shadow(color: Color.botan.opacity(0.35), radius: 14, y: 5)
-        }
+        return self
+            .background(Color.botan.opacity(0.26), in: shape)
+            .overlay(shape.strokeBorder(Color.botan.opacity(0.35), lineWidth: 0.5))
     }
 }
