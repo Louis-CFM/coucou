@@ -1106,6 +1106,8 @@ pub fn run() {
             whatsapp::whatsapp_open,
             whatsapp::whatsapp_close,
             whatsapp::whatsapp_open_app,
+            whatsapp::whatsapp_accept_call,
+            whatsapp::whatsapp_decline_call,
             whatsapp::whatsapp_send,
             whatsapp::whatsapp_ignore,
             whatsapp::whatsapp_unignore,
@@ -1250,6 +1252,7 @@ pub fn run() {
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
             notifications::start(&handle);
+            whatsapp::call_window::start_call_window_detector(&handle);
             presence::start(&handle);
             smart_notch::start(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);

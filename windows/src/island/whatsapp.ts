@@ -7,7 +7,8 @@ import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { GlobalNotifications } from "../core/notifications";
-import { WHATSAPP_ID, WhatsApp, type WaIslandView } from "../core/whatsapp";
+import { WHATSAPP_ID, WhatsApp, type WaIslandView, type WaCallEvent } from "../core/whatsapp";
+import { setActiveCall } from "../components/islandcn/call-adapter";
 import type { BotEmoteName } from "../core/layout";
 
 export interface WhatsAppHost {
@@ -28,9 +29,43 @@ let resetTimer: number | null = null;
 export function registerWhatsAppHandlers(island: WhatsAppHost) {
   void onEvent<WaIslandView>("whatsapp", applyWhatsApp);
   void onEvent<WaPillEvent>("whatsapp-pill", (e) => handlePillEvent(island, e));
+  void onEvent<WaCallEvent>("whatsapp-call", (e) => handleCallEvent(island, e));
   void Bridge.whatsappIsland().then((view) => {
     if (view) applyWhatsApp(view);
   });
+}
+
+export function handleCallEvent(_island: WhatsAppHost, e: WaCallEvent) {
+  if (State.paused && e.state === "ringing") return;
+  if (e.state === "ringing") {
+    setActiveCall({
+      id: e.id,
+      caller: e.caller,
+      subtitle: e.subtitle || "Incoming WhatsApp call",
+      avatar: e.avatar,
+      state: "ringing",
+      timestamp: Date.now(),
+    });
+  } else if (e.state === "ended" || e.state === "missed") {
+    setActiveCall({
+      id: e.id,
+      caller: e.caller,
+      subtitle: e.subtitle || "Incoming WhatsApp call",
+      avatar: e.avatar,
+      state: e.state,
+      timestamp: Date.now(),
+    });
+  } else if (e.state === "active") {
+    setActiveCall({
+      id: e.id,
+      caller: e.caller,
+      subtitle: e.subtitle || "WhatsApp Call",
+      avatar: e.avatar,
+      state: "active",
+      since: e.since ?? Date.now(),
+      timestamp: Date.now(),
+    });
+  }
 }
 
 function task() {

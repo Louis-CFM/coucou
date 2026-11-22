@@ -58,6 +58,25 @@ export interface WaIslandView {
   down: boolean;
 }
 
+export interface WaCallEvent {
+  id: string;
+  caller: string;
+  subtitle: string;
+  avatar?: string;
+  state: "ringing" | "active" | "ended" | "missed";
+  since?: number;
+}
+
+const CALL_BODY_REGEX = /\b(incoming\s*(voice|video)?\s*call|voice\s*call|video\s*call|appel\s*(vocal|vid[ée]o)?\s*(entrant)?|chiamata\s*(vocale|video)?\s*(in\s*arrivo)?|llamada\s*(de\s*voz|de\s*video)?\s*(entrante)?|eingehender\s*(sprach|video)?\s*anruf|inkomende\s*(spraak|video)?\s*oproep|chamada\s*(de\s*voz|de\s*v[íi]deo)?\s*(recebida)?|входящий\s*(голосовой|видео)?\s*звонок|incoming\s*call)\b/i;
+
+export function isCallNotification(app: string, title?: string, body?: string): boolean {
+  if (!app) return false;
+  const isWa = app.toLowerCase().includes("whatsapp");
+  if (!isWa) return false;
+  const text = `${title || ""} ${body || ""}`;
+  return CALL_BODY_REGEX.test(text);
+}
+
 export const IDLE_WHATSAPP: WaIslandView = {
   on: false, link: { state: "off" }, conversations: [], unread: 0, sending: false, sendError: null, down: false,
 };

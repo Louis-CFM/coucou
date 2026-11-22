@@ -96,7 +96,10 @@ windows = { version = "0.61", features = [
   # System notifications listener for the small notch
   "UI_Notifications",
   "UI_Notifications_Management",
+  "Data_Xml_Dom",
   "ApplicationModel",
+  # WhatsApp Desktop Call Window UI Automation
+  "Win32_UI_Accessibility",
   # Smart notch window and monitor detection
   "Win32_Graphics_Gdi",
 ] }

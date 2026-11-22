@@ -620,6 +620,10 @@ export const Bridge = {
   spotifyInstalled: () => call<boolean>("spotify_installed"),
 
   // ── WhatsApp (src-tauri/src/whatsapp) ─────────────────────────────────────
+  /** Answers an incoming WhatsApp call, bringing the call window to foreground. */
+  whatsappAcceptCall: (callId: string) => call<boolean>("whatsapp_accept_call", { callId }),
+  /** Declines an incoming WhatsApp call, dismissing the toast and/or rejecting. */
+  whatsappDeclineCall: (callId: string) => call<boolean>("whatsapp_decline_call", { callId }),
   /** The island's copy, asked once at start (then the "whatsapp" event). Island only. */
   whatsappIsland: () => call<WaIslandView>("whatsapp_island"),
   /** A conversation opened in the card: its latest messages, the receipt if Settings says so. */

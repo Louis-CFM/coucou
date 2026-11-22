@@ -109,7 +109,7 @@ fun CoudropTransferCard(
                             PillButton(
                                 text = "Resume",
                                 onClick = { onResume(record.id) },
-                                kind = PillKind.NORMAL,
+                                kind = PillKind.SECONDARY,
                             )
                         }
                     } else {
@@ -117,7 +117,7 @@ fun CoudropTransferCard(
                             PillButton(
                                 text = "Pause",
                                 onClick = { onPause(record.id) },
-                                kind = PillKind.NORMAL,
+                                kind = PillKind.SECONDARY,
                             )
                         }
                     }

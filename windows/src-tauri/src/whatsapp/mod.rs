@@ -13,6 +13,7 @@
 // says (src/settings/whatsapp.ts); both only ever see status codes, which they translate.
 
 pub mod archive;
+pub mod call_window;
 pub mod gateway;
 pub mod install;
 pub mod model;
@@ -1163,6 +1164,66 @@ pub fn whatsapp_open_app(window: WebviewWindow) -> Result<bool, String> {
     only(&window, crate::island::WINDOW_LABEL)?;
     let chat = ctl().open_chat.clone();
     Ok(open_in_whatsapp(chat.as_deref()))
+}
+
+#[tauri::command]
+pub async fn whatsapp_accept_call(window: WebviewWindow, call_id: String) -> Result<bool, String> {
+    only(&window, crate::island::WINDOW_LABEL)?;
+
+    if call_id.starts_with("win_") {
+        return Ok(call_window::accept_window_call(&call_id));
+    }
+
+    // 1. Bring WhatsApp Desktop to foreground to connect the active VoIP audio
+    let _ = crate::platform::handles_scheme("whatsapp");
+    crate::platform::open_url("whatsapp://");
+
+    #[cfg(windows)]
+    {
+        use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
+        use windows::core::HSTRING;
+        unsafe {
+            let class_name = HSTRING::from("ApplicationFrameWindow");
+            let title_name = HSTRING::from("WhatsApp");
+            let hwnd = FindWindowW(&class_name, &title_name)
+                .or_else(|_| FindWindowW(None, &title_name));
+            if let Ok(h) = hwnd {
+                if !h.0.is_null() {
+                    crate::platform::bring_forward(h.0 as isize);
+                }
+            }
+        }
+    }
+
+    let _ = window.emit("whatsapp-call", serde_json::json!({
+        "id": call_id,
+        "caller": "WhatsApp",
+        "subtitle": "WhatsApp Call",
+        "state": "active",
+        "since": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0),
+    }));
+
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn whatsapp_decline_call(window: WebviewWindow, call_id: String) -> Result<bool, String> {
+    only(&window, crate::island::WINDOW_LABEL)?;
+
+    if call_id.starts_with("win_") {
+        return Ok(call_window::decline_window_call(&call_id));
+    }
+
+    let removed = crate::notifications::decline_call(&call_id);
+
+    let _ = window.emit("whatsapp-call", serde_json::json!({
+        "id": call_id,
+        "caller": "WhatsApp",
+        "subtitle": "Incoming WhatsApp call",
+        "state": "ended",
+    }));
+
+    Ok(removed || true)
 }
 
 /// Enter or the send button in the island's card: the only way a message leaves Coucou.

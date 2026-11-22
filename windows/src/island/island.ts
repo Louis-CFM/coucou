@@ -46,8 +46,10 @@ import { GlobalWelcomeMessages } from "../core/welcome";
 import { ContextIntelligence } from "../companion/context";
 import { createRoot, type Root } from "react-dom/client";
 import { createElement } from "react";
-import { NearbyTransferHost } from "../components/islandcn/nearby-transfer-host";
+import { ActivityDispatcherHost } from "../components/islandcn/activity-dispatcher";
 import { subscribeActiveTransfer } from "../components/islandcn/transfer-adapter";
+import { subscribeActiveCall, type ActiveCall, setActiveCall } from "../components/islandcn/call-adapter";
+import { isCallNotification } from "../core/whatsapp";
 import { AvatarLifecycleManager } from "../mochi/avatar-lifecycle";
 
 const BOT_OVERHANG = 40;
@@ -124,6 +126,12 @@ export class Island {
   private activityHostEl!: HTMLElement;
   private reactRoot: Root | null = null;
   private transferActive = false;
+  private callActive = false;
+  private currentCall: ActiveCall | null = null;
+
+  private get activityActive(): boolean {
+    return this.callActive || this.transferActive;
+  }
 
   private width = new Tracked(NOTCH_W);
   private height = new Tracked(0);
@@ -496,22 +504,20 @@ export class Island {
 
     // Mount single IslandCN activity host inside Coucou Dynamic Island
     this.reactRoot = createRoot(this.activityHostEl);
-    this.reactRoot.render(createElement(NearbyTransferHost));
+    this.reactRoot.render(createElement(ActivityDispatcherHost));
 
-    subscribeActiveTransfer((active) => {
-      const isNowActive = active !== null;
-      if (this.transferActive !== isNowActive) {
-        this.transferActive = isNowActive;
-        this.dirty = true;
+    const syncActivityVisibility = (wasActive: boolean, isNowActive: boolean) => {
+      this.activityHostEl.classList.toggle("active", isNowActive);
+      this.islandEl.classList.toggle("transfer-active", this.transferActive);
+      this.islandEl.classList.toggle("call-active", this.callActive);
+      if (wasActive !== isNowActive) {
         if (isNowActive && this.collapsed) {
           this.collapsed = false;
           this.collapsedTo = { w: 0, h: 0 };
           void Bridge.setCollapsed(false);
         }
-        this.activityHostEl.classList.toggle("active", isNowActive);
-        this.islandEl.classList.toggle("transfer-active", isNowActive);
         if (isNowActive) {
-          // Strictly suppress avatar, blur, and glow from the transfer presentation
+          // Strictly suppress avatar, blur, and glow from the activity presentation
           this.botCanvas.style.display = "none";
           this.botCanvas.style.visibility = "hidden";
           this.botCanvas.style.opacity = "0";
@@ -523,8 +529,8 @@ export class Island {
           this.botGlow.style.opacity = "0";
           this.syncBatteryVisibility();
         } else {
-          // Transfer has completed, cancelled, or failed and been dismissed!
-          // Explicitly restore all Dynamic Island elements that were hidden during transfer!
+          // Activity has completed, cancelled, or ended and been dismissed!
+          // Explicitly restore all Dynamic Island elements that were hidden!
           this.botCanvas.style.display = "";
           this.botCanvas.style.visibility = "";
           this.greetingCanvas.style.display = "";
@@ -533,11 +539,19 @@ export class Island {
           this.botGlow.style.visibility = "";
           this.closedEl.style.display = "";
           this.batteryEl.style.display = "";
+          this.batteryEl.style.opacity = "";
+          this.batteryEl.style.visibility = "";
           this.clockEl.style.display = "";
           this.miniGrid.style.display = "";
           this.compactTimer.style.display = "";
           this.compactPlan.style.display = "";
           this.closedKey = ""; // force re-computation of closed island content
+
+          // If the island was not intentionally expanded into an app card,
+          // ensure the FSM returns cleanly to "hidden" (resting closed notch/island geometry)
+          if (State.mode !== "expanded") {
+            this.fsm.forceHidden();
+          }
 
           this.updateClosed();
           this.syncBatteryVisibility();
@@ -558,10 +572,25 @@ export class Island {
             this.header.el.style.pointerEvents = live ? "auto" : "none";
           }
         }
-        this.animateGeometry();
-        this.ensureRunning();
-        this.syncDom();
       }
+      this.animateGeometry();
+      this.ensureRunning();
+      this.syncDom();
+    };
+
+    subscribeActiveTransfer((active) => {
+      const wasActive = this.activityActive;
+      this.transferActive = active !== null;
+      this.dirty = true;
+      syncActivityVisibility(wasActive, this.activityActive);
+    });
+
+    subscribeActiveCall((call) => {
+      const wasActive = this.activityActive;
+      this.callActive = call !== null && call.state !== "ended";
+      this.currentCall = call;
+      this.dirty = true;
+      syncActivityVisibility(wasActive, this.activityActive);
     });
     CoucoudoroController.shared.subscribe(() => {
       this.dirty = true;
@@ -584,7 +613,18 @@ export class Island {
     BatteryMonitor.subscribe((state) => {
       this.onBatteryStateChange(state);
     });
-    void onEvent<{ app: string; title?: string; body?: string }>("system-notification", (e) => {
+    void onEvent<{ app: string; title?: string; body?: string; image?: string; id?: string }>("system-notification", (e) => {
+      if (isCallNotification(e.app, e.title, e.body)) {
+        setActiveCall({
+          id: e.id || `${e.app}_call_${Date.now()}`,
+          caller: e.title || "WhatsApp",
+          subtitle: e.body || "Incoming WhatsApp call",
+          avatar: e.image,
+          state: "ringing",
+          timestamp: Date.now(),
+        });
+        return;
+      }
       GlobalNotifications.push({ app: e.app, title: e.title, body: e.body });
     });
     void onEvent<{ status: string; away_minutes: number; user_name?: string }>("user-presence", (e) => {
@@ -1185,6 +1225,14 @@ export class Island {
     if (this.isSmartTucked) {
       return { w: 44, h: 14, r: 8 };
     }
+    if (this.callActive) {
+      const isRinging = this.currentCall?.state === "ringing" || this.currentCall?.state === "accepting";
+      if (isRinging) {
+        return { w: Math.round(374 * scale), h: Math.round(84 * scale), r: Math.round(42 * scale) };
+      } else {
+        return { w: Math.round(242 * scale), h: Math.round(37 * scale), r: Math.round(18.5 * scale) };
+      }
+    }
     if (this.transferActive) {
       return { w: Math.round(448 * scale), h: Math.round(68 * scale), r: Math.round(34 * scale) };
     }
@@ -1220,7 +1268,9 @@ export class Island {
     const isIsland = this.isIslandStyle;
     const isTucked = this.isSmartTucked;
     const targetTop = isTucked ? 0 : (isIsland ? 10 : 0);
-    const targetTopR = isTucked ? 0 : (isIsland ? (this.transferActive ? Math.round(34 * scale) : (State.mode === "expanded" ? 28 : 999)) : 0);
+    const isCallRinging = this.callActive && (this.currentCall?.state === "ringing" || this.currentCall?.state === "accepting");
+    const callTargetRadius = isCallRinging ? Math.round(42 * scale) : Math.round(18.5 * scale);
+    const targetTopR = isTucked ? 0 : (isIsland ? (this.activityActive ? (this.callActive ? callTargetRadius : Math.round(34 * scale)) : (State.mode === "expanded" ? 28 : 999)) : 0);
 
     if (isShrinking) {
       this.width.curveTowards(w);
@@ -1251,11 +1301,14 @@ export class Island {
     this.islandEl.classList.toggle("style-island", isIsland);
     this.islandEl.classList.toggle("style-notch", !isIsland);
     this.islandEl.classList.toggle("transfer-active", this.transferActive);
+    this.islandEl.classList.toggle("call-active", this.callActive);
     this.islandEl.style.top = `${topOffset}px`;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
 
-    const maxR = this.transferActive ? Math.round(34 * scale) : (State.mode === "expanded" ? 28 : Math.round(hh / 2));
+    const isCallRinging = this.callActive && (this.currentCall?.state === "ringing" || this.currentCall?.state === "accepting");
+    const callTargetRadius = isCallRinging ? Math.round(42 * scale) : Math.round(18.5 * scale);
+    const maxR = this.activityActive ? (this.callActive ? callTargetRadius : Math.round(34 * scale)) : (State.mode === "expanded" ? 28 : Math.round(hh / 2));
     const topR = Math.max(0, Math.min(maxR, this.topRadius.value));
     const botR = isIsland ? Math.max(0, Math.min(maxR, r)) : Math.max(0, r);
     this.islandEl.style.borderRadius = `${topR}px ${topR}px ${botR}px ${botR}px`;
@@ -1294,7 +1347,7 @@ export class Island {
       window.clearTimeout(this.collapseTimer);
       this.collapseTimer = null;
     }
-    if (this.transferActive) {
+    if (this.activityActive) {
       if (this.collapsed) {
         this.collapsed = false;
         this.collapsedTo = { w: 0, h: 0 };
@@ -1435,7 +1488,7 @@ export class Island {
    * resizes the window to it.
    */
   private updateClosed() {
-    if (this.transferActive) {
+    if (this.activityActive) {
       this.closedEl.classList.remove("on");
       return;
     }
@@ -1570,7 +1623,7 @@ export class Island {
   }
 
   private syncBatteryVisibility() {
-    if (this.transferActive) {
+    if (this.activityActive) {
       this.batteryEl.style.opacity = "0";
       this.batteryEl.style.display = "none";
       this.batteryEl.classList.add("hidden");
@@ -1603,7 +1656,7 @@ export class Island {
       GlobalNotifications.active() != null || GlobalWelcomeMessages.active() != null;
 
     const batteryVisible =
-      !this.transferActive &&
+      !this.activityActive &&
       !hasActiveNotchBanner &&
       showBattery &&
       hasBattery &&
@@ -1671,7 +1724,7 @@ export class Island {
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
-      if (this.transferActive) {
+      if (this.activityActive) {
         return;
       }
       if (State.mode === "hidden" && GlobalWelcomeMessages.active()) {
@@ -1792,7 +1845,7 @@ export class Island {
     const rect = this.islandRect();
     State.mouseInIsland = { x: x - rect.x, y: y - rect.y };
 
-    if (this.transferActive) {
+    if (this.activityActive) {
       this.ensureRunning();
       return;
     }
@@ -2169,7 +2222,7 @@ export class Island {
     const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away && !this.transferActive;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 
-    if (this.transferActive) {
+    if (this.activityActive) {
       this.botCanvas.style.opacity = "0";
       this.botCanvas.style.display = "none";
       this.botCanvas.style.visibility = "hidden";
@@ -2198,7 +2251,7 @@ export class Island {
   }
 
   private drawBot(dt: number) {
-    if (this.transferActive) {
+    if (this.activityActive) {
       return;
     }
     const rawSize = this.botSize.value;
@@ -2331,13 +2384,13 @@ export class Island {
       this.animateGeometry();
     }
 
-    const showTransfer = this.transferActive;
-    this.activityHostEl.classList.toggle("active", showTransfer);
-    this.activityHostEl.style.display = showTransfer ? "flex" : "none";
-    this.activityHostEl.style.opacity = showTransfer ? "1" : "0";
-    this.activityHostEl.style.pointerEvents = showTransfer ? "auto" : "none";
+    const showActivity = this.activityActive;
+    this.activityHostEl.classList.toggle("active", showActivity);
+    this.activityHostEl.style.display = showActivity ? "flex" : "none";
+    this.activityHostEl.style.opacity = showActivity ? "1" : "0";
+    this.activityHostEl.style.pointerEvents = showActivity ? "auto" : "none";
 
-    if (showTransfer) {
+    if (showActivity) {
       this.contentEl.style.display = "none";
       this.contentEl.style.visibility = "hidden";
       this.contentEl.style.opacity = "0";
@@ -2368,7 +2421,7 @@ export class Island {
       return;
     }
 
-    // Clear any inline display: none overrides from previous transfer
+    // Clear any inline display: none overrides from previous transfer or call
     this.botCanvas.style.display = "";
     this.botCanvas.style.visibility = "";
     this.greetingCanvas.style.display = "";
@@ -2376,10 +2429,14 @@ export class Island {
     this.botGlow.style.display = "";
     this.botGlow.style.visibility = "";
     this.closedEl.style.display = "";
+    this.batteryEl.style.display = "";
+    this.batteryEl.style.opacity = "";
+    this.batteryEl.style.visibility = "";
     this.clockEl.style.display = "";
     this.miniGrid.style.display = "";
     this.compactTimer.style.display = "";
     this.compactPlan.style.display = "";
+    this.syncBatteryVisibility();
 
     const expanded = State.mode === "expanded";
     const greetingActive = expanded && State.view === "greeting";

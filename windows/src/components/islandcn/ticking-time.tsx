@@ -39,6 +39,8 @@ export const formatClock = (ms: number): string => {
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${ss}` : `${minutes}:${ss}`;
 };
 
+export { formatMMSS } from "./call-adapter";
+
 
 /** Whole minutes, rounded up, so "1" shows until the last second: "12". */
 export const formatMinutes = (ms: number): string => String(Math.max(0, Math.ceil(ms / 60000)));
