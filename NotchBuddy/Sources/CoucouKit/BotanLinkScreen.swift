@@ -67,6 +67,8 @@ struct BotanScreen: Equatable, Sendable {
 /// What a button event asks for, once checked.
 enum BotanDecision: Equatable, Sendable {
     case allow(requestId: String)
+    /// A double press on an approval.
+    case deny(requestId: String)
     case answer(requestId: String, label: String)
     /// Nothing to do: a press with nothing waiting, an old screen, or something Botan may not decide.
     case ignore(String)
@@ -108,7 +110,7 @@ enum BotanLinkScreen {
         event.trimmingCharacters(in: .whitespacesAndNewlines) == "tick"
     }
 
-    /// A button event ("approve|#token", "choose|1|Alloy|#token", "press"), checked against the screen.
+    /// A button event ("approve|#token", "deny|#token", "choose|1|Alloy|#token", "press"), checked against the screen.
     static func decision(for event: String, screen: BotanScreen?) -> BotanDecision {
         var parts = event.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "|")
         var sent: String?
@@ -117,12 +119,14 @@ enum BotanLinkScreen {
             parts.removeLast()
         }
         guard let kind = parts.first else { return .ignore("empty") }
-        guard kind == "approve" || kind == "choose" else { return .ignore("not a decision") }
+        guard kind == "approve" || kind == "deny" || kind == "choose" else { return .ignore("not a decision") }
         guard let screen, let request = screen.request, let token = screen.token else { return .ignore("nothing waiting") }
         guard let sent, sent == token else { return .ignore("pressed on another screen") }
         switch (kind, request) {
         case ("approve", .approval(let id)):
             return .allow(requestId: id)
+        case ("deny", .approval(let id)):
+            return .deny(requestId: id)
         case ("choose", .question(let id, let options)):
             guard parts.count >= 3, let i = Int(parts[1]), options.indices.contains(i) else { return .ignore("no such choice") }
             // The label must be the one Botan was given for that place.

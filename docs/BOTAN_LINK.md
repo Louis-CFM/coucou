@@ -51,7 +51,8 @@ The demo mode of the island is not real: Botan is told nothing runs.
 
 | Event | Meaning |
 |---|---|
-| `approve\|#token` | short press on an approval |
+| `approve\|#token` | short press on an approval (sent 350 ms after the release, once no second press came) |
+| `deny\|#token` | double press on an approval (firmware 0.8.3+) |
 | `choose\|i\|label\|#token` | button held on choice `i` (0-based) |
 | `press` | a press with nothing to decide (Botan's own little game) |
 | `tick` | heartbeat, every 15 s while linked: decides nothing, wakes a locked iPhone |
@@ -59,8 +60,9 @@ The demo mode of the island is not real: Botan is told nothing runs.
 The token is the start of the request id (8 letters or digits), sent with the screen. Coucou applies a
 decision only if its token is the one of the request still pending, and checks it again on the main
 actor right before answering the hook, exactly as a click on the island's card does. A press on an old
-screen never answers a newer request. Botan never denies, never types, never answers what it was not
-shown; the Mac's own card keeps working all along.
+screen never answers a newer request. Botan denies only on a double press on the approval it shows, never
+types, never answers what it was not shown; the Mac's own card keeps working all along. The approval
+screen says so at the bottom: "PRESS ALLOW · DOUBLE DENY".
 
 ## Pairing, and which Botan
 

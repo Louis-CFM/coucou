@@ -91,7 +91,9 @@ struct BotanLinkTests {
             check(BotanLinkScreen.decision(for: "approve|#4f2a9c1e\n", screen: a) == .allow(requestId: approval.requestId), "trailing newline")
             if case .ignore = BotanLinkScreen.decision(for: "approve|#00000000", screen: a) {} else { check(false, "another token is ignored") }
             if case .ignore = BotanLinkScreen.decision(for: "approve", screen: a) {} else { check(false, "no token, no decision") }
-            if case .ignore = BotanLinkScreen.decision(for: "deny|#4f2a9c1e", screen: a) {} else { check(false, "Botan never denies") }
+            check(BotanLinkScreen.decision(for: "deny|#4f2a9c1e", screen: a) == .deny(requestId: approval.requestId), "double press denies")
+            if case .ignore = BotanLinkScreen.decision(for: "deny|#00000000", screen: a) {} else { check(false, "deny with another token") }
+            if case .ignore = BotanLinkScreen.decision(for: "deny", screen: a) {} else { check(false, "no token, no deny") }
             if case .ignore = BotanLinkScreen.decision(for: "press", screen: a) {} else { check(false, "a plain press decides nothing") }
             if case .ignore = BotanLinkScreen.decision(for: "tick", screen: a) {} else { check(false, "the heartbeat decides nothing") }
             check(BotanLinkScreen.isTick("tick\n") && !BotanLinkScreen.isTick("approve|#4f2a9c1e"), "heartbeat")
@@ -112,6 +114,7 @@ struct BotanLinkTests {
             if case .ignore = BotanLinkScreen.decision(for: "choose|2|Alloy|#9b7d3e10", screen: q) {} else { check(false, "label must match its place") }
             if case .ignore = BotanLinkScreen.decision(for: "choose|7|Frost|#9b7d3e10", screen: q) {} else { check(false, "no such place") }
             if case .ignore = BotanLinkScreen.decision(for: "approve|#9b7d3e10", screen: q) {} else { check(false, "approve on a question") }
+            if case .ignore = BotanLinkScreen.decision(for: "deny|#9b7d3e10", screen: q) {} else { check(false, "deny on a question") }
             if case .ignore = BotanLinkScreen.decision(for: "choose|2|Frost|#4f2a9c1e", screen: q) {} else { check(false, "token of another screen") }
         }
 

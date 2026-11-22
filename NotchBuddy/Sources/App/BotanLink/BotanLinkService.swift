@@ -227,6 +227,13 @@ final class BotanLinkService: NSObject, ObservableObject {
             }
             Self.log("allowed from Botan: \(pending.tool)")
             HookServer.shared.sendApprovalDecision("allow", for: pending.id)
+        case .deny(let requestId):
+            guard let pending = AppState.shared.pendingApproval, pending.id.uuidString == requestId else {
+                Self.log("deny pressed after the request was resolved, ignored")
+                return
+            }
+            Self.log("denied from Botan: \(pending.tool)")
+            HookServer.shared.sendApprovalDecision("deny", for: pending.id)
         case .answer(let requestId, let label):
             guard let entry = AppState.shared.waitingQuestions.first(where: { $0.id.uuidString == requestId }) else {
                 Self.log("answer for a question no longer waiting, ignored")

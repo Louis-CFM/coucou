@@ -341,6 +341,13 @@ final class BotanBridge: NSObject {
             runInBackground {
                 _ = await PhoneLink.shared.decide(.allow, fingerprint: fingerprint, pillId: session.id, summary: summary)
             }
+        case .deny(let fingerprint):
+            guard let session = PhoneLink.shared.sessions.first(where: { $0.needsApproval && $0.approvalFingerprint == fingerprint })
+            else { return }
+            let summary = session.approvalCommand.isEmpty ? "Denied from Botan" : String(session.approvalCommand.prefix(200))
+            runInBackground {
+                _ = await PhoneLink.shared.decide(.deny, fingerprint: fingerprint, pillId: session.id, summary: summary)
+            }
         case .answer(let fingerprint, let label):
             guard let session = PhoneLink.shared.sessions.first(where: { $0.questionFingerprint == fingerprint }) else { return }
             runInBackground {
