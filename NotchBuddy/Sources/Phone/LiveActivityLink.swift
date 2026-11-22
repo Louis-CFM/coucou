@@ -62,7 +62,8 @@ final class LiveActivityLink {
     /// The Mac starts it when the app is closed (iOS starts one in the background only on a
     /// push); with the app open, the iPhone starts it itself.
     func sessionsChanged(_ sessions: [SessionItem]) {
-        let lead = Self.leadState(sessions)
+        answered = answered.filter { Date().timeIntervalSince($0.value) < 120 }
+        let lead = Self.leadState(sessions, answered: Set(answered.keys))
         guard let activity = Activity<MochiActivityAttributes>.activities.first(where: { $0.activityState == .active }) else {
             startHereIfOpen(lead)
             return
@@ -97,6 +98,22 @@ final class LiveActivityLink {
     }
 
     private var endTask: Task<Void, Never>?
+    /// Requests answered from the Live Activity: shown as answered until the Mac's news catches up.
+    private var answered: [String: Date] = [:]
+
+    /// Allow or Deny tapped on the Live Activity: it says so at once ("Allowed", Mochi back to
+    /// work) instead of waiting for the Mac to answer through iCloud.
+    func showAnswered(fingerprint: String, allowed: Bool) async {
+        answered[fingerprint] = Date()
+        guard let activity = Activity<MochiActivityAttributes>.activities.first(where: { $0.activityState == .active }) else { return }
+        var state = activity.content.state
+        state.approval = nil
+        state.tone = "working"
+        state.state = BotState.working.rawValue
+        state.statusText = allowed ? "Allowed" : "Denied"
+        let id = activity.id, next = state
+        await Self.update(id: id, to: next)
+    }
 
     /// With the app open and an agent going, Mochi is in the Dynamic Island as soon as you leave it.
     private func startHereIfOpen(_ lead: MochiActivityState?) {
@@ -120,22 +137,25 @@ final class LiveActivityLink {
     }
 
     /// The most urgent session, as the Mac builds it (LiveActivityRelay.leadState).
-    static func leadState(_ sessions: [SessionItem]) -> MochiActivityState? {
+    static func leadState(_ sessions: [SessionItem], answered: Set<String> = []) -> MochiActivityState? {
         let ranked = sessions
             .filter { PillCatalog.isSession($0.id) }
-            .map { s -> (SessionItem, Int) in
-                (s, MochiActivityState.urgency(state: s.state, waitingForOK: s.needsApproval && !s.approvalFingerprint.isEmpty,
-                                               hasQuestion: s.state == .question))
+            .map { s -> (session: SessionItem, urgency: Int, state: BotState) in
+                let isAnswered = answered.contains(s.approvalFingerprint)
+                let waiting = s.needsApproval && !s.approvalFingerprint.isEmpty && !isAnswered
+                // Answered here, the Mac not told yet: back to work.
+                let state = isAnswered && (s.state == .approval || s.needsApproval) ? BotState.working : s.state
+                return (s, MochiActivityState.urgency(state: state, waitingForOK: waiting, hasQuestion: state == .question), state)
             }
-        guard let lead = ranked.min(by: { $0.1 < $1.1 }) else { return nil }
-        let (session, urgency) = lead
-        let others = ranked.filter { $0.0.id != session.id && $0.1 <= 3 }.count
+        guard let lead = ranked.min(by: { $0.urgency < $1.urgency }) else { return nil }
+        let (session, urgency, state) = lead
+        let others = ranked.filter { $0.session.id != session.id && $0.urgency <= 3 }.count
         return MochiActivityState(
             pillId: session.id,
             agent: session.pillName,
             color: session.color,
-            state: (urgency == 0 ? BotState.approval : session.state).rawValue,
-            statusText: MochiActivityState.statusText(state: session.state, urgency: urgency,
+            state: (urgency == 0 ? BotState.approval : state).rawValue,
+            statusText: MochiActivityState.statusText(state: state, urgency: urgency,
                                                       stepIndex: session.stepIndex, stepCount: session.steps.count),
             tone: MochiActivityState.tone(urgency: urgency),
             stepIndex: max(0, session.stepIndex),

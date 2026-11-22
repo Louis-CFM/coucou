@@ -21,6 +21,8 @@ struct DenyApprovalIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         #if !WIDGET_EXTENSION
+        // The answer shows at once on the Live Activity; the Mac gets it a moment later.
+        await LiveActivityLink.shared.showAnswered(fingerprint: fingerprint, allowed: false)
         let link = await PhoneLink.shared
         _ = await link.decide(.deny, fingerprint: fingerprint, pillId: pillId, summary: "Denied from the Lock Screen")
         #endif
@@ -48,6 +50,7 @@ struct AllowApprovalIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         #if !WIDGET_EXTENSION
+        await LiveActivityLink.shared.showAnswered(fingerprint: fingerprint, allowed: true)
         let link = await PhoneLink.shared
         _ = await link.allowFromOutside(fingerprint: fingerprint, pillId: pillId, from: "the Lock Screen")
         #endif
