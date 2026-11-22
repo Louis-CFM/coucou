@@ -61,8 +61,8 @@ The token is the start of the request id (8 letters or digits), sent with the sc
 decision only if its token is the one of the request still pending, and checks it again on the main
 actor right before answering the hook, exactly as a click on the island's card does. A press on an old
 screen never answers a newer request. Botan denies only on a double press on the approval it shows, never
-types, never answers what it was not shown; the Mac's own card keeps working all along. The approval
-screen says so at the bottom: "PRESS ALLOW · DOUBLE DENY".
+types, never answers what it was not shown; the Mac's own card keeps working all along. A denied action shows as "Denied" in the iPhone's
+turn (it never ran).
 
 ## Pairing, and which Botan
 

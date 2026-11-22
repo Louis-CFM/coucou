@@ -155,15 +155,19 @@ private struct ActionRow: View {
                 if !action.output.isEmpty { withAnimation(.easeOut(duration: 0.2)) { open.toggle() } }
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: action.failed ? "exclamationmark.triangle.fill" : icon)
+                    let denied = action.denied == true
+                    Image(systemName: denied ? "hand.raised.fill" : action.failed ? "exclamationmark.triangle.fill" : icon)
                         .font(.footnote)
-                        .foregroundStyle(action.failed ? Color.red : Color.secondary)
+                        .foregroundStyle(denied ? Color.orange : action.failed ? Color.red : Color.secondary)
                         .frame(width: 18)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(action.tool).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Text(denied ? "\(action.tool) · Denied" : action.tool)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(denied ? Color.orange : Color.secondary)
                         Text(file?.name ?? action.summary)
                             .font(action.tool == "Bash" ? .footnote.monospaced() : .footnote)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(denied ? .secondary : .primary)
+                            .strikethrough(denied, color: .secondary)
                             .lineLimit(open ? nil : 2)
                             .multilineTextAlignment(.leading)
                     }

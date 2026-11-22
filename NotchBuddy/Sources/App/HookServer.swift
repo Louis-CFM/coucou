@@ -1348,6 +1348,10 @@ final class HookServer: @unchecked Sendable {
         // The recap only counts allow / always / deny ("ask" hands the choice back to the agent).
         let recapDecision = ["plan_auto": "allow", "plan_default": "allow", "plan_change": "deny"][decision] ?? decision
         if decision != "ask" { RecapStore.shared.recordDecision(pillId: head.pillId, decision: recapDecision) }
+        #if PHONE_LINK
+        // The iPhone's turn shows it didn't run, instead of an action that looks done.
+        if recapDecision == "deny" { TurnRecorder.shared.markDenied(pillId: head.pillId, tool: head.tool) }
+        #endif
         removeApproval(id: head.id, answer: json)
         if decision == "plan_change" { ClaudeHost.activate(head.hostApp) }
     }

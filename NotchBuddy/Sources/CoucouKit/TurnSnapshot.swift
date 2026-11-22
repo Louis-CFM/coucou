@@ -11,6 +11,9 @@ struct TurnAction: Codable, Equatable, Sendable {
     var summary: String       // the command, file or pattern
     var output: String = ""   // what a command printed (trimmed)
     var failed: Bool = false
+    /// Turned down by the user (iPhone, Botan or the notch): it never ran. Optional, so turns
+    /// written before it still decode.
+    var denied: Bool? = nil
     var date: Date
     /// Index in `files` when this action changed a file.
     var fileIndex: Int? = nil

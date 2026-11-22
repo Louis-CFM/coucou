@@ -57,6 +57,17 @@ final class TurnRecorder {
         }
     }
 
+    /// The user turned a request down: the last action of that tool that hasn't run yet never will.
+    func markDenied(pillId: String, tool: String) {
+        guard running, var turn = turns[pillId],
+              let index = turn.actions.lastIndex(where: { $0.tool == tool && $0.output.isEmpty && !$0.failed && $0.fileIndex == nil && $0.denied != true })
+        else { return }
+        turn.actions[index].denied = true
+        turns[pillId] = turn
+        dirty.insert(pillId)
+        scheduleFlush(soon: false)
+    }
+
     /// Called by HookServer for every event of a session pill.
     func record(event: String, payload: [String: Any], pillId: String) {
         guard running, PillCatalog.isSession(pillId) else { return }
