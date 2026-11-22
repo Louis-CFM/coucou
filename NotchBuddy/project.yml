@@ -124,6 +124,7 @@ targets:
           - "Phone/**"
           - "Widgets/**"
           - "NotificationContent/**"
+          - "NotificationService/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -218,6 +219,7 @@ targets:
           - "Phone/**"
           - "Widgets/**"
           - "NotificationContent/**"
+          - "NotificationService/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
