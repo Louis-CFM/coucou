@@ -152,20 +152,31 @@ struct NewTaskView: View {
                                 .foregroundStyle(.secondary)
                             Text(need.detail)
                                 .font(.footnote.monospaced())
+                                .foregroundStyle(result.ok ? .secondary : .primary)
+                                .lineLimit(result.ok ? 3 : nil)
                                 .textSelection(.enabled)
                         }
                     }
                     Button {
                         Task { await allowAndContinue(result) }
                     } label: {
-                        Label(needs.count == 1 ? "Allow this and continue" : "Allow these \(needs.count) and continue",
-                              systemImage: "faceid")
+                        if result.ok {
+                            Label("Allow and continue anyway", systemImage: "faceid")
+                                .font(.subheadline)
+                        } else {
+                            Label(needs.count == 1 ? "Allow this and continue" : "Allow these \(needs.count) and continue",
+                                  systemImage: "faceid")
+                        }
                     }
+                    .tint(result.ok ? .secondary : .accentColor)
                     .disabled(sending)
                 } header: {
-                    Text("Needs your OK")
+                    // A task that finished found its way without them: only a note then.
+                    Text(result.ok ? "Skipped" : "Needs your OK")
                 } footer: {
-                    Text("\(agent.name) couldn't ask you while it ran, so it skipped these. Allowing them lets this task, and only this one, do exactly what's shown.")
+                    Text(result.ok
+                         ? "\(agent.name) couldn't ask you for these while it ran and finished without them. Continue only if the answer is missing something."
+                         : "\(agent.name) couldn't ask you while it ran, so it skipped these. Allowing them lets this task, and only this one, do exactly what's shown.")
                 }
             }
             if let error {
