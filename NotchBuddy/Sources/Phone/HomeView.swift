@@ -95,6 +95,8 @@ struct AgentsTab: View {
     let link: PhoneLink
     @Binding var path: [String]
     @Namespace private var zoom
+    /// The link test (builds run from Xcode): slides in from the left, the side of its button.
+    @State private var showingTest = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -190,8 +192,8 @@ struct AgentsTab: View {
                 #if DEBUG
                 // Test screens, in builds run from Xcode only.
                 ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        LinkTestView(link: link)
+                    Button {
+                        withAnimation(.spring(duration: 0.4, bounce: 0)) { showingTest = true }
                     } label: {
                         Image(systemName: "stethoscope")
                     }
@@ -199,6 +201,33 @@ struct AgentsTab: View {
                 #endif
             }
         }
+        #if DEBUG
+        .overlay {
+            if showingTest {
+                NavigationStack {
+                    LinkTestView(link: link)
+                        .toolbar {
+                            // Leaves the way it came: to the left.
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button {
+                                    withAnimation(.spring(duration: 0.4, bounce: 0)) { showingTest = false }
+                                } label: {
+                                    Image(systemName: "chevron.right")
+                                }
+                            }
+                        }
+                }
+                .background(Color.black)
+                .transition(.move(edge: .leading))
+                .simultaneousGesture(DragGesture(minimumDistance: 30).onEnded { drag in
+                    if drag.translation.width < -80 {
+                        withAnimation(.spring(duration: 0.4, bounce: 0)) { showingTest = false }
+                    }
+                })
+                .zIndex(1)
+            }
+        }
+        #endif
     }
 }
 
