@@ -355,6 +355,21 @@ struct SettingsView: View {
                     .help("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.")
                 Toggle(String(localized: "alerts.all-pills"), isOn: $state.alertsFromAllPills)
                     .help(String(localized: "alerts.all-pills.help"))
+                Toggle("Show clock in the island", isOn: $state.showClock)
+                    .help("The date and the time in the middle of the island when it is compact, on a screen without a notch.")
+                Toggle("Show clock in the open island", isOn: $state.clockExpanded)
+                Picker("Clock shows", selection: $state.clockDate) {
+                    Text("The date and the time").tag(ClockDate.date)
+                    Text("The weekday and the time").tag(ClockDate.weekday)
+                    Text("The time").tag(ClockDate.timeOnly)
+                }
+                .fixedSize()
+                Picker("Clock format", selection: $state.clockHours) {
+                    Text("Automatic").tag(ClockHours.auto)
+                    Text("24-hour").tag(ClockHours.h24)
+                    Text("12-hour").tag(ClockHours.h12)
+                }
+                .fixedSize()
                 HStack(spacing: 8) {
                     Text("Close after")
                     TextField("60", value: $state.autoCloseInterval, format: .number)

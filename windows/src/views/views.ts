@@ -6,6 +6,7 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
+import { clockDate, clockHours, clockText } from "../core/clock";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -140,6 +141,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const codexPill = buildPlanPill(true);
   const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
   let codexShown = false;
+  // Settings → General → Show clock in the open island, after the tabs as on the Mac.
+  const clock = h("div", { class: "header-clock" });
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -150,6 +153,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch),
+    clock,
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -168,6 +172,12 @@ export function buildHeader(actions: ViewActions): ViewHost {
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerLine : ICONS.speakerSlashLine, 18, { stroke: 1.6 }));
       closeBtn.style.display = State.pendingApproval ? "none" : "";
+      const s = State.settings;
+      clock.style.display = s.clockExpanded ? "" : "none";
+      if (s.clockExpanded) {
+        const text = clockText(new Date(), clockDate(s.clockDate), clockHours(s.clockHours));
+        if (clock.textContent !== text) clock.textContent = text;
+      }
       syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },

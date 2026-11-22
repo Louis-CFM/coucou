@@ -224,6 +224,12 @@ struct IslandContainer: View {
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
                         .transition(.opacity)
+                    // A notch hides the middle: the clock only where there is none, as on a PC.
+                    if state.showClock && !state.hasNotch {
+                        IslandClockText(state: state)
+                            .position(x: islandWidth / 2, y: islandHeight / 2)
+                            .transition(.opacity)
+                    }
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
@@ -681,6 +687,25 @@ struct IslandContentView: View {
     }
 }
 
+// MARK: - Clock (Settings → General → Show clock in the island)
+
+struct IslandClockText: View {
+    @ObservedObject var state: AppState
+    /// Beside a notch there is room for the time only.
+    var timeOnly = false
+
+    var body: some View {
+        TimelineView(.everyMinute) { context in
+            Text(verbatim: IslandClock.text(context.date, date: timeOnly ? .timeOnly : state.clockDate, hours: state.clockHours))
+                .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                .foregroundColor(.white.opacity(0.85))
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 // MARK: - Island header (tabs + icons)
 
 struct IslandHeader: View {
@@ -712,6 +737,11 @@ struct IslandHeader: View {
                 #endif
             }
             .padding(.leading, 14)
+
+            if state.clockExpanded {
+                IslandClockText(state: state, timeOnly: state.hasNotch)
+                    .padding(.leading, 12)
+            }
 
             Spacer()
 

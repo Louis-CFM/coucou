@@ -47,6 +47,36 @@
    "ko": "1년",
    "ja": "1 年"
   },
+  "12-hour": {
+   "zh-Hans": "12 小时制",
+   "hi": "12-घंटे",
+   "es": "12 horas",
+   "ar": "12 ساعة",
+   "fr": "12 heures",
+   "bn": "১২ ঘণ্টা",
+   "pt-BR": "12 horas",
+   "ru": "12 часов",
+   "id": "12 jam",
+   "de": "12 Stunden",
+   "tr": "12 saat",
+   "ko": "12시간제",
+   "ja": "12時間表示"
+  },
+  "24-hour": {
+   "zh-Hans": "24 小时制",
+   "hi": "24-घंटे",
+   "es": "24 horas",
+   "ar": "24 ساعة",
+   "fr": "24 heures",
+   "bn": "২৪ ঘণ্টা",
+   "pt-BR": "24 horas",
+   "ru": "24 часа",
+   "id": "24 jam",
+   "de": "24 Stunden",
+   "tr": "24 saat",
+   "ko": "24시간제",
+   "ja": "24時間表示"
+  },
   "30 days": {
    "zh-Hans": "30 天",
    "hi": "30 दिन",
@@ -2086,6 +2116,36 @@
    "tr": "Kaydetmek için tıkla",
    "ko": "클릭해서 기록",
    "ja": "クリックして記録"
+  },
+  "Clock format": {
+   "zh-Hans": "时钟格式",
+   "hi": "घड़ी का फ़ॉर्मैट",
+   "es": "Formato del reloj",
+   "ar": "تنسيق الساعة",
+   "fr": "Format de l'heure",
+   "bn": "ঘড়ির ফরম্যাট",
+   "pt-BR": "Formato do relógio",
+   "ru": "Формат часов",
+   "id": "Format jam",
+   "de": "Uhrzeitformat",
+   "tr": "Saat biçimi",
+   "ko": "시계 형식",
+   "ja": "時計の形式"
+  },
+  "Clock shows": {
+   "zh-Hans": "时钟显示",
+   "hi": "घड़ी में दिखे",
+   "es": "El reloj muestra",
+   "ar": "تعرض الساعة",
+   "fr": "L'horloge affiche",
+   "bn": "ঘড়িতে দেখাবে",
+   "pt-BR": "O relógio mostra",
+   "ru": "Часы показывают",
+   "id": "Jam menampilkan",
+   "de": "Die Uhr zeigt",
+   "tr": "Saat gösterir",
+   "ko": "시계 표시",
+   "ja": "時計の表示"
   },
   "Close": {
    "zh-Hans": "关闭",
@@ -9662,6 +9722,36 @@
    "ko": "노치에 승인 요청 표시",
    "ja": "承認リクエストをノッチに表示"
   },
+  "Show clock in the island": {
+   "zh-Hans": "在灵动岛中显示时钟",
+   "hi": "आइलैंड में घड़ी दिखाएँ",
+   "es": "Mostrar el reloj en la isla",
+   "ar": "إظهار الساعة في الجزيرة",
+   "fr": "Afficher l'horloge dans l'îlot",
+   "bn": "আইল্যান্ডে ঘড়ি দেখান",
+   "pt-BR": "Mostrar relógio na ilha",
+   "ru": "Показывать часы в острове",
+   "id": "Tampilkan jam di pulau",
+   "de": "Uhr in der Insel anzeigen",
+   "tr": "Adada saati göster",
+   "ko": "아일랜드에 시계 표시",
+   "ja": "アイランドに時計を表示"
+  },
+  "Show clock in the open island": {
+   "zh-Hans": "在展开的岛中显示时钟",
+   "hi": "खुले आइलैंड में घड़ी दिखाएँ",
+   "es": "Mostrar el reloj en la isla abierta",
+   "ar": "إظهار الساعة في الجزيرة المفتوحة",
+   "fr": "Afficher l'horloge dans l'îlot ouvert",
+   "bn": "খোলা আইল্যান্ডে ঘড়ি দেখান",
+   "pt-BR": "Mostrar relógio na ilha aberta",
+   "ru": "Показывать часы в открытом острове",
+   "id": "Tampilkan jam di pulau yang terbuka",
+   "de": "Uhr in der geöffneten Insel anzeigen",
+   "tr": "Açık adada saati göster",
+   "ko": "펼친 아일랜드에 시계 표시",
+   "ja": "開いたアイランドに時計を表示"
+  },
   "Show in notch": {
    "zh-Hans": "在刘海中显示",
    "hi": "नॉच में दिखाएं",
@@ -10457,6 +10547,36 @@
    "ko": "다듬기에는 Claude가 필요해요. Claude Code로 쓰는 Claude 요금제나 Claude 키 중 하나를 설정 → 채팅에서 설정해 주세요.",
    "ja": "整える機能は Claude を使います。Claude Code 経由の Claude プラン、または Claude のキーです。設定 → チャットでどちらかを設定してください。"
   },
+  "The date and the time": {
+   "zh-Hans": "日期和时间",
+   "hi": "तारीख़ और समय",
+   "es": "La fecha y la hora",
+   "ar": "التاريخ والوقت",
+   "fr": "La date et l'heure",
+   "bn": "তারিখ ও সময়",
+   "pt-BR": "A data e a hora",
+   "ru": "Дата и время",
+   "id": "Tanggal dan waktu",
+   "de": "Datum und Uhrzeit",
+   "tr": "Tarih ve saat",
+   "ko": "날짜와 시간",
+   "ja": "日付と時刻"
+  },
+  "The date and the time in the middle of the island when it is compact, on a screen without a notch.": {
+   "zh-Hans": "在没有刘海的屏幕上，岛收起时在中间显示日期和时间。",
+   "hi": "बिना नॉच वाली स्क्रीन पर, आइलैंड के छोटे होने पर बीच में तारीख़ और समय।",
+   "es": "La fecha y la hora en el centro de la isla cuando está compacta, en una pantalla sin notch.",
+   "ar": "التاريخ والوقت في وسط الجزيرة عندما تكون مصغّرة، على شاشة بلا نتوء.",
+   "fr": "La date et l'heure au milieu de l'îlot quand il est compact, sur un écran sans encoche.",
+   "bn": "নচ ছাড়া স্ক্রিনে, আইল্যান্ড ছোট থাকলে মাঝখানে তারিখ ও সময়।",
+   "pt-BR": "A data e a hora no meio da ilha quando ela está compacta, numa tela sem notch.",
+   "ru": "Дата и время в середине острова, когда он свёрнут, на экране без выреза.",
+   "id": "Tanggal dan jam di tengah pulau saat ringkas, di layar tanpa notch.",
+   "de": "Datum und Uhrzeit in der Mitte der Insel, wenn sie kompakt ist, auf einem Bildschirm ohne Notch.",
+   "tr": "Çentiksiz bir ekranda, ada kompaktken ortasında tarih ve saat.",
+   "ko": "노치가 없는 화면에서 아일랜드가 작게 접혀 있을 때 가운데에 날짜와 시간을 보여 줘요.",
+   "ja": "ノッチのない画面で、コンパクトなアイランドの中央に日付と時刻。"
+  },
   "The download couldn’t be opened. Nothing was changed.": {
    "zh-Hans": "无法打开下载的文件。未做任何更改。",
    "hi": "डाउनलोड खुल नहीं सका। कुछ नहीं बदला गया।",
@@ -10637,6 +10757,21 @@
    "ko": "Coucou가 붙여넣을 텍스트",
    "ja": "Coucou が貼り付けるテキスト"
   },
+  "The time": {
+   "zh-Hans": "时间",
+   "hi": "समय",
+   "es": "La hora",
+   "ar": "الوقت",
+   "fr": "L'heure",
+   "bn": "সময়",
+   "pt-BR": "A hora",
+   "ru": "Время",
+   "id": "Waktu",
+   "de": "Die Uhrzeit",
+   "tr": "Saat",
+   "ko": "시간",
+   "ja": "時刻"
+  },
   "The transcript could not be written.": {
    "zh-Hans": "无法生成转写。",
    "hi": "ट्रांसक्रिप्ट नहीं लिखा जा सका।",
@@ -10666,6 +10801,21 @@
    "tr": "Güncelleme tamamlanamadı",
    "ko": "업데이트가 안 됐어요",
    "ja": "アップデートできませんでした"
+  },
+  "The weekday and the time": {
+   "zh-Hans": "星期和时间",
+   "hi": "दिन और समय",
+   "es": "El día de la semana y la hora",
+   "ar": "اليوم والوقت",
+   "fr": "Le jour et l'heure",
+   "bn": "বার ও সময়",
+   "pt-BR": "O dia da semana e a hora",
+   "ru": "День недели и время",
+   "id": "Hari dan waktu",
+   "de": "Wochentag und Uhrzeit",
+   "tr": "Gün ve saat",
+   "ko": "요일과 시간",
+   "ja": "曜日と時刻"
   },
   "The words show up here as people speak.": {
    "zh-Hans": "大家说话时，文字会显示在这里。",

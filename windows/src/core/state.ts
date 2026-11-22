@@ -107,6 +107,12 @@ export interface Settings {
   alertsFromAllPills: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
+  /** What the clock shows before the time: "date", "weekday" or "none" (core/clock.ts). */
+  clockDate: string;
+  /** "auto" (the language's), "24" or "12"; the closed island's time too. */
+  clockHours: string;
+  /** The clock in the open island's header too. */
+  clockExpanded: boolean;
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
   closedIsland: string;
   absenceInterval: number;
@@ -181,6 +187,9 @@ export const DEFAULT_SETTINGS: Settings = {
   openOnHover: false,
   alertsFromAllPills: false,
   showClock: false,
+  clockDate: "date",
+  clockHours: "auto",
+  clockExpanded: false,
   closedIsland: "mochi",
   absenceInterval: 180,
   activeIntegrations: [

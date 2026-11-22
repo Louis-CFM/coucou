@@ -7,6 +7,7 @@
 // "hidden" keeps the old behaviour: nothing shows, the top edge wakes it.
 // No DOM here: the island draws what this returns.
 
+import { timeText, type ClockHours } from "./clock";
 import { dominantPct, planColor, type PlanUsage } from "./plan";
 
 export type ClosedIsland = "mochi" | "time" | "datetime" | "claude" | "music" | "empty" | "hidden";
@@ -41,13 +42,15 @@ export interface ClosedInputs {
   now: Date;
   /** The interface's language, for the date and the time. */
   locale?: string;
+  /** 12- or 24-hour (Settings → General → Clock format). */
+  hours?: ClockHours;
   planUsage: PlanUsage | null;
   /** The song playing, if one plays on a declared music pill. */
   music: { title: string; artist: string } | null;
 }
 
-function time(now: Date, locale?: string): string {
-  return now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+function time(input: ClosedInputs): string {
+  return timeText(input.now, input.hours ?? "auto", input.locale);
 }
 
 /**
@@ -64,19 +67,19 @@ export function closedContent(style: ClosedIsland, input: ClosedInputs): ClosedC
     case "mochi":
       return null;
     case "time":
-      return plain(time(input.now, input.locale));
+      return plain(time(input));
     case "datetime": {
       const date = input.now.toLocaleDateString(input.locale, { weekday: "short", day: "numeric", month: "short" });
-      return plain(`${date}  ${time(input.now, input.locale)}`);
+      return plain(`${date}  ${time(input)}`);
     }
     case "claude": {
       const pct = dominantPct(input.planUsage, input.now.getTime());
-      if (pct == null) return plain(time(input.now, input.locale));
+      if (pct == null) return plain(time(input));
       return { text: `Claude ${Math.round(pct)}%`, dot: planColor(pct), note: false };
     }
     case "music": {
       const m = input.music;
-      if (!m || !m.title) return plain(time(input.now, input.locale));
+      if (!m || !m.title) return plain(time(input));
       return { text: m.artist ? `${m.title} · ${m.artist}` : m.title, dot: null, note: true };
     }
   }
