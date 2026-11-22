@@ -264,6 +264,11 @@ struct IslandContainer: View {
             guard state.mode == .expanded, state.view == .prompt else { return }
             withAnimation(openSpring) { islandHeight = chatPromptHeight }
         }
+        .onChange(of: state.compactWidthExtra) { _, _ in
+            guard state.mode == .compact else { return }
+            let (w, _) = islandSize(mode: .compact, view: state.view, nw: state.notchWidth, nh: state.notchHeight)
+            withAnimation(openSpring) { islandWidth = w }
+        }
         .onAppear {
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,

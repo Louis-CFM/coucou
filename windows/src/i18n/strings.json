@@ -3752,6 +3752,21 @@
    "ko": "Flow 받아쓰기",
    "ja": "Flow 口述"
   },
+  "Folded island width": {
+   "zh-Hans": "收起的岛宽度",
+   "hi": "बंद आइलैंड की चौड़ाई",
+   "es": "Ancho de la isla plegada",
+   "ar": "عرض الجزيرة المطوية",
+   "fr": "Largeur de l'îlot replié",
+   "bn": "ভাঁজ করা আইল্যান্ডের প্রস্থ",
+   "pt-BR": "Largura da ilha recolhida",
+   "ru": "Ширина свёрнутого острова",
+   "id": "Lebar pulau yang terlipat",
+   "de": "Breite der eingeklappten Insel",
+   "tr": "Katlanmış adanın genişliği",
+   "ko": "접힌 아일랜드 너비",
+   "ja": "折りたたんだアイランドの幅"
+  },
   "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
    "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
    "hi": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।",

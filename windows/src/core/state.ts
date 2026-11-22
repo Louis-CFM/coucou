@@ -107,6 +107,8 @@ export interface Settings {
   alertsFromAllPills: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
+  /** The compact island's width in px (core/layout.ts compactWidth). */
+  compactWidth: number;
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
   closedIsland: string;
   absenceInterval: number;
@@ -181,6 +183,7 @@ export const DEFAULT_SETTINGS: Settings = {
   openOnHover: false,
   alertsFromAllPills: false,
   showClock: false,
+  compactWidth: 288,
   closedIsland: "mochi",
   absenceInterval: 180,
   activeIntegrations: [

@@ -110,6 +110,8 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// The compact island's width in px; the island clamps it to 200–480.
+    pub compact_width: f64,
     /// What the closed island shows at the top of the screen, where the Mac
     /// has its notch: "mochi" (the Mac's island on a screen without a notch),
     /// "time", "datetime", "claude" (the plan's usage), "music" (what plays),
@@ -193,6 +195,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            compact_width: 288.0,
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
         }
@@ -497,6 +500,7 @@ mod tests {
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
+  "compactWidth": 320.0,
   "closedIsland": "music",
   "agyApprovalsEnabled": true
 }"##;
@@ -1030,6 +1034,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "compactWidth",
                 "closedIsland",
                 "agyApprovalsEnabled",
             ]

@@ -2240,6 +2240,13 @@ enum MailLayout {
 
 // MARK: - islandSize (takes real notch dimensions)
 
+/// Settings → General → Folded island width: the room beside the notch, set by AppState.
+enum CompactWidth {
+    static let standard: CGFloat = 160
+    static let range: ClosedRange<CGFloat> = 80...400
+    nonisolated(unsafe) static var extra: CGFloat = standard
+}
+
 func islandSize(mode: IslandMode, view: IslandView,
                 progress: Double = 0,
                 nw: CGFloat = IslandConst.notchWidth,
@@ -2248,7 +2255,7 @@ func islandSize(mode: IslandMode, view: IslandView,
     switch mode {
     // In a corner, resting or compact: a square tile with Mochi alone.
     case .hidden:   return corner ? (IslandPlacement.tile, IslandPlacement.tile) : (nw, nh)
-    case .compact:  return corner ? (IslandPlacement.tile, IslandPlacement.tile) : (nw + 160, nh)
+    case .compact:  return corner ? (IslandPlacement.tile, IslandPlacement.tile) : (nw + CompactWidth.extra, nh)
     case .expanded:
         if corner && view == .overview {
             let s = MailLayout.detailHeight != nil ? IslandPlacement.homeReadingSize : IslandPlacement.homeSize
