@@ -782,7 +782,7 @@ struct ErrorView: View {
                             openClaudeDesktopApp()
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
-                    } else {
+                    } else if !isPhoneTask(task) {
                         PrimaryButton("Open terminal") {
                             openSessionApp(task)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -803,6 +803,13 @@ struct ErrorView: View {
 
 /// The app a session runs in (its terminal, or VS Code), else any known terminal.
 /// Only brings apps to the front, so the App Store build has it too.
+/// A Claude Code run this Mac started for the iPhone: no window to open.
+@MainActor
+private func isPhoneTask(_ task: AgentTask?) -> Bool {
+    guard let id = task?.sessionId, !id.isEmpty else { return false }
+    return PhoneTaskSessions.ids.contains(id)
+}
+
 private func openSessionApp(_ task: AgentTask?) {
     if !(task?.pill == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
        !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
@@ -844,7 +851,7 @@ struct FinishedView: View {
                             openClaudeDesktopApp()
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
-                    } else {
+                    } else if !isPhoneTask(state.focusTask) {
                         PrimaryButton("Open terminal") {
                             openSessionApp(state.focusTask)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)

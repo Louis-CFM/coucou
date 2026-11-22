@@ -56,9 +56,26 @@ struct TaskResult: Codable, Equatable, Sendable {
     var agent: PhoneAgent
     var project: String
     var ok: Bool
-    /// The end of what the agent printed (its last answer, or why it stopped).
+    /// The agent's last answer, or why it stopped.
     var summary: String
     var endedAt: Date
+    /// What Claude Code wanted to do and was turned down for, since nobody could say yes
+    /// while it ran (a run without a window). The iPhone can allow exactly these and continue.
+    var needs: [TaskPermission]? = nil
 
     static let recordType = "TaskResult"
+}
+
+/// One action an agent needed your OK for: the tool and what it would have touched.
+struct TaskPermission: Codable, Equatable, Hashable, Sendable {
+    var tool: String
+    /// The command, the file or the address, as the agent asked for it.
+    var detail: String
+}
+
+/// Claude Code sessions this Mac started for the iPhone: they run without a window, so the
+/// notch offers no "Open terminal" for them.
+@MainActor
+enum PhoneTaskSessions {
+    static var ids: Set<String> = []
 }

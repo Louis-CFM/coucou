@@ -335,17 +335,72 @@ final class InstructionRunner {
         guard recentProjects().contains(where: { $0.path == path }) else { refuse("That folder isn't in this Mac's recent list."); return }
         guard tasks[path] == nil else { refuse("A task is already running in \(name)."); return }
         guard let executable = Self.executable(for: agent) else { refuse("\(agent.name) isn't installed on this Mac."); return }
-        runTask(agent: agent, executable: executable, text: text, path: path, taskId: taskId)
+        // "Allow and continue" on the iPhone: same conversation, and only the actions this Mac
+        // reported as turned down for that task (never a rule the iPhone writes).
+        var resume: Continuation?
+        if let previous = record["continueTask"] as? String {
+            guard let found = continuations[previous], found.path == path, agent == .claude else {
+                refuse("That task can't be continued any more (the Mac restarted or it was too long ago).")
+                return
+            }
+            resume = found
+        }
+        runTask(agent: agent, executable: executable, text: text, path: path, taskId: taskId, resume: resume)
     }
 
-    private func runTask(agent: PhoneAgent, executable: String, text: String, path: String, taskId: String) {
+    /// A Claude Code task that was turned down for some actions, kept so the iPhone can allow
+    /// exactly those and continue the same conversation.
+    struct Continuation {
+        var sessionId: String
+        var path: String
+        var rules: [String]
+    }
+    private var continuations: [String: Continuation] = [:]   // by task id
+
+    /// The permission rule that allows exactly what was turned down, and what to show for it.
+    nonisolated static func rule(for denial: [String: Any]) -> (rule: String, shown: TaskPermission) {
+        let tool = denial["tool_name"] as? String ?? "?"
+        let input = denial["tool_input"] as? [String: Any] ?? [:]
+        switch tool {
+        case "Bash":
+            let command = input["command"] as? String ?? ""
+            return ("Bash(\(command))", TaskPermission(tool: tool, detail: command))
+        case "Edit", "Write", "MultiEdit", "NotebookEdit":
+            let file = input["file_path"] as? String ?? input["notebook_path"] as? String ?? ""
+            // Absolute paths start with // in permission rules.
+            return ("Edit(/\(file))", TaskPermission(tool: tool, detail: file))
+        case "Read":
+            let file = input["file_path"] as? String ?? ""
+            return ("Read(/\(file))", TaskPermission(tool: tool, detail: file))
+        case "WebFetch":
+            let url = input["url"] as? String ?? ""
+            let host = URL(string: url)?.host ?? url
+            return ("WebFetch(domain:\(host))", TaskPermission(tool: tool, detail: url))
+        default:
+            return (tool, TaskPermission(tool: tool, detail: tool))
+        }
+    }
+
+    private func runTask(agent: PhoneAgent, executable: String, text: String, path: String, taskId: String,
+                         resume: Continuation? = nil) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         // No permission flags: each agent follows its own settings, as when it runs without a window
         // (Codex stays read-only unless its config says otherwise; Cursor turns down what needs an OK).
-        // Claude Code's requests come to the iPhone through Coucou's hooks, as usual.
+        // Claude Code asks through Coucou's hooks when it can; what it turns down anyway comes back
+        // in its JSON answer, and the iPhone can allow exactly that and continue.
+        let sessionId = resume?.sessionId ?? UUID().uuidString.lowercased()
         switch agent {
-        case .claude: process.arguments = ["-p", text]
+        case .claude:
+            var arguments = ["-p", text, "--output-format", "json"]
+            if let resume {
+                arguments += ["--resume", resume.sessionId]
+                if !resume.rules.isEmpty { arguments += ["--allowedTools"] + resume.rules }
+            } else {
+                arguments += ["--session-id", sessionId]
+            }
+            process.arguments = arguments
+            PhoneTaskSessions.ids.insert(sessionId)
         case .codex: process.arguments = ["exec", text]
         case .cursor: process.arguments = ["-p", text, "--output-format", "text"]
         case .antigravity: process.arguments = ["-p", text]
@@ -362,26 +417,51 @@ final class InstructionRunner {
         }
         process.environment = env
         process.standardInput = FileHandle.nullDevice
-        let logURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Logs/NotchBuddy/task-\(agent.rawValue)-last.log")
-        try? FileManager.default.createDirectory(at: logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let logs = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/NotchBuddy")
+        let logURL = logs.appendingPathComponent("task-\(agent.rawValue)-last.log")
+        // Claude Code's JSON answer on its own (the log keeps its warnings).
+        let answerURL = agent == .claude ? logs.appendingPathComponent("task-claude-last.json") : logURL
+        try? FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: logURL.path, contents: nil)
+        FileManager.default.createFile(atPath: answerURL.path, contents: nil)
         let output = try? FileHandle(forWritingTo: logURL)
-        process.standardOutput = output ?? FileHandle.nullDevice
+        let answer = agent == .claude ? try? FileHandle(forWritingTo: answerURL) : output
+        process.standardOutput = answer ?? FileHandle.nullDevice
         process.standardError = output ?? FileHandle.nullDevice
         let name = URL(fileURLWithPath: path).lastPathComponent
         process.terminationHandler = { [weak self] finished in
             try? output?.close()
-            let data = (try? Data(contentsOf: logURL)) ?? Data()
-            let summary = String(String(decoding: data.suffix(1200), as: UTF8.self)
-                .trimmingCharacters(in: .whitespacesAndNewlines).suffix(600))
+            if agent == .claude { try? answer?.close() }
             let status = finished.terminationStatus
+            var summary = ""
+            var needs: [TaskPermission] = []
+            var rules: [String] = []
+            let data = (try? Data(contentsOf: answerURL)) ?? Data()
+            if agent == .claude, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                summary = (json["result"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                for denial in json["permission_denials"] as? [[String: Any]] ?? [] {
+                    let (rule, shown) = Self.rule(for: denial)
+                    if !rules.contains(rule) {
+                        rules.append(rule)
+                        needs.append(shown)
+                    }
+                }
+            }
+            if summary.isEmpty {
+                let tail = agent == .claude ? ((try? Data(contentsOf: logURL)) ?? Data()) : data
+                summary = String(String(decoding: tail.suffix(1200), as: UTF8.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines).suffix(600))
+            }
+            if summary.count > 1500 { summary = String(summary.prefix(1500)) + "…" }
             let result = TaskResult(id: taskId, agent: agent, project: name, ok: status == 0,
                                     summary: summary.isEmpty ? (status == 0 ? "Done." : "Stopped (\(status)).") : summary,
-                                    endedAt: Date())
+                                    endedAt: Date(), needs: needs.isEmpty ? nil : needs)
+            let keep = needs.isEmpty ? nil : Continuation(sessionId: sessionId, path: path, rules: rules)
             Task { @MainActor in
                 self?.tasks[path] = nil
-                self?.log("task \(status == 0 ? "finished" : "ended with \(status)") (\(agent.rawValue) in \(name))")
+                if let keep { self?.continuations[taskId] = keep }
+                self?.log("task \(status == 0 ? "finished" : "ended with \(status)") (\(agent.rawValue) in \(name))"
+                          + (needs.isEmpty ? "" : ", \(needs.count) action(s) turned down"))
                 await self?.saveResult(result)
             }
         }

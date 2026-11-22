@@ -143,6 +143,34 @@ struct NewTaskView: View {
                     .font(.footnote.monospaced())
                     .textSelection(.enabled)
             }
+            if let needs = result.needs, !needs.isEmpty {
+                Section {
+                    ForEach(needs, id: \.self) { need in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(need.tool)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Text(need.detail)
+                                .font(.footnote.monospaced())
+                                .textSelection(.enabled)
+                        }
+                    }
+                    Button {
+                        Task { await allowAndContinue(result) }
+                    } label: {
+                        Label(needs.count == 1 ? "Allow this and continue" : "Allow these \(needs.count) and continue",
+                              systemImage: "faceid")
+                    }
+                    .disabled(sending)
+                } header: {
+                    Text("Needs your OK")
+                } footer: {
+                    Text("\(agent.name) couldn't ask you while it ran, so it skipped these. Allowing them lets this task, and only this one, do exactly what's shown.")
+                }
+            }
+            if let error {
+                Section { Text(error).foregroundStyle(.red) }
+            }
             Section {
                 Button("New task") {
                     sentTaskId = nil
@@ -164,6 +192,28 @@ struct NewTaskView: View {
     }
 
     // MARK: Sending
+
+    /// Same conversation, with exactly the actions shown above allowed (the Mac checks them).
+    private func allowAndContinue(_ result: TaskResult) async {
+        guard let mac = link.macAgents,
+              let project = mac.projects.first(where: { $0.name == result.project }) ?? project(mac) else { return }
+        sending = true
+        defer { sending = false }
+        error = nil
+        guard await OwnerCheck.confirm(reason: "Allow \(result.agent.name) to do this in \(result.project)") else {
+            Haptics.warning()
+            return
+        }
+        if let id = await link.sendTask("You couldn't do some actions earlier because nobody could approve them. They are now allowed: do them and finish the task.",
+                                        agent: result.agent, project: project, continuing: result.id) {
+            sentAgent = result.agent
+            sentTaskId = id
+            Haptics.success()
+        } else {
+            error = link.lastPong ?? "Couldn't reach iCloud."
+            Haptics.error()
+        }
+    }
 
     private func send(_ mac: MacAgents) async {
         let task = text.trimmingCharacters(in: .whitespacesAndNewlines)

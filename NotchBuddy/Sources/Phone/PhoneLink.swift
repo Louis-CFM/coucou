@@ -634,13 +634,16 @@ final class PhoneLink {
 
     /// A new task for the agent of your choice, in one of the folders the Mac published.
     /// Returns the task id, or nil when iCloud refused it.
-    func sendTask(_ text: String, agent: PhoneAgent, project: MacAgents.Project) async -> String? {
+    func sendTask(_ text: String, agent: PhoneAgent, project: MacAgents.Project,
+                  continuing previous: String? = nil) async -> String? {
         let taskId = UUID().uuidString
         let record = CKRecord(recordType: "Instruction",
                               recordID: CKRecord.ID(recordName: "instruction-\(taskId)", zoneID: Self.zoneID))
         record["pillId"] = agent.pillId
         record["agent"] = agent.rawValue
         record["taskId"] = taskId
+        // "Allow and continue": the Mac allows only what it reported as turned down for that task.
+        if let previous { record["continueTask"] = previous }
         record["createdAt"] = Date()
         record["deviceName"] = UIDevice.current.name
         record.encryptedValues["text"] = text
