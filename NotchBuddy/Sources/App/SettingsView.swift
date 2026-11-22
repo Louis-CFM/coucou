@@ -583,6 +583,8 @@ struct SettingsView: View {
         #if !APPSTORE
         AndroidLinkSettingsBox()
             .settingsAnchor("general.android")
+        BotanLinkSettingsBox()
+            .settingsAnchor("general.botan")
         #endif
     }
 

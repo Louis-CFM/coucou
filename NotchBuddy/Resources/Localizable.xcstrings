@@ -104805,6 +104805,706 @@
           }
         }
       }
+    },
+    "botan.link.toggle" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الربط مع Botan"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan-এর সাথে সংযোগ করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Botan verbinden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link with Botan"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vincular con Botan"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lier avec Botan"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan से जोड़ें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tautkan dengan Botan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan と連携"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan과 연결"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vincular com o Botan"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связать с Botan"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เชื่อมต่อกับ Botan"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan ile bağla"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "与 Botan 连接"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "與 Botan 連接"
+          }
+        }
+      }
+    },
+    "botan.link.description" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan شاشة صغيرة بزر واحد توضع بجانب جهاز Mac. تعرض ما يفعله وكلاؤك، وزرها يوافق على طلب أو يختار إجابة. تتصل عبر Bluetooth: لا شيء يغادر مكتبك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan হলো একটি বোতামসহ ছোট স্ক্রিন, যা আপনার Mac-এর পাশে থাকে। এটি দেখায় আপনার এজেন্টরা কী করছে, আর এর বোতাম একটি অনুরোধ অনুমোদন করে বা একটি উত্তর বেছে নেয়। এটি Bluetooth-এ কথা বলে: কিছুই আপনার ডেস্ক ছেড়ে যায় না।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan ist ein kleiner Bildschirm mit einer Taste neben deinem Mac. Er zeigt, was deine Agenten tun, und seine Taste genehmigt eine Anfrage oder wählt eine Antwort. Er spricht über Bluetooth: Nichts verlässt deinen Schreibtisch."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan is a small screen with one button that sits next to your Mac. It shows what your agents are doing, and its button approves a request or picks an answer. It talks over Bluetooth: nothing leaves your desk."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan es una pequeña pantalla con un botón junto a tu Mac. Muestra lo que hacen tus agentes, y su botón aprueba una solicitud o elige una respuesta. Funciona por Bluetooth: nada sale de tu escritorio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan est un petit écran à un bouton posé à côté de ton Mac. Il montre ce que font tes agents, et son bouton approuve une demande ou choisit une réponse. Il passe par le Bluetooth : rien ne quitte ton bureau."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan एक बटन वाली छोटी स्क्रीन है जो आपके Mac के पास रहती है। यह दिखाती है कि आपके एजेंट क्या कर रहे हैं, और इसका बटन किसी अनुरोध को मंज़ूरी देता है या कोई जवाब चुनता है। यह Bluetooth से बात करती है: कुछ भी आपकी डेस्क से बाहर नहीं जाता।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan adalah layar kecil dengan satu tombol di samping Mac Anda. Layar ini menampilkan apa yang dikerjakan agen Anda, dan tombolnya menyetujui permintaan atau memilih jawaban. Berkomunikasi lewat Bluetooth: tidak ada yang keluar dari meja Anda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan は Mac のそばに置くボタンひとつの小さな画面です。エージェントの様子を表示し、ボタンでリクエストを承認したり回答を選んだりできます。通信は Bluetooth のみで、何も机の外に出ません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan은 Mac 옆에 두는 버튼 하나짜리 작은 화면입니다. 에이전트가 하는 일을 보여 주고, 버튼으로 요청을 승인하거나 답을 고릅니다. Bluetooth로만 통신하므로 아무것도 책상 밖으로 나가지 않습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Botan é uma pequena tela com um botão ao lado do seu Mac. Ele mostra o que seus agentes estão fazendo, e o botão aprova um pedido ou escolhe uma resposta. Ele usa Bluetooth: nada sai da sua mesa."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan — маленький экран с одной кнопкой рядом с вашим Mac. Он показывает, что делают ваши агенты, а кнопка одобряет запрос или выбирает ответ. Связь по Bluetooth: ничего не покидает ваш стол."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan คือจอเล็กที่มีปุ่มเดียว วางไว้ข้าง Mac แสดงว่าเอเจนต์ของคุณกำลังทำอะไร และปุ่มใช้อนุมัติคำขอหรือเลือกคำตอบ สื่อสารผ่าน Bluetooth: ไม่มีอะไรออกไปจากโต๊ะของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan, Mac'inin yanında duran tek düğmeli küçük bir ekrandır. Ajanlarının ne yaptığını gösterir; düğmesi bir isteği onaylar veya bir cevap seçer. Bluetooth üzerinden konuşur: hiçbir şey masandan çıkmaz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan 是放在 Mac 旁边的一块单键小屏幕。它显示你的智能体在做什么，按键可批准请求或选择答案。它通过蓝牙通信：任何内容都不会离开你的桌面。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan 是放在 Mac 旁邊的一塊單鍵小螢幕。它顯示你的代理在做什麼，按鍵可核准請求或選擇答案。它透過藍牙通訊：任何內容都不會離開你的桌面。"
+          }
+        }
+      }
+    },
+    "botan.link.status.searching" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ البحث عن Botan بالقرب منك…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কাছাকাছি Botan খোঁজা হচ্ছে…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche Botan in der Nähe…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looking for Botan nearby…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando Botan cerca…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche de Botan à proximité…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पास में Botan खोजा जा रहा है…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mencari Botan di sekitar…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "近くの Botan を探しています…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "근처의 Botan을 찾는 중…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Procurando o Botan por perto…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск Botan поблизости…"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังค้นหา Botan ใกล้ๆ…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yakındaki Botan aranıyor…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在查找附近的 Botan…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在尋找附近的 Botan…"
+          }
+        }
+      }
+    },
+    "botan.link.status.bluetooth" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth متوقف."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth বন্ধ আছে।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth ist aus."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth is off."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Bluetooth está desactivado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le Bluetooth est désactivé."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth बंद है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth mati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth がオフです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth가 꺼져 있습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Bluetooth está desligado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth выключен."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth ปิดอยู่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth kapalı."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "蓝牙已关闭。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "藍牙已關閉。"
+          }
+        }
+      }
+    },
+    "botan.link.status.unauthorized" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يمكن لـ Coucou استخدام Bluetooth: اسمح به في إعدادات النظام ← الخصوصية والأمن ← Bluetooth."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou Bluetooth ব্যবহার করতে পারছে না: System Settings → Privacy & Security → Bluetooth-এ অনুমতি দিন।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou darf Bluetooth nicht verwenden: Erlaube es in Systemeinstellungen → Datenschutz & Sicherheit → Bluetooth."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou may not use Bluetooth: allow it in System Settings → Privacy & Security → Bluetooth."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou no puede usar el Bluetooth: permítelo en Ajustes del Sistema → Privacidad y seguridad → Bluetooth."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou n'a pas accès au Bluetooth : autorise-le dans Réglages Système → Confidentialité et sécurité → Bluetooth."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou Bluetooth का उपयोग नहीं कर सकता: System Settings → Privacy & Security → Bluetooth में अनुमति दें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou tidak boleh memakai Bluetooth: izinkan di Pengaturan Sistem → Privasi & Keamanan → Bluetooth."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou は Bluetooth を使用できません。システム設定 → プライバシーとセキュリティ → Bluetooth で許可してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou가 Bluetooth를 사용할 수 없습니다. 시스템 설정 → 개인정보 보호 및 보안 → Bluetooth에서 허용하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Coucou não pode usar o Bluetooth: permita em Ajustes do Sistema → Privacidade e Segurança → Bluetooth."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou не может использовать Bluetooth: разрешите это в Системных настройках → Конфиденциальность и безопасность → Bluetooth."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ใช้ Bluetooth ไม่ได้: อนุญาตได้ที่ การตั้งค่าระบบ → ความเป็นส่วนตัวและความปลอดภัย → Bluetooth"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou Bluetooth kullanamıyor: Sistem Ayarları → Gizlilik ve Güvenlik → Bluetooth'tan izin ver."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 无法使用蓝牙：请在“系统设置”→“隐私与安全性”→“蓝牙”中允许。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 無法使用藍牙：請在「系統設定」→「隱私權與安全性」→「藍牙」中允許。"
+          }
+        }
+      }
+    },
+    "botan.link.status.linked %@" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مرتبط بـ %@."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@-এর সাথে সংযুক্ত।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden mit %@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linked to %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vinculado a %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lié à %@."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ से जुड़ा है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tertaut ke %@."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ と連携しています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에 연결됨."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vinculado a %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связано с %@."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เชื่อมต่อกับ %@ แล้ว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ile bağlı."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已连接到 %@。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已連接到 %@。"
+          }
+        }
+      }
+    },
+    "Botan" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botan"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
