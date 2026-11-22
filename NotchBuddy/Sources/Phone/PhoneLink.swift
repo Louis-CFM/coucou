@@ -192,6 +192,7 @@ final class PhoneLink {
         BotanBridge.shared.sessionsChanged()
         LiveActivityLink.shared.sessionsChanged(sessions)
         sharePendingApprovals()
+        recordJournal()
         await notifyNewApprovals()
         await postEvents()
     }
@@ -203,6 +204,7 @@ final class PhoneLink {
         BotanBridge.shared.sessionsChanged()
         LiveActivityLink.shared.sessionsChanged(sessions)
         sharePendingApprovals()
+        recordJournal()
         await notifyNewApprovals()
         await postEvents()
         return gotNew
@@ -411,6 +413,12 @@ final class PhoneLink {
     /// that updates the sessions does, so a new approval also gets a local
     /// notification, unless the iCloud one came, or the app is open.
     /// Notifications for requests no longer pending are removed.
+    /// Everything seen so far, kept for History and the search (Journal).
+    func recordJournal() {
+        Journal.shared.record(decisions: history, turns: Array(turns.values) + archive.past.values.flatMap { $0 },
+                              services: services)
+    }
+
     /// What the notification service needs to fill in an approval's banner (PendingApprovals).
     private func sharePendingApprovals() {
         var items: [String: PendingApprovals.Item] = [:]
@@ -630,6 +638,7 @@ final class PhoneLink {
             history.insert(DecisionLog(decision: decision, pillId: pillId, summary: summary, date: .now), at: 0)
             history = Array(history.prefix(50))
             DecisionLog.save(history)
+            recordJournal()
             // A few decisions sent from the phone: a good moment to ask for a review (ReviewPolicy).
             if ReviewPolicy.note(needed: ReviewPolicy.phoneMoments) { askForAppReview = true }
             return true

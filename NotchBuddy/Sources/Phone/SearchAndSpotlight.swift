@@ -2,7 +2,8 @@ import CoreSpotlight
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The Search tab: every turn this iPhone saw (prompts, answers, file names).
+/// The Search tab: every turn this iPhone saw (prompts, answers, file names), and everything in
+/// the journal (payments, deploys, runs, bookings, emails, your OKs).
 struct SearchTab: View {
     let link: PhoneLink
     @State private var query = ""
@@ -30,16 +31,38 @@ struct SearchTab: View {
         }
     }
 
+    /// The journal's lines that match (not the turns: they are searched above, in full).
+    private var journalHits: [JournalEntry] {
+        let needle = query.trimmingCharacters(in: .whitespaces)
+        guard !needle.isEmpty else { return [] }
+        return Journal.shared.entries.filter { entry in
+            guard entry.kind != .turn else { return false }
+            let source = PillCatalog.definition(for: entry.pillId)?.name ?? ""
+            return [entry.title, entry.detail, source].contains { $0.localizedCaseInsensitiveContains(needle) }
+        }
+        .prefix(60).map { $0 }
+    }
+
     var body: some View {
+        let others = journalHits
         NavigationStack {
             List {
-                if allTurns.isEmpty {
-                    ContentUnavailableView("No turn yet", systemImage: "text.magnifyingglass",
-                                           description: Text("What Claude does on your Mac shows up here, ready to search."))
-                } else if hits.isEmpty {
+                if allTurns.isEmpty && Journal.shared.entries.isEmpty {
+                    ContentUnavailableView("Nothing yet", systemImage: "text.magnifyingglass",
+                                           description: Text("What your agents and services do shows up here, ready to search."))
+                } else if hits.isEmpty && others.isEmpty && !query.isEmpty {
                     ContentUnavailableView.search(text: query)
-                } else {
-                    Section(query.isEmpty ? "Recent turns" : "Results") {
+                }
+                if !others.isEmpty {
+                    Section("Services and your OKs") {
+                        ForEach(others) { entry in
+                            Button { link.openPillId = entry.pillId } label: { journalRow(entry) }
+                                .buttonStyle(.plain)
+                        }
+                    }
+                }
+                if !hits.isEmpty {
+                    Section(query.isEmpty ? "Recent turns" : "Agents") {
                         ForEach(hits) { hit in
                             NavigationLink {
                                 ScrollView {
@@ -56,7 +79,7 @@ struct SearchTab: View {
                 }
             }
             .navigationTitle("Search")
-            .searchable(text: $query, prompt: "Prompts, answers, files")
+            .searchable(text: $query, prompt: "Prompts, files, payments, deploys…")
         }
     }
 
@@ -83,6 +106,27 @@ struct SearchTab: View {
                     .lineLimit(2)
             }
         }
+    }
+
+    private func journalRow(_ entry: JournalEntry) -> some View {
+        let pill = PillCatalog.definition(for: entry.pillId)
+        return HStack(alignment: .top, spacing: 12) {
+            Circle().fill(Color(hex: pill?.color ?? "#C0C4CC")).frame(width: 9, height: 9).padding(.top, 6)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(entry.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(entry.date, format: .relative(presentation: .named))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                Text([pill?.name, entry.detail.isEmpty ? nil : entry.detail].compactMap { $0 }.joined(separator: " · "))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .contentShape(Rectangle())
     }
 
     /// A few words around the match.
