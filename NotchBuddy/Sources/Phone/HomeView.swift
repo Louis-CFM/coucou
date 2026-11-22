@@ -99,6 +99,7 @@ struct AgentsTab: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
+                // Mochi, what's going on, Botan's antenna; the OK panel grows out of it.
                 Section {
                     NotchHeader(link: link)
                         // Shrinks and fades as the list scrolls, like Wallet.
@@ -109,14 +110,24 @@ struct AgentsTab: View {
                                 .scaleEffect(max(0.86, 1 + pull / 500), anchor: .top)
                                 .opacity(max(0, 1 + pull / 160))
                         }
-                    BotanCard()
-                    TodayCard(link: link)
                 }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                .listRowSeparator(.hidden)
+                .homeCardRow()
 
-                Section {
+                if TodayCard.hasContent(link) {
+                    Section("Today") {
+                        TodayCard(link: link)
+                    }
+                    .homeCardRow()
+                }
+
+                if !AttentionCard.flagged(link).isEmpty {
+                    Section("Needs a look") {
+                        AttentionCard(link: link)
+                    }
+                    .homeCardRow()
+                }
+
+                Section("Agents") {
                     if link.sessions.isEmpty {
                         EmptySessionsView(status: link.status)
                             .listRowBackground(Color.clear)
@@ -152,16 +163,9 @@ struct AgentsTab: View {
                         }
                     }
                 }
-
-                // The services that want a look, then what happened lately, all sources together.
-                Section {
-                    AttentionCard(link: link)
-                    RecentFeed(link: link)
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                .listRowSeparator(.hidden)
             }
+            // One rhythm between every section.
+            .listSectionSpacing(.custom(18))
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Color.black)
@@ -441,6 +445,7 @@ struct NotchHeader: View {
                 }
             }
             Spacer(minLength: 0)
+            BotanAntenna()
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
@@ -548,6 +553,15 @@ struct EmptySessionsView: View {
 
 /// Today, as this iPhone saw it: turns finished, files and lines changed,
 /// commands you answered. Counted on the iPhone, never sent anywhere.
+extension View {
+    /// A card standing alone in its section, edge to edge of the section, no row chrome.
+    func homeCardRow() -> some View {
+        listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+    }
+}
+
 struct TodayCard: View {
     let link: PhoneLink
 
@@ -569,10 +583,16 @@ struct TodayCard: View {
         }
     }
 
+    static func hasContent(_ link: PhoneLink) -> Bool {
+        !link.archive.currentTally.isEmpty || link.history.contains { Calendar.current.isDateInToday($0.date) }
+            || link.services.values.contains { $0.today != nil } || !RecentFeed.entries(link).isEmpty
+    }
+
     var body: some View {
         let tally = link.archive.currentTally
         let figures = serviceFigures
-        if !tally.isEmpty || decisionsToday > 0 || !figures.isEmpty {
+        let latest = RecentFeed.entries(link)
+        if !tally.isEmpty || decisionsToday > 0 || !figures.isEmpty || !latest.isEmpty {
             VStack(spacing: 12) {
                 if !tally.isEmpty || decisionsToday > 0 {
                     HStack(spacing: 0) {
@@ -608,17 +628,14 @@ struct TodayCard: View {
                     }
                     .scrollClipDisabled()
                 }
+                if !latest.isEmpty {
+                    Divider().padding(.horizontal, 14)
+                    RecentFeed(link: link, entries: latest)
+                        .padding(.horizontal, 16)
+                }
             }
-            .padding(.vertical, 12)
+            .padding(.vertical, 14)
             .glassCard()
-            .overlay(alignment: .topLeading) {
-                Text("TODAY")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 10)
-                    .offset(y: -16)
-            }
-            .padding(.top, 10)
         }
     }
 
@@ -655,21 +672,20 @@ struct TodayCard: View {
 struct AttentionCard: View {
     let link: PhoneLink
 
-    private var flagged: [ServiceSnapshot] {
+    static func flagged(_ link: PhoneLink) -> [ServiceSnapshot] {
         PillCatalog.phoneServices.compactMap { link.services[$0] }
             .filter { $0.tone == .error || $0.tone == .warning }
             .sorted { ($0.tone == .error ? 0 : 1) < ($1.tone == .error ? 0 : 1) }
     }
 
     var body: some View {
-        let list = flagged
+        let list = Self.flagged(link)
         if !list.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Needs a look").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
                 ForEach(list, id: \.pillId) { snapshot in
                     Button { link.openPillId = snapshot.pillId } label: {
                         HStack(spacing: 12) {
-                            ServiceMochi(pillId: snapshot.pillId, tone: snapshot.tone, corner: 9).frame(width: 34, height: 34)
+                            Circle().fill(snapshot.tone.color).frame(width: 8, height: 8)
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 6) {
                                     Text(snapshot.name).font(.callout.weight(.semibold))
@@ -684,11 +700,8 @@ struct AttentionCard: View {
                     }
                     .buttonStyle(.plain)
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .glassCard(tint: list.contains { $0.tone == .error } ? .red : .orange)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -696,8 +709,9 @@ struct AttentionCard: View {
 /// newest first. Tap a line to open where it comes from.
 struct RecentFeed: View {
     let link: PhoneLink
+    let entries: [Entry]
 
-    private struct Entry: Identifiable {
+    struct Entry: Identifiable {
         let id: String
         let pillId: String
         let title: String
@@ -707,7 +721,7 @@ struct RecentFeed: View {
         let symbol: String?
     }
 
-    private var entries: [Entry] {
+    static func entries(_ link: PhoneLink) -> [Entry] {
         var all: [Entry] = link.history.prefix(10).map { log in
             Entry(id: "decision-\(log.id)", pillId: log.pillId,
                   title: log.decision == .allow ? "Allowed" : "Denied",
@@ -725,15 +739,12 @@ struct RecentFeed: View {
                 }
             }
         }
-        return Array(all.sorted { $0.date > $1.date }.prefix(6))
+        return Array(all.sorted { $0.date > $1.date }.prefix(4))
     }
 
     var body: some View {
-        let list = entries
-        if !list.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Lately").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                ForEach(list) { entry in
+        VStack(alignment: .leading, spacing: 10) {
+                ForEach(entries) { entry in
                     Button { link.openPillId = entry.pillId } label: {
                         HStack(spacing: 10) {
                             if let symbol = entry.symbol {
@@ -761,96 +772,30 @@ struct RecentFeed: View {
     }
 }
 
-/// Botan on the home screen: linked or not, and what its screen shows right now.
-/// Hidden for good with "Not now" by someone who has no Botan.
-struct BotanCard: View {
+/// Botan in the corner of Mochi's card: its antenna, orange when it is linked, gray while
+/// looking for it. Nothing when the switch is off.
+struct BotanAntenna: View {
     @AppStorage(BotanBridge.enabledKey) private var enabled = false
-    @AppStorage("botanCardHidden") private var hidden = false
     private var bridge: BotanBridge { BotanBridge.shared }
-
-    var body: some View {
-        if enabled || !hidden {
-            HStack(spacing: 14) {
-                device
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.headline)
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                Spacer(minLength: 0)
-                action
-            }
-            .padding(14)
-            .glassCard(tint: linked ? nil : .botan)
-            .animation(.spring(duration: 0.4, bounce: 0.2), value: bridge.showing)
-        }
-    }
 
     private var linked: Bool {
         if case .linked = bridge.status { return true }
         return false
     }
 
-    /// A tiny Botan: its black screen with Mochi in the state it shows, or the Botan sign.
-    private var device: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.black)
-            .frame(width: 54, height: 54)
-            .overlay {
-                if linked, let showing = bridge.showing {
-                    MochiStill(state: showing.state, showBadge: false).padding(9)
-                } else {
-                    BotanSign().foregroundStyle(Color.botan).padding(13)
-                }
+    var body: some View {
+        if enabled {
+            HStack(spacing: 4) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .symbolEffect(.variableColor.iterative, options: .repeating, isActive: linked)
+                Text("Botan")
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-            }
-    }
-
-    private var title: String {
-        guard enabled else { return "Botan" }
-        if linked, let showing = bridge.showing, !showing.title.isEmpty { return showing.title }
-        return "Botan"
-    }
-
-    private var subtitle: String {
-        guard enabled else { return "The little screen with one button on the back of your iPhone." }
-        switch bridge.status {
-        case .linked:
-            if let label = bridge.showing?.label, !label.isEmpty { return "On Botan now · \(label.capitalized)" }
-            return "Linked"
-        case .setup: return "Pick your Botan to link it."
-        case .pairing: return "Type the code shown on Botan."
-        case .connecting, .searching, .off: return "Looking for it nearby…"
-        case .bluetoothOff: return "Bluetooth is off."
-        case .unauthorized: return "Allow Bluetooth in Settings → Botan."
-        }
-    }
-
-    @ViewBuilder
-    private var action: some View {
-        if !enabled {
-            VStack(alignment: .trailing, spacing: 6) {
-                Button("Link") { BotanBridge.shared.setEnabled(true); enabled = true }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.botan)
-                Button("Not now") { hidden = true }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } else if bridge.status == .setup {
-            Button("Find") { BotanBridge.shared.findBotan() }
-                .buttonStyle(.borderedProminent)
-                .tint(.botan)
-        } else if linked {
-            Image(systemName: "dot.radiowaves.left.and.right")
-                .foregroundStyle(Color.botan)
-                .symbolEffect(.variableColor.iterative, options: .repeating)
-                .accessibilityLabel("Linked")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(linked ? Color.botan : Color.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.white.opacity(0.06), in: Capsule())
+            .accessibilityLabel(linked ? "Botan is linked" : "Looking for Botan")
         }
     }
 }
