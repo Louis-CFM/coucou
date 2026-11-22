@@ -168,7 +168,7 @@ struct NewTaskView: View {
                                   systemImage: "faceid")
                         }
                     }
-                    .tint(result.ok ? .secondary : .accentColor)
+                    .tint(result.ok ? Color.secondary : Color.accentColor)
                     .disabled(sending)
                 } header: {
                     // A task that finished found its way without them: only a note then.
