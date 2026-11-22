@@ -94,10 +94,12 @@ final class BotanBridge: NSObject {
         guard let accessories else {
             // No session (ended, or the switch was just turned on): open one, the sheet follows.
             pickWhenReady = true
-            if central == nil { start() } else { activateAccessories() }
+            activateAccessories()
             return
         }
         pickWhenReady = false
+        // iOS opens its sheet only when the app holds no Bluetooth of its own (ASErrorDomain 550).
+        closeCentral()
         let item = ASPickerDisplayItem(name: "Botan", productImage: Self.pickerImage(), descriptor: Self.descriptor())
         problem = nil
         accessories.showPicker(for: [item]) { error in
@@ -121,12 +123,27 @@ final class BotanBridge: NSObject {
         Self.knownID = nil
         knownName = nil
         UserDefaults.standard.removeObject(forKey: Self.knownKey + "Name")
+        closeCentral()
+        if accessories != nil { status = .setup }
+    }
+
+    /// Coucou's own Bluetooth, opened only for the Botan picked in the system sheet.
+    private func openCentral() {
+        guard central == nil else { return }
+        // Main queue: every callback lands on the main actor. The restore identifier lets iOS
+        // relaunch the app for Botan after ending it (and, on iOS 26, after a swipe).
+        central = CBCentralManager(delegate: self, queue: .main,
+                                   options: [CBCentralManagerOptionRestoreIdentifierKey: Self.restoreID])
+    }
+
+    private func closeCentral() {
         if let p = peripheral { central?.cancelPeripheralConnection(p) }
+        central?.stopScan()
+        central = nil
         peripheral = nil
         stateChar = nil
         shown = nil
         writing = false
-        if central != nil { status = .setup }
     }
 
     /// The Botan set up in the system sheet becomes the one Coucou links to.
@@ -137,7 +154,8 @@ final class BotanBridge: NSObject {
         Self.knownID = id
         knownName = name
         UserDefaults.standard.set(name, forKey: Self.knownKey + "Name")
-        scan()
+        status = .connecting
+        if central == nil { openCentral() } else { scan() }  // a new central scans once powered on
     }
 
     nonisolated static func describe(_ error: Error) -> String {
@@ -192,11 +210,12 @@ final class BotanBridge: NSObject {
     // MARK: Start and stop
 
     private func start() {
-        guard central == nil else { return }
-        // Main queue: every callback lands on the main actor. The restore identifier lets iOS
-        // relaunch the app for Botan after ending it to free memory.
-        central = CBCentralManager(delegate: self, queue: .main,
-                                   options: [CBCentralManagerOptionRestoreIdentifierKey: Self.restoreID])
+        guard accessories == nil else { return }
+        // A Botan picked before: Bluetooth right away (iOS may be relaunching the app for it).
+        if Self.knownID != nil {
+            status = .connecting
+            openCentral()
+        }
         activateAccessories()
     }
 
@@ -214,17 +233,11 @@ final class BotanBridge: NSObject {
     }
 
     private func stop() {
-        if let p = peripheral { central?.cancelPeripheralConnection(p) }
-        central?.stopScan()
-        central = nil
+        closeCentral()
         accessories?.invalidate()
         accessories = nil
         pickWhenReady = false
-        peripheral = nil
-        stateChar = nil
-        shown = nil
         wanted = nil
-        writing = false
         status = .off
     }
 
