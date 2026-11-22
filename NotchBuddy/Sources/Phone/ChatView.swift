@@ -10,30 +10,46 @@ struct ChatView: View {
 
     private static let suggestions = [
         "What happened today?",
-        "Is anything waiting for me?",
+        "Anything waiting for me?",
         "Did a deploy fail this week?",
         "What did I earn today?",
+        "What did Claude do last?",
     ]
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let reason = chat.unavailableReason, chat.messages.isEmpty {
-                    unavailable(reason)
-                } else if chat.messages.isEmpty {
-                    welcome
-                } else {
-                    conversation
+            ZStack {
+                ChatBackdrop(active: chat.answering)
+                    .ignoresSafeArea()
+                Group {
+                    if let reason = chat.unavailableReason, chat.messages.isEmpty {
+                        unavailable(reason)
+                            .transition(.opacity)
+                    } else if chat.messages.isEmpty {
+                        welcome
+                            .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                    } else {
+                        conversation
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
                 }
+                .animation(.spring(duration: 0.5, bounce: 0.15), value: chat.messages.isEmpty)
             }
-            .background(Color.black)
+            // A swipe down anywhere puts the keyboard away, like Messages.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 12).onChanged { drag in
+                    if focused, drag.translation.height > 24, abs(drag.translation.width) < drag.translation.height {
+                        focused = false
+                    }
+                }
+            )
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if !chat.messages.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            withAnimation(.spring(duration: 0.35)) { chat.reset() }
+                            withAnimation(.spring(duration: 0.45)) { chat.reset() }
                             Haptics.impact()
                         } label: {
                             Image(systemName: "arrow.counterclockwise")
@@ -44,7 +60,16 @@ struct ChatView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if chat.unavailableReason == nil { composer }
+                if chat.unavailableReason == nil {
+                    VStack(spacing: 10) {
+                        if chat.messages.isEmpty {
+                            suggestionsRow
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        }
+                        composer
+                    }
+                    .animation(.spring(duration: 0.45), value: chat.messages.isEmpty)
+                }
             }
             .onChange(of: dictation.transcript) { _, words in
                 if dictation.isRecording { text = dictation.prefix + words }
@@ -55,38 +80,30 @@ struct ChatView: View {
     // MARK: Empty states
 
     private var welcome: some View {
-        ScrollView {
-            VStack(spacing: 14) {
+        VStack(spacing: 14) {
+            Spacer()
+            ZStack {
+                // Mochi glows a little, in Botan's orange.
+                Circle()
+                    .fill(Color.botan.opacity(0.35))
+                    .frame(width: 150, height: 150)
+                    .blur(radius: 50)
                 MochiStill(state: .idle, showBadge: false)
-                    .frame(width: 96)
-                    .padding(.top, 70)
-                Text("Ask Botan")
-                    .font(.title2.weight(.semibold))
-                Text("About your agents, your services and what you allowed. Apple's model answers on your iPhone: nothing leaves it.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                VStack(spacing: 8) {
-                    ForEach(Self.suggestions, id: \.self) { suggestion in
-                        Button {
-                            Task { await chat.send(suggestion) }
-                            Haptics.impact()
-                        } label: {
-                            Text(suggestion)
-                                .font(.subheadline.weight(.medium))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .glassPill(Capsule(), interactive: true)
-                        }
-                        .buttonStyle(PressableButtonStyle())
-                    }
-                }
-                .padding(.top, 10)
+                    .frame(width: 92)
             }
-            .frame(maxWidth: .infinity)
+            Text("Ask Botan")
+                .font(.title2.weight(.semibold))
+            Text("Your agents, your services, what you allowed.\nApple's model answers on your iPhone: nothing leaves it.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 36)
+            Spacer()
+            Spacer()
         }
-        .scrollDismissesKeyboard(.interactively)
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture { focused = false }
     }
 
     private func unavailable(_ reason: String) -> some View {
@@ -101,23 +118,66 @@ struct ChatView: View {
         }
     }
 
+    /// Small chips just above the field, scrolling sideways.
+    private var suggestionsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Self.suggestions, id: \.self) { suggestion in
+                    Button {
+                        ask(suggestion)
+                    } label: {
+                        Text(suggestion)
+                            .font(.footnote.weight(.medium))
+                            .lineLimit(1)
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 8)
+                            .glassPill(Capsule(), interactive: true)
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                }
+            }
+            .padding(.horizontal, 12)
+        }
+        .scrollClipDisabled()
+    }
+
     // MARK: Conversation
 
     private var conversation: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
+                header
                 ForEach(chat.messages) { message in
                     bubble(message)
                         .id(message.id)
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .transition(.asymmetric(
+                            insertion: .opacity
+                                .combined(with: .offset(y: 18))
+                                .combined(with: .scale(scale: 0.96, anchor: message.role == .you ? .bottomTrailing : .bottomLeading)),
+                            removal: .opacity))
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .animation(.spring(duration: 0.35), value: chat.messages.count)
         }
         .defaultScrollAnchor(.bottom)
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    /// Who you're talking to, at the top of the conversation.
+    private var header: some View {
+        VStack(spacing: 6) {
+            MochiStill(state: chat.answering ? .thinking : .idle, showBadge: false)
+                .frame(width: 44)
+            Text("Botan")
+                .font(.subheadline.weight(.semibold))
+            Text("Apple's model, on your iPhone")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 16)
+        .padding(.bottom, 18)
     }
 
     @ViewBuilder private func bubble(_ message: ChatMessage) -> some View {
@@ -130,7 +190,9 @@ struct ChatView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
-                    .background(Color.botan, in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+                    .background(
+                        LinearGradient(colors: [Color.botan, Color.botan.opacity(0.82)], startPoint: .top, endPoint: .bottom),
+                        in: RoundedRectangle(cornerRadius: 19, style: .continuous))
                     .textSelection(.enabled)
             }
         case .botan:
@@ -141,9 +203,12 @@ struct ChatView: View {
                     .frame(width: 28)
                 Group {
                     if thinking {
-                        ProgressView()
-                            .controlSize(.small)
-                            .frame(width: 40, height: 20)
+                        // Botan is thinking: three dots, like Messages.
+                        Image(systemName: "ellipsis")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .symbolEffect(.variableColor.iterative.dimInactiveLayers, options: .repeating)
+                            .frame(width: 44, height: 22)
                     } else {
                         Text(Self.styled(message.text))
                             .font(.body)
@@ -153,7 +218,8 @@ struct ChatView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .background(Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+                .glassPill(RoundedRectangle(cornerRadius: 19, style: .continuous))
+                .animation(.easeOut(duration: 0.2), value: message.text.isEmpty)
                 Spacer(minLength: 32)
             }
         }
@@ -189,7 +255,7 @@ struct ChatView: View {
             }
             .glassPill(RoundedRectangle(cornerRadius: 22, style: .continuous))
             Button {
-                send()
+                ask(text)
             } label: {
                 Image(systemName: "arrow.up")
                     .font(.body.weight(.bold))
@@ -202,16 +268,49 @@ struct ChatView: View {
             .animation(.spring(duration: 0.3), value: empty)
         }
         .padding(.horizontal, 12)
-        .padding(.top, 8)
         .padding(.bottom, 6)
     }
 
-    private func send() {
-        let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func ask(_ question: String) {
+        let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !chat.answering else { return }
         dictation.stop()
         text = ""
+        focused = false
         Haptics.impact()
         Task { await chat.send(question) }
+    }
+}
+
+/// The chat's background: deep night with a slow Botan-orange glow from below and a cool
+/// light from above, drifting gently (a little more while Botan answers).
+struct ChatBackdrop: View {
+    var active: Bool
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 24)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate * (active ? 0.5 : 0.18)
+            MeshGradient(
+                width: 3, height: 3,
+                points: [
+                    [0, 0], [0.5 + Self.drift(t, 0, 0.08), 0], [1, 0],
+                    [0, 0.5 + Self.drift(t, 1.3, 0.06)],
+                    [0.5 + Self.drift(t, 2.1, 0.1), 0.48 + Self.drift(t, 0.7, 0.08)],
+                    [1, 0.5 + Self.drift(t, 2.9, 0.06)],
+                    [0, 1], [0.5 + Self.drift(t, 1.9, 0.1), 1], [1, 1],
+                ],
+                colors: [
+                    Color(red: 0.03, green: 0.03, blue: 0.05), Color(red: 0.06, green: 0.05, blue: 0.13), Color(red: 0.09, green: 0.06, blue: 0.2),
+                    Color(red: 0.02, green: 0.02, blue: 0.03), Color(red: 0.05, green: 0.03, blue: 0.05), Color(red: 0.04, green: 0.03, blue: 0.07),
+                    Color(red: 0.2, green: 0.06, blue: 0.02), Color.botan.opacity(active ? 0.55 : 0.38), Color(red: 0.12, green: 0.04, blue: 0.03),
+                ]
+            )
+        }
+        .background(Color.black)
+        .animation(.easeInOut(duration: 1.2), value: active)
+    }
+
+    private static func drift(_ t: Double, _ phase: Double, _ amount: Double) -> Float {
+        Float(sin(t + phase) * amount)
     }
 }

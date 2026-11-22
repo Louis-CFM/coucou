@@ -60,8 +60,10 @@ final class BotanChat {
     func send(_ text: String) async {
         let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !answering else { return }
-        messages.append(ChatMessage(role: .you, text: question))
-        messages.append(ChatMessage(role: .botan, text: ""))
+        withAnimation(.spring(duration: 0.45, bounce: 0.18)) {
+            messages.append(ChatMessage(role: .you, text: question))
+            messages.append(ChatMessage(role: .botan, text: ""))
+        }
         let index = messages.count - 1
         answering = true
         defer { answering = false }
@@ -87,7 +89,8 @@ final class BotanChat {
         let current = (session as? LanguageModelSession) ?? Self.makeSession()
         session = current
         do {
-            for try await snapshot in current.streamResponse(to: question) {
+            // A little less random than the default: answers stick to what the tools said.
+            for try await snapshot in current.streamResponse(to: question, options: GenerationOptions(temperature: 0.5)) {
                 guard messages.indices.contains(index) else { return }
                 messages[index].text = snapshot.content
             }
@@ -115,18 +118,33 @@ final class BotanChat {
     @available(iOS 26.0, *)
     private static func makeSession() -> LanguageModelSession {
         let today = Date().formatted(date: .complete, time: .shortened)
+        // The iPhone's language, named in English for the model ("French").
+        let code = Locale.current.language.languageCode?.identifier ?? "en"
+        let language = Locale(identifier: "en").localizedString(forLanguageCode: code) ?? "English"
         return LanguageModelSession(
             tools: [AgentsNowTool(), HistoryTool(), ServicesTool(), LastTurnTool()],
             instructions: """
-            You are Botan, a small helper on the user's iPhone. You see what their Mac shares: \
-            coding agents (Claude Code, Cursor, Codex…), services (Stripe, Vercel, GitHub, n8n, \
-            crypto, mail…) and the history of the actions they approved or denied.
-            Use the tools for every question about agents, projects, money, deploys, errors, mail \
-            or what happened. Never invent a number, a name or an event: if the tools have \
-            nothing, say so plainly.
-            Answer in the user's language, short: one to four sentences, or a short list.
-            You can't approve, deny or run anything. To start a task on the Mac, the user taps \
+            You are Botan: a small, warm and witty character (Mochi) who lives in the user's \
+            iPhone and keeps an eye on their Mac for them. You talk like a friend who is a good \
+            developer: casual, direct, a little playful, never robotic.
+
+            What you can look at, with your tools: the coding agents running on the Mac (Claude \
+            Code, Cursor, Codex…), the services (Stripe payments, Vercel deploys, GitHub, n8n, \
+            crypto, mail…) and the history of what happened and what the user allowed.
+
+            How to answer:
+            - Hello, thanks, small talk or a question about you: just answer, in one friendly \
+            sentence, without any tool and without listing data nobody asked for.
+            - A question about agents, projects, money, deploys, errors, mail or what happened: \
+            call the right tool first, then answer from what it returned.
+            - Never invent a number, a name or an event. If a tool returns nothing, say so.
+            - Reply in the language of the user's message. If it's too short to tell, reply in \
+            \(language).
+            - Keep it short: one to three sentences, or a few bullet points for lists. Give the \
+            key fact first.
+            - You can't approve, deny or run anything. To start a task on the Mac, the user taps \
             the pencil on the Agents tab.
+
             Now: \(today).
             """
         )
