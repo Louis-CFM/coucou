@@ -106,18 +106,23 @@ fn linked_chain(owners: &[u32], procs: &[Option<Proc>]) -> Vec<(u32, String)> {
 enum Method {
     KWin,
     X11,
+    Niri,
 }
 
 /// Best first. On Plasma's Wayland session KWin sees every window, native or
-/// XWayland; elsewhere EWMH is the standard way, with KWin's script as a
-/// second try on Plasma's X11 session.
-fn methods(session_type: &str, wayland_display: &str, display: &str, desktop: &str) -> Vec<Method> {
+/// XWayland, and so does niri through its socket; elsewhere EWMH is the
+/// standard way, with KWin's script as a second try on Plasma's X11 session.
+fn methods(session_type: &str, wayland_display: &str, display: &str, desktop: &str, niri_socket: &str) -> Vec<Method> {
     let wayland = session_type.eq_ignore_ascii_case("wayland") || !wayland_display.trim().is_empty();
     let x11 = !display.trim().is_empty();
     let kde = desktop.split(':').any(|d| d.eq_ignore_ascii_case("kde"));
+    let niri = wayland && !niri_socket.trim().is_empty();
     let mut out = Vec::new();
     if kde && wayland {
         out.push(Method::KWin);
+    }
+    if niri {
+        out.push(Method::Niri);
     }
     if x11 {
         out.push(Method::X11);
@@ -144,12 +149,14 @@ pub fn focus_session_window(owners: &[u32], folder: &str) -> bool {
         &env("WAYLAND_DISPLAY"),
         &env("DISPLAY"),
         &env("XDG_CURRENT_DESKTOP"),
+        &env("NIRI_SOCKET"),
     )
     .into_iter()
     .any(|method| {
         let done = match method {
             Method::KWin => kwin::activate(&pids, folder),
             Method::X11 => x11::activate(&pids, folder),
+            Method::Niri => niri::activate(&pids, folder),
         };
         if done {
             crate::log::line(format!("open terminal: window raised ({method:?})"));
@@ -451,6 +458,75 @@ mod kwin {
     }
 }
 
+// ── niri: niri msg ────────────────────────────────────────────────────────────
+
+mod niri {
+    use serde_json::Value;
+
+    use super::*;
+
+    const LIMIT: Duration = Duration::from_secs(2);
+
+    /// The id of the window to bring forward out of `niri msg --json windows`:
+    /// the windows of the nearest ancestor that has any, the one titled after
+    /// `folder` if there are several. Native Wayland and XWayland windows alike
+    /// carry their process ID.
+    pub fn pick(windows: &str, ancestors: &[u32], folder: &str) -> Option<u64> {
+        let list: Value = serde_json::from_str(windows).ok()?;
+        let windows: Vec<(u64, u32, String)> = list
+            .as_array()?
+            .iter()
+            .filter_map(|w| {
+                let id = w.get("id")?.as_u64()?;
+                let pid = u32::try_from(w.get("pid")?.as_i64()?).ok()?;
+                let title = w.get("title").and_then(Value::as_str).unwrap_or_default().to_string();
+                ancestors.contains(&pid).then_some((id, pid, title))
+            })
+            .collect();
+        session_window::choose_window(ancestors, &windows, folder).copied()
+    }
+
+    pub fn activate(ancestors: &[u32], folder: &str) -> bool {
+        let Ok(out) = Command::new("niri").args(["msg", "--json", "windows"]).stdin(Stdio::null()).stderr(Stdio::null()).output()
+        else {
+            return false;
+        };
+        let Some(id) = pick(&String::from_utf8_lossy(&out.stdout), ancestors, folder) else {
+            return false;
+        };
+        // Scrolls to the window and switches to its workspace.
+        run_quietly(Command::new("niri").args(["msg", "action", "focus-window", "--id", &id.to_string()]), LIMIT)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        const WINDOWS: &str = r#"[
+          {"id":11,"title":"notes","app_id":"kitty","pid":900,"workspace_id":1},
+          {"id":12,"title":"lib.rs — other — Zed","app_id":"dev.zed.Zed","pid":700,"workspace_id":2},
+          {"id":13,"title":"main.rs — coucou — Zed","app_id":"dev.zed.Zed","pid":700,"workspace_id":2},
+          {"id":14,"title":"no pid","app_id":"x"},
+          {"id":-1,"title":"coucou","app_id":"x","pid":600}
+        ]"#;
+
+        #[test]
+        fn the_window_of_the_session_folder_is_picked() {
+            // claude → zsh → zed (700): the window titled after the folder wins.
+            assert_eq!(pick(WINDOWS, &[710, 705, 700], "coucou"), Some(13));
+            // No title names it: the first window of the process.
+            assert_eq!(pick(WINDOWS, &[700], "elsewhere"), Some(12));
+        }
+
+        #[test]
+        fn nothing_is_picked_without_an_ancestor_window_or_with_garbage() {
+            assert_eq!(pick(WINDOWS, &[1234], "coucou"), None);
+            assert_eq!(pick(WINDOWS, &[600], "coucou"), None);
+            assert_eq!(pick("not json", &[700], "coucou"), None);
+        }
+    }
+}
+
 // ── kitty: the session's tab ──────────────────────────────────────────────────
 
 mod kitty {
@@ -503,16 +579,21 @@ mod tests {
     fn the_best_way_comes_first_for_each_desktop() {
         use Method::*;
         // Plasma on Wayland: KWin sees everything; XWayland as a second try.
-        assert_eq!(methods("wayland", "wayland-0", ":0", "KDE"), [KWin, X11]);
-        assert_eq!(methods("", "wayland-0", "", "KDE"), [KWin]);
+        assert_eq!(methods("wayland", "wayland-0", ":0", "KDE", ""), [KWin, X11]);
+        assert_eq!(methods("", "wayland-0", "", "KDE", ""), [KWin]);
         // Plasma on X11: EWMH, then KWin.
-        assert_eq!(methods("x11", "", ":0", "KDE"), [X11, KWin]);
+        assert_eq!(methods("x11", "", ":0", "KDE", ""), [X11, KWin]);
         // Any X11 session.
-        assert_eq!(methods("x11", "", ":0", "XFCE"), [X11]);
+        assert_eq!(methods("x11", "", ":0", "XFCE", ""), [X11]);
         // GNOME on Wayland: only XWayland windows can be reached.
-        assert_eq!(methods("wayland", "wayland-0", ":0", "ubuntu:GNOME"), [X11]);
-        assert_eq!(methods("wayland", "wayland-0", "", "GNOME"), []);
-        assert_eq!(methods("tty", "", "", ""), []);
+        assert_eq!(methods("wayland", "wayland-0", ":0", "ubuntu:GNOME", ""), [X11]);
+        assert_eq!(methods("wayland", "wayland-0", "", "GNOME", ""), []);
+        assert_eq!(methods("tty", "", "", "", ""), []);
+        // niri sees native Wayland windows (Zed, kitty...) and XWayland ones.
+        assert_eq!(methods("wayland", "wayland-1", ":0", "niri", "/run/user/1000/niri.sock"), [Niri, X11]);
+        assert_eq!(methods("wayland", "wayland-1", "", "niri", "/run/user/1000/niri.sock"), [Niri]);
+        // A stale NIRI_SOCKET outside a Wayland session is not taken.
+        assert_eq!(methods("x11", "", ":0", "XFCE", "/run/user/1000/niri.sock"), [X11]);
     }
 
     #[test]
