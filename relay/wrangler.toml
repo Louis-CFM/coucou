@@ -8,6 +8,8 @@ workers_dev = true
 [vars]
 APNS_TEAM_ID = "256AUJ9555"
 APNS_TOPIC = "fr.louisraille.Coucou.push-type.liveactivity"
+# The other iPhone apps the Mac may push to (the request names its app).
+APNS_APPS = "fr.louisraille.Coucou,fr.louisraille.Botan"
 
 [observability]
 enabled = false

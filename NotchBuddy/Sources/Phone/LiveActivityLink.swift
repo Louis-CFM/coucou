@@ -197,6 +197,8 @@ final class LiveActivityLink {
         record["activityId"] = activityID
         record["updatedAt"] = Date()
         record["deviceName"] = UIDevice.current.name
+        // Which app the tokens belong to (Botan or Coucou): the relay pushes to that app.
+        record["app"] = Bundle.main.bundleIdentifier ?? ""
         record.encryptedValues["startToken"] = startToken
         record.encryptedValues["updateToken"] = updateToken
         // Several tokens can arrive at once; the last write wins, with all fields.

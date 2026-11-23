@@ -54,6 +54,8 @@ final class LiveActivityRelay {
         var startToken: String
         var updateToken: String
         var updatedAt: Date
+        /// The iPhone app's bundle id (empty: an older app, the relay's default).
+        var app: String = ""
     }
 
     private var database: CKDatabase { CKContainer(identifier: CloudProbe.containerID).privateCloudDatabase }
@@ -342,6 +344,7 @@ final class LiveActivityRelay {
         if state.since == nil { state.since = activitySince }
         var body: [String: Any] = ["token": token, "env": env, "event": event, "urgent": urgent]
         if let dismissAfter { body["dismissAfter"] = dismissAfter }
+        if let app = phones[phoneID]?.app, !app.isEmpty { body["app"] = app }
         guard let stateData = try? JSONEncoder().encode(state),
               let stateObject = try? JSONSerialization.jsonObject(with: stateData) else { return false }
         body["state"] = stateObject
@@ -394,7 +397,8 @@ final class LiveActivityRelay {
                         env: record["env"] as? String ?? "production",
                         startToken: record.encryptedValues["startToken"] as? String ?? "",
                         updateToken: record.encryptedValues["updateToken"] as? String ?? "",
-                        updatedAt: record["updatedAt"] as? Date ?? .distantPast)
+                        updatedAt: record["updatedAt"] as? Date ?? .distantPast,
+                        app: record["app"] as? String ?? "")
                 }
                 for deletion in changes.deletions where deletion.recordType == "PhoneToken" {
                     phones[deletion.recordID.recordName] = nil

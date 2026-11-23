@@ -322,7 +322,7 @@ targets:
       properties:
         CFBundleName: Botan
         CFBundleDisplayName: Botan
-        CFBundleIdentifier: fr.louisraille.Coucou
+        CFBundleIdentifier: fr.louisraille.Botan
         CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
         CFBundlePackageType: APPL
@@ -345,10 +345,10 @@ targets:
           - Bluetooth
         NSAccessorySetupBluetoothServices:
           - B07A0001-6D6F-6368-6900-626F74616E00
-        NSBluetoothAlwaysUsageDescription: "Coucou uses Bluetooth to show your agents on Botan, the little screen on the back of your iPhone, and to take its button's answer."
-        NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
-        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for Claude Code."
-        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of an instruction for Claude Code."
+        NSBluetoothAlwaysUsageDescription: "Botan uses Bluetooth to show your agents on your Botan, the little screen on the back of your iPhone, and to take its button's answer."
+        NSFaceIDUsageDescription: "Botan asks for Face ID before allowing a command, starting a task or running an action from your iPhone."
+        NSMicrophoneUsageDescription: "Botan uses the microphone when you dictate an instruction, a task or a message to Botan."
+        NSSpeechRecognitionUsageDescription: "Botan turns your voice into text when you dictate an instruction, a task or a message."
         NSSupportsLiveActivities: YES
         # Lets Mochi move at 120 Hz on ProMotion screens, like the Mac's notch.
         CADisableMinimumFrameDurationOnPhone: YES
@@ -364,7 +364,7 @@ targets:
         CoucouAPNsEnvironment: $(COUCOU_APNS_ENV)
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Botan
         PRODUCT_NAME: Coucou
         INFOPLIST_FILE: Resources/InfoPhone.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -415,7 +415,7 @@ targets:
       properties:
         CFBundleName: CoucouWidgets
         CFBundleDisplayName: Botan
-        CFBundleIdentifier: fr.louisraille.Coucou.Widgets
+        CFBundleIdentifier: fr.louisraille.Botan.Widgets
         CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
         CFBundlePackageType: XPC!
@@ -423,7 +423,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.Widgets
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Botan.Widgets
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_EXTENSION"
         PRODUCT_NAME: CoucouWidgets
         INFOPLIST_FILE: Resources/InfoWidgets.plist
@@ -460,7 +460,7 @@ targets:
       properties:
         CFBundleName: CoucouNotificationContent
         CFBundleDisplayName: Botan
-        CFBundleIdentifier: fr.louisraille.Coucou.NotificationContent
+        CFBundleIdentifier: fr.louisraille.Botan.NotificationContent
         CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
         CFBundlePackageType: XPC!
@@ -473,7 +473,7 @@ targets:
             UNNotificationExtensionDefaultContentHidden: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.NotificationContent
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Botan.NotificationContent
         PRODUCT_NAME: CoucouNotificationContent
         INFOPLIST_FILE: Resources/InfoNotificationContent.plist
         IPHONEOS_DEPLOYMENT_TARGET: "18.0"
@@ -508,7 +508,7 @@ targets:
       properties:
         CFBundleName: CoucouNotificationService
         CFBundleDisplayName: Botan
-        CFBundleIdentifier: fr.louisraille.Coucou.NotificationService
+        CFBundleIdentifier: fr.louisraille.Botan.NotificationService
         CFBundleVersion: "21"
         CFBundleShortVersionString: "2.0"
         CFBundlePackageType: XPC!
@@ -517,7 +517,7 @@ targets:
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.NotificationService
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Botan.NotificationService
         PRODUCT_NAME: CoucouNotificationService
         INFOPLIST_FILE: Resources/InfoNotificationService.plist
         CODE_SIGN_ENTITLEMENTS: Resources/CoucouNotificationService.entitlements
