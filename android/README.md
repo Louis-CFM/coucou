@@ -93,15 +93,19 @@ The desktop side is in `windows/src-tauri/src/phone_link`; the protocol is `docs
 
 ## Getting the phone link running on Windows
 
-1. Download the portable build from the repository's **Windows** workflow run (Actions, Windows, the `Coucou-Windows-portable`
-   artifact). It holds `coucou.exe` and `coucou-hook.exe`.
-2. **Close any other Coucou first.** An installed copy (for example in `C:\Program Files\Coucou`) starts at login and has no
-   phone link, so the phone would say "Connecting…" forever. Then start the portable `coucou.exe`.
-3. Settings > **Android phone** > turn **Phone link** on. It is off by default and listens on your local network only. If Windows
-   asks about the firewall, allow Coucou on **private** networks (a network marked *Public* blocks the phone).
-4. **Show pairing code**, then scan the QR code with the app (or paste the link). The phone and the computer must be on the same Wi-Fi.
-5. Optional, each with its own switch on the same page: session details, answers to questions, file changes, chat through the
-   computer's own keys, plan usage, services, starting Claude Code sessions from the phone.
+1. Download and run the latest **[Coucou-Windows.msi](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows.msi)**
+   or **[Coucou-Windows-setup.exe](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe)**.
+   The phone link is included in Coucou **0.4.0 or later** for Windows.
+2. Quit any other installed or portable copy of Coucou, then open the version you just installed.
+   If Settings has no **Android phone** page, update Coucou and restart it.
+3. Open **Settings > Android phone** and turn **Phone link** on. It is off by default and listens on your local network only.
+   If Windows asks about the firewall, allow Coucou on **private networks**.
+4. Select **Show pairing code**, then scan the QR code with the Android app or paste the pairing link.
+   The phone and the computer must be on the same Wi-Fi.
+5. Optional features have their own switches on the same page: session details, answers to questions, file changes,
+   chat through the computer's own keys, plan usage and services.
+6. To start Claude Code sessions from the phone, use **Coucou 0.6.0 or later on both Windows and Android** and enable
+   **Let the phone start Claude Code sessions** on the computer. This setting is off by default.
 
 What to know when you try approvals from the phone:
 
