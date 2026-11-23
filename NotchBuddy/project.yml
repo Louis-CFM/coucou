@@ -370,8 +370,8 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Botan orange (#FF5A24): the accent of buttons, links and switches.
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        # Mochi in other colors, picked in Settings (UIApplication.setAlternateIconName).
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Blue AppIcon-Green AppIcon-Purple AppIcon-Pink AppIcon-Graphite"
+        # Other Botan looks, picked in Settings → Look (UIApplication.setAlternateIconName).
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Orange AppIcon-Glow AppIcon-MochiNight AppIcon-MochiOrange"
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
         COUCOU_APNS_ENV: production
         IPHONEOS_DEPLOYMENT_TARGET: "18.0"

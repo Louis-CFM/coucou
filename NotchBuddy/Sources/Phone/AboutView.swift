@@ -289,32 +289,37 @@ struct OnboardingView: View {
     }
 }
 
-/// The Home Screen icon: Botan's (the default), or Mochi in a color (alternate app icons).
+/// The Home Screen icon: Botan's (the default), or one of the other Botan looks (alternate app icons).
 enum AppIconChoice: String, CaseIterable, Identifiable {
-    case orange = "", blue = "AppIcon-Blue", green = "AppIcon-Green", purple = "AppIcon-Purple",
-         pink = "AppIcon-Pink", graphite = "AppIcon-Graphite"
+    case botan = "", orange = "AppIcon-Orange", glow = "AppIcon-Glow",
+         mochiNight = "AppIcon-MochiNight", mochiOrange = "AppIcon-MochiOrange"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .orange: "Botan"
-        case .blue: "Blue"
-        case .green: "Green"
-        case .purple: "Purple"
-        case .pink: "Pink"
-        case .graphite: "Graphite"
+        case .botan: "Botan"
+        case .orange: "Orange"
+        case .glow: "Glow"
+        case .mochiNight: "Mochi"
+        case .mochiOrange: "Mochi Orange"
         }
     }
 
-    var previewName: String { self == .orange ? "IconPreview-Orange" : "IconPreview-\(title)" }
+    var previewName: String {
+        switch self {
+        case .botan: "IconPreview-Botan"
+        default: "IconPreview-" + rawValue.replacingOccurrences(of: "AppIcon-", with: "")
+        }
+    }
 
     @MainActor static var current: AppIconChoice {
-        AppIconChoice(rawValue: UIApplication.shared.alternateIconName ?? "") ?? .orange
+        AppIconChoice(rawValue: UIApplication.shared.alternateIconName ?? "") ?? .botan
     }
 
     @MainActor static func apply(_ choice: AppIconChoice) {
         guard UIApplication.shared.supportsAlternateIcons else { return }
-        UIApplication.shared.setAlternateIconName(choice == .orange ? nil : choice.rawValue)
+        UIApplication.shared.setAlternateIconName(choice == .botan ? nil : choice.rawValue)
     }
 }
+
