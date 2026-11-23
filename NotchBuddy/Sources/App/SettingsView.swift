@@ -40,6 +40,10 @@ struct SettingsView: View {
     @State private var pendingStatusLineJSON: String = ""
     @State private var statusLinePendingInstall: Bool = true
     @State private var planTogglePending: Bool = false
+    @State private var showAgyStatusLineDiff: Bool = false
+    @State private var pendingAgyStatusLineJSON: String = ""
+    @State private var agyStatusLinePendingInstall: Bool = true
+    @State private var agyPlanTogglePending: Bool = false
 
     @State private var geminiHooksInstalled: Bool = HookServer.geminiHooksInstalled()
     @State private var showGeminiDiff: Bool = false
@@ -1111,6 +1115,62 @@ struct SettingsView: View {
                     get: { state.showCodexPlanInNotch },
                     set: { state.showCodexPlanInNotch = $0 }
                 ))
+                Divider()
+                Text("Shows your Antigravity plan usage (model quotas and reset times) in the notch header. Coucou adds a statusLine relay in ~/.gemini/antigravity-cli/settings.json.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Show Antigravity plan in the notch", isOn: Binding(
+                    get: { state.showAgyPlanInNotch || agyPlanTogglePending },
+                    set: { on in
+                        if on {
+                            if state.agyPlanRelayInstalled {
+                                state.showAgyPlanInNotch = true
+                            } else {
+                                agyPlanTogglePending = true
+                                installAgyStatusLine()
+                            }
+                        } else {
+                            state.showAgyPlanInNotch = false
+                            agyPlanTogglePending = false
+                        }
+                    }
+                ))
+                HStack(spacing: 10) {
+                    if state.agyPlanRelayInstalled {
+                        Text(String(localized: "plan.relay.installed"))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Button(String(localized: "plan.relay.uninstall")) { uninstallAgyStatusLine() }
+                            .buttonStyle(.bordered)
+                    } else {
+                        Text(String(localized: "plan.relay.not-installed"))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Button(String(localized: "plan.relay.install")) { installAgyStatusLine() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                }
+                if showAgyStatusLineDiff {
+                    ScrollView {
+                        Text(pendingAgyStatusLineJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 100)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button(String(localized: "hooks.confirm-write")) { confirmAgyStatusLine() }
+                            .buttonStyle(.borderedProminent)
+                        Button(String(localized: "Cancel")) {
+                            showAgyStatusLineDiff = false
+                            pendingAgyStatusLineJSON = ""
+                            agyPlanTogglePending = false
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
             }
             .padding(6)
         }
@@ -2286,6 +2346,51 @@ struct SettingsView: View {
                 : String(localized: "status.statusline-removed")
         } catch {
             planTogglePending = false
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func installAgyStatusLine() {
+        do {
+            pendingAgyStatusLineJSON = try HookServer.shared.previewAgyStatusLine(install: true)
+            showAgyStatusLineDiff = true
+            agyStatusLinePendingInstall = true
+            statusMessage = String(localized: "hooks.review-json")
+        } catch {
+            agyPlanTogglePending = false
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func uninstallAgyStatusLine() {
+        do {
+            pendingAgyStatusLineJSON = try HookServer.shared.previewAgyStatusLine(install: false)
+            showAgyStatusLineDiff = true
+            agyStatusLinePendingInstall = false
+            statusMessage = String(localized: "hooks.review-json")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmAgyStatusLine() {
+        do {
+            try HookServer.shared.writeAgyStatusLine()
+            showAgyStatusLineDiff = false
+            pendingAgyStatusLineJSON = ""
+            state.refreshPlanRelayState()
+            if agyPlanTogglePending {
+                state.showAgyPlanInNotch = true
+                agyPlanTogglePending = false
+            }
+            if !agyStatusLinePendingInstall {
+                state.showAgyPlanInNotch = false
+            }
+            statusMessage = agyStatusLinePendingInstall
+                ? String(localized: "status.statusline-installed")
+                : String(localized: "status.statusline-removed")
+        } catch {
+            agyPlanTogglePending = false
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }

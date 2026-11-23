@@ -6,3 +6,8 @@ trap 'rm -rf "$TEST_DIR"' EXIT
 swiftc NotchBuddy/Sources/App/ClaudePlanGauge.swift \
     tests/ClaudePlanGaugeTests.swift -o "$TEST_DIR/plan-gauge-tests"
 "$TEST_DIR/plan-gauge-tests"
+
+swiftc NotchBuddy/Sources/App/ClaudePlanGauge.swift \
+    NotchBuddy/Sources/App/AgyPlanGauge.swift \
+    tests/AgyPlanGaugeTests.swift -o "$TEST_DIR/agy-plan-gauge-tests"
+"$TEST_DIR/agy-plan-gauge-tests"

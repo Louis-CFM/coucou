@@ -5,10 +5,13 @@ import SwiftUI
 struct ClaudePlanCardView: View {
     let usage: PlanUsage?   // nil = installed, no data yet
     #if !APPSTORE
-    /// Claude and Codex both shown: Codex is a third row (the header has room for one pill).
+    /// Claude and Codex/Antigravity both shown: extra plans appear as rows (the header has room for one pill).
     var codexRow: Bool = false
     var codexUsage: CodexPlanUsage? = nil
     var onCodex: () -> Void = {}
+    var agyRow: Bool = false
+    var agyUsage: AgyPlanUsage? = nil
+    var onAgy: () -> Void = {}
     #endif
 
     @State private var now = Date()
@@ -45,6 +48,17 @@ struct ClaudePlanCardView: View {
                         let window = codexDominantWindow
                         GaugeRowView(label: "Codex", window: window, now: now,
                                      weekly: window != nil && window == codexUsage?.sevenDay)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                if agyRow {
+                    // The Antigravity bucket closest to its limit; a click opens the Antigravity card.
+                    Button(action: onAgy) {
+                        let bucket = agyUsage.flatMap { AgyPlanGauge.dominantBucket($0, now: now) }
+                        let window = bucket?.resetsAt.map { PlanWindow(usedPct: bucket!.usedPct, resetsAt: $0) }
+                        GaugeRowView(label: "Agy", window: window, now: now,
+                                     weekly: bucket?.isWeekly ?? false)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

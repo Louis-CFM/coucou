@@ -544,7 +544,26 @@ final class AppState: ObservableObject {
     }
     @Published var codexPlanUsage: CodexPlanUsage? = nil
     // Which card showingPlanDetail opens
-    @Published var planDetailIsCodex: Bool = false
+    enum PlanDetailTarget: Equatable {
+        case claude
+        case codex
+        case agy
+    }
+    @Published var planDetailTarget: PlanDetailTarget = .claude
+
+    // Antigravity plan gauge (from `agy` statusline hook)
+    @Published var agyPlanUsage: AgyPlanUsage? = nil {
+        didSet {
+            if let u = agyPlanUsage,
+               let data = try? JSONEncoder().encode(u) {
+                UserDefaults.standard.set(data, forKey: "agyPlanUsage")
+            }
+        }
+    }
+    @Published var showAgyPlanInNotch: Bool = false {
+        didSet { UserDefaults.standard.set(showAgyPlanInNotch, forKey: "showAgyPlanInNotch") }
+    }
+    @Published var agyPlanRelayInstalled: Bool = false
 
     /// Rate-limited on the attempt, not only on success: without Codex installed or
     /// signed in, every appearance of the pill used to spawn `codex app-server` again.
@@ -564,6 +583,7 @@ final class AppState: ObservableObject {
 
     func refreshPlanRelayState() {
         planRelayInstalled = HookServer.statusLineInstalled()
+        agyPlanRelayInstalled = HookServer.agyStatusLineInstalled()
     }
     #endif
 
@@ -617,9 +637,13 @@ final class AppState: ObservableObject {
         if let d = ud.data(forKey: "claudePlanUsage"),
            let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
         #if !APPSTORE
+        if let d = ud.data(forKey: "agyPlanUsage"),
+           let u = try? JSONDecoder().decode(AgyPlanUsage.self, from: d) { agyPlanUsage = u }
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
         if let v = ud.object(forKey: "showCodexPlanInNotch") as? Bool { showCodexPlanInNotch = v }
+        if let v = ud.object(forKey: "showAgyPlanInNotch") as? Bool { showAgyPlanInNotch = v }
         planRelayInstalled = HookServer.statusLineInstalled()
+        agyPlanRelayInstalled = HookServer.agyStatusLineInstalled()
         #endif
 
         // Sync SoundEngine volume on launch
