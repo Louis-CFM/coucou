@@ -142,7 +142,7 @@ targets:
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
         CFBundleVersion: "27"
-        CFBundleShortVersionString: "0.6.1"
+        CFBundleShortVersionString: "0.7.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -237,7 +237,7 @@ targets:
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
         CFBundleVersion: "20"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -324,7 +324,7 @@ targets:
         CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou
         CFBundleVersion: "21"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: APPL
         LSRequiresIPhoneOS: YES
         UILaunchScreen: {}
@@ -417,7 +417,7 @@ targets:
         CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou.Widgets
         CFBundleVersion: "21"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: XPC!
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -462,7 +462,7 @@ targets:
         CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou.NotificationContent
         CFBundleVersion: "21"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: XPC!
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
@@ -510,7 +510,7 @@ targets:
         CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou.NotificationService
         CFBundleVersion: "21"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: XPC!
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.service

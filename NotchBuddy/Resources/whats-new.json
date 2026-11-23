@@ -2,6 +2,167 @@
   "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 16 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.7.0",
+      "items": [
+        {
+          "icon": "sparkles",
+          "title": {
+            "en": "Botan, one button for your agents",
+            "fr": "Botan, un bouton pour tes agents",
+            "es": "Botan, un botón para tus agentes",
+            "pt-BR": "Botan, um botão para seus agentes",
+            "ru": "Botan — одна кнопка для ваших агентов",
+            "zh-Hans": "Botan，一键掌控你的智能体",
+            "hi": "Botan, आपके एजेंट्स के लिए एक बटन",
+            "ar": "Botan، زر واحد لوكلائك",
+            "bn": "Botan, আপনার এজেন্টদের জন্য একটি বোতাম",
+            "id": "Botan, satu tombol untuk agenmu",
+            "de": "Botan, ein Knopf für deine Agenten",
+            "tr": "Botan, ajanların için tek bir düğme",
+            "th": "Botan ปุ่มเดียวสำหรับเอเจนต์ของคุณ",
+            "zh-Hant": "Botan，一鍵掌控你的代理",
+            "ko": "Botan, 에이전트를 위한 버튼 하나",
+            "ja": "Botan、エージェントのためのボタン"
+          },
+          "detail": {
+            "en": "Settings → Botan: one press allows, two deny, a hold picks the answer shown.",
+            "fr": "Réglages → Botan : un appui autorise, deux refusent, un appui long choisit la réponse affichée.",
+            "es": "Ajustes → Botan: una pulsación permite, dos deniegan, mantener elige la respuesta mostrada.",
+            "pt-BR": "Ajustes → Botan: um toque permite, dois negam, segurar escolhe a resposta mostrada.",
+            "ru": "Настройки → Botan: одно нажатие разрешает, два — запрещают, удержание выбирает ответ.",
+            "zh-Hans": "设置 → Botan：按一下允许，按两下拒绝，长按选择显示的答案。",
+            "hi": "सेटिंग्स → Botan: एक बार दबाएँ तो अनुमति, दो बार तो मना, दबाए रखें तो दिखा जवाब चुनें।",
+            "ar": "الإعدادات ← Botan: ضغطة تسمح، وضغطتان ترفضان، والضغط المطوّل يختار الإجابة المعروضة.",
+            "bn": "সেটিংস → Botan: একবার চাপলে অনুমতি, দুবার চাপলে না, চেপে ধরলে দেখানো উত্তর বাছাই।",
+            "id": "Pengaturan → Botan: sekali tekan mengizinkan, dua kali menolak, tahan memilih jawaban.",
+            "de": "Einstellungen → Botan: einmal drücken erlaubt, zweimal lehnt ab, halten wählt die Antwort.",
+            "tr": "Ayarlar → Botan: bir basış izin verir, iki basış reddeder, basılı tutmak cevabı seçer.",
+            "th": "การตั้งค่า → Botan: กดครั้งเดียวอนุญาต กดสองครั้งปฏิเสธ กดค้างเลือกคำตอบที่แสดง",
+            "zh-Hant": "設定 → Botan：按一下允許，按兩下拒絕，長按選擇顯示的答案。",
+            "ko": "설정 → Botan: 한 번 누르면 허용, 두 번은 거부, 길게 누르면 표시된 답을 선택해요.",
+            "ja": "設定 → Botan：1回押すと許可、2回で拒否、長押しで表示中の答えを選びます。"
+          }
+        },
+        {
+          "icon": "terminal",
+          "title": {
+            "en": "Start a task from your iPhone",
+            "fr": "Lance une tâche depuis ton iPhone",
+            "es": "Inicia una tarea desde tu iPhone",
+            "pt-BR": "Comece uma tarefa pelo iPhone",
+            "ru": "Запускайте задачи с iPhone",
+            "zh-Hans": "在 iPhone 上发起任务",
+            "hi": "अपने iPhone से काम शुरू करें",
+            "ar": "ابدأ مهمة من iPhone",
+            "bn": "iPhone থেকে কাজ শুরু করুন",
+            "id": "Mulai tugas dari iPhone-mu",
+            "de": "Starte Aufgaben vom iPhone",
+            "tr": "iPhone'undan bir görev başlat",
+            "th": "เริ่มงานจาก iPhone ของคุณ",
+            "zh-Hant": "在 iPhone 上發起任務",
+            "ko": "iPhone에서 작업 시작하기",
+            "ja": "iPhoneからタスクを開始"
+          },
+          "detail": {
+            "en": "Claude Code, Codex, Cursor or Antigravity, in a folder your Mac worked in lately.",
+            "fr": "Claude Code, Codex, Cursor ou Antigravity, dans un dossier où ton Mac a travaillé récemment.",
+            "es": "Claude Code, Codex, Cursor o Antigravity, en una carpeta en la que tu Mac trabajó hace poco.",
+            "pt-BR": "Claude Code, Codex, Cursor ou Antigravity, numa pasta em que seu Mac trabalhou há pouco.",
+            "ru": "Claude Code, Codex, Cursor или Antigravity — в папке, где недавно работал ваш Mac.",
+            "zh-Hans": "Claude Code、Codex、Cursor 或 Antigravity，在 Mac 最近用过的文件夹里运行。",
+            "hi": "Claude Code, Codex, Cursor या Antigravity, उस फ़ोल्डर में जहाँ आपका Mac हाल में काम कर रहा था।",
+            "ar": "Claude Code أو Codex أو Cursor أو Antigravity، في مجلد عمل فيه جهاز Mac مؤخرًا.",
+            "bn": "Claude Code, Codex, Cursor বা Antigravity, আপনার Mac সম্প্রতি কাজ করা ফোল্ডারে।",
+            "id": "Claude Code, Codex, Cursor, atau Antigravity, di folder yang baru dipakai Mac-mu.",
+            "de": "Claude Code, Codex, Cursor oder Antigravity, in einem Ordner, in dem dein Mac zuletzt arbeitete.",
+            "tr": "Claude Code, Codex, Cursor ya da Antigravity, Mac'inin son çalıştığı bir klasörde.",
+            "th": "Claude Code, Codex, Cursor หรือ Antigravity ในโฟลเดอร์ที่ Mac ของคุณใช้งานล่าสุด",
+            "zh-Hant": "Claude Code、Codex、Cursor 或 Antigravity，在 Mac 最近用過的資料夾裡執行。",
+            "ko": "Claude Code, Codex, Cursor, Antigravity를 Mac이 최근 작업한 폴더에서 실행해요.",
+            "ja": "Claude Code、Codex、Cursor、Antigravityを、Macが最近使ったフォルダで実行。"
+          }
+        },
+        {
+          "icon": "phone",
+          "title": {
+            "en": "Your iPhone app is now Botan",
+            "fr": "Ton app iPhone devient Botan",
+            "es": "Tu app de iPhone ahora es Botan",
+            "pt-BR": "Seu app de iPhone agora é Botan",
+            "ru": "Приложение для iPhone теперь Botan",
+            "zh-Hans": "iPhone 应用现在叫 Botan",
+            "hi": "आपका iPhone ऐप अब Botan है",
+            "ar": "تطبيق iPhone أصبح Botan",
+            "bn": "আপনার iPhone অ্যাপ এখন Botan",
+            "id": "Aplikasi iPhone-mu kini Botan",
+            "de": "Deine iPhone-App heißt jetzt Botan",
+            "tr": "iPhone uygulaman artık Botan",
+            "th": "แอป iPhone ของคุณตอนนี้คือ Botan",
+            "zh-Hant": "iPhone App 現在叫 Botan",
+            "ko": "iPhone 앱이 이제 Botan이에요",
+            "ja": "iPhoneアプリはBotanに"
+          },
+          "detail": {
+            "en": "Ask it about your day, see each service up close, search everything it saw.",
+            "fr": "Pose-lui des questions sur ta journée, vois chaque service en détail, cherche dans tout ce qu'il a vu.",
+            "es": "Pregúntale por tu día, mira cada servicio de cerca y busca en todo lo que vio.",
+            "pt-BR": "Pergunte sobre seu dia, veja cada serviço de perto e busque em tudo o que ele viu.",
+            "ru": "Спрашивайте о своём дне, смотрите каждый сервис подробно, ищите по всему увиденному.",
+            "zh-Hans": "问问你今天的情况，细看每项服务，搜索它见过的一切。",
+            "hi": "अपने दिन के बारे में पूछें, हर सेवा को करीब से देखें, उसने जो देखा उसमें खोजें।",
+            "ar": "اسأله عن يومك، وشاهد كل خدمة عن قرب، وابحث في كل ما رآه.",
+            "bn": "আপনার দিন নিয়ে জিজ্ঞেস করুন, প্রতিটি সেবা কাছ থেকে দেখুন, সব কিছুতে খুঁজুন।",
+            "id": "Tanyakan harimu, lihat tiap layanan dari dekat, cari di semua yang pernah dilihatnya.",
+            "de": "Frag sie nach deinem Tag, sieh jeden Dienst im Detail, durchsuche alles, was sie sah.",
+            "tr": "Gününü sor, her hizmete yakından bak, gördüğü her şeyde ara.",
+            "th": "ถามเรื่องวันของคุณ ดูแต่ละบริการอย่างละเอียด ค้นหาทุกอย่างที่มันเห็น",
+            "zh-Hant": "問問你今天的狀況，細看每項服務，搜尋它看過的一切。",
+            "ko": "하루를 물어보고, 서비스를 자세히 보고, 본 모든 것을 검색하세요.",
+            "ja": "一日のことを聞いたり、各サービスを詳しく見たり、見たものすべてを検索できます。"
+          }
+        },
+        {
+          "icon": "eye",
+          "title": {
+            "en": "Mochi stays on your iPhone",
+            "fr": "Mochi reste sur ton iPhone",
+            "es": "Mochi se queda en tu iPhone",
+            "pt-BR": "Mochi fica no seu iPhone",
+            "ru": "Mochi остаётся на iPhone",
+            "zh-Hans": "Mochi 留在你的 iPhone 上",
+            "hi": "Mochi आपके iPhone पर रहता है",
+            "ar": "Mochi يبقى على iPhone",
+            "bn": "Mochi আপনার iPhone-এ থাকে",
+            "id": "Mochi tetap di iPhone-mu",
+            "de": "Mochi bleibt auf deinem iPhone",
+            "tr": "Mochi iPhone'unda kalır",
+            "th": "Mochi อยู่บน iPhone ของคุณ",
+            "zh-Hant": "Mochi 留在你的 iPhone 上",
+            "ko": "Mochi가 iPhone에 머물러요",
+            "ja": "MochiがiPhoneに残ります"
+          },
+          "detail": {
+            "en": "In the Dynamic Island while agents work, Mac unlocked too: Settings → General → iPhone.",
+            "fr": "Dans la Dynamic Island tant que tes agents travaillent, Mac déverrouillé aussi : Réglages → Général → iPhone.",
+            "es": "En la Dynamic Island mientras trabajan tus agentes, con el Mac desbloqueado: Ajustes → General → iPhone.",
+            "pt-BR": "Na Dynamic Island enquanto os agentes trabalham, Mac desbloqueado também: Ajustes → Geral → iPhone.",
+            "ru": "В Dynamic Island, пока работают агенты, даже с разблокированным Mac: Настройки → Основные → iPhone.",
+            "zh-Hans": "智能体工作时留在灵动岛，Mac 解锁时也一样：设置 → 通用 → iPhone。",
+            "hi": "एजेंट्स काम करते समय Dynamic Island में, Mac अनलॉक होने पर भी: सेटिंग्स → सामान्य → iPhone.",
+            "ar": "في Dynamic Island أثناء عمل الوكلاء، حتى وMac غير مقفل: الإعدادات ← عام ← iPhone.",
+            "bn": "এজেন্টরা কাজ করার সময় Dynamic Island-এ, Mac আনলক থাকলেও: সেটিংস → সাধারণ → iPhone।",
+            "id": "Di Dynamic Island selama agen bekerja, Mac tak terkunci juga: Pengaturan → Umum → iPhone.",
+            "de": "In der Dynamic Island, solange Agenten arbeiten, auch bei entsperrtem Mac: Einstellungen → Allgemein → iPhone.",
+            "tr": "Ajanlar çalışırken Dynamic Island'da, Mac kilitli değilken de: Ayarlar → Genel → iPhone.",
+            "th": "อยู่ใน Dynamic Island ขณะเอเจนต์ทำงาน แม้ Mac ปลดล็อก: การตั้งค่า → ทั่วไป → iPhone",
+            "zh-Hant": "代理工作時留在動態島，Mac 解鎖時也一樣：設定 → 一般 → iPhone。",
+            "ko": "에이전트가 일하는 동안 Dynamic Island에, Mac 잠금 해제 시에도: 설정 → 일반 → iPhone.",
+            "ja": "エージェントの作業中はDynamic Islandに。Macのロック解除中も：設定 → 一般 → iPhone。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.6.1",
       "items": [
         {

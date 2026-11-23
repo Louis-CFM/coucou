@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 — unreleased
+
+Comes out with Botan, the device, and the iPhone app's 3.0 on the App Store (Coucou & Botan).
+
+- **Botan, one button for your agents** *(GitHub build)* — Settings → Botan → **Link with Botan**: the little screen next to your Mac shows what your agents do, the command waiting for your OK or the question Claude asks. One press allows the request it shows, a double press denies it (firmware 0.8.3 or later), a hold picks the answer shown. The first link asks for the 6-digit code Botan shows: the Bluetooth link is then encrypted, and Coucou only talks to that Botan. A press only answers the exact request Botan showed, checked again right before the answer, as a click on the island's card. With Botan on the back of your iPhone, the iPhone app links it instead, iPhone locked
+- **Start a task from your iPhone** *(GitHub build)* — in the iPhone app, the pencil: pick Claude Code, Codex, Cursor Agent or Antigravity (the ones installed on this Mac) and a folder your Mac worked in lately (its own list, and the folders in Claude Code's and Codex's history), write or dictate, Face ID. Your Mac runs it in the background, only in a folder of its own list, and the iPhone shows how it ended. When Claude Code was turned down for some actions because nobody could say yes, **Allow and continue** resumes the same conversation allowing exactly those, nothing more. Needs Settings → General → iPhone → *Let my iPhone send instructions to Claude Code*
+- **The iPhone app is now Botan** — black and orange, Mochi live everywhere, a Chat tab that answers with Apple's on-device model, History and search across everything it saw (90 days, on the iPhone), a page for each payment, payout, repo, project and deployment, Stripe month by month, Crypto and Mail, and a demo to see it all without a Mac. See the iPhone's own notes in the App Store
+- **Mochi stays on your iPhone** — Settings → General → iPhone → *Also while my Mac is unlocked*: Mochi stays in the iPhone's Dynamic Island as long as an agent works, not only while the Mac is locked. Allow and Deny show in the Live Activity at once, and an approval rings once
+- **Your services on the iPhone, in detail** — your Mac also writes the totals of Stripe's last 12 months (received, payments, failed, refunded, paid out), reads an older month when the iPhone asks, and sends Cal.com, n8n, Resend, Notion, Crypto and, in the GitHub build, Mail. No key ever leaves your Mac
+- **Denied stays denied** — an action you turned down on the iPhone, on Botan or in the notch shows as *Denied* in the iPhone's turn: it never ran
+- **The relay** forwards a Live Activity to the app its token belongs to (Coucou or Botan), from an allowlist
+
 ## 0.6.1 — November 19, 2026
 
 - **Mochi no longer weighs down 120 Hz Macs** — on a ProMotion screen Mochi was redrawn 120 times a second, even folded in the notch: 35 to 60 % CPU, and as much again in WindowServer. He is now drawn at 60 fps while the island is open and 30 folded, the mini Mochis at 30, with the same motion on every screen; on a ProMotion Mac he also stops moving twice as fast (#1116, found by @liztim17)
