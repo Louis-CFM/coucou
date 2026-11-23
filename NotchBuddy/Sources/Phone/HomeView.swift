@@ -33,6 +33,10 @@ struct HomeView: View {
                 SearchTab(link: link)
             }
         }
+        // The demo says so, with a way out, on every tab.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if link.isDemo { DemoBar(link: link) }
+        }
         // A good moment (ReviewPolicy): Apple's own review request, a moment after the decision.
         .onChange(of: link.askForAppReview) { _, ask in
             guard ask else { return }
@@ -195,7 +199,7 @@ struct AgentsTab: View {
 
                 Section("Agents") {
                     if link.sessions.isEmpty {
-                        EmptySessionsView(status: link.status)
+                        EmptySessionsView(link: link)
                             .listRowBackground(Color.clear)
                             .listRowInsets(EdgeInsets())
                     }
@@ -604,14 +608,25 @@ struct SessionRow: View {
 }
 
 struct EmptySessionsView: View {
-    let status: PhoneLink.Status
+    let link: PhoneLink
+    private var status: PhoneLink.Status { link.status }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             Text(message)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            // No Mac yet: see what it looks like with sample agents.
+            if status != .starting {
+                Button("Try the demo") {
+                    withAnimation { Demo.start(link) }
+                    Haptics.impact()
+                }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.bordered)
+                .tint(Color.botan)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(24)
@@ -875,5 +890,32 @@ struct BotanAntenna: View {
             .background(Color.white.opacity(0.06), in: Capsule())
             .accessibilityLabel(linked ? "Botan is linked" : "Looking for Botan")
         }
+    }
+}
+
+/// On top of every tab while the demo shows: sample data, and the way back to yours.
+struct DemoBar: View {
+    let link: PhoneLink
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "sparkles").foregroundStyle(Color.botan)
+            Text("Demo · sample agents and services")
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button("Leave") {
+                withAnimation { Demo.stop(link) }
+                Haptics.impact()
+            }
+            .font(.footnote.weight(.semibold))
+            .tint(Color.botan)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .glassPill(Capsule())
+        .padding(.horizontal, 16)
+        .padding(.bottom, 4)
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 }

@@ -139,6 +139,10 @@ final class PhoneLink {
     var macAgents: MacAgents?
     /// How the tasks started here ended, by task id.
     var taskResults: [String: TaskResult] = [:]
+    /// Sample data instead of the Mac's (Demo): nothing is sent to iCloud, saved or notified.
+    var isDemo = false
+    /// The real state, kept aside while the demo shows.
+    @ObservationIgnored var demoStash: DemoStash?
 
     @ObservationIgnored private let container = CKContainer(identifier: PhoneLink.containerID)
     @ObservationIgnored private var database: CKDatabase { container.privateCloudDatabase }
@@ -178,6 +182,7 @@ final class PhoneLink {
 
     /// Checks the account, makes sure the subscription exists, then fetches new records.
     func refresh() async {
+        guard !isDemo else { return }
         do {
             let accountStatus = try await container.accountStatus()
             guard accountStatus == .available else {
@@ -193,6 +198,8 @@ final class PhoneLink {
         if !subscribed { await subscribe() }
         if subscribed && !approvalsSubscribed { await subscribeToApprovals() }
         _ = await fetchChanges()
+        // The demo started while iCloud answered: its sample data stays out of everything else.
+        guard !isDemo else { return }
         BotanBridge.shared.sessionsChanged()
         LiveActivityLink.shared.sessionsChanged(sessions)
         sharePendingApprovals()
@@ -203,7 +210,9 @@ final class PhoneLink {
 
     /// Called on a CloudKit push (and on Botan's heartbeat). Returns true when new records arrived.
     func handlePush() async -> Bool {
+        guard !isDemo else { return false }
         let gotNew = await fetchChanges()
+        guard !isDemo else { return false }
         // Botan first: it is what a locked iPhone shows.
         BotanBridge.shared.sessionsChanged()
         LiveActivityLink.shared.sessionsChanged(sessions)
@@ -278,7 +287,7 @@ final class PhoneLink {
 
     @discardableResult
     private func fetchChanges() async -> Bool {
-        guard !fetching else { return false }
+        guard !fetching, !isDemo else { return false }
         fetching = true
         defer { fetching = false }
         var gotNew = false
@@ -287,6 +296,8 @@ final class PhoneLink {
             while more {
                 var pageGotNew = false
                 let changes = try await database.recordZoneChanges(inZoneWith: Self.zoneID, since: changeToken)
+                // The demo started meanwhile: the real records wait for its end (same token).
+                guard !isDemo else { return false }
                 for (_, result) in changes.modificationResultsByID {
                     if case .success(let mod) = result, add(mod.record) { pageGotNew = true }
                 }
@@ -437,6 +448,7 @@ final class PhoneLink {
     /// Notifications for requests no longer pending are removed.
     /// Everything seen so far, kept for History and the search (Journal).
     func recordJournal() {
+        guard !isDemo else { return }
         Journal.shared.record(decisions: history, turns: Array(turns.values) + archive.past.values.flatMap { $0 },
                               services: services)
     }
@@ -546,6 +558,7 @@ final class PhoneLink {
     /// Answers the question a session waits on. The Mac takes it within ~2 s,
     /// only if it is still the same question and the picks are among its choices.
     func answer(fingerprint: String, pillId: String, selections: [[String]]) async -> Bool {
+        if isDemo { return await Demo.answer(fingerprint: fingerprint, pillId: pillId, selections: selections, link: self) }
         let record = CKRecord(recordType: "Answer",
                               recordID: CKRecord.ID(recordName: "answer-\(UUID().uuidString)", zoneID: Self.zoneID))
         record["fingerprint"] = fingerprint
@@ -569,6 +582,7 @@ final class PhoneLink {
     @discardableResult
     /// `period`: a month ("2026-10") for services read month by month (Stripe); empty = now.
     func requestServiceDetail(_ pillId: String, period: String = "") async -> Bool {
+        if isDemo { return await Demo.serviceDetail(pillId, period: period, link: self) }
         let previous = serviceDetails[pillId]?.fetchedAt
         guard await sendServiceRequest(kind: ServiceDetail.refreshKind, target: period, pillId: pillId) else { return false }
         // The new detail usually comes with a push; fetch anyway in case it doesn't.
@@ -586,6 +600,7 @@ final class PhoneLink {
     /// True only when the Mac's result for this request came back and it worked.
     func runServiceAction(_ action: ServiceActionDef, pillId: String) async -> Bool {
         guard await OwnerCheck.confirm(reason: "\(action.title) from your Mac") else { return false }
+        if isDemo { return await Demo.action(action, pillId: pillId, link: self) }
         // The result already shown (from an earlier action) doesn't count for this one.
         let previous = serviceDetails[pillId]?.lastAction
         guard await sendServiceRequest(kind: action.kind, target: action.target, pillId: pillId) else { return false }
@@ -618,6 +633,7 @@ final class PhoneLink {
     /// Sends an instruction to continue a session on the Mac. The Mac takes it
     /// within ~15 s and deletes it; it never runs twice.
     func sendInstruction(_ text: String, pillId: String) async -> Bool {
+        if isDemo { return await Demo.instruction(text, pillId: pillId, link: self) }
         let record = CKRecord(recordType: "Instruction",
                               recordID: CKRecord.ID(recordName: "instruction-\(UUID().uuidString)", zoneID: Self.zoneID))
         record["pillId"] = pillId
@@ -637,6 +653,7 @@ final class PhoneLink {
     /// Returns the task id, or nil when iCloud refused it.
     func sendTask(_ text: String, agent: PhoneAgent, project: MacAgents.Project,
                   continuing previous: String? = nil) async -> String? {
+        if isDemo { return await Demo.task(text, agent: agent, project: project, link: self) }
         let taskId = UUID().uuidString
         let record = CKRecord(recordType: "Instruction",
                               recordID: CKRecord.ID(recordName: "instruction-\(taskId)", zoneID: Self.zoneID))
@@ -674,6 +691,9 @@ final class PhoneLink {
     /// Sends allow / deny for one exact request. The Mac applies it only if the
     /// fingerprint still matches the request it is waiting on.
     func decide(_ decision: Decision, fingerprint: String, pillId: String, summary: String) async -> Bool {
+        if isDemo {
+            return await Demo.decide(decision, fingerprint: fingerprint, pillId: pillId, summary: summary, link: self)
+        }
         let record = CKRecord(recordType: "Decision",
                               recordID: CKRecord.ID(recordName: "decision-\(UUID().uuidString)", zoneID: Self.zoneID))
         record["fingerprint"] = fingerprint

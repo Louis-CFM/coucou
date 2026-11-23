@@ -106,6 +106,19 @@ struct AboutView: View {
                 Button("How to connect your Mac") { showGuide = true }
             }
 
+            Section {
+                Button(link.isDemo ? "Leave the demo" : "Try the demo") {
+                    withAnimation {
+                        if link.isDemo { Demo.stop(link) } else { Demo.start(link) }
+                    }
+                    Haptics.impact()
+                }
+            } footer: {
+                Text(link.isDemo
+                     ? "You're looking at sample agents and services. Leave the demo to see your Mac's again."
+                     : "Sample agents, services and a command waiting for your OK, to see Botan without a Mac. Nothing is sent or saved.")
+            }
+
 
             Section {
                 Toggle("When an agent finishes or fails", isOn: $notifyDone)
@@ -233,15 +246,24 @@ struct OnboardingView: View {
         }
         .background(Color.black)
         .safeAreaInset(edge: .bottom) {
-            Button {
-                dismiss()
-            } label: {
-                Text("Got it").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+            VStack(spacing: 4) {
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Got it").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                // No Mac at hand: sample agents and services, nothing sent or saved.
+                Button("Try the demo first") {
+                    Demo.start(PhoneLink.shared)
+                    dismiss()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .padding(.horizontal, 24)
-            .padding(.bottom, 12)
+            .padding(.bottom, 8)
         }
         .preferredColorScheme(.dark)
     }

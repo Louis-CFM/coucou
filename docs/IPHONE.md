@@ -44,6 +44,7 @@ Nothing shows up? See [Troubleshooting](#troubleshooting).
 | **Spotlight** | Search the turns you've seen (can be turned off in the app's settings) |
 | **Focus** | A Focus filter that only lets approvals and questions through |
 | **History** | Your past decisions and turns, grouped by day |
+| **Try the demo** | No Mac at hand: Settings → Try the demo (or the button on the first screens) shows sample agents, services and a command waiting for your OK. Allow, deny, answer, a task or an action play out on the iPhone, with Face ID as for real. Nothing is sent to iCloud, saved or notified, and your own data comes back when you leave the demo (or quit the app). Code: `Sources/Phone/DemoMode.swift` |
 
 ## Privacy
 

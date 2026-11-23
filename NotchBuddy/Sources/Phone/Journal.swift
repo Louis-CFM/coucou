@@ -43,6 +43,8 @@ final class Journal {
     static let shared = Journal()
 
     private(set) var entries: [JournalEntry] = []
+    /// The real entries, kept aside while the demo shows its own (never saved).
+    @ObservationIgnored private var realEntries: [JournalEntry]?
 
     private static let keepDays: Double = 90
     private static let maxEntries = 4_000
@@ -60,8 +62,20 @@ final class Journal {
         }
     }
 
+    /// The demo's entries in place of the real ones, or nil to bring the real ones back.
+    func showDemo(_ demo: [JournalEntry]?) {
+        if let demo {
+            if realEntries == nil { realEntries = entries }
+            entries = demo
+        } else if let realEntries {
+            entries = realEntries
+            self.realEntries = nil
+        }
+    }
+
     /// A task started from this iPhone ended.
     func record(task: TaskResult) {
+        guard realEntries == nil else { return }
         let entry = JournalEntry(id: "task|\(task.id)", kind: .turn, pillId: task.agent.pillId,
                                  title: task.ok ? "\(task.agent.name) finished" : "\(task.agent.name) stopped",
                                  detail: [task.project, String(task.summary.split(separator: "\n").last ?? "")]
@@ -77,6 +91,7 @@ final class Journal {
 
     /// Takes in what the iPhone knows now; writes the file only when something changed.
     func record(decisions: [DecisionLog], turns: [TurnSnapshot], services: [String: ServiceSnapshot]) {
+        guard realEntries == nil else { return }
         var byID = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         var changed = false
         func put(_ entry: JournalEntry) {
@@ -132,6 +147,7 @@ final class Journal {
     }
 
     private func save() {
+        guard realEntries == nil else { return }
         let snapshot = entries
         Task.detached(priority: .utility) {
             guard let data = try? JSONEncoder().encode(snapshot) else { return }
