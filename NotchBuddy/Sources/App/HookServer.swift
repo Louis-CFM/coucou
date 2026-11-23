@@ -3933,6 +3933,42 @@ def add_session_name(payload):
     except Exception:
         pass
 
+def add_cursor_final_message(payload):
+    # Cursor's agent runs Claude Code hooks, but its stop payload has no
+    # last_assistant_message: read the reply from the end of its JSONL transcript,
+    # back to the turn's prompt (a turn that only ran tools has no reply to show).
+    if payload.get('hook_event_name') != 'Stop' or payload.get('last_assistant_message'):
+        return
+    path = payload.get('transcript_path') or ''
+    cursor_dir = os.path.realpath(os.path.join(os.path.expanduser('~'), '.cursor')) + os.sep
+    if not path or not os.path.realpath(path).startswith(cursor_dir):
+        return
+    try:
+        with open(path, 'rb') as f:
+            f.seek(0, os.SEEK_END)
+            start = max(0, f.tell() - 262144)
+            f.seek(start)
+            lines = f.read().splitlines()
+        for line in reversed(lines[1:] if start else lines):
+            if b'"role"' not in line:
+                continue
+            try:
+                entry = json.loads(line)
+            except Exception:
+                continue
+            if entry.get('role') == 'user':
+                return
+            if entry.get('role') != 'assistant':
+                continue
+            content = (entry.get('message') or {}).get('content') or []
+            texts = [c.get('text', '') for c in content if isinstance(c, dict) and c.get('type') == 'text']
+            text = ' '.join(t for t in texts if t).strip()
+            if text:
+                payload['last_assistant_message'] = text
+                return
+    except Exception:
+        pass
+
 def term_program(env):
     # VS Code's Claude Code extension on a remote machine (Remote - SSH) has neither
     # TERM_PROGRAM nor the app's bundle ID; its entrypoint still says where it runs.
@@ -4086,6 +4122,7 @@ def main():
         if raw_event:
             payload['hook_event_name'] = normalize_event(raw_event)
         normalize_tool_fields(payload)
+        add_cursor_final_message(payload)
     except Exception:
         pass
 
@@ -4353,6 +4390,42 @@ def add_session_name(payload):
     except Exception:
         pass
 
+def add_cursor_final_message(payload):
+    # Cursor's agent runs Claude Code hooks, but its stop payload has no
+    # last_assistant_message: read the reply from the end of its JSONL transcript,
+    # back to the turn's prompt (a turn that only ran tools has no reply to show).
+    if payload.get('hook_event_name') != 'Stop' or payload.get('last_assistant_message'):
+        return
+    path = payload.get('transcript_path') or ''
+    cursor_dir = os.path.realpath(os.path.join(os.path.expanduser('~'), '.cursor')) + os.sep
+    if not path or not os.path.realpath(path).startswith(cursor_dir):
+        return
+    try:
+        with open(path, 'rb') as f:
+            f.seek(0, os.SEEK_END)
+            start = max(0, f.tell() - 262144)
+            f.seek(start)
+            lines = f.read().splitlines()
+        for line in reversed(lines[1:] if start else lines):
+            if b'"role"' not in line:
+                continue
+            try:
+                entry = json.loads(line)
+            except Exception:
+                continue
+            if entry.get('role') == 'user':
+                return
+            if entry.get('role') != 'assistant':
+                continue
+            content = (entry.get('message') or {}).get('content') or []
+            texts = [c.get('text', '') for c in content if isinstance(c, dict) and c.get('type') == 'text']
+            text = ' '.join(t for t in texts if t).strip()
+            if text:
+                payload['last_assistant_message'] = text
+                return
+    except Exception:
+        pass
+
 def term_program(env):
     # VS Code's Claude Code extension on a remote machine (Remote - SSH) has neither
     # TERM_PROGRAM nor the app's bundle ID; its entrypoint still says where it runs.
@@ -4505,6 +4578,7 @@ def main():
         if raw_event:
             payload['hook_event_name'] = normalize_event(raw_event)
         normalize_tool_fields(payload)
+        add_cursor_final_message(payload)
     except Exception:
         pass
 
