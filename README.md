@@ -83,6 +83,7 @@ Flow dictation and the Notetaker are on the Mac for now; Windows and Linux are n
 - 📈 **Portfolio pill** *(macOS)* — track your crypto across 16 networks (Bitcoin, Ethereum, Solana, Polygon, BNB, Avalanche, Arbitrum, Optimism, Base, Dogecoin, Litecoin, TRON, XRP, Cardano, Cosmos, NEAR) and 5 exchanges (Binance, OKX, Bybit, Kraken, Coinbase) in the notch. Live balances, 7-day sparklines and 24-hour price change per holding. Read-only API keys for exchanges, public addresses for wallets — nothing leaves your Mac.
 - 📊 **Claude plan usage** *(macOS, GitHub build)* — a small pill in the notch header shows your 5-hour and weekly Claude plan limits. Enable it from Settings → Agents → Plan usage. Pro and Max plans only.
 - 📊 **Codex plan usage** *(macOS, GitHub build)* — a Codex pill next to it shows your Codex limits and how many free resets you have left, read from the Codex CLI. Turn it on in Settings → Agents → Plan usage.
+- 📊 **Antigravity plan usage** *(macOS, GitHub build)* — an Antigravity pill shows your model quotas and reset times, read from the Antigravity CLI status line. Turn it on in Settings → Agents → Plan usage.
 - 📋 **Declare the tools you use** — open Settings → Active pills and pick your main workspace tool (VS Code, Cursor, Codex or Antigravity), then toggle up to 4 more: Gemini CLI, Anthropic, Google AI, OpenAI, Ollama, LM Studio and service integrations *(macOS)*.
 - ✉️ **Mail in the notch** *(macOS GitHub build: Apple Mail; Windows: classic Outlook)* — search every inbox and filter (Unread, Important, Today), read a message and act on it: reply, mark as read, important, junk. Coucou → Mail sorts new messages for you with your rules, banned words and VIPs, every action listed with Undo; nothing is ever deleted. Turn on **Mail** in the chat and the AI can prepare a plan — sorting, reply drafts, a mail merge with each recipient's page of a PDF — that runs only when you click Run.
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
@@ -237,7 +238,7 @@ Nothing is written to disk during the demo — no Keychain entries, no hook file
 
 Coucou is coming to the **Mac App Store** and the **iPhone App Store**: one click to install, automatic updates, and the iPhone app pairs with your Mac through your iCloud account, with nothing to configure. The links will be here as soon as Apple publishes them.
 
-The App Store build of the Mac app runs in Apple's sandbox, so some features stay in the GitHub build: agents other than Claude Code, Cursor and Claude Desktop (Codex, Gemini CLI, Antigravity, Copilot CLI…), Claude and Codex plan usage, the chat through your AI subscription, the Coucou window (Flow dictation, the Notetaker, settings search), « OK Coucou », Mail, WhatsApp, Apple Music, Spotify, the Portfolio pill, screen capture, attaching the front window to the chat, and updates from inside the app (the App Store updates it).
+The App Store build of the Mac app runs in Apple's sandbox, so some features stay in the GitHub build: agents other than Claude Code, Cursor and Claude Desktop (Codex, Gemini CLI, Antigravity, Copilot CLI…), Claude, Codex and Antigravity plan usage, the chat through your AI subscription, the Coucou window (Flow dictation, the Notetaker, settings search), « OK Coucou », Mail, WhatsApp, Apple Music, Spotify, the Portfolio pill, screen capture, attaching the front window to the chat, and updates from inside the app (the App Store updates it).
 
 ### iPhone
 
@@ -416,6 +417,7 @@ On the Mac, open Coucou from the Dock or the menu bar: its window has every sett
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
 | **Claude plan** *(macOS, GitHub build)* | Plan usage gauge in the notch header | **Install relay** in Settings → Agents → Plan usage, then enable "Show in the notch" |
+| **Antigravity plan** *(macOS, GitHub build)* | Plan usage gauge in the notch header | **Install relay** in Settings → Agents → Plan usage — backs up `~/.gemini/antigravity-cli/settings.json` |
 | **Gemini CLI hooks** | Gemini CLI sessions in the island | **Install hooks** in Settings → Gemini CLI — backs up `~/.gemini/settings.json` |
 | **Antigravity (agy) hooks** | agy sessions in the island, and *(macOS, optional)* its commands approved from the notch | **Install hooks** in Settings → Antigravity — backs up `~/.gemini/config/hooks.json`; then turn on **Approve commands from the notch** |
 | **Anthropic API key** | chat and questions about files | Settings → Anthropic API · Keychain / Windows Credential Manager / Secret Service |
