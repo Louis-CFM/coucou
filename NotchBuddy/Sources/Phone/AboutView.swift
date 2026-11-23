@@ -274,11 +274,13 @@ struct OnboardingView: View {
 
     private func step(_ number: Int, _ title: String, _ text: String, icon: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
+            // Same tile as Botan's step: deep black, Botan orange, a thin edge.
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundStyle(.tint)
+                .foregroundStyle(Color.botan)
                 .frame(width: 44, height: 44)
-                .background(Color(white: 0.14), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color.black, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(number). \(title)").font(.headline)
                 Text(text).font(.callout).foregroundStyle(.secondary)
