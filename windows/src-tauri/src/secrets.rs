@@ -14,6 +14,7 @@ pub const KNOWN_KEYS: &[&str] = &[
     "openai-api-key",
     "google-api-key",
     "openrouter-api-key",
+    "requesty-api-key",
     "openai-compatible-key",
     "n8n-url",
     "n8n-api-key",

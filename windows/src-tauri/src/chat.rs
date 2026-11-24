@@ -1,6 +1,6 @@
 // The chat, whoever answers it: the conversation, the system prompt, and which
 // provider a turn goes to. Each provider's own wire format lives in its module:
-// claude.rs (Anthropic), openai_compat.rs (OpenAI, Google AI, OpenRouter) and
+// claude.rs (Anthropic), openai_compat.rs (OpenAI, Google AI, OpenRouter, Requesty) and
 // local_chat.rs (Ollama, LM Studio, any OpenAI-compatible server).
 //
 // API keys never leave the credential store and file bytes never cross the IPC

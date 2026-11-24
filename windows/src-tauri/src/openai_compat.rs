@@ -1,6 +1,6 @@
 // Cloud providers that speak the OpenAI chat completions API: OpenAI, Google AI
-// (Gemini's OpenAI-compatible endpoint, as ClaudeService.swift uses it) and
-// OpenRouter. One table describes them; one client talks to all three.
+// (Gemini's OpenAI-compatible endpoint, as ClaudeService.swift uses it),
+// OpenRouter and Requesty. One table describes them; one client talks to all.
 //
 // Same contract as claude.rs: the key never leaves the credential store and
 // file bytes never cross the IPC boundary. Chat only — no tools are sent, so
@@ -62,6 +62,18 @@ pub const PROVIDERS: &[Provider] = &[
         key: "openrouter-api-key",
         models_path: "models",
         default_model: "openrouter/auto",
+        not_chat: &[],
+        max_tokens_field: "max_tokens",
+    },
+    Provider {
+        id: "requesty",
+        name: "Requesty",
+        base_url: "https://router.requesty.ai/v1",
+        key: "requesty-api-key",
+        // Requesty's managed models: one short id per model, routed across
+        // its providers (ids ending in @eu stay on EU providers).
+        models_path: "models/managed",
+        default_model: "gpt-5.4-mini",
         not_chat: &[],
         max_tokens_field: "max_tokens",
     },
@@ -224,7 +236,7 @@ fn parse_models(p: &Provider, json: &Value) -> Vec<ModelInfo> {
             // Gemini sometimes answers "models/gemini-…".
             let id = raw.strip_prefix("models/").unwrap_or(raw).to_string();
             let lower = id.to_lowercase();
-            if id.is_empty() || p.not_chat.iter().any(|x| lower.contains(x)) {
+            if id.is_empty() || id.chars().any(char::is_control) || p.not_chat.iter().any(|x| lower.contains(x)) {
                 return None;
             }
             let created = m.get("created").and_then(Value::as_i64).unwrap_or(0);
@@ -346,6 +358,10 @@ mod tests {
             "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         );
         assert_eq!(url(p("openrouter"), "models").unwrap().as_str(), "https://openrouter.ai/api/v1/models");
+        assert_eq!(
+            url(p("requesty"), p("requesty").models_path).unwrap().as_str(),
+            "https://router.requesty.ai/v1/models/managed"
+        );
         for prov in PROVIDERS {
             assert!(crate::secrets::KNOWN_KEYS.contains(&prov.key), "{}", prov.key);
             assert!(prov.base_url.starts_with("https://"));
@@ -451,6 +467,16 @@ mod tests {
         let models = parse_models(p("openrouter"), &openrouter);
         let labels: Vec<_> = models.iter().map(|m| m.label.as_str()).collect();
         assert_eq!(labels, vec!["A (free)", "C Zero (free)", "B Paid"]);
+
+        // Requesty's managed ids have no name, so the id is the label; an id
+        // carrying control characters is dropped.
+        let requesty = json!({"data":[
+            {"id":"gpt-5.4-mini","api":"chat"},
+            {"id":"claude-sonnet-5@eu","api":"chat"},
+            {"id":"bad\u{1b}[31m","api":"chat"}
+        ]});
+        let labels: Vec<_> = parse_models(p("requesty"), &requesty).into_iter().map(|m| m.label).collect();
+        assert_eq!(labels, vec!["gpt-5.4-mini", "claude-sonnet-5@eu"]);
     }
 
     #[test]
