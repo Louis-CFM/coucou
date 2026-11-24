@@ -229,6 +229,20 @@ final class RecapStore {
                 since: (turns.map(\.start) + data.decisions.map(\.date)).min())
     }
 
+    /// Today so far, for Mochi's room: minutes with an agent at work (parallel sessions counted
+    /// once), permissions allowed and denied.
+    func today(now: Date = Date()) -> (minutes: Int, allowed: Int, denied: Int) {
+        let cal = Calendar.current
+        let turns = data.turns.filter { cal.isDate($0.start, inSameDayAs: now) }
+        let decisions = data.decisions.filter { cal.isDate($0.date, inSameDayAs: now) }
+        return (minutes: Int(mergedTotalSeconds(turns) / 60),
+                allowed: decisions.filter { $0.decision == "allow" || $0.decision == "always" }.count,
+                denied: decisions.filter { $0.decision == "deny" }.count)
+    }
+
+    /// When each kept session started, for the room's streak plant.
+    func sessionDays() -> [Date] { data.turns.map(\.start) }
+
     // MARK: - Persistence
 
     var isEnabled: Bool {

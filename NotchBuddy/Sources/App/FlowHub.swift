@@ -6,13 +6,13 @@ import SwiftUI
 /// The pages of the Coucou window: Flow (the dictation, the Notetaker) and the notch's settings.
 enum HubPage: String, CaseIterable, Identifiable {
     case dictation, notes, insights, dictionary, snippets, styles, settings
-    case general, pills, agents, chat, integrations, voice, shortcuts
+    case room, general, pills, agents, chat, integrations, voice, shortcuts
     case mailOverview, mailRules, mailBanned, mailVIP
 
     var id: String { rawValue }
 
     static let flowPages: [HubPage] = [.dictation, .notes, .insights, .dictionary, .snippets, .styles, .settings]
-    static let notchPages: [HubPage] = [.general, .pills, .agents, .chat, .integrations, .voice, .shortcuts]
+    static let notchPages: [HubPage] = [.room, .general, .pills, .agents, .chat, .integrations, .voice, .shortcuts]
     static let mailPages: [HubPage] = [.mailOverview, .mailRules, .mailBanned, .mailVIP]
 
     /// The section of Settings this page shows, for the notch's pages.
@@ -36,6 +36,7 @@ enum HubPage: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .room:         return String(localized: "room.title")
         case .general:      return String(localized: "General")
         case .pills:        return String(localized: "Active pills")
         case .agents:       return String(localized: "Agents")
@@ -66,6 +67,7 @@ enum HubPage: String, CaseIterable, Identifiable {
         case .snippets:   return "bolt"
         case .styles:     return "textformat"
         case .settings:   return "slider.horizontal.3"
+        case .room:         return "door.left.hand.open"
         case .general:      return "gearshape"
         case .pills:        return "square.grid.2x2"
         case .agents:       return "terminal"
@@ -241,6 +243,7 @@ struct FlowHubView: View {
         case .snippets:   HubSnippetsPage()
         case .styles:     HubStylesPage(router: router)
         case .settings:   HubSettingsPage()
+        case .room:       HubRoomPage(router: router)
         case .mailOverview: HubMailOverviewPage()
         case .mailRules:    HubMailRulesPage()
         case .mailBanned:   HubMailBannedPage()
