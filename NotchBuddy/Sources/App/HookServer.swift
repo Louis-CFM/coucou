@@ -576,6 +576,15 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        if coucouKind == "agy_statusline" {
+            #if !APPSTORE
+            Task { @MainActor in self.processAgyStatusLine(payload: payload) }
+            #endif
+            sendLine(fd: fd, text: #"{"ok":true}"#)
+            close(fd)
+            return
+        }
+
         // AskUserQuestion via --ask PreToolUse hook — hold fd open like PermissionRequest
         if coucouKind == "ask_user_question" {
             let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
@@ -1045,6 +1054,18 @@ final class HookServer: @unchecked Sendable {
            usage.updatedAt.timeIntervalSince(cur.updatedAt) < 30 { return }
         AppState.shared.claudePlanUsage = usage
     }
+
+    #if !APPSTORE
+    @MainActor
+    private func processAgyStatusLine(payload: [String: Any]) {
+        guard let incoming = AgyPlanGauge.parse(payload: payload) else { return }
+        let usage = AgyPlanGauge.merge(AppState.shared.agyPlanUsage, with: incoming)
+        if let cur = AppState.shared.agyPlanUsage,
+           cur.buckets == usage.buckets, cur.planTier == usage.planTier,
+           usage.updatedAt.timeIntervalSince(cur.updatedAt) < 30 { return }
+        AppState.shared.agyPlanUsage = usage
+    }
+    #endif
 
     // MARK: - Permission request (blocking — Claude Code waits for decision)
 
@@ -2010,6 +2031,126 @@ final class HookServer: @unchecked Sendable {
         _pendingStatusLineOriginal = nil
         _pendingPreviousData = nil
         _pendingDeletePrevious = false
+    }
+
+    // MARK: - Antigravity plan status line installer
+
+    private static var agySettingsURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".gemini/antigravity-cli/settings.json")
+    }
+
+    private var agyStatusLinePreviousURL: URL {
+        Self.supportDir.appendingPathComponent("agy-statusline-previous.json")
+    }
+
+    /// Returns true if our --agy-statusline command is installed in ~/.gemini/antigravity-cli/settings.json.
+    static func agyStatusLineInstalled() -> Bool {
+        guard let data = try? Data(contentsOf: agySettingsURL),
+              let settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let sl = settings["statusLine"] as? [String: Any],
+              let cmd = sl["command"] as? String else { return false }
+        return cmd.contains("nb-hook") && cmd.contains("--agy-statusline")
+    }
+
+    private var _pendingAgyStatusLineData: Data?
+    private var _pendingAgyStatusLineFingerprint: String?
+    private var _pendingAgyPreviousData: Data?
+    private var _pendingAgyDeletePrevious: Bool = false
+
+    /// Returns a diff string (only the statusLine key: before → after) without writing anything.
+    func previewAgyStatusLine(install: Bool) throws -> String {
+        let url = Self.agySettingsURL
+        let current = FileManager.default.fileExists(atPath: url.path) ? try Data(contentsOf: url) : Data()
+        let settings = try Self.strictReadJSONObject(at: url, label: "~/.gemini/antigravity-cli/settings.json")
+
+        let hookPath = Self.hookScriptPath
+        let quotedPath = hookPath.replacingOccurrences(of: "\"", with: "\\\"")
+        let quotedCmd = "\"\(quotedPath)\" --agy-statusline"
+
+        _pendingAgyPreviousData = nil
+        _pendingAgyDeletePrevious = false
+
+        let oldSL = settings["statusLine"] as? [String: Any]
+        let newSL: [String: Any]?
+
+        if install {
+            if let existing = oldSL,
+               let cmd = existing["command"] as? String, !cmd.contains("nb-hook") {
+                var updated = existing
+                updated["command"] = quotedCmd
+                newSL = updated
+                _pendingAgyPreviousData = try? JSONSerialization.data(
+                    withJSONObject: existing,
+                    options: [.prettyPrinted, .sortedKeys]
+                )
+            } else if let existing = oldSL,
+                      let cmd = existing["command"] as? String, cmd.contains("nb-hook") {
+                var updated = existing
+                updated["command"] = quotedCmd
+                newSL = updated
+            } else {
+                // stack_with_default keeps Antigravity CLI's built-in status line visible.
+                newSL = ["type": "command", "command": quotedCmd, "stack_with_default": true]
+            }
+        } else {
+            if let cur = oldSL, let cmd = cur["command"] as? String, cmd.contains("nb-hook") {
+                if let prevData = try? Data(contentsOf: agyStatusLinePreviousURL),
+                   let prevObj = (try? JSONSerialization.jsonObject(with: prevData)) as? [String: Any] {
+                    newSL = prevObj
+                    _pendingAgyDeletePrevious = true
+                } else {
+                    newSL = nil
+                }
+            } else {
+                newSL = oldSL
+            }
+        }
+
+        var newSettings = settings
+        if let sl = newSL {
+            newSettings["statusLine"] = sl
+        } else {
+            newSettings.removeValue(forKey: "statusLine")
+        }
+        let data = try JSONSerialization.data(
+            withJSONObject: newSettings,
+            options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        )
+        _pendingAgyStatusLineData = data
+        _pendingAgyStatusLineFingerprint = sha256Hex(current)
+
+        func slJSON(_ val: [String: Any]?) throws -> String {
+            guard let v = val else { return "(none)" }
+            let d = try JSONSerialization.data(withJSONObject: v, options: [.prettyPrinted, .sortedKeys])
+            return String(data: d, encoding: .utf8) ?? "(none)"
+        }
+        let before = try slJSON(oldSL)
+        let after = try slJSON(newSL)
+        return "statusLine\nBefore:\n\(before)\n\nAfter:\n\(after)"
+    }
+
+    /// Writes ~/.gemini/antigravity-cli/settings.json and commits side effects (call after user confirms).
+    func writeAgyStatusLine() throws {
+        guard let data = _pendingAgyStatusLineData, let fp = _pendingAgyStatusLineFingerprint else { return }
+        let url = Self.agySettingsURL
+        let current = (try? Data(contentsOf: url)) ?? Data()
+        guard sha256Hex(current) == fp else {
+            throw NSError(domain: "Coucou", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.gemini/antigravity-cli/settings.json changed since preview. Refresh and try again."
+            ])
+        }
+        try writeJSONFile(data, to: url, suffix: "settings.json")
+        if let prevData = _pendingAgyPreviousData {
+            try? prevData.write(to: agyStatusLinePreviousURL, options: .atomic)
+        }
+        if _pendingAgyDeletePrevious {
+            try? FileManager.default.removeItem(at: agyStatusLinePreviousURL)
+        }
+        _pendingAgyStatusLineData = nil
+        _pendingAgyStatusLineFingerprint = nil
+        _pendingAgyPreviousData = nil
+        _pendingAgyDeletePrevious = false
     }
 
     // MARK: - App Store: hooks via security-scoped bookmark
@@ -3944,15 +4085,16 @@ def term_program(env):
 def main():
     raw = b''
     payload = {}
+    is_statusline = ('--statusline' in sys.argv[1:] or '--agy-statusline' in sys.argv[1:])
     try:
         raw = sys.stdin.buffer.read()
         if not raw:
-            if '--statusline' not in sys.argv[1:]:
+            if not is_statusline:
                 return
         else:
             payload = json.loads(raw)
     except Exception:
-        if '--statusline' not in sys.argv[1:]:
+        if not is_statusline:
             return
 
     # COUCOU_SOCKET points the relay at another socket, for instance the one an
@@ -3977,6 +4119,39 @@ def main():
         except Exception:
             pass
         prev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'statusline-previous.json')
+        if os.path.exists(prev_file):
+            try:
+                import subprocess
+                with open(prev_file) as f:
+                    prev = json.load(f)
+                cmd = prev.get('command', '')
+                if cmd:
+                    result = subprocess.run(['/bin/sh', '-c', cmd], input=raw,
+                                             capture_output=True, timeout=10)
+                    if result.stdout:
+                        sys.stdout.buffer.write(result.stdout)
+                        sys.stdout.buffer.flush()
+            except Exception:
+                pass
+        return
+
+    # --agy-statusline mode: relay Antigravity quota to Coucou, then delegate to saved previous
+    if '--agy-statusline' in sys.argv[1:]:
+        relay = {
+            'coucou_kind': 'agy_statusline',
+            'session_id': payload.get('session_id', ''),
+            'plan_tier': payload.get('plan_tier', ''),
+            'quota': payload.get('quota', {}),
+        }
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(0.3)
+            s.connect(socket_path)
+            s.sendall((json.dumps(relay) + '\\n').encode())
+            s.close()
+        except Exception:
+            pass
+        prev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agy-statusline-previous.json')
         if os.path.exists(prev_file):
             try:
                 import subprocess
@@ -4364,15 +4539,16 @@ def term_program(env):
 def main():
     raw = b''
     payload = {}
+    is_statusline = ('--statusline' in sys.argv[1:] or '--agy-statusline' in sys.argv[1:])
     try:
         raw = sys.stdin.buffer.read()
         if not raw:
-            if '--statusline' not in sys.argv[1:]:
+            if not is_statusline:
                 return
         else:
             payload = json.loads(raw)
     except Exception:
-        if '--statusline' not in sys.argv[1:]:
+        if not is_statusline:
             return
 
     # COUCOU_SOCKET points the relay at another socket, for instance the one an
@@ -4397,6 +4573,39 @@ def main():
         except Exception:
             pass
         prev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'statusline-previous.json')
+        if os.path.exists(prev_file):
+            try:
+                import subprocess
+                with open(prev_file) as f:
+                    prev = json.load(f)
+                cmd = prev.get('command', '')
+                if cmd:
+                    result = subprocess.run(['/bin/sh', '-c', cmd], input=raw,
+                                             capture_output=True, timeout=10)
+                    if result.stdout:
+                        sys.stdout.buffer.write(result.stdout)
+                        sys.stdout.buffer.flush()
+            except Exception:
+                pass
+        return
+
+    # --agy-statusline mode: relay Antigravity quota to Coucou, then delegate to saved previous
+    if '--agy-statusline' in sys.argv[1:]:
+        relay = {
+            'coucou_kind': 'agy_statusline',
+            'session_id': payload.get('session_id', ''),
+            'plan_tier': payload.get('plan_tier', ''),
+            'quota': payload.get('quota', {}),
+        }
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(0.3)
+            s.connect(socket_path)
+            s.sendall((json.dumps(relay) + '\\n').encode())
+            s.close()
+        except Exception:
+            pass
+        prev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agy-statusline-previous.json')
         if os.path.exists(prev_file):
             try:
                 import subprocess

@@ -46,9 +46,15 @@ struct BotCanvasView: View {
                 // Claude Code tasks use state-based gradient (working=blue, thinking=purple, etc.).
                 #if !APPSTORE
                 if state.showingPlanDetail {
-                    let hex = state.planDetailIsCodex
-                        ? CodexPlanGauge.color(state.codexPlanUsage)
-                        : ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
+                    let hex: String
+                    switch state.planDetailTarget {
+                    case .claude:
+                        hex = ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
+                    case .codex:
+                        hex = CodexPlanGauge.color(state.codexPlanUsage)
+                    case .agy:
+                        hex = AgyPlanGauge.color(state.agyPlanUsage)
+                    }
                     engine.bodyColor = cgColorFromHex(hex)
                 } else {
                     engine.bodyColor = (state.focusTask?.isIntegration == true)

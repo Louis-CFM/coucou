@@ -147,21 +147,40 @@ struct OverviewView: View {
             if state.showingPlanDetail {
                 CardBackground(wash: nil)
                 Group {
-                    if state.planDetailIsCodex {
-                        CodexPlanCardView(usage: state.codexPlanUsage)
-                    } else {
-                        // Claude and Codex both on: the header shows only the Claude pill,
-                        // Codex is a third row here that opens its own card.
-                        let bothPlans = state.showPlanInNotch && state.planRelayInstalled
-                            && state.showCodexPlanInNotch
+                    switch state.planDetailTarget {
+                    case .codex:
+                        let showAgy = state.showAgyPlanInNotch && state.agyPlanRelayInstalled
+                        CodexPlanCardView(usage: state.codexPlanUsage,
+                                          agyRow: showAgy,
+                                          agyUsage: state.agyPlanUsage,
+                                          onAgy: {
+                                              withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                                  state.planDetailTarget = .agy
+                                              }
+                                          })
+                    case .agy:
+                        AgyPlanCardView(usage: state.agyPlanUsage)
+                    case .claude:
+                        // Multiple plans on: the header shows only the Claude pill,
+                        // Codex / Antigravity appear as clickable rows here.
+                        let claudeActive = state.showPlanInNotch && state.planRelayInstalled
+                        let showCodex = claudeActive && state.showCodexPlanInNotch
+                        let showAgy = claudeActive && state.showAgyPlanInNotch && state.agyPlanRelayInstalled
                         ClaudePlanCardView(usage: state.claudePlanUsage,
-                                           codexRow: bothPlans,
+                                           codexRow: showCodex,
                                            codexUsage: state.codexPlanUsage,
                                            onCodex: {
                                                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                                                   state.planDetailIsCodex = true
+                                                   state.planDetailTarget = .codex
                                                }
                                                state.refreshCodexPlanUsage()
+                                           },
+                                           agyRow: showAgy,
+                                           agyUsage: state.agyPlanUsage,
+                                           onAgy: {
+                                               withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                                   state.planDetailTarget = .agy
+                                               }
                                            })
                     }
                 }

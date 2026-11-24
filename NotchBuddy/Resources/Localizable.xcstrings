@@ -1,6 +1,54 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Antigravity plan" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity plan"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 方案"
+          }
+        }
+      }
+    },
+    "Show Antigravity plan in the notch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Antigravity plan in the notch"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在瀏海中顯示 Antigravity 方案"
+          }
+        }
+      }
+    },
+    "Shows your Antigravity plan usage (model quotas and reset times) in the notch header. Coucou adds a statusLine relay in ~/.gemini/antigravity-cli/settings.json." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows your Antigravity plan usage (model quotas and reset times) in the notch header. Coucou adds a statusLine relay in ~/.gemini/antigravity-cli/settings.json."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在瀏海頂部顯示你的 Antigravity 方案用量（模型配額與重設時間）。Coucou 會在 ~/.gemini/antigravity-cli/settings.json 加入 statusLine 轉發。"
+          }
+        }
+      }
+    },
     "coucoudoro.hint" : {
       "localizations" : {
         "ar" : {

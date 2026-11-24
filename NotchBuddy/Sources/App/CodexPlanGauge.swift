@@ -134,6 +134,9 @@ private let resetExpiryFormatter: DateFormatter = {
 
 struct CodexPlanCardView: View {
     let usage: CodexPlanUsage?   // nil = loading or unavailable
+    var agyRow: Bool = false
+    var agyUsage: AgyPlanUsage? = nil
+    var onAgy: () -> Void = {}
 
     @State private var now = Date()
 
@@ -173,6 +176,16 @@ struct CodexPlanCardView: View {
                         .foregroundColor(Color(hex: "#C5C8CD"))
                         .lineLimit(1)
                         .fixedSize()
+                }
+                if agyRow {
+                    Button(action: onAgy) {
+                        let bucket = agyUsage.flatMap { AgyPlanGauge.dominantBucket($0, now: now) }
+                        let window = bucket?.resetsAt.map { PlanWindow(usedPct: bucket!.usedPct, resetsAt: $0) }
+                        GaugeRowView(label: "Agy", window: window, now: now,
+                                     weekly: bucket?.isWeekly ?? false)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.top, 8)
