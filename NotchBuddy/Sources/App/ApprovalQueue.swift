@@ -39,6 +39,9 @@ struct ApprovalQueue: Sendable {
     enum EnqueueResult: Equatable, Sendable { case accepted, rejectedFull }
 
     private(set) var entries: [QueuedApproval] = []
+    /// Sessions whose approval timed out in the notch (115 s) and fell back to the agent,
+    /// keyed by base `pillId` -> set of session board keys. Kept until a post-decision hook event.
+    private(set) var timedOut: [String: Set<String>] = [:]
 
     var head: QueuedApproval? { entries.first }
     var count: Int { entries.count }
@@ -88,6 +91,35 @@ struct ApprovalQueue: Sendable {
             return entries.filter { $0.pillId == pillId && $0.sessionId == sessionId }
         default:
             return []
+        }
+    }
+
+    func timedOutSessions(forPill pillId: String) -> Set<String> {
+        timedOut[pillId] ?? []
+    }
+
+    func hasTimedOut(forPill pillId: String) -> Bool {
+        !(timedOut[pillId]?.isEmpty ?? true)
+    }
+
+    mutating func markTimedOut(pillId: String, sessionKey: String) {
+        timedOut[pillId, default: []].insert(sessionKey)
+    }
+
+    @discardableResult
+    mutating func clearTimedOut(pillId: String, sessionKey: String) -> Bool {
+        guard var set = timedOut[pillId], set.remove(sessionKey) != nil else { return false }
+        if set.isEmpty { timedOut.removeValue(forKey: pillId) } else { timedOut[pillId] = set }
+        return true
+    }
+
+    @discardableResult
+    mutating func clearTimedOut(byEvent name: String, pillId: String, sessionKey: String) -> Bool {
+        switch name {
+        case "PostToolUse", "PostToolUseFailure", "Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt":
+            return clearTimedOut(pillId: pillId, sessionKey: sessionKey)
+        default:
+            return false
         }
     }
 }
