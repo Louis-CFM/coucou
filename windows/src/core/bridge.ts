@@ -229,6 +229,11 @@ export const Bridge = {
   setIslandRect: (x: number, y: number, width: number, height: number) =>
     call<void>("set_island_rect", { x, y, width, height }),
 
+  /** Moves the whole window with the mouse until the button is released. */
+  startIslandDrag: () => call<void>("start_island_drag"),
+
+  saveIslandPosition: () => call<void>("save_island_position"),
+
   /** Give the window keyboard focus (chat field) and take it away again. */
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
 

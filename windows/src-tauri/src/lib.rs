@@ -105,7 +105,9 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
         let shortcuts_changed = current.shortcuts != settings.shortcuts;
-        // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
+        // Where Mochi sits on the desktop is desktop.rs's to say, and where the
+        // island was dragged is the drag commands' to say — neither is the
+        // settings window webview's to overwrite.
         let mut settings = settings.clone();
         settings.desktop_mochi = current.desktop_mochi.clone();
         // Same for the phone link: only its own commands turn it on or off.
@@ -123,6 +125,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_chat_models = current.phone_chat_models.clone();
         // Antigravity approvals: only their own switch changes them (agy_approvals.rs).
         settings.agy_approvals_enabled = current.agy_approvals_enabled;
+        settings.island_pos = current.island_pos;
         *current = settings;
         (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -169,6 +172,21 @@ fn language_changed(app: &AppHandle) {
     tray::retitle(app);
     if let Some(window) = app.get_webview_window(HUB_LABEL) {
         let _ = window.set_title("Coucou");
+    }
+}
+
+#[tauri::command]
+fn start_island_drag(app: AppHandle) {
+    island::start_drag(&app);
+}
+
+#[tauri::command]
+fn save_island_position(app: AppHandle, shared: State<Shared>) {
+    let Some(pos) = island::remember_position(&app) else { return };
+    let mut settings = shared.settings.lock().unwrap();
+    settings.island_pos = Some(pos);
+    if let Err(err) = settings::save(&settings) {
+        eprintln!("[coucou] could not save island position: {err}");
     }
 }
 
@@ -925,6 +943,8 @@ pub fn run() {
             set_system_languages,
             set_collapsed,
             set_island_rect,
+            start_island_drag,
+            save_island_position,
             focus_window,
             reposition,
             fit_zoom,
