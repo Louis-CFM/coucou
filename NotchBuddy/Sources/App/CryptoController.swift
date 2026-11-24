@@ -41,14 +41,18 @@ enum CryptoExchange: String, CaseIterable, Sendable {
     func tickerURL(_ pair: String) -> URL? {
         switch self {
         case .coinbase: return URL(string: "https://api.exchange.coinbase.com/products/\(pair)/stats")
-        case .okx:      return URL(string: "https://www.okx.com/api/v5/market/ticker?instId=\(pair)")
+        case .okx:
+            let base = PortfolioSettings.okxRegion.baseURL
+            return URL(string: "\(base)/api/v5/market/ticker?instId=\(pair)")
         }
     }
 
     func candlesURL(_ pair: String) -> URL? {
         switch self {
         case .coinbase: return URL(string: "https://api.exchange.coinbase.com/products/\(pair)/candles?granularity=3600")
-        case .okx:      return URL(string: "https://www.okx.com/api/v5/market/candles?instId=\(pair)&bar=1H&limit=24")
+        case .okx:
+            let base = PortfolioSettings.okxRegion.baseURL
+            return URL(string: "\(base)/api/v5/market/candles?instId=\(pair)&bar=1H&limit=24")
         }
     }
 
@@ -56,7 +60,9 @@ enum CryptoExchange: String, CaseIterable, Sendable {
     func tradeURL(_ pair: String) -> URL? {
         switch self {
         case .coinbase: return URL(string: "https://www.coinbase.com/advanced-trade/spot/\(pair)")
-        case .okx:      return URL(string: "https://www.okx.com/trade-spot/\(pair.lowercased())")
+        case .okx:
+            let base = PortfolioSettings.okxRegion.baseURL
+            return URL(string: "\(base)/trade-spot/\(pair.lowercased())")
         }
     }
 
