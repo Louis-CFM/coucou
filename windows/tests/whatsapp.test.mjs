@@ -8,8 +8,8 @@ import { emit, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
 import {
   IDLE_WHATSAPP, WHATSAPP_ID, WhatsApp, canSend, duration, initials, installError, installFailure, installStepLabel,
-  keyAction, lastMessages, linkColor, linkLabel, preview, sendErrorLabel, showsLinkState, testResultLabel, timeAgo,
-  webhookLine,
+  keyAction, lastMessages, linkColor, linkLabel, messageTime, preview, sendErrorLabel, showsLinkState, testResultLabel,
+  timeAgo, webhookLine,
 } from "../src/core/whatsapp.ts";
 import { handlePillEvent, registerWhatsAppHandlers } from "../src/island/whatsapp.ts";
 import { buildWhatsAppCard } from "../src/views/whatsapp.ts";
@@ -63,6 +63,14 @@ test("the time since reads like the Mac's", () => {
   assert.equal(timeAgo(NOW - 5 * 60_000, NOW), "5m");
   assert.equal(timeAgo(NOW - 3 * 3_600_000, NOW), "3h");
   assert.equal(timeAgo(NOW - 2 * 86_400_000, NOW), "2d");
+});
+
+test("a message's time: the hour today, the day and the hour before", () => {
+  const at = new Date(2026, 9, 31, 14, 5).getTime();
+  const today = messageTime(at, new Date(2026, 9, 31, 20, 0).getTime());
+  assert.match(today, /^(02:05\s?PM|14:05)$/);
+  const before = messageTime(at, new Date(2026, 10, 2, 9, 0).getTime());
+  assert.equal(before, `Oct 31 ${today}`);
 });
 
 test("Rust's codes become words, a gateway's own message is shown as it is", () => {
