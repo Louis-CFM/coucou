@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "node --import ./tests/setup.mjs --test \"tests/**/*.test.mjs\"",
     "icons": "node scripts/gen-icons.mjs",
+    "fake-session": "node scripts/fake-session.mjs",
     "tauri": "tauri",
     "predev": "cargo build --release -p coucou-hook",
     "prebuild": "cargo build --release -p coucou-hook",
