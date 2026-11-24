@@ -59,7 +59,6 @@ struct HubRoomPage: View {
                   frames: frames,
                   coded: today.minutes,
                   streak: today.streak,
-                  minis: minis,
                   doorLit: waiting)
 
         if useDoor, let approval = state.pendingApproval {
@@ -98,14 +97,6 @@ struct HubRoomPage: View {
     /// The Vercel deploys that ran (not cancelled), newest first.
     private var deploys: [VercelDeployment] {
         state.vercelDeployments.filter { $0.state != "CANCELED" }.sorted { $0.createdAt > $1.createdAt }
-    }
-
-    /// One little Mochi per agent session and workflow at work, in its pill's colour.
-    private var minis: [RoomMini] {
-        state.tasks
-            .filter { !$0.isIntegration || $0.source == .n8n }
-            .prefix(6)
-            .map { RoomMini(id: $0.id, name: $0.name, color: $0.color, state: $0.state) }
     }
 
     private var deploysToday: String {
@@ -209,7 +200,7 @@ struct HubRoomPage: View {
     @ViewBuilder private func toolRow(_ tool: RoomTool) -> some View {
         let isConnected = connected.contains(tool.id)
         HStack(spacing: 12) {
-            RoomLogo(tool: tool, size: 15)
+            RoomLogo(tool: tool, size: 15, maxWidth: 24)
                 .frame(width: 28, height: 28)
                 .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(0.06)))
             VStack(alignment: .leading, spacing: 2) {
@@ -302,19 +293,12 @@ struct RoomFrame: Identifiable {
     var id: String { tool.id }
 }
 
-struct RoomMini: Equatable {
-    let id: String
-    let name: String
-    let color: String
-    let state: BotState
-}
-
 // MARK: - The scene
 
 /// The room: a painted picture (Assets → MochiRoom) and, over it, everything that moves or
 /// shows data, drawn in one canvas at 30 fps while the Coucou window shows and still otherwise:
 /// the weather in the window, the code on the screen, the clock, the plant on the shelf, the
-/// light at the door, Mochi and the little Mochis. The frames on the wall are buttons.
+/// light at the door, and Mochi. The frames on the wall are buttons.
 /// Every place is in the picture's pixels (`RoomArt`), scaled to the width of the page.
 private struct RoomScene: View {
     let spot: MochiRoom.Spot
@@ -325,7 +309,6 @@ private struct RoomScene: View {
     let frames: [RoomFrame?]
     let coded: Int
     let streak: Int
-    let minis: [RoomMini]
     let doorLit: Bool
 
     @StateObject private var cast = RoomCast()
@@ -352,7 +335,7 @@ private struct RoomScene: View {
                         RoomPainter.plant(&context, t: t, stage: MochiRoom.plant(streak: streak))
                         RoomPainter.door(&context, t: t, lit: doorLit)
                         RoomPainter.light(&context, night: night)
-                        cast.step(spot: spot, state: mochiState, minis: minis)
+                        cast.step(spot: spot, state: mochiState)
                         cast.draw(&context)
                     }
                 }
@@ -374,18 +357,6 @@ private struct RoomScene: View {
                 RoomTag(text: String(format: String(localized: "room.days %lld"), Int64(streak)), scale: s)
                     .help(String(localized: "room.stat.streak"))
                     .position(x: RoomArt.pot.x * s, y: 302 * s)
-
-                // The names under the little Mochis
-                ForEach(Array(minis.enumerated()), id: \.element.id) { index, mini in
-                    Text(verbatim: mini.name)
-                        .font(.system(size: 11 * s, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.85))
-                        .shadow(color: .black.opacity(0.6), radius: 2)
-                        .lineLimit(1)
-                        .frame(width: 120 * s)
-                        .position(x: RoomArt.miniX(index, of: minis.count) * s, y: (RoomArt.miniFeet + 18) * s)
-                        .allowsHitTesting(false)
-                }
             }
         }
         .aspectRatio(RoomArt.size.width / RoomArt.size.height, contentMode: .fit)
@@ -417,14 +388,6 @@ enum RoomArt {
         case .desk: return CGPoint(x: 962, y: 486)
         case .door: return CGPoint(x: 1112, y: 648)
         }
-    }
-
-    /// The little Mochis stand on the rug.
-    static let miniFeet: CGFloat = 686
-    static func miniX(_ index: Int, of count: Int) -> CGFloat {
-        let left: CGFloat = 450, right: CGFloat = 860
-        guard count > 1 else { return (left + right) / 2 }
-        return left + (right - left) * CGFloat(index) / CGFloat(count - 1)
     }
 }
 
@@ -462,20 +425,33 @@ private enum RoomPainter {
                 ctx.fill(Path(ellipseIn: CGRect(x: 88, y: 128, width: 44, height: 44)), with: .color(Color(hex: "#FFD66B")))
             }
             if weather != .sun && weather != .clear {
-                let drift = CGFloat((t * 9).truncatingRemainder(dividingBy: 240)) - 70
-                let tone = Color(hex: weather == .storm ? "#545C75" : (night ? "#3A4566" : "#E4E9F2"))
-                cloud(&ctx, x: w.minX + drift, y: 170, color: tone)
-                cloud(&ctx, x: w.minX + drift - 130, y: 236, color: tone.opacity(0.9))
-                cloud(&ctx, x: w.minX + drift + 110, y: 290, color: tone.opacity(0.8))
+                let tone = weather == .storm ? "#59617A" : (night ? "#3A4566" : "#EEF2F8")
+                // Three clouds at their own height, size and speed, crossing the glass.
+                let clouds: [(y: CGFloat, size: CGFloat, speed: Double, phase: Double)] =
+                    [(150, 1.0, 7, 0), (236, 0.75, 4.5, 120), (310, 0.9, 5.5, 60)]
+                for c in clouds {
+                    let span = Double(w.width + 160)
+                    let x = w.minX - 110 + CGFloat((t * c.speed + c.phase).truncatingRemainder(dividingBy: span))
+                    cloud(&ctx, x: x, y: c.y, scale: c.size, color: Color(hex: tone))
+                }
             }
             if weather == .rain || weather == .storm {
-                for i in 0..<44 {
-                    let x = w.minX + CGFloat((i * 37) % 150)
-                    let y = w.minY + CGFloat((t * 420 + Double(i * 61)).truncatingRemainder(dividingBy: 370)) - 10
+                // Drops at random places, speeds and lengths, falling with the wind.
+                let count = weather == .storm ? 46 : 32
+                for i in 0..<count {
+                    let seed = Double(i) * 12.9898
+                    let r1 = abs(sin(seed) * 43758.5453).truncatingRemainder(dividingBy: 1)
+                    let r2 = abs(sin(seed * 1.7) * 24634.6345).truncatingRemainder(dividingBy: 1)
+                    let speed = 360 + r2 * 220
+                    let length = CGFloat(9 + r1 * 9)
+                    let fall = (t * speed + r2 * 900).truncatingRemainder(dividingBy: Double(w.height + 40))
+                    let x = w.minX + CGFloat(r1) * (w.width + 30) - CGFloat(fall) * 0.12
+                    let y = w.minY - 20 + CGFloat(fall)
                     var drop = Path()
                     drop.move(to: CGPoint(x: x, y: y))
-                    drop.addLine(to: CGPoint(x: x - 4, y: y + 13))
-                    ctx.stroke(drop, with: .color(Color(hex: "#AAC8FF").opacity(0.75)), lineWidth: 2)
+                    drop.addLine(to: CGPoint(x: x - length * 0.25, y: y + length))
+                    ctx.stroke(drop, with: .color(Color(hex: "#C7DBFF").opacity(0.35 + r2 * 0.4)),
+                               style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
                 }
             }
             if weather == .storm, t.truncatingRemainder(dividingBy: 5) < 0.12 {
@@ -484,12 +460,15 @@ private enum RoomPainter {
         }
     }
 
-    private static func cloud(_ ctx: inout GraphicsContext, x: CGFloat, y: CGFloat, color: Color) {
+    /// A soft cloud: a flat base and three puffs, lighter on top.
+    private static func cloud(_ ctx: inout GraphicsContext, x: CGFloat, y: CGFloat, scale k: CGFloat, color: Color) {
         var p = Path()
-        p.addEllipse(in: CGRect(x: x, y: y - 14, width: 80, height: 28))
-        p.addEllipse(in: CGRect(x: x + 12, y: y - 30, width: 36, height: 32))
-        p.addEllipse(in: CGRect(x: x + 36, y: y - 24, width: 32, height: 26))
-        ctx.fill(p, with: .color(color))
+        p.addRoundedRect(in: CGRect(x: x, y: y - 14 * k, width: 96 * k, height: 26 * k), cornerSize: CGSize(width: 13 * k, height: 13 * k))
+        p.addEllipse(in: CGRect(x: x + 10 * k, y: y - 34 * k, width: 38 * k, height: 38 * k))
+        p.addEllipse(in: CGRect(x: x + 36 * k, y: y - 46 * k, width: 44 * k, height: 44 * k))
+        p.addEllipse(in: CGRect(x: x + 64 * k, y: y - 30 * k, width: 28 * k, height: 28 * k))
+        ctx.fill(p, with: .linearGradient(Gradient(colors: [color, color.opacity(0.78)]),
+                                          startPoint: CGPoint(x: x, y: y - 46 * k), endPoint: CGPoint(x: x, y: y + 12 * k)))
     }
 
     /// Code typing in while an agent works; a cursor blinking otherwise.
@@ -622,17 +601,14 @@ private enum RoomPainter {
     }
 }
 
-/// Mochi and the little Mochis, moved frame by frame, in the picture's pixels.
+/// Mochi, moved frame by frame, in the picture's pixels.
 @MainActor
 final class RoomCast: ObservableObject {
     static let mochiSize: CGFloat = 118
-    static let miniSize: CGFloat = 58
 
     let mochi: BotEngine
     private var position: CGPoint?
     private var hop: CGFloat = 0
-    private var minis: [String: BotEngine] = [:]
-    private var order: [RoomMini] = []
     private var last = CACurrentMediaTime()
 
     init() {
@@ -640,7 +616,7 @@ final class RoomCast: ObservableObject {
         mochi.setState(.sleeping, force: true)
     }
 
-    func step(spot: MochiRoom.Spot, state: BotState, minis wanted: [RoomMini]) {
+    func step(spot: MochiRoom.Spot, state: BotState) {
         let now = CACurrentMediaTime()
         let dt = CGFloat(min(0.1, max(0, now - last)))
         last = now
@@ -663,32 +639,9 @@ final class RoomCast: ObservableObject {
         }
         position = here
         MochiFrameClock.advance(mochi, fps: MochiFrameClock.miniFPS)
-
-        // One little Mochi per session: made when it starts, gone when it ends.
-        if wanted != order {
-            for mini in wanted {
-                let engine = minis[mini.id] ?? {
-                    let e = BotEngine()
-                    e.isMini = true
-                    return e
-                }()
-                engine.bodyColor = cgColorFromHex(mini.color)
-                if engine.state != mini.state { engine.setState(mini.state) }
-                minis[mini.id] = engine
-            }
-            let ids = Set(wanted.map(\.id))
-            minis = minis.filter { ids.contains($0.key) }
-            order = wanted
-        }
-        for engine in minis.values { MochiFrameClock.advance(engine, fps: MochiFrameClock.miniFPS) }
     }
 
     func draw(_ context: inout GraphicsContext) {
-        for (index, mini) in order.enumerated() {
-            guard let engine = minis[mini.id] else { continue }
-            let x = RoomArt.miniX(index, of: order.count)
-            Self.drawMochi(engine, at: CGPoint(x: x, y: RoomArt.miniFeet), size: Self.miniSize, lift: 0, in: &context)
-        }
         if let position {
             let lift = abs(sin(hop)) * Self.mochiSize * 0.08
             Self.drawMochi(mochi, at: position, size: Self.mochiSize, lift: lift, in: &context)
@@ -754,7 +707,9 @@ private struct RoomFrameView: View {
 /// A tool's real logo (Assets → RoomLogos), in its colour.
 struct RoomLogo: View {
     let tool: RoomTool
+    /// The height of a square logo; a wordmark (Cal.com, n8n) is as wide as `maxWidth` allows.
     let size: CGFloat
+    var maxWidth: CGFloat? = nil
 
     var body: some View {
         Image(tool.logo)
@@ -762,7 +717,7 @@ struct RoomLogo: View {
             .resizable()
             .scaledToFit()
             .foregroundColor(Color(hex: tool.color))
-            .frame(width: size, height: size)
+            .frame(maxWidth: maxWidth ?? size * 2.6, maxHeight: size)
             .accessibilityHidden(true)
     }
 }
