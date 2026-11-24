@@ -4,18 +4,38 @@ import Foundation
 /// way each terminal is asked to run it, and the projects to offer. Foundation only, so it can be
 /// tested without AppKit (scripts/test-session-launch.sh).
 enum LaunchScript {
+    /// Interactive agent CLIs supported by the session launcher (⌃⌥N).
+    enum Agent: String, CaseIterable, Sendable {
+        case claude, hermes
+
+        var displayName: String {
+            switch self {
+            case .claude: "Claude Code"
+            case .hermes: "Hermes"
+            }
+        }
+
+        var executable: String {
+            switch self {
+            case .claude: "claude"
+            case .hermes: "hermes"
+            }
+        }
+    }
+
     /// The shell's single quotes: 'it'\''s' for it's.
     static func quote(_ s: String) -> String {
         "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
-    /// A .command file: it removes itself, goes to the project, and starts Claude Code with the
-    /// prompt in the user's own login shell (so `claude` is found as in any terminal). The prompt
-    /// travels in an environment variable, never pasted into the command line. When Claude Code
+    /// A .command file: it removes itself, goes to the project, and starts the chosen CLI with
+    /// the prompt in the user's own login shell (so it is found as in any terminal). The prompt
+    /// travels in an environment variable, never pasted into the command line. When the CLI
     /// quits, the shell stays open in the project.
-    static func script(prompt: String, folder: String) -> String {
+    static func script(prompt: String, folder: String, agent: Agent = .claude) -> String {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        let run = trimmed.isEmpty ? "claude" : "claude \"$COUCOU_PROMPT\""
+        let bin = agent.executable
+        let run = trimmed.isEmpty ? bin : "\(bin) \"$COUCOU_PROMPT\""
         return """
         #!/bin/sh
         rm -f "$0"

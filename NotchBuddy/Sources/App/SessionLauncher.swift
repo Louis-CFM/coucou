@@ -17,6 +17,8 @@ final class SessionLauncher: ObservableObject {
     @Published private(set) var projects: [String]
     /// The folder the next session starts in.
     @Published var folder: String?
+    /// CLI agent to launch in the new session (Claude Code by default).
+    @Published var agent: LaunchScript.Agent = .claude
 
     private init() {
         let d = UserDefaults.standard
@@ -63,15 +65,15 @@ final class SessionLauncher: ObservableObject {
         return last.isEmpty ? path : last
     }
 
-    /// Opens the terminal in the project with Claude Code and the prompt. False when it couldn't.
+    /// Opens the terminal in the project with the selected CLI and prompt. False when it couldn't.
     @discardableResult
     func launch(prompt: String) -> Bool {
         guard let folder, FileManager.default.fileExists(atPath: folder) else { return false }
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("CoucouLaunch", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let script = dir.appendingPathComponent("Claude Code \(UUID().uuidString.prefix(8)).command")
+        let script = dir.appendingPathComponent("\(agent.displayName) \(UUID().uuidString.prefix(8)).command")
         do {
-            try LaunchScript.script(prompt: prompt, folder: folder).write(to: script, atomically: true, encoding: .utf8)
+            try LaunchScript.script(prompt: prompt, folder: folder, agent: agent).write(to: script, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         } catch {
             appendAppLog("nb.log", "[Launch] couldn't write the script: \(error)")
@@ -91,7 +93,7 @@ final class SessionLauncher: ObservableObject {
             config.arguments = args.map { $0 == "%s" ? script.path : $0 }
             NSWorkspace.shared.openApplication(at: app, configuration: config)
         }
-        appendAppLog("nb.log", "[Launch] Claude Code in \(Self.name(of: folder)) with \(terminal)")
+        appendAppLog("nb.log", "[Launch] \(agent.displayName) in \(Self.name(of: folder)) with \(terminal)")
         return true
     }
 }
@@ -113,6 +115,9 @@ struct LaunchView: View {
                     Text("launch.title")
                         .font(.system(size: 14, weight: .semibold))
                     Spacer(minLength: 0)
+                    if CLILocator.shared.isInstalled(.hermes) {
+                        agentMenu
+                    }
                     projectMenu
                 }
                 HStack(spacing: 8) {
@@ -163,6 +168,33 @@ struct LaunchView: View {
         .onChange(of: state.view) { _, view in
             if view == .launch { focused = true; failed = false }
         }
+    }
+
+    private var agentMenu: some View {
+        Menu {
+            ForEach(LaunchScript.Agent.allCases, id: \.self) { choice in
+                Button {
+                    launcher.agent = choice
+                } label: {
+                    if choice == launcher.agent { Label(choice.displayName, systemImage: "checkmark") }
+                    else { Text(verbatim: choice.displayName) }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(verbatim: launcher.agent.displayName)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down").font(.system(size: 8))
+            }
+            .foregroundColor(Color(hex: "#C9CDD4"))
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(Color.white.opacity(0.06))
+            .clipShape(Capsule())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
     }
 
     private var projectMenu: some View {
