@@ -1,6 +1,35 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "voice.error-stalled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice recognition stalled — toggle Voice off/on to reset."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La reconnaissance vocale est bloquée — désactivez puis réactivez la voix pour la relancer."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O reconhecimento de voz travou — desligue e ligue a voz para reiniciar."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語音辨識停滯，請關閉再開啟語音功能以重設。"
+          }
+        }
+      }
+    },
     "coucoudoro.hint" : {
       "localizations" : {
         "ar" : {

@@ -125,6 +125,12 @@ jobs:
 
         run: bash scripts/test-voice-query.sh
 
+      - name: Voice language tests
+        run: bash scripts/test-voice-language.sh
+
+      - name: Brazilian Portuguese voice answer tests
+        run: bash scripts/test-voice-answer-pt.sh
+
       - name: Voice conversation end-phrase tests
         run: bash scripts/test-voice-conversation.sh
 

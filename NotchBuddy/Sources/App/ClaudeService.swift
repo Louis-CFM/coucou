@@ -669,25 +669,37 @@ final class ClaudeService {
     /// A short answer Coucou can say aloud, with web search, in the answer language.
     /// `history` holds the previous exchanges of this voice conversation (memory only).
     /// nil on any failure: no key, network, quota.
-    func voiceAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String? {
+    func voiceAnswer(_ question: String, history: [VoiceWebTurn], lang: VoiceLang) async -> String? {
         guard let key = apiKey, !key.isEmpty else { return nil }
         let today = Date().formatted(.dateTime.weekday(.wide).day().month(.wide).year()
-            .locale(Locale(identifier: french ? "fr_FR" : "en_US")))
-        let system = french
-            ? """
+            .locale(lang.formatLocale))
+        let system: String
+        switch lang {
+        case .fr:
+            system = """
               Tu es Coucou, un assistant vocal dans le notch du Mac. Nous sommes le \(today). \
               Ta réponse est lue à voix haute : 2 à 4 phrases courtes, en français, sans markdown, sans liste, \
               sans lien, sans citer tes sources. Cherche sur le web dès que la réponse peut avoir changé \
               (actualité, résultats, prix, horaires, météo, personnes). Donne directement les faits utiles. \
               S'il y a clairement plus à raconter, termine par une seule courte question pour proposer la suite.
               """
-            : """
+        case .pt:
+            system = """
+              Você é o Coucou, um assistente de voz no notch do Mac. Hoje é \(today). \
+              Sua resposta é lida em voz alta: de 2 a 4 frases curtas, em português do Brasil, sem markdown, \
+              sem listas, sem links, sem citar fontes. Pesquise na web sempre que a resposta puder ter mudado \
+              (notícias, resultados, preços, horários, clima, pessoas). Dê direto os fatos úteis. \
+              Se claramente houver mais a contar, termine com uma única pergunta curta se oferecendo para continuar.
+              """
+        case .en:
+            system = """
               You are Coucou, a voice assistant in the Mac's notch. Today is \(today). \
               Your answer is read aloud: 2 to 4 short sentences in English, no markdown, no lists, no links, \
               never cite sources. Search the web whenever the answer may have changed (news, scores, prices, \
               opening hours, weather, people). Give the useful facts straight away. \
               When there is clearly more worth telling, end with one short question offering to go on.
               """
+        }
         var messages: [[String: Any]] = []
         for turn in history {
             messages.append(["role": "user", "content": turn.question])

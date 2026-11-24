@@ -336,6 +336,94 @@ enum IntentParserTests {
         check("stop la musique",             parse("stop la musique"),         .musicPause)
         check("stop la chanson",             parse("stop la chanson"),         .musicPause)
 
+        // ── Portuguese (pt-BR) ───────────────────────────────────────────────
+        check("pt adiciona o GitHub",        parse("adiciona o GitHub", pills: pills), .pillAdd(id: "integration_github"))
+        check("pt adiciona o GitHub (accent)", parse("Adiciona o GitHub.", pills: pills), .pillAdd(id: "integration_github"))
+        check("pt você pode adicionar o GitHub?", parse("Você pode adicionar o GitHub?", pills: pills), .pillAdd(id: "integration_github"))
+        check("pt eu quero que você adicione o Stripe", parse("eu quero que você adicione o Stripe", pills: pills), .pillAdd(id: "integration_stripe"))
+        check("pt por favor adiciona o Vercel", parse("por favor adiciona o Vercel", pills: pills), .pillAdd(id: "integration_vercel"))
+        check("pt adiciona o Vercel por favor", parse("adiciona o Vercel por favor", pills: pills), .pillAdd(id: "integration_vercel"))
+        check("pt valeu, adiciona o Notion", parse("valeu, adiciona o Notion", pills: pills), .pillAdd(id: "integration_notion"))
+        check("pt ativa o Resend",           parse("ativa o Resend", pills: pills), .pillAdd(id: "integration_resend"))
+        check("pt mostra o n8n",             parse("mostra o n8n", pills: pills), .pillAdd(id: "integration_n8n"))
+        check("pt adiciona o GitHub no notch", parse("adiciona o GitHub no notch", pills: pills), .pillAdd(id: "integration_github"))
+        check("pt adiciona o GitHub e o Stripe", parse("adiciona o GitHub e o Stripe", pills: pills),
+              .pillAddMultiple(ids: ["integration_github", "integration_stripe"]))
+        check("pt tira o Stripe",            parse("tira o Stripe", pills: pills), .pillRemove(id: "integration_stripe"))
+        check("pt tira a pílula do Stripe",  parse("tira a pílula do Stripe", pills: pills), .pillRemove(id: "integration_stripe"))
+        check("pt remove o GitHub",          parse("remove o GitHub", pills: pills), .pillRemove(id: "integration_github"))
+        check("pt desativa o Vercel",        parse("desativa o Vercel", pills: pills), .pillRemove(id: "integration_vercel"))
+        check("pt não preciso mais do Stripe", parse("não preciso mais do Stripe", pills: pills), .pillRemove(id: "integration_stripe"))
+        check("pt tira o GitHub e o Stripe", parse("tira o GitHub e o Stripe", pills: pills),
+              .pillRemoveMultiple(ids: ["integration_github", "integration_stripe"]))
+        check("pt troca o GitHub pelo Vercel", parse("troca o GitHub pelo Vercel", pills: pills),
+              .pillReplace(old: "integration_github", new: "integration_vercel"))
+        check("pt substitui o n8n por GitHub", parse("substitui o n8n por GitHub", pills: pills),
+              .pillReplace(old: "integration_n8n", new: "integration_github"))
+        check("pt coloca o Vercel no lugar do GitHub", parse("coloca o Vercel no lugar do GitHub", pills: pills),
+              .pillReplace(old: "integration_github", new: "integration_vercel"))
+        check("pt deixa só o GitHub e o Vercel", parse("deixa só o GitHub e o Vercel", pills: pills),
+              .pillOnly(["integration_github", "integration_vercel"]))
+        check("pt usa o Cursor",             parse("usa o Cursor", pills: pills), .pillSetMain(id: "agent_cursor"))
+        check("pt coloca o Cursor como principal", parse("coloca o Cursor como principal", pills: pills), .pillSetMain(id: "agent_cursor"))
+        check("pt muda para o Cursor",       parse("muda para o Cursor", pills: pills), .pillSetMain(id: "agent_cursor"))
+        check("pt pílula principal pra Cursor", parse("muda a pílula principal pra Cursor", pills: pills), .pillSetMain(id: "agent_cursor"))
+        check("pt toca música",              parse("toca música"), .musicPlay(target: nil))
+        check("pt toca uma música",          parse("toca uma música"), .musicPlay(target: nil))
+        check("pt bota um som",              parse("bota um som"), .musicPlay(target: nil))
+        check("pt toca",                     parse("toca"), .musicPlay(target: nil))
+        check("pt continua a música",        parse("continua a música"), .musicPlay(target: nil))
+        check("pt toca no Spotify",          parse("toca música no Spotify", pills: pills), .musicPlay(target: .spotify))
+        check("pt toca o Spotify",           parse("toca Spotify", pills: pills), .musicPlay(target: .spotify))
+        checkSearch("pt toca Daft Punk",     parse("toca Daft Punk", pills: pills), "daft punk")
+        checkPlaylist("pt toca a playlist Focus", parse("toca a playlist Focus"), "focus")
+        checkPlaylist("pt toca minha playlist", parse("toca minha playlist"), "")
+        check("pt pausa",                    parse("pausa"), .musicPause)
+        check("pt pausar",                   parse("pausar"), .musicPause)
+        check("pt para a música",            parse("para a música"), .musicPause)
+        check("pt para de tocar",            parse("para de tocar"), .musicPause)
+        check("pt você pode pausar a música", parse("você pode pausar a música"), .musicPause)
+        check("pt próxima",                  parse("próxima"), .musicNext)
+        check("pt pula",                     parse("pula"), .musicNext)
+        check("pt avança",                   parse("avança"), .musicNext)
+        check("pt anterior",                 parse("anterior"), .musicPrevious)
+        check("pt volta",                    parse("volta"), .musicPrevious)
+        check("pt aumenta o volume",         parse("aumenta o volume"), .musicVolumeUp)
+        check("pt aumenta o som",            parse("aumenta o som"), .musicVolumeUp)
+        check("pt mais alto",                parse("mais alto"), .musicVolumeUp)
+        check("pt abaixa o volume",          parse("abaixa o volume"), .musicVolumeDown)
+        check("pt diminui o volume",         parse("diminui o volume"), .musicVolumeDown)
+        check("pt mais baixo",               parse("mais baixo"), .musicVolumeDown)
+        check("pt volume em 40",             parse("coloca o volume em 40"), .musicSetVolume(40))
+        checkMultiAction("pt adiciona GitHub e tira Stripe",
+                         parseMulti("adiciona GitHub e tira Stripe"),
+                         [.pillAdd(id: "integration_github"), .pillRemove(id: "integration_stripe")])
+        checkMultiAction("pt pausa e depois adiciona o Notion",
+                         parseMulti("pausa e depois adiciona o Notion"),
+                         [.musicPause, .pillAdd(id: "integration_notion")])
+        checkNilMultiAction("pt adiciona o GitHub e o Stripe (one multi-add)", parseMulti("adiciona o GitHub e o Stripe"))
+        // Portuguese words that must not become commands.
+        check("pt bom dia",                  parse("bom dia"), .unknown)
+        check("pt obrigado",                 parse("obrigado"), .unknown)
+        check("pt para o carro",             parse("para o carro"), .unknown)
+        check("pt tudo bem",                 parse("tudo bem"), .unknown)
+        check("pt e aí",                     parse("e aí"), .unknown)
+
+        // English and French must not be touched by the Portuguese tables (review m1, m2, m3, n3).
+        checkSearch("en play no doubt keeps 'no'",      parse("play no doubt"), "no doubt")
+        checkSearch("en play do i wanna know keeps 'do'", parse("play do i wanna know"), "do i wanna know")
+        checkSearch("en play as it was keeps 'as'",     parse("play as it was"), "as it was")
+        check("en continue stays unknown",             parse("continue"), .unknown)
+        check("fr tire GitHub stays unknown",          parse("tire GitHub", pills: pills), .unknown)
+        checkSearch("en play usa for africa",          parse("play usa for africa"), "usa for africa")
+        check("fr coupe ta musique",                   parse("coupe ta musique"), .musicPause)
+        check("fr baisse ta musique",                  parse("baisse ta musique"), .unknown)
+        check("fr coupe ta musique is no question",    VoiceQuery.topic(of: "coupe ta musique") == nil ? .unknown : .musicPause, .unknown)
+        check("fr baisse ta musique is no question",   VoiceQuery.topic(of: "baisse ta musique") == nil ? .unknown : .musicPause, .unknown)
+        check("en tempo of the song is not weather",   VoiceQuery.topic(of: "what's the tempo of this song") != .weatherToday ? .unknown : .musicPause, .unknown)
+        check("pt como ta o tempo is weather",         VoiceQuery.topic(of: "como ta o tempo") == nil ? .unknown : .musicPause, .musicPause)
+        check("pt pilula do Stripe still strips do",   parse("tira a pilula do Stripe", pills: pills), .pillRemove(id: "integration_stripe"))
+
         // Summary
         let total = pass + fail
         if fail == 0 { print("\n\(total)/\(total) passed.") }
