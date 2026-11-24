@@ -169,6 +169,7 @@ interface HookPayload {
   tool_input?: Record<string, unknown>;
   /** Set by the relay when an edit was too big to forward whole (> 256 KB). */
   coucou_diff_truncated?: boolean;
+  permission_suggestions?: unknown[];
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
   /** "agy_pre_tool": an Antigravity command Coucou may show on the card (agents.ts). */
@@ -646,6 +647,7 @@ function handleHook(island: Island, payload: HookPayload) {
         pillId: agentId,
         tool,
         command: approvalTarget(tool, input),
+        canAlways: (payload.permission_suggestions?.length ?? 0) > 0,
         ...(questions ? { questions } : {}),
       };
 

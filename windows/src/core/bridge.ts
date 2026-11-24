@@ -335,7 +335,7 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  approvalDecision: (requestId: string, decision: "allow" | "always" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
