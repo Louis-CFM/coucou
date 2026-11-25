@@ -7608,6 +7608,51 @@
       "tr": "Telefondan son projelerinden birini seçer ve Claude'un ne yapacağını söylersin; terminalin burada Claude Code ile açılır, adadan olduğu gibi. Telefon yalnızca projelerin klasör adlarını görür ve her seferinde parmak izini veya ekran kilidini ister.",
       "ko": "휴대폰에서 최근 프로젝트 중 하나를 고르고 Claude가 할 일을 말하면, 아일랜드에서처럼 이 컴퓨터에서 터미널이 Claude Code와 함께 열려요. 휴대폰에는 프로젝트의 폴더 이름만 보이고, 매번 지문이나 화면 잠금으로 확인해요.",
       "ja": "スマートフォンで最近のプロジェクトを選び、Claude にしてほしいことを伝えると、アイランドからと同じように、このコンピュータでターミナルが Claude Code とともに開きます。スマートフォンに見えるのはプロジェクトのフォルダ名だけで、毎回、指紋認証か画面ロックで確認します。"
+    },
+    "Island position": {
+      "zh-Hans": "岛的位置",
+      "hi": "आइलैंड की स्थिति",
+      "es": "Posición de la isla",
+      "ar": "موضع الشريط",
+      "fr": "Position de l'île",
+      "bn": "আইল্যান্ডের অবস্থান",
+      "pt-BR": "Posição da ilha",
+      "ru": "Положение острова",
+      "id": "Posisi pulau",
+      "de": "Inselposition",
+      "tr": "Ada konumu",
+      "ko": "아일랜드 위치",
+      "ja": "アイランドの位置"
+    },
+    "Top edge": {
+      "zh-Hans": "顶部边缘",
+      "hi": "शीर्ष किनारा",
+      "es": "Borde superior",
+      "ar": "الحافة العلوية",
+      "fr": "Bord supérieur",
+      "bn": "উপরের প্রান্ত",
+      "pt-BR": "Borda superior",
+      "ru": "Верхний край",
+      "id": "Tepi atas",
+      "de": "Oberer Rand",
+      "tr": "Üst kenar",
+      "ko": "위쪽 가장자리",
+      "ja": "上端"
+    },
+    "Bottom edge": {
+      "zh-Hans": "底部边缘",
+      "hi": "निचला किनारा",
+      "es": "Borde inferior",
+      "ar": "الحافة السفلية",
+      "fr": "Bord inférieur",
+      "bn": "নিচের প্রান্ত",
+      "pt-BR": "Borda inferior",
+      "ru": "Нижний край",
+      "id": "Tepi bawah",
+      "de": "Unterer Rand",
+      "tr": "Alt kenar",
+      "ko": "아래쪽 가장자리",
+      "ja": "下端"
     }
   }
 }
