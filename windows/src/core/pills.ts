@@ -56,6 +56,19 @@ export interface PillDefinition {
 
 export type HostOs = "windows" | "linux";
 
+export interface CustomAgent {
+  id: string;
+  name?: string;
+}
+
+export function toPillId(id: string): string {
+  return id.startsWith("agent_") ? id : `agent_${id}`;
+}
+
+export function fromPillId(pillId: string): string {
+  return pillId.replace(/^agent_/, "");
+}
+
 const hooks: PillConnect = { kind: "hooks" };
 const key = (k: string): PillConnect => ({ kind: "key", key: k });
 const none: PillConnect = { kind: "none" };
@@ -166,9 +179,42 @@ function offeredOn(def: PillDefinition, os: HostOs): boolean {
   return def.support === "yes" || def.support === "soon" || def.support === os;
 }
 
-/** The pills this build offers, in catalog order. */
-export function availablePills(os: HostOs = HOST_OS): PillDefinition[] {
-  return PILL_CATALOG.filter((p) => offeredOn(p, os));
+/** The pills this build offers, in catalog order, followed by registered custom agents. */
+export function availablePills(os: HostOs = HOST_OS, customAgents: CustomAgent[] = []): PillDefinition[] {
+  const builtin = PILL_CATALOG.filter((p) => offeredOn(p, os));
+  if (!customAgents || customAgents.length === 0) return builtin;
+  const customs: PillDefinition[] = customAgents
+    .filter((ca) => !builtin.some((b) => b.id === toPillId(ca.id)))
+    .map((ca) => ({
+      id: toPillId(ca.id),
+      name: ca.name?.trim() || ca.id,
+      color: "#818CF8",
+      category: "agent",
+      subtitle: N_("Agent"),
+      source: "agent",
+      support: "yes",
+      connect: hooks,
+    }));
+  return [...builtin, ...customs];
+}
+
+/** Resolves a pill from the catalog first; if absent, looks up customAgents and synthesizes a definition. */
+export function resolvePill(id: string, customAgents: CustomAgent[] = []): PillDefinition | undefined {
+  const builtin = pillDefinition(id);
+  if (builtin) return builtin;
+  const rawId = fromPillId(id);
+  const custom = customAgents.find((a) => a.id === rawId);
+  if (!custom) return undefined;
+  return {
+    id: toPillId(custom.id),
+    name: custom.name?.trim() || custom.id,
+    color: "#818CF8",
+    category: "agent",
+    subtitle: N_("Agent"),
+    source: "agent",
+    support: "yes",
+    connect: hooks,
+  };
 }
 
 export function isComingSoon(id: string): boolean {
@@ -200,6 +246,7 @@ export function sessionSubtitle(id: string): string {
 export interface Declared {
   mainPill: string;
   activeIntegrations: string[];
+  customAgents?: CustomAgent[];
 }
 
 /**
@@ -211,14 +258,16 @@ export interface Declared {
 export function sanitizeDeclared(d: Declared, os: HostOs = HOST_OS): Declared {
   const mains = new Set(mainPillChoices(os).map((p) => p.id));
   const mainPill = mains.has(d.mainPill) ? d.mainPill : DEFAULT_MAIN_PILL;
-  const offered = new Set(availablePills(os).map((p) => p.id));
+  const offered = new Set(availablePills(os, d.customAgents).map((p) => p.id));
   const activeIntegrations: string[] = [];
   for (const id of d.activeIntegrations ?? []) {
     if (id !== mainPill && offered.has(id) && !activeIntegrations.includes(id)) {
       activeIntegrations.push(id);
     }
   }
-  return { mainPill, activeIntegrations };
+  const result: Declared = { mainPill, activeIntegrations };
+  if (d.customAgents !== undefined) result.customAgents = d.customAgents;
+  return result;
 }
 
 /**
@@ -228,7 +277,7 @@ export function sanitizeDeclared(d: Declared, os: HostOs = HOST_OS): Declared {
  */
 export function toggleDeclared(d: Declared, id: string, os: HostOs = HOST_OS): string[] | null {
   if (id === d.mainPill) return null;
-  if (!availablePills(os).some((p) => p.id === id)) return null;
+  if (!availablePills(os, d.customAgents).some((p) => p.id === id)) return null;
   if (d.activeIntegrations.includes(id)) return d.activeIntegrations.filter((x) => x !== id);
   if (d.activeIntegrations.length >= MAX_DECLARED) return null;
   return [...d.activeIntegrations, id];

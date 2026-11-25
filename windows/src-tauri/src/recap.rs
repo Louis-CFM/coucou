@@ -477,11 +477,13 @@ fn agent_id(payload: &Value) -> String {
     let valid = !raw.is_empty()
         && raw.len() <= 24
         && raw != "claude"
-        && raw.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+        && raw.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_');
     if valid {
         format!("agent_{raw}")
     } else if text(payload, "term_editor") == "cursor" {
         "agent_cursor".to_string()
+    } else if !raw.is_empty() && raw != "claude" {
+        "agent_unknown".to_string()
     } else {
         "integration_claude".to_string()
     }
@@ -854,10 +856,12 @@ mod tests {
 
     #[test]
     fn invalid_or_reserved_agent_tags_fall_back_to_claude_code() {
-        for tag in ["claude", "Gemini", "has space", "a-very-long-agent-name-over-24"] {
-            assert_eq!(agent_id(&json!({ "coucou_agent": tag })), "integration_claude", "{tag}");
+        assert_eq!(agent_id(&json!({ "coucou_agent": "claude" })), "integration_claude");
+        for tag in ["Gemini", "has space", "a-very-long-agent-name-over-24"] {
+            assert_eq!(agent_id(&json!({ "coucou_agent": tag })), "agent_unknown", "{tag}");
         }
         assert_eq!(agent_id(&json!({ "coucou_agent": "codex" })), "agent_codex");
+        assert_eq!(agent_id(&json!({ "coucou_agent": "my_tool" })), "agent_my_tool");
     }
 
     #[test]

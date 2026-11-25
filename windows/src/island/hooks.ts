@@ -9,7 +9,8 @@ import { Bridge, onEvent } from "../core/bridge";
 import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
 import { State, type ApprovalInfo, type AskedQuestion } from "../core/state";
-import { pillDefinition } from "../core/pills";
+import { pillDefinition, resolvePill } from "../core/pills";
+import { pillColor } from "../core/pill-colors";
 import { agentColor, agentName, takesCard, validateAgent } from "./agents";
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
@@ -68,6 +69,24 @@ export function dropPendingCard(island: Island): void {
 
 /** The return to idle that Stop arms, per pill, so the next turn can cancel it. */
 const stopTimers = new Map<string, number>();
+const activeSessions = new Map<string, Set<string>>();
+const pendingRemovals = new Set<string>();
+
+export function flushPendingRemovals(): void {
+  for (const id of Array.from(pendingRemovals)) {
+    if (State.mode === "expanded" && State.focusId === id) continue;
+    pendingRemovals.delete(id);
+    if (!State.isKept(id)) {
+      State.removeTask(id);
+    }
+  }
+}
+
+State.subscribe(() => {
+  if (pendingRemovals.size > 0) {
+    flushPendingRemovals();
+  }
+});
 
 function cancelStopTimer(id: string): boolean {
   const timer = stopTimers.get(id);
@@ -322,7 +341,7 @@ function clearSession(id: string) {
   t.steps = [];
   t.stepIndex = 0;
   delete t.stepSeq;
-  t.name = pillDefinition(id)?.name ?? t.name;
+  t.name = resolvePill(id, State.settings.customAgents)?.name ?? pillDefinition(id)?.name ?? t.name;
   t.pillBadge = null;
   t.sessionId = null;
   t.finalLine = null;
@@ -407,7 +426,10 @@ function handleHook(island: Island, payload: HookPayload) {
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
     if (isExternalAgent) {
-      State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
+      const def = resolvePill(agentId, State.settings.customAgents);
+      const name = def?.name ?? agentName(validAgent!);
+      const color = def ? pillColor(def.id, def.color, State.settings.pillColors) : agentColor(validAgent!);
+      State.upsertExternalAgent(agentId, name, color);
       const t = State.tasks.find((x) => x.id === agentId);
       if (t && cwd) t.sessionCwd = cwd;
       if (t && sessionId) t.sessionId = sessionId;
@@ -452,6 +474,14 @@ function handleHook(island: Island, payload: HookPayload) {
     case "SessionStart":
       ensurePill();
       clearFinalLine(agentId);
+      if (sessionId) {
+        let s = activeSessions.get(agentId);
+        if (!s) {
+          s = new Set();
+          activeSessions.set(agentId, s);
+        }
+        s.add(sessionId);
+      }
       // Hermes through its gateway says where the session comes from.
       if (validAgent === "hermes" && payload.platform && payload.platform !== "cli") {
         State.appendStep(agentId, payload.platform.charAt(0).toUpperCase() + payload.platform.slice(1));
@@ -553,8 +583,17 @@ function handleHook(island: Island, payload: HookPayload) {
           // pill you had comes back when it closes (island.ts), as on the Mac. An agent
           // pill about to go hands the front back now.
           if (isExternalAgent || State.mode !== "expanded") restoreAlertFocus();
+          if (State.isKept(agentId)) {
+            State.updateTask(agentId, "idle");
+            State.setPillBadge(agentId, null);
+            return;
+          }
           if (isExternalAgent) {
-            State.removeTask(agentId);
+            if (State.mode === "expanded" && State.focusId === agentId) {
+              pendingRemovals.add(agentId);
+            } else {
+              State.removeTask(agentId);
+            }
           } else {
             State.updateTask(agentId, "idle");
             State.setPillBadge(agentId, null);
@@ -584,8 +623,19 @@ function handleHook(island: Island, payload: HookPayload) {
       // pill recreated within 5.2 s would be removed by it.
       cancelStopTimer(agentId);
       State.clearSessionDiffs(agentId);
-      if (isExternalAgent) {
-        State.removeTask(agentId);
+      if (sessionId) {
+        const s = activeSessions.get(agentId);
+        if (s) {
+          s.delete(sessionId);
+          if (s.size > 0) break;
+        }
+      }
+      if (isExternalAgent && !State.isKept(agentId)) {
+        if (State.mode === "expanded" && State.focusId === agentId) {
+          pendingRemovals.add(agentId);
+        } else {
+          State.removeTask(agentId);
+        }
       } else {
         State.updateTask(agentId, "idle");
         clearSession(agentId);

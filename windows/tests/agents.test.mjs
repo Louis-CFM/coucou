@@ -26,10 +26,12 @@ test("an unknown agent keeps its id and gets a stable colour", () => {
 });
 
 test("the agent tag is checked the Mac's way, and claude is reserved", () => {
-  for (const bad of ["claude", "Gemini", "has space", "a".repeat(25), "", undefined, "x_y"]) {
+  for (const bad of ["claude", "Gemini", "has space", "a".repeat(25), "", undefined, "x@y"]) {
     assert.equal(validateAgent(bad), null, String(bad));
   }
   assert.equal(validateAgent("a".repeat(24)), "a".repeat(24));
+  assert.equal(validateAgent("x_y"), "x_y");
+  assert.equal(validateAgent("agent_01-test"), "agent_01-test");
 });
 
 test("approval cards are for the agents the relay answers, no one else", () => {
