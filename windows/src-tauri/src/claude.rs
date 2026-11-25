@@ -5,7 +5,7 @@
 // the credential store, and file bytes never cross the IPC boundary.
 //
 // Without a key, the chat and the one-shot answers go to the user's own Claude
-// Code instead (claude_code.rs); « OK Coucou » still needs the key, its tools
+// Code instead (claude_code.rs); « OK Coucou » too, in words only, its tools
 // being Coucou's own.
 //
 // COUCOU_ANTHROPIC_BASE_URL points the chat at an Anthropic-compatible gateway
@@ -209,6 +209,21 @@ pub async fn complete(model: &str, system: &str, user: &str, max_tokens: u32, ti
 /// One turn of « OK Coucou »'s conversation with tools: the API's whole answer
 /// (content blocks and stop_reason).
 pub async fn voice_turn(model: &str, system: &str, messages: &[Value], tools: &[Value]) -> Result<Value, String> {
+    // No API key: Claude Code answers in words, with web search. It can't run
+    // Coucou's own tools, so the turn ends with its answer.
+    if !secrets::present(KEY) {
+        let prompt = voice_transcript(messages);
+        let request = claude_code::Request {
+            model,
+            system,
+            prompt: &prompt,
+            tools: &["WebSearch", "WebFetch"],
+            read_dir: None,
+            timeout: Duration::from_secs(30),
+        };
+        let reply = claude_code::ask(&request).await?;
+        return Ok(json!({ "content": [{ "type": "text", "text": reply }], "stop_reason": "end_turn" }));
+    }
     let key = secrets::get(KEY).ok_or_else(|| t("API key missing. Open settings."))?;
     let endpoint = endpoint()?;
     let body = json!({
@@ -219,6 +234,27 @@ pub async fn voice_turn(model: &str, system: &str, messages: &[Value], tools: &[
         "tools": tools,
     });
     call_with_timeout(&endpoint, &key, &body, Duration::from_secs(45)).await
+}
+
+/// « OK Coucou »'s conversation as plain text for Claude Code: the words of each
+/// turn (tool calls and results left out), the last one the question.
+fn voice_transcript(messages: &[Value]) -> String {
+    let words = |m: &Value| -> String {
+        match &m["content"] {
+            Value::String(s) => s.clone(),
+            Value::Array(blocks) => blocks.iter().filter_map(|b| b["text"].as_str()).collect::<Vec<_>>().join(" "),
+            _ => String::new(),
+        }
+    };
+    let turns: Vec<String> = messages
+        .iter()
+        .map(|m| (m["role"].as_str().unwrap_or(""), words(m)))
+        .filter(|(_, w)| !w.trim().is_empty())
+        .map(|(role, w)| format!("{}: {}", if role == "user" { "User" } else { "Assistant" }, w.trim()))
+        .collect();
+    turns.join("
+
+")
 }
 
 async fn call(endpoint: &Url, key: &str, body: &Value) -> Result<Value, String> {
@@ -438,6 +474,24 @@ mod tests {
         // A file that cannot be read still names itself.
         let ctx = ChatContext::File { name: "gone.pdf".into(), path: "/no/such/gone.pdf".into() };
         assert_eq!(user_content(true, Some(&ctx), "q")[0]["text"], "File: gone.pdf");
+    }
+
+    #[test]
+    fn a_voice_conversation_reaches_claude_code_as_its_words() {
+        let messages = vec![
+            json!({"role":"user","content":"What's the weather?"}),
+            json!({"role":"assistant","content":[{"type":"tool_use","name":"web_search"},{"type":"text","text":"Sunny."}]}),
+            json!({"role":"user","content":[{"type":"tool_result","content":"x"}]}),
+            json!({"role":"user","content":"And tomorrow?"}),
+        ];
+        assert_eq!(
+            voice_transcript(&messages),
+            "User: What's the weather?
+
+Assistant: Sunny.
+
+User: And tomorrow?"
+        );
     }
 
     #[test]

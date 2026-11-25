@@ -1,5 +1,5 @@
 // The Claude Code relay: with no Anthropic API key saved, the chat, Flow's
-// clean-up and the notes of a call are answered by the user's own Claude Code
+// clean-up, the notes of a call and « OK Coucou » are answered by the user's own Claude Code
 // (`claude -p`), signed in with their own account. Coucou reads no credential
 // and makes no network call of its own: Claude Code answers exactly as it does
 // in a terminal.

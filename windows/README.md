@@ -266,7 +266,7 @@ MCP servers or extensions where the tool can turn them off, saves no session,
 and searches the web for the chat only; a dropped file is read with no web at
 all. Through npm's `.cmd` shims the prompt goes in on stdin. Flow's clean-up
 and the notes of a call use Claude Code when no Anthropic key is saved;
-« OK Coucou » still needs the key: its tools are Coucou's own.
+« OK Coucou » too, in words and web search only: its tools are Coucou's own.
 
 The chat also talks to **Google AI (Gemini)**, **OpenAI** and **OpenRouter**:
 add their keys in **Settings… → Chat providers**, then click the model name
