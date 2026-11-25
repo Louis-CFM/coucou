@@ -333,15 +333,25 @@ fn open_in_vscode(path: Option<String>) -> bool {
 /// folder in VS Code, as before. A session in herdr also gets its pane selected,
 /// and never falls back to VS Code.
 #[tauri::command]
-fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+fn open_session(session_id: Option<String>, path: Option<String>, pill_id: Option<String>) -> bool {
     let in_herdr = session_id.as_deref().is_some_and(herdr::focus);
+    let is_antigravity = pill_id.as_deref() == Some("agent_antigravity");
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return in_herdr || open_in_vscode(path);
+        if in_herdr {
+            return true;
+        }
+        if is_antigravity && platform::focus_or_open_antigravity(path.as_deref()) {
+            return true;
+        }
+        return open_in_vscode(path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
     {
         if platform::focus_session_window(&owners, &folder) || in_herdr {
+            return true;
+        }
+        if is_antigravity && platform::focus_or_open_antigravity(path.as_deref()) {
             return true;
         }
         open_in_vscode(path)
@@ -353,7 +363,9 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     {
         std::thread::spawn(move || {
             if !platform::focus_session_window(&owners, &folder) && !in_herdr {
-                open_in_vscode(path);
+                if !(is_antigravity && platform::focus_or_open_antigravity(path.as_deref())) {
+                    open_in_vscode(path);
+                }
             }
         });
         true

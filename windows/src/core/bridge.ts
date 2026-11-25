@@ -261,8 +261,8 @@ export const Bridge = {
    * "Open terminal": the window the session runs in when Rust found it
    * (Windows; Linux on X11 and KDE Plasma), else the folder in VS Code.
    */
-  openSession: (sessionId: string | null, path: string | null) =>
-    call<boolean>("open_session", { sessionId, path }),
+  openSession: (sessionId: string | null, path: string | null, pillId?: string | null) =>
+    call<boolean>("open_session", { sessionId, path, ...(pillId === "agent_antigravity" ? { pillId } : {}) }),
 
   /** The Claude desktop app, for the Claude Desktop pill (Windows only). */
   openClaudeDesktop: () => call<boolean>("open_claude_desktop"),
