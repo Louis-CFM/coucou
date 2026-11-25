@@ -739,14 +739,11 @@ pub fn windows_terminal() -> Option<PathBuf> {
     })
 }
 
-/// "Choose a folder…": the system's folder picker (IFileOpenDialog with
-/// FOS_PICKFOLDERS), over the island, `start` open in it. Runs on a thread of
-/// its own, in a single-threaded apartment as the Shell's dialogs want.
-pub fn pick_folder(app: &AppHandle, start: Option<&str>, title: &str) -> Option<String> {
+fn pick_with_dialog(app: &AppHandle, start: Option<&str>, title: &str, folders: bool) -> Option<String> {
     use ::windows::Win32::System::Com::{CoCreateInstance, CoTaskMemFree, CLSCTX_INPROC_SERVER};
     use ::windows::Win32::UI::Shell::{
-        FileOpenDialog, IFileOpenDialog, IShellItem, SHCreateItemFromParsingName, FOS_FORCEFILESYSTEM,
-        FOS_PICKFOLDERS, SIGDN_FILESYSPATH,
+        FileOpenDialog, IFileOpenDialog, IShellItem, SHCreateItemFromParsingName, FOS_FILEMUSTEXIST,
+        FOS_FORCEFILESYSTEM, FOS_PICKFOLDERS, SIGDN_FILESYSPATH,
     };
 
     let owner = app
@@ -755,6 +752,11 @@ pub fn pick_folder(app: &AppHandle, start: Option<&str>, title: &str) -> Option<
         .map(|h| h.0 as isize);
     let start = start.map(HSTRING::from);
     let title = HSTRING::from(title);
+    let extra = if folders {
+        FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM
+    } else {
+        FOS_FILEMUSTEXIST | FOS_FORCEFILESYSTEM
+    };
     std::thread::spawn(move || unsafe {
         let initialized = CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
         if initialized.is_err() && initialized != RPC_E_CHANGED_MODE {
@@ -763,7 +765,7 @@ pub fn pick_folder(app: &AppHandle, start: Option<&str>, title: &str) -> Option<
         let picked = (|| -> Option<String> {
             let dialog: IFileOpenDialog = CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER).ok()?;
             let options = dialog.GetOptions().ok()?;
-            dialog.SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM).ok()?;
+            dialog.SetOptions(options | extra).ok()?;
             let _ = dialog.SetTitle(&title);
             if let Some(start) = &start {
                 if let Ok(folder) = SHCreateItemFromParsingName::<_, _, IShellItem>(start, None) {
@@ -786,6 +788,19 @@ pub fn pick_folder(app: &AppHandle, start: Option<&str>, title: &str) -> Option<
     .join()
     .ok()
     .flatten()
+}
+
+/// "Choose a folder…": the system's folder picker (IFileOpenDialog with
+/// FOS_PICKFOLDERS), over the island, `start` open in it. Runs on a thread of
+/// its own, in a single-threaded apartment as the Shell's dialogs want.
+pub fn pick_folder(app: &AppHandle, start: Option<&str>, title: &str) -> Option<String> {
+    pick_with_dialog(app, start, title, true)
+}
+
+/// The system's file picker (IFileOpenDialog with FOS_FILEMUSTEXIST |
+/// FOS_FORCEFILESYSTEM), over the island, for the drop card click.
+pub fn pick_file(app: &AppHandle, title: &str) -> Option<String> {
+    pick_with_dialog(app, None, title, false)
 }
 
 #[cfg(test)]
