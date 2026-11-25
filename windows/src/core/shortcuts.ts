@@ -30,6 +30,7 @@ export const SHORTCUT_TEXT = {
   desktopToggle: N_("Send Mochi to the desktop"),
   wardrobeToggle: N_("Open the wardrobe"),
   quickScreenshot: N_("Screenshot the whole screen, copied"),
+  openClipboard: N_("Open the Clipboard Manager"),
   island: {
     nextPrev: N_("Next or previous pill"),
     byNumber: N_("Go to pill 1 to 9"),
@@ -58,7 +59,8 @@ export type ShortcutId =
   | "muteToggle"
   | "desktopToggle"
   | "wardrobeToggle"
-  | "quickScreenshot";
+  | "quickScreenshot"
+  | "openClipboard";
 
 export interface ShortcutDef {
   id: ShortcutId;
@@ -84,6 +86,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   def("desktopToggle", "Ctrl+Alt+D", true, true),
   def("wardrobeToggle", "Ctrl+Alt+G", true, true),
   def("quickScreenshot", "Ctrl+Alt+P", true, true),
+  def("openClipboard", "Ctrl+Alt+V", true, true),
 ];
 
 export interface Binding {

@@ -3,6 +3,9 @@
 // rejects generic ungrounded filler, clamps grapheme clusters (<= 72),
 // and verifies physical pixel width against Dynamic Island constraints (<= 380px).
 
+import { companionName as getActiveCompanionName } from "../core/state";
+import { escapeRegExp, sanitizeCompanionName } from "../core/companion-identity";
+
 export class MessageValidator {
   public static readonly MAX_GRAPHEMES = 72;
   public static readonly MAX_PIXEL_WIDTH = 380; // Fits within 420px Dynamic Island pill
@@ -22,7 +25,10 @@ export class MessageValidator {
    * Sanitizes, validates, and fits raw model text for the Dynamic Island.
    * Returns clean, single-line text or null if the message is invalid/unfit.
    */
-  public static sanitizeAndValidate(raw: string | null | undefined): string | null {
+  public static sanitizeAndValidate(
+    raw: string | null | undefined,
+    companionName?: string,
+  ): string | null {
     if (!raw || typeof raw !== "string") return null;
 
     // Stage 1: Detect and reject unclosed reasoning traces or leaked thinking headers
@@ -47,7 +53,15 @@ export class MessageValidator {
     }
 
     // Stage 2: Strip conversational preambles, bullet markers, and surrounding quotes
-    text = text.replace(/^(here is(\s+a)?|mochi says|greeting|message|mochi)\s*[:\-]?\s*/i, "");
+    const configuredName = sanitizeCompanionName(companionName ?? getActiveCompanionName());
+    const nameTokens = configuredName && configuredName.toLowerCase() !== "mochi"
+      ? [escapeRegExp(`${configuredName} says`), escapeRegExp(configuredName)]
+      : [];
+    const preamblePattern = new RegExp(
+      `^(here is(\\s+a)?|mochi says|greeting|message|mochi${nameTokens.length ? `|${nameTokens.join("|")}` : ""})\\s*[:\\-]?\\s*`,
+      "i",
+    );
+    text = text.replace(preamblePattern, "");
     text = text.replace(/^[-*•]\s+/, "");
     text = text.replace(/^["'“](.*)["'”]$/, "$1").trim();
 

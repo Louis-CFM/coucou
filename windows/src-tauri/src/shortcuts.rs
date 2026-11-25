@@ -70,6 +70,7 @@ pub const ACTIONS: &[ActionDef] = &[
     action("desktopToggle", "Ctrl+Alt+D", true, true),
     action("wardrobeToggle", "Ctrl+Alt+G", true, true),
     action("quickScreenshot", "Ctrl+Alt+P", true, true),
+    action("openClipboard", "Ctrl+Alt+V", true, true),
 ];
 
 pub fn find(id: &str) -> Option<&'static ActionDef> {
@@ -94,6 +95,7 @@ pub fn description(id: &str) -> &'static str {
         "desktopToggle" => n_("Send Mochi to the desktop"),
         "wardrobeToggle" => n_("Open the wardrobe"),
         "quickScreenshot" => n_("Screenshot the whole screen, copied"),
+        "openClipboard" => n_("Open the Clipboard Manager"),
         _ => "Coucou",
     }
 }
@@ -690,9 +692,10 @@ mod wayland {
 mod tests {
     use super::*;
 
-    const MAC_IDS: [&str; 10] = [
+    const MAC_IDS: [&str; 12] = [
         "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
         "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
+        "quickScreenshot", "openClipboard",
     ];
 
     fn never(_: &Shortcut) -> Option<String> {

@@ -48,6 +48,23 @@ function focusPill(host: ShortcutHost, id: string | null, open: boolean) {
 
 /** A global shortcut was pressed. `resume` lifts Pause, as the tray's Open does. */
 export function runGlobalShortcut(host: ShortcutHost, action: string, resume: () => void) {
+  // Never dismiss or navigate away from active first-run companion onboarding via stray shortcuts.
+  if (State.mode === "expanded" && State.view === "onboarding") {
+    if (action === "muteToggle") {
+      const on = !State.settings.soundEnabled;
+      State.settings.soundEnabled = on;
+      Sound.setEnabled(on);
+      void Bridge.saveSettings(State.settings);
+      if (on) Sound.play("tick");
+      host.emote(on ? "happy" : "annoyed");
+      State.notify();
+    } else if (action === "quickScreenshot") {
+      void Bridge.quickScreenshot();
+      Sound.play("attach");
+      host.emote("happy");
+    }
+    return;
+  }
   switch (action) {
     case "toggleIsland":
       if (State.mode === "expanded") {
@@ -136,6 +153,12 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       void Bridge.quickScreenshot();
       Sound.play("attach");
       host.emote("happy");
+      break;
+
+    case "openClipboard":
+      resume();
+      host.alert("clipboard");
+      host.takeKeyboard();
       break;
 
     // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), and

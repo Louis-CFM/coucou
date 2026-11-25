@@ -94,8 +94,8 @@ body {
 }
 
 #island.style-island {
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), 0 2px 4px rgba(0, 0, 0, 0.24);
 }
 
 #island.style-island #island-clip {
@@ -5495,7 +5495,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 
 /* Dedicated presentation styling for Nearby Transfer Activity */
 #island.transfer-active {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.45) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28), 0 2px 4px rgba(0, 0, 0, 0.24) !important;
 }
 
 /* When battery percentage is disabled or notch is tucked: strictly remove label and zero out layout footprint */
@@ -6097,4 +6097,186 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   pointer-events: none;
 }
 
+/* ── Notch Companion Naming Onboarding ───────────────────────────────────── */
+
+#island.onboarding-mode #content {
+  padding: 10px;
+}
+
+#island.onboarding-mode #header {
+  display: none !important;
+}
+
+.onboard-notch-card {
+  --wash: rgba(99, 102, 241, 0.24);
+}
+
+.onboard-notch-stack {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px 12px 124px;
+}
+
+.onboard-notch-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  animation: onboardNotchRise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.onboard-notch-title {
+  font: 600 15.5px/1.25 var(--font);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.onboard-notch-desc {
+  font: 400 12px/1.42 var(--font-sub);
+  color: var(--dim);
+  margin: 0;
+}
+
+.onboard-notch-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  animation: onboardNotchRise 300ms cubic-bezier(0.22, 1, 0.36, 1) 45ms both;
+}
+
+.onboard-notch-input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.onboard-notch-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 54px 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--ink);
+  font: 500 13px var(--font);
+  outline: none;
+  user-select: text;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.onboard-notch-input::placeholder {
+  color: var(--dim-3);
+  font-weight: 400;
+}
+
+.onboard-notch-input:focus {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.onboard-notch-input.invalid {
+  border-color: rgba(244, 80, 94, 0.65);
+}
+
+.onboard-notch-counter {
+  position: absolute;
+  right: 11px;
+  font: 500 10.5px var(--mono);
+  color: var(--dim-3);
+  pointer-events: none;
+}
+
+.onboard-notch-counter.over {
+  color: var(--red-text);
+}
+
+.onboard-notch-error {
+  min-height: 14px;
+  font: 500 11px/1.25 var(--font-sub);
+  color: var(--red-text);
+}
+
+.onboard-notch-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  animation: onboardNotchRise 340ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+.onboard-notch-preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.onboard-notch-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--dim-4);
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.onboard-notch-dot.active {
+  background: var(--green-2);
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.65);
+}
+
+.onboard-notch-preview-text {
+  font: 500 11.5px/1.2 var(--font-sub);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onboard-notch-preview-text.placeholder {
+  color: var(--dim-3);
+}
+
+.onboard-notch-actions {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.onboard-notch-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.onboard-notch-btn:disabled {
+  opacity: 0.5;
+}
+
+@keyframes onboardNotchRise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboard-notch-head,
+  .onboard-notch-field,
+  .onboard-notch-footer {
+    animation: none;
+  }
+}
 

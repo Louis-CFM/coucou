@@ -2,6 +2,7 @@
 // Mochi's wardrobe, and visual styling of the Dynamic Island.
 
 import { Bridge } from "../core/bridge";
+import { resolveCompanionName } from "../core/companion-identity";
 import { Sound } from "../core/sound";
 import { closedIsland } from "../core/closed";
 import {
@@ -331,7 +332,7 @@ export function appearanceSection(
       if (!first && sel !== "auto") continue;
       canvas.width = Math.round(ICON_SIZE * dpr);
       canvas.height = Math.round(ICON_SIZE * dpr);
-      const ctx = canvas.getContext("2d");
+      const ctx = typeof canvas.getContext === "function" ? canvas.getContext("2d") : null;
       if (!ctx) continue;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawWardrobeIcon(ctx, ICON_SIZE, sel, season, WARDROBE_STRINGS.autoBadge);
@@ -381,8 +382,9 @@ export function appearanceSection(
   updateWardrobeNote();
 
   // ── Resting Notch Options ───────────────────────────────────────────────────
+  const companion = resolveCompanionName(settings);
   const closedOptions: [string, string][] = [
-    ["mochi", t("Mochi, as on a Mac without a notch")],
+    ["mochi", t("{name}, as on a Mac without a notch", { name: companion })],
     ["time", t("The time")],
     ["datetime", t("The date and the time")],
     ["claude", t("Claude usage")],
@@ -638,14 +640,14 @@ export function appearanceSection(
     ),
     h("div", { class: "row" }, h("label", { text: t("Island lives on") }), screen),
 
-    // Category: MOCHI'S WARDROBE
+    // Category: COMPANION WARDROBE
     h(
       "div",
       {
         class: "hub-label",
         style:
           "font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin:16px 0 4px;text-transform:uppercase;",
-        text: "Mochi's Wardrobe",
+        text: t("{name}'s Wardrobe", { name: companion }),
       },
     ),
     h(
@@ -664,7 +666,7 @@ export function appearanceSection(
       h("div", {
         class: "hint",
         style: "margin-top:8px",
-        text: "Select an outfit for Mochi, or choose Auto to dress for holidays and seasons.",
+        text: t("Select an outfit for {name}, or choose Auto to dress for holidays and seasons.", { name: companion }),
       }),
     ),
 

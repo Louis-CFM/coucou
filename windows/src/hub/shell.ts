@@ -9,6 +9,7 @@ import { h, clear } from "../views/dom";
 import { t, onLanguageChange } from "../i18n/i18n";
 import { onEvent } from "../core/bridge";
 import { FlowBridge, type FlowPrefs, type FlowStatus, type ModelsStatus, flowKeyId } from "../core/flow";
+import { State } from "../core/state";
 import { hero, liveMochi, setVoiceLevel, setWindowShown } from "./hero";
 import { icon, keyLabel } from "./ui";
 import { searchSettings, type SettingsSearchHit } from "./search";
@@ -37,10 +38,10 @@ export const FLOW_PAGES: PageDef[] = [
 ];
 
 export const NOTCH_PAGES: PageDef[] = [
-  { id: "general", icon: "gear", title: () => t("General"), subtitle: () => t("Mochi, his sounds and how the island behaves.") },
-  { id: "appearance", icon: "palette", title: () => t("Appearance"), subtitle: () => "Mochi's wardrobe, resting notch mode, and visual styling." },
+  { id: "general", icon: "gear", title: () => t("General"), subtitle: () => t("{name}, sounds, and how the island behaves.", { name: State.companionName }) },
+  { id: "appearance", icon: "palette", title: () => t("Appearance"), subtitle: () => t("{name}'s wardrobe, resting notch mode, and visual styling.", { name: State.companionName }) },
   { id: "pills", icon: "grid", title: () => t("Active pills"), subtitle: () => t("The pills shown in the island, their order and their colours.") },
-  { id: "agents", icon: "terminal", title: () => t("Agents"), subtitle: () => t("Claude Code, Codex and the other agents Mochi follows.") },
+  { id: "agents", icon: "terminal", title: () => t("Agents"), subtitle: () => t("Claude Code, Codex and the other agents {name} follows.", { name: State.companionName }) },
   { id: "chat", icon: "chat", title: () => t("Chat"), subtitle: () => t("The AI of the island's chat, with your own keys.") },
   { id: "voice", icon: "wave", title: () => "OK Coucou" },
   { id: "integrations", icon: "puzzle", title: () => t("Integrations"), subtitle: () => t("Stripe, GitHub, Vercel, n8n, Notion and the rest.") },
@@ -216,7 +217,9 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     if (renderer) {
       await renderer(page_, ctx);
     } else {
-      page_.append(hero(def.id, def.title(), def.subtitle?.() ?? null));
+      if (def.id !== "phone") {
+        page_.append(hero(def.id, def.title(), def.subtitle?.() ?? null));
+      }
       const container = h("div", { id: "settings-root" });
       page_.append(container);
       await opts.renderNotch(def.id, container);
@@ -239,7 +242,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
 
     const cards = typeof page_.querySelectorAll === "function"
       ? Array.from(
-          page_.querySelectorAll<HTMLElement>(".hub-hero, .hub-card, #settings-root > section, .hub-stat-grid, .hub-action-card")
+          page_.querySelectorAll<HTMLElement>(".hub-hero, .hub-card, #settings-root > section, .phone-hero, .phone-group, .hub-stat-grid, .hub-action-card")
         )
       : [];
     if (cards.length > 0) {

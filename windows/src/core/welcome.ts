@@ -5,6 +5,7 @@
 
 import { State } from "./state";
 import { Bridge } from "./bridge";
+import { companionPossessive, resolveCompanionName } from "./companion-identity";
 import { ContextIntelligence } from "../companion/context";
 import { MessagePolicyEngine } from "../companion/policy";
 import { DeterministicCatalog } from "../companion/catalog";
@@ -20,13 +21,17 @@ import type {
 } from "../companion/types";
 
 export type CircadianPhase =
+  | "morning"
+  | "afternoon"
+  | "evening"
+  | "night"
+  | "deep_night"
   | "dawn"
   | "morning_peak"
   | "midday_lunch"
   | "afternoon_slump"
   | "golden_hour"
-  | "evening_wrapup"
-  | "deep_night";
+  | "evening_wrapup";
 
 export interface WelcomeStateVector {
   awayMinutes: number;
@@ -80,6 +85,27 @@ export class WelcomeMessageManager {
   private sessionStartTime = Date.now();
   private activeMinutes = 0;
   private hasGreetedOnLaunch = false;
+  private isUserPresent = true;
+
+  setUserPresent(present: boolean): void {
+    this.isUserPresent = present;
+  }
+
+  get userPresent(): boolean {
+    return this.isUserPresent;
+  }
+
+  recordHydrationDelivered(nowMs: number = Date.now()): void {
+    this.lastWaterNudgeTime = nowMs;
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("coucou_last_water_time", String(nowMs));
+      }
+    } catch {}
+    MessagePolicyEngine.recordDelivered("hydration_reminder", nowMs);
+    ContextIntelligence.recordHydration(nowMs);
+    this.saveState();
+  }
 
   private _preferredName = "";
   private _detectedGreetingName = "";
@@ -131,6 +157,20 @@ export class WelcomeMessageManager {
     if (this._preferredName.length > 0) return this._preferredName;
     if (this._detectedGreetingName.length > 0) return this._detectedGreetingName;
     return "";
+  }
+
+  get companionName(): string {
+    return resolveCompanionName(State.settings);
+  }
+
+  invalidateForCompanionRename(): void {
+    ContextIntelligence.incrementVersion();
+    void SpeculativeEngine.invalidate();
+    if (this.current) {
+      this.dismiss();
+    } else {
+      this.notify();
+    }
   }
 
   /** Backward-compatible alias for resolvedGreetingName. */
@@ -191,7 +231,14 @@ export class WelcomeMessageManager {
         const well = localStorage.getItem("coucou_wellness_enabled");
         if (well != null) this.wellnessEnabled = well === "true";
         const water = localStorage.getItem("coucou_last_water_time");
-        if (water) this.lastWaterNudgeTime = Number(water) || Date.now();
+        if (water) {
+          const n = Number(water);
+          if (!isNaN(n) && n > 0) {
+            this.lastWaterNudgeTime = n;
+            MessagePolicyEngine.recordDelivered("hydration_reminder", n);
+            ContextIntelligence.recordHydration(n);
+          }
+        }
         const intv = localStorage.getItem("coucou_hydration_interval");
         if (intv) this.hydrationIntervalMinutes = Number(intv) || 45;
 
@@ -318,22 +365,82 @@ export class WelcomeMessageManager {
 
     const now = Date.now();
     const d = new Date(now);
-    const hour = d.getHours() + d.getMinutes() / 60;
+    const hour = d.getHours();
     const u = this.resolvedGreetingName;
+    const c = this.companionName;
+    const cp = companionPossessive(c);
 
-    let text = u ? `Hey ${u}, good to see you! ✨` : "Hey, good to see you! ✨";
-    if (hour >= 5 && hour < 11.5) {
-      text = u ? `Good morning, ${u}! Ready to crush today? 🚀` : "Good morning! Ready to crush today? 🚀";
-    } else if (hour >= 11.5 && hour < 17) {
-      text = u ? `Afternoon momentum looking great, ${u} ✨` : "Afternoon momentum looking great! ✨";
-    } else if (hour >= 17 && hour < 22) {
-      text = u ? `Evening building, ${u}! Let's make it count 🌇` : "Evening building! Let's make it count 🌇";
+    // Context-aware launch greeting pools categorized by actual local time
+    let pool: { id: string; template: (name: string) => string }[] = [];
+
+    if (hour >= 5 && hour < 9) {
+      // Early morning (05:00 - 08:59)
+      pool = [
+        { id: "launch_early_1", template: (n) => n ? `Morning, ${n}. ${cp} awake and cheering you on ☕` : `Morning! ${cp} awake and cheering you on ☕` },
+        { id: "launch_early_2", template: (n) => n ? `Early bird mode, ${n}! Let's make today great 🌅` : "Early bird mode! Let's make today great 🌅" },
+        { id: "launch_early_3", template: (n) => n ? `Good morning, ${n}. ${cp} ready when you are ✨` : `Good morning! ${cp} ready when you are ✨` },
+        { id: "launch_early_4", template: (n) => n ? `Morning, ${n}! Let's set a great tempo today 🚀` : "Morning! Let's set a great tempo today 🚀" },
+      ];
+    } else if (hour >= 9 && hour < 12) {
+      // Peak morning focus (09:00 - 11:59)
+      pool = [
+        { id: "launch_morning_1", template: (n) => n ? `Good morning, ${n}. ${cp} ready when you are 🚀` : `Good morning! ${cp} ready when you are 🚀` },
+        { id: "launch_morning_2", template: (n) => n ? `Focus mode ready, ${n}! Let's make every commit count 💻` : "Focus mode ready! Let's make every commit count 💻" },
+        { id: "launch_morning_3", template: (n) => n ? `Hey ${n}! ${c} is right here with you today ⚡` : `Hey! ${c} is right here with you today ⚡` },
+        { id: "launch_morning_4", template: (n) => n ? `Ready to build, ${n}? Today's looking promising ✨` : "Ready to build? Today's looking promising ✨" },
+      ];
+    } else if (hour >= 12 && hour < 14) {
+      // Midday (12:00 - 13:59)
+      pool = [
+        { id: "launch_midday_1", template: (n) => n ? `Midday check-in, ${n}! ${cp} keeping things steady ✨` : `Midday check-in! ${cp} keeping things steady ✨` },
+        { id: "launch_midday_2", template: (n) => n ? `Hey ${n}! Halfway through the day, staying strong 🥪` : "Hey! Halfway through the day, staying strong 🥪" },
+        { id: "launch_midday_3", template: (n) => n ? `Solid progress so far, ${n}! Ready for the afternoon ⚡` : "Solid progress so far! Ready for the afternoon ⚡" },
+      ];
+    } else if (hour >= 14 && hour < 17) {
+      // Afternoon (14:00 - 16:59)
+      pool = [
+        { id: "launch_afternoon_1", template: (n) => n ? `Good afternoon, ${n}! ${cp} right here in your Notch ⚡` : `Good afternoon! ${cp} right here in your Notch ⚡` },
+        { id: "launch_afternoon_2", template: (n) => n ? `Afternoon building, ${n}! Let's keep the focus rolling 🚀` : "Afternoon building! Let's keep the focus rolling 🚀" },
+        { id: "launch_afternoon_3", template: (n) => n ? `Hey ${n}! ${c} is ready for a strong afternoon sprint 💻` : `Hey! ${c} is ready for a strong afternoon sprint 💻` },
+        { id: "launch_afternoon_4", template: (n) => n ? `Great momentum, ${n}! Second wind incoming ✨` : "Great momentum! Second wind incoming ✨" },
+      ];
+    } else if (hour >= 17 && hour < 21) {
+      // Evening (17:00 - 20:59)
+      pool = [
+        { id: "launch_evening_1", template: (n) => n ? `Good evening, ${n}! ${cp} here for the wrap-up 🌇` : `Good evening! ${cp} here for the wrap-up 🌇` },
+        { id: "launch_evening_2", template: (n) => n ? `Evening wrap-up, ${n}! Look at all you accomplished today ✨` : "Evening wrap-up! Look at all you accomplished today ✨" },
+        { id: "launch_evening_3", template: (n) => n ? `Golden hour session, ${n}! ${c} saved your quiet corner 🌆` : `Golden hour session! ${c} saved your quiet corner 🌆` },
+        { id: "launch_evening_4", template: (n) => n ? `Hey ${n}! Almost wrap-up time, you earned your evening 🛋️` : "Almost wrap-up time, you earned your evening 🛋️" },
+      ];
+    } else if (hour >= 21) {
+      // Night (21:00 - 23:59)
+      pool = [
+        { id: "launch_night_1", template: (n) => {
+          return n ? `Night owl mode, ${n}! ${cp} here with you 🌙` : `Night owl mode! ${cp} here with you 🌙`;
+        } },
+        { id: "launch_night_2", template: (n) => n ? `Late evening session, ${n}! Great work, take it easy tonight ✨` : "Late evening session! Great work, take it easy tonight ✨" },
+        { id: "launch_night_3", template: (n) => n ? `Hey ${n}, burning the late hours? Remember to unwind soon 🛋️` : "Hey, burning the late hours? Remember to unwind soon 🛋️" },
+      ];
     } else {
-      text = u ? `Night owl mode, ${u}! Mochi's here with you 🌙` : "Night owl mode! Mochi's here with you 🌙";
+      // Deep night (00:00 - 04:59)
+      pool = [
+        { id: "launch_deepnight_1", template: (n) => n ? `Late night building, ${n}? Don't push too hard tonight 🌌` : "Late night building? Don't push too hard tonight 🌌" },
+        { id: "launch_deepnight_2", template: (n) => {
+          return n ? `Still awake, ${n}? ${cp} keeping watch, but rest is magic too 😴` : `Still awake? ${cp} keeping watch, but rest is magic too 😴`;
+        } },
+      ];
     }
 
+    const unseen = pool.filter((item) => !this.recentHistory.includes(item.id));
+    const candidate = (unseen.length > 0 ? unseen : pool)[Math.floor(Math.random() * (unseen.length > 0 ? unseen.length : pool.length))];
+    const text = candidate ? candidate.template(u) : (u ? `Hello ${u}! Welcome back ✨` : "Hello! Welcome back ✨");
+    const chosenId = candidate ? candidate.id : "launch_greeting";
+
+    this.recentHistory.unshift(chosenId);
+    if (this.recentHistory.length > 20) this.recentHistory.pop();
+
     this.displayMessage({
-      id: "launch_greeting",
+      id: chosenId,
       text,
       bot: true,
       category: "classic",
@@ -345,7 +452,7 @@ export class WelcomeMessageManager {
    * 60-second active work evaluation loop.
    */
   private onAmbientTick() {
-    if (!this.enabled) return;
+    if (!this.enabled || !this.isUserPresent) return;
 
     // Increment active work screen time
     this.activeMinutes += 1;
@@ -372,8 +479,7 @@ export class WelcomeMessageManager {
       this.recentHistory.unshift(chosenId);
       if (this.recentHistory.length > 20) this.recentHistory.pop();
 
-      this.lastWaterNudgeTime = now;
-      this.saveState();
+      this.recordHydrationDelivered(now);
       this.displayMessage({
         id: chosenId,
         text,
@@ -426,7 +532,8 @@ export class WelcomeMessageManager {
         if (this.recentHistory.length > 20) this.recentHistory.pop();
       } else {
         if (currentPhase === "afternoon_slump") {
-          phaseText = u ? `2 PM slump? Not on Mochi's watch, ${u} ⚡` : "2 PM slump? Not on Mochi's watch ⚡";
+          const cp = companionPossessive(this.companionName);
+          phaseText = u ? `2 PM slump? Not on ${cp} watch, ${u} ⚡` : `2 PM slump? Not on ${cp} watch ⚡`;
         } else if (currentPhase === "golden_hour") {
           phaseText = u ? `Golden hour, ${u}! Look at all you built today 🌇` : "Golden hour! Look at all you built today 🌇";
         } else if (currentPhase === "evening_wrapup") {
@@ -485,6 +592,7 @@ export class WelcomeMessageManager {
    * Speculatively pre-generates an AI candidate in the background.
    */
   onUserAway(awayMinutes: number) {
+    this.setUserPresent(false);
     if (!this.enabled) return;
     const awaySnap = ContextIntelligence.capture("greeting_return", awayMinutes * 60);
     const settings = this.getCompanionSettings();
@@ -503,6 +611,11 @@ export class WelcomeMessageManager {
    * Called when Win32 GetLastInputInfo reports the user returned after an idle period.
    */
   onUserReturned(awayMinutes: number, resolvedName?: string | null) {
+    this.setUserPresent(true);
+    // If user stepped away for 15+ minutes, break continuous fatigue streak
+    if (awayMinutes >= 15) {
+      this.activeMinutes = 0;
+    }
     if (!this.enabled) return;
 
     const now = Date.now();
@@ -536,7 +649,7 @@ export class WelcomeMessageManager {
 
     // 2. If no valid candidate, use instant deterministic fallback (<1ms)
     if (!chosenText) {
-      const fallback = DeterministicCatalog.resolveFallback(returnSnap);
+      const fallback = DeterministicCatalog.resolveFallback(returnSnap, "greeting_return");
       chosenText = fallback.text;
       chosenId = fallback.id;
       chosenCategory = fallback.category;
@@ -563,17 +676,19 @@ export class WelcomeMessageManager {
   poke() {
     const now = Date.now();
     const u = this.resolvedGreetingName;
+    const c = this.companionName;
+    const cp = companionPossessive(c);
     const thoughts = [
-      u ? `Mochi's right here with you, ${u}! 💙` : "Mochi's right here with you! 💙",
+      u ? `${cp} right here with you, ${u}! 💙` : `${cp} right here with you! 💙`,
       u ? `You're doing awesome work today, ${u}! 🚀` : "You're doing awesome work today! 🚀",
-      u ? `Focus mode active! Let's build something great ✨` : "Focus mode active! Let's build something great ✨",
+      u ? `${c} loves keeping you company here ✨` : `${c} loves keeping you company here ✨`,
       u ? `Remember to stretch and hydrate, ${u} 🧘` : "Remember to stretch and hydrate! 🧘",
       u ? `Keep up the momentum, ${u} — you're on a roll 🔥` : "Keep up the momentum — you're on a roll 🔥",
       u ? `Always in your corner, ${u}! 🌟` : "Always in your corner! 🌟",
       u ? `Step by step, ${u} — great things take time 🛠️` : "Step by step — great things take time 🛠️",
-      u ? `High five, ${u}! Take pride in your work ✨` : "High five! Take pride in your work ✨",
+      u ? `High five from ${c}, ${u}! Keep building ✨` : `High five from ${c}! Keep building ✨`,
       u ? `Need a second, ${u}? Take a deep breath 🌿` : "Need a second? Take a deep breath 🌿",
-      u ? `Your focus inspires me, ${u}! Let's keep building 💻` : "Your focus inspires me! Let's keep building 💻",
+      u ? `You and ${c} make a great team, ${u}! 💻` : `You and ${c} make a great team! 💻`,
     ];
     const text = thoughts[Math.floor(Math.random() * thoughts.length)];
     this.displayMessage({
@@ -586,11 +701,37 @@ export class WelcomeMessageManager {
   }
 
   /**
+   * Immediately shows a warm Notch welcome after completing first-run companion naming.
+   */
+  triggerOnboardingWelcome(companionName?: string, skipped = false) {
+    this.hasGreetedOnLaunch = true;
+    const c = resolveCompanionName({ companionName: companionName ?? State.settings.companionName });
+    const u = this.resolvedGreetingName;
+    const now = Date.now();
+    const hour = new Date(now).getHours();
+    const greeting =
+      hour >= 5 && hour < 12 ? "Good morning" :
+      hour >= 12 && hour < 17 ? "Good afternoon" :
+      "Good evening";
+    const text = skipped
+      ? (u ? `${greeting}, ${u}! I'm ${c}, right here in your Notch ✨` : `${greeting}! I'm ${c}, right here in your Notch ✨`)
+      : (u ? `${greeting}, ${u}! I'm ${c}. Happy to be here ✨` : `${greeting}! I'm ${c}. Happy to be here ✨`);
+    this.displayMessage({
+      id: "onboarding_welcome",
+      text,
+      bot: true,
+      category: "classic",
+      timestamp: now,
+    });
+  }
+
+  /**
    * Immediately triggers a preview message (for Settings or test buttons).
    */
   triggerPreview(sampleText?: string) {
     const u = this.resolvedGreetingName;
-    const text = sampleText || (u ? `Hey ${u}! Mochi companion is active 🌟` : "Hey! Mochi companion is active 🌟");
+    const c = this.companionName;
+    const text = sampleText || (u ? `Hey ${u}! ${c} is active 🌟` : `Hey! ${c} is active 🌟`);
     this.displayMessage({
       id: "preview_test",
       text,
@@ -652,7 +793,24 @@ export class WelcomeMessageManager {
     };
   }
 
-  selectBestMessage(s: WelcomeStateVector): WelcomeMessageItem {
+  matchesPhase(candidatePhase: string | undefined, currentPhase: CircadianPhase): boolean {
+    if (!candidatePhase) return false;
+    if (candidatePhase === currentPhase) return true;
+    if (currentPhase === "morning" && (candidatePhase === "dawn" || candidatePhase === "morning_peak")) return true;
+    if (currentPhase === "dawn" && (candidatePhase === "morning" || candidatePhase === "morning_peak")) return true;
+    if (currentPhase === "morning_peak" && (candidatePhase === "morning" || candidatePhase === "dawn")) return true;
+    if (currentPhase === "afternoon" && (candidatePhase === "midday_lunch" || candidatePhase === "afternoon_slump")) return true;
+    if (currentPhase === "midday_lunch" && (candidatePhase === "afternoon" || candidatePhase === "afternoon_slump")) return true;
+    if (currentPhase === "afternoon_slump" && (candidatePhase === "afternoon" || candidatePhase === "midday_lunch")) return true;
+    if (currentPhase === "evening" && (candidatePhase === "golden_hour" || candidatePhase === "evening_wrapup")) return true;
+    if (currentPhase === "golden_hour" && (candidatePhase === "evening" || candidatePhase === "evening_wrapup")) return true;
+    if (currentPhase === "evening_wrapup" && (candidatePhase === "evening" || candidatePhase === "golden_hour" || candidatePhase === "night")) return true;
+    if (currentPhase === "night" && (candidatePhase === "evening_wrapup" || candidatePhase === "deep_night" || candidatePhase === "night")) return true;
+    if (currentPhase === "deep_night" && (candidatePhase === "deep_night" || candidatePhase === "night")) return true;
+    return false;
+  }
+
+  selectBestMessage(s: WelcomeStateVector, filterCategory?: string): WelcomeMessageItem {
     const candidates = this.getCatalog();
     let bestScore = -Infinity;
     let selected = candidates[0];
@@ -661,6 +819,16 @@ export class WelcomeMessageManager {
     const recentWindow = Math.min(20, Math.floor(candidates.length * 0.08));
 
     for (const c of candidates) {
+      // Category filter: when a category filter is specified (e.g. "greeting_return"),
+      // exclude non-matching wellness or unrelated categories.
+      if (filterCategory === "greeting_return") {
+        if (c.category === "hydration" || c.category === "posture") {
+          continue; // Hydration & posture NEVER intrude into return greetings!
+        }
+      } else if (filterCategory && c.category !== filterCategory) {
+        continue;
+      }
+
       let score = c.weight ?? 10;
 
       // Recency penalty — stronger penalty for recently shown messages
@@ -697,7 +865,7 @@ export class WelcomeMessageManager {
       }
 
       // Time of day affinity
-      if (c.phase && c.phase === s.timeOfDay) {
+      if (c.phase && this.matchesPhase(c.phase, s.timeOfDay)) {
         score += 20;
       }
 
@@ -770,7 +938,10 @@ export class WelcomeMessageManager {
       {
         id: "core_seat_warm",
         category: "classic",
-        template: (u) => (u ? `Mochi kept your seat warm, ${u}!` : "Mochi kept your seat warm!"),
+        template: (u) => {
+          const c = this.companionName;
+          return u ? `${c} kept your seat warm, ${u}!` : `${c} kept your seat warm!`;
+        },
         weight: 14,
       },
       {
@@ -862,7 +1033,10 @@ export class WelcomeMessageManager {
         id: "time_slump_beater",
         category: "circadian",
         phase: "afternoon_slump",
-        template: (u) => (u ? `Hey ${u}! 2 PM slump? Not on Mochi's watch ⚡` : "Hey! 2 PM slump? Not on Mochi's watch ⚡"),
+        template: (u) => {
+          const cp = companionPossessive(this.companionName);
+          return u ? `Hey ${u}! 2 PM slump? Not on ${cp} watch ⚡` : `Hey! 2 PM slump? Not on ${cp} watch ⚡`;
+        },
         weight: 22,
       },
       {
@@ -935,7 +1109,10 @@ export class WelcomeMessageManager {
       {
         id: "dur_long_reunion",
         category: "duration",
-        template: (u) => (u ? `You're back! Mochi missed you so much, ${u}! 💙` : "You're back! Mochi missed you so much! 💙"),
+        template: (u) => {
+          const c = this.companionName;
+          return u ? `You're back! ${c} missed you so much, ${u}! 💙` : `You're back! ${c} missed you so much! 💙`;
+        },
         minAwayMinutes: 30,
         weight: 25,
       },
@@ -993,12 +1170,12 @@ export class WelcomeMessageManager {
       { id: "focus_06", category: "work_streak", template: (u) => (u ? `Tasks falling like dominoes today, ${u}!` : "Tasks falling like dominoes today!"), weight: 13 },
       { id: "focus_07", category: "work_streak", template: (u) => (u ? `${u}, solid session. Keep that energy up!` : "Solid session. Keep that energy up!"), minWorkHours: 2, weight: 13 },
       { id: "focus_08", category: "work_streak", template: (_u) => "One thing at a time. You've got this! 🎯", weight: 12 },
-      { id: "focus_09", category: "work_streak", template: (u) => (u ? `${u}, Mochi sees you working hard. Well done!` : "Mochi sees you working hard. Well done!"), weight: 12 },
+      { id: "focus_09", category: "work_streak", template: (u) => { const c = this.companionName; return u ? `${u}, ${c} sees you working hard. Well done!` : `${c} sees you working hard. Well done!`; }, weight: 12 },
       { id: "focus_10", category: "work_streak", template: (u) => (u ? `Momentum is everything, ${u}. Keep moving!` : "Momentum is everything. Keep moving!"), weight: 12 },
       { id: "focus_11", category: "work_streak", template: (_u) => "Heads down, good things happening! 💙", minWorkHours: 1, weight: 12 },
       { id: "focus_12", category: "work_streak", template: (u) => (u ? `${u}, another focused hour in the books 📚` : "Another focused hour in the books 📚"), minWorkHours: 1, weight: 13 },
       { id: "focus_13", category: "work_streak", template: (_u) => "Doing it one step at a time — nice!", weight: 11 },
-      { id: "focus_14", category: "work_streak", template: (u) => (u ? `${u}, Mochi's impressed by your consistency!` : "Mochi's impressed by your consistency!"), minWorkHours: 2, weight: 13 },
+      { id: "focus_14", category: "work_streak", template: (u) => { const cp = companionPossessive(this.companionName); return u ? `${u}, ${cp} impressed by your consistency!` : `${cp} impressed by your consistency!`; }, minWorkHours: 2, weight: 13 },
       { id: "focus_15", category: "work_streak", template: (_u) => "Brain fully online! Good things ahead ✨", weight: 11 },
       { id: "focus_16", category: "work_streak", template: (u) => (u ? `Staying in the zone, ${u}? Perfect.` : "Staying in the zone? Perfect."), weight: 12 },
       { id: "focus_17", category: "work_streak", template: (_u) => "Tick, tick... progress is building! 🔧", minWorkHours: 1, weight: 11 },
@@ -1009,7 +1186,7 @@ export class WelcomeMessageManager {
       { id: "focus_22", category: "work_streak", template: (u) => (u ? `${u}, focused sprints beat marathon multitasking!` : "Focused sprints beat marathon multitasking!"), weight: 12 },
       { id: "focus_23", category: "work_streak", template: (_u) => "Good work takes good focus. You've got both!", weight: 11 },
       { id: "focus_24", category: "work_streak", template: (u) => (u ? `${u}, three hours deep. You're on fire 🔥` : "Three hours deep. You're on fire 🔥"), minWorkHours: 3, weight: 14 },
-      { id: "focus_25", category: "work_streak", template: (_u) => "The work is happening. Mochi's rooting for you!", weight: 11 },
+      { id: "focus_25", category: "work_streak", template: (_u) => `The work is happening. ${companionPossessive(this.companionName)} rooting for you!`, weight: 11 },
       { id: "focus_26", category: "work_streak", template: (u) => (u ? `Crush it, ${u}! Today's a big day 🚀` : "Crush it! Today's a big day 🚀"), weight: 12 },
       { id: "focus_27", category: "work_streak", template: (_u) => "Steady progress beats rushed bursts. Well done!", weight: 11 },
       { id: "focus_28", category: "work_streak", template: (u) => (u ? `${u}, dialled in and delivering!` : "Dialled in and delivering!"), minWorkHours: 1, weight: 12 },
@@ -1052,7 +1229,7 @@ export class WelcomeMessageManager {
       { id: "break_01", category: "posture", template: (u) => (u ? `${u}, five minute walk? Your legs will thank you!` : "Five minute walk? Your legs will thank you!"), weight: 14 },
       { id: "break_02", category: "posture", template: (_u) => "Quick stretch — shoulders, neck, wrists. Go!", weight: 13 },
       { id: "break_03", category: "posture", template: (u) => (u ? `${u}, blink slowly a few times. Screen dryness is real!` : "Blink slowly a few times. Screen dryness is real!"), weight: 13 },
-      { id: "break_04", category: "posture", template: (_u) => "Stand up for 60 seconds. Your back wants this!", minWorkHours: 1.5, weight: 14 },
+      { id: "break_04", category: "posture", template: (u) => { const c = this.companionName; return u ? `Still working, ${u}? ${c} recommends a quick stretch 🧘` : `Still working? ${c} recommends a quick stretch 🧘`; }, minWorkHours: 1.5, weight: 14 },
       { id: "break_05", category: "posture", template: (u) => (u ? `${u}, chin up, shoulders back. Quick posture reset!` : "Chin up, shoulders back. Quick posture reset!"), weight: 13 },
       { id: "break_06", category: "posture", template: (_u) => "Look out the window for 20 seconds. Eyes need rest!", weight: 13 },
       { id: "break_07", category: "posture", template: (u) => (u ? `${u}, wrist roll time! 10 seconds each side 🤲` : "Wrist roll time! 10 seconds each side 🤲"), minWorkHours: 2, weight: 13 },
@@ -1060,7 +1237,7 @@ export class WelcomeMessageManager {
       { id: "break_09", category: "posture", template: (u) => (u ? `${u}, breathe in for 4, hold for 4, out for 4 🌿` : "Breathe in for 4, hold for 4, out for 4 🌿"), weight: 13 },
       { id: "break_10", category: "posture", template: (_u) => "Quick eye massage. Close them, gentle circles!", minWorkHours: 2, weight: 12 },
       { id: "break_11", category: "posture", template: (u) => (u ? `${u}, arms above your head! Big stretch time 🙌` : "Arms above your head! Big stretch time 🙌"), weight: 13 },
-      { id: "break_12", category: "posture", template: (_u) => "Ten slow shoulder rolls. Mochi's counting!", weight: 12 },
+      { id: "break_12", category: "posture", template: (_u) => `Ten slow shoulder rolls. ${companionPossessive(this.companionName)} counting!`, weight: 12 },
       { id: "break_13", category: "posture", template: (u) => (u ? `${u}, feet flat on the floor. Grounded and focused!` : "Feet flat on the floor. Grounded and focused!"), weight: 11 },
       { id: "break_14", category: "posture", template: (_u) => "Jaw unclenched? Check your face tension!", weight: 12 },
       { id: "break_15", category: "posture", template: (u) => (u ? `${u}, take three slow breaths before diving back in 🌿` : "Take three slow breaths before diving back in 🌿"), weight: 12 },
@@ -1073,22 +1250,22 @@ export class WelcomeMessageManager {
       { id: "break_22", category: "posture", template: (_u) => "Even 90 seconds of movement resets your brain!", minWorkHours: 1, weight: 12 },
       { id: "break_23", category: "posture", template: (u) => (u ? `${u}, step away from the screen. Even two minutes helps!` : "Step away from the screen. Even two minutes helps!"), minWorkHours: 2, weight: 13 },
       { id: "break_24", category: "posture", template: (_u) => "You can't pour from an empty cup. Rest up!", minWorkHours: 3, weight: 14 },
-      { id: "break_25", category: "posture", template: (u) => (u ? `${u}, Mochi orders: one genuine rest break. Now!` : "Mochi orders: one genuine rest break. Now!"), minWorkHours: 4, weight: 15 },
+      { id: "break_25", category: "posture", template: (u) => { const c = this.companionName; return u ? `${u}, ${c} orders: one genuine rest break. Now!` : `${c} orders: one genuine rest break. Now!`; }, minWorkHours: 4, weight: 15 },
 
       // ── Hydration Reminders (20) ──
       { id: "hydro_01", category: "hydration", template: (u) => (u ? `${u}, sip some water. Right now!` : "Sip some water. Right now!"), minWaterMinutes: 45, weight: 20 },
-      { id: "hydro_02", category: "hydration", template: (_u) => "Water break! Your brain runs on it 💧", minWaterMinutes: 50, weight: 19 },
-      { id: "hydro_03", category: "hydration", template: (u) => (u ? `${u}, time to hydrate. Mochi insists!` : "Time to hydrate. Mochi insists!"), minWaterMinutes: 55, weight: 20 },
+      { id: "hydro_02", category: "hydration", template: (_u) => `${this.companionName} thinks it's a good time for a glass of water 💧`, minWaterMinutes: 50, weight: 19 },
+      { id: "hydro_03", category: "hydration", template: (u) => { const c = this.companionName; return u ? `${u}, time to hydrate. ${c} insists!` : `Time to hydrate. ${c} insists!`; }, minWaterMinutes: 55, weight: 20 },
       { id: "hydro_04", category: "hydration", template: (_u) => "Thirsty yet? Pour yourself a glass of water! 🥛", minWaterMinutes: 45, weight: 18 },
       { id: "hydro_05", category: "hydration", template: (u) => (u ? `${u}, water first. Then code!` : "Water first. Then code!"), minWaterMinutes: 60, weight: 19 },
       { id: "hydro_06", category: "hydration", template: (_u) => "Coffee's great, but water is greater. Balance it out!", minWaterMinutes: 50, weight: 17 },
       { id: "hydro_07", category: "hydration", template: (u) => (u ? `${u}, stay hydrated. Your focus depends on it 💧` : "Stay hydrated. Your focus depends on it 💧"), minWaterMinutes: 60, weight: 18 },
-      { id: "hydro_08", category: "hydration", template: (_u) => "Quick hydration check! Mochi wants to see you drink up!", minWaterMinutes: 45, weight: 17 },
+      { id: "hydro_08", category: "hydration", template: (_u) => `Quick hydration check! ${this.companionName} wants to see you drink up!`, minWaterMinutes: 45, weight: 17 },
       { id: "hydro_09", category: "hydration", template: (u) => (u ? `${u}, three sips of water. Go!` : "Three sips of water. Go!"), minWaterMinutes: 50, weight: 19 },
       { id: "hydro_10", category: "hydration", template: (_u) => "Dehydration is sneaky. Grab your water bottle now!", minWaterMinutes: 55, weight: 18 },
       { id: "hydro_11", category: "hydration", template: (u) => (u ? `${u}, best performance needs best hydration 💧` : "Best performance needs best hydration 💧"), minWaterMinutes: 60, weight: 17 },
       { id: "hydro_12", category: "hydration", template: (_u) => "Water o'clock! Don't forget while you work ⏰", minWaterMinutes: 45, weight: 16 },
-      { id: "hydro_13", category: "hydration", template: (u) => (u ? `${u}, Mochi's counting your water breaks. Have one!` : "Mochi's counting your water breaks. Have one!"), minWaterMinutes: 50, weight: 17 },
+      { id: "hydro_13", category: "hydration", template: (u) => { const cp = companionPossessive(this.companionName); return u ? `${u}, ${cp} counting your water breaks. Have one!` : `${cp} counting your water breaks. Have one!`; }, minWaterMinutes: 50, weight: 17 },
       { id: "hydro_14", category: "hydration", template: (_u) => "Refill that bottle. One step and a sip!", minWaterMinutes: 45, weight: 16 },
       { id: "hydro_15", category: "hydration", template: (u) => (u ? `${u}, still no water? That changes now 💧` : "Still no water? That changes now 💧"), minWaterMinutes: 70, weight: 20 },
       { id: "hydro_16", category: "hydration", template: (_u) => "Water does what coffee can't. Drink up!", minWaterMinutes: 60, weight: 17 },
@@ -1127,7 +1304,7 @@ export class WelcomeMessageManager {
       // ── Positive Reinforcement (25) ──
       { id: "praise_01", category: "work_streak", template: (u) => (u ? `${u}, look at that progress! Genuinely impressive!` : "Look at that progress! Genuinely impressive!"), minWorkHours: 2, weight: 13 },
       { id: "praise_02", category: "work_streak", template: (_u) => "Session goal hit! You should feel good about that!", weight: 12 },
-      { id: "praise_03", category: "work_streak", template: (u) => (u ? `${u}, Mochi is genuinely proud of you today!` : "Mochi is genuinely proud of you today!"), weight: 12 },
+      { id: "praise_03", category: "work_streak", template: (u) => { const c = this.companionName; return u ? `${u}, ${c} is genuinely proud of you today!` : `${c} is genuinely proud of you today!`; }, weight: 12 },
       { id: "praise_04", category: "work_streak", template: (_u) => "Great things are built brick by brick. Keep stacking! 🧱", weight: 12 },
       { id: "praise_05", category: "work_streak", template: (u) => (u ? `${u}, hard work beats talent when talent doesn't work hard!` : "Hard work beats talent when talent doesn't work hard!"), minWorkHours: 3, weight: 13 },
       { id: "praise_06", category: "work_streak", template: (_u) => "You showed up today. That already counts for a lot!", weight: 11 },
@@ -1136,18 +1313,18 @@ export class WelcomeMessageManager {
       { id: "praise_09", category: "work_streak", template: (u) => (u ? `${u}, you're building something that matters. Keep going!` : "You're building something that matters. Keep going!"), weight: 12 },
       { id: "praise_10", category: "work_streak", template: (_u) => "Discipline today, results tomorrow. Nicely done! 🎯", minWorkHours: 2, weight: 12 },
       { id: "praise_11", category: "work_streak", template: (u) => (u ? `${u}, quiet consistency beats loud sprints every time!` : "Quiet consistency beats loud sprints every time!"), weight: 11 },
-      { id: "praise_12", category: "work_streak", template: (_u) => "Mochi's impressed. You've been at it for a while now!", minWorkHours: 2, weight: 13 },
+      { id: "praise_12", category: "work_streak", template: (_u) => `${companionPossessive(this.companionName)} impressed. You've been at it for a while now!`, minWorkHours: 2, weight: 13 },
       { id: "praise_13", category: "work_streak", template: (u) => (u ? `${u}, future you will thank today you for this!` : "Future you will thank today you for this!"), weight: 12 },
       { id: "praise_14", category: "work_streak", template: (_u) => "Progress is progress, no matter the pace. Well done!", weight: 11 },
       { id: "praise_15", category: "work_streak", template: (u) => (u ? `${u}, you're doing better than you think!` : "You're doing better than you think!"), weight: 12 },
       { id: "praise_16", category: "work_streak", template: (_u) => "Good work deserves good recognition. Take a moment! 🌟", minWorkHours: 3, weight: 13 },
       { id: "praise_17", category: "work_streak", template: (u) => (u ? `${u}, smart and steady always wins the race!` : "Smart and steady always wins the race!"), weight: 11 },
-      { id: "praise_18", category: "work_streak", template: (_u) => "Incredible focus today. Mochi sees everything! ✨", minWorkHours: 2, weight: 12 },
+      { id: "praise_18", category: "work_streak", template: (_u) => `Incredible focus today. ${this.companionName} sees everything! ✨`, minWorkHours: 2, weight: 12 },
       { id: "praise_19", category: "work_streak", template: (u) => (u ? `${u}, another great chapter in a great story!` : "Another great chapter in a great story!"), weight: 11 },
       { id: "praise_20", category: "work_streak", template: (_u) => "If effort was currency, you'd be rich today! 💰", minWorkHours: 3, weight: 12 },
       { id: "praise_21", category: "work_streak", template: (u) => (u ? `${u}, keep that energy. It's contagious!` : "Keep that energy. It's contagious!"), weight: 11 },
       { id: "praise_22", category: "work_streak", template: (_u) => "Half the battle is just showing up. You showed up! 🏅", weight: 11 },
-      { id: "praise_23", category: "work_streak", template: (u) => (u ? `${u}, Mochi's rooting for you. Always!` : "Mochi's rooting for you. Always!"), weight: 12 },
+      { id: "praise_23", category: "work_streak", template: (u) => { const cp = companionPossessive(this.companionName); return u ? `${u}, ${cp} rooting for you. Always!` : `${cp} rooting for you. Always!`; }, weight: 12 },
       { id: "praise_24", category: "work_streak", template: (_u) => "Look how far you've come! Really impressive work!", minWorkHours: 4, weight: 13 },
       { id: "praise_25", category: "work_streak", template: (u) => (u ? `${u}, top-tier effort today. Absolutely top-tier!` : "Top-tier effort today. Absolutely top-tier!"), minWorkHours: 3, weight: 12 },
 
@@ -1167,7 +1344,7 @@ export class WelcomeMessageManager {
       { id: "motiv_13", category: "classic", template: (u) => (u ? `${u}, hard days make great stories later!` : "Hard days make great stories later!"), weight: 11 },
       { id: "motiv_14", category: "classic", template: (_u) => "Excellence is a habit. Keep building yours! 🏅", weight: 11 },
       { id: "motiv_15", category: "classic", template: (u) => (u ? `${u}, some days you build. Some days you plan. Both count!` : "Some days you build. Some days you plan. Both count!"), weight: 12 },
-      { id: "motiv_16", category: "classic", template: (_u) => "Mochi believes today is going to be a good one! 🌟", weight: 11 },
+      { id: "motiv_16", category: "classic", template: (_u) => `${this.companionName} believes today is going to be a good one! 🌟`, weight: 11 },
       { id: "motiv_17", category: "classic", template: (u) => (u ? `${u}, curiosity is your superpower. Use it!` : "Curiosity is your superpower. Use it!"), weight: 11 },
       { id: "motiv_18", category: "classic", template: (_u) => "Take it one task, one hour, one win at a time!", weight: 11 },
       { id: "motiv_19", category: "classic", template: (u) => (u ? `${u}, better than yesterday. That's all that matters!` : "Better than yesterday. That's all that matters!"), weight: 12 },
@@ -1175,17 +1352,17 @@ export class WelcomeMessageManager {
 
       // ── Welcome-Back Messages (15) ──
       { id: "return_01", category: "classic", template: (u) => (u ? `Welcome back, ${u}! Ready to pick up where you left off?` : "Welcome back! Ready to pick up where you left off?"), minAwayMinutes: 5, weight: 16 },
-      { id: "return_02", category: "classic", template: (u) => (u ? `${u}'s back! Mochi's been keeping the screen warm 🌟` : "You're back! Mochi's been keeping the screen warm 🌟"), minAwayMinutes: 10, weight: 15 },
+      { id: "return_02", category: "classic", template: (u) => { const cp = companionPossessive(this.companionName); return u ? `${u}'s back! ${cp} been keeping the screen warm 🌟` : `You're back! ${cp} been keeping the screen warm 🌟`; }, minAwayMinutes: 10, weight: 15 },
       { id: "return_03", category: "classic", template: (u) => (u ? `Hey ${u}, good break? Let's finish what we started!` : "Good break? Let's finish what we started!"), minAwayMinutes: 5, weight: 14 },
-      { id: "return_04", category: "classic", template: (_u) => "Back in action! What's next on the list? 📋", minAwayMinutes: 5, weight: 13 },
+      { id: "return_04", category: "classic", template: (_u) => `Welcome back! ${this.companionName} kept things running smoothly ✨`, minAwayMinutes: 5, weight: 13 },
       { id: "return_05", category: "classic", template: (u) => (u ? `${u}, refreshed and ready? Let's keep the momentum!` : "Refreshed and ready? Let's keep the momentum!"), minAwayMinutes: 10, weight: 14 },
       { id: "return_06", category: "classic", template: (_u) => "Welcome back to your corner of the internet! 💙", minAwayMinutes: 15, weight: 14 },
-      { id: "return_07", category: "classic", template: (u) => (u ? `${u}, Mochi saved your place. Right here, ready to go!` : "Mochi saved your place. Right here, ready to go!"), minAwayMinutes: 10, weight: 14 },
+      { id: "return_07", category: "classic", template: (u) => { const c = this.companionName; return u ? `${u}, ${c} saved your place. Right here, ready to go!` : `${c} saved your place. Right here, ready to go!`; }, minAwayMinutes: 10, weight: 14 },
       { id: "return_08", category: "classic", template: (_u) => "Back at the desk! Time to make it count ✨", minAwayMinutes: 5, weight: 13 },
       { id: "return_09", category: "classic", template: (u) => (u ? `${u}, break over! On to the next great thing!` : "Break over! On to the next great thing!"), minAwayMinutes: 5, weight: 13 },
       { id: "return_10", category: "classic", template: (_u) => "Session resuming. Let's pick that thought back up!", minAwayMinutes: 10, weight: 13 },
       { id: "return_11", category: "classic", template: (u) => (u ? `${u}, the desk called and you answered!` : "The desk called and you answered!"), minAwayMinutes: 10, weight: 12 },
-      { id: "return_12", category: "classic", template: (_u) => "Mochi's glad you're back. Now, what's the plan?", minAwayMinutes: 15, weight: 13 },
+      { id: "return_12", category: "classic", template: (_u) => `${companionPossessive(this.companionName)} glad you're back. Now, what's the plan?`, minAwayMinutes: 15, weight: 13 },
       { id: "return_13", category: "classic", template: (u) => (u ? `${u}, stepping back into it. Just like that!` : "Stepping back into it. Just like that!"), minAwayMinutes: 5, weight: 12 },
       { id: "return_14", category: "classic", template: (_u) => "Back at the helm! What needs attention right now?", minAwayMinutes: 10, weight: 12 },
       { id: "return_15", category: "classic", template: (u) => (u ? `Hey ${u}! Good to have you back at the controls 🎮` : "Good to have you back at the controls 🎮"), minAwayMinutes: 15, weight: 14 },
@@ -1213,16 +1390,16 @@ export class WelcomeMessageManager {
       { id: "switch_20", category: "work_streak", template: (u) => (u ? `${u}, app rotation slows you down. Settle in!` : "App rotation slows you down. Settle in!"), weight: 11 },
 
       // ── General Personalized Interactions (10) ──
-      { id: "personal_01", category: "classic", template: (u) => (u ? `${u}, Mochi's happy you're here! Let's make it a great session!` : "Mochi's happy you're here! Let's make it a great session!"), weight: 13 },
-      { id: "personal_02", category: "classic", template: (_u) => "Every session with you is Mochi's favourite! 💙", weight: 12 },
-      { id: "personal_03", category: "classic", template: (u) => (u ? `${u}, you and Mochi are a team. Best team!` : "You and Mochi are a team. Best team!"), weight: 12 },
-      { id: "personal_04", category: "classic", template: (_u) => "Mochi noticed you've been building a lot. Impressive stuff!", weight: 12 },
-      { id: "personal_05", category: "classic", template: (u) => (u ? `${u}, whatever you're working on, Mochi's cheering you on!` : "Whatever you're working on, Mochi's cheering you on!"), weight: 12 },
-      { id: "personal_06", category: "classic", template: (_u) => "Together we work better! Mochi's right here 🤝", weight: 11 },
-      { id: "personal_07", category: "classic", template: (u) => (u ? `${u}, Mochi's here if you need a little nudge!` : "Mochi's here if you need a little nudge!"), weight: 12 },
+      { id: "personal_01", category: "classic", template: (u) => { const cp = companionPossessive(this.companionName); return u ? `${u}, ${cp} happy you're here! Let's make it a great session!` : `${cp} happy you're here! Let's make it a great session!`; }, weight: 13 },
+      { id: "personal_02", category: "classic", template: (_u) => `Every session with you is ${companionPossessive(this.companionName)} favourite! 💙`, weight: 12 },
+      { id: "personal_03", category: "classic", template: (u) => { const c = this.companionName; return u ? `${u}, you and ${c} are a team. Best team!` : `You and ${c} are a team. Best team!`; }, weight: 12 },
+      { id: "personal_04", category: "classic", template: (_u) => `${this.companionName} noticed you've been building a lot. Impressive stuff!`, weight: 12 },
+      { id: "personal_05", category: "classic", template: (u) => { const cp = companionPossessive(this.companionName); return u ? `${u}, whatever you're working on, ${cp} cheering you on!` : `Whatever you're working on, ${cp} cheering you on!`; }, weight: 12 },
+      { id: "personal_06", category: "classic", template: (_u) => `Together we work better! ${companionPossessive(this.companionName)} right here 🤝`, weight: 11 },
+      { id: "personal_07", category: "classic", template: (u) => { const cp = companionPossessive(this.companionName); return u ? `${u}, ${cp} here if you need a little nudge!` : `${cp} here if you need a little nudge!`; }, weight: 12 },
       { id: "personal_08", category: "classic", template: (_u) => "Good vibes only. Good work always. That's the way! ✨", weight: 11 },
-      { id: "personal_09", category: "classic", template: (u) => (u ? `${u}, Mochi's rooting for you. Every single day!` : "Mochi's rooting for you. Every single day!"), weight: 12 },
-      { id: "personal_10", category: "classic", template: (_u) => "You + Mochi = unstoppable. Let's prove it today! 🚀", weight: 12 },
+      { id: "personal_09", category: "classic", template: (u) => { const cp = companionPossessive(this.companionName); return u ? `${u}, ${cp} rooting for you. Every single day!` : `${cp} rooting for you. Every single day!`; }, weight: 12 },
+      { id: "personal_10", category: "classic", template: (_u) => `You + ${this.companionName} = unstoppable. Let's prove it today! 🚀`, weight: 12 },
 
       // ── Additional Day-of-Week variants ──
       { id: "day_tuesday", category: "day_of_week", dayOfWeek: 2, template: (u) => (u ? `Happy Tuesday, ${u}! Week's warming up nicely!` : "Happy Tuesday! Week's warming up nicely!"), weight: 15 },

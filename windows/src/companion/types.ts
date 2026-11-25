@@ -7,7 +7,13 @@ export type CircadianPhase =
   | "afternoon"
   | "evening"
   | "night"
-  | "deep_night";
+  | "deep_night"
+  | "dawn"
+  | "morning_peak"
+  | "midday_lunch"
+  | "afternoon_slump"
+  | "golden_hour"
+  | "evening_wrapup";
 
 export type CompanionCategory =
   | "greeting_return"

@@ -125,9 +125,16 @@ pub fn system_prompt(web_search: bool) -> String {
 }
 
 fn system_prompt_for(first_name: Option<&str>, web_search: bool) -> String {
+    let companion = crate::settings::active_companion_name();
+    system_prompt_for_companion(first_name, &companion, web_search)
+}
+
+pub fn system_prompt_for_companion(first_name: Option<&str>, companion_name: &str, web_search: bool) -> String {
+    let clean = crate::settings::sanitize_companion_name(companion_name);
+    let companion = if clean.is_empty() { crate::settings::DEFAULT_COMPANION_NAME } else { &clean };
     let opening = match first_name {
-        Some(name) => format!("You are Mochi, {name}'s personal AI assistant living at the top of their screen."),
-        None => "You are Mochi, a personal AI assistant living at the top of the user's screen.".to_string(),
+        Some(name) => format!("You are {companion}, {name}'s personal AI assistant living at the top of their screen."),
+        None => format!("You are {companion}, a personal AI assistant living at the top of the user's screen."),
     };
     let abilities = if web_search {
         "You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions."
@@ -354,6 +361,8 @@ mod tests {
         assert!(p.starts_with("You are Mochi, a personal AI assistant living at the top of the user's screen."));
         assert!(!p.contains("web search"));
         assert!(p.contains("no web access"));
+        let custom = system_prompt_for_companion(Some("Louis"), "Nova", true);
+        assert!(custom.starts_with("You are Nova, Louis's personal AI assistant living at the top of their screen."));
     }
 
     #[test]

@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError, RwLock};
 
 /// A field the file lacks takes its value from `Default`, so a settings.json
 /// written by an older build still loads, whatever has been added since.
@@ -134,6 +134,10 @@ pub struct Settings {
     /// User-configured folder where files received via Coudrop are saved.
     /// Empty string means the default (%USERPROFILE%\Downloads\Coudrop).
     pub coudrop_download_dir: String,
+    /// User-chosen companion name (empty when unconfigured; defaults to DEFAULT_COMPANION_NAME in UI/prompts).
+    pub companion_name: String,
+    /// True once first-run companion naming is completed or skipped (or migrated from an existing install).
+    pub companion_setup_completed: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -217,7 +221,191 @@ impl Default for Settings {
             show_tab_launch: Some(true),
             agy_approvals_enabled: false,
             coudrop_download_dir: String::new(),
+            companion_name: String::new(),
+            companion_setup_completed: false,
         }
+    }
+}
+
+pub const DEFAULT_COMPANION_NAME: &str = "Mochi";
+pub const COMPANION_NAME_MAX_GRAPHEMES: usize = 24;
+
+static ACTIVE_COMPANION_NAME: OnceLock<RwLock<String>> = OnceLock::new();
+
+fn active_companion_lock() -> &'static RwLock<String> {
+    ACTIVE_COMPANION_NAME.get_or_init(|| RwLock::new(DEFAULT_COMPANION_NAME.to_string()))
+}
+
+fn is_cluster_continuation(prev: char, cur: char) -> bool {
+    let cp = cur as u32;
+    if prev == '\u{200D}' {
+        // Any scalar glued by a Zero-Width Joiner stays inside the current emoji/ligature cluster.
+        return true;
+    }
+    matches!(
+        cp,
+        0x0300..=0x036F
+            | 0x0900..=0x0903
+            | 0x093A..=0x094F
+            | 0x0951..=0x0957
+            | 0x0962..=0x0963
+            | 0x0981..=0x0983
+            | 0x09BC
+            | 0x09BE..=0x09C4
+            | 0x09C7..=0x09C8
+            | 0x09CB..=0x09CD
+            | 0x09D7
+            | 0x09E2..=0x09E3
+            | 0x064B..=0x065F
+            | 0x0670
+            | 0x1AB0..=0x1AFF
+            | 0x1DC0..=0x1DFF
+            | 0x20D0..=0x20FF
+            | 0x200D
+            | 0xFE00..=0xFE0F
+            | 0xFE20..=0xFE2F
+            | 0x1F3FB..=0x1F3FF
+    )
+}
+
+/// Counts user-perceived character clusters without adding external dependencies.
+pub fn companion_grapheme_len(s: &str) -> usize {
+    let mut count = 0usize;
+    let mut prev: Option<char> = None;
+    let mut in_ri_pair = false;
+    for ch in s.chars() {
+        let is_ri = matches!(ch as u32, 0x1F1E6..=0x1F1FF);
+        if let Some(p) = prev {
+            if is_cluster_continuation(p, ch) {
+                prev = Some(ch);
+                continue;
+            }
+            if is_ri && in_ri_pair {
+                in_ri_pair = false;
+                prev = Some(ch);
+                continue;
+            }
+        }
+        count += 1;
+        in_ri_pair = is_ri;
+        prev = Some(ch);
+    }
+    count
+}
+
+/// Normalizes a companion name by stripping non-whitespace control characters,
+/// collapsing internal whitespace runs to single spaces, trimming, and clamping to 24 clusters.
+pub fn sanitize_companion_name(raw: &str) -> String {
+    let mut cleaned = String::with_capacity(raw.len());
+    let mut prev_space = true;
+    for ch in raw.chars() {
+        if ch == '\r' || ch == '\n' || ch == '\t' || ch.is_whitespace() {
+            if !prev_space {
+                cleaned.push(' ');
+                prev_space = true;
+            }
+            continue;
+        }
+        if ch.is_control() {
+            continue;
+        }
+        cleaned.push(ch);
+        prev_space = false;
+    }
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    if companion_grapheme_len(trimmed) <= COMPANION_NAME_MAX_GRAPHEMES {
+        return trimmed.to_string();
+    }
+    let mut out = String::new();
+    let mut clusters = 0usize;
+    let mut prev: Option<char> = None;
+    let mut in_ri_pair = false;
+    for ch in trimmed.chars() {
+        let is_ri = matches!(ch as u32, 0x1F1E6..=0x1F1FF);
+        let cont = prev.is_some_and(|p| is_cluster_continuation(p, ch) || (is_ri && in_ri_pair));
+        if !cont {
+            if clusters >= COMPANION_NAME_MAX_GRAPHEMES {
+                break;
+            }
+            clusters += 1;
+            in_ri_pair = is_ri;
+        } else if is_ri && in_ri_pair {
+            in_ri_pair = false;
+        }
+        out.push(ch);
+        prev = Some(ch);
+    }
+    out.trim_end().to_string()
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn validate_companion_name(raw: &str) -> Result<String, &'static str> {
+    let mut cleaned = String::with_capacity(raw.len());
+    let mut prev_space = true;
+    for ch in raw.chars() {
+        if ch == '\r' || ch == '\n' || ch == '\t' || ch.is_whitespace() {
+            if !prev_space {
+                cleaned.push(' ');
+                prev_space = true;
+            }
+            continue;
+        }
+        if ch.is_control() {
+            continue;
+        }
+        cleaned.push(ch);
+        prev_space = false;
+    }
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        return Err("Please enter a name for your companion.");
+    }
+    if companion_grapheme_len(trimmed) > COMPANION_NAME_MAX_GRAPHEMES {
+        return Err("Companion name must be 24 characters or fewer.");
+    }
+    Ok(trimmed.to_string())
+}
+
+pub fn set_active_companion_name(name: &str) {
+    let clean = sanitize_companion_name(name);
+    let resolved = if clean.is_empty() {
+        DEFAULT_COMPANION_NAME.to_string()
+    } else {
+        clean
+    };
+    if let Ok(mut guard) = active_companion_lock().write() {
+        *guard = resolved;
+    }
+}
+
+pub fn active_companion_name() -> String {
+    active_companion_lock()
+        .read()
+        .map(|s| {
+            if s.trim().is_empty() {
+                DEFAULT_COMPANION_NAME.to_string()
+            } else {
+                s.clone()
+            }
+        })
+        .unwrap_or_else(|_| DEFAULT_COMPANION_NAME.to_string())
+}
+
+impl Settings {
+    pub fn resolved_companion_name(&self) -> String {
+        let clean = sanitize_companion_name(&self.companion_name);
+        if clean.is_empty() {
+            DEFAULT_COMPANION_NAME.to_string()
+        } else {
+            clean
+        }
+    }
+
+    pub fn needs_companion_onboarding(&self) -> bool {
+        !self.companion_setup_completed && sanitize_companion_name(&self.companion_name).is_empty()
     }
 }
 
@@ -232,13 +420,18 @@ fn settings_path() -> PathBuf {
 }
 
 pub fn load() -> Settings {
-    load_from(&settings_path())
+    let settings = load_with_migration(&settings_path());
+    set_active_companion_name(&settings.companion_name);
+    settings
 }
 
 pub fn save(settings: &Settings) -> std::io::Result<()> {
     let dir = config_dir();
     crate::platform::ensure_private_dir(&dir)?;
-    save_to(&settings_path(), settings)
+    let mut clean = settings.clone();
+    clean.companion_name = sanitize_companion_name(&clean.companion_name);
+    set_active_companion_name(&clean.companion_name);
+    save_to(&settings_path(), &clean)
 }
 
 /// How many copies `set_aside` can make within one second before it gives up.
@@ -341,6 +534,34 @@ fn load_from(path: &Path) -> Settings {
         }
         Settings::default()
     })
+}
+
+/// Loads `path` with backward-compatible migration for existing installations:
+/// - Missing or unreadable/empty files do not mark onboarding complete.
+/// - Any pre-existing non-empty JSON settings object lacking `companionSetupCompleted`
+///   is treated as an upgrade from an earlier release: all preferences are preserved,
+///   `companion_setup_completed` is marked `true`, and `companion_name` defaults to
+///   `DEFAULT_COMPANION_NAME` ("Mochi") when empty.
+fn load_with_migration(path: &Path) -> Settings {
+    let raw_bytes = std::fs::read(path).ok();
+    let mut settings = load_from(path);
+    settings.companion_name = sanitize_companion_name(&settings.companion_name);
+
+    if let Some(bytes) = raw_bytes {
+        let text = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
+        if !text.iter().all(u8::is_ascii_whitespace) {
+            if let Ok(Value::Object(map)) = serde_json::from_slice::<Value>(text) {
+                if !map.is_empty() && !map.contains_key("companionSetupCompleted") {
+                    settings.companion_setup_completed = true;
+                    if settings.companion_name.is_empty() {
+                        settings.companion_name = DEFAULT_COMPANION_NAME.to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    settings
 }
 
 /// Marks `path` as holding something the next save must not write over.
@@ -530,7 +751,9 @@ mod tests {
   "showTabDrop": false,
   "showTabLaunch": false,
   "agyApprovalsEnabled": true,
-  "coudropDownloadDir": "D:\\Downloads\\Custom"
+  "coudropDownloadDir": "D:\\Downloads\\Custom",
+  "companionName": "Nova",
+  "companionSetupCompleted": true
 }"##;
 
     fn custom() -> Value {
@@ -1065,6 +1288,8 @@ mod tests {
                 "showTabLaunch",
                 "agyApprovalsEnabled",
                 "coudropDownloadDir",
+                "companionName",
+                "companionSetupCompleted",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
@@ -1123,6 +1348,96 @@ mod tests {
         // Must still be valid settings that load cleanly without corruption
         let loaded = load_from(&file);
         assert!(loaded.sound_volume >= 0.0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── Companion identity, validation & migration ────────────────────────────
+
+    #[test]
+    fn companion_name_validation_accepts_unicode_and_emoji_and_rejects_invalid() {
+        assert_eq!(validate_companion_name("Nova").unwrap(), "Nova");
+        assert_eq!(validate_companion_name("  Kira   🦊 \n\t ").unwrap(), "Kira 🦊");
+        assert_eq!(validate_companion_name("ひかり").unwrap(), "ひかり");
+        assert_eq!(validate_companion_name("José-María").unwrap(), "José-María");
+        assert_eq!(validate_companion_name("नव्या").unwrap(), "नव्या");
+        assert_eq!(validate_companion_name("نور").unwrap(), "نور");
+
+        // Control chars are stripped safely; empty/whitespace fails.
+        assert!(validate_companion_name("").is_err());
+        assert!(validate_companion_name("   \t\r\n  ").is_err());
+        assert!(validate_companion_name("\u{0007}\u{001B}").is_err());
+        assert_eq!(validate_companion_name("No\u{0007}va").unwrap(), "Nova");
+
+        // Max grapheme limit (24 clusters): multi-codepoint emoji counts as 1 cluster.
+        let exactly_24 = "👨‍🚀".repeat(24);
+        assert_eq!(companion_grapheme_len(&exactly_24), 24);
+        assert!(validate_companion_name(&exactly_24).is_ok());
+
+        let too_long = "a".repeat(COMPANION_NAME_MAX_GRAPHEMES + 1);
+        assert!(validate_companion_name(&too_long).is_err());
+        assert_eq!(companion_grapheme_len(&sanitize_companion_name(&too_long)), 24);
+    }
+
+    #[test]
+    fn fresh_install_requires_onboarding_and_persists_chosen_name() {
+        let (dir, file) = scratch("companion-fresh");
+        let initial = load_with_migration(&file);
+        assert!(initial.needs_companion_onboarding());
+        assert_eq!(initial.companion_name, "");
+        assert_eq!(initial.resolved_companion_name(), DEFAULT_COMPANION_NAME);
+
+        let mut updated = initial.clone();
+        updated.companion_name = validate_companion_name("  Aurora ✨ ").unwrap();
+        updated.companion_setup_completed = true;
+        save_to(&file, &updated).unwrap();
+
+        let reloaded = load_with_migration(&file);
+        assert!(!reloaded.needs_companion_onboarding());
+        assert_eq!(reloaded.companion_name, "Aurora ✨");
+        assert_eq!(reloaded.resolved_companion_name(), "Aurora ✨");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn existing_install_without_companion_fields_migrates_without_onboarding_or_loss() {
+        let (dir, file) = scratch("companion-legacy");
+        let legacy = json!({
+            "soundEnabled": false,
+            "language": "fr",
+            "hooksInstalled": true,
+            "mochiOutfit": "crown"
+        });
+        std::fs::write(&file, serde_json::to_vec(&legacy).unwrap()).unwrap();
+
+        let migrated = load_with_migration(&file);
+        assert!(!migrated.needs_companion_onboarding(), "existing users must not be forced into onboarding");
+        assert!(migrated.companion_setup_completed);
+        assert_eq!(migrated.companion_name, DEFAULT_COMPANION_NAME);
+        assert_eq!(migrated.resolved_companion_name(), DEFAULT_COMPANION_NAME);
+        // Existing settings preserved intact
+        assert!(!migrated.sound_enabled);
+        assert_eq!(migrated.language, "fr");
+        assert!(migrated.hooks_installed);
+        assert_eq!(migrated.mochi_outfit, "crown");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn corrupt_companion_fields_recover_safely_without_losing_preferences() {
+        let (dir, file) = scratch("companion-corrupt");
+        let payload = json!({
+            "soundEnabled": false,
+            "companionName": 12345,
+            "companionSetupCompleted": "yes",
+            "model": "claude-haiku-4-5"
+        });
+        std::fs::write(&file, serde_json::to_vec(&payload).unwrap()).unwrap();
+
+        let recovered = load_with_migration(&file);
+        assert!(!recovered.sound_enabled);
+        assert_eq!(recovered.model, "claude-haiku-4-5");
+        assert_eq!(recovered.companion_name, "");
+        assert_eq!(recovered.resolved_companion_name(), DEFAULT_COMPANION_NAME);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -54,6 +54,7 @@ const INLINE_ICONS: Record<string, string> = {
   sliders:  "M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4",
   bolt:     "M13 3 5 13h6l-1 8 8-10h-6l1-8z",
   trash:    "M5 7h14M10 4h4M7 7l1 13h8l1-13M10 11v6M14 11v6",
+  pin:      "M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z",
   x:        "M6.5 6.5l11 11M17.5 6.5l-11 11",
   check:    "M5 12.5 9.5 17 19 7.5",
   copy:     "M8.5 8.5h11v11.5h-11zM5 15.5V4h11",
@@ -239,14 +240,22 @@ export function calculateDropdownPlacement(
   };
 }
 
+export interface DropdownOptions {
+  className?: string;
+  minWidth?: number;
+  maxWidth?: number;
+  matchAnchorWidth?: boolean;
+}
+
 /** Creates and returns a dropdown menu controller. */
-export function dropdown(items: DropdownEntry[]) {
+export function dropdown(items: DropdownEntry[], options: DropdownOptions = {}) {
   const hasAnyCheck = items.some(
     (entry) => entry.type !== "separator" && entry.type !== "label" && (entry as DropdownItem).checked !== undefined,
   );
 
   function buildPanel(): HTMLElement {
-    const panel = h("div", { class: `dd-panel ${hasAnyCheck ? "has-checks" : "no-checks"}`, role: "menu" });
+    const classes = ["dd-panel", hasAnyCheck ? "has-checks" : "no-checks", options.className].filter(Boolean).join(" ");
+    const panel = h("div", { class: classes, role: "menu" });
 
     for (const entry of items) {
       if (entry.type === "separator") {
@@ -337,9 +346,20 @@ export function dropdown(items: DropdownEntry[]) {
         return null;
       }
 
-      panel.style.minWidth = `${Math.max(125, Math.round(rect.width))}px`;
-      const actualW = panel.offsetWidth || 140;
-      const actualH = panel.scrollHeight || panel.offsetHeight || items.length * 30;
+      if (options.minWidth != null) {
+        panel.style.minWidth = `${options.minWidth}px`;
+      } else if (options.matchAnchorWidth === false || !anchor.classList.contains("dd-trigger")) {
+        panel.style.minWidth = "140px";
+      } else {
+        panel.style.minWidth = `${Math.max(125, Math.round(rect.width))}px`;
+      }
+
+      if (options.maxWidth != null) {
+        panel.style.maxWidth = `${options.maxWidth}px`;
+      }
+
+      const actualW = panel.offsetWidth || options.minWidth || 140;
+      const actualH = panel.scrollHeight || panel.offsetHeight || items.length * 36;
 
       const placement = calculateDropdownPlacement(
         rect,

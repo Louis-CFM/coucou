@@ -12,6 +12,7 @@ import { WhatsNew } from "../whats-new/controller";
 import { BOTAN_URL, COFFEE_URL, iconName, localized, releasePage, type Stat } from "../whats-new/whats-new";
 import type { ViewHost } from "./views";
 import { language, t } from "../i18n/i18n";
+import { State } from "../core/state";
 
 function btn(label: string, kind: "primary" | "secondary", onClick: () => void): HTMLButtonElement {
   return h("button", { class: `btn ${kind}`, onclick: onClick }, h("span", { text: label }));
@@ -40,11 +41,11 @@ function botanMark(size: number): SVGSVGElement {
   return el;
 }
 
-/** "Botan: Mochi is leaving the notch. Join the founders ↗": one line, the founders list. */
-function botanLink(): HTMLButtonElement {
+/** "Botan: {name} is leaving the notch. Join the founders ↗": one line, the founders list. */
+function botanLink(companionName: string): HTMLButtonElement {
   return h("button", { class: "whatsnew-botan", onclick: () => WhatsNew.openBotan(BOTAN_URL) },
     h("span", { class: "whatsnew-botan-mark" }, botanMark(12)),
-    h("span", { class: "whatsnew-botan-text", text: t("Botan: Mochi is leaving the notch.") }),
+    h("span", { class: "whatsnew-botan-text", text: t("Botan: {name} is leaving the notch.", { name: companionName }) }),
     h("span", { class: "whatsnew-botan-join", text: `${t("Join the founders")} ↗` }),
   );
 }
@@ -105,6 +106,7 @@ export function buildWhatsNew(): ViewHost {
   }
 
   function stepTwo() {
+    const companion = State.companionName;
     const chips = h("div", { class: "whatsnew-stats" });
     for (const s of WhatsNew.stats) {
       chips.append(h("div", { class: "whatsnew-stat" },
@@ -118,10 +120,10 @@ export function buildWhatsNew(): ViewHost {
     stack.append(h("div", { class: "title one-line", text: t("Your Coucou so far") }));
     if (WhatsNew.stats.length > 0) stack.append(chips);
     stack.append(
-      h("div", { class: "sub whatsnew-thanks", text: t("Coucou is free and open source. If it saves you time, you can buy Mochi a coffee.") }),
-      botanLink(),
+      h("div", { class: "sub whatsnew-thanks", text: t("Coucou is free and open source. If it saves you time, you can buy {name} a coffee.", { name: companion }) }),
+      botanLink(companion),
       h("div", { class: "actions" },
-        btn(`☕ ${t("Buy Mochi a coffee")}`, "primary", () => WhatsNew.openCoffee(COFFEE_URL)),
+        btn(`☕ ${t("Buy {name} a coffee", { name: companion })}`, "primary", () => WhatsNew.openCoffee(COFFEE_URL)),
         btn(t("OK"), "secondary", () => WhatsNew.done()),
       ),
     );
@@ -130,7 +132,7 @@ export function buildWhatsNew(): ViewHost {
   return {
     el,
     sync() {
-      const next = `${WhatsNew.generation}~${WhatsNew.step}~${language()}`;
+      const next = `${WhatsNew.generation}~${WhatsNew.step}~${language()}~${State.companionName}`;
       if (next === key) return;
       key = next;
       clear(stack);

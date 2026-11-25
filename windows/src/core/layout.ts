@@ -22,13 +22,15 @@ export type IslandViewName =
   | "note"
   | "settings"
   | "greeting"
+  | "onboarding"
   | "recap"
   | "wardrobe"
   | "update"
   | "whatsNew"
   | "launch"
   | "fileshelf"
-  | "coudrop";
+  | "coudrop"
+  | "clipboard";
 
 export type BotStateName =
   | "idle"
@@ -104,11 +106,13 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   // Taller than a card, for two rows of items with their line (and, on the
   // second step, the Botan line under the thanks).
   whatsNew: { height: 248, botX: 62, botY: null, botDiameter: 58, agentMode: "none" },
+  onboarding: { height: 196, botX: 68, botY: 97, botDiameter: 62, agentMode: "none" },
   // A new Claude Code session: Mochi on the left, the project and the prompt (Mac: .launch).
   launch: { height: 160, botX: 58, botY: null, botDiameter: 52, agentMode: "none" },
   // File Shelf: Staging dock for parked files and folders
   fileshelf: { height: 240, botX: 46, botY: 80, botDiameter: 0, agentMode: "none" },
   coudrop: { height: 250, botX: 46, botY: 80, botDiameter: 0, agentMode: "none" },
+  clipboard: { height: 275, botX: 46, botY: 80, botDiameter: 0, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually

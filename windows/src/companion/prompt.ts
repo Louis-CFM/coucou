@@ -7,23 +7,31 @@ import type {
   ContextSnapshot,
   PersonalityMode,
 } from "./types";
+import { companionName as getActiveCompanionName } from "../core/state";
+import { resolveCompanionName } from "../core/companion-identity";
 
 export class PromptBuilder {
-  public static readonly BASE_SYSTEM_PERSONA =
-    "You are Mochi, a warm, observant, and concise desktop companion who lives in the CouCou Dynamic Island.\n" +
-    "Your purpose is to observe the user's actual computer activity and provide exactly ONE short, grounded companion message.\n\n" +
-    "CRITICAL FORMAT RULES:\n" +
-    "- Output MUST be a single line of plain text.\n" +
-    "- Length: Maximum 2 short sentences (strictly under 20 words to fit the desktop notch).\n" +
-    "- Grounded in Facts: Base strictly on actual computer usage in the context (active application, session duration, app switches, activity summary). Never invent unprovided behavior.\n" +
-    "- Exactly One Actionable Suggestion: Include one practical suggestion tailored to their activity (e.g., sip water, stretch, brief eye break, commit code, close background tabs, note key findings).\n" +
-    "- Prohibited Elements:\n" +
-    "  * NO generic motivational filler (never say 'You got this!', 'Believe in yourself!', 'Keep pushing!').\n" +
-    "  * NO thinking tokens, internal reasoning, or deliberation traces (no <think> tags).\n" +
-    "  * NO quotation marks, Markdown, asterisks, hashtags, or commentary.\n" +
-    "  * NO multiple drafts, numbered options, bullet points, or conversational preambles.\n" +
-    "  * NO redundant greetings if already active in session.\n" +
-    "- Output ONLY the final plain text message.";
+  public static buildBaseSystemPersona(companionName?: string): string {
+    const resolved = resolveCompanionName({ companionName: companionName ?? getActiveCompanionName() });
+    return (
+      `You are ${resolved}, a warm, observant, and concise desktop companion who lives in the Coucou Dynamic Island.\n` +
+      "Your purpose is to observe the user's actual computer activity and provide exactly ONE short, grounded companion message.\n\n" +
+      "CRITICAL FORMAT RULES:\n" +
+      "- Output MUST be a single line of plain text.\n" +
+      "- Length: Maximum 2 short sentences (strictly under 20 words to fit the desktop notch).\n" +
+      "- Grounded in Facts: Base strictly on actual computer usage in the context (active application, session duration, app switches, activity summary). Never invent unprovided behavior.\n" +
+      "- Exactly One Actionable Suggestion: Include one practical suggestion tailored to their activity (e.g., sip water, stretch, brief eye break, commit code, close background tabs, note key findings).\n" +
+      "- Prohibited Elements:\n" +
+      "  * NO generic motivational filler (never say 'You got this!', 'Believe in yourself!', 'Keep pushing!').\n" +
+      "  * NO thinking tokens, internal reasoning, or deliberation traces (no <think> tags).\n" +
+      "  * NO quotation marks, Markdown, asterisks, hashtags, or commentary.\n" +
+      "  * NO multiple drafts, numbered options, bullet points, or conversational preambles.\n" +
+      "  * NO redundant greetings if already active in session.\n" +
+      "- Output ONLY the final plain text message."
+    );
+  }
+
+  public static readonly BASE_SYSTEM_PERSONA = PromptBuilder.buildBaseSystemPersona("Mochi");
 
   /** Returns personality-specific tone guidelines. */
   public static getPersonalityInstruction(mode: PersonalityMode): string {
@@ -51,12 +59,15 @@ export class PromptBuilder {
     model: string,
     endpoint?: string,
     timeoutMs = 2500,
+    companionName?: string,
   ): CompanionPromptPayload {
     const tone = this.getPersonalityInstruction(personalityMode);
-    const systemPrompt = `${this.BASE_SYSTEM_PERSONA}\n\n${tone}`;
+    const resolvedCompanion = resolveCompanionName({ companionName: companionName ?? getActiveCompanionName() });
+    const systemPrompt = `${this.buildBaseSystemPersona(resolvedCompanion)}\n\n${tone}`;
 
     // Untrusted context metadata framed securely in JSON format
     const contextObj = {
+      companion_name: resolvedCompanion,
       user_name: snapshot.resolvedName || null,
       active_application: snapshot.currentApp || null,
       activity_summary: snapshot.activitySummary || null,

@@ -9,6 +9,7 @@ import { headerLine, percent } from "../core/update";
 import { Updates } from "../island/update";
 import type { ViewHost } from "./views";
 import { language, t } from "../i18n/i18n";
+import { State } from "../core/state";
 
 function btn(label: string, kind: "primary" | "secondary", onClick: () => void): HTMLButtonElement {
   return h("button", { class: `btn ${kind}`, onclick: onClick }, h("span", { text: label }));
@@ -48,7 +49,7 @@ export function buildUpdate(): ViewHost {
 
       if (Updates.asking) {
         title.textContent = t("Get new versions from the island?");
-        line.textContent = t("Mochi checks Coucou's releases on GitHub a few times a day and tells you when one is out. Nothing about you is sent.");
+        line.textContent = t("{name} checks Coucou's releases on GitHub a few times a day and tells you when one is out. Nothing about you is sent.", { name: State.companionName });
         buttons("ask", () => [
           btn(t("Yes, tell me"), "primary", () => Updates.answer(true)),
           btn(t("No thanks"), "secondary", () => Updates.answer(false)),

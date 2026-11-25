@@ -349,10 +349,12 @@ async fn generate_ollama(
     timeout_ms: u64,
     token: CancellationToken,
 ) -> Result<String, String> {
+    let companion = crate::settings::active_companion_name();
+    let prompt_persona = format!("You are {companion}, a helpful desktop companion in Coucou.");
     let res = generate_ollama_chat(
         endpoint,
         model,
-        "You are Mochi, a helpful desktop companion in Coucou.",
+        &prompt_persona,
         prompt,
         timeout_ms,
         token,

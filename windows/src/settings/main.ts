@@ -10,7 +10,9 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_SETTINGS, State, type Settings } from "../core/state";
+import { resolveCompanionName } from "../core/companion-identity";
+import { buildCompanionNameRow } from "./companion-name";
 import { closedIsland } from "../core/closed";
 import type { UpdateStatus } from "../core/update";
 import { Sound, SOUND_NAMES } from "../core/sound";
@@ -53,6 +55,7 @@ let root: HTMLElement = windowRoot;
 let hub: { redraw(): void; current(): PageId; show(page: PageId, targetAnchor?: string): Promise<void> } | null = null;
 
 async function save() {
+  State.settings = { ...State.settings, ...settings };
   await Bridge.saveSettings(settings);
 }
 
@@ -930,7 +933,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = t("Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.", { max: MAX_ACTIVE, used, store: KEY_STORE });
+    note.textContent = t("Pick up to {max} pills to show next to {name} — {used}/{max} in use. Keys are stored in the {store}, never on disk.", { max: MAX_ACTIVE, used, store: KEY_STORE, name: resolveCompanionName(settings) });
   }
   declaredViews.push(updateNote);
 
@@ -1078,6 +1081,7 @@ let generalSync: (() => void) | null = null;
 let appearanceSync: (() => void) | null = null;
 
 function buildCompanionCareCard(): HTMLElement {
+  const companion = resolveCompanionName(settings);
   const card = h("div", {
     class: "coudrop-group",
     style: "margin: 8px 0;",
@@ -1100,7 +1104,7 @@ function buildCompanionCareCard(): HTMLElement {
       h("span", { class: "coudrop-row-title", text: "Companion & Care" }),
       h("span", {
         class: "coudrop-row-desc",
-        text: "Mochi shares heartwarming greetings, hydration reminders, posture check-ins, and circadian awareness in the Dynamic Island Notch.",
+        text: `${companion} shares heartwarming greetings, hydration reminders, posture check-ins, and circadian awareness in the Dynamic Island Notch.`,
       }),
     ),
     previewBtn,
@@ -1117,7 +1121,7 @@ function buildCompanionCareCard(): HTMLElement {
     class: "coudrop-row-desc",
     text: GlobalWelcomeMessages.detectedGreetingName
       ? `Auto-detected: ${GlobalWelcomeMessages.detectedGreetingName}. Enter a custom name to override, or leave blank to use auto-detected.`
-      : "By default, CouCou uses your Windows account name. Enter a preferred name to personalize your companion messages.",
+      : "By default, Coucou uses your Windows account name. Enter a preferred name to personalize your companion messages.",
   });
 
   nameInput.addEventListener("input", () => {
@@ -1259,7 +1263,8 @@ function buildCompanionCareCard(): HTMLElement {
     routingSelect,
   );
 
-  // ── Mochi Personality Mode ──
+  // ── Companion Personality Mode ──
+  const personalityLabel = t("{name} personality", { name: companion });
   const personalityOptions: [string, string][] = [
     ["warm_playful", "Warm & Playful"],
     ["witty_sarcastic", "Witty & Sarcastic"],
@@ -1273,7 +1278,7 @@ function buildCompanionCareCard(): HTMLElement {
       GlobalWelcomeMessages.personalityMode = v as any;
       GlobalWelcomeMessages.saveState();
     },
-    { ariaLabel: "Mochi personality", style: "min-width: 215px;" },
+    { ariaLabel: personalityLabel, style: "min-width: 215px;" },
   );
 
   const personalityRow = h(
@@ -1282,8 +1287,11 @@ function buildCompanionCareCard(): HTMLElement {
     h(
       "div",
       { class: "coudrop-row-label-group" },
-      h("span", { class: "coudrop-row-title", text: "Mochi personality" }),
-      h("span", { class: "coudrop-row-desc", text: "Choose Mochi's companion tone and conversational style in the Dynamic Island." }),
+      h("span", { class: "coudrop-row-title", text: personalityLabel }),
+      h("span", {
+        class: "coudrop-row-desc",
+        text: t("Choose {name}'s companion tone and conversational style in the Dynamic Island.", { name: companion }),
+      }),
     ),
     personalitySelect,
   );
@@ -1321,6 +1329,12 @@ function buildCompanionCareCard(): HTMLElement {
 }
 
 function generalSection(): HTMLElement {
+  const companion = resolveCompanionName(settings);
+  const companionNameControl = buildCompanionNameRow({
+    settings,
+    save,
+    onRenamed: () => hub?.redraw(),
+  });
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
@@ -1371,7 +1385,7 @@ function generalSection(): HTMLElement {
 
   // The closed island (core/closed.ts): what stays at the top of the screen.
   const closedOptions: [string, string][] = [
-    ["mochi", t("Mochi, as on a Mac without a notch")],
+    ["mochi", t("{name}, as on a Mac without a notch", { name: companion })],
     ["time", t("The time")],
     ["datetime", t("The date and the time")],
     ["claude", t("Claude usage")],
@@ -1418,6 +1432,7 @@ function generalSection(): HTMLElement {
   const smartNotchCard = buildSmartNotchCard(settings, save, (sync) => { smartCardSync = sync; });
 
   generalSync = () => {
+    companionNameControl.sync();
     setSwitch(sound, settings.soundEnabled);
     setSwitch(openOnHover, settings.openOnHover);
     setSwitch(autostart, settings.autostart);
@@ -1437,13 +1452,14 @@ function generalSection(): HTMLElement {
     "section",
     {},
     h("h2", {}, h("span", { text: t("General") })),
+    companionNameControl.el,
     h("div", { class: "row" },
       h("label", { text: t("Sound") }),
       sound,
       volume,
     ),
     h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
-    h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
+    h("div", { class: "hint", text: t("Drop a file named like one of {name}'s sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.", { name: companion }) }),
     h("div", { class: "row" },
       h("label", { text: t("Open on hover") }),
       openOnHover,
@@ -1700,6 +1716,7 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
   }
 
   function draw() {
+    const companion = resolveCompanionName(settings);
     clear(list);
     const dups = duplicates(activeKeys(settings.shortcuts));
     for (const d of SHORTCUTS) {
@@ -1713,9 +1730,14 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
       keycap.addEventListener("click", () => record(d.id, binding, keycap));
       const sw = toggle(binding.enabled, (on) => store(d.id, { keys: binding.keys, enabled: on }));
       const tag = binding.enabled ? tagFor(d.id, dups) : null;
+      const shortcutLabel = d.id === "muteToggle"
+        ? t("Mute or unmute {name}", { name: companion })
+        : d.id === "desktopToggle"
+          ? t("Send {name} to the desktop", { name: companion })
+          : t(SHORTCUT_TEXT[d.id]);
       list.append(h("div", { class: binding.enabled ? "row shortcut" : "row shortcut off" },
         sw,
-        h("span", { class: "shortcut-name", text: t(SHORTCUT_TEXT[d.id]) }),
+        h("span", { class: "shortcut-name", text: shortcutLabel }),
         ...(tag ? [tag] : []),
         keycap,
       ));
@@ -1865,6 +1887,7 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
+  State.settings = { ...State.settings, ...settings };
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
   applyDirection();
 
@@ -1879,52 +1902,60 @@ async function main() {
 
   const initialTarget = (await Bridge.targetHubPage()) || (window.location.hash ? window.location.hash.replace(/^#/, "") : null);
   const initialPage = resolveTarget(initialTarget);
+  let mountingHub = false;
 
-  hub = await startHub(windowRoot, {
-    version,
-    initialPage,
-    flowPages: FLOW_PAGE_RENDERERS,
-    renderNotch: async (page, container) => {
-      notchPage = page;
-      root = container;
-      await render();
-    },
-  });
+  const mountHub = async () => {
+    if (hub || mountingHub) return;
+    mountingHub = true;
+    try {
+      clear(windowRoot);
+      hub = await startHub(windowRoot, {
+        version,
+        initialPage,
+        flowPages: FLOW_PAGE_RENDERERS,
+        renderNotch: async (page, container) => {
+          notchPage = page;
+          root = container;
+          await render();
+        },
+      });
+      if (typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window) && !document.querySelector(".hub-back-to-notch")) {
+        const backBtn = h("a", {
+          href: "/index.html",
+          class: "hub-back-to-notch",
+          style: "position:fixed;bottom:18px;right:18px;background:rgba(255,255,255,0.12);color:#fff;padding:8px 14px;border-radius:999px;font:500 12px var(--font);text-decoration:none;z-index:9999;backdrop-filter:blur(12px);border:2px solid rgba(255,255,255,0.2);display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.5);transition:transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease",
+          text: "← Back to Notch",
+        });
+        backBtn.addEventListener("mouseenter", () => {
+          backBtn.style.background = "rgba(255,255,255,0.22)";
+          backBtn.style.transform = "scale(1.05)";
+        });
+        backBtn.addEventListener("mouseleave", () => {
+          backBtn.style.background = "rgba(255,255,255,0.12)";
+          backBtn.style.transform = "scale(1)";
+        });
+        backBtn.addEventListener("mousedown", () => {
+          backBtn.style.transform = "scale(0.95)";
+        });
+        backBtn.addEventListener("mouseup", () => {
+          backBtn.style.transform = "scale(1.05)";
+        });
+        document.body.append(backBtn);
+      }
+    } finally {
+      mountingHub = false;
+    }
+  };
+
+  await mountHub();
 
   const applyHash = () => {
-    if (window.location.hash) {
+    if (window.location.hash && hub) {
       const raw = window.location.hash.replace(/^#/, "");
-      void hub?.show(resolveTarget(raw));
+      void hub.show(resolveTarget(raw));
     }
   };
   window.addEventListener("hashchange", applyHash);
-
-  if (!Bridge.boot) {
-    // fallback check
-  }
-  if (typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window)) {
-    const backBtn = h("a", {
-      href: "/index.html",
-      class: "hub-back-to-notch",
-      style: "position:fixed;bottom:18px;right:18px;background:rgba(255,255,255,0.12);color:#fff;padding:8px 14px;border-radius:999px;font:500 12px var(--font);text-decoration:none;z-index:9999;backdrop-filter:blur(12px);border:2px solid rgba(255,255,255,0.2);display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,0.5);transition:transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease",
-      text: "← Back to Notch",
-    });
-    backBtn.addEventListener("mouseenter", () => {
-      backBtn.style.background = "rgba(255,255,255,0.22)";
-      backBtn.style.transform = "scale(1.05)";
-    });
-    backBtn.addEventListener("mouseleave", () => {
-      backBtn.style.background = "rgba(255,255,255,0.12)";
-      backBtn.style.transform = "scale(1)";
-    });
-    backBtn.addEventListener("mousedown", () => {
-      backBtn.style.transform = "scale(0.95)";
-    });
-    backBtn.addEventListener("mouseup", () => {
-      backBtn.style.transform = "scale(1.05)";
-    });
-    document.body.append(backBtn);
-  }
 
   onLanguageChange(() => {
     applyDirection();
@@ -1935,7 +1966,14 @@ async function main() {
   void onEvent<UpdateStatus>("update-status", (fresh) => updatesListener?.(fresh));
   void onEvent<Settings>("settings-changed", (s) => {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
+    const prevCompanion = resolveCompanionName(settings);
     settings = { ...settings, ...s };
+    State.settings = { ...State.settings, ...settings };
+    const nextCompanion = resolveCompanionName(settings);
+    if (prevCompanion !== nextCompanion) {
+      GlobalWelcomeMessages.invalidateForCompanionRename();
+      hub?.redraw();
+    }
     shortcutsListener?.settingsChanged();
     generalSync?.();
     appearanceSync?.();

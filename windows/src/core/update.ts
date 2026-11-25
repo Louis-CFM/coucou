@@ -54,7 +54,7 @@ export interface IslandNow {
  * for (tray, Settings) may replace an ordinary view.
  */
 export function mayOffer(offer: UpdateOffer, now: IslandNow): boolean {
-  if (now.pending) return false;
+  if (now.pending || now.view === "onboarding") return false;
   if (offer === "show") return true;
   if (now.paused) return false;
   return now.mode !== "expanded" || now.view === "update";

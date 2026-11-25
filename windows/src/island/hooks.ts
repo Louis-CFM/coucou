@@ -402,6 +402,8 @@ function handleHook(island: Island, payload: HookPayload) {
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
+    // Keep active pills tracking silently without disrupting active first-run companion naming.
+    if (State.mode === "expanded" && State.view === "onboarding") return;
     if (State.mode === "expanded") {
       if (isAlert) island.setView(view);
     } else if (isAlert) {

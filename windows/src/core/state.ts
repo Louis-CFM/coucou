@@ -13,6 +13,7 @@ import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
 import { Spotify, musicPlaying } from "./spotify";
+import { resolveCompanionName } from "./companion-identity";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -146,6 +147,10 @@ export function resolveShowTabCoudrop(settings: Partial<Settings>): boolean {
   return settings.showTabCoudrop !== false;
 }
 
+export function resolveShowTabClipboard(settings: Partial<Settings>): boolean {
+  return settings.showTabClipboard !== false;
+}
+
 export function resolveShowTabLaunch(settings: Partial<Settings>): boolean {
   return settings.showTabLaunch !== false;
 }
@@ -180,6 +185,8 @@ export interface Settings {
   showTabDrop?: boolean;
   /** Show Coudrop (peer-to-peer file transfer) tab in the expanded island header. */
   showTabCoudrop?: boolean;
+  /** Show Clipboard Manager tab in the expanded island header. */
+  showTabClipboard?: boolean;
   /** Show Terminal (Claude Code launch) tab in the expanded island header. */
   showTabLaunch?: boolean;
   /** Smart notch: full on the desktop, tucked away over maximized apps. */
@@ -250,6 +257,10 @@ export interface Settings {
   coudropNotify?: boolean;
   /** User-configured folder where files received via Coudrop are saved. Empty = default. */
   coudropDownloadDir?: string;
+  /** User-chosen companion name (empty until configured; resolves to DEFAULT_COMPANION_NAME). */
+  companionName?: string;
+  /** True once first-run companion naming is completed/skipped or migrated from an existing install. */
+  companionSetupCompleted?: boolean;
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -298,6 +309,8 @@ export const DEFAULT_SETTINGS: Settings = {
   coudropSound: true,
   coudropNotify: true,
   coudropDownloadDir: "",
+  companionName: "",
+  companionSetupCompleted: false,
   showTabCoudrop: true,
 };
 
@@ -650,6 +663,10 @@ class AppState {
     this.loadIntegrationTasks();
   }
 
+  get companionName(): string {
+    return resolveCompanionName(this.settings);
+  }
+
   /**
    * What the island opens on. A card waiting for an answer comes first, so
    * reopening a folded island shows it again (Mac #117, #290).
@@ -661,3 +678,7 @@ class AppState {
 }
 
 export const State = new AppState();
+
+export function companionName(): string {
+  return State.companionName;
+}

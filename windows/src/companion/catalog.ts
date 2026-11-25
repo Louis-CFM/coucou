@@ -19,7 +19,7 @@ export class DeterministicCatalog {
     // Map ContextSnapshot to legacy WelcomeStateVector for catalog evaluation
     const stateVector: WelcomeStateVector = {
       awayMinutes: Math.floor(snapshot.awayDurationSeconds / 60),
-      timeOfDay: snapshot.circadianPhase as any,
+      timeOfDay: snapshot.circadianPhase,
       hour: parseInt(snapshot.localTimeStr.split(":")[0] || "12", 10),
       dayOfWeek: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(snapshot.dayOfWeek),
       sessionWorkHours: snapshot.sessionDurationMinutes / 60,
@@ -28,7 +28,7 @@ export class DeterministicCatalog {
       wardrobe: snapshot.mochiWardrobe,
     };
 
-    const bestItem = GlobalWelcomeMessages.selectBestMessage(stateVector);
+    const bestItem = GlobalWelcomeMessages.selectBestMessage(stateVector, category);
     const text = bestItem.template(snapshot.resolvedName);
 
     return {

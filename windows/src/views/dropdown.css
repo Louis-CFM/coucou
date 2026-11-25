@@ -10,10 +10,10 @@
   z-index: 100000;
   isolation: isolate;
   pointer-events: auto;
-  min-width: 125px;
+  min-width: 130px;
   max-width: 280px;
-  padding: 4px;
-  background: rgba(22, 23, 26, 0.92);
+  padding: 5px;
+  background: rgba(22, 23, 26, 0.94);
   backdrop-filter: blur(32px) saturate(200%) brightness(1.08);
   -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -75,17 +75,17 @@
 .dd-item {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 9px;
   width: 100%;
-  min-height: 28px;
-  padding: 0 8px;
+  min-height: 32px;
+  padding: 0 10px;
   border: none;
   border-radius: 7px;
   background: transparent;
   color: rgba(255, 255, 255, 0.88);
   font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 450;
+  font-size: 12px;
+  font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1;
   text-align: start;
@@ -113,13 +113,14 @@
 
 /* Danger variant (Quit, Delete, Remove…) */
 .dd-item.dd-danger {
-  color: rgba(255, 90, 80, 0.9);
+  color: #f87171;
+  margin-top: 3px;
 }
 
 .dd-item.dd-danger:hover,
 .dd-item.dd-danger:focus {
-  background: rgba(255, 69, 58, 0.14);
-  color: #ff5a50;
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
 }
 
 /* Disabled state */
@@ -145,16 +146,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   color: rgba(255, 255, 255, 0.55);
   transition: color 0.1s ease;
 }
 
 .dd-icon-col svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
 }
 
 .dd-item:hover .dd-icon-col,
@@ -163,12 +164,12 @@
 }
 
 .dd-item.dd-danger .dd-icon-col {
-  color: rgba(255, 90, 80, 0.75);
+  color: rgba(248, 113, 113, 0.85);
 }
 
 .dd-item.dd-danger:hover .dd-icon-col,
 .dd-item.dd-danger:focus .dd-icon-col {
-  color: #ff5a50;
+  color: #f87171;
 }
 
 /* ── Item label (flex: 1 to push shortcut right) ── */
@@ -281,4 +282,111 @@ button.hub-select.dd-trigger {
 /* Rotate chevron when open with elastic spring scale */
 .dd-trigger.open svg:last-child {
   transform: rotate(180deg) scale(1.1) !important;
+}
+
+/* ── Prevent excessive gap before danger item after separator ── */
+.dd-separator + .dd-item.dd-danger {
+  margin-top: 0;
+}
+
+/* ── Clipboard Options Dropdown (Precision macOS Context Menu) ───────────── */
+.dd-panel.cb-dropdown-menu {
+  width: max-content;
+  min-width: 144px;
+  max-width: 180px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+}
+
+.dd-panel.cb-dropdown-menu .dd-item {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 10px;
+  gap: 10px;
+  border-radius: 6px;
+  font-family: var(--font-sub, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.9);
+  box-sizing: border-box;
+  transform: none;
+}
+
+.dd-panel.cb-dropdown-menu .dd-item:hover,
+.dd-panel.cb-dropdown-menu .dd-item:focus {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  transform: none;
+}
+
+.dd-panel.cb-dropdown-menu .dd-item:active {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(0.98);
+}
+
+.dd-panel.cb-dropdown-menu .dd-icon-col {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.1s ease;
+}
+
+.dd-panel.cb-dropdown-menu .dd-icon-col svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.dd-panel.cb-dropdown-menu .dd-item:hover .dd-icon-col,
+.dd-panel.cb-dropdown-menu .dd-item:focus .dd-icon-col {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dd-panel.cb-dropdown-menu .dd-item-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dd-panel.cb-dropdown-menu .dd-separator {
+  height: 1px;
+  margin: 3px 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+/* Delete action */
+.dd-panel.cb-dropdown-menu .dd-item.dd-danger {
+  color: #f87171;
+  margin-top: 0;
+}
+
+.dd-panel.cb-dropdown-menu .dd-item.dd-danger .dd-icon-col {
+  color: rgba(248, 113, 113, 0.85);
+}
+
+.dd-panel.cb-dropdown-menu .dd-item.dd-danger:hover,
+.dd-panel.cb-dropdown-menu .dd-item.dd-danger:focus {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+  transform: none;
+}
+
+.dd-panel.cb-dropdown-menu .dd-item.dd-danger:hover .dd-icon-col,
+.dd-panel.cb-dropdown-menu .dd-item.dd-danger:focus .dd-icon-col {
+  color: #f87171;
 }

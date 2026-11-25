@@ -16,7 +16,18 @@ export class MessagePolicyEngine {
   public static readonly SPECULATIVE_TTL_MS = 10 * 60 * 1000; // 10 minutes max candidate age
 
   private static lastReturnGreetingTime = 0;
-  private static lastHydrationNudgeTime = Date.now();
+  private static lastHydrationNudgeTime: number = (() => {
+    try {
+      if (typeof localStorage !== "undefined") {
+        const saved = localStorage.getItem("coucou_last_water_time");
+        if (saved) {
+          const n = Number(saved);
+          if (!isNaN(n) && n > 0) return n;
+        }
+      }
+    } catch {}
+    return Date.now();
+  })();
   private static lastPostureNudgeTime = Date.now();
 
   /** Checks if the current local time falls within configured quiet hours. */
@@ -156,9 +167,19 @@ export class MessagePolicyEngine {
       this.lastReturnGreetingTime = nowMs;
     } else if (category === "hydration_reminder") {
       this.lastHydrationNudgeTime = nowMs;
+      try {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("coucou_last_water_time", String(nowMs));
+        }
+      } catch {}
     } else if (category === "posture_break") {
       this.lastPostureNudgeTime = nowMs;
     }
+  }
+
+  /** Authoritatively updates the last hydration delivery timestamp. */
+  public static setLastHydrationTime(nowMs: number): void {
+    this.lastHydrationNudgeTime = nowMs;
   }
 
   /** Resets all internal cooldown timers (for testing). */

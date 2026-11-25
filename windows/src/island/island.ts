@@ -14,7 +14,8 @@ import {
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State, resolveNotchScale, resolveNotchStyle, resolveShowBattery, resolveShowBatteryPercentage, type NotchStyle } from "../core/state";
+import { State, resolveNotchScale, resolveNotchStyle, resolveShowBattery, resolveShowBatteryPercentage, type NotchStyle, type Settings } from "../core/state";
+import { needsCompanionOnboarding, normalizeCompanionName } from "../core/companion-identity";
 import { createBatteryElement, updateBatteryElement, BatteryMonitor, type BatteryState } from "../islandcn";
 import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
 import { WHATSAPP_ID } from "../core/whatsapp";
@@ -61,7 +62,7 @@ const BOT_SIDE = 24;
 const HIT_MARGIN = 14;
 
 /** The views with a text field: the island takes the keyboard while one is on. */
-const TYPING_VIEWS: ReadonlySet<IslandViewName> = new Set(["prompt", "launch", "fileshelf"]);
+const TYPING_VIEWS: ReadonlySet<IslandViewName> = new Set(["prompt", "launch", "fileshelf", "onboarding"]);
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -187,6 +188,7 @@ export class Island {
   /** The launch greeting ended, or the island came out of hidden — two of the
    *  moments the Monday recap may open (see src/recap/recap.ts). */
   onGreetingDone: (() => void) | null = null;
+  onOnboardingComplete: (() => void) | null = null;
   onWake: (() => void) | null = null;
 
   /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out. */
@@ -213,21 +215,107 @@ export class Island {
     this.wireInput();
     this.engine.onDizzy = () => this.handleDizzy();
     this.greeting.onComplete = () => {
-      this.startupPhase = "transition";
-      this.fsm.greetComplete();
-      this.onGreetingDone?.();
-      window.setTimeout(() => {
-        this.startupPhase = "operational";
-        if (State.mode === "hidden") {
-          this.collapsed = true;
-          this.sendCollapsedSize(true);
-        }
-      }, 900);
+      if (needsCompanionOnboarding(State.settings)) {
+        this.startupPhase = "transition";
+        this.enterOnboarding(true);
+        return;
+      }
+      this.finishGreetingToOperational();
     };
     State.subscribe(() => {
       this.dirty = true;
       this.ensureRunning();
     });
+  }
+
+  /** True while the first-launch companion naming experience owns the notch. */
+  private get onboardingActive(): boolean {
+    return State.mode === "expanded" && State.view === "onboarding";
+  }
+
+  private finishGreetingToOperational(skipFsmComplete = false) {
+    this.startupPhase = "transition";
+    if (!skipFsmComplete) this.fsm.greetComplete();
+    this.onGreetingDone?.();
+    window.setTimeout(() => {
+      this.startupPhase = "operational";
+      if (State.mode === "hidden") {
+        this.collapsed = true;
+        this.sendCollapsedSize(true);
+      }
+    }, 900);
+  }
+
+  enterOnboarding(fromGreeting = false) {
+    if (this.collapseTimer != null) {
+      window.clearTimeout(this.collapseTimer);
+      this.collapseTimer = null;
+    }
+    this.collapsed = false;
+    this.collapsedTo = { w: 0, h: 0 };
+    void Bridge.setCollapsed(false);
+    closePlanCard();
+    this.fsm.pinned = true;
+    this.fsm.cancelTimers();
+    if (fromGreeting) {
+      // Anchor Mochi at the greeting canvas center so he springs smoothly left into the card.
+      this.greetingShown = false;
+      this.greeting.leave();
+      this.botCx.set(320);
+      this.botCy.set(90);
+      this.botSize.set(58 / 0.6);
+    }
+    this.fsm.forceHome();
+    State.isPinned = true;
+    State.view = "onboarding";
+    State.lastActivity = performance.now();
+    if (State.mode !== "expanded") {
+      this.setMode("expanded");
+    } else {
+      this.animateGeometry(false);
+    }
+    this.updateBotTargets();
+    this.ensureRunning();
+    this.dirty = true;
+    this.syncDom();
+  }
+
+  async completeOnboarding(chosenName: string, skipped = false) {
+    const resolved = normalizeCompanionName(chosenName);
+    const nextSettings: Settings = {
+      ...State.settings,
+      companionName: resolved,
+      companionSetupCompleted: true,
+    };
+    await Bridge.saveSettings(nextSettings);
+    State.settings = nextSettings;
+
+    GlobalWelcomeMessages.invalidateForCompanionRename();
+    State.isPinned = false;
+    this.fsm.pinned = false;
+    this.startupPhase = "operational";
+
+    Sound.play("approve");
+    this.engine.triggerEmote("happy");
+
+    if (State.pendingApproval) {
+      const approvalView = State.pendingApproval.questions ? "question" : "approval";
+      this.setView(approvalView);
+      State.notify();
+      this.onOnboardingComplete?.();
+      return;
+    }
+
+    State.view = State.defaultView();
+    GlobalWelcomeMessages.triggerOnboardingWelcome(resolved, skipped);
+    this.fsm.forceHidden();
+    this.updateClosed();
+    this.updateBotTargets();
+    this.animateGeometry(true);
+    this.dirty = true;
+    this.syncDom();
+    this.ensureRunning();
+    this.onOnboardingComplete?.();
   }
 
   /** The request has its answer: the card goes and the session carries on. */
@@ -373,6 +461,7 @@ export class Island {
         this.engine.triggerEmote("happy");
         this.collapse();
       },
+      completeOnboarding: (chosenName, skipped) => this.completeOnboarding(chosenName, skipped),
       holdOpen: (on) => {
         if (this.holdingOpen === on) return;
         this.holdingOpen = on;
@@ -629,9 +718,15 @@ export class Island {
     });
     void onEvent<{ status: string; away_minutes: number; user_name?: string }>("user-presence", (e) => {
       if (e.status === "returned") {
-        GlobalWelcomeMessages.onUserReturned(e.away_minutes, e.user_name);
+        GlobalWelcomeMessages.setUserPresent(true);
+        if (!needsCompanionOnboarding(State.settings)) {
+          GlobalWelcomeMessages.onUserReturned(e.away_minutes, e.user_name);
+        }
       } else if (e.status === "away") {
-        GlobalWelcomeMessages.onUserAway(e.away_minutes);
+        GlobalWelcomeMessages.setUserPresent(false);
+        if (!needsCompanionOnboarding(State.settings)) {
+          GlobalWelcomeMessages.onUserAway(e.away_minutes);
+        }
       }
     });
     void onEvent<{ isMaximized: boolean; isDesktop: boolean; app?: string }>("smart-notch-state", (e) => {
@@ -698,13 +793,20 @@ export class Island {
           if (from === "coucou") State.view = State.defaultView();
           if (!this.wasInIsland) this.fsm.mouseLeft();
           break;
-        case "home":
-          this.expand(this.openingView());
-          if (!this.wasInIsland) this.fsm.mouseLeft();
+        case "home": {
+          const nextView = this.openingView();
+          if (nextView === "onboarding") {
+            this.fsm.pinned = true;
+            this.fsm.cancelTimers();
+            State.isPinned = true;
+          }
+          this.expand(nextView);
+          if (!this.wasInIsland && nextView !== "onboarding") this.fsm.mouseLeft();
           // Hooks may have been installed in a terminal since: the idle cards
           // say so on the next open, without polling while the island is shut.
           void refreshHookPills();
           break;
+        }
         case "coucou":
           this.expand("greeting");
           this.greeting.start();
@@ -828,6 +930,7 @@ export class Island {
   }
 
   collapse() {
+    if (this.onboardingActive) return;
     // A waiting card is only ever folded, never dropped by a close.
     if (State.pendingApproval) {
       this.foldApproval();
@@ -843,6 +946,7 @@ export class Island {
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
+    if (this.onboardingActive && view !== "approval" && view !== "question") return;
     this.fsm.pinned = State.isPinned;
     this.fsm.forceHome();
     this.expand(view);
@@ -859,6 +963,9 @@ export class Island {
    * permission or question always comes first.
    */
   private openingView(): IslandViewName {
+    if (State.view === "onboarding" || needsCompanionOnboarding(State.settings)) {
+      return "onboarding";
+    }
     return this.updateHintOn() ? "update" : State.defaultView();
   }
 
@@ -880,8 +987,8 @@ export class Island {
   /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
   toggleWardrobe() {
     if (State.paused || State.mode === "hidden") return;
-    // The greeting and the drop sequence draw a Mochi of their own.
-    if (State.mode === "expanded" && (State.view === "greeting" || this.uploadActive)) return;
+    // The greeting, onboarding, and drop sequence own Mochi here.
+    if (State.mode === "expanded" && (State.view === "greeting" || State.view === "onboarding" || this.uploadActive)) return;
     if (State.mode === "expanded" && State.view === "wardrobe") this.setView(State.defaultView());
     else this.setView("wardrobe");
   }
@@ -948,9 +1055,8 @@ export class Island {
 
   /** The desktop shortcut (macOS DesktopMochiController.flyOutOrHome). */
   flyOutOrHome() {
-    // The greeting and the drop sequence draw a Mochi of their own: he stays
-    // for them, as he does for a drag (canDragOut).
-    const busy = State.mode === "expanded" && (State.view === "greeting" || this.uploadActive);
+    // The greeting, onboarding, and drop sequence own Mochi here.
+    const busy = State.mode === "expanded" && (State.view === "greeting" || State.view === "onboarding" || this.uploadActive);
     if (busy && !State.mochiOnDesktop) return;
     this.desktop.flyOutOrHome();
   }
@@ -964,7 +1070,7 @@ export class Island {
 
   private onDragDrop(e: DragDropPayload) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
-    if (State.paused) return;
+    if (State.paused || this.onboardingActive) return;
     if (this.dragLeaveTimer != null && e.type !== "leave") {
       window.clearTimeout(this.dragLeaveTimer);
       this.dragLeaveTimer = null;
@@ -1497,7 +1603,7 @@ export class Island {
     const activeWelcome = GlobalWelcomeMessages.active();
     const activeNotif = GlobalNotifications.active();
     const hasActiveNotchBanner = activeNotif != null || activeWelcome != null;
-    const isClosedNotch = State.mode === "hidden" || this.collapsed || (State.mode === "compact" && hasActiveNotchBanner);
+    const isClosedNotch = !this.onboardingActive && (State.mode === "hidden" || this.collapsed || (State.mode === "compact" && hasActiveNotchBanner));
     const content: ClosedContent | null = isClosedNotch
       ? closedContent(style, {
         now: new Date(),
@@ -1797,6 +1903,7 @@ export class Island {
     // does on macOS.
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && State.mode === "expanded") {
+        if (this.onboardingActive) return;
         if (State.pendingApproval) this.foldApproval();
         else if (!State.isPinned) this.collapse();
       }
@@ -1902,10 +2009,10 @@ export class Island {
     this.ensureRunning();
   }
 
-  /** The greeting and the drop sequence draw a Mochi of their own: not that one. */
+  /** The greeting, onboarding, and drop sequence own Mochi here. */
   private canDragOut(): boolean {
     if (State.mode === "hidden" || !this.desktop.canPickUp()) return false;
-    return !(State.mode === "expanded" && (State.view === "greeting" || this.uploadActive));
+    return !(State.mode === "expanded" && (State.view === "greeting" || State.view === "onboarding" || this.uploadActive));
   }
 
   private isBotHit(x: number, y: number): boolean {
@@ -2147,8 +2254,9 @@ export class Island {
     if (State.mode === "expanded" && State.view === "overview" && State.focusTask?.id === WHATSAPP_ID) {
       p = { cx: 68, cy: 141, diameter: 58, opacity: 1 };
     }
-    const welcome = GlobalWelcomeMessages.active();
-    const notif = GlobalNotifications.active();
+    const closedBannerAllowed = !this.onboardingActive && State.mode !== "expanded";
+    const welcome = closedBannerAllowed ? GlobalWelcomeMessages.active() : null;
+    const notif = closedBannerAllowed ? GlobalNotifications.active() : null;
     const style = closedIsland(State.settings.closedIsland);
 
     if (notif != null) {
@@ -2365,7 +2473,7 @@ export class Island {
     // The state machine's own deadline, so the bar follows an auto-close delay
     // edited while the countdown runs.
     const dueAt = this.fsm.homeCollapseDueAt;
-    if (this.transferActive || State.mode !== "expanded" || State.isPinned || dueAt == null) {
+    if (this.transferActive || State.mode !== "expanded" || State.isPinned || this.onboardingActive || dueAt == null) {
       this.countdown.style.width = "0px";
       return;
     }
@@ -2440,19 +2548,22 @@ export class Island {
 
     const expanded = State.mode === "expanded";
     const greetingActive = expanded && State.view === "greeting";
+    const onboardingActive = expanded && State.view === "onboarding";
 
     const live = expanded && !greetingActive;
     this.islandEl.classList.toggle("expanded", expanded);
+    this.islandEl.classList.toggle("onboarding-mode", onboardingActive);
     this.contentEl.style.display = live ? "flex" : "none";
     this.contentEl.style.visibility = live ? "visible" : "hidden";
     this.contentEl.style.opacity = live ? "1" : "0";
     // While the drop sequence owns the body its buttons are painted on the canvas
     // underneath, so only the header may keep taking clicks up here.
     this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";
-    this.header.el.style.display = live ? "flex" : "none";
-    this.header.el.style.visibility = live ? "visible" : "hidden";
-    this.header.el.style.opacity = live ? "1" : "0";
-    this.header.el.style.pointerEvents = live ? "auto" : "none";
+    const showHeader = live && !onboardingActive;
+    this.header.el.style.display = showHeader ? "flex" : "none";
+    this.header.el.style.visibility = showHeader ? "visible" : "hidden";
+    this.header.el.style.opacity = showHeader ? "1" : "0";
+    this.header.el.style.pointerEvents = showHeader ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 
     // Leaving the greeting, however it ends, lets its sound fade out.
@@ -2563,7 +2674,7 @@ export class Island {
 
     // If an appearance change occurred while the island was open (or in auto-close countdown),
     // fold immediately back to resting mode so the user sees the new appearance on screen instantly.
-    if (appearanceChanged && State.mode !== "hidden") {
+    if (appearanceChanged && State.mode !== "hidden" && !this.onboardingActive) {
       this.fsm.forceHidden();
     } else {
       this.animateGeometry();

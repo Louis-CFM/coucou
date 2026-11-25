@@ -22,6 +22,7 @@ mod i18n;
 mod identity;
 mod integrations;
 mod calcom;
+mod clipboard;
 mod coudrop;
 mod island;
 mod launch;
@@ -136,6 +137,10 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_chat_models = current.phone_chat_models.clone();
         // Antigravity approvals: only their own switch changes them (agy_approvals.rs).
         settings.agy_approvals_enabled = current.agy_approvals_enabled;
+        settings.companion_name = settings::sanitize_companion_name(&settings.companion_name);
+        if !settings.companion_name.is_empty() {
+            settings.companion_setup_completed = true;
+        }
         *current = settings;
         (current.clone(), screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -162,6 +167,9 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     if i18n::set_picked(&settings.language) {
         language_changed(&app);
+    }
+    if let Some(win) = app.get_webview_window(desktop::LABEL) {
+        let _ = win.set_title(&settings.resolved_companion_name());
     }
     // Keep the other window in step (island ⇄ settings window).
     let _ = app.emit("settings-changed", settings);
@@ -1192,6 +1200,14 @@ pub fn run() {
             companion_ai::companion_ai_generate,
             companion_ai::companion_ai_cancel,
             companion_ai::companion_probe_health,
+            clipboard::clipboard_get_history,
+            clipboard::clipboard_copy_item,
+            clipboard::clipboard_pin_item,
+            clipboard::clipboard_delete_item,
+            clipboard::clipboard_clear_history,
+            clipboard::clipboard_set_monitoring,
+            clipboard::clipboard_is_monitoring,
+            clipboard::clipboard_get_image_data,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1256,6 +1272,7 @@ pub fn run() {
             presence::start(&handle);
             smart_notch::start(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);
+            clipboard::start(&handle);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());
             if loaded.autostart {
@@ -1264,7 +1281,8 @@ pub fn run() {
                 let _ = handle.autolaunch().enable();
             }
             let open_window = flow::get(&handle).map(|f| f.store.lock().unwrap().prefs.open_at_launch).unwrap_or(true);
-            if open_window && !launched_at_login() {
+            let needs_onboarding = handle.state::<Shared>().settings.lock().unwrap().needs_companion_onboarding();
+            if open_window && !needs_onboarding && !launched_at_login() {
                 show_hub(&handle, None);
             }
             Ok(())

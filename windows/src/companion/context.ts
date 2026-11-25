@@ -9,7 +9,18 @@ import { State } from "../core/state";
 export class ContextIntelligence {
   private static sequenceVersion = 1;
   private static sessionStartTime = Date.now();
-  private static lastHydrationTime = Date.now();
+  private static lastHydrationTime: number = (() => {
+    try {
+      if (typeof localStorage !== "undefined") {
+        const saved = localStorage.getItem("coucou_last_water_time");
+        if (saved) {
+          const n = Number(saved);
+          if (!isNaN(n) && n > 0) return n;
+        }
+      }
+    } catch {}
+    return Date.now();
+  })();
 
   // Activity tracking state
   private static currentForegroundApp: string | null = null;
@@ -200,7 +211,7 @@ export class ContextIntelligence {
       sessionDurationMinutes,
       minutesSinceHydration: this.getMinutesSinceHydration(nowMs),
       resolvedName,
-      identityVersion: this.hashIdentity(resolvedName),
+      identityVersion: this.hashIdentity(`${resolvedName}::${State.companionName}`),
       mochiWardrobe: wardrobe,
       category,
       currentApp,

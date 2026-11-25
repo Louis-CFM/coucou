@@ -311,7 +311,7 @@ fn page_url(app: &AppHandle) -> WebviewUrl {
 fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
     let mut builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
         .additional_browser_args(crate::BROWSER_ARGS)
-        .title("Mochi")
+        .title(&crate::settings::active_companion_name())
         .inner_size(SIZE, SIZE)
         // GTK won't size a non-resizable window below its natural size (see
         // island::apply_geometry). Windows would grow resize borders instead.

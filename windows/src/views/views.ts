@@ -12,6 +12,7 @@ import {
   resolveShowTabShelf,
   resolveShowTabDrop,
   resolveShowTabCoudrop,
+  resolveShowTabClipboard,
   resolveShowTabLaunch,
 } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
@@ -32,8 +33,10 @@ import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
 import { buildWhatsNew } from "./whatsnew";
 import { buildLaunch } from "./launch";
+import { buildOnboarding } from "./onboarding";
 import { buildFileShelf } from "./fileshelf";
 import { buildCoudrop } from "./coudrop";
+import { buildClipboard } from "./clipboard";
 import { buildSpotifyCard } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
@@ -78,6 +81,8 @@ export interface ViewActions {
   holdOpen(on: boolean): void;
   /** A Claude Code session was started from the launch card: Mochi is pleased, the island folds. */
   launched(): void;
+  /** Saves first-run companion naming onboarding and transitions into the normal Notch state. */
+  completeOnboarding?(chosenName: string, skipped?: boolean): Promise<void> | void;
 }
 
 export interface ViewHost {
@@ -140,6 +145,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubbleRound, 19));
   const tabShelf = h("button", { class: "tab", title: "File Shelf", onclick: () => go("fileshelf") }, svg(ICONS.folder, 17));
   const tabCoudrop = h("button", { class: "tab coudrop-tab", title: "Coudrop", onclick: () => go("coudrop") }, svg(ICONS.phoneArrowUp, 16));
+  const tabClipboard = h("button", { class: "tab clipboard-tab", title: "Clipboard", onclick: () => go("clipboard") }, svg(ICONS.stack, 17));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 16));
   // A new Claude Code session, in a project, from here (Mac: the terminal tab).
   const tabLaunch = h(
@@ -176,7 +182,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabShelf, tabCoudrop, tabDrop, tabLaunch),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabShelf, tabCoudrop, tabClipboard, tabDrop, tabLaunch),
     h("div", { class: "header-actions" }, planPills, mochiPills, gearBtn, soundBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -189,12 +195,14 @@ export function buildHeader(actions: ViewActions): ViewHost {
       const showChat = resolveShowTabChat(State.settings);
       const showShelf = resolveShowTabShelf(State.settings);
       const showCoudrop = resolveShowTabCoudrop(State.settings);
+      const showClipboard = resolveShowTabClipboard(State.settings);
       const showDrop = resolveShowTabDrop(State.settings);
       const showLaunch = resolveShowTabLaunch(State.settings);
 
       tabChat.style.display = showChat ? "" : "none";
       tabShelf.style.display = showShelf ? "" : "none";
       tabCoudrop.style.display = showCoudrop ? "" : "none";
+      tabClipboard.style.display = showClipboard ? "" : "none";
       tabDrop.style.display = showDrop ? "" : "none";
       tabLaunch.style.display = showLaunch ? "" : "none";
 
@@ -203,6 +211,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
         (v === "prompt" && !showChat) ||
         (v === "fileshelf" && !showShelf) ||
         (v === "coudrop" && !showCoudrop) ||
+        (v === "clipboard" && !showClipboard) ||
         (v === "upload" && !showDrop) ||
         (v === "launch" && !showLaunch);
 
@@ -214,6 +223,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabChat.classList.toggle("on", v === "prompt");
       tabShelf.classList.toggle("on", v === "fileshelf");
       tabCoudrop.classList.toggle("on", v === "coudrop");
+      tabClipboard.classList.toggle("on", v === "clipboard");
       tabDrop.classList.toggle("on", v === "upload");
       tabLaunch.classList.toggle("on", v === "launch");
       gearBtn.classList.toggle("on", v === "settings");
@@ -224,7 +234,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       closeBtn.style.display = State.pendingApproval ? "none" : "";
       syncPlanPills();
       syncMochiPills();
-      const live = State.mode === "expanded";
+      const live = State.mode === "expanded" && v !== "onboarding";
       el.style.display = live ? "flex" : "none";
       el.style.visibility = live ? "visible" : "hidden";
       el.style.opacity = (!live || v === "confused") ? "0" : "1";
@@ -971,9 +981,11 @@ export function buildViews(
   map.set("wardrobe", buildWardrobe(actions));
   map.set("update", buildUpdate());
   map.set("whatsNew", buildWhatsNew());
+  map.set("onboarding", buildOnboarding(actions));
   map.set("launch", buildLaunch(actions));
   map.set("fileshelf", buildFileShelf(actions));
   map.set("coudrop", buildCoudrop(actions));
+  map.set("clipboard", buildClipboard(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

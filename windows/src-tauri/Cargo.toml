@@ -91,6 +91,9 @@ windows = { version = "0.61", features = [
   "Win32_UI_Shell",
   "Win32_UI_Shell_Common",
   "Win32_UI_WindowsAndMessaging",
+  # Clipboard monitoring: AddClipboardFormatListener / WM_CLIPBOARDUPDATE.
+  "Win32_System_DataExchange",
+  "Win32_System_Memory",
   # Flow dictation's keyboard hook.
   "Win32_System_LibraryLoader",
   # System notifications listener for the small notch

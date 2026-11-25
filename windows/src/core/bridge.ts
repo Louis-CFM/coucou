@@ -118,6 +118,35 @@ export interface FileShelfItemInfo {
   extension: string;
 }
 
+export interface ClipboardItem {
+  id: string;
+  kind: "text" | "image" | "link";
+  content: string;
+  preview: string;
+  imagePath?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  wordCount?: number;
+  charCount?: number;
+  pinned: boolean;
+  createdAt: number;
+  lastCopiedAt: number;
+  hash: string;
+  sourceApp?: string;
+}
+
+export interface ClipboardHistory {
+  items: ClipboardItem[];
+}
+
+export interface ImageDataResult {
+  dataUrl: string;
+  width: number;
+  height: number;
+  sizeBytes: number;
+  format: string;
+}
+
 /** Session details for the phone: the switch (off by default). */
 export interface PhoneDetailsStatus {
   enabled: boolean;
@@ -517,6 +546,16 @@ export const Bridge = {
   coudropPickFiles: () => call<string[]>("coudrop_pick_files"),
   coudropOpenFile: (path: string) => call<void>("coudrop_open_file", { path }),
   coudropStageSendFiles: (paths: string[]) => call<string[]>("coudrop_stage_send_files", { paths }),
+
+  // ── Coucou Clipboard ───────────────────────────────────────────────────────
+  clipboardGetHistory: () => call<ClipboardHistory>("clipboard_get_history"),
+  clipboardCopyItem: (id: string) => call<{ ok: boolean }>("clipboard_copy_item", { id }),
+  clipboardPinItem: (id: string, pinned: boolean) => call<boolean>("clipboard_pin_item", { id, pinned }),
+  clipboardDeleteItem: (id: string) => call<boolean>("clipboard_delete_item", { id }),
+  clipboardClearHistory: () => call<void>("clipboard_clear_history"),
+  clipboardSetMonitoring: (enabled: boolean) => call<void>("clipboard_set_monitoring", { enabled }),
+  clipboardIsMonitoring: () => call<boolean>("clipboard_is_monitoring"),
+  clipboardGetImageData: (id: string) => call<ImageDataResult | null>("clipboard_get_image_data", { id }),
 
   // ── File Shelf (Desk) ──────────────────────────────────────────────────────
   fileshelfPickFiles: () => call<string[]>("fileshelf_pick_files"),

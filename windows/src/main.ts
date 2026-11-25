@@ -4,6 +4,7 @@ import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
+import { needsCompanionOnboarding } from "./core/companion-identity";
 import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerPhoneLink } from "./island/phone-link";
@@ -174,7 +175,17 @@ async function main() {
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
     const previousMain = State.mainPillId;
+    const previousCompanion = State.companionName;
     State.settings = { ...State.settings, ...s };
+    if (State.companionName !== previousCompanion) {
+      GlobalWelcomeMessages.invalidateForCompanionRename();
+    }
+    if (State.mode === "expanded" && State.view === "onboarding" && !needsCompanionOnboarding(State.settings)) {
+      island.fsm.pinned = false;
+      State.isPinned = false;
+      State.view = State.defaultView();
+      island.fsm.forceHidden();
+    }
     applyLanguage();
     island.applySettings();
     State.loadIntegrationTasks();
@@ -198,14 +209,24 @@ async function main() {
   }
 
   // Monday recap: app start (greeting over), an agent starting work, waking up.
-  const checkRecap = () => void Recap.check(island);
+  const checkRecap = () => {
+    if (needsCompanionOnboarding(State.settings)) return;
+    void Recap.check(island);
+  };
   // What's new, once after an update: when the greeting is over, or a few
   // seconds in when there is no greeting (the card waits for a quiet island).
-  const whatsNew = () => void WhatsNew.launch(island);
+  const whatsNew = () => {
+    if (needsCompanionOnboarding(State.settings)) return;
+    void WhatsNew.launch(island);
+  };
   island.onGreetingDone = () => {
     checkRecap();
     whatsNew();
     GlobalWelcomeMessages.onAppLaunch();
+  };
+  island.onOnboardingComplete = () => {
+    checkRecap();
+    whatsNew();
   };
   window.setTimeout(whatsNew, 8000);
   island.onWake = checkRecap;
@@ -220,6 +241,10 @@ async function main() {
   if (!IS_TAURI) {
     document.documentElement.style.background = "#0c0d12";
     document.body.style.background = "#0c0d12";
+
+    if (new URLSearchParams(window.location.search).has("onboard")) {
+      island.enterOnboarding(false);
+    }
 
     window.addEventListener("keydown", (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
