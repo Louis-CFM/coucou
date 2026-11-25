@@ -35,6 +35,7 @@ class Notifications(private val context: Context) {
     private val nm = context.getSystemService(NotificationManager::class.java)
 
     init {
+        nm.deleteNotificationChannel("link")
         nm.deleteNotificationChannel("approvals")
         nm.deleteNotificationChannel("approvals_v2")
         createChannels()
@@ -43,8 +44,10 @@ class Notifications(private val context: Context) {
     /** The channels' names and descriptions are in the app's language (Android shows them in its own settings); made again when it changes. */
     private fun createChannels() {
         nm.createNotificationChannel(
-            NotificationChannel(CH_LINK, context.getString(R.string.channel_link), NotificationManager.IMPORTANCE_LOW).apply {
+            NotificationChannel(CH_LINK, context.getString(R.string.channel_link), NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = context.getString(R.string.channel_link_description)
+                setSound(null, null)
+                enableVibration(false)
                 setShowBadge(false)
             },
         )
@@ -120,28 +123,60 @@ class Notifications(private val context: Context) {
     }
 
     private fun ongoing(g: Glance?): Notification {
-        val title = g?.headline ?: context.getString(R.string.status_connecting)
-        val detail = g?.detail.orEmpty()
-        val b = Notification.Builder(context, CH_LINK)
-            .setSmallIcon(R.drawable.ic_stat_mochi)
-            .setContentTitle(title)
-            .setContentText(detail)
-            .setColor(g?.tone?.argb ?: GlanceTone.CALM.argb)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setShowWhen(false)
-            .setVisibility(Notification.VISIBILITY_PRIVATE)
-            .setPublicVersion(
-                Notification.Builder(context, CH_LINK).setSmallIcon(R.drawable.ic_stat_mochi)
-                    .setContentTitle(context.getString(R.string.app_name))
-                    .setContentText(if (g?.connected == true) context.getString(R.string.status_connected) else context.getString(R.string.status_not_connected))
-                    .build(),
-            )
-            .setContentIntent(open(null, false, 0))
-        if (g != null && g.lines.isNotEmpty()) {
-            b.setStyle(Notification.BigTextStyle().bigText(g.lines.joinToString("\n") { "${it.agent}: ${it.text}" }).setSummaryText(detail))
+        val top = g?.lines?.firstOrNull()
+        val barTitle = top?.agent?.trim()?.takeIf { it.isNotEmpty() } ?: "Coucou"
+        val fallbackStatus = when {
+            g == null -> context.getString(R.string.status_connecting)
+            g.connected -> context.getString(R.string.status_connected)
+            else -> context.getString(R.string.status_not_connected)
+        }
+        val barSubtitle = if (top != null && top.text.isNotBlank()) top.text.trim() else fallbackStatus
+        val color = when {
+            g?.tone == GlanceTone.TROUBLE || g?.tone == GlanceTone.ATTENTION -> g.tone.argb
+            top?.colorArgb != null -> top.colorArgb
+            else -> g?.tone?.argb ?: GlanceTone.CALM.argb
+        }
+        val shortChip = barTitle.take(12)
+        val pub = promoteOngoing(
+            Notification.Builder(context, CH_LINK)
+                .setSmallIcon(R.drawable.ic_stat_mochi)
+                .setContentTitle(barTitle)
+                .setContentText(barSubtitle)
+                .setColor(color)
+                .setOngoing(true)
+                .setShowWhen(false),
+            shortChip,
+        ).build()
+        val b = promoteOngoing(
+            Notification.Builder(context, CH_LINK)
+                .setSmallIcon(R.drawable.ic_stat_mochi)
+                .setContentTitle(barTitle)
+                .setContentText(barSubtitle)
+                .setColor(color)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setPublicVersion(pub)
+                .setContentIntent(open(null, false, 0)),
+            shortChip,
+        )
+        if (g != null && g.lines.size > 1) {
+            b.setStyle(Notification.BigTextStyle().bigText(g.lines.joinToString("\n") { "${it.agent}: ${it.text}" }).setSummaryText(barSubtitle))
         }
         return b.build()
+    }
+
+    private fun promoteOngoing(b: Notification.Builder, shortChip: String): Notification.Builder {
+        b.setCategory(Notification.CATEGORY_STATUS)
+        b.addExtras(android.os.Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
+        runCatching {
+            Notification.Builder::class.java.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType).invoke(b, true)
+        }
+        runCatching {
+            Notification.Builder::class.java.getMethod("setShortCriticalText", String::class.java).invoke(b, shortChip)
+        }
+        return b
     }
 
     /** The language changed: the next push posts the ongoing notification again, whatever it said before, and the channels get their new names. */
@@ -250,7 +285,7 @@ class Notifications(private val context: Context) {
     }
 
     companion object {
-        const val CH_LINK = "link"
+        const val CH_LINK = "link_v2"
         private const val WAKE_MS = 6_000L
         const val CH_APPROVAL_QUIET = "approvals_quiet"
         const val CH_UPDATES = "updates"

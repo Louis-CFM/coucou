@@ -29,6 +29,7 @@ class OngoingGateTest {
         assertTrue(gate.shouldPost(glance(head = "All done", detail = "2 finished")))
         assertTrue(gate.shouldPost(glance(head = "All done", detail = "2 finished", tone = GlanceTone.OK)))
         assertTrue(gate.shouldPost(glance(head = "All done", detail = "2 finished", tone = GlanceTone.OK).copy(lines = listOf(GlanceLine("Codex", "Done", BotState.FINISHED)))))
+        assertTrue(gate.shouldPost(glance(head = "All done", detail = "2 finished", tone = GlanceTone.OK).copy(lines = listOf(GlanceLine("Codex", "Done", BotState.FINISHED, 0xFF3B82F6.toInt())))))
         assertTrue(gate.shouldPost(glance(head = "All done", detail = "2 finished", tone = GlanceTone.OK).copy(connected = false)))
     }
 

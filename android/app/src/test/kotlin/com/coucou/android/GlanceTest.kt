@@ -101,4 +101,10 @@ class GlanceTest {
         val g = build(listOf(s("a", BotState.WORKING, "Bash"), s("b", BotState.SEARCHING, "Grep"), s("c", BotState.THINKING, "x")))
         assertEquals(setOf("Working", "Searching", "Thinking"), g.lines.map { it.text }.toSet())
     }
+
+    @Test fun sessionColorPropagatesToGlanceLine() {
+        val custom = SessionInfo("a", "Antigravity", BotState.WORKING, "", 0, 0, 0L, color = "#3B82F6")
+        val g = build(listOf(custom))
+        assertEquals(0xFF3B82F6.toInt(), g.lines.single().colorArgb)
+    }
 }

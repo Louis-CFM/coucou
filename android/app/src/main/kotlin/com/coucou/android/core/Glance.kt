@@ -5,7 +5,7 @@ import com.coucou.android.link.SessionInfo
 import com.coucou.android.mochi.BotState
 
 /** One agent in a glance: its name and one plain line. No command, no path, no answer text. */
-data class GlanceLine(val agent: String, val text: String, val state: BotState)
+data class GlanceLine(val agent: String, val text: String, val state: BotState, val colorArgb: Int? = null)
 
 /** How loud a glance is: picks the dot colour of the widget, the tile state and the notification accent. */
 enum class GlanceTone(val argb: Int) {
@@ -64,7 +64,7 @@ object GlanceBuilder {
             )
         }
         val ranked = sessions.sortedBy { ORDER.indexOf(it.state).let { i -> if (i < 0) ORDER.size else i } }
-        val lines = ranked.take(MAX_LINES).map { GlanceLine(nameOf(it.pillId), lineOf(it), it.state) }
+        val lines = ranked.take(MAX_LINES).map { GlanceLine(nameOf(it.pillId), lineOf(it), it.state, WidgetData.parse(HomePanel.colorHex(it))) }
         val questions = sessions.count { it.state == BotState.QUESTION }
         val waiting = approvals + questions
         val busy = sessions.count { it.state in BUSY }

@@ -7,6 +7,7 @@
     <!-- Finding the computer again after a Wi-Fi change: a multicast lock held only while browsing the local network. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Held for at most 15 seconds, only while the periodic alarm checks that the link to the computer is alive. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
