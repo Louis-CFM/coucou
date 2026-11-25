@@ -52,6 +52,9 @@ export default defineConfig({
     // Cargo writes and locks files under target/ while Vite starts; watching them
     // crashes Vite on Windows with EBUSY. Tauri watches src-tauri/ itself.
     watch: { ignored: ["**/target/**", "**/src-tauri/**"] },
+    // Mochi's room uses the Mac's pictures and logos where they are, as the
+    // sounds above: the dev server may read them; the build copies them.
+    fs: { allow: [".", resolve(__dirname, "../NotchBuddy/Assets.xcassets/Room")] },
   },
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: {

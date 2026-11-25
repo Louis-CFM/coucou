@@ -94,6 +94,8 @@ export class Island {
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
+  /** What the cards' buttons do, for answers given in Mochi's room. */
+  private cardActions!: ViewActions;
   private views!: Map<IslandViewName, ViewHost>;
   private uploadCanvas!: UploadCanvas;
   /** The sessions listed on the drop card while a file is over it. */
@@ -185,6 +187,17 @@ export class Island {
     }
     this.fsm.pinned = false;
     this.setView(State.defaultView());
+  }
+
+  /**
+   * A click under Mochi's room (hub/pages/room.ts): the card's own Deny, Allow
+   * or Reply in terminal, for the request it was shown, and only while that
+   * request is still the one waiting.
+   */
+  answerFromRoom(requestId: string, decision: "allow" | "deny" | "terminal") {
+    if (State.pendingApproval?.requestId !== requestId || State.pendingApproval.questions) return;
+    if (decision === "terminal") this.cardActions.answerInTerminal();
+    else this.cardActions.decide(decision);
   }
 
   /**
@@ -353,6 +366,7 @@ export class Island {
       this.compactPlanLabel,
     );
 
+    this.cardActions = actions;
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
     this.viewsEl = h("div", { id: "views" });
