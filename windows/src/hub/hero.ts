@@ -9,7 +9,7 @@
 // scrolled out of sight.
 
 import { BotEngine, hexToRGB } from "../mochi/engine";
-import { onScreen, shouldAnimate } from "./frames";
+import { frameDue, frameInterval, onScreen, shouldAnimate } from "./frames";
 import type { BotEmoteName, BotStateName } from "../core/layout";
 import type { Outfit } from "../mochi/wardrobe";
 
@@ -28,6 +28,8 @@ let fallback: number | null = null;
 /** No animation frame came after the last ask: the timer drives the loop. */
 let starved = false;
 let last = performance.now();
+/** When the last frame was drawn: frames in between are skipped (`frameDue`). */
+let lastDrawn = -Infinity;
 const start = performance.now();
 /** The Coucou window is on screen, as Rust last said (`setWindowShown`). */
 let windowShown = true;
@@ -45,7 +47,13 @@ function loop(now: number) {
     window.clearTimeout(fallback);
     fallback = null;
   }
-  const dt = Math.min(0.05, (now - last) / 1000);
+  if (!frameDue(now, lastDrawn, frameInterval(document.hasFocus?.() ?? true))) {
+    if (running()) ask();
+    return;
+  }
+  lastDrawn = now;
+  // Up to 0.12 s, so the walks and the drift keep their speed at 10 frames a second.
+  const dt = Math.min(0.12, (now - last) / 1000);
   last = now;
   const t = (now - start) / 1000;
   stepVoice(dt, now);
@@ -124,6 +132,13 @@ function stepVoice(dt: number, now: number) {
   const goal = now - voiceAt > 250 ? 0 : voiceGoal;
   voice += (goal - voice) * Math.min(1, dt * (goal > voice ? 14 : 4));
   if (voice < 0.001) voice = 0;
+}
+
+/** Mochi's springs (the mouth's ω₀ is 2π/0.25) need steps under 0.08 s: a
+ *  frame drawn behind other windows (10 a second) is stepped in pieces. */
+function stepEngine(engine: BotEngine, dt: number) {
+  const MAX_STEP = 1 / 30;
+  for (let left = dt; left > 1e-6; left -= MAX_STEP) engine.update(Math.min(left, MAX_STEP));
 }
 
 function add(a: Animated) {
@@ -381,7 +396,7 @@ export function troupe(canvas: HTMLCanvasElement, cast: MochiSpec[], width: numb
           w.engine.lookX = w.dir * 0.5;
           w.engine.lookY = 0.1 + 0.1 * Math.sin(t + w.spec.start * 7);
         }
-        w.engine.update(dt);
+        stepEngine(w.engine, dt);
         // `size` is the drawing's square, as on the Mac; the body is about 0.68 of it.
         const box = s;
         const floor = ch - 8;
@@ -419,7 +434,7 @@ export function liveMochi(canvas: HTMLCanvasElement, color = "#F5F6F8", state: B
         engine.lookX = Math.max(-1, Math.min(1, mouse.x / 300));
         engine.lookY = Math.max(-1, Math.min(1, mouse.y / 300));
       }
-      engine.update(dt);
+      stepEngine(engine, dt);
       ctx.clearRect(0, 0, w, h);
       engine.draw(ctx, w, h);
     },
