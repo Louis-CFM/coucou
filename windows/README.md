@@ -464,8 +464,9 @@ npm run pack           # builds the installer and drops it in windows/release/
 to work on the island's looks. It also serves `dev/upload-preview.html`, which
 replays the whole file-drop choreography on a loop — the one part of the UI that
 otherwise needs a real drag from Explorer to see — and `dev/recap-preview.html`,
-the weekly recap card and its shared image on a sample week. None of these pages
-ships in the app.
+the weekly recap card and its shared image on a sample week, and
+`dev/room-preview.html`, Mochi's room on made-up data (`?mochi=idle|working|asking|question`,
+`&weather=sun|cloudy|rain|storm|clear`, `&night=1`). None of these pages ships in the app.
 
 `npm run pack` leaves two files in `windows/release/`, the same names the release
 workflow publishes:
@@ -710,6 +711,23 @@ on; other agents and Claude Desktop ask in their own window.
     leaves to the image. A turn cut short by the session ending still counts.
   - Tray → Pause doesn't stop the history (it stays on the machine anyway);
     switch it off in Settings → General.
+- Mochi's room (Coucou window → Notch → Mochi's room, off by default) is the
+  Mac's, on the same picture and logos, with these differences:
+  - The room and its card read the island's state, which the island sends to
+    the Coucou window only while the room is on screen. Deny and Allow under the
+    room are the island's own buttons; there is no **Always**, as there is none
+    in the island yet. Antigravity also gets **Reply in terminal**, as in the
+    island. Questions are answered in the island (**Open the island**).
+  - n8n's frame shows the latest execution (its workflow and whether it
+    worked), not the runs of the day: the n8n poller here only reports the
+    latest one.
+  - Vercel's poller keeps finished deploys only, so a deploy in progress doesn't
+    cloud the window; a pending CI on a main branch does.
+  - The numbers in the frames come from the pills' pollers, which run for
+    declared pills only: a tool connected but not declared shows its frame with
+    a dash.
+  - Time coded, approvals and the streak come from the weekly recap's history,
+    so they stay at zero while it is turned off.
 - The wardrobe opens with a right-click on Mochi, from the tray menu, or with
   its global shortcut (`Ctrl+Alt+G` by default). In the compact island a tall hat
   is cut by the top edge of the screen, as it is by the notch on a Mac.

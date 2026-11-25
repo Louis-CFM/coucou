@@ -1174,3 +1174,211 @@ button.hub-icon svg {
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }
+
+/* ── Mochi's room ─────────────────────────────────────────────────────────── */
+
+/* The painted room, the canvas of what moves over it, and the frames, tags
+   and window placed in the picture's pixels (hub/pages/room.ts). --s is the
+   picture's scale, set by the canvas as it draws. */
+.room-scene {
+  position: relative;
+  aspect-ratio: 1344 / 752;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--hub-line);
+  background: #0c1226;
+}
+
+.room-art,
+.room-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.room-canvas {
+  pointer-events: none;
+}
+
+.room-frame,
+.room-hot,
+.room-tag-at {
+  position: absolute;
+}
+
+.room-tag-at {
+  transform: translate(-50%, -50%);
+}
+
+.room-frame-btn {
+  width: 100%;
+  height: 100%;
+  padding: 0 calc(3px * var(--s, 1));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(4px * var(--s, 1));
+  background: rgba(12, 18, 38, 0.92);
+  color: var(--hub-text);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.room-frame-btn:hover {
+  background: #0c1226;
+}
+
+.room-frame-value {
+  display: flex;
+  align-items: center;
+  gap: calc(3px * var(--s, 1));
+  max-width: 100%;
+  font: 700 calc(13px * var(--s, 1)) var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.room-frame-value.long {
+  font-size: calc(10px * var(--s, 1));
+}
+
+.room-frame-value span,
+.room-frame-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-frame-label {
+  max-width: 100%;
+  font: 400 calc(9px * var(--s, 1)) var(--font);
+  color: #a9b3c7;
+  white-space: nowrap;
+}
+
+.room-frame-value .room-dot {
+  width: calc(6px * var(--s, 1));
+  height: calc(6px * var(--s, 1));
+}
+
+.room-logo {
+  display: inline-block;
+  flex: 0 0 auto;
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.room-tag {
+  display: inline-block;
+  padding: calc(3px * var(--s, 1)) calc(8px * var(--s, 1));
+  border-radius: 999px;
+  background: rgba(12, 18, 38, 0.85);
+  color: #e1e3e6;
+  font: 600 calc(11.5px * var(--s, 1)) var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.room-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.room-dot.green {
+  background: var(--hub-green);
+}
+
+.room-dot.red {
+  background: var(--hub-red);
+}
+
+.room-door:empty {
+  display: none;
+}
+
+.room-card-head,
+.room-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.room-card-head .spacer,
+.room-card-actions .spacer {
+  flex: 1 1 auto;
+}
+
+.room-card-title {
+  font: 600 15px var(--font);
+}
+
+.room-card-count {
+  font: 600 12px var(--font);
+  color: var(--hub-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.room-command {
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: #000;
+  color: var(--hub-body);
+  font: 12.5px ui-monospace, "Cascadia Mono", Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 7.5em;
+  overflow: auto;
+  user-select: text;
+}
+
+.room-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.room-tool-logo {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.room-intro {
+  padding: 22px;
+}
+
+.room-intro-title {
+  font: 700 17px var(--font);
+}
+
+.room-intro ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--hub-body);
+  font-size: 13.5px;
+}
+
+@media (max-width: 900px) {
+  .room-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

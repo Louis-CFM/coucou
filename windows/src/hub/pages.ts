@@ -9,6 +9,7 @@ import { dictionaryPage, snippetsPage } from "./pages/words";
 import { stylesPage } from "./pages/styles";
 import { flowSettingsPage } from "./pages/flowsettings";
 import { voicePage } from "./pages/voice";
+import { roomPage } from "./pages/room";
 import { mailBannedPage, mailOverviewPage, mailRulesPage, mailVIPPage } from "./pages/mail";
 
 export const FLOW_PAGE_RENDERERS: Partial<Record<PageId, FlowPageRenderer>> = {
@@ -20,6 +21,7 @@ export const FLOW_PAGE_RENDERERS: Partial<Record<PageId, FlowPageRenderer>> = {
   styles: stylesPage,
   flowsettings: flowSettingsPage,
   voice: voicePage,
+  room: roomPage,
   mailOverview: mailOverviewPage,
   mailRules: mailRulesPage,
   mailBanned: mailBannedPage,

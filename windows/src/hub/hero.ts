@@ -131,6 +131,17 @@ function add(a: Animated) {
   wake();
 }
 
+/** A canvas of a page's own (Mochi's room), drawn by the same loop: only while
+ *  the window shows, and not while it is scrolled out of sight. */
+export function animate(el: HTMLCanvasElement, draw: (dt: number, t: number) => void) {
+  add({ el, draw });
+}
+
+/** The Coucou window is on screen, as Rust last said. */
+export function windowIsShown(): boolean {
+  return windowShown;
+}
+
 function fit(canvas: HTMLCanvasElement): { w: number; h: number; ctx: CanvasRenderingContext2D | null } {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const w = canvas.clientWidth;
@@ -446,6 +457,7 @@ export const THEMES: Record<string, Theme> = {
   snippets: { color: "#F7B32B", cast: [m("#F7B32B", 56, 0.15, { state: "working" }), m("#FB923C", 46, 0.6), m("#F5F6F8", 40, 0.95)] },
   styles: { color: "#F472B6", cast: [m("#F472B6", 60, 0.25, { outfit: "sunglasses" }), m("#F5F6F8", 48, 0.7, { outfit: "bow" }), m("#22D3EE", 42, 1, { outfit: "partyHat" })] },
   flowsettings: { color: "#8E939C", cast: [m("#F5F6F8", 56, 0.3), m("#8E939C", 46, 0.95, { state: "sleeping", roams: false })] },
+  room: { color: "#A78BFA", cast: [m("#A78BFA", 54, 0.35, { state: "sleeping", roams: false }), m("#F5F6F8", 46, 0.9)] },
   general: { color: "#8E939C", cast: [m("#F5F6F8", 60, 0.4, { outfit: "scarf" }), m("#FB923C", 46, 0.85)] },
   pills: {
     color: "#F5A524",

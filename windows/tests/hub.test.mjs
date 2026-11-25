@@ -41,6 +41,8 @@ const { onLanguageChange, setLanguage, t } = await import("../src/i18n/i18n.ts")
 const { FLOW_PAGES, NOTCH_PAGES, startHub } = await import("../src/hub/shell.ts");
 const pages = [...FLOW_PAGES, ...NOTCH_PAGES];
 const settle = () => new Promise((resolve) => setImmediate(resolve));
+/** The sidebar button of Notch → General (Mochi's room comes before it). */
+const GENERAL = pages.findIndex((page) => page.id === "general");
 
 beforeEach(() => {
   setLanguage("en");
@@ -69,7 +71,7 @@ test("language redraw relabels sidebar nodes and preserves selection and navigat
     const logo = root.find(".hub-brand")[0].find("CANVAS")[0];
     const labels = buttons.map((button) => button.find("SPAN")[0]);
     const groups = root.find(".hub-group");
-    buttons[FLOW_PAGES.length].fire("click");
+    buttons[GENERAL].fire("click");
     await settle();
     assert.equal(hub.current(), "general");
     assert.equal(root.find("H1")[0].textContent, "General");
@@ -86,7 +88,7 @@ test("language redraw relabels sidebar nodes and preserves selection and navigat
       assert.equal(root.find(".hub-status")[0].textContent, t("Dictation is off"));
       assert.equal(root.find(".hub-brand")[0].find("CANVAS")[0], logo);
       assert.equal(hub.current(), "general");
-      assert.deepEqual(buttons.filter((button) => button.classList.contains("on")), [buttons[FLOW_PAGES.length]]);
+      assert.deepEqual(buttons.filter((button) => button.classList.contains("on")), [buttons[GENERAL]]);
       assert.equal(root.find("H1")[0].textContent, t("General"));
       assert.equal(document.documentElement.dataset.dir, language === "ar" ? "rtl" : "ltr");
     }

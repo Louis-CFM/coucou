@@ -7608,6 +7608,21 @@
       "tr": "Telefondan son projelerinden birini seçer ve Claude'un ne yapacağını söylersin; terminalin burada Claude Code ile açılır, adadan olduğu gibi. Telefon yalnızca projelerin klasör adlarını görür ve her seferinde parmak izini veya ekran kilidini ister.",
       "ko": "휴대폰에서 최근 프로젝트 중 하나를 고르고 Claude가 할 일을 말하면, 아일랜드에서처럼 이 컴퓨터에서 터미널이 Claude Code와 함께 열려요. 휴대폰에는 프로젝트의 폴더 이름만 보이고, 매번 지문이나 화면 잠금으로 확인해요.",
       "ja": "スマートフォンで最近のプロジェクトを選び、Claude にしてほしいことを伝えると、アイランドからと同じように、このコンピュータでターミナルが Claude Code とともに開きます。スマートフォンに見えるのはプロジェクトのフォルダ名だけで、毎回、指紋認証か画面ロックで確認します。"
+    },
+    "Last run": {
+      "zh-Hans": "上次运行",
+      "hi": "पिछला रन",
+      "es": "Última ejecución",
+      "ar": "آخر تشغيل",
+      "fr": "Dernière exécution",
+      "bn": "শেষ রান",
+      "pt-BR": "Última execução",
+      "ru": "Последний запуск",
+      "id": "Eksekusi terakhir",
+      "de": "Letzter Lauf",
+      "tr": "Son çalıştırma",
+      "ko": "마지막 실행",
+      "ja": "前回の実行"
     }
   }
 }

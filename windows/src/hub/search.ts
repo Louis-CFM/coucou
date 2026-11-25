@@ -101,6 +101,13 @@ export const SETTINGS_ENTRIES: SettingsSearchEntry[] = [
   { id: "flow.app", page: "flowsettings", title: "hub.settings.app", terms: ["hub.settings.dock", "hub.settings.open-at-launch"] },
   { id: "flow.privacy", page: "flowsettings", title: "hub.settings.privacy", terms: ["hub.settings.keep"] },
 
+  // Notch → Mochi's room
+  {
+    id: "room.settings", page: "room", title: "In the room",
+    terms: ["Mochi's room", "Show the room", "Mochi goes to the door", "Weather at the window", "Day and night"],
+  },
+  { id: "room.tools", page: "room", title: "Tools on the walls", terms: ["Stripe", "GitHub", "Vercel", "n8n", "Cal.com"] },
+
   // Notch → General
   { id: "general.demo", page: "general", title: "demo.groupbox.title", terms: [] },
   { id: "general.sound", page: "general", title: "Sound", terms: ["Enable sounds", "Volume", "Open sounds folder", "Reload sounds"] },
