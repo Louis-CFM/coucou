@@ -15,7 +15,7 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
-import { SPOTIFY_ID, Spotify, islandDances } from "../core/spotify";
+import { SPOTIFY_ID, YTMUSIC_ID, activeMusicTrack, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -240,7 +240,8 @@ export class Island {
         // WhatsApp Desktop at the open conversation; WhatsApp Web when it isn't installed.
         else if (task.id === "integration_whatsapp") void Bridge.whatsappOpenApp();
         else if (task.id === "integration_gitea") void Bridge.openGitea();
-        else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
+        else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen("spotify");
+        else if (task.id === YTMUSIC_ID) void Bridge.spotifyOpen("ytmusic");
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -986,7 +987,7 @@ export class Island {
    */
   private updateClosed() {
     const style = closedIsland(State.settings.closedIsland);
-    const track = Spotify.state.track;
+    const track = activeMusicTrack(State.settings.activeIntegrations);
     const content: ClosedContent | null = State.mode === "hidden" || this.collapsed
       ? closedContent(style, {
         now: new Date(),

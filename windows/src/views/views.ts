@@ -25,7 +25,7 @@ import { buildUpdate } from "./update";
 import { buildWhatsNew } from "./whatsnew";
 import { buildLaunch } from "./launch";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
-import { SPOTIFY_ID } from "../core/spotify";
+import { isMediaPill, playerForPill } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { MAIL_ID } from "../core/mail";
@@ -221,8 +221,9 @@ function buildOverview(actions: ViewActions): ViewHost {
   let planTimer: number | null = null;
   // Spotify's card and pill are kept and updated in place: the progress bar
   // runs on, and a slider being dragged must not be rebuilt under the pointer.
-  const spotifyCard = buildSpotifyCard();
-  let spotifyPill: SpotifyPillHost | null = null;
+  const spotifyCard = buildSpotifyCard("spotify");
+  const ytmusicCard = buildSpotifyCard("ytmusic");
+  const mediaPills: SpotifyPillHost[] = [];
   // WhatsApp's card too: its reply field keeps the draft and the keyboard while messages arrive.
   // Mail's card too (classic Outlook): the search field keeps its text and the keyboard.
   const mailCard = buildMailCard({ keyboard: (on) => actions.keyboard(on) });
@@ -240,7 +241,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "mail" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "ytmusic" | "whatsapp" | "mail" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -388,15 +389,18 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
-      } else if (task && task.id === SPOTIFY_ID) {
+      } else if (task && isMediaPill(task.id)) {
         // Its own card for every state: playing, idle, not installed.
-        if (mode !== "spotify") {
+        const player = playerForPill(task.id);
+        const card = player === "ytmusic" ? ytmusicCard : spotifyCard;
+        const wantMode = player === "ytmusic" ? "ytmusic" : "spotify";
+        if (mode !== wantMode) {
           clear(leftBody);
-          leftBody.append(spotifyCard.el);
-          mode = "spotify";
+          leftBody.append(card.el);
+          mode = wantMode;
           cardKey = "";
         }
-        spotifyCard.sync();
+        card.sync();
       } else if (task && task.id === MAIL_ID) {
         if (mode !== "mail") {
           clear(leftBody);
@@ -443,18 +447,19 @@ function buildOverview(actions: ViewActions): ViewHost {
       if (pillKey !== pillIds) {
         pillIds = pillKey;
         clear(pills);
-        spotifyPill = null;
+        mediaPills.length = 0;
         for (const t of others) {
-          if (t.id === SPOTIFY_ID) {
-            spotifyPill = buildSpotifyPill(t, () => actions.setFocus(t.id));
-            pills.append(spotifyPill.el);
+          if (isMediaPill(t.id)) {
+            const p = buildSpotifyPill(t, () => actions.setFocus(t.id));
+            mediaPills.push(p);
+            pills.append(p.el);
           } else {
             pills.append(buildPill(t, actions));
           }
         }
         pruneMiniBots();
       }
-      spotifyPill?.sync();
+      for (const p of mediaPills) p.sync();
     },
   };
 }
