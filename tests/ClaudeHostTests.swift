@@ -24,6 +24,12 @@ enum ClaudeHostTests {
               ClaudeHost.terminal(termProgram: "", bundleId: "com.conductor.app")?.name == "Conductor")
         check("Conductor keeps its own bundle id",
               ClaudeHost.terminal(termProgram: "", bundleId: "com.conductor.app")?.bundleId == "com.conductor.app")
+        check("Maestri by bundle id",
+              ClaudeHost.terminal(termProgram: "", bundleId: "com.evercraftlabs.Maestro")?.name == "Maestri")
+        check("Maestri keeps its own bundle id",
+              ClaudeHost.terminal(termProgram: "", bundleId: "com.evercraftlabs.Maestro")?.bundleId == "com.evercraftlabs.Maestro")
+        check("Maestri by TERM_PROGRAM",
+              ClaudeHost.terminal(termProgram: "maestri", bundleId: "")?.bundleId == "com.evercraftlabs.Maestro")
         check("VS Code → nil", ClaudeHost.terminal(termProgram: "vscode", bundleId: "com.microsoft.VSCode") == nil)
         check("Cursor → nil", ClaudeHost.terminal(termProgram: "vscode", bundleId: "com.todesktop.230313mzl4w4u92") == nil)
         check("unknown → nil", ClaudeHost.terminal(termProgram: "", bundleId: "com.example.app") == nil)
@@ -32,10 +38,12 @@ enum ClaudeHostTests {
         check("nil host = VS Code", ClaudeHost.name(for: nil) == "VS Code")
         check("Warp host", ClaudeHost.name(for: "dev.warp.Warp-Stable") == "Warp")
         check("Conductor host = Open Conductor", ClaudeHost.name(for: "com.conductor.app") == "Conductor")
+        check("Maestri host", ClaudeHost.name(for: "com.evercraftlabs.Maestro") == "Maestri")
         check("unknown host = VS Code", ClaudeHost.name(for: "com.example.app") == "VS Code")
         check("editor session → VS Code", ClaudeHost.pillName(hostApp: nil) == "VS Code")
         check("terminal session → Claude Code", ClaudeHost.pillName(hostApp: "dev.warp.Warp-Stable") == "Claude Code")
         check("Conductor session → Claude Code", ClaudeHost.pillName(hostApp: "com.conductor.app") == "Claude Code")
+        check("Maestri session → Claude Code", ClaudeHost.pillName(hostApp: "com.evercraftlabs.Maestro") == "Claude Code")
 
         print("ClaudeHost.terminalCardsEnabled")
         UserDefaults.standard.removeObject(forKey: ClaudeHost.terminalCardsKey)
