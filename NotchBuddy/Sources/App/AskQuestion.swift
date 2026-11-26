@@ -5,6 +5,7 @@ import Foundation
 struct AskQuestionOption: Equatable {
     var label: String
     var description: String
+    var preview: String = ""
 }
 
 struct AskQuestionItem: Equatable {
@@ -22,6 +23,21 @@ enum QuestionLayout {
 extension AskQuestionItem {
     /// True when at least one option carries a description: the card then lists options vertically.
     var hasDescriptions: Bool { options.contains { !$0.description.isEmpty } }
+
+    /// True when at least one option carries an ASCII/code preview block.
+    var hasPreviews: Bool { options.contains { !$0.preview.isEmpty } }
+
+    /// The option whose preview should be shown (hovered > last selected > first option with a preview).
+    func previewOption(hoveredIndex: Int?, selectedLabels: [String]) -> AskQuestionOption? {
+        if let idx = hoveredIndex, idx >= 0, idx < options.count, !options[idx].preview.isEmpty {
+            return options[idx]
+        }
+        if let sel = selectedLabels.last,
+           let match = options.first(where: { $0.label == sel && !$0.preview.isEmpty }) {
+            return match
+        }
+        return options.first(where: { !$0.preview.isEmpty })
+    }
 }
 
 struct AskQuestion: Equatable {
@@ -43,6 +59,19 @@ struct AskQuestion: Equatable {
             } else {
                 h += item.options.count >= 3 ? 74 : 40
             }
+            if item.hasPreviews {
+                let maxPreviewLines = item.options
+                    .filter { !$0.preview.isEmpty }
+                    .map { opt in
+                        opt.preview
+                            .split(separator: "\n", omittingEmptySubsequences: false)
+                            .reduce(CGFloat(0)) { acc, line in
+                                acc + max(1, (CGFloat(line.count) * 6.6 / 480).rounded(.up))
+                            }
+                    }
+                    .max() ?? 1
+                h += min(160, maxPreviewLines * 14 + 16) + 22
+            }
             if item.multiSelect { h += 34 }
             return h
         }.max() ?? 160
@@ -63,7 +92,8 @@ struct AskQuestion: Equatable {
             for opt in rawOpts {
                 guard let label = opt["label"] as? String, !label.isEmpty else { return nil }
                 let desc = opt["description"] as? String ?? ""
-                opts.append(AskQuestionOption(label: label, description: desc))
+                let preview = opt["preview"] as? String ?? ""
+                opts.append(AskQuestionOption(label: label, description: desc, preview: preview))
             }
             let rawHeader = raw["header"] as? String ?? ""
             let header = String(rawHeader.prefix(12))

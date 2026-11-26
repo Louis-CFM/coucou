@@ -126,6 +126,61 @@ enum AskQuestionTests {
         let tall = AskQuestion(questions: [shortQ, longQ]).estimatedIslandHeight
         checkTrue("tallest question wins, within cap",     tall > 160 && tall <= 560)
 
+        // ── option previews ────────────────────────────────────────────────────
+        print("\nAskQuestion.preview")
+        let previewOpt1: [String: Any] = [
+            "label": "Compact",
+            "description": "Tight layout",
+            "preview": "+--------+\n| Header |\n| Body   |\n+--------+",
+        ]
+        let previewOpt2: [String: Any] = [
+            "label": "Wide",
+            "description": "Two columns",
+            "preview": "+------+------+\n| Left |Right |\n+------+------+",
+        ]
+        let previewInput: [String: Any] = ["questions": [
+            [
+                "question": "Pick a layout",
+                "header": "Layout",
+                "options": [previewOpt1, previewOpt2],
+                "multiSelect": false,
+            ]
+        ]]
+        let pParsed = AskQuestion.parse(toolInput: previewInput)
+        checkTrue("preview question parses",             pParsed != nil)
+        checkTrue("first option keeps preview",          pParsed?.questions[0].options[0].preview.contains("Header") == true)
+        checkTrue("second option keeps preview",         pParsed?.questions[0].options[1].preview.contains("Left") == true)
+        checkTrue("omitted preview defaults empty",      parsed?.questions[0].options[0].preview == "")
+        checkTrue("hasPreviews true when present",       pParsed?.questions[0].hasPreviews == true)
+        checkTrue("hasPreviews false when absent",       shortQ.hasPreviews == false)
+
+        if let item = pParsed?.questions[0] {
+            check("default preview picks first non-empty",
+                  item.previewOption(hoveredIndex: nil, selectedLabels: [])?.label ?? "", "Compact")
+            check("selected preview overrides default",
+                  item.previewOption(hoveredIndex: nil, selectedLabels: ["Wide"])?.label ?? "", "Wide")
+            check("hovered preview overrides selection",
+                  item.previewOption(hoveredIndex: 0, selectedLabels: ["Wide"])?.label ?? "", "Compact")
+        }
+        let mixedItem = AskQuestionItem(question: "Choose", header: "", options: [
+            AskQuestionOption(label: "Plain", description: ""),
+            AskQuestionOption(label: "Code", description: "", preview: "let x = 1"),
+        ], multiSelect: false)
+        check("hovering option without preview falls back to selection",
+              mixedItem.previewOption(hoveredIndex: 0, selectedLabels: ["Code"])?.label ?? "", "Code")
+        check("short question without preview returns nil",
+              shortQ.previewOption(hoveredIndex: 0, selectedLabels: ["A"]) == nil ? "nil" : "non-nil", "nil")
+
+        let baseShortHeight = AskQuestion(questions: [shortQ]).estimatedIslandHeight
+        let withPreviewHeight = AskQuestion(questions: [mixedItem]).estimatedIslandHeight
+        checkTrue("preview increases estimated height",  withPreviewHeight > baseShortHeight)
+
+        let hugePreviewItem = AskQuestionItem(question: "Huge", header: "", options: [
+            AskQuestionOption(label: "A", description: "", preview: String(repeating: "line\n", count: 80)),
+            AskQuestionOption(label: "B", description: ""),
+        ], multiSelect: false)
+        checkTrue("huge preview stays capped at 560",    AskQuestion(questions: [hugePreviewItem]).estimatedIslandHeight <= 560)
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")

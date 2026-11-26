@@ -496,6 +496,7 @@ struct QuestionView: View {
     @State private var otherTexts: [String] = []
     // Per-question "Other…" mode active
     @State private var showOther: [Bool] = []
+    @State private var hoveredOption: Int? = nil
     @FocusState private var otherFieldFocused: Bool
     // The queued question this card's choices belong to: an answer goes to that one only.
     @State private var shownId: UUID?
@@ -622,6 +623,10 @@ struct QuestionView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                .onHover { hovering in
+                                    if hovering { hoveredOption = idx }
+                                    else if hoveredOption == idx { hoveredOption = nil }
+                                }
                             }
                             SecondaryButton("Other…") {
                                 if qi < showOther.count { showOther[qi] = true }
@@ -645,11 +650,19 @@ struct QuestionView: View {
                                     }
                                     .buttonStyle(.plain)
                                     .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                    .onHover { hovering in
+                                        if hovering { hoveredOption = idx }
+                                        else if hoveredOption == idx { hoveredOption = nil }
+                                    }
                                 } else {
                                     SecondaryButton(verbatim: opt.label) {
                                         selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast)
                                     }
                                     .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                    .onHover { hovering in
+                                        if hovering { hoveredOption = idx }
+                                        else if hoveredOption == idx { hoveredOption = nil }
+                                    }
                                 }
                             }
                             // "Other…" implicit free-text option
@@ -657,6 +670,29 @@ struct QuestionView: View {
                                 if qi < showOther.count { showOther[qi] = true }
                             }
                         }
+                    }
+                    // Option preview (ASCII mockup / code snippet), shown when any option provides one
+                    if !curOther && item.hasPreviews,
+                       let previewOpt = item.previewOption(hoveredIndex: hoveredOption, selectedLabels: curSel) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(verbatim: previewOpt.label)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                            ScrollView([.vertical, .horizontal], showsIndicators: true) {
+                                Text(verbatim: previewOpt.preview)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundColor(Color(hex: "#E8E9EC"))
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: true, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: 160, alignment: .topLeading)
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(Color.white.opacity(0.07))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.06)))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .padding(.top, 2)
                     }
                     // Send/Next — only for multi-select (and not while "Other…" field is open)
                     if isMulti && !curOther {
@@ -677,11 +713,13 @@ struct QuestionView: View {
         .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
         // The next session's question can read the same as the one just answered.
         .onChange(of: state.waitingQuestions.first?.id) { _, _ in resetQuestionState() }
+        .onChange(of: questionIndex) { _, _ in hoveredOption = nil }
     }
 
     private func resetQuestionState() {
         shownId = state.waitingQuestions.first?.id
         questionIndex = 0
+        hoveredOption = nil
         let count = state.pendingQuestion?.questions.count ?? 0
         selections = Array(repeating: [], count: count)
         otherTexts = Array(repeating: "", count: count)
