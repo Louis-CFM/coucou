@@ -14,6 +14,7 @@ enum ShortcutTests {
         testEnabledByDefault()
         testKeyCodeToString()
         testCardNavigation()
+        testCardKeyActions()
         print("ShortcutLogic: all cases passed")
     }
 
@@ -236,5 +237,49 @@ enum ShortcutTests {
                      "empty card must return nil")
         precondition(ShortcutLogic.navigate(selection: 0,   delta: +1, itemCount: 0) == nil,
                      "any selection on empty card must return nil")
+    }
+
+    // MARK: - testCardKeyActions
+
+    static func testCardKeyActions() {
+        // Approval card keys
+        precondition(ShortcutLogic.cardAction(for: .approval, keyCode: 36, characters: "\r", modifierFlags: 0, isEditingText: false) == .approvalPrimary,
+                     "Return must trigger approvalPrimary")
+        precondition(ShortcutLogic.cardAction(for: .approval, keyCode: 76, characters: "\u{3}", modifierFlags: 0, isEditingText: false) == .approvalPrimary,
+                     "keypad Enter must trigger approvalPrimary")
+        precondition(ShortcutLogic.cardAction(for: .approval, keyCode: 2, characters: "d", modifierFlags: 0, isEditingText: false) == .approvalDeny,
+                     "d must trigger approvalDeny")
+        precondition(ShortcutLogic.cardAction(for: .approval, keyCode: 0, characters: "a", modifierFlags: 0, isEditingText: false) == .approvalAlways,
+                     "a must trigger approvalAlways")
+        precondition(ShortcutLogic.cardAction(for: .approval, keyCode: 8, characters: "c", modifierFlags: 0, isEditingText: false) == .approvalPlanChange,
+                     "c must trigger approvalPlanChange")
+        precondition(ShortcutLogic.cardAction(for: .approval, keyCode: 46, characters: "m", modifierFlags: 0, isEditingText: false) == .approvalPlanManual,
+                     "m must trigger approvalPlanManual")
+        precondition(ShortcutLogic.cardAction(for: .approval, keyCode: 36, characters: "\r", modifierFlags: ShortcutSpec.cmdBit, isEditingText: false) == nil,
+                     "Command+Return must not trigger approvalPrimary")
+        precondition(ShortcutLogic.cardAction(for: .approval, keyCode: 2, characters: "d", modifierFlags: 0, isEditingText: true) == nil,
+                     "typing in text field must suppress approval keys")
+
+        // Question card keys (QWERTY + AZERTY unshifted top row + Shift+digit + keypad)
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 18, characters: "&", modifierFlags: 0, isEditingText: false) == .questionOption(0),
+                     "top-row keyCode 18 (AZERTY &/1) must select option 0")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 19, characters: "é", modifierFlags: 0, isEditingText: false) == .questionOption(1),
+                     "top-row keyCode 19 (AZERTY é/2) must select option 1")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 20, characters: "3", modifierFlags: 0, isEditingText: false) == .questionOption(2),
+                     "top-row keyCode 20 must select option 2")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 21, characters: "4", modifierFlags: 0, isEditingText: false) == .questionOption(3),
+                     "top-row keyCode 21 must select option 3")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 86, characters: "4", modifierFlags: 0, isEditingText: false) == .questionOption(3),
+                     "keypad 4 must select option 3")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 18, characters: "1", modifierFlags: ShortcutSpec.shiftBit, isEditingText: false) == .questionOption(0),
+                     "Shift+1 on AZERTY must select option 0")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 31, characters: "o", modifierFlags: 0, isEditingText: false) == .questionOther,
+                     "o must open Other input")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 36, characters: "\r", modifierFlags: 0, isEditingText: false) == .questionSubmit,
+                     "Return must trigger questionSubmit")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 18, characters: "1", modifierFlags: ShortcutSpec.cmdBit, isEditingText: false) == nil,
+                     "Command+1 must not trigger questionOption")
+        precondition(ShortcutLogic.cardAction(for: .question, keyCode: 18, characters: "1", modifierFlags: 0, isEditingText: true) == nil,
+                     "editing Other text field must suppress question keys")
     }
 }

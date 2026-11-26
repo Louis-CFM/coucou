@@ -843,6 +843,26 @@ final class IslandWindowController: NSWindowController {
         if cmd, let n = digitCodes[event.keyCode] {
             switchToPill(number: n); return true
         }
+        // Card-local bare-key actions when the island is key (after ⌃⌥A or clicking in the card).
+        if state.mode == .expanded {
+            let isEditingText = (islandPanel.firstResponder is NSTextView)
+                || (islandPanel.firstResponder is NSTextField)
+            let chars = raw == .shift ? event.characters : event.charactersIgnoringModifiers
+            if state.view == .approval, state.pendingApproval != nil,
+               let action = ShortcutLogic.cardAction(
+                   for: .approval, keyCode: event.keyCode, characters: chars,
+                   modifierFlags: raw.rawValue, isEditingText: isEditingText) {
+                NotificationCenter.default.post(name: .islandCardKeyAction, object: action)
+                return true
+            }
+            if state.view == .question, state.pendingQuestion != nil,
+               let action = ShortcutLogic.cardAction(
+                   for: .question, keyCode: event.keyCode, characters: chars,
+                   modifierFlags: raw.rawValue, isEditingText: isEditingText) {
+                NotificationCenter.default.post(name: .islandCardKeyAction, object: action)
+                return true
+            }
+        }
         // ⎋ Escape — focused views (.onExitCommand) have first crack; fall back to collapse
         if event.keyCode == 53 && raw.isEmpty {
             let consumed = NSApp.sendAction(Selector(("cancelOperation:")), to: nil, from: nil)
@@ -1004,6 +1024,10 @@ final class IslandWindowController: NSWindowController {
                 self.hoverTimer?.cancel()
                 self.botHoverTimer?.cancel()
                 self.botHovering = false
+                if self.state.mode == .expanded
+                    && (self.state.view == .approval || self.state.view == .question) {
+                    self.islandPanel.makeKey()
+                }
                 // Drag only starts when clicking directly on the bot head
                 guard self.isBotHit(event.locationInWindow) else { return }
                 // Notch Mochi is invisible when on desktop — no drag, no slap
@@ -2217,6 +2241,7 @@ extension Notification.Name {
     static let islandNewConversation = Notification.Name("notchBuddy.islandNewConversation")
     static let islandToggleDiff           = Notification.Name("notchBuddy.islandToggleDiff")
     static let islandActivateCardSelection = Notification.Name("notchBuddy.islandActivateCardSelection")
+    static let islandCardKeyAction        = Notification.Name("notchBuddy.islandCardKeyAction")
     static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
     static let musicReveal      = Notification.Name("notchBuddy.musicReveal")
