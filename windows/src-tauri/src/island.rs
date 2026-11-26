@@ -408,16 +408,19 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
 
 /// Places and sizes the window: the full panel, or `collapsed` to the size the
 /// closed island needs (the wake strip when it shows nothing).
-/// Windows: how far a taskbar docked at the top of this display (or another
-/// app bar there) pushes the island down, read from the display's work area,
-/// so the island sits under it (#956). An auto-hidden taskbar takes no work
-/// area and moves nothing. Linux anchors the island to the screen edge: 0.
+/// How far a bar docked at the top of this display (a Windows taskbar, the
+/// GNOME top bar, another app bar) pushes the island down, read from the
+/// display's work area, so the island sits under it (#956) instead of behind
+/// it, where nothing can click it. An auto-hidden bar takes no work area and
+/// moves nothing. A Linux layer-shell island is already placed below bars by
+/// the compositor, so it gets 0, and so does a compositor that reports no work
+/// area (the work area is then the whole display).
 fn top_inset(m: &tauri::Monitor) -> i32 {
-    if cfg!(windows) {
-        top_inset_from(m.position().y, m.work_area().position.y)
-    } else {
-        0
+    #[cfg(target_os = "linux")]
+    if platform::is_layer_surface() {
+        return 0;
     }
+    top_inset_from(m.position().y, m.work_area().position.y)
 }
 
 fn top_inset_from(monitor_y: i32, work_y: i32) -> i32 {
