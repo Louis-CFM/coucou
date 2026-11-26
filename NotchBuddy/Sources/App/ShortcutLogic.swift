@@ -94,6 +94,26 @@ struct ShortcutSpec: Equatable, Hashable, Sendable {
     static let ctrlOpt:  UInt = ctrlBit | optBit     // 786432
 }
 
+// MARK: - Card keyboard actions
+
+/// Which active island card receives bare-key actions when the panel is key.
+enum CardKind: Equatable, Sendable {
+    case approval
+    case question
+}
+
+/// Actions dispatched to the active Approval or Question card from the local key monitor.
+enum CardKeyAction: Equatable, Sendable {
+    case approvalPrimary
+    case approvalDeny
+    case approvalAlways
+    case approvalPlanChange
+    case approvalPlanManual
+    case questionOption(Int)
+    case questionOther
+    case questionSubmit
+}
+
 // MARK: - Pure logic
 
 /// Stateless helpers for shortcut management — no AppKit, fully unit-testable standalone.
@@ -228,6 +248,64 @@ enum ShortcutLogic {
             return max(0, min(itemCount - 1, cur + delta))
         }
         return delta > 0 ? 0 : itemCount - 1
+    }
+
+    // MARK: - Card keyboard actions (pure, no AppKit dependency)
+
+    private static let topRowDigitIndices: [UInt16: Int] = [
+        18: 0, 19: 1, 20: 2, 21: 3, 23: 4, 22: 5, 26: 6, 28: 7, 25: 8,
+    ]
+    private static let keypadDigitIndices: [UInt16: Int] = [
+        83: 0, 84: 1, 85: 2, 86: 3, 87: 4, 88: 5, 89: 6, 91: 7, 92: 8,
+    ]
+
+    /// Maps a keyDown inside the key island panel to an approval or question card action.
+    /// Never fires while editing text or when Command/Control/Option modifiers are held.
+    static func cardAction(
+        for card: CardKind,
+        keyCode: UInt16,
+        characters: String?,
+        modifierFlags: UInt,
+        isEditingText: Bool
+    ) -> CardKeyAction? {
+        guard !isEditingText else { return nil }
+        let mods = modifierFlags & ShortcutSpec.modMask
+        let lower = characters?.lowercased() ?? ""
+
+        if card == .question {
+            if mods == 0 {
+                if let idx = topRowDigitIndices[keyCode] ?? keypadDigitIndices[keyCode] {
+                    return .questionOption(idx)
+                }
+                if lower.count == 1, let ch = lower.first, let d = Int(String(ch)), (1...9).contains(d) {
+                    return .questionOption(d - 1)
+                }
+            } else if mods == ShortcutSpec.shiftBit {
+                // Supports Shift+digit on layouts like AZERTY where digits sit on the shifted layer.
+                if lower.count == 1, let ch = lower.first, let d = Int(String(ch)), (1...9).contains(d) {
+                    return .questionOption(d - 1)
+                }
+            }
+        }
+
+        guard mods == 0 else { return nil }
+
+        if keyCode == 36 || keyCode == 76 {
+            return card == .approval ? .approvalPrimary : .questionSubmit
+        }
+
+        switch card {
+        case .approval:
+            switch lower {
+            case "d": return .approvalDeny
+            case "a": return .approvalAlways
+            case "c": return .approvalPlanChange
+            case "m": return .approvalPlanManual
+            default:  return nil
+            }
+        case .question:
+            return lower == "o" ? .questionOther : nil
+        }
     }
 
     // MARK: - Island-local shortcut table (read-only, shown in Settings)

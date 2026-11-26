@@ -194,6 +194,9 @@ jobs:
       - name: Codex automatic-review filter tests
         run: bash scripts/test-codex-auto-review.sh
 
+      - name: Test shortcuts
+        run: bash scripts/test-shortcuts.sh
+
       - name: Build
         run: |
           set -o pipefail

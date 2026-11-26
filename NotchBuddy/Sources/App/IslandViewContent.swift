@@ -440,22 +440,22 @@ struct ApprovalView: View {
                 if isPlan {
                     // The terminal's plan dialog choices, not a tool permission.
                     HStack(spacing: 8) {
-                        SecondaryButton("Change plan") {
+                        SecondaryButton("Change plan", kbd: "C") {
                             HookServer.shared.sendApprovalDecision("plan_change", for: shownId)
                         }
-                        PrimaryButton("Auto mode") {
+                        PrimaryButton("Auto mode", kbd: "⏎") {
                             HookServer.shared.sendApprovalDecision("plan_auto", for: shownId)
                         }
-                        SecondaryButton("Manual") {
+                        SecondaryButton("Manual", kbd: "M") {
                             HookServer.shared.sendApprovalDecision("plan_default", for: shownId)
                         }
                     }
                 } else {
                     HStack(spacing: 8) {
-                        SecondaryButton("Deny") {
+                        SecondaryButton("Deny", kbd: "D") {
                             HookServer.shared.sendApprovalDecision("deny", for: shownId)
                         }
-                        PrimaryButton("Allow") {
+                        PrimaryButton("Allow", kbd: "⏎") {
                             HookServer.shared.sendApprovalDecision("allow", for: shownId)
                         }
                         // Codex, Copilot CLI and Muse Code do not support updatedPermissions
@@ -470,7 +470,7 @@ struct ApprovalView: View {
                                 HookServer.shared.sendApprovalDecision("ask", for: shownId)
                             }
                         } else if !hideAlways {
-                            SecondaryButton("Always") {
+                            SecondaryButton("Always", kbd: "A") {
                                 HookServer.shared.sendApprovalDecision("always", for: shownId)
                             }
                         }
@@ -481,6 +481,31 @@ struct ApprovalView: View {
             .padding(.trailing, 16)
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .islandCardKeyAction)) { note in
+            guard let action = note.object as? CardKeyAction, let current = approval else { return }
+            let currentIsPlan = current.tool == "ExitPlanMode"
+            let asking = PillCatalog.basePillId(current.pillId)
+            let hideAlways = asking == "agent_codex"
+                || asking == "agent_copilot"
+                || asking == "agent_muse"
+                || asking == "agent_antigravity"
+            switch action {
+            case .approvalPrimary:
+                HookServer.shared.sendApprovalDecision(currentIsPlan ? "plan_auto" : "allow", for: current.id)
+            case .approvalDeny:
+                HookServer.shared.sendApprovalDecision(currentIsPlan ? "plan_change" : "deny", for: current.id)
+            case .approvalPlanChange:
+                if currentIsPlan { HookServer.shared.sendApprovalDecision("plan_change", for: current.id) }
+            case .approvalPlanManual:
+                if currentIsPlan { HookServer.shared.sendApprovalDecision("plan_default", for: current.id) }
+            case .approvalAlways:
+                if !currentIsPlan && !hideAlways {
+                    HookServer.shared.sendApprovalDecision("always", for: current.id)
+                }
+            default:
+                break
+            }
         }
     }
 }
@@ -603,9 +628,18 @@ struct QuestionView: View {
                                     }
                                 } label: {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(opt.label)
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#F5F6F8"))
+                                        HStack(spacing: 6) {
+                                            Text(opt.label)
+                                                .font(.system(size: 12, weight: .medium))
+                                                .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#F5F6F8"))
+                                            Spacer(minLength: 4)
+                                            Text(verbatim: "\(idx + 1)")
+                                                .font(.system(size: 10.5))
+                                                .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#F1F2F4"))
+                                                .padding(.horizontal, 4)
+                                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.4)))
+                                                .opacity(0.55)
+                                        }
                                         if !opt.description.isEmpty {
                                             Text(opt.description)
                                                 .font(.system(size: 11))
@@ -621,9 +655,8 @@ struct QuestionView: View {
                                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.55) : Color.white.opacity(0.1), lineWidth: 1))
                                 }
                                 .buttonStyle(.plain)
-                                .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
                             }
-                            SecondaryButton("Other…") {
+                            SecondaryButton("Other…", kbd: "O") {
                                 if qi < showOther.count { showOther[qi] = true }
                             }
                         }
@@ -635,32 +668,37 @@ struct QuestionView: View {
                                     Button {
                                         toggleSelection(qi: qi, label: opt.label)
                                     } label: {
-                                        Text(opt.label)
-                                            .font(.system(size: 12, weight: .medium))
-                                            .padding(.horizontal, 8).padding(.vertical, 4)
-                                            .background(isSelected ? Color(hex: "#22D3EE").opacity(0.22) : Color.white.opacity(0.07))
-                                            .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#C5C8CD"))
-                                            .clipShape(RoundedRectangle(cornerRadius: 7))
-                                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.55) : Color.white.opacity(0.1), lineWidth: 1))
+                                        HStack(spacing: 5) {
+                                            Text(opt.label)
+                                                .font(.system(size: 12, weight: .medium))
+                                            Text(verbatim: "\(idx + 1)")
+                                                .font(.system(size: 10.5))
+                                                .padding(.horizontal, 4)
+                                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.4)))
+                                                .opacity(0.55)
+                                        }
+                                        .padding(.horizontal, 8).padding(.vertical, 4)
+                                        .background(isSelected ? Color(hex: "#22D3EE").opacity(0.22) : Color.white.opacity(0.07))
+                                        .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#C5C8CD"))
+                                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.55) : Color.white.opacity(0.1), lineWidth: 1))
                                     }
                                     .buttonStyle(.plain)
-                                    .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
                                 } else {
-                                    SecondaryButton(verbatim: opt.label) {
+                                    SecondaryButton(verbatim: opt.label, kbd: "\(idx + 1)") {
                                         selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast)
                                     }
-                                    .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
                                 }
                             }
                             // "Other…" implicit free-text option
-                            SecondaryButton("Other…") {
+                            SecondaryButton("Other…", kbd: "O") {
                                 if qi < showOther.count { showOther[qi] = true }
                             }
                         }
                     }
                     // Send/Next — only for multi-select (and not while "Other…" field is open)
                     if isMulti && !curOther {
-                        PrimaryButton(isLast ? "Send" : "Next") {
+                        PrimaryButton(isLast ? "Send" : "Next", kbd: "⏎") {
                             proceedFromQuestion(q: q, qi: qi, isLast: isLast)
                         }
                         .disabled(!canProceed)
@@ -677,6 +715,35 @@ struct QuestionView: View {
         .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
         // The next session's question can read the same as the one just answered.
         .onChange(of: state.waitingQuestions.first?.id) { _, _ in resetQuestionState() }
+        .onReceive(NotificationCenter.default.publisher(for: .islandCardKeyAction)) { note in
+            guard let action = note.object as? CardKeyAction,
+                  let q = question, !q.questions.isEmpty else { return }
+            let qi = min(questionIndex, q.questions.count - 1)
+            let item = q.questions[qi]
+            let isLast = qi == q.questions.count - 1
+            let curOther = qi < showOther.count ? showOther[qi] : false
+            guard !curOther else { return }
+
+            switch action {
+            case .questionOption(let idx):
+                guard idx >= 0, idx < item.options.count else { return }
+                let label = item.options[idx].label
+                if item.multiSelect {
+                    toggleSelection(qi: qi, label: label)
+                } else {
+                    selectAndProceed(q: q, qi: qi, label: label, isLast: isLast)
+                }
+            case .questionOther:
+                if qi < showOther.count { showOther[qi] = true }
+            case .questionSubmit:
+                let curSel = qi < selections.count ? selections[qi] : []
+                if item.multiSelect && !curSel.isEmpty {
+                    proceedFromQuestion(q: q, qi: qi, isLast: isLast)
+                }
+            default:
+                break
+            }
+        }
     }
 
     private func resetQuestionState() {
