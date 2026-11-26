@@ -32,7 +32,8 @@ struct ClaudeHost: Equatable {
         "com.cmuxterm.app":           "cmux",    // sets TERM_PROGRAM=ghostty: the bundle id decides
         "com.stablyai.orca":          "Orca",
         "com.conductor.app":          "Conductor", // runs Claude Code with no TERM_PROGRAM
-        "com.t3tools.t3code": "T3 Code",
+        "com.t3tools.t3code":         "T3 Code",
+        "com.evercraftlabs.Maestro":  "Maestri",
     ]
     private static let termPrograms: [String: String] = [
         "warpterminal":   "dev.warp.Warp-Stable",
@@ -44,6 +45,7 @@ struct ClaudeHost: Equatable {
         "wezterm":        "com.github.wez.wezterm",
         "hyper":          "co.zeit.hyper",
         "zed":            "dev.zed.Zed",
+        "maestri":        "com.evercraftlabs.Maestro",
     ]
 
     /// The terminal a session runs in, or nil when it isn't a known terminal.
