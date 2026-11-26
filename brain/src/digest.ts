@@ -1,6 +1,11 @@
 /**
  * LLM digest — calls `claude -p` from the brain's digestion directory.
  * Never called in --dry-run mode.
+ *
+ * Security: --tools "" disables ALL tools in the subprocess.
+ * Session content may come from web pages or external sources and could
+ * contain prompt injection. With no tools available, the LLM can only
+ * output text — no file reads, writes, or commands possible.
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -9,33 +14,20 @@ import { digestionDir } from "./config.js";
 import { chunkMessages, messagesToText, type Chunk } from "./chunk.js";
 import type { SessionCondensed, RepoCondensed } from "./collect.js";
 import type { BrainConfig } from "./config.js";
+import { LLMElementSchema } from "./elements.js";
 
-// ── Zod schema for session digest ────────────────────────────────────────────
-
-const ProvenanceSchema = z.enum(["décidé", "proposé", "constaté"]);
-const StatusSchema = z.enum(["✅", "❌", "⚠️"]);
-
-const DecisionSchema = z.object({
-  content: z.string(),
-  provenance: ProvenanceSchema,
-  status: StatusSchema,
-  replaces: z.string().nullable().default(null),
-});
-
-const LessonSchema = z.object({
-  content: z.string(),
-  type: z.enum(["erreur", "leçon"]),
-  status: StatusSchema,
-});
+// ── Session digest schema (what the LLM returns) ──────────────────────────────
 
 export const SessionDigestSchema = z.object({
+  title: z.string().min(1).max(80).transform((s) => s.slice(0, 60)),
   summary: z.string().min(1),
   projects: z.array(z.string()).min(1),
-  decisions: z.array(DecisionSchema).default([]),
-  facts: z.array(z.string()).default([]),
-  errors_and_lessons: z.array(LessonSchema).default([]),
-  open_tasks: z.array(z.string()).default([]),
+  elements: z.array(LLMElementSchema).default([]),
+  project_states: z
+    .array(z.object({ project: z.string(), etat_actuel: z.string() }))
+    .default([]),
   files_touched: z.array(z.string()).default([]),
+  people: z.array(z.string()).default([]),
 });
 
 export type SessionDigest = z.infer<typeof SessionDigestSchema>;
@@ -54,7 +46,7 @@ function runClaude(
       "--print",
       "--output-format", "json",
       "--model", model,
-      "--dangerously-skip-permissions",  // non-interactive: no permission prompts
+      "--allowedTools", "",    // disable ALL tools — no prompt injection risk
     ],
     {
       input: prompt,
@@ -65,14 +57,12 @@ function runClaude(
     }
   );
 
-  if (result.error) throw new Error(`claude spawn error: ${result.error.message}`);
+  if (result.error) throw new Error(`claude spawn: ${result.error.message}`);
   if (result.status !== 0) {
     const stderr = result.stderr?.toString().slice(0, 500) ?? "";
     throw new Error(`claude exited ${result.status}: ${stderr}`);
   }
 
-  // --output-format json wraps the response in a JSON envelope
-  // The actual text content is in the "result" field
   try {
     const envelope = JSON.parse(result.stdout);
     return envelope.result ?? result.stdout;
@@ -88,18 +78,96 @@ function ensureDigestionDir(config: BrainConfig): string {
   return dir;
 }
 
-// ── Session chunk summarizer ──────────────────────────────────────────────────
+// ── Prompts ───────────────────────────────────────────────────────────────────
 
-function buildChunkSummaryPrompt(chunk: Chunk, sessionDate: string, projectHint: string): string {
+function buildChunkSummaryPrompt(
+  chunk: Chunk,
+  sessionDate: string,
+  projectHint: string
+): string {
   return `Tu résumes un morceau d'une session Claude Code (${chunk.index + 1}/${chunk.total}).
 Date de la session : ${sessionDate}. Projet supposé : ${projectHint}.
 
-Résume ce morceau en 300 à 500 mots en français. Inclus : ce qui a été fait, les décisions prises, les problèmes rencontrés, les fichiers importants mentionnés. Sois factuel et précis. Ne déduis rien qui n'est pas dans le texte.
+Résume ce morceau en 300 à 500 mots en français. Inclus : ce qui a été fait, les décisions prises, les problèmes rencontrés, les fichiers importants mentionnés. Sois factuel et précis.
 
 MORCEAU :
 ${chunk.text}
 
 Résumé :`;
+}
+
+function buildDigestPrompt(text: string, sessionDate: string, projectHint: string): string {
+  return `Tu analyses une session Claude Code du ${sessionDate} (projet supposé : ${projectHint}).
+
+TITRE : génère un titre en 60 caractères maximum, précis et informatif. Exemples de BONS titres : "brain/ module TypeScript : pipeline sessions + repos", "404 CRT, WebP, panel entreprise, analytics". Mauvais titre : les 60 premiers caractères du résumé coupés au milieu.
+
+PROJETS : identifie tous les slugs de projet touchés (ex: "coucou", "portfo", "sbe-hub"). Sous-projets : "coucou-brain" pour le module brain/ de Coucou. Pages personne : "people/enya" ou "people/nom".
+
+ÉLÉMENTS : pour chaque décision, fait notable, leçon, tâche ou préférence de Louis, génère un élément.
+Champs :
+- kind : "décision" | "fait" | "leçon" | "tâche" | "préférence"
+  • décision : choix technique ou de product pris ou rejeté
+  • fait : information factuelle stable (version, URL, compte, nombre clé)
+  • leçon : enseignement ou erreur à retenir
+  • tâche : action à faire ou déjà faite (statut ❌)
+  • préférence : goût ou règle de travail de Louis
+- sub_kind : pour leçon uniquement : "erreur" (bug, mauvaise approche) | "leçon" (bonne pratique)
+- provenance :
+  • "décidé" = Louis l'a dit ou confirmé explicitement
+  • "proposé" = Claude a suggéré, Louis n'a pas dit oui
+  • "constaté" = fait observé, ce que Claude a implémenté sans validation explicite
+- statut : "✅" (en vigueur) | "❌" (abandonné/terminé) | "⏳" (en attente) | "⚠️" (piège)
+- texte : contenu en 1-2 phrases max (jamais plus de 400 chars)
+- projets : slugs des projets concernés
+- remplace : id d'un élément précédent si cette décision l'annule (null sinon)
+- raison : explication si statut ❌ (obligatoire dans ce cas)
+- domaine : pour leçon uniquement : "shell" | "git" | "macos" | "nextjs" | "vercel" | "swift" | "claude-code" | "general"
+- scope : "transverse" (leçon valable hors du projet) | "projet" (propre au projet)
+
+COMBINAISONS AUTORISÉES :
+- [décidé] ✅ : Louis a décidé ou validé
+- [décidé] ❌ : Louis est revenu dessus (remplace + raison obligatoires)
+- [proposé] ❌ : Louis a rejeté (raison obligatoire)
+- [proposé] ⏳ : proposition en attente
+- [constaté] : sans statut (jamais de statut sur [constaté])
+- [proposé] ✅ N'EXISTE PAS → utilise ⏳ à la place
+- leçon sub_kind=erreur : ⚠️ uniquement (jamais ✅)
+- leçon sub_kind=leçon : ✅ ou ⚠️
+
+ÉTAT ACTUEL : pour chaque projet, 2-3 phrases décrivant l'état du projet MAINTENANT. Max 5 lignes.
+
+FICHIERS TOUCHÉS : chemins relatifs à la racine du repo (ex: "brain/src/write.ts" et non "/Users/louis/Developer/coucou/brain/src/write.ts"). Sans doublons. Max 25.
+
+PERSONNES : prénoms ou noms des personnes mentionnées (hors Louis et Claude).
+
+SESSION :
+${text}
+
+Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire :
+{
+  "title": "Titre ≤60 chars",
+  "summary": "3-5 phrases factuelles",
+  "projects": ["slug"],
+  "elements": [
+    {
+      "kind": "décision",
+      "sub_kind": null,
+      "provenance": "décidé",
+      "statut": "✅",
+      "texte": "...",
+      "projets": ["coucou"],
+      "remplace": null,
+      "raison": null,
+      "domaine": null,
+      "scope": "projet"
+    }
+  ],
+  "project_states": [
+    {"project": "coucou", "etat_actuel": "2-3 phrases max"}
+  ],
+  "files_touched": ["brain/src/write.ts"],
+  "people": []
+}`;
 }
 
 function buildFinalDigestPrompt(
@@ -110,41 +178,35 @@ function buildFinalDigestPrompt(
   const summaryBlock = summaries
     .map((s, i) => `### Morceau ${i + 1}\n${s}`)
     .join("\n\n");
-
-  return buildDigestPromptFromText(summaryBlock, sessionDate, projectHint);
+  return buildDigestPrompt(summaryBlock, sessionDate, projectHint);
 }
 
-function buildDigestPromptFromText(text: string, sessionDate: string, projectHint: string): string {
-  return `Tu analyses une session Claude Code du ${sessionDate} (projet supposé : ${projectHint}).
+// ── Parse & validate ──────────────────────────────────────────────────────────
 
-RÈGLES DE PROVENANCE STRICTES :
-- "décidé" = Louis (l'utilisateur) l'a décidé ou validé explicitement par un message de confirmation
-- "proposé" = Claude l'a suggéré, mais Louis n'a pas dit "oui", "ok", "vas-y" ou équivalent
-- "constaté" = fait observé (build OK, bug reproduit, test passé, erreur affichée...)
-⚠️ Une suggestion de Claude ne devient JAMAIS "décidé" parce que Louis n'a pas dit non.
+function parseDigest(raw: string): SessionDigest {
+  const cleaned = raw
+    .normalize("NFC")
+    .replace(/^```(?:json)?\s*/m, "")
+    .replace(/\s*```\s*$/m, "")
+    .trim();
 
-RÈGLES DE STATUT :
-- ✅ = décision validée et encore en vigueur
-- ❌ = décision abandonnée ou remplacée (ajoute la raison)
-- ⚠️ = erreur ou piège à ne pas reproduire
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (e) {
+    throw new Error(
+      `JSON invalide dans la réponse du modèle: ${(e as Error).message}\n${cleaned.slice(0, 300)}`
+    );
+  }
 
-SESSION :
-${text}
+  const result = SessionDigestSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(
+      `Schéma invalide: ${result.error.message}\n${JSON.stringify(parsed, null, 2).slice(0, 500)}`
+    );
+  }
 
-Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire, sans texte avant ou après :
-{
-  "summary": "3 à 5 phrases décrivant ce qui s'est passé",
-  "projects": ["slug-du-projet"],
-  "decisions": [
-    {"content": "...", "provenance": "décidé|proposé|constaté", "status": "✅|❌|⚠️", "replaces": null}
-  ],
-  "facts": ["prix, versions, noms, chemins, comptes de service importants..."],
-  "errors_and_lessons": [
-    {"content": "...", "type": "erreur|leçon", "status": "✅|❌|⚠️"}
-  ],
-  "open_tasks": ["tâche laissée en cours ou à faire..."],
-  "files_touched": ["chemin/du/fichier.ts"]
-}`;
+  return result.data;
 }
 
 // ── Main session digest ────────────────────────────────────────────────────────
@@ -159,15 +221,9 @@ export async function digestSession(
   let digestText: string;
 
   if (chunks.length === 1) {
-    // Single call
-    const prompt = buildDigestPromptFromText(
-      chunks[0]!.text,
-      session.date,
-      session.projectNameHint
-    );
+    const prompt = buildDigestPrompt(chunks[0]!.text, session.date, session.projectNameHint);
     digestText = runClaude(prompt, config.mergeModel, cwd);
   } else {
-    // Multi-chunk: summarize each, then synthesize
     console.log(`  Session longue : ${chunks.length} morceaux`);
     const summaries: string[] = [];
     for (const chunk of chunks) {
@@ -180,35 +236,9 @@ export async function digestSession(
     digestText = runClaude(finalPrompt, config.mergeModel, cwd);
   }
 
-  // Parse and validate
   return parseDigest(digestText);
 }
 
-function parseDigest(raw: string): SessionDigest {
-  // NFC normalise accented chars (LLM may output NFD "é" which Zod enum won't match NFC "é")
-  // Then strip any accidental markdown fences
-  const cleaned = raw
-    .normalize("NFC")
-    .replace(/^```(?:json)?\s*/m, "")
-    .replace(/\s*```\s*$/m, "")
-    .trim();
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch (e) {
-    throw new Error(`JSON invalide dans la réponse du modèle: ${(e as Error).message}\n${cleaned.slice(0, 300)}`);
-  }
-
-  const result = SessionDigestSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new Error(`Schéma invalide: ${result.error.message}\n${JSON.stringify(parsed, null, 2).slice(0, 500)}`);
-  }
-
-  return result.data;
-}
-
-/** Retry wrapper — one retry on parse failure */
 export async function digestSessionWithRetry(
   session: SessionCondensed,
   config: BrainConfig
@@ -227,7 +257,7 @@ export async function digestSessionWithRetry(
   }
 }
 
-// ── Repo digest (simpler — just project page generation) ────────────────────
+// ── Repo digest ────────────────────────────────────────────────────────────────
 
 export interface RepoDigest {
   slug: string;
@@ -269,16 +299,21 @@ Réponds UNIQUEMENT avec ce JSON :
 }`;
 
   const raw = runClaude(prompt, config.chunkModel, cwd);
-  const cleaned = raw.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+  const cleaned = raw
+    .normalize("NFC")
+    .replace(/^```(?:json)?\s*/m, "")
+    .replace(/\s*```\s*$/m, "")
+    .trim();
 
   try {
     return JSON.parse(cleaned) as RepoDigest;
   } catch {
-    // Fallback: build basic info from what we have
     return {
       slug: repo.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       name: repo.name,
-      goal: repo.readme.split("\n").find((l) => l.trim() && !l.startsWith("#")) ?? "Projet sans description",
+      goal:
+        repo.readme.split("\n").find((l) => l.trim() && !l.startsWith("#")) ??
+        "Projet sans description",
       stack: repo.stack?.split("\n")[0] ?? "inconnu",
       remote: repo.remote,
       recentActivity: repo.recentCommits.split("\n").slice(0, 5).join("; "),

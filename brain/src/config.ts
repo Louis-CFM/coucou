@@ -15,6 +15,8 @@ export interface BrainConfig {
   maxChunkTokens: number;
   language: string;
   repoAliases: Record<string, string>;
+  /** Sessions modified less than this many minutes ago are skipped (active session guard) */
+  activeSessionMinutes?: number;
 }
 
 /** Load config: base config.json merged with optional local overrides */

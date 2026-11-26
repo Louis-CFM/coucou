@@ -295,6 +295,8 @@ export interface DiscoveredSession {
   hash: string;
   date: string;
   sizeBytes: number;
+  /** true if the session was modified recently and should be skipped */
+  isActive?: boolean;
 }
 
 export function discoverSessions(
@@ -349,6 +351,15 @@ export function discoverSessions(
 
         if (opts.sinceDate && date < opts.sinceDate) continue;
 
+        // Skip active sessions (recently modified = likely still open)
+        const activeMinutes = config.activeSessionMinutes ?? 30;
+        const ageMinutes = (Date.now() - stat.mtimeMs) / (1000 * 60);
+        if (ageMinutes < activeMinutes) {
+          // Will be logged by the caller
+          sessions.push({ id: path.basename(entry.name, ".jsonl"), projectPath: proj, jsonlPath, hash: "", date, sizeBytes: stat.size, isActive: true });
+          continue;
+        }
+
         const id = path.basename(entry.name, ".jsonl");
         sessions.push({
           id,
@@ -378,7 +389,15 @@ export function discoverSessions(
       const date = stat.mtime.toISOString().slice(0, 10);
       if (opts.sinceDate && date < opts.sinceDate) continue;
 
+      const activeMinutes = config.activeSessionMinutes ?? 30;
+      const ageMinutes = (Date.now() - stat.mtimeMs) / (1000 * 60);
       const id = path.basename(entry.name, ".jsonl");
+
+      if (ageMinutes < activeMinutes) {
+        sessions.push({ id, projectPath: proj, jsonlPath, hash: "", date, sizeBytes: stat.size, isActive: true });
+        continue;
+      }
+
       sessions.push({
         id,
         projectPath: proj,

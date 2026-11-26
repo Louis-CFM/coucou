@@ -15,5 +15,6 @@
   "language": "fr",
   "repoAliases": {
     "notch-buddy": "coucou"
-  }
+  },
+  "activeSessionMinutes": 30
 }

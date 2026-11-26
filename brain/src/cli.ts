@@ -3,12 +3,14 @@
  * brain CLI — entry point
  *
  * brain ingest [--since YYYY-MM-DD] [--project <name>] [--limit <n>] [--dry-run] [--include-subagents]
+ *             [--session <id...>] [--repo <name...>] [--repos-only] [--sessions-only]
  * brain stats
  */
 import { Command } from "commander";
 import fs from "node:fs";
+import path from "node:path";
 import { loadConfig } from "./config.js";
-import { toSlug } from "./utils.js";
+import { expandHome, toSlug } from "./utils.js";
 import {
   discoverSessions,
   discoverRepos,
@@ -21,11 +23,16 @@ import {
   ensureBrainDir,
   writeRecord,
   recordFilePath,
-  mergeRecordIntoProject,
-  writeProjectFromRepo,
-  appendToLessons,
+  updateProjectFromSession,
+  updateProjectFromRepo,
+  updateLessons,
+  updateLouis,
+  updatePeople,
+  validateAllLinks,
+  collectAllIds,
   rebuildIndex,
   gitCommit,
+  normalizeFilePaths,
 } from "./write.js";
 import { computeStats } from "./stats.js";
 
@@ -44,7 +51,7 @@ program
   .option("--since <date>", "Only sessions after this date (YYYY-MM-DD)")
   .option("--project <name>", "Only process sessions matching this project name")
   .option("--session <id...>", "Only process these session UUIDs (space-separated or repeated)")
-  .option("--repo <name...>", "Only process repos whose path contains this name (space-separated or repeated)")
+  .option("--repo <name...>", "Only process repos whose path contains this name")
   .option("--limit <n>", "Max number of sessions to process", parseInt)
   .option("--dry-run", "Show what would be processed without calling the model")
   .option("--include-subagents", "Also process subagent sessions")
@@ -58,13 +65,31 @@ program
       ensureBrainDir(config);
     }
 
+    // Collect repo paths for file normalization
+    const allRepoPaths = [
+      ...config.repoPaths.map((p: string) => expandHome(p)),
+      ...(config.additionalRepoPaths ?? []).map((p: string) => expandHome(p)),
+    ];
+
     // ── Sessions ──────────────────────────────────────────────────────────────
     if (!opts.reposOnly) {
-      const discovered = discoverSessions(config, {
+      const allDiscovered = discoverSessions(config, {
         includeSubagents: opts.includeSubagents,
         sinceDate: opts.since,
         projectFilter: opts.project,
       });
+
+      const activeSessions = allDiscovered.filter((s) => s.isActive);
+      const discovered = allDiscovered.filter((s) => !s.isActive);
+
+      if (activeSessions.length > 0) {
+        console.log(
+          `\n  ⏭  ${activeSessions.length} session(s) active(s) ignorée(s) (modifiée(s) il y a < ${config.activeSessionMinutes ?? 30} min) :`
+        );
+        for (const s of activeSessions) {
+          console.log(`     ${s.id.slice(0, 8)}…  ${s.projectPath.slice(-40)}`);
+        }
+      }
 
       for (const s of discovered) {
         manifest.upsertSession({
@@ -80,13 +105,12 @@ program
         .getPendingSessions()
         .filter((s) => discoveredIds.has(s.id));
 
-      // --session filter: match full UUID or unambiguous prefix
+      // --session filter
       if (opts.session?.length) {
         const ids: string[] = opts.session;
         pending = pending.filter((s) =>
           ids.some((id) => s.id === id || s.id.startsWith(id))
         );
-        // Also allow already-done sessions to be re-run when explicitly named
         for (const id of ids) {
           const done = manifest.getAllSessions().find(
             (s) => (s.id === id || s.id.startsWith(id)) && s.status === "done"
@@ -118,11 +142,13 @@ program
             const tokens = condensed.estimatedTokens.toLocaleString();
             console.log(
               `  ${disc.date}  ${s.project_path.slice(-45).padEnd(47)}` +
-              `  ~${tokens} tokens  ${rawKb}KB raw` +
-              (maskedCount > 0 ? `  🔒 ${maskedCount} masqués` : "")
+                `  ~${tokens} tokens  ${rawKb}KB raw` +
+                (maskedCount > 0 ? `  🔒 ${maskedCount} masqués` : "")
             );
           } catch (e) {
-            console.log(`  ${s.id.slice(0, 8)}  [erreur: ${(e as Error).message.slice(0, 60)}]`);
+            console.log(
+              `  ${s.id.slice(0, 8)}  [erreur: ${(e as Error).message.slice(0, 60)}]`
+            );
           }
         }
         console.log(`\n  Total estimé : ~${totalTokens.toLocaleString()} tokens condensés`);
@@ -133,7 +159,12 @@ program
 
         for (const s of toProcess) {
           const idx = doneCount + failCount + 1;
-          console.log(`\n  [${idx}/${toProcess.length}] ${s.project_path.slice(-50)} / ${s.id.slice(0, 8)}…`);
+          console.log(
+            `\n  [${idx}/${toProcess.length}] ${s.project_path.slice(-50)} / ${s.id.slice(0, 8)}…`
+          );
+
+          // Track record file path so we can delete it on failure
+          let recordFileCreated: string | null = null;
 
           try {
             const condensed = readSession(s.jsonl_path);
@@ -144,21 +175,42 @@ program
             }
 
             const digest = await digestSessionWithRetry(condensed, config);
-            const recordId = writeRecord(condensed, digest, config);
-
             const primaryProject = digest.projects[0]!;
-            const recordContent = fs.readFileSync(
-              recordFilePath(config, condensed.id, condensed.date, primaryProject),
-              "utf8"
+
+            // Build current valid IDs (before writing this record)
+            const allIds = collectAllIds(config);
+
+            const recordId = writeRecord(condensed, digest, config, allRepoPaths);
+            recordFileCreated = recordFilePath(
+              config,
+              condensed.id,
+              condensed.date,
+              primaryProject
             );
 
+            // Pre-register all IDs this session will produce
+            allIds.add(recordId);
+            for (const proj of digest.projects) {
+              allIds.add(`proj_${toSlug(proj)}`);
+            }
+            for (const name of (digest.people ?? [])) {
+              allIds.add(`people_${toSlug(name)}`);
+            }
+            allIds.add("lessons");
+            allIds.add("louis");
+
+            // Merge into project pages
             for (const proj of digest.projects) {
               const slug = toSlug(proj);
               console.log(`    → merge dans projects/${slug}.md`);
-              mergeRecordIntoProject(slug, recordId, recordContent, digest, config);
+              updateProjectFromSession(slug, digest, condensed.date, recordId, config, allIds);
             }
 
-            appendToLessons(digest.errors_and_lessons, digest.projects.map(toSlug), config);
+            // Update global pages
+            updateLessons(digest, condensed.date, recordId, config, allIds);
+            updateLouis(digest, condensed.date, recordId, config, allIds);
+            updatePeople(digest, condensed.date, recordId, config, allIds);
+
             manifest.markSessionDone(s.id, recordId, digest.projects);
             doneCount++;
             console.log(`    ✓ ${recordId}`);
@@ -166,6 +218,12 @@ program
             console.error(`    ✗ Échec: ${(e as Error).message.slice(0, 200)}`);
             manifest.markSessionFailed(s.id);
             failCount++;
+
+            // Clean up: delete record file if it was created before the failure
+            if (recordFileCreated && fs.existsSync(recordFileCreated)) {
+              fs.unlinkSync(recordFileCreated);
+              console.log(`    🗑  fiche supprimée (échec propre)`);
+            }
           }
         }
 
@@ -188,7 +246,6 @@ program
       const repoSet = new Set(repos);
       let pendingRepos = manifest.getPendingRepos().filter((r) => repoSet.has(r.path));
 
-      // --repo filter: match repos whose path contains any of the given names
       if (opts.repo?.length) {
         const names: string[] = opts.repo;
         pendingRepos = pendingRepos.filter((r) =>
@@ -205,9 +262,14 @@ program
           console.log(`\n  Repo: ${r.path}`);
           try {
             const condensed = collectRepo(r.path, config.repoAliases);
-            if (!condensed) { console.log("    pas un repo git, skip"); continue; }
+            if (!condensed) {
+              console.log("    pas un repo git, skip");
+              continue;
+            }
             const repoDigest = await digestRepo(condensed, config);
-            const pageId = writeProjectFromRepo(condensed, repoDigest, config);
+            const allIds = collectAllIds(config);
+            allIds.add(`proj_${toSlug(repoDigest.slug)}`);
+            const pageId = updateProjectFromRepo(condensed, repoDigest, config, allIds);
             manifest.markRepoDone(r.path, pageId);
             repoDone++;
             console.log(`    ✓ ${pageId}`);
@@ -221,6 +283,17 @@ program
     }
 
     if (!opts.dryRun) {
+      // Final link validation pass
+      const allIds = collectAllIds(config);
+      allIds.add("lessons");
+      allIds.add("louis");
+      allIds.add("index");
+
+      const fixed = validateAllLinks(config, allIds);
+      if (fixed.length > 0) {
+        console.log(`\n  🔗 Liens corrigés dans : ${fixed.join(", ")}`);
+      }
+
       rebuildIndex(config);
       const doneCount = manifest.getAllSessions().filter((s) => s.status === "done").length;
       gitCommit(config, `brain: ingestion — ${doneCount} fiches`);

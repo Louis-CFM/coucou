@@ -71,7 +71,8 @@ function readAllPages(brainPath: string): PageInfo[] {
   const dirs = [
     path.join(brainPath, "records"),
     path.join(brainPath, "projects"),
-    brainPath, // for lessons.md, INDEX.md at root
+    path.join(brainPath, "people"),
+    brainPath, // for lessons.md, INDEX.md, louis.md at root
   ];
 
   for (const dir of dirs) {
