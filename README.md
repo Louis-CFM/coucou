@@ -62,6 +62,7 @@ Since 0.4, Coucou has its own window and sits in the Dock. On the left, **Flow**
 - ✍️ **Your words, your way** — a dictionary of names Coucou always spells right, replacements, snippets (say a short phrase, paste a whole text), and an optional clean-up by Claude, on your Claude plan through Claude Code or with your own key: as said, natural or polished, per app.
 - 📝 **Notetaker** — click Record a call: Coucou records your microphone and what your Mac plays, no bot joins the call. Then you get the transcript person by person, a summary, the key points and the to-dos, written by Claude with your key or by Apple Intelligence on your Mac. The audio is deleted once the transcript is written. Tell the people in the call that you record.
 - 📊 **Statistics** — words dictated, time saved, words per minute, days in a row and the apps you dictate in. Counted on your Mac, never sent anywhere.
+- 🛏️ **Mochi's room** — a page of the window where every object is live data: Mochi naps on the bed, works at the desk while an agent does and waits at the door when one asks something (answer right there). The window shows your CI and Vercel deploys as the weather, the frames on the wall your Stripe, GitHub, Vercel, n8n and Cal.com, the clock the time coded today, the plant your streak. Off by default: Notch → Mochi's room.
 
 <table>
 <tr>
@@ -98,6 +99,7 @@ Flow dictation and the Notetaker are on the Mac for now; Windows and Linux are n
 - 🗣️ **« OK Coucou »** *(macOS, GitHub build)* — talk to Mochi like Jarvis. Say « OK Coucou », then ask: « how much did I make on Stripe today? », « swap GitHub for Stripe », « play some Daft Punk », « who won the game last night? », « send an email to Enzo to tell him the image is ready ». Claude is the brain (your own Anthropic API key, set in Settings → Chat); speech recognition runs on your Mac, and only your words and the data Coucou reads to answer go to Anthropic, never audio. Mochi listens, thinks and answers out loud; emails open in the notch and leave only when you click Send. Settings → Voice.
 - 🎙️ **Dictate in the chat** *(macOS, GitHub build)* — click the mic next to the chat field and talk in any of your languages (Coucou picks the one you spoke, or right-click the mic to choose); speech recognition runs on your Mac when it supports it.
 - ↘️ **The notch or a corner** *(macOS, GitHub build)* — put Coucou in any corner of the screen: drag Mochi there, or Settings → General → Display → Position. A small tile with Mochi at rest; open, the other pills sit on a quarter circle around him.
+- 🛏️ **Mochi's room** *(macOS, GitHub build)* — a little room in the Coucou window where every object is live: Mochi at the bed, the desk or the door with your approvals, your CI and deploys as the weather in the window, your tools in frames on the wall, the time coded on the clock, your streak as a plant.
 - 🔎 **Search the settings** — type in the Coucou window's sidebar to find any setting *(macOS GitHub build, Windows, Linux)*.
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
 - 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen. With several displays, pick his screen in Settings → General, or let him follow your mouse *(macOS)*.
@@ -167,6 +169,7 @@ macOS releases are published as `v*` tags. See [CHANGELOG.md](CHANGELOG.md) for 
 | Version | Date | Highlights |
 |---------|------|------------|
 | [0.7.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.7.0) | Unreleased | Botan: one button for your agents, start a task from your iPhone, the iPhone app becomes Botan, Mochi stays in the Dynamic Island |
+| [0.6.2](https://github.com/Louis-CFM/coucou/releases/tag/v0.6.2) | Nov 24, 2026 | Mochi's room: a page of the Coucou window where Mochi, your CI weather and your tools are live in a little room, approvals at the door |
 | [0.6.1](https://github.com/Louis-CFM/coucou/releases/tag/v0.6.1) | Nov 19, 2026 | Mochi light on 120 Hz Macs (60 fps open, 30 folded), Botan founders list, crash fixes for speech permission and Flow on macOS 27 |
 | [0.6.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.6.0) | Nov 12, 2026 | Start a Claude Code session from the notch, drop a file on a session, ⌘⇧2 screenshot copied, approve Antigravity commands, Android phone link, Coucoudoro |
 | [0.5.8](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.8) | Oct 31, 2026 | Fixes by @Ohualtex: approvals and questions stay put, desktop Mochi stays visible, dropped files no longer overwrite each other |
@@ -532,6 +535,7 @@ Agents running on a server (VS Code Remote - SSH, an SSH environment in the Clau
 
 - **Island**: a borderless `NSPanel` hugging the notch, driven by a small state machine (`hidden → petit → home`).
 - **Character**: drawn in SwiftUI `Canvas` + `TimelineView` at 60 fps — squircle body, eyes projected on a sphere, spring animations. No Rive, no Lottie, no images.
+- **Mochi's room**: one painted picture, with what moves drawn over it in a `Canvas` (the weather cut to the window glass by a mask, the screen, the clock, the plant, the door, Mochi). The rules are in `MochiRoom.swift`, tested by `scripts/test-mochi-room.sh`.
 - **Claude Code**: a tiny `nb-hook` script receives hook events and forwards them over a Unix socket to the app. For approvals it waits for your click, then answers the hook.
 - **Integrations**: lightweight pollers, paused when nothing is watching.
 - **Declared pills**: `PillCatalog.swift` is the single source of truth — every pill (coding tools, agents, AI providers, services) is declared there with its ID, color and category.

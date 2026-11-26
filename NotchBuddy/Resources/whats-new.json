@@ -163,6 +163,128 @@
       ]
     },
     {
+      "version": "0.6.2",
+      "items": [
+        {
+          "icon": "sparkles",
+          "title": {
+            "en": "Mochi's room",
+            "fr": "La chambre de Mochi",
+            "es": "La habitación de Mochi",
+            "pt-BR": "O quarto do Mochi",
+            "ru": "Комната Мочи",
+            "zh-Hans": "Mochi 的房间",
+            "hi": "मोची का कमरा",
+            "ar": "غرفة موتشي",
+            "bn": "মোচির ঘর",
+            "id": "Kamar Mochi",
+            "de": "Mochis Zimmer",
+            "tr": "Mochi'nin odası",
+            "th": "ห้องของโมจิ",
+            "zh-Hant": "Mochi 的房間",
+            "ko": "모찌의 방",
+            "ja": "モチの部屋"
+          },
+          "detail": {
+            "en": "A new page of the Coucou window: Mochi, your agents and your day, live in a little room.",
+            "fr": "Une nouvelle page de la fenêtre Coucou : Mochi, tes agents et ta journée, en direct dans une petite chambre.",
+            "es": "Una página nueva de la ventana de Coucou: Mochi, tus agentes y tu día, en directo en una habitación.",
+            "pt-BR": "Uma página nova da janela do Coucou: o Mochi, seus agentes e seu dia, ao vivo num quartinho.",
+            "ru": "Новая страница окна Coucou: Мочи, твои агенты и твой день вживую в маленькой комнате.",
+            "zh-Hans": "Coucou 窗口的新页面：Mochi、你的智能体和你的一天，都在一间小房间里实时呈现。",
+            "hi": "Coucou विंडो का नया पेज: मोची, आपके एजेंट और आपका दिन, एक छोटे कमरे में लाइव।",
+            "ar": "صفحة جديدة في نافذة Coucou: موتشي ووكلاؤك ويومك، مباشرة في غرفة صغيرة.",
+            "bn": "Coucou উইন্ডোর নতুন পেজ: মোচি, আপনার এজেন্ট আর আপনার দিন, একটি ছোট ঘরে লাইভ।",
+            "id": "Halaman baru di jendela Coucou: Mochi, agen-agenmu, dan harimu, langsung di kamar kecil.",
+            "de": "Eine neue Seite im Coucou-Fenster: Mochi, deine Agenten und dein Tag, live in einem kleinen Zimmer.",
+            "tr": "Coucou penceresinde yeni bir sayfa: Mochi, ajanların ve günün, küçük bir odada canlı.",
+            "th": "หน้าใหม่ในหน้าต่าง Coucou: โมจิ เอเจนต์ และวันของคุณ แบบสดๆ ในห้องเล็กๆ",
+            "zh-Hant": "Coucou 視窗的新頁面：Mochi、你的智慧體和你的一天，都在一間小房間裡即時呈現。",
+            "ko": "Coucou 창의 새 페이지: 모찌와 에이전트, 그리고 당신의 하루를 작은 방에서 실시간으로.",
+            "ja": "Coucou ウィンドウの新しいページ：モチとエージェント、あなたの一日を小さな部屋でライブ表示。"
+          }
+        },
+        {
+          "icon": "puzzle",
+          "title": {
+            "en": "Your tools on the wall",
+            "fr": "Tes outils au mur",
+            "es": "Tus herramientas en la pared",
+            "pt-BR": "Suas ferramentas na parede",
+            "ru": "Твои сервисы на стене",
+            "zh-Hans": "墙上的工具",
+            "hi": "दीवार पर आपके टूल्स",
+            "ar": "أدواتك على الجدار",
+            "bn": "দেয়ালে আপনার টুল",
+            "id": "Alatmu di dinding",
+            "de": "Deine Tools an der Wand",
+            "tr": "Araçların duvarda",
+            "th": "เครื่องมือของคุณบนผนัง",
+            "zh-Hant": "牆上的工具",
+            "ko": "벽에 걸린 도구",
+            "ja": "壁にあなたのツール"
+          },
+          "detail": {
+            "en": "Stripe, GitHub, Vercel, n8n and Cal.com in frames; your CI and deploys as the weather.",
+            "fr": "Stripe, GitHub, Vercel, n8n et Cal.com dans des cadres ; ta CI et tes déploiements en météo.",
+            "es": "Stripe, GitHub, Vercel, n8n y Cal.com en cuadros; tu CI y tus despliegues como el tiempo.",
+            "pt-BR": "Stripe, GitHub, Vercel, n8n e Cal.com em quadros; seu CI e seus deploys como o tempo.",
+            "ru": "Stripe, GitHub, Vercel, n8n и Cal.com в рамках; CI и деплои — как погода за окном.",
+            "zh-Hans": "Stripe、GitHub、Vercel、n8n 和 Cal.com 挂在相框里；CI 和部署化作窗外天气。",
+            "hi": "Stripe, GitHub, Vercel, n8n और Cal.com फ़्रेम में; आपका CI और डिप्लॉय मौसम बनकर।",
+            "ar": "Stripe وGitHub وVercel وn8n وCal.com في إطارات، وCI وعمليات النشر كطقس النافذة.",
+            "bn": "Stripe, GitHub, Vercel, n8n আর Cal.com ফ্রেমে; আপনার CI আর ডিপ্লয় জানালার আবহাওয়া।",
+            "id": "Stripe, GitHub, Vercel, n8n, dan Cal.com di bingkai; CI dan deploy jadi cuaca di jendela.",
+            "de": "Stripe, GitHub, Vercel, n8n und Cal.com in Bilderrahmen; CI und Deployments als Wetter.",
+            "tr": "Stripe, GitHub, Vercel, n8n ve Cal.com çerçevelerde; CI ve dağıtımların pencerede hava.",
+            "th": "Stripe, GitHub, Vercel, n8n และ Cal.com ในกรอบรูป ส่วน CI และดีพลอยเป็นสภาพอากาศ",
+            "zh-Hant": "Stripe、GitHub、Vercel、n8n 和 Cal.com 掛在相框裡；CI 和部署化作窗外天氣。",
+            "ko": "Stripe, GitHub, Vercel, n8n, Cal.com을 액자에, CI와 배포는 창밖 날씨로.",
+            "ja": "Stripe、GitHub、Vercel、n8n、Cal.com を額縁に。CI とデプロイは窓の天気に。"
+          }
+        },
+        {
+          "icon": "checklist",
+          "title": {
+            "en": "Approve at the door",
+            "fr": "Autorise à la porte",
+            "es": "Aprueba en la puerta",
+            "pt-BR": "Aprove na porta",
+            "ru": "Разрешай у двери",
+            "zh-Hans": "在门口批准",
+            "hi": "दरवाज़े पर मंज़ूरी दें",
+            "ar": "وافق عند الباب",
+            "bn": "দরজায় অনুমোদন দিন",
+            "id": "Setujui di pintu",
+            "de": "An der Tür freigeben",
+            "tr": "Kapıda onayla",
+            "th": "อนุมัติที่ประตู",
+            "zh-Hant": "在門口核准",
+            "ko": "문 앞에서 승인",
+            "ja": "ドアで許可"
+          },
+          "detail": {
+            "en": "When an agent asks, Mochi runs to the door and the request opens right there, one click.",
+            "fr": "Quand un agent demande, Mochi court à la porte et la demande s'ouvre là, en un clic.",
+            "es": "Cuando un agente pregunta, Mochi corre a la puerta y la solicitud se abre ahí, en un clic.",
+            "pt-BR": "Quando um agente pede, o Mochi corre até a porta e o pedido abre ali, com um clique.",
+            "ru": "Когда агент просит, Мочи бежит к двери, и запрос открывается прямо там, в один клик.",
+            "zh-Hans": "智能体请求时，Mochi 跑到门口，请求就在那里打开，一键处理。",
+            "hi": "जब कोई एजेंट पूछता है, मोची दरवाज़े पर जाता है और अनुरोध वहीं खुलता है, एक क्लिक में।",
+            "ar": "عندما يطلب وكيل شيئًا، يركض موتشي إلى الباب ويُفتح الطلب هناك بنقرة واحدة.",
+            "bn": "এজেন্ট কিছু চাইলে মোচি দরজায় যায়, আর অনুরোধ সেখানেই খোলে, এক ক্লিকে।",
+            "id": "Saat agen meminta, Mochi lari ke pintu dan permintaannya terbuka di sana, sekali klik.",
+            "de": "Fragt ein Agent, läuft Mochi zur Tür und die Anfrage öffnet sich dort, mit einem Klick.",
+            "tr": "Bir ajan sorduğunda Mochi kapıya koşar, istek orada açılır, tek tıkla.",
+            "th": "เมื่อเอเจนต์ขอ โมจิจะวิ่งไปที่ประตู และคำขอจะเปิดตรงนั้น คลิกเดียว",
+            "zh-Hant": "智慧體請求時，Mochi 跑到門口，請求就在那裡打開，一鍵處理。",
+            "ko": "에이전트가 요청하면 모찌가 문으로 달려가고, 요청이 그 자리에서 열려요. 클릭 한 번.",
+            "ja": "エージェントが頼むと、モチがドアへ走り、その場で一クリックで答えられます。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.6.1",
       "items": [
         {
