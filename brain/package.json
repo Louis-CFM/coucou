@@ -1,0 +1,29 @@
+{
+  "name": "@coucou/brain",
+  "version": "0.1.0",
+  "description": "Coucou Brain — digest Claude Code sessions and repos into a local Markdown knowledge base",
+  "type": "module",
+  "bin": {
+    "brain": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "commander": "^12.1.0",
+    "gray-matter": "^4.0.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.0",
+    "vite": "^8.4.0",
+    "vitest": "^5.1.2"
+  }
+}
