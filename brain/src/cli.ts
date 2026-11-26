@@ -31,10 +31,13 @@ import {
   validateAllLinks,
   collectAllIds,
   rebuildIndex,
+  rebuildAllPages,
   gitCommit,
   normalizeFilePaths,
+  getOpenElements,
 } from "./write.js";
 import { computeStats } from "./stats.js";
+import { runCoverage, formatCoverageResult } from "./coverage.js";
 
 const program = new Command();
 
@@ -101,9 +104,16 @@ program
       }
 
       const discoveredIds = new Set(discovered.map((d) => d.id));
+      // Date lookup for chronological sort (oldest→newest so latest session wins etatActuel)
+      const discoveredDateById = new Map(discovered.map((d) => [d.id, d.date]));
       let pending = manifest
         .getPendingSessions()
-        .filter((s) => discoveredIds.has(s.id));
+        .filter((s) => discoveredIds.has(s.id))
+        .sort((a, b) => {
+          const da = discoveredDateById.get(a.id) ?? "0";
+          const db = discoveredDateById.get(b.id) ?? "0";
+          return da.localeCompare(db);
+        });
 
       // --session filter
       if (opts.session?.length) {
@@ -170,11 +180,27 @@ program
             const condensed = readSession(s.jsonl_path);
             console.log(`    ~${condensed.estimatedTokens.toLocaleString()} tokens condensés`);
 
+            // Skip near-empty sessions — not enough content for meaningful digest
+            if (condensed.estimatedTokens < 30) {
+              console.log(`    ⏭  session quasi vide, ignorée`);
+              manifest.markSessionIgnored(s.id);
+              continue;
+            }
+
             for (const m of condensed.masked) {
               maskedByType[m.type] = (maskedByType[m.type] ?? 0) + m.count;
             }
 
-            const digest = await digestSessionWithRetry(condensed, config);
+            const openElements = getOpenElements(config);
+            if (openElements.length > 0) {
+              console.log(`    ${openElements.length} éléments ouverts transmis au modèle`);
+            }
+
+            const digest = await digestSessionWithRetry(condensed, config, openElements);
+            // Fallback: if LLM returned no projects, use the session's project path hint
+            if (digest.projects.length === 0) {
+              digest.projects = [condensed.projectNameHint];
+            }
             const primaryProject = digest.projects[0]!;
 
             // Build current valid IDs (before writing this record)
@@ -302,6 +328,18 @@ program
     manifest.close();
   });
 
+// ── rebuild ───────────────────────────────────────────────────────────────────
+
+program
+  .command("rebuild")
+  .description("Re-render all pages from state files (no LLM calls)")
+  .action(() => {
+    const config = loadConfig();
+    const rebuilt = rebuildAllPages(config);
+    console.log(`Rebuilt ${rebuilt.length} pages:`);
+    rebuilt.forEach((p) => console.log(`  ${p}`));
+  });
+
 // ── stats ─────────────────────────────────────────────────────────────────────
 
 program
@@ -312,6 +350,36 @@ program
     const config = loadConfig();
     const stats = computeStats(config);
     console.log(opts.pretty ? JSON.stringify(stats, null, 2) : JSON.stringify(stats));
+  });
+
+// ── coverage ──────────────────────────────────────────────────────────────────
+
+program
+  .command("coverage")
+  .description("Compare brain pages to golden set and report missing elements")
+  .option("--golden <path>", "Path to golden set JSON file")
+  .action((opts) => {
+    const config = loadConfig();
+    const defaultGoldenPath = path.join(
+      path.dirname(new URL(import.meta.url).pathname),
+      "..",
+      "tests",
+      "golden-set.json"
+    );
+    const goldenPath = opts.golden
+      ? path.resolve(opts.golden)
+      : defaultGoldenPath;
+
+    try {
+      const result = runCoverage(config, goldenPath);
+      console.log(formatCoverageResult(result));
+      if (result.missing.length > 0) {
+        process.exitCode = 1;
+      }
+    } catch (e) {
+      console.error(`Coverage error: ${(e as Error).message}`);
+      process.exitCode = 1;
+    }
   });
 
 program.parse();

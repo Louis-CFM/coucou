@@ -15,8 +15,11 @@ import type { BrainConfig } from "./config.js";
 import {
   type StoredElement,
   type LLMElement,
+  type OpenElementHint,
   llmToStored,
   mergeElements,
+  applyTaskClosures,
+  applyDecisionReplacements,
   renderElement,
   validateLinks,
 } from "./elements.js";
@@ -299,6 +302,14 @@ export function writeRecord(
     sections.push(section("Préférences", items));
   }
 
+  // Mesures
+  const measures = digest.elements.filter((e) => e.kind === "mesure");
+  if (measures.length > 0) {
+    const { validIds } = buildPlaceholderIds([recordId]);
+    const items = measures.map((e) => renderElement(llmToStored(e, session.date, recordId), validIds));
+    sections.push(section("Mesures", items));
+  }
+
   // Files touched
   const allPaths = [...new Set([...digest.files_touched, ...session.filesModified])];
   const normalized = normalizeFilePaths(allPaths, allRepoPaths);
@@ -368,8 +379,8 @@ function renderProjectPage(
     sections.push(section("Leçons", lessons.map((e) => renderElement(e, allIds))));
   }
 
-  // Open tasks (not ❌)
-  const tasks = state.elements.filter((e) => e.kind === "tâche" && e.statut !== "❌");
+  // Open tasks (not ❌ and not ✅)
+  const tasks = state.elements.filter((e) => e.kind === "tâche" && e.statut !== "❌" && e.statut !== "✅");
   if (tasks.length > 0) {
     sections.push(section("Tâches ouvertes", tasks.map((e) => renderElement(e, allIds))));
   }
@@ -378,6 +389,12 @@ function renderProjectPage(
   const facts = state.elements.filter((e) => e.kind === "fait");
   if (facts.length > 0) {
     sections.push(section("Faits notables", facts.map((e) => renderElement(e, allIds))));
+  }
+
+  // Measures — only latest value per nom (already deduped in state via ID)
+  const measures = state.elements.filter((e) => e.kind === "mesure");
+  if (measures.length > 0) {
+    sections.push(section("Mesures", measures.map((e) => renderElement(e, allIds))));
   }
 
   if (state.linkedProjects.length > 0) {
@@ -444,6 +461,23 @@ export function updateProjectFromSession(
 
   state.elements = mergeElements(state.elements, newElements);
 
+  // Apply task closures reported by the LLM
+  state.elements = applyTaskClosures(
+    state.elements,
+    digest.taches_faites ?? [],
+    digest.taches_abandonnees ?? [],
+    sessionDate,
+    recordId
+  );
+
+  // Apply decision replacements reported by the LLM
+  state.elements = applyDecisionReplacements(
+    state.elements,
+    digest.remplacees ?? [],
+    sessionDate,
+    recordId
+  );
+
   // Track linked people
   for (const name of digest.people ?? []) {
     const pid = `people_${toSlug(name)}`;
@@ -464,7 +498,25 @@ export function updateProjectFromRepo(
   config: BrainConfig,
   allIds: Set<string>
 ): string {
-  const projectId = `proj_${toSlug(repoDigest.slug)}`;
+  // Deduplicate by remote URL first, then by slug.
+  // Two repos with different remotes must never share the same state file,
+  // even if Claude picked the same slug for both.
+  let projectId = `proj_${toSlug(repoDigest.slug)}`;
+  if (repoDigest.remote) {
+    const dir = stateDir(config);
+    if (fs.existsSync(dir)) {
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith(".json")) continue;
+        try {
+          const st = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as ProjectState;
+          if (st.remote === repoDigest.remote) {
+            projectId = st.id;
+            break;
+          }
+        } catch {}
+      }
+    }
+  }
   const state = loadProjectState(projectId, config);
 
   // Update or set repo meta
@@ -607,12 +659,41 @@ function renderAndWriteLouisPage(
     group: "Louis",
   };
 
-  const sections: string[] = [
-    section(
-      "Préférences & règles de travail",
-      state.elements.map((e) => renderElement(e, allIds))
-    ),
-  ];
+  // Group preferences by project scope
+  // Global: projets is empty or contains only non-project-slug entries
+  // Project-specific: projets contains a project slug
+  const globalElems: StoredElement[] = [];
+  const byProject = new Map<string, StoredElement[]>();
+
+  for (const elem of state.elements) {
+    const projectSlugs = (elem.projets ?? []).filter(
+      (p) => p && !p.startsWith("people/")
+    );
+    if (projectSlugs.length === 0) {
+      globalElems.push(elem);
+    } else {
+      for (const slug of projectSlugs) {
+        if (!byProject.has(slug)) byProject.set(slug, []);
+        byProject.get(slug)!.push(elem);
+      }
+    }
+  }
+
+  const sections: string[] = [];
+
+  if (globalElems.length > 0) {
+    sections.push(
+      section("Préférences globales", globalElems.map((e) => renderElement(e, allIds)))
+    );
+  }
+
+  // Sort project sections alphabetically
+  for (const slug of [...byProject.keys()].sort()) {
+    const elems = byProject.get(slug)!;
+    sections.push(
+      section(slug, elems.map((e) => renderElement(e, allIds)))
+    );
+  }
 
   const content = [
     frontmatterBlock(fm),
@@ -692,6 +773,96 @@ function renderAndWritePersonPage(
     : frontmatterBlock(fm);
 
   fs.writeFileSync(filePath, validateLinks(content, allIds) + "\n", "utf8");
+}
+
+// ── Rebuild all pages from state (re-render without LLM calls) ───────────────
+
+/**
+ * Re-render all project pages, lessons.md, and louis.md from their state files.
+ * Use after manually patching state files or when pages are stale.
+ */
+export function rebuildAllPages(config: BrainConfig): string[] {
+  const allIds = collectAllIds(config);
+  allIds.add("lessons");
+  allIds.add("louis");
+  allIds.add("index");
+
+  const rebuilt: string[] = [];
+
+  // Project pages
+  const sDir = stateDir(config);
+  if (fs.existsSync(sDir)) {
+    for (const f of fs.readdirSync(sDir)) {
+      if (!f.endsWith(".json") || f === "lessons.json" || f === "louis.json") continue;
+      try {
+        const state = JSON.parse(
+          fs.readFileSync(path.join(sDir, f), "utf8")
+        ) as ProjectState;
+        // Pre-register all IDs in this project state
+        for (const e of state.elements) allIds.add(e.id);
+        for (const r of state.recordSources) allIds.add(r);
+        writeProjectPage(state, config, allIds);
+        rebuilt.push(`projects/${state.id.replace(/^proj_/, "")}.md`);
+      } catch {}
+    }
+  }
+
+  // Lessons
+  const lessonsState = loadGlobalState("lessons", config);
+  if (lessonsState.elements.length > 0) {
+    renderAndWriteLessonsPage(lessonsState, config, allIds);
+    rebuilt.push("lessons.md");
+  }
+
+  // Louis
+  const louisState = loadGlobalState("louis", config);
+  if (louisState.elements.length > 0) {
+    renderAndWriteLouisPage(louisState, config, allIds);
+    rebuilt.push("louis.md");
+  }
+
+  rebuildIndex(config);
+  rebuilt.push("INDEX.md");
+
+  return rebuilt;
+}
+
+// ── Open elements getter (for digest prompt context) ─────────────────────────
+
+/**
+ * Returns all open tasks and active decisions from all project states.
+ * Passed to the LLM digest so it can reference IDs for closure/replacement.
+ */
+export function getOpenElements(config: BrainConfig): OpenElementHint[] {
+  const dir = stateDir(config);
+  if (!fs.existsSync(dir)) return [];
+
+  const result: OpenElementHint[] = [];
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith(".json")) continue;
+    // Skip global states (lessons, louis)
+    if (f === "lessons.json" || f === "louis.json") continue;
+    try {
+      const state = JSON.parse(
+        fs.readFileSync(path.join(dir, f), "utf8")
+      ) as ProjectState;
+      for (const elem of state.elements) {
+        if (
+          (elem.kind === "tâche" && elem.statut !== "❌" && elem.statut !== "✅") ||
+          (elem.kind === "décision" && elem.statut === "✅")
+        ) {
+          result.push({
+            id: elem.id,
+            kind: elem.kind,
+            texte: elem.texte,
+            statut: elem.statut ?? null,
+            projets: Array.isArray(elem.projets) ? elem.projets : [],
+          });
+        }
+      }
+    } catch {}
+  }
+  return result;
 }
 
 // ── Global link validation pass ───────────────────────────────────────────────
@@ -797,10 +968,19 @@ export function rebuildIndex(config: BrainConfig): void {
           const st = JSON.parse(fs.readFileSync(stateFile, "utf8")) as ProjectState;
           if (st.etatActuel) {
             const firstLine = st.etatActuel.split(/[.\n]/)[0]?.trim() ?? "";
-            if (firstLine) summary = ` — ${firstLine.slice(0, 80)}`;
+            if (firstLine) {
+              const truncated = firstLine.length > 80
+                ? firstLine.slice(0, 80).replace(/\s\S+$/, "…")
+                : firstLine;
+              summary = ` — ${truncated}`;
+            }
           }
         }
-        lines.push(`- [[${id}]] — ${title}${summary} _(mis à jour ${data.updated ?? "?"})_`);
+        const updatedRaw = data.updated;
+        const updatedStr = updatedRaw instanceof Date
+          ? updatedRaw.toISOString().slice(0, 10)
+          : String(updatedRaw ?? "?").slice(0, 10);
+        lines.push(`- [[${id}]] — ${title}${summary} _(mis à jour ${updatedStr})_`);
       } catch {}
     }
   }

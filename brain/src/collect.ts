@@ -286,6 +286,22 @@ export function readSession(jsonlPath: string): SessionCondensed {
   };
 }
 
+// ── Internal session detection ────────────────────────────────────────────────
+
+/** Returns true if the JSONL session was launched by brain itself (should be excluded). */
+function isInternalSession(jsonlPath: string): boolean {
+  try {
+    // Only need to check the first few KB — the marker is in the first user message
+    const buf = Buffer.alloc(4096);
+    const fd = fs.openSync(jsonlPath, "r");
+    const bytesRead = fs.readSync(fd, buf, 0, 4096, 0);
+    fs.closeSync(fd);
+    return buf.slice(0, bytesRead).toString("utf8").includes("coucou-brain-internal");
+  } catch {
+    return false;
+  }
+}
+
 // ── Session discovery ─────────────────────────────────────────────────────────
 
 export interface DiscoveredSession {
@@ -361,6 +377,7 @@ export function discoverSessions(
         }
 
         const id = path.basename(entry.name, ".jsonl");
+        if (isInternalSession(jsonlPath)) continue;
         sessions.push({
           id,
           projectPath: proj,
@@ -398,6 +415,7 @@ export function discoverSessions(
         continue;
       }
 
+      if (isInternalSession(jsonlPath)) continue;
       sessions.push({
         id,
         projectPath: proj,

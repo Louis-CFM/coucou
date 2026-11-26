@@ -8,7 +8,7 @@ import { z } from "zod";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
-export const ElementKindSchema = z.enum(["décision", "fait", "leçon", "tâche", "préférence"]);
+export const ElementKindSchema = z.enum(["décision", "fait", "leçon", "tâche", "préférence", "mesure"]);
 export const SubKindSchema = z.enum(["erreur", "leçon"]).nullable().default(null);
 export const ProvenanceSchema = z.enum(["décidé", "proposé", "constaté"]).nullable().default(null);
 export const StatutSchema = z.enum(["✅", "❌", "⏳", "⚠️"]).nullable().default(null);
@@ -19,11 +19,12 @@ export const LLMElementSchema = z.object({
   provenance: ProvenanceSchema,
   statut: StatutSchema,
   texte: z.string().min(1).max(400),
+  nom: z.string().nullable().default(null),
   projets: z.array(z.string()).default([]),
   remplace: z.string().nullable().default(null),
   raison: z.string().nullable().default(null),
   domaine: z.string().nullable().default(null),
-  scope: z.enum(["projet", "transverse"]).default("projet"),
+  scope: z.enum(["projet", "transverse"]).nullable().default("projet").transform((v) => v ?? "projet"),
 });
 
 export type LLMElement = z.infer<typeof LLMElementSchema>;
@@ -37,6 +38,7 @@ export interface StoredElement {
   provenance?: string | null;
   statut?: string | null;
   texte: string;
+  nom?: string | null;
   date: string;
   sources: string[];
   projets: string[];
@@ -54,11 +56,14 @@ const KIND_PREFIX: Record<string, string> = {
   leçon: "les",
   tâche: "tach",
   préférence: "pref",
+  mesure: "mes",
 };
 
-export function computeElementId(kind: string, texte: string): string {
+export function computeElementId(kind: string, texte: string, nom?: string | null): string {
   const prefix = KIND_PREFIX[kind] ?? "elem";
-  const normalized = texte.normalize("NFC").trim().toLowerCase().replace(/\s+/g, " ");
+  // Measures use nom as the stable dedup key — texte changes with each new value
+  const key = kind === "mesure" && nom ? nom : texte;
+  const normalized = key.normalize("NFC").trim().toLowerCase().replace(/\s+/g, " ");
   const hash = createHash("sha256").update(normalized).digest("hex").slice(0, 10);
   return `${prefix}_${hash}`;
 }
@@ -70,6 +75,8 @@ export function computeElementId(kind: string, texte: string): string {
  * Never drops an element — always produces something valid.
  */
 export function coerceElement(elem: LLMElement): LLMElement {
+  // Measures have no provenance/statut semantics
+  if (elem.kind === "mesure") return elem;
   // proposé ✅ → proposé ⏳
   if (elem.provenance === "proposé" && elem.statut === "✅") {
     return { ...elem, statut: "⏳" };
@@ -98,12 +105,13 @@ export function llmToStored(
 ): StoredElement {
   const c = coerceElement(elem);
   return {
-    id: computeElementId(c.kind, c.texte),
+    id: computeElementId(c.kind, c.texte, c.nom),
     kind: c.kind,
     sub_kind: c.sub_kind ?? null,
     provenance: c.provenance ?? null,
     statut: c.statut ?? null,
     texte: c.texte,
+    nom: c.nom ?? null,
     date: sessionDate,
     sources: [recordId],
     projets: c.projets,
@@ -131,13 +139,18 @@ export function mergeElements(
     const ex = byId.get(ne.id);
     if (ex) {
       const sources = [...new Set([...ex.sources, ...ne.sources])];
-      byId.set(ne.id, {
-        ...ex,
-        sources,
-        statut: ne.statut !== null ? ne.statut : ex.statut,
-        date: ne.date,
-        raison: ne.raison ?? ex.raison,
-      });
+      if (ex.kind === "mesure") {
+        // Measures: latest value wins — replace texte with the new value
+        byId.set(ne.id, { ...ne, sources });
+      } else {
+        byId.set(ne.id, {
+          ...ex,
+          sources,
+          statut: ne.statut !== null ? ne.statut : ex.statut,
+          date: ne.date,
+          raison: ne.raison ?? ex.raison,
+        });
+      }
     } else {
       byId.set(ne.id, ne);
     }
@@ -176,6 +189,12 @@ export function renderElement(elem: StoredElement, validIds: Set<string>): strin
   const srcPart = srcLinks ? ` ${srcLinks}` : "";
   const raisonPart = elem.statut === "❌" && elem.raison ? ` — ${elem.raison}` : "";
 
+  if (elem.kind === "mesure") {
+    const dd = elem.date.slice(8, 10);
+    const mm = elem.date.slice(5, 7);
+    return `${elem.texte} — ${dd}/${mm}${srcPart}`;
+  }
+
   if (elem.kind === "leçon") {
     const prefix = elem.sub_kind ?? "leçon";
     const statut = elem.statut ? ` ${elem.statut}` : "";
@@ -199,6 +218,89 @@ export function renderElement(elem: StoredElement, validIds: Set<string>): strin
   const prov = elem.provenance ? `[${elem.provenance}] ` : "";
   const statut = elem.statut ? `${elem.statut} ` : "";
   return `${prov}${statut}${elem.texte}${raisonPart}${datePart}${srcPart}`;
+}
+
+// ── Task closure ─────────────────────────────────────────────────────────────
+
+/**
+ * Mark tasks as done (✅) or abandoned (❌) in a stored elements array.
+ * - doneIds: tasks that were completed → statut ✅
+ * - abandonedItems: tasks explicitly dropped → statut ❌ with raison
+ * Pure function — returns a new array.
+ */
+export function applyTaskClosures(
+  elements: StoredElement[],
+  doneIds: string[],
+  abandonedItems: Array<{ id: string; raison: string }>,
+  sessionDate: string,
+  recordId: string
+): StoredElement[] {
+  if (doneIds.length === 0 && abandonedItems.length === 0) return elements;
+  const abandonedMap = new Map(abandonedItems.map((a) => [a.id, a.raison]));
+  return elements.map((e) => {
+    if (doneIds.includes(e.id) && e.statut !== "✅" && e.statut !== "❌") {
+      return {
+        ...e,
+        statut: "✅",
+        date: sessionDate,
+        sources: [...new Set([...e.sources, recordId])],
+      };
+    }
+    if (abandonedMap.has(e.id) && e.statut !== "❌") {
+      return {
+        ...e,
+        statut: "❌",
+        raison: abandonedMap.get(e.id)!,
+        date: sessionDate,
+        sources: [...new Set([...e.sources, recordId])],
+      };
+    }
+    return e;
+  });
+}
+
+// ── Decision replacement ──────────────────────────────────────────────────────
+
+/**
+ * Mark decisions as replaced (❌) in a stored elements array.
+ * - replacements: decisions that have been superseded
+ * Pure function — returns a new array.
+ */
+export function applyDecisionReplacements(
+  elements: StoredElement[],
+  replacements: Array<{ id: string; par: string | null; raison: string }>,
+  sessionDate: string,
+  recordId: string
+): StoredElement[] {
+  if (replacements.length === 0) return elements;
+  const replacementMap = new Map(replacements.map((r) => [r.id, r]));
+  return elements.map((e) => {
+    const replacement = replacementMap.get(e.id);
+    if (replacement && e.statut !== "❌") {
+      const raison = replacement.par
+        ? `Remplacé par ${replacement.par} : ${replacement.raison}`
+        : replacement.raison;
+      return {
+        ...e,
+        statut: "❌",
+        raison,
+        date: sessionDate,
+        sources: [...new Set([...e.sources, recordId])],
+      };
+    }
+    return e;
+  });
+}
+
+// ── Open element hint (passed to digest prompt) ───────────────────────────────
+
+/** Minimal representation of an open task/decision passed to the LLM digest */
+export interface OpenElementHint {
+  id: string;
+  kind: string;
+  texte: string;
+  statut: string | null;
+  projets: string[];
 }
 
 // ── Link validation ────────────────────────────────────────────────────────────

@@ -131,9 +131,11 @@ const PATTERNS: Pattern[] = [
   },
 
   // ── IBAN ──────────────────────────────────────────────────────────────────
+  // Requires non-alphanumeric on both sides to avoid false positives from
+  // base64-encoded binary content in JSONL files.
   {
     type: "iban",
-    regex: /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){4,7}\b/g,
+    regex: /(?<![A-Za-z0-9])[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){4,7}(?![A-Za-z0-9])/g,
   },
 
   // ── Credit/debit card numbers (basic Luhn-candidate: 13-19 digits) ────────

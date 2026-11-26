@@ -7,7 +7,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { expandHome } from "./utils.js";
 
-export type ItemStatus = "pending" | "done" | "failed";
+export type ItemStatus = "pending" | "done" | "failed" | "ignored";
 
 export interface SessionEntry {
   id: string;           // session UUID (from filename)
@@ -118,6 +118,12 @@ export class Manifest {
     this.db.prepare(`
       UPDATE sessions SET status = 'failed', processed_at = ? WHERE id = ?
     `).run(new Date().toISOString(), id);
+  }
+
+  markSessionIgnored(id: string): void {
+    this.db.prepare(
+      "UPDATE sessions SET status = 'ignored', processed_at = ? WHERE id = ?"
+    ).run(new Date().toISOString(), id);
   }
 
   getAllSessions(): SessionEntry[] {

@@ -2,10 +2,14 @@
  * LLM digest — calls `claude -p` from the brain's digestion directory.
  * Never called in --dry-run mode.
  *
- * Security: --tools "" disables ALL tools in the subprocess.
- * Session content may come from web pages or external sources and could
- * contain prompt injection. With no tools available, the LLM can only
- * output text — no file reads, writes, or commands possible.
+ * Security: subprocess runs with zero tools.
+ *   --strict-mcp-config --mcp-config '{"mcpServers":{}}' → removes all MCP tools
+ *   --tools ""                                            → clears built-in set (LSP remains)
+ *   --disallowed-tools "LSP"                              → removes LSP → [] total
+ *
+ * --allowedTools "" alone is INSECURE: MCP tools remain available.
+ * --tools "" alone is INSECURE: LSP still present (init event shows ["LSP"]).
+ * All three flags together → init event shows [], verified by stream-json.
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -14,15 +18,22 @@ import { digestionDir } from "./config.js";
 import { chunkMessages, messagesToText, type Chunk } from "./chunk.js";
 import type { SessionCondensed, RepoCondensed } from "./collect.js";
 import type { BrainConfig } from "./config.js";
-import { LLMElementSchema } from "./elements.js";
+import { LLMElementSchema, type OpenElementHint } from "./elements.js";
 
 // ── Session digest schema (what the LLM returns) ──────────────────────────────
 
 export const SessionDigestSchema = z.object({
   title: z.string().min(1).max(80).transform((s) => s.slice(0, 60)),
   summary: z.string().min(1),
-  projects: z.array(z.string()).min(1),
+  projects: z.array(z.string()).default([]),
   elements: z.array(LLMElementSchema).default([]),
+  taches_faites: z.array(z.string()).default([]),
+  taches_abandonnees: z.array(z.object({ id: z.string(), raison: z.string() })).default([]),
+  remplacees: z.array(z.object({
+    id: z.string(),
+    par: z.string().nullable().default(null),
+    raison: z.string(),
+  })).default([]),
   project_states: z
     .array(z.object({ project: z.string(), etat_actuel: z.string() }))
     .default([]),
@@ -46,7 +57,10 @@ function runClaude(
       "--print",
       "--output-format", "json",
       "--model", model,
-      "--allowedTools", "",    // disable ALL tools — no prompt injection risk
+      "--strict-mcp-config",            // ignore all configured MCP servers
+      "--mcp-config", '{"mcpServers":{}}',  // empty MCP set
+      "--tools", "",                    // clear all built-in tools → only LSP remains
+      "--disallowed-tools", "LSP",      // remove LSP → zero tools total
     ],
     {
       input: prompt,
@@ -80,12 +94,16 @@ function ensureDigestionDir(config: BrainConfig): string {
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
 
+/** Marker injected into every prompt so brain's own sessions can be identified and excluded */
+const INTERNAL_MARKER = "<!-- coucou-brain-internal -->";
+
 function buildChunkSummaryPrompt(
   chunk: Chunk,
   sessionDate: string,
   projectHint: string
 ): string {
-  return `Tu résumes un morceau d'une session Claude Code (${chunk.index + 1}/${chunk.total}).
+  return `${INTERNAL_MARKER}
+Tu résumes un morceau d'une session Claude Code (${chunk.index + 1}/${chunk.total}).
 Date de la session : ${sessionDate}. Projet supposé : ${projectHint}.
 
 Résume ce morceau en 300 à 500 mots en français. Inclus : ce qui a été fait, les décisions prises, les problèmes rencontrés, les fichiers importants mentionnés. Sois factuel et précis.
@@ -96,33 +114,73 @@ ${chunk.text}
 Résumé :`;
 }
 
-function buildDigestPrompt(text: string, sessionDate: string, projectHint: string): string {
-  return `Tu analyses une session Claude Code du ${sessionDate} (projet supposé : ${projectHint}).
+function buildOpenElementsBlock(openElements: OpenElementHint[]): string {
+  if (openElements.length === 0) return "";
+  const lines = openElements.map(
+    (e) =>
+      `  {"id":"${e.id}","kind":"${e.kind}","statut":${e.statut ? `"${e.statut}"` : "null"},"texte":"${e.texte.slice(0, 100).replace(/"/g, "'")}"}`
+  );
+  return `\nÉLÉMENTS OUVERTS (tâches non terminées et décisions actives du projet) :
+${lines.join("\n")}
+
+Si cette session termine une tâche, l'abandonne, ou remplace une décision :
+- Tâche terminée → ajoute son ID dans "taches_faites": ["<id>"]
+- Tâche abandonnée → ajoute dans "taches_abandonnees": [{"id": "<id>", "raison": "pourquoi"}]
+- Décision remplacée → ajoute dans "remplacees": [{"id": "<id-ancienne>", "par": "<id-nouvelle-ou-null>", "raison": "pourquoi"}]\n`;
+}
+
+function buildDigestPrompt(
+  text: string,
+  sessionDate: string,
+  projectHint: string,
+  openElements: OpenElementHint[] = []
+): string {
+  const openBlock = buildOpenElementsBlock(openElements);
+  return `${INTERNAL_MARKER}
+Tu analyses une session Claude Code du ${sessionDate} (projet supposé : ${projectHint}).
+${openBlock}
 
 TITRE : génère un titre en 60 caractères maximum, précis et informatif. Exemples de BONS titres : "brain/ module TypeScript : pipeline sessions + repos", "404 CRT, WebP, panel entreprise, analytics". Mauvais titre : les 60 premiers caractères du résumé coupés au milieu.
 
 PROJETS : identifie tous les slugs de projet touchés (ex: "coucou", "portfo", "sbe-hub"). Sous-projets : "coucou-brain" pour le module brain/ de Coucou. Pages personne : "people/enya" ou "people/nom".
 
-ÉLÉMENTS : pour chaque décision, fait notable, leçon, tâche ou préférence de Louis, génère un élément.
+ÉLÉMENTS : pour chaque décision, fait notable, leçon, tâche, préférence ou mesure, génère un élément.
 Champs :
-- kind : "décision" | "fait" | "leçon" | "tâche" | "préférence"
+- kind : "décision" | "fait" | "leçon" | "tâche" | "préférence" | "mesure"
   • décision : choix technique ou de product pris ou rejeté
-  • fait : information factuelle stable (version, URL, compte, nombre clé)
+  • fait : information factuelle stable (architecture, URL, contrainte permanente)
   • leçon : enseignement ou erreur à retenir
   • tâche : action à faire ou déjà faite (statut ❌)
   • préférence : goût ou règle de travail de Louis
+  • mesure : compteur ou montant qui évolue dans le temps (abonnés, CA, utilisateurs, lignes de code…)
+    — Utilise "mesure" quand la valeur changera à la prochaine session, PAS "fait".
+    — Champ "nom" obligatoire : clé stable en français (ex: "abonnés newsletter", "ca net 2026").
+    — texte = valeur complète lisible (ex: "61 abonnés newsletter actifs").
 - sub_kind : pour leçon uniquement : "erreur" (bug, mauvaise approche) | "leçon" (bonne pratique)
 - provenance :
   • "décidé" = Louis l'a dit ou confirmé explicitement
   • "proposé" = Claude a suggéré, Louis n'a pas dit oui
   • "constaté" = fait observé, ce que Claude a implémenté sans validation explicite
-- statut : "✅" (en vigueur) | "❌" (abandonné/terminé) | "⏳" (en attente) | "⚠️" (piège)
+  • null pour mesure (pas de provenance)
+- statut : "✅" (en vigueur/faite) | "❌" (abandonné) | "⏳" (en attente) | "⚠️" (piège) | null pour mesure
+  • Pour kind=tâche : ✅=faite, ⏳=ouverte, ❌=abandonnée (raison obligatoire)
 - texte : contenu en 1-2 phrases max (jamais plus de 400 chars)
+- nom : pour mesure uniquement — clé stable servant de déduplication (null pour les autres kinds)
 - projets : slugs des projets concernés
 - remplace : id d'un élément précédent si cette décision l'annule (null sinon)
 - raison : explication si statut ❌ (obligatoire dans ce cas)
 - domaine : pour leçon uniquement : "shell" | "git" | "macos" | "nextjs" | "vercel" | "swift" | "claude-code" | "general"
 - scope : "transverse" (leçon valable hors du projet) | "projet" (propre au projet)
+  Règle : toute leçon sur une commande git, gh, shell, npm, ffmpeg, etc. est TOUJOURS "transverse".
+
+RÈGLES IMPORTANTES :
+- Si une décision de projet encode aussi une règle personnelle de Louis (workflow Git, communication, pratique de dev, style UI), génère AUSSI un élément kind=préférence avec le même contenu résumé, projets=[] si c'est une règle générale. Exemples :
+  • Une décision "Enya ne pousse que sur branches" → aussi une préférence globale "Ne pas laisser les collaborateurs pousser directement sur main" avec projets=[].
+  • Un revert de style parce que "Louis n'aime pas" → aussi une préférence globale décrivant ce qu'il n'aime pas.
+  • Une contrainte "jamais X sans OK explicite" → aussi une préférence globale avec projets=[].
+- Une méthode de déploiement, une contrainte d'architecture ou un choix permanent DOIT être capturé comme fait (pas seulement comme tâche). Exemples : "deploy via git push sur main", "auth admin via HMAC", "RLS désactivée sur cette table".
+- Une tâche TERMINÉE dans la session doit avoir statut=✅ (faite). Statut=❌ = abandonnée (raison obligatoire). Ne laisse pas de tâches ouvertes si elles ont été accomplies dans la session.
+- Un comportement SQL ou API inattendu (JOIN excluant NULLs, pagination, rate limit, encoding) = leçon scope=transverse.
 
 COMBINAISONS AUTORISÉES :
 - [décidé] ✅ : Louis a décidé ou validé
@@ -133,6 +191,8 @@ COMBINAISONS AUTORISÉES :
 - [proposé] ✅ N'EXISTE PAS → utilise ⏳ à la place
 - leçon sub_kind=erreur : ⚠️ uniquement (jamais ✅)
 - leçon sub_kind=leçon : ✅ ou ⚠️
+
+DÉCISIONS REMPLACÉES : si une décision active est annulée ou remplacée par une nouvelle, ajoute-la dans "remplacees": [{"id": "<id-ancienne>", "par": "<id-nouvelle-ou-null>", "raison": "pourquoi"}]
 
 ÉTAT ACTUEL : pour chaque projet, 2-3 phrases décrivant l'état du projet MAINTENANT. Max 5 lignes.
 
@@ -155,6 +215,7 @@ Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire :
       "provenance": "décidé",
       "statut": "✅",
       "texte": "...",
+      "nom": null,
       "projets": ["coucou"],
       "remplace": null,
       "raison": null,
@@ -162,6 +223,9 @@ Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire :
       "scope": "projet"
     }
   ],
+  "taches_faites": [],
+  "taches_abandonnees": [],
+  "remplacees": [],
   "project_states": [
     {"project": "coucou", "etat_actuel": "2-3 phrases max"}
   ],
@@ -173,12 +237,13 @@ Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire :
 function buildFinalDigestPrompt(
   summaries: string[],
   sessionDate: string,
-  projectHint: string
+  projectHint: string,
+  openElements: OpenElementHint[] = []
 ): string {
   const summaryBlock = summaries
     .map((s, i) => `### Morceau ${i + 1}\n${s}`)
     .join("\n\n");
-  return buildDigestPrompt(summaryBlock, sessionDate, projectHint);
+  return buildDigestPrompt(summaryBlock, sessionDate, projectHint, openElements);
 }
 
 // ── Parse & validate ──────────────────────────────────────────────────────────
@@ -213,7 +278,8 @@ function parseDigest(raw: string): SessionDigest {
 
 export async function digestSession(
   session: SessionCondensed,
-  config: BrainConfig
+  config: BrainConfig,
+  openElements: OpenElementHint[] = []
 ): Promise<SessionDigest> {
   const cwd = ensureDigestionDir(config);
   const chunks = chunkMessages(session.messages, config.maxChunkTokens);
@@ -221,7 +287,12 @@ export async function digestSession(
   let digestText: string;
 
   if (chunks.length === 1) {
-    const prompt = buildDigestPrompt(chunks[0]!.text, session.date, session.projectNameHint);
+    const prompt = buildDigestPrompt(
+      chunks[0]!.text,
+      session.date,
+      session.projectNameHint,
+      openElements
+    );
     digestText = runClaude(prompt, config.mergeModel, cwd);
   } else {
     console.log(`  Session longue : ${chunks.length} morceaux`);
@@ -232,7 +303,12 @@ export async function digestSession(
       const summary = runClaude(prompt, config.chunkModel, cwd);
       summaries.push(summary);
     }
-    const finalPrompt = buildFinalDigestPrompt(summaries, session.date, session.projectNameHint);
+    const finalPrompt = buildFinalDigestPrompt(
+      summaries,
+      session.date,
+      session.projectNameHint,
+      openElements
+    );
     digestText = runClaude(finalPrompt, config.mergeModel, cwd);
   }
 
@@ -241,14 +317,15 @@ export async function digestSession(
 
 export async function digestSessionWithRetry(
   session: SessionCondensed,
-  config: BrainConfig
+  config: BrainConfig,
+  openElements: OpenElementHint[] = []
 ): Promise<SessionDigest> {
   try {
-    return await digestSession(session, config);
+    return await digestSession(session, config, openElements);
   } catch (firstError) {
     console.warn(`  Retry après erreur: ${(firstError as Error).message.slice(0, 100)}`);
     try {
-      return await digestSession(session, config);
+      return await digestSession(session, config, openElements);
     } catch (secondError) {
       throw new Error(
         `Digest échoué après 2 tentatives pour ${session.id}: ${(secondError as Error).message}`
@@ -274,7 +351,8 @@ export async function digestRepo(
 ): Promise<RepoDigest> {
   const cwd = ensureDigestionDir(config);
 
-  const prompt = `Tu analyses un repo git pour créer sa fiche de projet.
+  const prompt = `${INTERNAL_MARKER}
+Tu analyses un repo git pour créer sa fiche de projet.
 
 Repo : ${repo.name}
 Remote : ${repo.remote ?? "aucun"}
