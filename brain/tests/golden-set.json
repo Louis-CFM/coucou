@@ -148,5 +148,17 @@
     "kind": "fait",
     "texte_contains": "RLS",
     "expected_in": ["proj_portfo"]
+  },
+  {
+    "id": "auto",
+    "kind": "mesure",
+    "texte_contains": "61",
+    "expected_in": ["proj_portfo"]
+  },
+  {
+    "id": "auto",
+    "kind": "mesure",
+    "texte_contains": "584",
+    "expected_in": ["proj_portfo"]
   }
 ]
