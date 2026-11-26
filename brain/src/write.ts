@@ -15,6 +15,32 @@ import type { BrainConfig } from "./config.js";
 import { digestionDir } from "./config.js";
 import matter from "gray-matter";
 
+// ── LLM output cleaner ────────────────────────────────────────────────────────
+
+/**
+ * Extract clean Markdown from an LLM response:
+ * 1. Strip ```markdown / ``` code fences
+ * 2. If --- not at start, skip any preamble text before the first ---
+ * 3. Remove stray [[id]] links that come from frontmatter field confusion
+ */
+function extractMarkdown(raw: string): string {
+  let s = raw.trim();
+
+  // Strip code fences
+  s = s.replace(/^```(?:markdown|md)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+
+  // If --- not at start, find first occurrence
+  if (!s.startsWith("---")) {
+    const idx = s.indexOf("\n---");
+    if (idx >= 0) s = s.slice(idx + 1).trim();
+  }
+
+  // Remove [[id]] links that are literal frontmatter field names (not real IDs)
+  s = s.replace(/\[\[id\]\]/g, "");
+
+  return s;
+}
+
 // ── Frontmatter types ─────────────────────────────────────────────────────────
 
 export type PageGroup =
@@ -121,7 +147,9 @@ export function writeRecord(
   if (digest.decisions.length > 0) {
     const items = digest.decisions.map((d) => {
       const badge = `[${d.provenance}] ${d.status}`;
-      const replaces = d.replaces ? ` → remplace [[${d.replaces}]]` : "";
+      // Only render [[replaces]] link if it's a valid brain ID (rec_/proj_/lessons/index)
+      const isValidId = d.replaces && /^(rec_|proj_|lessons|index)/.test(d.replaces);
+      const replaces = isValidId ? ` → remplace [[${d.replaces}]]` : "";
       return `${badge} ${d.content}${replaces}`;
     });
     sections.push(section("Décisions", items));
@@ -151,7 +179,10 @@ export function writeRecord(
     sections.push(section("Fichiers touchés", allFiles));
   }
 
-  const content = [frontmatterBlock(fm), "", ...sections.filter(Boolean)].join("\n\n");
+  // Remove [[id]] stray links (LLM confusing frontmatter field name with wiki links)
+  const content = [frontmatterBlock(fm), "", ...sections.filter(Boolean)]
+    .join("\n\n")
+    .replace(/\[\[id\]\]/g, "");
 
   const filePath = recordPath(config, session.id, session.date, toSlug(primaryProject));
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -307,9 +338,8 @@ RÈGLES ABSOLUES :
 Page projet mise à jour :`;
 
   const updated = runClaudeForMerge(prompt, cwd, config.mergeModel);
+  const cleaned = extractMarkdown(updated);
 
-  // Sanity check: result should start with ---
-  const cleaned = updated.trim();
   if (!cleaned.startsWith("---")) {
     console.warn(`  ⚠️  Merge inattendu pour ${projectSlug}, frontmatter manquant. Conservation de l'ancien contenu.`);
     return;

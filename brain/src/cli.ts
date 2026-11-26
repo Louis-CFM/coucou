@@ -43,6 +43,8 @@ program
   .description("Digest sessions and repos into ~/CoucouBrain/")
   .option("--since <date>", "Only sessions after this date (YYYY-MM-DD)")
   .option("--project <name>", "Only process sessions matching this project name")
+  .option("--session <id...>", "Only process these session UUIDs (space-separated or repeated)")
+  .option("--repo <name...>", "Only process repos whose path contains this name (space-separated or repeated)")
   .option("--limit <n>", "Max number of sessions to process", parseInt)
   .option("--dry-run", "Show what would be processed without calling the model")
   .option("--include-subagents", "Also process subagent sessions")
@@ -74,9 +76,27 @@ program
       }
 
       const discoveredIds = new Set(discovered.map((d) => d.id));
-      const pending = manifest
+      let pending = manifest
         .getPendingSessions()
         .filter((s) => discoveredIds.has(s.id));
+
+      // --session filter: match full UUID or unambiguous prefix
+      if (opts.session?.length) {
+        const ids: string[] = opts.session;
+        pending = pending.filter((s) =>
+          ids.some((id) => s.id === id || s.id.startsWith(id))
+        );
+        // Also allow already-done sessions to be re-run when explicitly named
+        for (const id of ids) {
+          const done = manifest.getAllSessions().find(
+            (s) => (s.id === id || s.id.startsWith(id)) && s.status === "done"
+          );
+          if (done && !pending.find((p) => p.id === done.id)) {
+            manifest.resetSessionToPending(done.id);
+            pending.push({ ...done, status: "pending" });
+          }
+        }
+      }
 
       const toProcess = opts.limit ? pending.slice(0, opts.limit) : pending;
 
@@ -166,7 +186,15 @@ program
       }
 
       const repoSet = new Set(repos);
-      const pendingRepos = manifest.getPendingRepos().filter((r) => repoSet.has(r.path));
+      let pendingRepos = manifest.getPendingRepos().filter((r) => repoSet.has(r.path));
+
+      // --repo filter: match repos whose path contains any of the given names
+      if (opts.repo?.length) {
+        const names: string[] = opts.repo;
+        pendingRepos = pendingRepos.filter((r) =>
+          names.some((name) => r.path.toLowerCase().includes(name.toLowerCase()))
+        );
+      }
 
       if (opts.dryRun) {
         console.log("\n--- DRY RUN : repos ---");

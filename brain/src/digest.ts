@@ -46,11 +46,16 @@ function runClaude(
   prompt: string,
   model: string,
   cwd: string,
-  timeoutMs = 180_000
+  timeoutMs = 360_000
 ): string {
   const result = spawnSync(
     "claude",
-    ["--print", "--output-format", "json", "--model", model],
+    [
+      "--print",
+      "--output-format", "json",
+      "--model", model,
+      "--dangerously-skip-permissions",  // non-interactive: no permission prompts
+    ],
     {
       input: prompt,
       cwd,
@@ -180,8 +185,13 @@ export async function digestSession(
 }
 
 function parseDigest(raw: string): SessionDigest {
-  // Strip any accidental markdown fences
-  const cleaned = raw.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+  // NFC normalise accented chars (LLM may output NFD "é" which Zod enum won't match NFC "é")
+  // Then strip any accidental markdown fences
+  const cleaned = raw
+    .normalize("NFC")
+    .replace(/^```(?:json)?\s*/m, "")
+    .replace(/\s*```\s*$/m, "")
+    .trim();
 
   let parsed: unknown;
   try {

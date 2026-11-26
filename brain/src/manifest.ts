@@ -124,6 +124,12 @@ export class Manifest {
     return this.db.prepare("SELECT * FROM sessions ORDER BY jsonl_path ASC").all() as SessionEntry[];
   }
 
+  resetSessionToPending(id: string): void {
+    this.db.prepare(
+      "UPDATE sessions SET status = 'pending', processed_at = NULL WHERE id = ?"
+    ).run(id);
+  }
+
   // ── Repos ───────────────────────────────────────────────────────────────────
 
   upsertRepo(entry: Omit<RepoEntry, "status" | "processed_at" | "project_page_id">): void {

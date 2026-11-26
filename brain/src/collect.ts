@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { expandHome, sha256File, estimateTokens, projectNameFromClaudePath } from "./utils.js";
+import { expandHome, sha256File, estimateTokens, projectNameFromClaudePath, decodeClaudeProjectPath } from "./utils.js";
 import { maskSecrets, type MaskedItem } from "./mask.js";
 import type { BrainConfig } from "./config.js";
 
@@ -310,11 +310,14 @@ export function discoverSessions(
     const projDir = path.join(projectsPath, proj);
     if (!fs.statSync(projDir).isDirectory()) continue;
 
-    // Skip the brain's own digestion directory
+    // Skip explicitly excluded project dirs
     if (config.excludeProjectDirs?.includes(proj)) continue;
-    // Also skip if the actual path matches brain's state path
-    const decoded = expandHome("~/.claude/projects/" + proj);
-    if (decoded.startsWith(brainStatePath)) continue;
+    // Skip any project whose decoded filesystem path is inside ~/CoucouBrain/
+    // (covers .state/digestion/ and any brain sub-directory).
+    // The encoded name encodes '/' as '-', so we check by trying to decode.
+    const decodedPath = decodeClaudeProjectPath(proj);
+    const brainRootPath = expandHome(config.brainPath);
+    if (decodedPath && decodedPath.startsWith(brainRootPath)) continue;
 
     // Filter by project name if specified
     if (opts.projectFilter) {

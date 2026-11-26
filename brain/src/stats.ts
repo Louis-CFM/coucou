@@ -85,12 +85,21 @@ function readAllPages(brainPath: string): PageInfo[] {
       try {
         const raw = fs.readFileSync(full, "utf8");
         const { data, content } = matter(raw);
+        // gray-matter parses YAML dates as Date objects — normalise to YYYY-MM-DD string
+        const rawUpdated = data.updated;
+        const updatedStr =
+          rawUpdated instanceof Date
+            ? rawUpdated.toISOString().slice(0, 10)
+            : typeof rawUpdated === "string"
+            ? rawUpdated.slice(0, 10)
+            : "";
+
         pages.push({
           id: data.id ?? f,
           title: data.title ?? f,
           group: data.group ?? "Reference",
           type: data.type ?? "unknown",
-          updated: data.updated ?? "",
+          updated: updatedStr,
           links: extractLinks(content),
           ideas: countIdeasInContent(content),
         });
