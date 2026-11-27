@@ -139,8 +139,24 @@ function summarizeToolResult(
       const count = toolResultText(resultContent).split("\n").filter(Boolean).length;
       return `[grep: ${count} occurrence(s) de "${p("pattern")}"]`;
     }
-    default:
-      return `[${name}: ${isError ? "erreur" : "OK"}]`;
+    case "ExitPlanMode": {
+      const resultText = toolResultText(resultContent).trim();
+      const autoApproved = resultText.includes("Allowed by PermissionRequest hook") ||
+        resultText.includes("Allowed by hook");
+      if (autoApproved) {
+        return `[plan approuvé automatiquement par un hook — PAS une décision de Louis]`;
+      }
+      return `[plan approuvé par l'utilisateur]`;
+    }
+    default: {
+      const resultText = toolResultText(resultContent).trim();
+      const autoApproved = resultText.includes("Allowed by PermissionRequest hook") ||
+        resultText.includes("Allowed by hook");
+      const label = autoApproved
+        ? `[${name} approuvé automatiquement par hook — pas une décision de Louis]`
+        : `[${name}: ${isError ? "erreur" : "OK"}]`;
+      return label;
+    }
   }
 }
 

@@ -19,6 +19,7 @@ export interface SessionEntry {
   record_id: string | null;    // ID of the generated record page
   projects: string;    // JSON array of project slugs
   prompt_hash?: string | null;  // hash of digest prompt template at time of digestion
+  ignore_reason?: string | null;
 }
 
 export interface RepoEntry {
@@ -83,6 +84,11 @@ export class Manifest {
     if (!cols.some((c) => c.name === "prompt_hash")) {
       this.db.exec("ALTER TABLE sessions ADD COLUMN prompt_hash TEXT");
     }
+
+    // Migration v3: add ignore_reason column if missing
+    if (!cols.some((c) => c.name === "ignore_reason")) {
+      this.db.exec("ALTER TABLE sessions ADD COLUMN ignore_reason TEXT");
+    }
   }
 
   // ── Sessions ────────────────────────────────────────────────────────────────
@@ -136,10 +142,10 @@ export class Manifest {
     `).run(new Date().toISOString(), id);
   }
 
-  markSessionIgnored(id: string): void {
+  markSessionIgnored(id: string, reason?: string): void {
     this.db.prepare(
-      "UPDATE sessions SET status = 'ignored', processed_at = ? WHERE id = ?"
-    ).run(new Date().toISOString(), id);
+      "UPDATE sessions SET status = 'ignored', processed_at = ?, ignore_reason = ? WHERE id = ?"
+    ).run(new Date().toISOString(), reason ?? null, id);
   }
 
   getAllSessions(): SessionEntry[] {

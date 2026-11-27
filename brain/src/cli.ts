@@ -7,6 +7,7 @@
  * brain stats
  */
 import { Command } from "commander";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "./config.js";
@@ -435,6 +436,51 @@ program
       console.error(`Erreur : ${(e as Error).message}`);
       process.exitCode = 1;
     }
+  });
+
+// ── ignore ────────────────────────────────────────────────────────────────────
+
+program
+  .command("ignore <session-id>")
+  .description("Mark a session as ignored — it will never be digested")
+  .option("--raison <text>", "Reason for ignoring (stored in manifest)")
+  .action((sessionId: string, opts: { raison?: string }) => {
+    const config = loadConfig();
+    const manifest = new Manifest(config.brainPath);
+    const existing = manifest.getSession(sessionId);
+    if (!existing) {
+      // Session not yet collected — upsert it as ignored
+      // Find the JSONL file by scanning Claude projects dirs
+      const { claudeProjectsPath } = config;
+      const claudeBase = expandHome(claudeProjectsPath);
+      let jsonlPath: string | null = null;
+      let projectPath: string | null = null;
+      try {
+        for (const proj of fs.readdirSync(claudeBase)) {
+          const candidate = path.join(claudeBase, proj, `${sessionId}.jsonl`);
+          if (fs.existsSync(candidate)) {
+            jsonlPath = candidate;
+            projectPath = proj;
+            break;
+          }
+        }
+      } catch {}
+      if (!jsonlPath || !projectPath) {
+        console.error(`Session ${sessionId} introuvable dans ${claudeBase}`);
+        process.exitCode = 1;
+        manifest.close();
+        return;
+      }
+      const hash = crypto.createHash("sha256")
+        .update(fs.readFileSync(jsonlPath))
+        .digest("hex")
+        .slice(0, 16);
+      manifest.upsertSession({ id: sessionId, project_path: projectPath, jsonl_path: jsonlPath, hash });
+    }
+    manifest.markSessionIgnored(sessionId, opts.raison);
+    const reason = opts.raison ? ` (${opts.raison})` : "";
+    console.log(`✓ Session ${sessionId} marquée 'ignored'${reason}`);
+    manifest.close();
   });
 
 // ── reset ─────────────────────────────────────────────────────────────────────

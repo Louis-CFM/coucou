@@ -236,6 +236,7 @@ Champs :
   Règle : toute leçon sur une commande git, gh, shell, npm, ffmpeg, etc. est TOUJOURS "transverse".
 
 RÈGLES IMPORTANTES :
+- Une approbation automatique de hook n'est JAMAIS [décidé] : si le condensé contient "[plan approuvé automatiquement par un hook" ou "approuvé automatiquement par hook", l'action qui suit est au mieux [proposé] si elle a été réalisée, [constaté] si elle est restée en place sans validation explicite de Louis. Ne jamais utiliser provenance='décidé' pour ces actions.
 - Si une décision de projet encode aussi une règle personnelle de Louis (workflow Git, communication, pratique de dev, style UI), génère AUSSI un élément kind=préférence avec le même contenu résumé, projets=[] si c'est une règle générale. Exemples :
   • Une décision "Enya ne pousse que sur branches" → aussi une préférence globale dont le texte DOIT contenir la phrase exacte "poussent sur branches" — texte obligatoire : "Collaborateurs poussent sur branches dédiées, pas directement sur main. Louis merge." avec projets=[].
   • Un revert de style parce que "Louis n'aime pas" → aussi une préférence globale décrivant ce qu'il n'aime pas.
