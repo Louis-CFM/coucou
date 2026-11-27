@@ -14,8 +14,9 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { z } from "zod";
-import { digestionDir } from "./config.js";
 import { chunkMessages, type Chunk } from "./chunk.js";
 import type { SessionCondensed, RepoCondensed } from "./collect.js";
 import type { BrainConfig } from "./config.js";
@@ -46,53 +47,58 @@ export type SessionDigest = z.infer<typeof SessionDigestSchema>;
 
 // ── Claude runner ─────────────────────────────────────────────────────────────
 
+/** System prompt override: suppresses CLAUDE.md instructions, forces pure JSON output */
+const DIGEST_SYSTEM_PROMPT =
+  "Réponds UNIQUEMENT avec du JSON valide. Zéro texte libre. Zéro tool use. " +
+  "N'appelle aucun outil. N'explore aucun fichier. " +
+  "Ta seule sortie est le JSON demandé dans le message utilisateur.";
+
 function runClaude(
   prompt: string,
   model: string,
-  cwd: string,
   timeoutMs = 360_000
 ): string {
-  const result = spawnSync(
-    "claude",
-    [
-      "--print",
-      "--output-format", "json",
-      "--model", model,
-      "--strict-mcp-config",            // ignore all configured MCP servers
-      "--mcp-config", '{"mcpServers":{}}',  // empty MCP set
-      "--tools", "",                    // clear all built-in tools → only LSP remains
-      "--disallowed-tools", "LSP",      // remove LSP → zero tools total
-    ],
-    {
-      input: prompt,
-      cwd,
-      timeout: timeoutMs,
-      maxBuffer: 20 * 1024 * 1024,
-      encoding: "utf8",
-      // Belt-and-suspenders: env flag in case Claude Code forwards inherited env to hooks
-      env: { ...process.env, COUCOU_BRAIN_INTERNAL: "1" },
-    }
-  );
-
-  if (result.error) throw new Error(`claude spawn: ${result.error.message}`);
-  if (result.status !== 0) {
-    const stderr = result.stderr?.toString().slice(0, 500) ?? "";
-    throw new Error(`claude exited ${result.status}: ${stderr}`);
-  }
-
+  // Use a fresh empty tmpdir — no CLAUDE.md, no git repo, no project context
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brain-digest-"));
   try {
-    const envelope = JSON.parse(result.stdout);
-    return envelope.result ?? result.stdout;
-  } catch {
-    return result.stdout;
-  }
-}
+    const result = spawnSync(
+      "claude",
+      [
+        "--print",
+        "--output-format", "json",
+        "--model", model,
+        "--system-prompt", DIGEST_SYSTEM_PROMPT,
+        "--strict-mcp-config",            // ignore all configured MCP servers
+        "--mcp-config", '{"mcpServers":{}}',  // empty MCP set
+        "--tools", "",                    // clear all built-in tools → only LSP remains
+        "--disallowed-tools", "LSP",      // remove LSP → zero tools total
+      ],
+      {
+        input: prompt,
+        cwd: tmpDir,
+        timeout: timeoutMs,
+        maxBuffer: 20 * 1024 * 1024,
+        encoding: "utf8",
+        // Belt-and-suspenders: env flag in case Claude Code forwards inherited env to hooks
+        env: { ...process.env, COUCOU_BRAIN_INTERNAL: "1" },
+      }
+    );
 
-/** Ensure the digestion directory exists and return its path */
-function ensureDigestionDir(config: BrainConfig): string {
-  const dir = digestionDir(config);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+    if (result.error) throw new Error(`claude spawn: ${result.error.message}`);
+    if (result.status !== 0) {
+      const stderr = result.stderr?.toString().slice(0, 500) ?? "";
+      throw new Error(`claude exited ${result.status}: ${stderr}`);
+    }
+
+    try {
+      const envelope = JSON.parse(result.stdout);
+      return envelope.result ?? result.stdout;
+    } catch {
+      return result.stdout;
+    }
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
 }
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
@@ -363,7 +369,6 @@ export async function digestSession(
   config: BrainConfig,
   openElements: OpenElementHint[] = []
 ): Promise<SessionDigest> {
-  const cwd = ensureDigestionDir(config);
   const chunks = chunkMessages(session.messages, config.maxChunkTokens);
 
   if (chunks.length === 1) {
@@ -373,7 +378,7 @@ export async function digestSession(
       session.projectNameHint,
       openElements
     );
-    return parseDigest(runClaude(prompt, config.mergeModel, cwd));
+    return parseDigest(runClaude(prompt, config.mergeModel));
   }
 
   // Multi-chunk: extract elements from each chunk independently, then merge
@@ -382,7 +387,7 @@ export async function digestSession(
   for (const chunk of chunks) {
     console.log(`    Morceau ${chunk.index + 1}/${chunk.total} (~${chunk.estimatedTokens} tokens)…`);
     const prompt = buildChunkDigestPrompt(chunk, session.date, session.projectNameHint, openElements);
-    const raw = runClaude(prompt, config.mergeModel, cwd);
+    const raw = runClaude(prompt, config.mergeModel);
     partials.push(parseDigest(raw));
   }
   return mergeChunkDigests(partials);
@@ -432,7 +437,6 @@ export async function digestRepo(
   repo: RepoCondensed,
   config: BrainConfig
 ): Promise<RepoDigest> {
-  const cwd = ensureDigestionDir(config);
 
   const prompt = `${INTERNAL_MARKER}
 Tu analyses un repo git pour créer sa fiche de projet.
@@ -459,7 +463,7 @@ Réponds UNIQUEMENT avec ce JSON :
   "recentActivity": "2-3 phrases décrivant l'activité récente d'après les commits"
 }`;
 
-  const raw = runClaude(prompt, config.chunkModel, cwd);
+  const raw = runClaude(prompt, config.chunkModel);
   const cleaned = raw
     .normalize("NFC")
     .replace(/^```(?:json)?\s*/m, "")

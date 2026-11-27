@@ -103,7 +103,7 @@ program
     ];
 
     // ── Sessions ──────────────────────────────────────────────────────────────
-    if (!opts.reposOnly) {
+    if (!opts.reposOnly && !opts.claudeExport) {
       const allDiscovered = discoverSessions(config, {
         includeSubagents: opts.includeSubagents,
         sinceDate: opts.since,
@@ -294,7 +294,7 @@ program
     }
 
     // ── Repos ─────────────────────────────────────────────────────────────────
-    if (!opts.sessionsOnly) {
+    if (!opts.sessionsOnly && !opts.claudeExport) {
       const repos = discoverRepos(config);
       console.log(`\n🗂  Repos : ${repos.length} découverts`);
 
@@ -348,12 +348,22 @@ program
 
     // ── Claude Desktop export (--claude-export) ───────────────────────────────
     if (opts.claudeExport) {
+      // Fail fast if the path doesn't exist
+      const exportResolved = expandHome(opts.claudeExport);
+      if (!fs.existsSync(exportResolved)) {
+        console.error(`\n✗  Export introuvable : ${exportResolved}`);
+        manifest.close();
+        process.exit(1);
+      }
+
       console.log("\n💬 Conversations Claude Desktop");
       let conversations: ReturnType<typeof collectClaudeExport> = [];
       try {
         conversations = collectClaudeExport(opts.claudeExport);
       } catch (e) {
         console.error(`  ✗ Lecture export échouée : ${(e as Error).message}`);
+        manifest.close();
+        process.exit(1);
       }
 
       console.log(`  Découvertes : ${conversations.length}`);
