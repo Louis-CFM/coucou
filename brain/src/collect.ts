@@ -141,19 +141,19 @@ function summarizeToolResult(
     }
     case "ExitPlanMode": {
       const resultText = toolResultText(resultContent).trim();
-      const autoApproved = resultText.includes("Allowed by PermissionRequest hook") ||
+      const approvedByHook = resultText.includes("Allowed by PermissionRequest hook") ||
         resultText.includes("Allowed by hook");
-      if (autoApproved) {
-        return `[plan approuvé automatiquement par un hook — PAS une décision de Louis]`;
+      if (approvedByHook) {
+        return `[plan approuvé via le notch Coucou]`;
       }
-      return `[plan approuvé par l'utilisateur]`;
+      return `[plan approuvé dans le terminal]`;
     }
     default: {
       const resultText = toolResultText(resultContent).trim();
-      const autoApproved = resultText.includes("Allowed by PermissionRequest hook") ||
+      const approvedByHook = resultText.includes("Allowed by PermissionRequest hook") ||
         resultText.includes("Allowed by hook");
-      const label = autoApproved
-        ? `[${name} approuvé automatiquement par hook — pas une décision de Louis]`
+      const label = approvedByHook
+        ? `[${name} approuvé via le notch Coucou]`
         : `[${name}: ${isError ? "erreur" : "OK"}]`;
       return label;
     }
