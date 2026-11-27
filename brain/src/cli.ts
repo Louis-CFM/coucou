@@ -38,6 +38,7 @@ import {
 } from "./write.js";
 import { computeStats } from "./stats.js";
 import { runCoverage, formatCoverageResult } from "./coverage.js";
+import { rebuildFts, writeHooksConfig, appendCorrection } from "./fts.js";
 
 const program = new Command();
 
@@ -335,6 +336,17 @@ program
       rebuildIndex(config);
       const doneCount = manifest.getAllSessions().filter((s) => s.status === "done").length;
       gitCommit(config, `brain: ingestion — ${doneCount} fiches`);
+
+      // Rebuild FTS index and write hooks config
+      try {
+        process.stdout.write("\n  🔍 Reconstruction de l'index FTS…");
+        const { elements, corrections } = rebuildFts(config);
+        console.log(` ${elements} éléments + ${corrections} corrections`);
+        writeHooksConfig(config);
+        console.log("  ✓ Hooks config écrite dans ~/.claude/brain-hooks.json");
+      } catch (e) {
+        console.warn(`  ⚠️  FTS rebuild failed (non bloquant) : ${(e as Error).message}`);
+      }
     }
 
     manifest.close();
@@ -350,6 +362,16 @@ program
     const rebuilt = rebuildAllPages(config);
     console.log(`Rebuilt ${rebuilt.length} pages:`);
     rebuilt.forEach((p) => console.log(`  ${p}`));
+
+    try {
+      process.stdout.write("🔍 Reconstruction de l'index FTS… ");
+      const { elements, corrections } = rebuildFts(config);
+      console.log(`${elements} éléments + ${corrections} corrections`);
+      writeHooksConfig(config);
+      console.log("✓ Hooks config écrite dans ~/.claude/brain-hooks.json");
+    } catch (e) {
+      console.warn(`⚠️  FTS rebuild failed : ${(e as Error).message}`);
+    }
   });
 
 // ── stats ─────────────────────────────────────────────────────────────────────
@@ -402,19 +424,17 @@ program
 
 program
   .command("correct <texte>")
-  .description("Append a dated manual correction to ~/CoucouBrain/corrections.md (never overwritten by ingestion)")
-  .action((texte: string) => {
+  .description("Append a correction to ~/CoucouBrain/corrections.md under a named scope section")
+  .option("--scope <scope>", "Section cible : 'global' ou slug de projet (ex: reels, sbe-hub)", "global")
+  .action((texte: string, opts: { scope: string }) => {
     const config = loadConfig();
-    const corrPath = path.join(expandHome(config.brainPath), "corrections.md");
-    if (!fs.existsSync(corrPath)) {
-      console.error(`corrections.md introuvable : ${corrPath}`);
+    try {
+      appendCorrection(config, texte, opts.scope);
+      console.log(`✓ Correction ajoutée sous §${opts.scope} dans corrections.md`);
+    } catch (e) {
+      console.error(`Erreur : ${(e as Error).message}`);
       process.exitCode = 1;
-      return;
     }
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const line = `\n- [${dateStr}] ${texte}`;
-    fs.appendFileSync(corrPath, line + "\n", "utf8");
-    console.log(`✓ Correction ajoutée à corrections.md :\n  ${line.trim()}`);
   });
 
 // ── reset ─────────────────────────────────────────────────────────────────────
@@ -434,6 +454,188 @@ program
     const { sessions, repos } = manifest.resetForReingestion();
     manifest.close();
     console.log(`Reset : ${sessions} session(s), ${repos} repo(s) remis en pending.`);
+  });
+
+// ── mcp ───────────────────────────────────────────────────────────────────────
+
+program
+  .command("mcp")
+  .description("Start the CoucouBrain MCP server (stdio transport)")
+  .action(async () => {
+    const { startMcpServer } = await import("./mcp/server.js");
+    await startMcpServer();
+  });
+
+// ── pause / resume ────────────────────────────────────────────────────────────
+
+program
+  .command("pause")
+  .description("Suspend hook injections (useful for Twitch live / recording sessions)")
+  .action(() => {
+    const config = loadConfig();
+    const flagPath = path.join(expandHome(config.brainPath), ".state", "paused");
+    fs.mkdirSync(path.dirname(flagPath), { recursive: true });
+    fs.writeFileSync(flagPath, new Date().toISOString(), "utf8");
+    console.log("⏸  Brain hooks en pause. Les sessions Claude Code ne recevront plus de contexte brain.");
+    console.log("   Relancer avec : brain resume");
+  });
+
+program
+  .command("resume")
+  .description("Re-enable hook injections after a pause")
+  .action(() => {
+    const config = loadConfig();
+    const flagPath = path.join(expandHome(config.brainPath), ".state", "paused");
+    if (fs.existsSync(flagPath)) {
+      fs.unlinkSync(flagPath);
+      console.log("▶️  Brain hooks réactivés.");
+    } else {
+      console.log("(Pas en pause — rien à faire.)");
+    }
+  });
+
+// ── fts ───────────────────────────────────────────────────────────────────────
+
+program
+  .command("fts <query>")
+  .description("Test FTS search directly (debug)")
+  .option("--project <slug>", "Current project slug for boost")
+  .option("--limit <n>", "Max results", parseInt)
+  .action(async (query: string, opts: { project?: string; limit?: number }) => {
+    const config = loadConfig();
+    const { searchFts: sfts, buildFtsQuery } = await import("./fts.js");
+    const ftsQuery = buildFtsQuery(query);
+    console.log("FTS query:", ftsQuery ?? "(vide — pas assez de termes)");
+    if (!ftsQuery) return;
+    const results = sfts(config, query, { project: opts.project, limit: opts.limit ?? 10, threshold: -0.1 });
+    if (results.length === 0) {
+      console.log("Aucun résultat.");
+      return;
+    }
+    for (const r of results) {
+      const mark = r.isCorrection ? "CORRECTION" : r.kind;
+      const warn = r.statut === "❌" || r.statut === "⚠️" ? ` ${r.statut}` : "";
+      console.log(`  [${mark}${warn}] ${r.sourceProject.replace(/^proj_/, "")}  score=${r.score.toFixed(3)}`);
+      console.log(`    ${r.texte.slice(0, 120)}`);
+    }
+  });
+
+// ── doctor ────────────────────────────────────────────────────────────────────
+
+program
+  .command("doctor")
+  .description("Health check: MCP server, hooks, launchd, last ingest, pause status")
+  .action(async () => {
+    const config = loadConfig();
+    const base = expandHome(config.brainPath);
+    const { spawnSync } = await import("node:child_process");
+
+    console.log("\n🩺 CoucouBrain Doctor\n");
+
+    // ── 1. MCP server ─────────────────────────────────────────────────────────
+    // Registered via `claude mcp add --scope user` → stored in ~/.claude.json (not settings.json)
+    let hasMcp = false;
+    const claudeJsonPath = path.join(
+      process.env.CLAUDE_CONFIG_DIR ?? path.join(process.env.HOME ?? "~", ".claude"),
+      "..",
+      ".claude.json"
+    );
+    try {
+      const claudeJson = JSON.parse(fs.readFileSync(claudeJsonPath, "utf8"));
+      const servers = claudeJson?.mcpServers ?? {};
+      hasMcp = "coucou-brain" in servers;
+      if (!hasMcp) {
+        // Also try via `claude mcp list` output as fallback
+        const mcpCheck = spawnSync("claude", ["mcp", "list"], { encoding: "utf8", timeout: 5000 });
+        hasMcp = (mcpCheck.stdout ?? "").includes("coucou-brain");
+      }
+    } catch {}
+    console.log(hasMcp
+      ? "  [✓] MCP server : coucou-brain enregistré (~/.claude.json)"
+      : "  [✗] MCP server : coucou-brain ABSENT — lancez :\n      claude mcp add --scope user coucou-brain -- brain mcp");
+
+    // ── 2. FTS index ─────────────────────────────────────────────────────────
+    const ftsPath = path.join(base, ".state", "fts.db");
+    if (fs.existsSync(ftsPath)) {
+      const stat = fs.statSync(ftsPath);
+      const ageMin = Math.round((Date.now() - stat.mtimeMs) / 60000);
+      console.log(`  [✓] Index FTS : ${ftsPath} (${ageMin} min)`);
+    } else {
+      console.log("  [✗] Index FTS : absent — lancez `brain rebuild` ou `brain ingest`");
+    }
+
+    // ── 3. Hooks config ───────────────────────────────────────────────────────
+    const claudeDir = process.env.CLAUDE_CONFIG_DIR ?? `${process.env.HOME}/.claude`;
+    const hooksConfigPath = `${claudeDir}/brain-hooks.json`;
+    if (fs.existsSync(hooksConfigPath)) {
+      const cfg = JSON.parse(fs.readFileSync(hooksConfigPath, "utf8")) as { updatedAt?: string };
+      console.log(`  [✓] Hooks config : ${hooksConfigPath} (${cfg.updatedAt?.slice(0, 16) ?? "?"} UTC)`);
+    } else {
+      console.log("  [✗] Hooks config : absente — lancez `brain rebuild`");
+    }
+
+    // ── 4. Hook smoke test ────────────────────────────────────────────────────
+    const hooksDir = path.join(path.dirname(new URL(import.meta.url).pathname), "..", "hooks");
+    const hookScript = path.join(hooksDir, "brain-session-start.js");
+    if (fs.existsSync(hookScript)) {
+      const fakeInput = JSON.stringify({ session_id: "test-doctor", cwd: process.cwd() });
+      const hookRun = spawnSync("node", [hookScript], {
+        input: fakeInput,
+        encoding: "utf8",
+        timeout: 8000,
+        env: { ...process.env, COUCOU_BRAIN_INTERNAL: undefined },
+      });
+      if (hookRun.status === 0) {
+        const tokens = Math.round((hookRun.stdout ?? "").length / 4);
+        console.log(`  [✓] SessionStart hook : OK (${tokens} tokens injectés)`);
+      } else {
+        console.log(`  [✗] SessionStart hook : ERREUR (exit ${hookRun.status})\n      ${hookRun.stderr?.slice(0, 200)}`);
+      }
+    } else {
+      console.log(`  [✗] SessionStart hook : ${hookScript} introuvable`);
+    }
+
+    // ── 5. LaunchD ────────────────────────────────────────────────────────────
+    const launchd = spawnSync("launchctl", ["list", "fr.louisraille.brain-ingest"], {
+      encoding: "utf8", timeout: 5000,
+    });
+    if (launchd.status === 0) {
+      console.log("  [✓] LaunchD : fr.louisraille.brain-ingest chargé");
+    } else {
+      console.log("  [✗] LaunchD : non chargé — voir brain/launchd/fr.louisraille.brain-ingest.plist");
+    }
+
+    // ── 6. Last ingest ────────────────────────────────────────────────────────
+    const dbPath = path.join(base, ".state", "manifest.db");
+    if (fs.existsSync(dbPath)) {
+      const stat = fs.statSync(dbPath);
+      const ageH = Math.round((Date.now() - stat.mtimeMs) / 3600000);
+      console.log(`  [✓] Dernière ingestion : il y a ${ageH}h (${stat.mtime.toISOString().slice(0, 16)} UTC)`);
+    } else {
+      console.log("  [✗] manifest.db absent — aucune ingestion effectuée");
+    }
+
+    // ── 7. Pause status ───────────────────────────────────────────────────────
+    const pausedFlag = path.join(base, ".state", "paused");
+    if (fs.existsSync(pausedFlag)) {
+      const since = fs.readFileSync(pausedFlag, "utf8").slice(0, 16);
+      console.log(`  [⏸] Brain en PAUSE depuis ${since} UTC — lancez 'brain resume' pour réactiver`);
+    } else {
+      console.log("  [✓] Pause : désactivée (hooks actifs)");
+    }
+
+    // ── 8. Hook log ───────────────────────────────────────────────────────────
+    const logPath = path.join(base, ".state", "logs", "hooks.log");
+    if (fs.existsSync(logPath)) {
+      const lines = fs.readFileSync(logPath, "utf8").split("\n").filter(Boolean);
+      const last10 = lines.slice(-10);
+      console.log(`\n  Journal hooks (dernières ${last10.length} lignes) :`);
+      last10.forEach((l) => console.log(`    ${l}`));
+    } else {
+      console.log("\n  Journal hooks : absent (aucun hook n'a encore tourné)");
+    }
+
+    console.log();
   });
 
 program.parse();
