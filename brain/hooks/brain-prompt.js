@@ -291,6 +291,9 @@ function run(rawInput) {
       const isProjectCorr = row.is_correction &&
         row.source_project === `corrections:${projectSlug}`;
 
+      // Same-project: require at least minimal relevance (not a near-zero BM25 ghost match)
+      if ((isCurrentProject || isGlobal || isProjectCorr) && row.score > -0.5) continue;
+      // Cross-project: require strong match
       if (!isCurrentProject && !isGlobal && !isProjectCorr && row.score > -6.0) continue;
 
       results.push(row);
