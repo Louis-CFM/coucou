@@ -218,6 +218,7 @@ Champs :
     — Champ "nom" obligatoire : clé stable en français, identique à toutes les sessions (ex: "abonnés newsletter botan", "ca net 2026"). Toujours le même nom pour le même compteur d'une session à l'autre.
     — texte = valeur complète lisible (ex: "61 abonnés newsletter Botan actifs").
     — Projets : inclure TOUS les projets concernés. Si la mesure est consultée depuis le dashboard d'un autre projet, inclure ce projet aussi (ex: inscrits Botan vus dans le dashboard portfo admin → projets=["portfo","botan"]).
+    — financial : true pour les mesures financières (CA, chiffre d'affaires, revenus, dépenses, charges, montants en €/$, MRR, TTC, HT). Omettre ou false pour les mesures non financières (abonnés, utilisateurs actifs, visiteurs, nombre de missions, lignes de code…). Les mesures financial=true restent accessibles via l'outil MCP uniquement — elles ne sont jamais injectées automatiquement dans les sessions.
 - sub_kind : pour leçon uniquement : "erreur" (bug, mauvaise approche) | "leçon" (bonne pratique)
 - provenance :
   • "décidé" = Louis l'a dit ou confirmé explicitement
@@ -311,7 +312,8 @@ Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire :
       "raison": null,
       "domaine": null,
       "scope": "projet",
-      "keywords": ["terme1", "terme2", "terme3"]
+      "keywords": ["terme1", "terme2", "terme3"],
+      "financial": false
     }
   ],
   "taches_faites": [],

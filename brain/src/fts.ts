@@ -40,7 +40,8 @@ export interface SearchOptions {
   limit?: number;        // max results (default 8)
   threshold?: number;    // bm25 threshold (default -1.0, more negative = stricter)
   excludeIds?: string[]; // IDs to skip (already-seen in this session)
-  excludeMesures?: boolean; // never return mesures (financial data)
+  excludeMesures?: boolean; // never return any mesures
+  excludeFinancialMesures?: boolean; // never return financial mesures (CA, revenues, €/$)
 }
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
@@ -158,6 +159,7 @@ interface FtsRow {
   date_str: string;
   source_project: string;
   is_correction: number;
+  is_financial: number;
 }
 
 /** Rebuild the FTS index from all state files and corrections.md. */
@@ -184,6 +186,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
         date_str UNINDEXED,
         source_project UNINDEXED,
         is_correction UNINDEXED,
+        is_financial UNINDEXED,
         texte,
         keywords_text,
         tokenize='unicode61 remove_diacritics 1'
@@ -192,8 +195,8 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
 
     const insert = db.prepare(`
       INSERT INTO fts_elements
-        (elem_id, kind, statut, provenance, domaine, scope, projets_text, date_str, source_project, is_correction, texte, keywords_text)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (elem_id, kind, statut, provenance, domaine, scope, projets_text, date_str, source_project, is_correction, is_financial, texte, keywords_text)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = db.transaction((rows: FtsRow[]) => {
@@ -201,7 +204,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
         insert.run(
           row.elem_id, row.kind, row.statut, row.provenance, row.domaine,
           row.scope, row.projets_text, row.date_str, row.source_project,
-          row.is_correction, row.texte, row.keywords_text
+          row.is_correction, row.is_financial, row.texte, row.keywords_text
         );
       }
     });
@@ -232,6 +235,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
             date_str: e.date,
             source_project: projectId,
             is_correction: 0,
+            is_financial: e.financial ? 1 : 0,
           }));
           if (rows.length > 0) {
             insertMany(rows);
@@ -258,6 +262,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
       date_str: "",
       source_project: `corrections:${sec.scope}`,
       is_correction: 1,
+      is_financial: 0,
     }));
     if (corrRows.length > 0) {
       insertMany(corrRows);
@@ -346,6 +351,9 @@ export function searchFts(config: BrainConfig, query: string, opts: SearchOption
     }
     if (opts.excludeMesures) {
       conditions.push("kind != 'mesure'");
+    }
+    if (opts.excludeFinancialMesures) {
+      conditions.push("(kind != 'mesure' OR is_financial = 0)");
     }
 
     const sql = `

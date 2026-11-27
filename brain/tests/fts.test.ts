@@ -201,6 +201,20 @@ describe("FTS search", () => {
         date: "2026-11-15",
         sources: ["rec_test"],
         keywords: ["abonnés", "newsletter", "inscription", "subscriber", "botan", "personne", "compte"],
+        financial: false,
+      },
+      {
+        id: "mes_ca_portfo_test",
+        kind: "mesure",
+        nom: "ca net portfo 2026",
+        texte: "CA net portfo novembre 2026 : 4 200 €.",
+        statut: null,
+        scope: "projet",
+        projets: ["portfo"],
+        date: "2026-11-15",
+        sources: ["rec_test"],
+        keywords: ["ca", "chiffre", "affaires", "revenus", "euros", "novembre", "portfo", "financier"],
+        financial: true,
       },
     ]);
 
@@ -356,6 +370,60 @@ describe("FTS search", () => {
     const newsletter = results.find((r) => r.id === "mes_newsletter_test");
     expect(newsletter).toBeDefined();
     expect(newsletter?.kind).toBe("mesure");
+  });
+
+  // ── Financial mesure blocking ───────────────────────────────────────────────
+
+  it("financial mesure excluded when excludeFinancialMesures=true", () => {
+    const results = searchFts(config, "ca revenus euros chiffre affaires portfo novembre", {
+      project: "portfo",
+      limit: 10,
+      threshold: 0,
+      excludeFinancialMesures: true,
+    });
+    expect(results.find((r) => r.id === "mes_ca_portfo_test")).toBeUndefined();
+  });
+
+  it("financial mesure included when excludeFinancialMesures=false (default)", () => {
+    const results = searchFts(config, "ca revenus euros chiffre affaires portfo novembre", {
+      project: "portfo",
+      limit: 10,
+      threshold: 0,
+    });
+    expect(results.find((r) => r.id === "mes_ca_portfo_test")).toBeDefined();
+  });
+
+  it("non-financial mesure still injectable when excludeFinancialMesures=true", () => {
+    const results = searchFts(config, "personne newsletter abonnés inscription", {
+      project: "portfo",
+      limit: 10,
+      threshold: 0,
+      excludeFinancialMesures: true,
+    });
+    expect(results.find((r) => r.id === "mes_newsletter_test")).toBeDefined();
+  });
+
+  // ── Trigram: not implemented (unicode61 only) ───────────────────────────────
+  // FTS tokenizer is unicode61 — prefix matching only. "redesign*" ≠ "design" keyword.
+  // In practice, the user's prompt also contains other related keywords
+  // (dashboard, stats, interface…) so the element is still found.
+
+  it('[trigram-check] "Redesign the interface" matches bento via "interface" keyword', () => {
+    // No trigram: "redesign*" does NOT match keyword "design".
+    // But "interface*" matches keyword "interface" on bento element → found.
+    const results = searchFts(config, "Redesign the interface", {
+      project: "portfo",
+      limit: 10,
+      threshold: 0,
+    });
+    const bento = results.find((r) => r.id === "dec_bento_test");
+    // Found via keyword "interface" (not via redesign→design)
+    expect(bento).toBeDefined();
+  });
+
+  it('[trigram-check] bare "Redesign" (single token) → null query, no injection', () => {
+    // Single significant token after stopword removal → buildFtsQuery returns null
+    expect(buildFtsQuery("Redesign")).toBeNull();
   });
 
   it('[regression] "c\'est quoi la dérivée de ln(x)" → rien', () => {

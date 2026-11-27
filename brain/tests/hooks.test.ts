@@ -103,6 +103,36 @@ describe("hook resilience", () => {
     expect(r.stdout).toBe("");
   });
 
+  it("brain-prompt exits 0 with no output on <task-notification> prompt", () => {
+    const r = runHook(PROMPT_HOOK, {
+      session_id: "task-notif-test",
+      prompt: "<task-notification>\nTask completed: migration prisma deployed\n</task-notification>",
+      cwd: process.cwd(),
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  it("brain-prompt exits 0 with no output on bare toolu_ ID", () => {
+    const r = runHook(PROMPT_HOOK, {
+      session_id: "toolu-test",
+      prompt: "toolu_01ABCDEFGHIJKLMNopqrstuv",
+      cwd: process.cwd(),
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  it("brain-prompt exits 0 with no output on XML-opening prompt", () => {
+    const r = runHook(PROMPT_HOOK, {
+      session_id: "xml-test",
+      prompt: "<system-reminder>some injected context here</system-reminder>",
+      cwd: process.cwd(),
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
   it("brain-prompt exits 0 on prompt with only stopwords", () => {
     const r = runHook(PROMPT_HOOK, {
       session_id: "test",

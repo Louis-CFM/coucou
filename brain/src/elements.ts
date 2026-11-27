@@ -26,6 +26,7 @@ export const LLMElementSchema = z.object({
   domaine: z.string().nullable().default(null),
   scope: z.enum(["projet", "transverse"]).nullable().default("projet").transform((v) => v ?? "projet"),
   keywords: z.array(z.string()).default([]),
+  financial: z.boolean().optional().default(false),
 });
 
 export type LLMElement = z.infer<typeof LLMElementSchema>;
@@ -48,6 +49,8 @@ export interface StoredElement {
   domaine?: string | null;
   scope?: "projet" | "transverse";
   keywords?: string[];
+  /** true for financial mesures (CA, revenues, amounts in €/$) — blocked from hook auto-injection */
+  financial?: boolean;
 }
 
 // ── ID computation ────────────────────────────────────────────────────────────
@@ -122,6 +125,7 @@ export function llmToStored(
     domaine: c.domaine ?? null,
     scope: c.scope ?? "projet",
     keywords: c.keywords ?? [],
+    financial: c.financial ?? false,
   };
 }
 
@@ -174,6 +178,106 @@ export function mergeElements(
   }
 
   return [...byId.values()];
+}
+
+// ── Dedup ─────────────────────────────────────────────────────────────────────
+
+function tokenSet(text: string): Set<string> {
+  return new Set(
+    text.toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3)
+  );
+}
+
+export function jaccardSimilarity(a: string, b: string): number {
+  const setA = tokenSet(a);
+  const setB = tokenSet(b);
+  if (setA.size === 0 && setB.size === 0) return 1;
+  let intersection = 0;
+  for (const t of setA) if (setB.has(t)) intersection++;
+  const union = setA.size + setB.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
+export interface DedupJournalEntry {
+  from: string;   // id removed
+  into: string;   // id kept
+  similarity: number;
+}
+
+/**
+ * Deduplicate elements within a list.
+ * Constraints:
+ *   - same kind only
+ *   - never merge ❌ with non-❌ (or any mismatched statut)
+ *   - only merge elements that share at least one common projet
+ *   - Jaccard(texte) >= threshold
+ * Keeper = highest score (keywords count × 10 + texte length). Sources + keywords merged.
+ * Returns a journal of merges for auditing / undo.
+ */
+export function dedupElements(
+  elements: StoredElement[],
+  threshold = 0.7
+): { elements: StoredElement[]; merged: number; journal: DedupJournalEntry[] } {
+  const journal: DedupJournalEntry[] = [];
+  const removed = new Set<string>();
+  const byId = new Map(elements.map((e) => [e.id, { ...e }]));
+  const ids = elements.map((e) => e.id);
+
+  for (let i = 0; i < ids.length; i++) {
+    const idA = ids[i];
+    if (removed.has(idA)) continue;
+    const a = byId.get(idA)!;
+
+    for (let j = i + 1; j < ids.length; j++) {
+      const idB = ids[j];
+      if (removed.has(idB)) continue;
+      const b = byId.get(idB)!;
+
+      // Constraint: same kind only
+      if (a.kind !== b.kind) continue;
+      // Constraint: never merge ❌ with non-❌
+      const aFailed = a.statut === "❌";
+      const bFailed = b.statut === "❌";
+      if (aFailed !== bFailed) continue;
+      // Constraint: must share at least one projet (global elements with projets=[] can merge freely)
+      const aProjArr = a.projets ?? [];
+      const bProjArr = b.projets ?? [];
+      if (aProjArr.length > 0 && bProjArr.length > 0) {
+        const aProj = new Set(aProjArr);
+        if (!bProjArr.some((p) => aProj.has(p))) continue;
+      }
+
+      const sim = jaccardSimilarity(a.texte, b.texte);
+      if (sim < threshold) continue;
+
+      const aScore = (a.keywords?.length ?? 0) * 10 + a.texte.length;
+      const bScore = (b.keywords?.length ?? 0) * 10 + b.texte.length;
+
+      const [keeper, discard] = aScore >= bScore ? [a, b] : [b, a];
+      byId.set(keeper.id, {
+        ...keeper,
+        sources: [...new Set([...keeper.sources, ...discard.sources])],
+        keywords:
+          keeper.keywords && discard.keywords
+            ? [...new Set([...keeper.keywords, ...discard.keywords])].slice(0, 10)
+            : (keeper.keywords ?? discard.keywords),
+      });
+      removed.add(discard.id);
+      journal.push({ from: discard.id, into: keeper.id, similarity: sim });
+
+      // Bug fix: if A was discarded, stop comparing A to further elements
+      if (discard.id === idA) break;
+    }
+  }
+
+  return {
+    elements: ids.filter((id) => !removed.has(id)).map((id) => byId.get(id)!),
+    merged: journal.length,
+    journal,
+  };
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────

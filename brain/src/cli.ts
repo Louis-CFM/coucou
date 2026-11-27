@@ -9,6 +9,7 @@
 import { Command } from "commander";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import { spawnSync as _spawnSync } from "node:child_process";
 import path from "node:path";
 import { loadConfig } from "./config.js";
 import { expandHome, toSlug } from "./utils.js";
@@ -40,6 +41,8 @@ import {
 import { computeStats } from "./stats.js";
 import { runCoverage, formatCoverageResult } from "./coverage.js";
 import { rebuildFts, writeHooksConfig, appendCorrection } from "./fts.js";
+import { maskSecrets } from "./mask.js";
+import type { StoredElement } from "./elements.js";
 
 const program = new Command();
 
@@ -47,6 +50,23 @@ program
   .name("brain")
   .description("Coucou Brain — digest Claude Code sessions and repos into a Markdown knowledge base")
   .version("0.1.0");
+
+// ── safety guard ──────────────────────────────────────────────────────────────
+
+function assertNoRemote(brainPath: string): void {
+  const expanded = expandHome(brainPath);
+  const result = _spawnSync("git", ["-C", expanded, "remote"], { encoding: "utf8" });
+  if (result.stdout?.trim()) {
+    console.error(
+      "❌  CoucouBrain a un remote git configuré (" +
+        result.stdout.trim().split("\n").join(", ") +
+        ").\n" +
+        "   Ce repo contient de la mémoire de travail en clair — retire le remote avant de continuer :\n" +
+        "   git -C " + expanded + " remote remove <nom>"
+    );
+    process.exit(1);
+  }
+}
 
 // ── ingest ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +85,7 @@ program
   .option("--force", "Re-digest sessions even if already processed with the same prompt version")
   .action(async (opts) => {
     const config = loadConfig();
+    assertNoRemote(config.brainPath);
     const manifest = new Manifest(config.brainPath);
     const currentPromptHash = digestPromptHash();
 
@@ -493,6 +514,7 @@ program
   .option("--batch <n>", "Elements per LLM call (default 15)", "15")
   .action(async (opts: { dryRun?: boolean; project?: string; batch: string }) => {
     const config = loadConfig();
+    assertNoRemote(config.brainPath);
     const { spawnSync } = await import("node:child_process");
     const stateDir = path.join(expandHome(config.brainPath), ".state", "proj");
     if (!fs.existsSync(stateDir)) {
@@ -501,12 +523,17 @@ program
       return;
     }
 
+    if (!opts.dryRun) {
+      const { gitCommit } = await import("./write.js");
+      gitCommit(config, "brain: snapshot pré-enrich");
+    }
+
     const batchSize = Math.max(1, Math.min(50, parseInt(opts.batch, 10) || 15));
     let totalMissing = 0;
     let totalWritten = 0;
 
     for (const f of fs.readdirSync(stateDir)) {
-      if (!f.endsWith(".json") || f === "lessons.json" || f === "louis.json") continue;
+      if (!f.endsWith(".json")) continue;
       const stateFile = path.join(stateDir, f);
       let state: { id: string; elements: Array<{ id: string; kind: string; texte: string; keywords?: string[] }> };
       try {
@@ -528,11 +555,16 @@ program
       let changed = false;
       for (let i = 0; i < missing.length; i += batchSize) {
         const batch = missing.slice(i, i + batchSize);
+        const maskedBatch = batch.map((e) => ({
+          id: e.id,
+          kind: e.kind,
+          texte: maskSecrets(e.texte).text,
+        }));
         const prompt = `Génère 6 à 10 keywords de recherche FR+EN pour chaque élément.
 Inclure les racines des mots composés (ex "Redesign" → "design"), synonymes, domaine, verbes d'action.
 
 Éléments :
-${JSON.stringify(batch.map((e) => ({ id: e.id, kind: e.kind, texte: e.texte })), null, 2)}
+${JSON.stringify(maskedBatch, null, 2)}
 
 Réponds UNIQUEMENT avec le JSON :
 [{"id": "...", "keywords": ["k1", "k2", "k3", "k4", "k5", "k6"]}]`;
@@ -541,8 +573,12 @@ Réponds UNIQUEMENT avec le JSON :
           process.execPath,
           ["-e", `
 const { spawnSync } = require('child_process');
-const r = spawnSync('claude', ['--print', '--model', 'claude-haiku-4-5-20251001'], {
-  input: process.argv[2], encoding: 'utf8', timeout: 60000,
+const r = spawnSync('claude', [
+  '--print', '--model', 'claude-haiku-4-5-20251001',
+  '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
+  '--tools', '', '--disallowed-tools', 'LSP',
+], {
+  input: process.argv[1], encoding: 'utf8', timeout: 60000,
   env: { ...process.env, COUCOU_BRAIN_INTERNAL: '1' }
 });
 process.stdout.write(r.stdout || '');
@@ -596,6 +632,91 @@ process.exitCode = r.status || 0;
     }
   });
 
+// ── dedup ─────────────────────────────────────────────────────────────────────
+
+program
+  .command("dedup")
+  .description("Merge near-duplicate elements across all project state files, then rebuild FTS")
+  .option("--dry-run", "Show counts but don't write")
+  .option("--threshold <n>", "Jaccard similarity threshold (default: 0.7)", "0.7")
+  .action(async (opts) => {
+    const config = loadConfig();
+    assertNoRemote(config.brainPath);
+    const { dedupElements } = await import("./elements.js");
+    type DedupJournalEntry = import("./elements.js").DedupJournalEntry;
+    const brainBase = expandHome(config.brainPath);
+    const stateDir = path.join(brainBase, ".state", "proj");
+
+    if (!fs.existsSync(stateDir)) {
+      console.error("State dir not found:", stateDir);
+      process.exitCode = 1;
+      return;
+    }
+
+    const threshold = parseFloat(opts.threshold);
+    const allJournal: Array<DedupJournalEntry & { stateFile: string }> = [];
+    let totalMerged = 0;
+
+    if (!opts.dryRun) {
+      // Git snapshot before any writes — allows `git checkout` restore
+      const { gitCommit } = await import("./write.js");
+      gitCommit(config, "brain: snapshot pré-dedup");
+    }
+
+    for (const f of fs.readdirSync(stateDir)) {
+      if (!f.endsWith(".json")) continue;
+      const stateFile = path.join(stateDir, f);
+      let state: { id: string; elements: StoredElement[] };
+      try {
+        state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+      } catch { continue; }
+
+      const before = state.elements.length;
+      const { elements, merged, journal } = dedupElements(state.elements, threshold);
+      if (merged === 0) continue;
+
+      console.log(`${state.id}: ${before} → ${elements.length} (${merged} merged)`);
+      for (const entry of journal) {
+        allJournal.push({ ...entry, stateFile: f });
+      }
+      totalMerged += merged;
+
+      if (!opts.dryRun) {
+        state.elements = elements;
+        fs.writeFileSync(stateFile, JSON.stringify(state, null, 2), "utf8");
+      }
+    }
+
+    if (totalMerged === 0) {
+      console.log("No duplicates found.");
+      return;
+    }
+
+    console.log(`\nTotal merged: ${totalMerged}`);
+
+    if (!opts.dryRun) {
+      // Append to journal
+      const journalPath = path.join(brainBase, ".state", "dedup-journal.json");
+      const existing: typeof allJournal = fs.existsSync(journalPath)
+        ? JSON.parse(fs.readFileSync(journalPath, "utf8"))
+        : [];
+      fs.writeFileSync(journalPath, JSON.stringify([...existing, ...allJournal], null, 2), "utf8");
+      console.log(`Journal: ${journalPath} (${allJournal.length} entries)`);
+
+      console.log("Rebuilding FTS...");
+      const { rebuildFts: rebuild, writeHooksConfig: writeHooks } = await import("./fts.js");
+      const result = rebuild(config);
+      writeHooks(config);
+      console.log(`FTS rebuilt: ${result.elements} elements`);
+    } else {
+      // Show up to 10 sample merges in dry-run
+      console.log("\nSample merges (dry-run):");
+      allJournal.slice(0, 10).forEach((e, i) => {
+        console.log(`  ${i + 1}. ${e.from} → ${e.into} (sim=${e.similarity.toFixed(2)}) [${e.stateFile}]`);
+      });
+    }
+  });
+
 // ── reset ─────────────────────────────────────────────────────────────────────
 
 program
@@ -609,6 +730,7 @@ program
       return;
     }
     const config = loadConfig();
+    assertNoRemote(config.brainPath);
     const manifest = new Manifest(config.brainPath);
     const { sessions, repos } = manifest.resetForReingestion();
     manifest.close();

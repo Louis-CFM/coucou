@@ -18,6 +18,7 @@ import {
   type OpenElementHint,
   llmToStored,
   mergeElements,
+  dedupElements,
   applyTaskClosures,
   applyDecisionReplacements,
   renderElement,
@@ -460,6 +461,7 @@ export function updateProjectFromSession(
     .map((e) => llmToStored(e, sessionDate, recordId));
 
   state.elements = mergeElements(state.elements, newElements);
+  ({ elements: state.elements } = dedupElements(state.elements, 0.7));
 
   // Apply task closures reported by the LLM
   state.elements = applyTaskClosures(
@@ -1047,7 +1049,22 @@ export function ensureBrainDir(config: BrainConfig): void {
 
   const gitignorePath = path.join(base, ".gitignore");
   if (!fs.existsSync(gitignorePath)) {
-    fs.writeFileSync(gitignorePath, ".state/\n", "utf8");
+    fs.writeFileSync(
+      gitignorePath,
+      [
+        "# Regeneratable binaries",
+        ".state/fts.db",
+        ".state/fts.db-shm",
+        ".state/fts.db-wal",
+        ".state/manifest.db",
+        "# Large binary / runtime",
+        ".state/backup-*.tar.gz",
+        ".state/logs/",
+        ".state/sessions/",
+        ".state/digestion/",
+      ].join("\n") + "\n",
+      "utf8"
+    );
   }
 }
 

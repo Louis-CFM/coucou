@@ -461,3 +461,136 @@ describe("applyDecisionReplacements", () => {
     expect(result[0]!.sources).toContain("rec_new");
   });
 });
+
+// ── Dedup ─────────────────────────────────────────────────────────────────────
+
+import { dedupElements, jaccardSimilarity } from "../src/elements.js";
+
+describe("jaccardSimilarity", () => {
+  it("identical texts → 1.0", () => {
+    expect(jaccardSimilarity("redesign dashboard bento grid", "redesign dashboard bento grid")).toBe(1);
+  });
+
+  it("completely different texts → 0", () => {
+    expect(jaccardSimilarity("deploy stripe webhook", "redesign bento grid")).toBe(0);
+  });
+
+  it("two similar bento decisions → above 0.6", () => {
+    const a = "Redesign bento grid du dashboard analytics : KPI tiles gradient colorées, fiscal hero tile sombre, MoM revenue bars. Implémenté, déployé, puis git revert.";
+    const b = "Redesign bento grid du dashboard analytics (KPI tiles gradient, fiscal hero tile, MoM bars style FinanceBento/Web3Bento). Revert après un commit.";
+    expect(jaccardSimilarity(a, b)).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("different-kind elements with low overlap → below 0.6", () => {
+    const a = "Utiliser TypeScript strict mode pour brain/";
+    const b = "Migrate Stripe webhooks vers le nouveau format v3";
+    expect(jaccardSimilarity(a, b)).toBeLessThan(0.6);
+  });
+});
+
+describe("dedupElements", () => {
+  it("merges near-duplicate decisions, keeps the one with more keywords", () => {
+    const a: StoredElement = stored({
+      id: "dec_aaa",
+      texte: "Redesign bento grid du dashboard analytics : KPI tiles gradient colorées, fiscal hero tile sombre, MoM revenue bars. Implémenté, déployé, puis git revert.",
+      keywords: ["redesign", "dashboard", "bento", "grid", "analytics", "KPI", "tiles", "gradient", "revert", "design"],
+      sources: ["rec_1"],
+    });
+    const b: StoredElement = stored({
+      id: "dec_bbb",
+      texte: "Redesign bento grid du dashboard analytics (KPI tiles gradient, fiscal hero tile, MoM bars style FinanceBento/Web3Bento). Revert après un commit.",
+      keywords: ["redesign", "design", "bento grid", "dashboard", "KPI"],
+      sources: ["rec_2"],
+    });
+
+    // threshold=0.5 to match these two (Jaccard ~0.54)
+    const { elements, merged } = dedupElements([a, b], 0.5);
+    expect(merged).toBe(1);
+    expect(elements).toHaveLength(1);
+    expect(elements[0]!.sources).toContain("rec_1");
+    expect(elements[0]!.sources).toContain("rec_2");
+    expect((elements[0]!.keywords?.length ?? 0)).toBeGreaterThanOrEqual(5);
+  });
+
+  it("does not merge elements of different kinds", () => {
+    const a: StoredElement = stored({ id: "dec_aaa", kind: "décision", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient" });
+    const b: StoredElement = stored({ id: "fait_bbb", kind: "fait", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient" });
+    const { elements, merged } = dedupElements([a, b], 0.5);
+    expect(merged).toBe(0);
+    expect(elements).toHaveLength(2);
+  });
+
+  it("does not merge ❌ with active element of same kind", () => {
+    const a: StoredElement = stored({ id: "dec_aaa", statut: "❌", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: ["portfo"] });
+    const b: StoredElement = stored({ id: "dec_bbb", statut: "✅", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: ["portfo"] });
+    const { elements, merged } = dedupElements([a, b], 0.5);
+    expect(merged).toBe(0);
+    expect(elements).toHaveLength(2);
+  });
+
+  it("does not merge elements from different projects", () => {
+    const a: StoredElement = stored({ id: "dec_aaa", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: ["portfo"] });
+    const b: StoredElement = stored({ id: "dec_bbb", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: ["botan"] });
+    const { elements, merged } = dedupElements([a, b], 0.5);
+    expect(merged).toBe(0);
+    expect(elements).toHaveLength(2);
+  });
+
+  it("merges global elements (projets=[]) regardless of project", () => {
+    const a: StoredElement = stored({ id: "dec_aaa", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: [] });
+    const b: StoredElement = stored({ id: "dec_bbb", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert similaire", projets: [] });
+    const { elements, merged } = dedupElements([a, b], 0.5);
+    expect(merged).toBe(1);
+    expect(elements).toHaveLength(1);
+  });
+
+  it("does not merge dissimilar elements of same kind", () => {
+    const a: StoredElement = stored({ id: "dec_aaa", texte: "Utiliser TypeScript strict pour brain/" });
+    const b: StoredElement = stored({ id: "dec_bbb", texte: "Migrer Stripe webhooks vers format v3" });
+    const { elements, merged } = dedupElements([a, b], 0.5);
+    expect(merged).toBe(0);
+    expect(elements).toHaveLength(2);
+  });
+
+  it("is idempotent: running twice on result gives 0 merges", () => {
+    const a: StoredElement = stored({
+      id: "dec_aaa",
+      texte: "Redesign bento grid du dashboard analytics : KPI tiles gradient colorées, fiscal hero tile sombre. Git revert.",
+      keywords: ["redesign", "dashboard", "bento", "grid", "KPI"],
+      sources: ["rec_1"],
+      projets: ["portfo"],
+    });
+    const b: StoredElement = stored({
+      id: "dec_bbb",
+      texte: "Redesign bento grid du dashboard analytics (KPI tiles gradient, fiscal hero tile). Revert après un commit.",
+      keywords: ["redesign", "dashboard", "bento"],
+      sources: ["rec_2"],
+      projets: ["portfo"],
+    });
+    const first = dedupElements([a, b], 0.5);
+    const second = dedupElements(first.elements, 0.5);
+    expect(second.merged).toBe(0);
+  });
+
+  it("journal records from/into/similarity", () => {
+    const a: StoredElement = stored({
+      id: "dec_aaa",
+      texte: "Redesign bento grid du dashboard analytics : KPI tiles gradient colorées, fiscal hero tile sombre. Git revert.",
+      keywords: ["redesign", "dashboard", "bento", "grid", "KPI"],
+      sources: ["rec_1"],
+      projets: ["portfo"],
+    });
+    const b: StoredElement = stored({
+      id: "dec_bbb",
+      texte: "Redesign bento grid du dashboard analytics (KPI tiles gradient, fiscal hero tile). Revert après un commit.",
+      keywords: ["redesign", "dashboard", "bento"],
+      sources: ["rec_2"],
+      projets: ["portfo"],
+    });
+    const { journal } = dedupElements([a, b], 0.5);
+    expect(journal).toHaveLength(1);
+    expect(journal[0]!.similarity).toBeGreaterThan(0.5);
+    expect([journal[0]!.from, journal[0]!.into]).toContain("dec_aaa");
+    expect([journal[0]!.from, journal[0]!.into]).toContain("dec_bbb");
+  });
+});
