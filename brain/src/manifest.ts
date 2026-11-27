@@ -1,0 +1,216 @@
+/**
+ * SQLite manifest — tracks which sessions and repos have been processed.
+ * Lives in ~/CoucouBrain/.state/manifest.db (not tracked by git).
+ */
+import Database from "better-sqlite3";
+import path from "node:path";
+import fs from "node:fs";
+import { expandHome } from "./utils.js";
+
+export type ItemStatus = "pending" | "done" | "failed" | "ignored";
+
+export interface SessionEntry {
+  id: string;           // session UUID (from filename)
+  project_path: string; // e.g. "-Users-alice-Developer-myproject"
+  jsonl_path: string;   // absolute path to .jsonl
+  hash: string;         // sha256 of file contents (detect modifications)
+  status: ItemStatus;
+  processed_at: string | null;
+  record_id: string | null;    // ID of the generated record page
+  projects: string;    // JSON array of project slugs
+  prompt_hash?: string | null;  // hash of digest prompt template at time of digestion
+  ignore_reason?: string | null;
+}
+
+export interface RepoEntry {
+  path: string;         // absolute path to repo
+  last_commit: string;  // HEAD commit hash
+  status: ItemStatus;
+  processed_at: string | null;
+  project_page_id: string | null; // ID of the generated project page
+}
+
+export class Manifest {
+  private db: Database.Database;
+
+  constructor(brainPath: string) {
+    const statePath = path.join(expandHome(brainPath), ".state");
+    fs.mkdirSync(statePath, { recursive: true });
+    const dbPath = path.join(statePath, "manifest.db");
+    this.db = new Database(dbPath);
+    this.migrate();
+  }
+
+  private migrate(): void {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        project_path TEXT NOT NULL,
+        jsonl_path TEXT NOT NULL,
+        hash TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        processed_at TEXT,
+        record_id TEXT,
+        projects TEXT NOT NULL DEFAULT '[]',
+        prompt_hash TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS repos (
+        path TEXT PRIMARY KEY,
+        last_commit TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        processed_at TEXT,
+        project_page_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
+
+    // Schema version for future migrations
+    const existing = this.db
+      .prepare("SELECT value FROM meta WHERE key = 'schema_version'")
+      .get() as { value: string } | undefined;
+    if (!existing) {
+      this.db
+        .prepare("INSERT INTO meta (key, value) VALUES ('schema_version', '1')")
+        .run();
+    }
+
+    // Migration v2: add prompt_hash column if missing
+    const cols = this.db.prepare("PRAGMA table_info(sessions)").all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === "prompt_hash")) {
+      this.db.exec("ALTER TABLE sessions ADD COLUMN prompt_hash TEXT");
+    }
+
+    // Migration v3: add ignore_reason column if missing
+    if (!cols.some((c) => c.name === "ignore_reason")) {
+      this.db.exec("ALTER TABLE sessions ADD COLUMN ignore_reason TEXT");
+    }
+  }
+
+  // ── Sessions ────────────────────────────────────────────────────────────────
+
+  upsertSession(entry: Omit<SessionEntry, "status" | "processed_at" | "record_id" | "projects"> & Partial<SessionEntry>): void {
+    const existing = this.getSession(entry.id);
+    if (existing) {
+      // If hash changed, reset to pending so it gets re-processed
+      if (existing.hash !== entry.hash && existing.status === "done") {
+        this.db.prepare(`
+          UPDATE sessions SET hash = ?, status = 'pending', processed_at = NULL, record_id = NULL
+          WHERE id = ?
+        `).run(entry.hash, entry.id);
+      }
+    } else {
+      this.db.prepare(`
+        INSERT INTO sessions (id, project_path, jsonl_path, hash, status, processed_at, record_id, projects)
+        VALUES (?, ?, ?, ?, 'pending', NULL, NULL, '[]')
+      `).run(entry.id, entry.project_path, entry.jsonl_path, entry.hash);
+    }
+  }
+
+  getSession(id: string): SessionEntry | undefined {
+    return this.db.prepare("SELECT * FROM sessions WHERE id = ?").get(id) as SessionEntry | undefined;
+  }
+
+  getPendingSessions(): SessionEntry[] {
+    return this.db
+      .prepare("SELECT * FROM sessions WHERE status IN ('pending', 'failed') ORDER BY jsonl_path ASC")
+      .all() as SessionEntry[];
+  }
+
+  markSessionDone(id: string, recordId: string, projects: string[], promptHash?: string): void {
+    this.db.prepare(`
+      UPDATE sessions SET status = 'done', processed_at = ?, record_id = ?, projects = ?, prompt_hash = ?
+      WHERE id = ?
+    `).run(new Date().toISOString(), recordId, JSON.stringify(projects), promptHash ?? null, id);
+  }
+
+  /** Returns true if session is done AND was digested with the same prompt hash */
+  isUpToDate(id: string, currentPromptHash: string): boolean {
+    const row = this.db
+      .prepare("SELECT status, prompt_hash FROM sessions WHERE id = ?")
+      .get(id) as { status: string; prompt_hash: string | null } | undefined;
+    return row?.status === "done" && row.prompt_hash === currentPromptHash;
+  }
+
+  markSessionFailed(id: string): void {
+    this.db.prepare(`
+      UPDATE sessions SET status = 'failed', processed_at = ? WHERE id = ?
+    `).run(new Date().toISOString(), id);
+  }
+
+  markSessionIgnored(id: string, reason?: string): void {
+    this.db.prepare(
+      "UPDATE sessions SET status = 'ignored', processed_at = ?, ignore_reason = ? WHERE id = ?"
+    ).run(new Date().toISOString(), reason ?? null, id);
+  }
+
+  getAllSessions(): SessionEntry[] {
+    return this.db.prepare("SELECT * FROM sessions ORDER BY jsonl_path ASC").all() as SessionEntry[];
+  }
+
+  resetSessionToPending(id: string): void {
+    this.db.prepare(
+      "UPDATE sessions SET status = 'pending', processed_at = NULL WHERE id = ?"
+    ).run(id);
+  }
+
+  // ── Repos ───────────────────────────────────────────────────────────────────
+
+  upsertRepo(entry: Omit<RepoEntry, "status" | "processed_at" | "project_page_id">): void {
+    const existing = this.getRepo(entry.path);
+    if (existing) {
+      if (existing.last_commit !== entry.last_commit && existing.status === "done") {
+        this.db.prepare(`
+          UPDATE repos SET last_commit = ?, status = 'pending', processed_at = NULL WHERE path = ?
+        `).run(entry.last_commit, entry.path);
+      }
+    } else {
+      this.db.prepare(`
+        INSERT INTO repos (path, last_commit, status, processed_at, project_page_id)
+        VALUES (?, ?, 'pending', NULL, NULL)
+      `).run(entry.path, entry.last_commit);
+    }
+  }
+
+  getRepo(repoPath: string): RepoEntry | undefined {
+    return this.db.prepare("SELECT * FROM repos WHERE path = ?").get(repoPath) as RepoEntry | undefined;
+  }
+
+  getPendingRepos(): RepoEntry[] {
+    return this.db
+      .prepare("SELECT * FROM repos WHERE status IN ('pending', 'failed') ORDER BY path ASC")
+      .all() as RepoEntry[];
+  }
+
+  markRepoDone(repoPath: string, projectPageId: string): void {
+    this.db.prepare(`
+      UPDATE repos SET status = 'done', processed_at = ?, project_page_id = ? WHERE path = ?
+    `).run(new Date().toISOString(), projectPageId, repoPath);
+  }
+
+  markRepoFailed(repoPath: string): void {
+    this.db.prepare(`
+      UPDATE repos SET status = 'failed', processed_at = ? WHERE path = ?
+    `).run(new Date().toISOString(), repoPath);
+  }
+
+  /** Reset all done/failed sessions + repos to pending (for full re-ingestion).
+   *  Keeps "ignored" sessions so brain-internal sessions stay excluded. */
+  resetForReingestion(): { sessions: number; repos: number } {
+    const sessions = this.db
+      .prepare("UPDATE sessions SET status='pending', processed_at=NULL, record_id=NULL, projects='[]' WHERE status IN ('done','failed')")
+      .run();
+    const repos = this.db
+      .prepare("UPDATE repos SET status='pending', processed_at=NULL, project_page_id=NULL WHERE status IN ('done','failed')")
+      .run();
+    return { sessions: sessions.changes, repos: repos.changes };
+  }
+
+  close(): void {
+    this.db.close();
+  }
+}
