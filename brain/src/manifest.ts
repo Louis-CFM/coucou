@@ -11,7 +11,7 @@ export type ItemStatus = "pending" | "done" | "failed" | "ignored";
 
 export interface SessionEntry {
   id: string;           // session UUID (from filename)
-  project_path: string; // e.g. "-Users-louis-Developer-coucou"
+  project_path: string; // e.g. "-Users-alice-Developer-myproject"
   jsonl_path: string;   // absolute path to .jsonl
   hash: string;         // sha256 of file contents (detect modifications)
   status: ItemStatus;

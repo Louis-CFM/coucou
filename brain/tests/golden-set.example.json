@@ -1,0 +1,37 @@
+[
+  {
+    "id": "auto",
+    "priority": "must",
+    "kind": "fait",
+    "texte_contains": "deploy via git push",
+    "expected_in": ["proj_myproject"]
+  },
+  {
+    "id": "auto",
+    "priority": "must",
+    "kind": "décision",
+    "texte_contains": "auth via HMAC",
+    "expected_in": ["proj_myproject"]
+  },
+  {
+    "id": "auto",
+    "priority": "must",
+    "kind": "préférence",
+    "texte_contains": "never skip tests",
+    "expected_in": ["louis"]
+  },
+  {
+    "id": "auto",
+    "priority": "should",
+    "kind": "leçon",
+    "texte_contains": "git fetch origin",
+    "expected_in": ["lessons"]
+  },
+  {
+    "id": "auto",
+    "priority": "should",
+    "kind": "décision",
+    "texte_contains": "dark mode",
+    "expected_in": ["proj_myproject"]
+  }
+]

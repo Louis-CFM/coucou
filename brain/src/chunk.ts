@@ -1,6 +1,6 @@
 /**
  * Splits a session condensed text into token-bounded chunks.
- * Chunks are split at message boundaries ("Louis:" / "Claude:" lines).
+ * Chunks are split at message boundaries ("Human:" / "Claude:" lines in condensed text).
  */
 import { estimateTokens } from "./utils.js";
 import type { CondensedMessage } from "./collect.js";
@@ -15,7 +15,7 @@ export interface Chunk {
 /** Format messages as text for LLM input */
 export function messagesToText(messages: CondensedMessage[]): string {
   return messages
-    .map((m) => `${m.role === "human" ? "Louis" : "Claude"}: ${m.text}`)
+    .map((m) => `${m.role === "human" ? "Human" : "Claude"}: ${m.text}`)
     .join("\n\n---\n\n");
 }
 
@@ -37,7 +37,7 @@ export function chunkMessages(messages: CondensedMessage[], maxTokens: number): 
   let currentTokens = 0;
 
   for (const msg of messages) {
-    const msgText = `${msg.role === "human" ? "Louis" : "Claude"}: ${msg.text}`;
+    const msgText = `${msg.role === "human" ? "Human" : "Claude"}: ${msg.text}`;
     const msgTokens = estimateTokens(msgText);
 
     if (currentTokens + msgTokens > maxTokens && current.length > 0) {

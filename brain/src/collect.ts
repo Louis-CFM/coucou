@@ -272,7 +272,7 @@ export function readSession(jsonlPath: string): SessionCondensed {
     // All other types (file-history-snapshot, permission-mode, cost-state, etc.) → skip
   }
 
-  const condensedText = messages.map((m) => `${m.role === "human" ? "Louis" : "Claude"}: ${m.text}`).join("\n\n");
+  const condensedText = messages.map((m) => `${m.role === "human" ? "Human" : "Claude"}: ${m.text}`).join("\n\n");
 
   return {
     id,

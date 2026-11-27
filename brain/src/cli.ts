@@ -372,15 +372,19 @@ program
   .option("--golden <path>", "Path to golden set JSON file")
   .action((opts) => {
     const config = loadConfig();
-    const defaultGoldenPath = path.join(
+    // Priority: --golden flag > local state file (private, gitignored) > example file
+    const localGoldenPath = path.join(expandHome(config.brainPath), ".state", "golden-set.json");
+    const exampleGoldenPath = path.join(
       path.dirname(new URL(import.meta.url).pathname),
       "..",
       "tests",
-      "golden-set.json"
+      "golden-set.example.json"
     );
     const goldenPath = opts.golden
       ? path.resolve(opts.golden)
-      : defaultGoldenPath;
+      : fs.existsSync(localGoldenPath)
+        ? localGoldenPath
+        : exampleGoldenPath;
 
     try {
       const result = runCoverage(config, goldenPath);

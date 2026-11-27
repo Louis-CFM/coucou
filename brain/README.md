@@ -85,7 +85,7 @@ brain reset
   "mergeModel": "opus",
   "maxChunkTokens": 100000,
   "language": "fr",
-  "repoAliases": { "notch-buddy": "coucou" }
+  "repoAliases": {}
 }
 ```
 
@@ -119,10 +119,10 @@ Chaque élément extrait a un `kind`, une `provenance` et un `statut` :
 | `fait` | État actuel d'un projet (déploiement, format, config) |
 | `leçon` | Erreur ou apprentissage réutilisable |
 | `tâche` | Action demandée ou accomplie dans la session |
-| `préférence` | Règle personnelle de Louis (workflow, style, communication) |
+| `préférence` | Règle personnelle (workflow, style, communication) |
 | `mesure` | Métrique nommée (MRR, abonnés…) |
 
-Provenance : `décidé` (Louis a confirmé) · `proposé` (non validé) · `constaté` (fait observé, implémenté)
+Provenance : `décidé` (confirmé) · `proposé` (non validé) · `constaté` (fait observé, implémenté)
 
 Statut : `✅` (en vigueur/faite) · `❌` (abandonné, raison obligatoire) · `⏳` (en attente) · `⚠️` (piège) · `null`
 

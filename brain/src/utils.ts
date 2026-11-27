@@ -24,7 +24,7 @@ export function toSlug(name: string): string {
 }
 
 /** Decode a Claude projects dir name back to its filesystem path.
- *  e.g. "-Users-louis-Developer-coucou" → "/Users/louis/Developer/coucou"
+ *  e.g. "-Users-alice-Developer-myproject" → "/Users/alice/Developer/myproject"
  *  This is a heuristic: Claude encodes path separators as "-", so ambiguity
  *  exists when folder names contain dashes. We try to find the longest
  *  existing prefix. Falls back to the last segment.
@@ -45,8 +45,8 @@ export function decodeClaudeProjectPath(encoded: string): string | null {
 }
 
 /** Extract the last meaningful segment from a Claude projects dir name.
- *  "-Users-louis-Developer-coucou" → "coucou"
- *  "-Users-louis-Documents-Projets-Content-web" → "Content-web" (best-effort)
+ *  "-Users-alice-Developer-myproject" → "myproject"
+ *  "-Users-alice-Documents-Projects-myapp" → "myapp" (best-effort)
  */
 export function projectNameFromClaudePath(encoded: string): string {
   // Try to decode and use actual folder name

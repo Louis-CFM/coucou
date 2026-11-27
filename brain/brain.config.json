@@ -13,8 +13,6 @@
   "mergeModel": "opus",
   "maxChunkTokens": 100000,
   "language": "fr",
-  "repoAliases": {
-    "notch-buddy": "coucou"
-  },
+  "repoAliases": {},
   "activeSessionMinutes": 30
 }
