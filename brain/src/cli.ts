@@ -18,7 +18,7 @@ import {
   collectRepo,
 } from "./collect.js";
 import { Manifest } from "./manifest.js";
-import { digestSessionWithRetry, digestRepo } from "./digest.js";
+import { digestSessionWithRetry, digestRepo, digestPromptHash } from "./digest.js";
 import {
   ensureBrainDir,
   writeRecord,
@@ -60,9 +60,11 @@ program
   .option("--include-subagents", "Also process subagent sessions")
   .option("--repos-only", "Only process repos, skip sessions")
   .option("--sessions-only", "Only process sessions, skip repos")
+  .option("--force", "Re-digest sessions even if already processed with the same prompt version")
   .action(async (opts) => {
     const config = loadConfig();
     const manifest = new Manifest(config.brainPath);
+    const currentPromptHash = digestPromptHash();
 
     if (!opts.dryRun) {
       ensureBrainDir(config);
@@ -126,6 +128,11 @@ program
             (s) => (s.id === id || s.id.startsWith(id)) && s.status === "done"
           );
           if (done && !pending.find((p) => p.id === done.id)) {
+            // Skip if prompt unchanged and not --force
+            if (!opts.force && manifest.isUpToDate(done.id, currentPromptHash)) {
+              console.log(`  ⏭  ${done.id.slice(0, 8)}… déjà digéré avec le même prompt (--force pour forcer)`);
+              continue;
+            }
             manifest.resetSessionToPending(done.id);
             pending.push({ ...done, status: "pending" });
           }
@@ -237,7 +244,7 @@ program
             updateLouis(digest, condensed.date, recordId, config, allIds);
             updatePeople(digest, condensed.date, recordId, config, allIds);
 
-            manifest.markSessionDone(s.id, recordId, digest.projects);
+            manifest.markSessionDone(s.id, recordId, digest.projects, currentPromptHash);
             doneCount++;
             console.log(`    ✓ ${recordId}`);
           } catch (e) {
@@ -290,6 +297,11 @@ program
             const condensed = collectRepo(r.path, config.repoAliases);
             if (!condensed) {
               console.log("    pas un repo git, skip");
+              continue;
+            }
+            if (condensed.isDataless) {
+              console.log("    ☁️  déchargé par iCloud (dataless) — ignoré");
+              manifest.markRepoFailed(r.path);
               continue;
             }
             const repoDigest = await digestRepo(condensed, config);
@@ -380,6 +392,44 @@ program
       console.error(`Coverage error: ${(e as Error).message}`);
       process.exitCode = 1;
     }
+  });
+
+// ── correct ───────────────────────────────────────────────────────────────────
+
+program
+  .command("correct <texte>")
+  .description("Append a dated manual correction to ~/CoucouBrain/corrections.md (never overwritten by ingestion)")
+  .action((texte: string) => {
+    const config = loadConfig();
+    const corrPath = path.join(expandHome(config.brainPath), "corrections.md");
+    if (!fs.existsSync(corrPath)) {
+      console.error(`corrections.md introuvable : ${corrPath}`);
+      process.exitCode = 1;
+      return;
+    }
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const line = `\n- [${dateStr}] ${texte}`;
+    fs.appendFileSync(corrPath, line + "\n", "utf8");
+    console.log(`✓ Correction ajoutée à corrections.md :\n  ${line.trim()}`);
+  });
+
+// ── reset ─────────────────────────────────────────────────────────────────────
+
+program
+  .command("reset")
+  .description("Reset all done/failed sessions and repos to pending for full re-ingestion. Keeps 'ignored' sessions.")
+  .option("--confirm", "Required to actually run the reset")
+  .action((opts) => {
+    if (!opts.confirm) {
+      console.log("Ajoute --confirm pour effectuer le reset.");
+      console.log("Les sessions 'ignored' (fiches de test, digestions internes) sont conservées.");
+      return;
+    }
+    const config = loadConfig();
+    const manifest = new Manifest(config.brainPath);
+    const { sessions, repos } = manifest.resetForReingestion();
+    manifest.close();
+    console.log(`Reset : ${sessions} session(s), ${repos} repo(s) remis en pending.`);
   });
 
 program.parse();

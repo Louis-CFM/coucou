@@ -7,6 +7,8 @@ import {
   coerceElement,
   llmToStored,
   mergeElements,
+  applyTaskClosures,
+  applyDecisionReplacements,
   renderElement,
   validateLinks,
   type LLMElement,
@@ -282,5 +284,180 @@ describe("llmToStored — date provenance", () => {
     const elem = dec({ texte: "Décision historique" });
     const stored = llmToStored(elem, "2026-10-15", "rec_old");
     expect(stored.date).toBe("2026-10-15");
+  });
+});
+
+// ── Task closure (taches_faites / taches_abandonnees) ─────────────────────────
+
+describe("applyTaskClosures", () => {
+  const openTask: StoredElement = {
+    id: "tach_abc123",
+    kind: "tâche",
+    statut: null,
+    texte: "Implémenter le module brain/",
+    date: "2026-11-01",
+    sources: ["rec_old"],
+    projets: ["coucou"],
+  };
+
+  it("done task → statut ✅", () => {
+    const result = applyTaskClosures([openTask], ["tach_abc123"], [], "2026-11-26", "rec_new");
+    expect(result[0]!.statut).toBe("✅");
+  });
+
+  it("done task adds record to sources", () => {
+    const result = applyTaskClosures([openTask], ["tach_abc123"], [], "2026-11-26", "rec_new");
+    expect(result[0]!.sources).toContain("rec_old");
+    expect(result[0]!.sources).toContain("rec_new");
+  });
+
+  it("done task updates date to session date", () => {
+    const result = applyTaskClosures([openTask], ["tach_abc123"], [], "2026-11-26", "rec_new");
+    expect(result[0]!.date).toBe("2026-11-26");
+  });
+
+  it("abandoned task → statut ❌ with raison", () => {
+    const result = applyTaskClosures(
+      [openTask],
+      [],
+      [{ id: "tach_abc123", raison: "plus nécessaire" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result[0]!.statut).toBe("❌");
+    expect(result[0]!.raison).toBe("plus nécessaire");
+  });
+
+  it("unknown ID → no change", () => {
+    const result = applyTaskClosures([openTask], ["tach_unknown"], [], "2026-11-26", "rec_new");
+    expect(result[0]!.statut).toBeNull();
+  });
+
+  it("already ✅ task → not changed by doneIds", () => {
+    const doneTask = { ...openTask, statut: "✅" as const };
+    const result = applyTaskClosures([doneTask], ["tach_abc123"], [], "2026-11-26", "rec_new");
+    expect(result[0]!.statut).toBe("✅");
+    // sources and date not updated again
+    expect(result[0]!.sources).toHaveLength(1);
+  });
+
+  it("already ❌ task → not changed by abandonedItems", () => {
+    const abandonedTask = { ...openTask, statut: "❌" as const, raison: "abandonné" };
+    const result = applyTaskClosures(
+      [abandonedTask],
+      [],
+      [{ id: "tach_abc123", raison: "nouvelle raison" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result[0]!.raison).toBe("abandonné"); // unchanged
+  });
+
+  it("empty arrays → returns elements unchanged", () => {
+    const result = applyTaskClosures([openTask], [], [], "2026-11-26", "rec_new");
+    expect(result[0]!.statut).toBeNull();
+    expect(result[0]!.sources).toHaveLength(1);
+  });
+
+  it("done + abandoned in same call — correct statut on each", () => {
+    const task2: StoredElement = { ...openTask, id: "tach_other", texte: "Autre tâche" };
+    const result = applyTaskClosures(
+      [openTask, task2],
+      ["tach_abc123"],
+      [{ id: "tach_other", raison: "déprioritisé" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result.find((e) => e.id === "tach_abc123")!.statut).toBe("✅");
+    expect(result.find((e) => e.id === "tach_other")!.statut).toBe("❌");
+    expect(result.find((e) => e.id === "tach_other")!.raison).toBe("déprioritisé");
+  });
+
+  it("multiple elements — only matching one changed", () => {
+    const other: StoredElement = { ...openTask, id: "tach_other", texte: "Autre tâche" };
+    const result = applyTaskClosures([openTask, other], ["tach_abc123"], [], "2026-11-26", "rec_new");
+    expect(result.find((e) => e.id === "tach_abc123")!.statut).toBe("✅");
+    expect(result.find((e) => e.id === "tach_other")!.statut).toBeNull();
+  });
+});
+
+// ── Decision replacement ──────────────────────────────────────────────────────
+
+describe("applyDecisionReplacements", () => {
+  const activeDec: StoredElement = {
+    id: "dec_abc123",
+    kind: "décision",
+    statut: "✅",
+    texte: "Utiliser l'ancienne approche",
+    date: "2026-11-01",
+    sources: ["rec_old"],
+    projets: ["coucou"],
+  };
+
+  it("replaced decision → statut ❌, raison includes 'Remplacé par'", () => {
+    const result = applyDecisionReplacements(
+      [activeDec],
+      [{ id: "dec_abc123", par: "dec_new456", raison: "meilleure approche" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result[0]!.statut).toBe("❌");
+    expect(result[0]!.raison).toContain("Remplacé par");
+    expect(result[0]!.raison).toContain("dec_new456");
+    expect(result[0]!.raison).toContain("meilleure approche");
+  });
+
+  it("replacement with par=null → statut ❌, raison = raw raison", () => {
+    const result = applyDecisionReplacements(
+      [activeDec],
+      [{ id: "dec_abc123", par: null, raison: "abandonnée" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result[0]!.statut).toBe("❌");
+    expect(result[0]!.raison).toBe("abandonnée");
+  });
+
+  it("already ❌ decision → not changed", () => {
+    const alreadyReplaced = { ...activeDec, statut: "❌" as const, raison: "ancienne raison" };
+    const result = applyDecisionReplacements(
+      [alreadyReplaced],
+      [{ id: "dec_abc123", par: null, raison: "nouvelle raison" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result[0]!.raison).toBe("ancienne raison"); // unchanged
+  });
+
+  it("ID not found → no change to any element", () => {
+    const result = applyDecisionReplacements(
+      [activeDec],
+      [{ id: "dec_unknown", par: null, raison: "raison" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result[0]!.statut).toBe("✅"); // unchanged
+  });
+
+  it("unrelated decision (not in replacements) → unchanged", () => {
+    const unrelated: StoredElement = { ...activeDec, id: "dec_unrelated", texte: "Autre décision" };
+    const result = applyDecisionReplacements(
+      [activeDec, unrelated],
+      [{ id: "dec_abc123", par: null, raison: "raison" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result.find((e) => e.id === "dec_unrelated")!.statut).toBe("✅"); // unchanged
+  });
+
+  it("adds record to sources on replacement", () => {
+    const result = applyDecisionReplacements(
+      [activeDec],
+      [{ id: "dec_abc123", par: null, raison: "abandonnée" }],
+      "2026-11-26",
+      "rec_new"
+    );
+    expect(result[0]!.sources).toContain("rec_old");
+    expect(result[0]!.sources).toContain("rec_new");
   });
 });

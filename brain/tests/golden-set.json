@@ -1,164 +1,198 @@
 [
   {
     "id": "auto",
+    "priority": "should",
     "kind": "décision",
     "texte_contains": "404",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "décision",
     "texte_contains": "Panel entreprise",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "décision",
     "texte_contains": "charges récurrentes",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "décision",
     "texte_contains": "transactions élargi",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "décision",
     "texte_contains": "Stats fiscales micro",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "décision",
     "texte_contains": "bento grid",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "fait",
     "texte_contains": "WebP",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "fait",
     "texte_contains": "H264",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "fait",
     "texte_contains": "enterprises",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "leçon",
     "texte_contains": "React Server Component",
     "expected_in": ["lessons"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "leçon",
     "texte_contains": "accents français",
     "expected_in": ["lessons"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "préférence",
     "texte_contains": "admin",
     "expected_in": ["louis"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "décision",
     "texte_contains": "Enya passe uniquement",
     "expected_in": ["proj_sbe-hub"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "décision",
     "texte_contains": "merge commit",
     "expected_in": ["proj_sbe-hub"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "fait",
     "texte_contains": "RLS",
     "expected_in": ["proj_sbe-hub"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "leçon",
     "texte_contains": "RLS admin-only",
     "expected_in": ["lessons"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "leçon",
     "texte_contains": "gh pr merge",
     "expected_in": ["lessons"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "leçon",
     "texte_contains": "git fetch origin",
     "expected_in": ["lessons"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "préférence",
     "texte_contains": "db push",
     "expected_in": ["louis"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "préférence",
     "texte_contains": "Collaborateurs poussent sur branches",
     "expected_in": ["louis"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "préférence",
     "texte_contains": "bento",
     "expected_in": ["louis"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "leçon",
     "texte_contains": "clients!inner",
     "expected_in": ["lessons"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "fait",
     "texte_contains": "git push",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "décision",
     "texte_contains": "HMAC",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "fait",
     "texte_contains": "RLS",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "must",
     "kind": "mesure",
     "texte_contains": "61",
     "expected_in": ["proj_portfo"]
   },
   {
     "id": "auto",
+    "priority": "should",
     "kind": "mesure",
     "texte_contains": "584",
+    "expected_in": ["proj_portfo"]
+  },
+  {
+    "id": "auto",
+    "priority": "must",
+    "kind": "tâche",
+    "texte_contains": "Botan",
     "expected_in": ["proj_portfo"]
   }
 ]

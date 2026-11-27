@@ -76,6 +76,8 @@ export interface RepoCondensed {
   topLevel: string;        // ls output
   estimatedTokens: number;
   masked: MaskedItem[];
+  /** true when iCloud has offloaded the git pack files (macOS only) */
+  isDataless?: boolean;
 }
 
 // ── Tool result summarizer ───────────────────────────────────────────────────
@@ -447,6 +449,40 @@ export function collectRepo(repoPath: string, aliases: Record<string, string>): 
 
   const rawName = path.basename(repoPath);
   const name = aliases[rawName] ?? rawName;
+
+  // ── iCloud dataless detection ──────────────────────────────────────────────
+  // On macOS, iCloud Drive offloads files by removing their data blocks while
+  // keeping the metadata stub. The extended flags show "dataless" or
+  // "compressed,dataless". Git pack files marked dataless cannot be read.
+  const packDir = path.join(repoPath, ".git", "objects", "pack");
+  const isDataless = (() => {
+    try {
+      const flags = execSync(`ls -lO "${packDir}" 2>/dev/null || true`, {
+        encoding: "utf8", timeout: 5000
+      });
+      return flags.includes("dataless");
+    } catch {
+      return false;
+    }
+  })();
+
+  if (isDataless) {
+    return {
+      path: repoPath,
+      name,
+      remote: run("git remote get-url origin", repoPath) || null,
+      headCommit: "icloud-offloaded",
+      recentCommits: "",
+      readme: "",
+      claudeMd: null,
+      stack: null,
+      topLevel: "",
+      estimatedTokens: 0,
+      masked: [],
+      isDataless: true,
+    } as RepoCondensed & { isDataless: true };
+  }
+
   const headCommit = run("git rev-parse HEAD", repoPath) || "unknown";
   const remote = run("git remote get-url origin", repoPath) || null;
   const recentCommits = run("git log --oneline -50", repoPath);

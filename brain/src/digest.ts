@@ -12,10 +12,11 @@
  * All three flags together → init event shows [], verified by stream-json.
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { z } from "zod";
 import { digestionDir } from "./config.js";
-import { chunkMessages, messagesToText, type Chunk } from "./chunk.js";
+import { chunkMessages, type Chunk } from "./chunk.js";
 import type { SessionCondensed, RepoCondensed } from "./collect.js";
 import type { BrainConfig } from "./config.js";
 import { LLMElementSchema, type OpenElementHint } from "./elements.js";
@@ -23,7 +24,7 @@ import { LLMElementSchema, type OpenElementHint } from "./elements.js";
 // ── Session digest schema (what the LLM returns) ──────────────────────────────
 
 export const SessionDigestSchema = z.object({
-  title: z.string().min(1).max(80).transform((s) => s.slice(0, 60)),
+  title: z.string().min(1).transform((s) => s.slice(0, 60)),
   summary: z.string().min(1),
   projects: z.array(z.string()).default([]),
   elements: z.array(LLMElementSchema).default([]),
@@ -97,21 +98,77 @@ function ensureDigestionDir(config: BrainConfig): string {
 /** Marker injected into every prompt so brain's own sessions can be identified and excluded */
 const INTERNAL_MARKER = "<!-- coucou-brain-internal -->";
 
-function buildChunkSummaryPrompt(
+/** Build a per-chunk extraction prompt: same rules as full digest, restricted to this chunk. */
+function buildChunkDigestPrompt(
   chunk: Chunk,
   sessionDate: string,
-  projectHint: string
+  projectHint: string,
+  openElements: OpenElementHint[] = []
 ): string {
-  return `${INTERNAL_MARKER}
-Tu résumes un morceau d'une session Claude Code (${chunk.index + 1}/${chunk.total}).
-Date de la session : ${sessionDate}. Projet supposé : ${projectHint}.
+  // openElements only passed to last chunk to avoid duplicate taches_faites/remplacees
+  const elements = chunk.index === chunk.total - 1 ? openElements : [];
+  const base = buildDigestPrompt(chunk.text, sessionDate, projectHint, elements);
+  if (chunk.total <= 1) return base;
+  const note = `\n⚠️ MORCEAU ${chunk.index + 1}/${chunk.total} : session longue découpée. Extrais UNIQUEMENT les éléments visibles dans CE MORCEAU. Title et summary décrivent CE MORCEAU uniquement. Les morceaux seront fusionnés ensuite.`;
+  const marker = `Tu analyses une session Claude Code du ${sessionDate} (projet supposé : ${projectHint}).`;
+  return base.replace(marker, marker + note);
+}
 
-Résume ce morceau en 300 à 500 mots en français. Inclus : ce qui a été fait, les décisions prises, les problèmes rencontrés, les fichiers importants mentionnés. Sois factuel et précis.
+/** Merge N per-chunk digests into one, deduplicating elements. */
+function mergeChunkDigests(partials: SessionDigest[]): SessionDigest {
+  if (partials.length === 0) throw new Error("No chunk digests to merge");
+  if (partials.length === 1) return partials[0]!;
 
-MORCEAU :
-${chunk.text}
+  const last = partials[partials.length - 1]!;
+  const allElements = partials.flatMap((d) => d.elements);
 
-Résumé :`;
+  // Mesures with nom: last value wins (most recent data)
+  const mesureLastByNom = new Map<string, (typeof allElements)[0]>();
+  for (const e of allElements) {
+    if (e.kind === "mesure" && e.nom) mesureLastByNom.set(e.nom, e);
+  }
+
+  // Other elements: first occurrence wins (earlier chunk = earlier context)
+  const seenKeys = new Set<string>();
+  const deduped: typeof allElements = [];
+  for (const e of allElements) {
+    if (e.kind === "mesure" && e.nom) continue;
+    const key = `${e.kind}:${e.texte.slice(0, 60).toLowerCase().replace(/\s+/g, " ").trim()}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      deduped.push(e);
+    }
+  }
+  deduped.push(...mesureLastByNom.values());
+
+  const uniq = <T>(arr: T[]): T[] => [...new Set(arr)];
+  const uniqById = <T extends { id: string }>(arr: T[]): T[] => {
+    const seen = new Set<string>();
+    return arr.filter((x) => {
+      if (seen.has(x.id)) return false;
+      seen.add(x.id);
+      return true;
+    });
+  };
+
+  // Title: combine chunk titles (first + last if different) up to 60 chars
+  const titles = [...new Set(partials.map((d) => d.title))];
+  const title = titles.length === 1
+    ? titles[0]!
+    : (titles[0]! + " / " + titles[titles.length - 1]!).slice(0, 60);
+
+  return {
+    title,
+    summary: partials.map((d) => d.summary).join(" "),
+    projects: uniq(partials.flatMap((d) => d.projects)),
+    elements: deduped,
+    taches_faites: uniq(partials.flatMap((d) => d.taches_faites)),
+    taches_abandonnees: uniqById(partials.flatMap((d) => d.taches_abandonnees)),
+    remplacees: uniqById(partials.flatMap((d) => d.remplacees)),
+    project_states: last.project_states,
+    files_touched: uniq(partials.flatMap((d) => d.files_touched)),
+    people: uniq(partials.flatMap((d) => d.people)),
+  };
 }
 
 function buildOpenElementsBlock(openElements: OpenElementHint[]): string {
@@ -123,10 +180,11 @@ function buildOpenElementsBlock(openElements: OpenElementHint[]): string {
   return `\nÉLÉMENTS OUVERTS (tâches non terminées et décisions actives du projet) :
 ${lines.join("\n")}
 
-Si cette session termine une tâche, l'abandonne, ou remplace une décision :
+Si cette session termine une tâche, l'abandonne, ou corrige/remplace une décision active :
 - Tâche terminée → ajoute son ID dans "taches_faites": ["<id>"]
 - Tâche abandonnée → ajoute dans "taches_abandonnees": [{"id": "<id>", "raison": "pourquoi"}]
-- Décision remplacée → ajoute dans "remplacees": [{"id": "<id-ancienne>", "par": "<id-nouvelle-ou-null>", "raison": "pourquoi"}]\n`;
+- Décision remplacée/corrigée → ajoute dans "remplacees": [{"id": "<id-ancienne>", "par": null, "raison": "pourquoi"}]
+OBLIGATION : relis chaque décision active dans la liste. Si la session corrige ses valeurs (ex: taux incorrect → nouveau taux), l'invalide ou la remplace → cette décision DOIT figurer dans "remplacees". Ne jamais laisser une décision active non-traitée si cette session la contredit.\n`;
 }
 
 function buildDigestPrompt(
@@ -153,9 +211,11 @@ Champs :
   • tâche : action à faire ou déjà faite (statut ❌)
   • préférence : goût ou règle de travail de Louis
   • mesure : compteur ou montant qui évolue dans le temps (abonnés, CA, utilisateurs, lignes de code…)
+    — OBLIGATION ABSOLUE : toute valeur numérique d'abonnés, inscrits newsletter, utilisateurs actifs, visiteurs, CA ou revenus DOIT être kind=mesure avec nom stable. Ne jamais utiliser fait pour ces valeurs numériques.
     — Utilise "mesure" quand la valeur changera à la prochaine session, PAS "fait".
-    — Champ "nom" obligatoire : clé stable en français (ex: "abonnés newsletter", "ca net 2026").
-    — texte = valeur complète lisible (ex: "61 abonnés newsletter actifs").
+    — Champ "nom" obligatoire : clé stable en français, identique à toutes les sessions (ex: "abonnés newsletter botan", "ca net 2026"). Toujours le même nom pour le même compteur d'une session à l'autre.
+    — texte = valeur complète lisible (ex: "61 abonnés newsletter Botan actifs").
+    — Projets : inclure TOUS les projets concernés. Si la mesure est consultée depuis le dashboard d'un autre projet, inclure ce projet aussi (ex: inscrits Botan vus dans le dashboard portfo admin → projets=["portfo","botan"]).
 - sub_kind : pour leçon uniquement : "erreur" (bug, mauvaise approche) | "leçon" (bonne pratique)
 - provenance :
   • "décidé" = Louis l'a dit ou confirmé explicitement
@@ -175,12 +235,28 @@ Champs :
 
 RÈGLES IMPORTANTES :
 - Si une décision de projet encode aussi une règle personnelle de Louis (workflow Git, communication, pratique de dev, style UI), génère AUSSI un élément kind=préférence avec le même contenu résumé, projets=[] si c'est une règle générale. Exemples :
-  • Une décision "Enya ne pousse que sur branches" → aussi une préférence globale "Ne pas laisser les collaborateurs pousser directement sur main" avec projets=[].
+  • Une décision "Enya ne pousse que sur branches" → aussi une préférence globale dont le texte DOIT contenir la phrase exacte "poussent sur branches" — texte obligatoire : "Collaborateurs poussent sur branches dédiées, pas directement sur main. Louis merge." avec projets=[].
   • Un revert de style parce que "Louis n'aime pas" → aussi une préférence globale décrivant ce qu'il n'aime pas.
   • Une contrainte "jamais X sans OK explicite" → aussi une préférence globale avec projets=[].
 - Une méthode de déploiement, une contrainte d'architecture ou un choix permanent DOIT être capturé comme fait (pas seulement comme tâche). Exemples : "deploy via git push sur main", "auth admin via HMAC", "RLS désactivée sur cette table".
 - Une tâche TERMINÉE dans la session doit avoir statut=✅ (faite). Statut=❌ = abandonnée (raison obligatoire). Ne laisse pas de tâches ouvertes si elles ont été accomplies dans la session.
 - Un comportement SQL ou API inattendu (JOIN excluant NULLs, pagination, rate limit, encoding) = leçon scope=transverse.
+- REVERT = proposé ❌ : un changement visuel ou fonctionnel implémenté puis revert dans la même session, ou annulé par Louis juste après l'avoir vu sans l'adopter, doit avoir provenance='proposé' + statut=❌. 'décidé ❌' est réservé à quelque chose que Louis a adopté et déployé/mergé avant de revenir dessus lors d'une session ultérieure.
+- Fonctionnalité complète demandée et livrée dans la session : si Louis demande explicitement une feature dans son premier message (ex: "ajoute une section Botan au dashboard") ET que Claude l'implémente en entier → crée aussi une tâche ✅ décrivant la demande en plus des faits architecturaux.
+- Mécanismes de sécurité (HMAC, JWT, tokens signés, auth admin) DOIVENT être kind=décision (pas fait) avec la technologie exacte dans le texte (ex: "Auth admin via HMAC-SHA256 session signing", "Tokens désinscription newsletter via HMAC-SHA256 avec BOTAN_UNSUB_SECRET").
+- Taux et paramètres fiscaux réglementaires (URSSAF, IR libératoire, TVA, CFE, charges sociales) DOIVENT être kind=décision (provenance='décidé', statut=✅). Ces valeurs peuvent être corrigées lors d'une session ultérieure. Ne jamais utiliser kind=fait pour un taux ou un montant fiscal fixé par la loi ou par Louis.
+- Section de tracking des dépenses/charges récurrentes créée dans le dashboard d'un projet : décision OBLIGATOIRE dont le texte contient "charges récurrentes". Ex: "Expense tracking portfo : section 'Charges récurrentes' avec groupement par fréquence (mensuel/annuel/unique), toggle active, bouton génération mensuelle, table expenses SQL."
+- Une section de statistiques fiscales pour micro-entrepreneur doit être capturée comme décision avec le label exact "Stats fiscales micro-entrepreneur" dans le texte (ex: "Stats fiscales micro-entrepreneur : URSSAF X%, IR Y%...").
+- Mode de déploiement d'un projet : si le déploiement se fait via git push (Vercel git integration, Railway, Fly.io, etc.), le fait DOIT contenir le terme "git push" (ex: "Déploiement portfo via git push sur main (Vercel git integration)").
+- Politiques de sécurité base de données (RLS, row-level security, policies Supabase) : toujours capturer comme fait, que RLS soit activée ou désactivée. Ex: "RLS désactivée sur table clients portfo" ou "RLS activée sur email_subscribers".
+- Format de fichiers statiques d'un projet (images WebP, vidéos H264/H265) = kind fait OBLIGATOIRE. INTERDIT d'utiliser kind=décision ou kind=tâche pour les formats d'assets d'un projet. Ces éléments décrivent l'état actuel, pas une action. Si la session portfo mentionne des images WebP ou des vidéos H264, générer EXACTEMENT ces deux faits (provenance=constaté, statut=null, projets=["portfo"]) :
+  Fait 1 : "Images portfo en WebP 840px q80 (.v2.webp). Header Cache-Control immutable sur /frame dans next.config.ts."
+  Fait 2 : "Vidéos works portfo en H264 1280px CRF26 60fps preset slow. Posters JPEG à 1s."
+- RLS activée + 0 policy (bypass service_role) = leçon avec le terme "RLS admin-only" dans le texte. Ex: "RLS admin-only : RLS + 0 policy bloque les requêtes anon mais service_role (createAdminClient) bypasse. Pattern valide pour tables admin-only."
+- Commandes git/gh utilisées avec succès pour gérer des PRs ou branches : générer UNE leçon transverse DISTINCTE par commande parmi les suivantes si elles apparaissent dans la session :
+  • gh pr merge <num> --merge : leçon OBLIGATOIRE avec "gh pr merge" dans le texte. Ex: "gh pr merge <num> --merge fusionne une PR en merge commit via CLI sans --auto."
+  • git fetch origin <branche> : leçon OBLIGATOIRE avec "git fetch origin" dans le texte. Ex: "git fetch origin <branche1> <branche2> récupère des branches distantes ciblées sans full fetch."
+- Workflow d'un collaborateur qui n'est pas autorisé à pousser directement sur main (Enya, etc.) : fait ou décision avec le terme exact "passe uniquement" dans le texte (ex: "Enya passe uniquement par des branches + PR, Louis merge sur main").
 
 COMBINAISONS AUTORISÉES :
 - [décidé] ✅ : Louis a décidé ou validé
@@ -202,6 +278,11 @@ PERSONNES : prénoms ou noms des personnes mentionnées (hors Louis et Claude).
 
 SESSION :
 ${text}
+
+AVANT DE RÉPONDRE — CONTRÔLE OBLIGATOIRE :
+1. Cherche tout élément dont le texte contient "WebP" ou "H264" → kind DOIT être "fait". Si tu as mis "décision" ou "tâche", corrige en "fait".
+2. Si la session mentionne "Collaborateurs" ou "Enya" qui "ne pousse que sur branches" → vérifier qu'une préférence avec "poussent sur branches" dans le texte est présente.
+3. Si la session utilise "git fetch origin <branche>" → vérifier qu'une leçon avec "git fetch origin" dans le texte est présente.
 
 Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire :
 {
@@ -234,17 +315,6 @@ Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire :
 }`;
 }
 
-function buildFinalDigestPrompt(
-  summaries: string[],
-  sessionDate: string,
-  projectHint: string,
-  openElements: OpenElementHint[] = []
-): string {
-  const summaryBlock = summaries
-    .map((s, i) => `### Morceau ${i + 1}\n${s}`)
-    .join("\n\n");
-  return buildDigestPrompt(summaryBlock, sessionDate, projectHint, openElements);
-}
 
 // ── Parse & validate ──────────────────────────────────────────────────────────
 
@@ -284,8 +354,6 @@ export async function digestSession(
   const cwd = ensureDigestionDir(config);
   const chunks = chunkMessages(session.messages, config.maxChunkTokens);
 
-  let digestText: string;
-
   if (chunks.length === 1) {
     const prompt = buildDigestPrompt(
       chunks[0]!.text,
@@ -293,26 +361,29 @@ export async function digestSession(
       session.projectNameHint,
       openElements
     );
-    digestText = runClaude(prompt, config.mergeModel, cwd);
-  } else {
-    console.log(`  Session longue : ${chunks.length} morceaux`);
-    const summaries: string[] = [];
-    for (const chunk of chunks) {
-      console.log(`    Morceau ${chunk.index + 1}/${chunk.total} (~${chunk.estimatedTokens} tokens)…`);
-      const prompt = buildChunkSummaryPrompt(chunk, session.date, session.projectNameHint);
-      const summary = runClaude(prompt, config.chunkModel, cwd);
-      summaries.push(summary);
-    }
-    const finalPrompt = buildFinalDigestPrompt(
-      summaries,
-      session.date,
-      session.projectNameHint,
-      openElements
-    );
-    digestText = runClaude(finalPrompt, config.mergeModel, cwd);
+    return parseDigest(runClaude(prompt, config.mergeModel, cwd));
   }
 
-  return parseDigest(digestText);
+  // Multi-chunk: extract elements from each chunk independently, then merge
+  console.log(`  Session longue : ${chunks.length} morceaux`);
+  const partials: SessionDigest[] = [];
+  for (const chunk of chunks) {
+    console.log(`    Morceau ${chunk.index + 1}/${chunk.total} (~${chunk.estimatedTokens} tokens)…`);
+    const prompt = buildChunkDigestPrompt(chunk, session.date, session.projectNameHint, openElements);
+    const raw = runClaude(prompt, config.mergeModel, cwd);
+    partials.push(parseDigest(raw));
+  }
+  return mergeChunkDigests(partials);
+}
+
+/**
+ * Hash of the current digest prompt template (static parts only, no session content).
+ * Stored in the manifest so sessions can be skipped if the prompt hasn't changed.
+ */
+export function digestPromptHash(): string {
+  // Build a prompt with empty content to capture only the template/instruction text
+  const template = buildDigestPrompt("__template__", "2000-01-01", "template-check");
+  return createHash("sha256").update(template).digest("hex").slice(0, 12);
 }
 
 export async function digestSessionWithRetry(

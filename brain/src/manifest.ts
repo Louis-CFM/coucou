@@ -18,6 +18,7 @@ export interface SessionEntry {
   processed_at: string | null;
   record_id: string | null;    // ID of the generated record page
   projects: string;    // JSON array of project slugs
+  prompt_hash?: string | null;  // hash of digest prompt template at time of digestion
 }
 
 export interface RepoEntry {
@@ -49,7 +50,8 @@ export class Manifest {
         status TEXT NOT NULL DEFAULT 'pending',
         processed_at TEXT,
         record_id TEXT,
-        projects TEXT NOT NULL DEFAULT '[]'
+        projects TEXT NOT NULL DEFAULT '[]',
+        prompt_hash TEXT
       );
 
       CREATE TABLE IF NOT EXISTS repos (
@@ -74,6 +76,12 @@ export class Manifest {
       this.db
         .prepare("INSERT INTO meta (key, value) VALUES ('schema_version', '1')")
         .run();
+    }
+
+    // Migration v2: add prompt_hash column if missing
+    const cols = this.db.prepare("PRAGMA table_info(sessions)").all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === "prompt_hash")) {
+      this.db.exec("ALTER TABLE sessions ADD COLUMN prompt_hash TEXT");
     }
   }
 
@@ -107,11 +115,19 @@ export class Manifest {
       .all() as SessionEntry[];
   }
 
-  markSessionDone(id: string, recordId: string, projects: string[]): void {
+  markSessionDone(id: string, recordId: string, projects: string[], promptHash?: string): void {
     this.db.prepare(`
-      UPDATE sessions SET status = 'done', processed_at = ?, record_id = ?, projects = ?
+      UPDATE sessions SET status = 'done', processed_at = ?, record_id = ?, projects = ?, prompt_hash = ?
       WHERE id = ?
-    `).run(new Date().toISOString(), recordId, JSON.stringify(projects), id);
+    `).run(new Date().toISOString(), recordId, JSON.stringify(projects), promptHash ?? null, id);
+  }
+
+  /** Returns true if session is done AND was digested with the same prompt hash */
+  isUpToDate(id: string, currentPromptHash: string): boolean {
+    const row = this.db
+      .prepare("SELECT status, prompt_hash FROM sessions WHERE id = ?")
+      .get(id) as { status: string; prompt_hash: string | null } | undefined;
+    return row?.status === "done" && row.prompt_hash === currentPromptHash;
   }
 
   markSessionFailed(id: string): void {
@@ -174,6 +190,18 @@ export class Manifest {
     this.db.prepare(`
       UPDATE repos SET status = 'failed', processed_at = ? WHERE path = ?
     `).run(new Date().toISOString(), repoPath);
+  }
+
+  /** Reset all done/failed sessions + repos to pending (for full re-ingestion).
+   *  Keeps "ignored" sessions so brain-internal sessions stay excluded. */
+  resetForReingestion(): { sessions: number; repos: number } {
+    const sessions = this.db
+      .prepare("UPDATE sessions SET status='pending', processed_at=NULL, record_id=NULL, projects='[]' WHERE status IN ('done','failed')")
+      .run();
+    const repos = this.db
+      .prepare("UPDATE repos SET status='pending', processed_at=NULL, project_page_id=NULL WHERE status IN ('done','failed')")
+      .run();
+    return { sessions: sessions.changes, repos: repos.changes };
   }
 
   close(): void {

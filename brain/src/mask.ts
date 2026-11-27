@@ -133,16 +133,19 @@ const PATTERNS: Pattern[] = [
   // ── IBAN ──────────────────────────────────────────────────────────────────
   // Requires non-alphanumeric on both sides to avoid false positives from
   // base64-encoded binary content in JSONL files.
+  // Allows a trailing group of 1-4 chars to handle French IBAN (last group = 3).
   {
     type: "iban",
-    regex: /(?<![A-Za-z0-9])[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){4,7}(?![A-Za-z0-9])/g,
+    regex: /(?<![A-Za-z0-9])[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,6}(?:\s?[A-Z0-9]{1,4})?(?![A-Za-z0-9])/g,
   },
 
-  // ── Credit/debit card numbers (basic Luhn-candidate: 13-19 digits) ────────
-  // Only match standalone digit groups that look like card numbers
+  // ── Credit/debit card numbers ─────────────────────────────────────────────
+  // Only match space-separated 4×4 format (e.g. "4242 4242 4242 4242").
+  // Dash-separated excluded: UUID segments in JSONL cause false positives.
+  // Compact 16-digit excluded: social media IDs (FB/IG) are 16-digit integers.
   {
     type: "card-number",
-    regex: /\b(?:\d{4}[\s\-]?){3}\d{4}\b/g,
+    regex: /\b(?:\d{4} ){3}\d{4}\b/g,
   },
 ];
 
