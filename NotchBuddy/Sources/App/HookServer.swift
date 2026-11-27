@@ -44,6 +44,8 @@ final class HookServer: @unchecked Sendable {
     /// One read source per queued request: it notices the client hanging up, and its
     /// cancel handler is the only place the request's fd is closed.
     private var approvalSources: [UUID: any DispatchSourceRead] = [:]
+    /// The chat waiting on each queued MCP tool approval (they hold no socket).
+    private var mcpWaiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
     /// AskUserQuestions waiting for an answer, oldest first, one per session; the head is on
     /// the card. Each one holds its nb-hook connection open until it is answered or dropped.
     private var questions = QuestionQueue()
@@ -125,21 +127,38 @@ final class HookServer: @unchecked Sendable {
     /// The cancel handler of its source closes the fd — never close it directly.
     /// The next request in line then takes the card; when none is left the card closes,
     /// with `note` for three seconds if one is given.
+    /// An MCP tool approval (no socket, the chat waits instead) resumes the chat with
+    /// `approved`, which only an Allow clicked in time sets: dropped is refused.
     @MainActor
-    private func removeApproval(id: UUID, answer json: String? = nil, note: String? = nil) {
+    private func removeApproval(id: UUID, answer json: String? = nil, note: String? = nil,
+                                approved: Bool = false) {
         guard let entry = approvals.remove(id: id) else { return }
-        let age = Int(Date().timeIntervalSince(entry.received))
-        nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Coucou" } ?? note ?? "dropped")")
-        let source = approvalSources.removeValue(forKey: id)
-        if let json {
-            let fd = entry.fd
-            Task.detached { [weak self] in
-                // Write while the fd is still valid, then cancel → the cancel handler closes it.
-                self?.sendLine(fd: fd, text: json)
-                DispatchQueue.main.async { source?.cancel() }
+        // The MCP pill only exists while one of its requests waits; it goes last, once the
+        // focus has been given back.
+        defer {
+            if entry.isMCP && !approvals.hasEntries(forPill: QueuedApproval.mcpPill) {
+                AppState.shared.removeTask(id: QueuedApproval.mcpPill)
             }
+        }
+        let age = Int(Date().timeIntervalSince(entry.received))
+        let outcome = entry.isMCP
+            ? (approved ? "allowed" : "refused")
+            : json.map { _ in "answered from Coucou" } ?? note ?? "dropped"
+        nbLog("Approval \(entry.tool) closed after \(age) s: \(outcome)")
+        if entry.isMCP {
+            mcpWaiters.removeValue(forKey: id)?.resume(returning: approved)
         } else {
-            source?.cancel()
+            let source = approvalSources.removeValue(forKey: id)
+            if let json {
+                let fd = entry.fd
+                Task.detached { [weak self] in
+                    // Write while the fd is still valid, then cancel → the cancel handler closes it.
+                    self?.sendLine(fd: fd, text: json)
+                    DispatchQueue.main.async { source?.cancel() }
+                }
+            } else {
+                source?.cancel()
+            }
         }
 
         let state = AppState.shared
@@ -1195,6 +1214,39 @@ final class HookServer: @unchecked Sendable {
         showApprovalHead()
     }
 
+    // MARK: - MCP tool approval (Coucou's own chat waits)
+
+    /// How long an MCP tool approval waits for a click, like the relay's requests.
+    static let mcpDecisionTimeout: TimeInterval = 108
+
+    /// Puts a tool of an MCP server that the chat's model wants to run in the approval line,
+    /// behind the agents' requests, and waits for the card. True only for an Allow clicked
+    /// before the deadline; Deny, a full line, the timeout or being dropped are refusals.
+    @MainActor
+    func enqueueMCPApproval(tool: String, command: String, inputKey: String) async -> Bool {
+        let deadline = Date().addingTimeInterval(Self.mcpDecisionTimeout)
+        let entry = QueuedApproval.mcp(tool: tool, command: command, inputKey: inputKey, deadline: deadline)
+        guard approvals.enqueue(entry) == .accepted else {
+            nbLog("MCP approval \(tool): \(ApprovalQueue.maxPending) already waiting, refused")
+            return false
+        }
+        upsertExternalAgent(id: QueuedApproval.mcpPill, name: "MCP tools", bundleId: "")
+        AppState.shared.updateTask(id: QueuedApproval.mcpPill, state: .approval)
+        SoundEngine.shared.play("approval")
+
+        let entryId = entry.id
+        return await withCheckedContinuation { continuation in
+            // Dropped before the chat started waiting: refused, never left hanging.
+            guard approvals.contains(id: entryId) else { return continuation.resume(returning: false) }
+            mcpWaiters[entryId] = continuation
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.mcpDecisionTimeout) { [weak self] in
+                guard let self, self.approvals.contains(id: entryId) else { return }
+                self.removeApproval(id: entryId)
+            }
+            showApprovalHead()
+        }
+    }
+
     // MARK: - Antigravity command approval (blocking — its PreToolUse hook waits)
 
     /// UserDefaults key of Settings → Antigravity → Approve commands from the notch.
@@ -1329,6 +1381,14 @@ final class HookServer: @unchecked Sendable {
         }
         if let id, id != head.id {
             nbLog("Approval decision for a request no longer on the card, ignored")
+            return
+        }
+        // An MCP tool of the chat: only an Allow clicked before its deadline runs it.
+        // Not an agent's decision, so not in the recap.
+        if head.isMCP {
+            let approved = ApprovalQueue.approves(decision: decision, at: Date(),
+                                                  deadline: head.deadline ?? .distantPast)
+            removeApproval(id: head.id, approved: approved)
             return
         }
 

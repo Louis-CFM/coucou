@@ -1383,8 +1383,10 @@ struct SettingsView: View {
                 }
             }
             .padding(.vertical, 4)
-        }
             .settingsAnchor("chat.local")
+        }
+
+        MCPServersSettings()
     }
 
     // MARK: - Integrations section

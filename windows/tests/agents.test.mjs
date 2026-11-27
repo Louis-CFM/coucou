@@ -4,7 +4,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  AGY_CARD_KIND, APPROVAL_AGENTS, KNOWN_AGENTS, agentColor, agentName, takesCard, validateAgent,
+  AGY_CARD_KIND, APPROVAL_AGENTS, KNOWN_AGENTS, MCP_AGENT, MCP_CARD_KIND, agentColor, agentName, takesCard,
+  validateAgent,
 } from "../src/island/agents.ts";
 
 test("known agents carry the Mac's names and colours", () => {
@@ -44,4 +45,14 @@ test("Antigravity gets a card only for the commands Coucou itself puts on one", 
   assert.equal(takesCard("antigravity", "agy_pre_tool"), true);
   assert.equal(takesCard("antigravity", undefined), false);
   assert.equal(takesCard("gemini", "agy_pre_tool"), false);
+});
+
+test("MCP tool approvals get a card only with their own kind", () => {
+  assert.equal(MCP_AGENT, "mcp"); // mcp::approval::AGENT in Rust
+  assert.equal(MCP_CARD_KIND, "mcp_tool"); // mcp::approval::KIND in Rust
+  assert.equal(takesCard("mcp", "mcp_tool"), true);
+  assert.equal(takesCard("mcp", undefined), false);
+  assert.equal(takesCard("mcp", "agy_pre_tool"), false);
+  assert.equal(takesCard("gemini", "mcp_tool"), false);
+  assert.equal(APPROVAL_AGENTS.has("mcp"), false); // the relay never answers for it
 });

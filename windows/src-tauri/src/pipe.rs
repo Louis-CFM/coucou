@@ -38,6 +38,7 @@ use tokio::sync::mpsc;
 use crate::agy_approvals;
 use crate::island::WINDOW_LABEL;
 use crate::log;
+use crate::mcp::approval as mcp_approval;
 use crate::session_window;
 
 /// Slightly under coucou-hook's own 110 s wait, so we always answer first.
@@ -493,19 +494,30 @@ fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
 }
 
 /// The island has the card on screen; the long wait may begin.
+/// MCP tool approvals (ids `mcp-…`) share the card but not the relay: they go
+/// to mcp::approval instead.
 pub fn acknowledge(app: &AppHandle, request_id: &str) {
+    if mcp_approval::is_mcp(request_id) {
+        return mcp_approval::acknowledge(app, request_id);
+    }
     send(app, request_id, Reply::Ack, true);
 }
 
 /// Nobody can act on this one — paused, or another card already holds the view.
 pub fn decline(app: &AppHandle, request_id: &str) {
     log::line(format!("decline id={request_id}"));
+    if mcp_approval::is_mcp(request_id) {
+        return mcp_approval::decline(app, request_id);
+    }
     send(app, request_id, Reply::Decline, false);
 }
 
 /// Called by the island's Allow / Deny buttons. Only ever a bare word: turning
 /// it into Claude Code's JSON is coucou-hook's job.
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
+    if mcp_approval::is_mcp(request_id) {
+        return mcp_approval::answer(app, request_id, decision);
+    }
     let word = match decision {
         "allow" | "always" => "allow",
         _ => "deny",

@@ -26,9 +26,25 @@ struct QueuedApproval: Equatable, Sendable {
     /// The pill the request shows on when its session popped out of `pillId` (SessionBoard),
     /// nil when it shows on `pillId` itself.
     var shownPill: String? = nil
+    /// MCP tool approvals only: an Allow counts when clicked strictly before this.
+    var deadline: Date? = nil
 
     /// Where the card, the focus and the iPhone find the request.
     var displayPill: String { shownPill ?? pillId }
+
+    /// The pill and session every MCP tool approval of the chat shows on.
+    static let mcpPill = "agent_mcp"
+    static let mcpSession = "mcp"
+
+    /// A request from Coucou's own chat to run a tool of an MCP server that changes things.
+    /// Nothing waits on a socket for it (fd -1): HookServer resumes the chat instead.
+    var isMCP: Bool { fd < 0 && pillId == Self.mcpPill }
+
+    static func mcp(tool: String, command: String, inputKey: String, deadline: Date) -> QueuedApproval {
+        QueuedApproval(id: UUID(), fd: -1, sessionId: mcpSession, pillId: mcpPill,
+                       projectName: "MCP tools", cwd: "", tool: tool, command: command,
+                       inputKey: inputKey, deadline: deadline)
+    }
 }
 
 struct ApprovalQueue: Sendable {
@@ -37,6 +53,13 @@ struct ApprovalQueue: Sendable {
     static let maxPending = 5
 
     enum EnqueueResult: Equatable, Sendable { case accepted, rejectedFull }
+
+    /// Fail closed, for MCP tool approvals: only an Allow (or Always) clicked strictly
+    /// before the request's deadline approves. Deny, Reply in terminal, a plan choice or a
+    /// click at or after the deadline are all refusals.
+    static func approves(decision: String, at click: Date, deadline: Date) -> Bool {
+        (decision == "allow" || decision == "always") && click < deadline
+    }
 
     private(set) var entries: [QueuedApproval] = []
 

@@ -312,6 +312,48 @@ test("an Antigravity command Coucou puts on the card waits there on its own pill
   assert.equal(State.pendingApproval, null);
 });
 
+test("an MCP tool the chat wants to run waits on the card, and its pill goes after the turn", () => {
+  State.focusId = CLAUDE;
+  const request = {
+    hook_event_name: "PermissionRequest", request_id: "mcp-1", session_id: "mcp",
+    coucou_agent: "mcp", coucou_kind: "mcp_tool",
+    tool_name: "GitHub: create_issue", tool_input: { command: '{"title":"Bug"}' },
+  };
+  hook(request);
+  assert.deepEqual(State.pendingApproval, {
+    requestId: "mcp-1", sessionId: "mcp", pillId: "agent_mcp", tool: "GitHub: create_issue",
+    command: 'GitHub: create_issue · {"title":"Bug"}',
+  });
+  assert.deepEqual(sent("approval_ack"), [{ requestId: "mcp-1" }]);
+  assert.deepEqual(sent("approval_decline"), []);
+  assert.equal(task("agent_mcp").name, "MCP tools");
+  assert.equal(State.focusId, "agent_mcp");
+  // Rust stopped waiting (refused or answered): the card goes, the front comes back.
+  emit("approval-expired", "mcp-1");
+  assert.equal(State.pendingApproval, null);
+  assert.equal(State.focusId, CLAUDE);
+  hook({ hook_event_name: "SessionEnd", session_id: "mcp", coucou_agent: "mcp" });
+  assert.equal(task("agent_mcp"), undefined);
+});
+
+test("a paused island declines an MCP tool request, so the tool does not run", () => {
+  State.paused = true;
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "mcp-3", session_id: "mcp",
+    coucou_agent: "mcp", coucou_kind: "mcp_tool", tool_name: "GitHub: create_issue",
+  });
+  assert.deepEqual(sent("approval_decline"), [{ requestId: "mcp-3" }]);
+  assert.deepEqual(sent("approval_ack"), []);
+  assert.equal(State.pendingApproval, null);
+});
+
+test("an MCP request without its kind gets no card", () => {
+  hook({ hook_event_name: "PermissionRequest", request_id: "mcp-2", coucou_agent: "mcp", tool_name: "x" });
+  assert.deepEqual(sent("approval_decline"), [{ requestId: "mcp-2" }]);
+  assert.deepEqual(sent("approval_ack"), []);
+  assert.equal(State.pendingApproval, null);
+});
+
 test("Codex, Copilot CLI, Muse Code and OpenCode get the card on their own pill", () => {
   for (const agent of ["codex", "copilot", "muse", "opencode"]) {
     State.pendingApproval = null;
