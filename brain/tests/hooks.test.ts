@@ -3,7 +3,7 @@
  * Runs brain-session-start.js and brain-prompt.js as subprocesses to validate
  * real behavior: guard conditions, error resilience, and output format.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -26,7 +26,8 @@ function runHook(
     input: JSON.stringify(input),
     encoding: "utf8",
     timeout: 10000,
-    env: { ...process.env, ...env },
+    // BRAIN_LOG_FILE=/dev/null prevents test invocations from polluting hooks.log
+    env: { ...process.env, BRAIN_LOG_FILE: "/dev/null", ...env },
   });
   return {
     stdout: result.stdout ?? "",
@@ -173,6 +174,123 @@ describe("hook latency", () => {
     );
     expect(r.ms).toBeLessThan(50);
     expect(r.status).toBe(0);
+  });
+});
+
+// ── CWD guard (digestion protection) ─────────────────────────────────────────
+
+describe("CWD guard", () => {
+  let brainBase: string | null = null;
+
+  beforeEach(() => {
+    try {
+      const cfg = JSON.parse(
+        fs.readFileSync(path.join(HOOKS_DIR, "..", "brain.config.json"), "utf8")
+      );
+      const localPath = path.join(HOOKS_DIR, "..", "brain.config.local.json");
+      const local = fs.existsSync(localPath)
+        ? JSON.parse(fs.readFileSync(localPath, "utf8"))
+        : {};
+      brainBase = (local.brainPath || cfg.brainPath).replace(/^~/, os.homedir());
+    } catch { brainBase = null; }
+  });
+
+  it("session-start injects nothing when cwd is inside brainPath", () => {
+    if (!brainBase) return;
+    const digestionCwd = path.join(brainBase, ".state", "digestion");
+    const r = runHook(SESSION_START, {
+      session_id: "digestion-guard-test",
+      cwd: digestionCwd,
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  it("brain-prompt injects nothing when cwd is inside brainPath", () => {
+    if (!brainBase) return;
+    const digestionCwd = path.join(brainBase, ".state", "digestion");
+    const r = runHook(PROMPT_HOOK, {
+      session_id: "digestion-prompt-guard-test",
+      prompt: "migration prisma développement deploy commandes",
+      cwd: digestionCwd,
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  it("brain-prompt injects nothing when prompt contains internal marker", () => {
+    const r = runHook(PROMPT_HOOK, {
+      session_id: "marker-guard-test",
+      prompt: "<!-- coucou-brain-internal -->\nTu analyses une session Claude Code du 2026-11-27.",
+      cwd: process.cwd(),
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  it("session-start injects nothing for internal slug 'digestion'", () => {
+    // Even with a cwd outside brainPath but basename = digestion
+    const r = runHook(SESSION_START, {
+      session_id: "slug-guard-test",
+      cwd: "/tmp/digestion",
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+});
+
+// ── Anti-contamination integration ───────────────────────────────────────────
+
+describe("digestion anti-contamination", () => {
+  it("hooks.log has zero new entries after simulated digestion call", () => {
+    if (!fs.existsSync(path.join(HOOKS_DIR, "..", "brain.config.json"))) return;
+
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(HOOKS_DIR, "..", "brain.config.json"), "utf8")
+    );
+    const localPath = path.join(HOOKS_DIR, "..", "brain.config.local.json");
+    const local = fs.existsSync(localPath)
+      ? JSON.parse(fs.readFileSync(localPath, "utf8"))
+      : {};
+    const brainBase = (local.brainPath || cfg.brainPath).replace(/^~/, os.homedir());
+    const hooksLog = path.join(brainBase, ".state", "logs", "hooks.log");
+
+    const linesBefore = fs.existsSync(hooksLog)
+      ? fs.readFileSync(hooksLog, "utf8").split("\n").length
+      : 0;
+
+    const digestionCwd = path.join(brainBase, ".state", "digestion");
+    const internalPrompt = "<!-- coucou-brain-internal -->\nTu analyses une session Claude Code du 2026-11-01.";
+
+    // Simulate both hooks firing as they would during a real digestion call,
+    // but WITHOUT BRAIN_LOG_FILE=/dev/null — to test the real log is clean.
+    const envWithoutDevNull = { ...process.env };
+    delete envWithoutDevNull.BRAIN_LOG_FILE;
+
+    const r1 = spawnSync(NODE, [SESSION_START], {
+      input: JSON.stringify({ session_id: "anti-contam-test", cwd: digestionCwd }),
+      encoding: "utf8",
+      timeout: 5000,
+      env: envWithoutDevNull,
+    });
+    const r2 = spawnSync(NODE, [PROMPT_HOOK], {
+      input: JSON.stringify({ session_id: "anti-contam-test", prompt: internalPrompt, cwd: digestionCwd }),
+      encoding: "utf8",
+      timeout: 5000,
+      env: envWithoutDevNull,
+    });
+
+    // Both hooks must exit 0 and produce no output
+    expect(r1.status).toBe(0);
+    expect(r1.stdout).toBe("");
+    expect(r2.status).toBe(0);
+    expect(r2.stdout).toBe("");
+
+    // hooks.log must have zero new lines
+    const linesAfter = fs.existsSync(hooksLog)
+      ? fs.readFileSync(hooksLog, "utf8").split("\n").length
+      : 0;
+    expect(linesAfter).toBe(linesBefore);
   });
 });
 

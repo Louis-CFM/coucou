@@ -64,11 +64,14 @@ let brainBase = null;
 
 function log(level, message, extra) {
   if (!brainBase) return;
+  // BRAIN_LOG_FILE overrides destination (used by tests to avoid polluting hooks.log)
+  const logFile = process.env.BRAIN_LOG_FILE ||
+    path.join(brainBase, '.state', 'logs', 'hooks.log');
+  if (logFile === '/dev/null') return;
   try {
-    const logsDir = path.join(brainBase, '.state', 'logs');
-    fs.mkdirSync(logsDir, { recursive: true });
+    fs.mkdirSync(path.dirname(logFile), { recursive: true });
     const line = `${new Date().toISOString().slice(0, 19)}Z [prompt] ${level} ${message}${extra ? ' | ' + JSON.stringify(extra) : ''}`;
-    fs.appendFileSync(path.join(logsDir, 'hooks.log'), line + '\n', 'utf8');
+    fs.appendFileSync(logFile, line + '\n', 'utf8');
   } catch {}
 }
 
@@ -215,12 +218,18 @@ function run(rawInput) {
   const sessionId = data.session_id || 'unknown';
   const cwd = data.cwd || process.env.PWD || process.cwd();
 
+  // ── Guard 2: prompt contains internal marker (digest subprocess) ─────────────
+  if (prompt.includes('<!-- coucou-brain-internal -->')) { process.exit(0); }
+
   if (!prompt || prompt.length < 8) { process.exit(0); }
 
   let config;
   try { config = loadBrainConfig(); } catch { process.exit(0); }
 
   brainBase = expandHome(config.brainPath);
+
+  // ── Guard 3: cwd is inside brainPath (digestion dir, security tests…) ─────────
+  if (cwd && (cwd + path.sep).startsWith(brainBase + path.sep)) { process.exit(0); }
 
   // Check pause flag
   if (fs.existsSync(path.join(brainBase, '.state', 'paused'))) {

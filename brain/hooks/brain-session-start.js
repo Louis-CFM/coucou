@@ -16,7 +16,7 @@
  */
 'use strict';
 
-// ── Guard: internal brain subprocess ─────────────────────────────────────────
+// ── Guard 1: env flag (best-effort — Claude Code may not forward inherited env) ──
 if (process.env.COUCOU_BRAIN_INTERNAL || process.env.BRAIN_OFF) {
   process.exit(0);
 }
@@ -59,11 +59,14 @@ let brainBase = null;
 
 function log(level, message, extra) {
   if (!brainBase) return;
+  // BRAIN_LOG_FILE overrides destination (used by tests to avoid polluting hooks.log)
+  const logFile = process.env.BRAIN_LOG_FILE ||
+    path.join(brainBase, '.state', 'logs', 'hooks.log');
+  if (logFile === '/dev/null') return;
   try {
-    const logsDir = path.join(brainBase, '.state', 'logs');
-    fs.mkdirSync(logsDir, { recursive: true });
+    fs.mkdirSync(path.dirname(logFile), { recursive: true });
     const line = `${new Date().toISOString().slice(0, 19)}Z [session-start] ${level} ${message}${extra ? ' | ' + JSON.stringify(extra) : ''}`;
-    fs.appendFileSync(path.join(logsDir, 'hooks.log'), line + '\n', 'utf8');
+    fs.appendFileSync(logFile, line + '\n', 'utf8');
   } catch {}
 }
 
@@ -175,6 +178,11 @@ function run(rawInput) {
 
   brainBase = expandHome(config.brainPath);
 
+  // ── Guard 2: cwd is inside brainPath (digestion subprocess, security tests…) ──
+  if (cwd && (cwd + path.sep).startsWith(brainBase + path.sep)) {
+    process.exit(0);
+  }
+
   // Check pause flag
   const pausedFlag = path.join(brainBase, '.state', 'paused');
   if (fs.existsSync(pausedFlag)) {
@@ -184,6 +192,12 @@ function run(rawInput) {
 
   const stateDir = path.join(brainBase, '.state', 'proj');
   const { slug: projectSlug, state: projectState } = detectProject(cwd, stateDir);
+
+  // ── Guard 3: internal slugs that must never be treated as projects ────────────
+  const INTERNAL_SLUGS = /^(digestion|brain-security|state|\.state|tmp|temp)$/;
+  if (INTERNAL_SLUGS.test(projectSlug)) {
+    process.exit(0);
+  }
 
   const sections = [];
   let totalTokens = 0;

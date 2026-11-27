@@ -69,6 +69,8 @@ function runClaude(
       timeout: timeoutMs,
       maxBuffer: 20 * 1024 * 1024,
       encoding: "utf8",
+      // Belt-and-suspenders: env flag in case Claude Code forwards inherited env to hooks
+      env: { ...process.env, COUCOU_BRAIN_INTERNAL: "1" },
     }
   );
 
