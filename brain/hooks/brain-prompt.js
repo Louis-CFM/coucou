@@ -216,9 +216,15 @@ function injJaccard(a, b) {
 function dedupResults(results) {
   const kept = [];
   for (const r of results) {
-    if (kept.every(k => injJaccard(k.texte, r.texte) < 0.5)) {
-      kept.push(r);
-    }
+    const dup = kept.some(k => {
+      // ❌ same project → tighter dedup (0.40) to avoid injecting two versions of the same failure
+      const threshold =
+        k.statut === '❌' && r.statut === '❌' && k.source_project === r.source_project
+          ? 0.40
+          : 0.5;
+      return injJaccard(k.texte, r.texte) >= threshold;
+    });
+    if (!dup) kept.push(r);
   }
   return kept;
 }
