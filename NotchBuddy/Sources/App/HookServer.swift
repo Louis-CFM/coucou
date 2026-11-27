@@ -4170,6 +4170,26 @@ def main():
                         sys.stdout.write(json.dumps({'choice': hermes_choice}) + '\\n')
                         sys.stdout.flush()
                     sys.exit(0)
+                # --- Hard veto: some tools must NEVER be approved by the hook -----
+                # ExitPlanMode (plan approval) requires an explicit click in the
+                # terminal, never a notch card. Reading .env / secrets files is
+                # forbidden without an explicit user confirmation.
+                _NEVER_APPROVE_HOOK = frozenset({'ExitPlanMode'})
+                _SECRET_PATTERNS = ('.env', 'secret', 'credential', 'password',
+                                    '.pem', '.key', 'private_key', 'api_key',
+                                    'keychain', '.netrc', '.pgpass')
+                _tool = payload.get('tool_name', '')
+                _vetoed = _tool in _NEVER_APPROVE_HOOK
+                if not _vetoed and _tool in ('Read', 'Bash', 'Grep', 'Glob',
+                                             'read_file', 'read'):
+                    _inp = payload.get('tool_input') or {}
+                    _fpath = str(_inp.get('file_path') or _inp.get('path') or
+                                 _inp.get('command') or _inp.get('pattern') or
+                                 '').lower()
+                    _vetoed = any(p in _fpath for p in _SECRET_PATTERNS)
+                if _vetoed:
+                    # Fall through — no output — Claude Code asks directly
+                    sys.exit(0)
                 if decision in ('allow', 'always'):
                     # Copilot/Muse use {"permissionDecision":"allow"} directly
                     if agent in ('copilot', 'muse'):
@@ -4578,6 +4598,26 @@ def main():
                     if hermes_choice in ('once', 'always', 'deny'):
                         sys.stdout.write(json.dumps({'choice': hermes_choice}) + '\\n')
                         sys.stdout.flush()
+                    sys.exit(0)
+                # --- Hard veto: some tools must NEVER be approved by the hook -----
+                # ExitPlanMode (plan approval) requires an explicit click in the
+                # terminal, never a notch card. Reading .env / secrets files is
+                # forbidden without an explicit user confirmation.
+                _NEVER_APPROVE_HOOK = frozenset({'ExitPlanMode'})
+                _SECRET_PATTERNS = ('.env', 'secret', 'credential', 'password',
+                                    '.pem', '.key', 'private_key', 'api_key',
+                                    'keychain', '.netrc', '.pgpass')
+                _tool = payload.get('tool_name', '')
+                _vetoed = _tool in _NEVER_APPROVE_HOOK
+                if not _vetoed and _tool in ('Read', 'Bash', 'Grep', 'Glob',
+                                             'read_file', 'read'):
+                    _inp = payload.get('tool_input') or {}
+                    _fpath = str(_inp.get('file_path') or _inp.get('path') or
+                                 _inp.get('command') or _inp.get('pattern') or
+                                 '').lower()
+                    _vetoed = any(p in _fpath for p in _SECRET_PATTERNS)
+                if _vetoed:
+                    # Fall through — no output — Claude Code asks directly
                     sys.exit(0)
                 if decision in ('allow', 'always'):
                     # Copilot/Muse use {"permissionDecision":"allow"} directly
