@@ -221,6 +221,9 @@ enum NoteModelsTests {
             let long = (0..<(rate * 25)).map { Float(sin(Double($0) * 0.1)) * 0.2 }
             let split = NoteBuilder.speechSegments(samples: long, sampleRate: Double(rate), maxSeconds: 10)
             check("continuous speech splits under maxSeconds", split.count >= 2)
+            let cjk = words("大 家 好 ， 我 们", from: 0, step: 0.2)
+            check("CJK tokens join without artificial spaces",
+                  NoteBuilder.lines(from: cjk.map { ("me", $0) }).first?.text == "大家好，我们")
         }
 
         if failures > 0 {

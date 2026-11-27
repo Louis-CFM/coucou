@@ -155,9 +155,17 @@ final class AnalyzerDictation: @unchecked Sendable {
     /// Downloads and installs Apple's on-device SpeechTranscriber models for `locales`.
     static func install(_ locales: [Locale], progress: @escaping @Sendable (Double) -> Void) async throws {
         guard !locales.isEmpty else { progress(1); return }
-        let existing = Set(await AssetInventory.reservedLocales.map { $0.identifier(.bcp47) })
-        for locale in locales where !existing.contains(locale.identifier(.bcp47)) {
-            _ = try? await AssetInventory.reserve(locale: locale)
+        let wantedIDs = Set(locales.map { $0.identifier(.bcp47) })
+        var reserved = await AssetInventory.reservedLocales
+        let limit = AssetInventory.maximumReservedLocales
+        for locale in locales where !reserved.contains(where: { $0.identifier(.bcp47) == locale.identifier(.bcp47) }) {
+            if reserved.count >= limit, let evict = reserved.first(where: { !wantedIDs.contains($0.identifier(.bcp47)) }) {
+                _ = await AssetInventory.release(reservedLocale: evict)
+                reserved.removeAll { $0.identifier(.bcp47) == evict.identifier(.bcp47) }
+            }
+            if (try? await AssetInventory.reserve(locale: locale)) == true {
+                reserved.append(locale)
+            }
         }
         let modules = locales.map {
             SpeechTranscriber(locale: $0, transcriptionOptions: [], reportingOptions: [], attributeOptions: [])

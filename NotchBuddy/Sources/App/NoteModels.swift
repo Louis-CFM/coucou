@@ -114,7 +114,8 @@ enum NoteBuilder {
         for (speaker, word) in words {
             if var last = out.last, last.speaker == speaker, word.start - last.end < pause,
                word.end - last.start < maxLineSeconds {
-                last.text += " " + word.text
+                let sep = needsSpace(after: last.text.last, before: word.text.first) ? " " : ""
+                last.text += sep + word.text
                 last.end = word.end
                 out[out.count - 1] = last
             } else {
@@ -122,6 +123,21 @@ enum NoteBuilder {
             }
         }
         return out
+    }
+
+    private static func needsSpace(after a: Character?, before b: Character?) -> Bool {
+        guard let a, let b else { return true }
+        return !(isCJK(a) && isCJK(b))
+    }
+
+    private static func isCJK(_ c: Character) -> Bool {
+        guard let s = c.unicodeScalars.first else { return false }
+        switch s.value {
+        case 0x3000...0x30FF, 0x3400...0x4DBF, 0x4E00...0x9FFF, 0xF900...0xFAFF, 0xFF00...0xFFEF, 0x20000...0x2FA1F:
+            return true
+        default:
+            return false
+        }
     }
 
     /// Without headphones, the others' voices come out of the speakers and into the microphone too.
