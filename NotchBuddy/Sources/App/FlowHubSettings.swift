@@ -403,6 +403,11 @@ struct HubRecognitionSettings: View {
     @Binding var language: String
     @ObservedObject private var store = FlowStore.shared
     @ObservedObject private var parakeet = Parakeet.shared
+    @State private var languages: [String] = MacDictation.allLanguages
+    @State private var missingLocales: [Locale] = []
+    @State private var installingApple = false
+    @State private var appleProgress = 0.0
+    @State private var appleFailed = false
 
     var body: some View {
         HubEngineRow(selected: store.engine == .parakeet,
@@ -422,21 +427,68 @@ struct HubRecognitionSettings: View {
         }
         if store.engine == .apple {
             HubDivider()
-            HubRow(title: String(localized: "Dictation language")) {
-                Picker("", selection: $language) {
-                    Text("Automatic").tag(MacDictation.automatic)
-                    ForEach(MacDictation.allLanguages, id: \.self) { id in
-                        Text(MacDictation.name(of: id)).tag(id)
+            HubRow(title: String(localized: "Dictation language"),
+                   detail: missingLocales.isEmpty ? nil : missingLocales.map { MacDictation.name(of: $0.identifier) }.joined(separator: ", ")) {
+                HStack(spacing: 8) {
+                    Picker("", selection: $language) {
+                        Text("Automatic").tag(MacDictation.automatic)
+                        ForEach(languages, id: \.self) { id in
+                            Text(MacDictation.name(of: id)).tag(id)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    if #available(macOS 26.0, *) {
+                        if installingApple {
+                            if appleProgress > 0 {
+                                ProgressView(value: appleProgress)
+                                    .progressViewStyle(.linear)
+                                    .frame(width: 72)
+                            } else {
+                                ProgressView().controlSize(.small)
+                            }
+                        } else if !missingLocales.isEmpty {
+                            Button(String(localized: appleFailed ? "hub.engine.retry" : "hub.engine.download")) {
+                                installMissingAppleLocales()
+                            }
+                            .buttonStyle(HubButtonStyle(primary: !appleFailed))
+                        }
                     }
                 }
-                .labelsHidden()
-                .fixedSize()
+            }
+            .task(id: language) {
+                if #available(macOS 26.0, *) {
+                    languages = await AnalyzerDictation.allLanguages()
+                    missingLocales = await AnalyzerDictation.missingLocales(for: language, maxAutomatic: 6)
+                    appleFailed = false
+                }
             }
         } else if !parakeet.isReady {
             Text("hub.engine.fallback")
                 .font(.system(size: 12))
                 .foregroundColor(HubTheme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @available(macOS 26.0, *)
+    private func installMissingAppleLocales() {
+        let targets = missingLocales
+        guard !targets.isEmpty, !installingApple else { return }
+        installingApple = true
+        appleProgress = 0
+        appleFailed = false
+        Task { @MainActor in
+            do {
+                try await AnalyzerDictation.install(targets) { fraction in
+                    Task { @MainActor in appleProgress = max(appleProgress, fraction) }
+                }
+                missingLocales = await AnalyzerDictation.missingLocales(for: language, maxAutomatic: 6)
+            } catch {
+                appendAppLog("nb.log", "[Speech] asset download failed: \(error.localizedDescription)")
+                appleFailed = true
+            }
+            installingApple = false
         }
     }
 

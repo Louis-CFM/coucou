@@ -2,6 +2,7 @@
 import AppKit
 import AVFoundation
 @preconcurrency import FluidAudio
+import Speech
 import UniformTypeIdentifiers
 #if canImport(FoundationModels)
 import FoundationModels
@@ -89,10 +90,23 @@ final class NoteTaker: ObservableObject {
 
     var isRecording: Bool { recording != nil }
 
+    /// Whether the Notetaker uses Apple's SpeechAnalyzer (macOS 26+, Settings → Recognition → Apple).
+    var usesAppleSpeech: Bool {
+        if #available(macOS 26.0, *), FlowStore.shared.engine == .apple, SpeechTranscriber.isAvailable {
+            return true
+        }
+        return false
+    }
+
+    /// Whether a call can be recorded and transcribed now.
+    var canRecord: Bool {
+        usesAppleSpeech || Parakeet.shared.isReady
+    }
+
     /// The pill's record button: starts or stops, and says what is missing.
     func toggleFromPill() {
         if isRecording { stop(); return }
-        guard Parakeet.shared.isReady else {
+        guard canRecord else {
             FlowDictation.shared.pill.announce(
                 FlowAnnouncement(symbol: "arrow.down.circle.fill", tint: "#3B9EFF", text: String(localized: "notes.error.models"),
                                  action: String(localized: "hub.open-settings"))) {
@@ -115,7 +129,7 @@ final class NoteTaker: ObservableObject {
         starting = true
         defer { starting = false }
         startError = nil
-        guard Parakeet.shared.isReady else {
+        guard canRecord else {
             startError = String(localized: "notes.error.models")
             return
         }
@@ -207,8 +221,8 @@ final class NoteTaker: ObservableObject {
         }
     }
 
-    /// Every second while recording: the levels, and the stretches ending on a pause go to Parakeet
-    /// for the live transcript (the final one is written again from the whole recording).
+    /// Every second while recording: the levels, and the stretches ending on a pause go to the
+    /// active speech engine for the live transcript (the final one is written again from the whole recording).
     private func startLiveLoop() {
         liveTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
@@ -218,7 +232,18 @@ final class NoteTaker: ObservableObject {
                 self.systemLevel = self.systemChannel?.level ?? 0
                 for (channel, speaker) in [(self.micChannel, NoteBuilder.meID), (self.systemChannel, "others")] {
                     guard let channel, let chunk = channel.takeChunk() else { continue }
-                    guard let text = try? await Parakeet.shared.transcribe(chunk.samples),
+                    let text: String?
+                    if #available(macOS 26.0, *), self.usesAppleSpeech {
+                        let language = UserDefaults.standard.string(forKey: MacDictation.languageKey) ?? MacDictation.automatic
+                        if let locales = await AnalyzerDictation.locales(for: language, maxAutomatic: 6) {
+                            text = try? await AnalyzerDictation.transcribe(chunk.samples, locales: locales)
+                        } else {
+                            text = nil
+                        }
+                    } else {
+                        text = try? await Parakeet.shared.transcribe(chunk.samples)
+                    }
+                    guard let text,
                           !text.trimmingCharacters(in: .whitespaces).isEmpty,
                           var note = self.recording else { continue }
                     let end = chunk.start + Double(chunk.samples.count) / ChannelRecorder.sampleRate
@@ -241,15 +266,29 @@ final class NoteTaker: ObservableObject {
         let micURL = dir.appendingPathComponent("mic.wav")
         let systemURL = dir.appendingPathComponent("system.wav")
         let me = String(localized: "notes.me")
+        let useApple = usesAppleSpeech
+        let canDiarize = Parakeet.shared.isReady
+        let speechLanguage = UserDefaults.standard.string(forKey: MacDictation.languageKey) ?? MacDictation.automatic
         do {
             guard FileManager.default.fileExists(atPath: micURL.path) else {
                 throw NSError(domain: "Notetaker", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "notes.error.no-audio")])
             }
-            let asr = try await Parakeet.shared.manager()
-            var mine = try await Self.words(in: micURL, asr: asr)
+            var mine: [TimedWord]
             var theirs: [TimedWord] = []
-            if FileManager.default.fileExists(atPath: systemURL.path) {
-                theirs = try await Self.words(in: systemURL, asr: asr)
+            if #available(macOS 26.0, *), useApple {
+                guard let locales = await AnalyzerDictation.locales(for: speechLanguage, maxAutomatic: 6) else {
+                    throw NSError(domain: "Notetaker", code: 2, userInfo: [NSLocalizedDescriptionKey: String(localized: "notes.error.models")])
+                }
+                mine = try await AnalyzerDictation.words(in: micURL, locales: locales)
+                if FileManager.default.fileExists(atPath: systemURL.path) {
+                    theirs = try await AnalyzerDictation.words(in: systemURL, locales: locales)
+                }
+            } else {
+                let asr = try await Parakeet.shared.manager()
+                mine = try await Self.words(in: micURL, asr: asr)
+                if FileManager.default.fileExists(atPath: systemURL.path) {
+                    theirs = try await Self.words(in: systemURL, asr: asr)
+                }
             }
             let built: (speakers: [NoteSpeaker], lines: [NoteLine])
             if theirs.count >= 5 {
@@ -261,9 +300,9 @@ final class NoteTaker: ObservableObject {
                     return NoteBuilder.removingEchoWords(byEar.words, others: others)
                 }.value
                 appendAppLog("nb.log", "[Notetaker] echo: \(heard.count - mine.count) of \(heard.count) microphone words were the others")
-                let turns = NoteBuilder.mergingFragments(try await Self.diarize(systemURL))
+                let turns = canDiarize ? NoteBuilder.mergingFragments(try await Self.diarize(systemURL)) : []
                 built = NoteBuilder.build(mine: mine, others: theirs, turns: turns, meName: me, personName: Self.personName)
-            } else if mine.count >= 20 {
+            } else if mine.count >= 20, canDiarize {
                 // People around the Mac: one recording, the voices told apart.
                 let turns = NoteBuilder.mergingFragments(try await Self.diarize(micURL))
                 if Set(turns.map(\.speaker)).count > 1 {
@@ -671,7 +710,7 @@ final class NoteTaker: ObservableObject {
         notes = loaded.sorted { $0.start > $1.start }
         let pending = notes.filter { $0.status == .processing }.map(\.id)
         guard !pending.isEmpty else { return }
-        guard Parakeet.shared.isReady else {
+        guard canRecord else {
             // No models any more: shown as failed, with Retry once they are back.
             for id in pending {
                 guard var note = self.note(id) else { continue }

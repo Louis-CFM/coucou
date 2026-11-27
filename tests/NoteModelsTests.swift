@@ -205,6 +205,27 @@ enum NoteModelsTests {
             check("a site", NoteBuilder.newTerms(old: "it's teslaws.com", new: "it's teslasvolt.com") == ["teslasvolt.com"])
         }
 
+        print("\nSpeech segments (pause splitting for multi-language calls)")
+        do {
+            let rate = 16_000
+            // 0..1s silence, 1..2.5s speech, 2.5..3.5s pause, 3.5..5s speech, 5..6s silence
+            var audio = [Float](repeating: 0, count: rate * 6)
+            for i in (rate * 1)..<(rate * 5 / 2) { audio[i] = Float(sin(Double(i) * 0.1)) * 0.2 }
+            for i in (rate * 7 / 2)..<(rate * 5) { audio[i] = Float(sin(Double(i) * 0.1)) * 0.2 }
+            let segs = NoteBuilder.speechSegments(samples: audio, sampleRate: Double(rate))
+            check("two utterances split on pause", segs.count == 2)
+            check("first starts near 1 s", segs.count == 2 && abs(segs[0].start - 0.9) < 0.15)
+            check("second starts near 3.5 s", segs.count == 2 && abs(segs[1].start - 3.4) < 0.15)
+            check("silence yields no segments", NoteBuilder.speechSegments(samples: [Float](repeating: 0, count: rate * 2)).isEmpty)
+            // Long continuous speech splits under maxSeconds
+            let long = (0..<(rate * 25)).map { Float(sin(Double($0) * 0.1)) * 0.2 }
+            let split = NoteBuilder.speechSegments(samples: long, sampleRate: Double(rate), maxSeconds: 10)
+            check("continuous speech splits under maxSeconds", split.count >= 2)
+            let cjk = words("大 家 好 ， 我 们", from: 0, step: 0.2)
+            check("CJK tokens join without artificial spaces",
+                  NoteBuilder.lines(from: cjk.map { ("me", $0) }).first?.text == "大家好，我们")
+        }
+
         if failures > 0 {
             print("\n\(failures) failure(s)")
             exit(1)

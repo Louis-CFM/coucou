@@ -6,6 +6,7 @@ import SwiftUI
 struct HubNotesPage: View {
     @ObservedObject private var taker = NoteTaker.shared
     @ObservedObject private var parakeet = Parakeet.shared
+    @ObservedObject private var store = FlowStore.shared
     @State private var selected: UUID?
 
     private var shown: Note? {
@@ -25,7 +26,7 @@ struct HubNotesPage: View {
                 .frame(width: 280)
                 .overlay(alignment: .trailing) { Rectangle().fill(Color.white.opacity(0.06)).frame(width: 1) }
             Group {
-                if !parakeet.isReady && taker.notes.isEmpty && taker.recording == nil {
+                if !taker.canRecord && taker.notes.isEmpty && taker.recording == nil {
                     HubNotesSetup()
                 } else if let note = shown {
                     if note.id == taker.recording?.id {
@@ -122,6 +123,7 @@ struct HubRecordButton: View {
     var onStart: () -> Void = {}
     @ObservedObject private var taker = NoteTaker.shared
     @ObservedObject private var parakeet = Parakeet.shared
+    @ObservedObject private var store = FlowStore.shared
 
     var body: some View {
         Button {
@@ -144,7 +146,7 @@ struct HubRecordButton: View {
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(HubButtonStyle(primary: true))
-        .disabled(!parakeet.isReady && !taker.isRecording)
+        .disabled(!taker.canRecord && !taker.isRecording)
     }
 }
 

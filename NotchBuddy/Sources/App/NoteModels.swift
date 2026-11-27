@@ -114,7 +114,8 @@ enum NoteBuilder {
         for (speaker, word) in words {
             if var last = out.last, last.speaker == speaker, word.start - last.end < pause,
                word.end - last.start < maxLineSeconds {
-                last.text += " " + word.text
+                let sep = needsSpace(after: last.text.last, before: word.text.first) ? " " : ""
+                last.text += sep + word.text
                 last.end = word.end
                 out[out.count - 1] = last
             } else {
@@ -122,6 +123,21 @@ enum NoteBuilder {
             }
         }
         return out
+    }
+
+    private static func needsSpace(after a: Character?, before b: Character?) -> Bool {
+        guard let a, let b else { return true }
+        return !(isCJK(a) && isCJK(b))
+    }
+
+    private static func isCJK(_ c: Character) -> Bool {
+        guard let s = c.unicodeScalars.first else { return false }
+        switch s.value {
+        case 0x3000...0x30FF, 0x3400...0x4DBF, 0x4E00...0x9FFF, 0xF900...0xFAFF, 0xFF00...0xFFEF, 0x20000...0x2FA1F:
+            return true
+        default:
+            return false
+        }
     }
 
     /// Without headphones, the others' voices come out of the speakers and into the microphone too.
@@ -309,6 +325,70 @@ enum NoteBuilder {
             return line
         }
         return (speakers, named)
+    }
+
+    /// Splits a recording into speech stretches separated by pauses, so a multi-language recognizer
+    /// can pick the spoken language independently for each utterance.
+    static func speechSegments(samples: [Float], sampleRate: Double = 16_000,
+                               pauseSeconds: Double = 0.45, maxSeconds: Double = 20.0) -> [(start: Double, range: Range<Int>)] {
+        guard !samples.isEmpty, sampleRate > 0 else { return [] }
+        let frame = max(1, Int(sampleRate * 0.05))      // 50 ms RMS frames
+        let frameCount = (samples.count + frame - 1) / frame
+        var rms = [Float](repeating: 0, count: frameCount)
+        for i in 0..<frameCount {
+            let lo = i * frame, hi = min(samples.count, lo + frame)
+            var sum: Float = 0
+            for k in lo..<hi { sum += samples[k] * samples[k] }
+            rms[i] = (sum / Float(hi - lo)).squareRoot()
+        }
+        let silentLevel: Float = 0.012
+        let speechLevel: Float = 0.004
+        let pauseFrames = max(1, Int((pauseSeconds / 0.05).rounded()))
+        let maxFrames = max(pauseFrames + 1, Int((maxSeconds / 0.05).rounded()))
+        let padFrames = 2   // 100 ms breathing room on each side
+
+        var out: [(start: Double, range: Range<Int>)] = []
+        var segStart: Int? = nil
+        var silentRun = 0
+
+        func emit(_ a: Int, _ b: Int) {
+            let lo = max(0, a - padFrames) * frame
+            let hi = min(samples.count, (b + padFrames) * frame)
+            guard hi > lo else { return }
+            var peak: Float = 0
+            for k in a..<b where rms[k] > peak { peak = rms[k] }
+            guard peak >= speechLevel else { return }
+            out.append((start: Double(lo) / sampleRate, range: lo..<hi))
+        }
+
+        for i in 0..<frameCount {
+            let quiet = rms[i] < silentLevel
+            if let start = segStart {
+                if quiet {
+                    silentRun += 1
+                    if silentRun >= pauseFrames {
+                        emit(start, i - silentRun + 1)
+                        segStart = nil
+                        silentRun = 0
+                    }
+                } else {
+                    silentRun = 0
+                }
+                if let start = segStart, i - start + 1 >= maxFrames {
+                    // Cut at the quietest frame in the last quarter of the window.
+                    let searchLo = start + (maxFrames * 3) / 4
+                    let cut = (searchLo...i).min { rms[$0] < rms[$1] } ?? i
+                    emit(start, cut + 1)
+                    segStart = cut + 1 <= i ? cut + 1 : nil
+                    silentRun = 0
+                }
+            } else if !quiet {
+                segStart = i
+                silentRun = 0
+            }
+        }
+        if let start = segStart { emit(start, frameCount) }
+        return out
     }
 
     // MARK: - Markdown
