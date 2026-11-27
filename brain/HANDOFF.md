@@ -4,7 +4,7 @@
 
 `brain ingest` reads every Claude Code session in `~/.claude/projects/` and every git repo under `repoPaths`, sends each one to `claude -p` (no tools, model: opus), and writes structured Markdown into `~/CoucouBrain/`.
 
-Each session becomes one **record** (`records/YYYY-MM-DD_project_hash.md`) and its elements are merged into the matching **project page** (`projects/myproject.md`). Cross-project lessons go into `lessons.md`. Preferences go into `louis.md`. People get individual pages under `people/`.
+Each session becomes one **record** (`records/YYYY-MM-DD_project_hash.md`) and its elements are merged into the matching **project page** (`projects/myproject.md`). Cross-project lessons go into `lessons.md`. Preferences go into `owner.md`. People get individual pages under `people/`.
 
 ## State model
 

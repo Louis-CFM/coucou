@@ -4,13 +4,13 @@
 
 - **Golden set: 2 missing should entries** — `charges récurrentes` and `transactions élargi` are unrecovered. `charges récurrentes` appears as "Dépenses récurrentes" in the LLM output despite the prompt rule. `transactions élargi` is absent from all JSONL sources.
 
-- **5 failed repos** — `Enya`, `trial-reels`, `louis-portfolio`, `Realevate-Landing-Page-`, `reveal-animation` (all in `~/Documents/Projets`) are stuck at `failed` status. Investigate why each fails and either fix or mark as ignored.
+- **5 failed repos** — `Lyra`, `demo-clips`, `my-site`, `LandingPro-App`, `fade-anim` (all in `~/Projects`) are stuck at `failed` status. Investigate why each fails and either fix or mark as ignored.
 
-- **louis.md owner name** — `louis.md` and `updateLouis()` in `write.ts` are hardcoded to "louis". Should be derived from config (new `ownerName` field, default `"louis"`) to make the tool usable by other users.
+- **owner.md owner name** — `owner.md` and `updateOwner()` in `write.ts` are hardcoded to "owner". Should be derived from config (new `ownerName` field) to make the tool usable by other users.
 
 ## Medium priority
 
-- **Config: `additionalRepoPaths`** — currently `~/Documents/Projets` is in `brain.config.json` as a public default. Should move to `brain.config.local.json` (gitignored) since it's personal.
+- **Config: `additionalRepoPaths`** — currently `~/Projects` is in `brain.config.json` as a public default. Should move to `brain.config.local.json` (gitignored) since it's personal.
 
 - **Coverage: needle matching** — currently `texte.includes(needle)` case-insensitive. Should support regex needles for entries that need looser matching (e.g. match "charges récurrentes" OR "dépenses récurrentes").
 

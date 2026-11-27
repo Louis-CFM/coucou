@@ -513,32 +513,32 @@ describe("dedupElements", () => {
   });
 
   it("does not merge elements of different kinds", () => {
-    const a: StoredElement = stored({ id: "dec_aaa", kind: "décision", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient" });
-    const b: StoredElement = stored({ id: "fait_bbb", kind: "fait", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient" });
+    const a: StoredElement = stored({ id: "dec_aaa", kind: "décision", texte: "Refonte tunnel checkout trois étapes validation panier commande" });
+    const b: StoredElement = stored({ id: "fait_bbb", kind: "fait", texte: "Refonte tunnel checkout trois étapes validation panier commande" });
     const { elements, merged } = dedupElements([a, b], 0.5);
     expect(merged).toBe(0);
     expect(elements).toHaveLength(2);
   });
 
   it("does not merge ❌ with active element of same kind", () => {
-    const a: StoredElement = stored({ id: "dec_aaa", statut: "❌", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: ["portfo"] });
-    const b: StoredElement = stored({ id: "dec_bbb", statut: "✅", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: ["portfo"] });
+    const a: StoredElement = stored({ id: "dec_aaa", statut: "❌", texte: "Refonte tunnel checkout trois étapes validation panier commande paiement", projets: ["nova"] });
+    const b: StoredElement = stored({ id: "dec_bbb", statut: "✅", texte: "Refonte tunnel checkout trois étapes validation panier commande paiement", projets: ["nova"] });
     const { elements, merged } = dedupElements([a, b], 0.5);
     expect(merged).toBe(0);
     expect(elements).toHaveLength(2);
   });
 
   it("does not merge elements from different projects", () => {
-    const a: StoredElement = stored({ id: "dec_aaa", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: ["portfo"] });
-    const b: StoredElement = stored({ id: "dec_bbb", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: ["botan"] });
+    const a: StoredElement = stored({ id: "dec_aaa", texte: "Refonte tunnel checkout trois étapes validation panier commande paiement", projets: ["nova"] });
+    const b: StoredElement = stored({ id: "dec_bbb", texte: "Refonte tunnel checkout trois étapes validation panier commande paiement", projets: ["zephyr"] });
     const { elements, merged } = dedupElements([a, b], 0.5);
     expect(merged).toBe(0);
     expect(elements).toHaveLength(2);
   });
 
   it("merges global elements (projets=[]) regardless of project", () => {
-    const a: StoredElement = stored({ id: "dec_aaa", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert", projets: [] });
-    const b: StoredElement = stored({ id: "dec_bbb", texte: "Redesign bento grid du dashboard analytics KPI tiles gradient revert similaire", projets: [] });
+    const a: StoredElement = stored({ id: "dec_aaa", texte: "Refonte tunnel checkout trois étapes validation panier commande paiement", projets: [] });
+    const b: StoredElement = stored({ id: "dec_bbb", texte: "Refonte tunnel checkout trois étapes validation panier commande paiement similaire", projets: [] });
     const { elements, merged } = dedupElements([a, b], 0.5);
     expect(merged).toBe(1);
     expect(elements).toHaveLength(1);
@@ -555,17 +555,17 @@ describe("dedupElements", () => {
   it("is idempotent: running twice on result gives 0 merges", () => {
     const a: StoredElement = stored({
       id: "dec_aaa",
-      texte: "Redesign bento grid du dashboard analytics : KPI tiles gradient colorées, fiscal hero tile sombre. Git revert.",
-      keywords: ["redesign", "dashboard", "bento", "grid", "KPI"],
+      texte: "Refonte tunnel checkout trois étapes : validation panier, récapitulatif commande, paiement sécurisé. Git revert.",
+      keywords: ["checkout", "tunnel", "panier", "commande", "paiement"],
       sources: ["rec_1"],
-      projets: ["portfo"],
+      projets: ["nova"],
     });
     const b: StoredElement = stored({
       id: "dec_bbb",
-      texte: "Redesign bento grid du dashboard analytics (KPI tiles gradient, fiscal hero tile). Revert après un commit.",
-      keywords: ["redesign", "dashboard", "bento"],
+      texte: "Refonte tunnel checkout trois étapes (validation panier, récapitulatif commande). Revert après un commit.",
+      keywords: ["checkout", "tunnel", "panier"],
       sources: ["rec_2"],
-      projets: ["portfo"],
+      projets: ["nova"],
     });
     const first = dedupElements([a, b], 0.5);
     const second = dedupElements(first.elements, 0.5);
@@ -575,17 +575,17 @@ describe("dedupElements", () => {
   it("journal records from/into/similarity", () => {
     const a: StoredElement = stored({
       id: "dec_aaa",
-      texte: "Redesign bento grid du dashboard analytics : KPI tiles gradient colorées, fiscal hero tile sombre. Git revert.",
-      keywords: ["redesign", "dashboard", "bento", "grid", "KPI"],
+      texte: "Refonte tunnel checkout trois étapes : validation panier, récapitulatif commande, paiement sécurisé. Git revert.",
+      keywords: ["checkout", "tunnel", "panier", "commande", "paiement"],
       sources: ["rec_1"],
-      projets: ["portfo"],
+      projets: ["nova"],
     });
     const b: StoredElement = stored({
       id: "dec_bbb",
-      texte: "Redesign bento grid du dashboard analytics (KPI tiles gradient, fiscal hero tile). Revert après un commit.",
-      keywords: ["redesign", "dashboard", "bento"],
+      texte: "Refonte tunnel checkout trois étapes (validation panier, récapitulatif commande). Revert après un commit.",
+      keywords: ["checkout", "tunnel", "panier"],
       sources: ["rec_2"],
-      projets: ["portfo"],
+      projets: ["nova"],
     });
     const { journal } = dedupElements([a, b], 0.5);
     expect(journal).toHaveLength(1);

@@ -97,14 +97,14 @@ describe("buildFtsQuery", () => {
 describe("parseCorrections", () => {
   it("parses sections by scope", () => {
     const { config, dir } = tmpConfig();
-    writeCorrections(dir, `## global\nRègle globale A.\n\n## reels\nMéthode vidéo-écran.`);
+    writeCorrections(dir, `## global\nRègle globale A.\n\n## stream\nMéthode screencast.`);
 
     const sections = parseCorrections(config);
     expect(sections).toHaveLength(2);
     expect(sections[0].scope).toBe("global");
     expect(sections[0].text).toContain("Règle globale A.");
-    expect(sections[1].scope).toBe("reels");
-    expect(sections[1].text).toContain("vidéo-écran");
+    expect(sections[1].scope).toBe("stream");
+    expect(sections[1].text).toContain("screencast");
     fs.rmSync(dir, { recursive: true });
   });
 
@@ -120,17 +120,17 @@ describe("parseCorrections", () => {
 describe("appendCorrection", () => {
   it("creates the file with the section if missing", () => {
     const { config, dir } = tmpConfig();
-    appendCorrection(config, "Ne jamais utiliser bento grid", "portfo");
+    appendCorrection(config, "Ne jamais utiliser carousel animé", "nova");
     const content = fs.readFileSync(path.join(dir, "corrections.md"), "utf8");
-    expect(content).toContain("## portfo");
-    expect(content).toContain("Ne jamais utiliser bento grid");
+    expect(content).toContain("## nova");
+    expect(content).toContain("Ne jamais utiliser carousel animé");
     fs.rmSync(dir, { recursive: true });
   });
 
   it("appends under existing section", () => {
     const { config, dir } = tmpConfig();
-    writeCorrections(dir, `## portfo\n- Première correction.`);
-    appendCorrection(config, "Deuxième correction.", "portfo");
+    writeCorrections(dir, `## nova\n- Première correction.`);
+    appendCorrection(config, "Deuxième correction.", "nova");
     const content = fs.readFileSync(path.join(dir, "corrections.md"), "utf8");
     expect(content).toContain("Première correction.");
     expect(content).toContain("Deuxième correction.");
@@ -142,11 +142,11 @@ describe("appendCorrection", () => {
   it("creates a new section at EOF if scope not found", () => {
     const { config, dir } = tmpConfig();
     writeCorrections(dir, `## global\n- Règle globale.`);
-    appendCorrection(config, "Règle reels", "reels");
+    appendCorrection(config, "Règle stream", "stream");
     const content = fs.readFileSync(path.join(dir, "corrections.md"), "utf8");
     expect(content).toContain("## global");
-    expect(content).toContain("## reels");
-    expect(content).toContain("Règle reels");
+    expect(content).toContain("## stream");
+    expect(content).toContain("Règle stream");
     fs.rmSync(dir, { recursive: true });
   });
 });
@@ -160,21 +160,21 @@ describe("FTS search", () => {
   beforeEach(() => {
     ({ dir, config } = tmpConfig());
 
-    // portfo project: has a rejected bento decision + newsletter mesure
-    writeStateFile(dir, "proj_portfo", [
+    // nova project: has a rejected carousel decision + newsletter mesure
+    writeStateFile(dir, "proj_nova", [
       {
         id: "dec_bento_test",
         kind: "décision",
-        texte: "Rejet du bento grid pour les stats du dashboard — style trop fragmenté.",
+        texte: "Rejet du carousel animé sur la homepage — transitions trop lentes, impact conversion.",
         statut: "❌",
         provenance: "décidé",
-        raison: "bento grid rejeté, style fragmenté",
+        raison: "carousel rejeté, transitions trop lentes",
         domaine: "frontend",
         scope: "projet",
-        projets: ["portfo"],
+        projets: ["nova"],
         date: "2026-11-10",
         sources: ["rec_test"],
-        keywords: ["design", "bento", "grid", "dashboard", "stats", "visuel", "refonte", "interface"],
+        keywords: ["carousel", "animation", "homepage", "conversion", "transitions", "vitesse", "refonte", "interface"],
       },
       {
         id: "dec_design_active",
@@ -185,7 +185,7 @@ describe("FTS search", () => {
         raison: null,
         domaine: "frontend",
         scope: "projet",
-        projets: ["portfo"],
+        projets: ["nova"],
         date: "2026-11-15",
         sources: ["rec_test2"],
         keywords: ["dashboard", "layout", "sidebar", "mission", "control", "interface"],
@@ -193,33 +193,33 @@ describe("FTS search", () => {
       {
         id: "mes_newsletter_test",
         kind: "mesure",
-        nom: "abonnés newsletter botan",
-        texte: "61 abonnés newsletter Botan actifs.",
+        nom: "abonnés newsletter zephyr",
+        texte: "142 utilisateurs inscrits newsletter Zephyr actifs.",
         statut: null,
         scope: "projet",
-        projets: ["portfo", "botan"],
+        projets: ["nova", "zephyr"],
         date: "2026-11-15",
         sources: ["rec_test"],
-        keywords: ["abonnés", "newsletter", "inscription", "subscriber", "botan", "personne", "compte"],
+        keywords: ["abonnés", "newsletter", "inscription", "subscriber", "zephyr", "personne", "compte"],
         financial: false,
       },
       {
         id: "mes_ca_portfo_test",
         kind: "mesure",
-        nom: "ca net portfo 2026",
-        texte: "CA net portfo novembre 2026 : 4 200 €.",
+        nom: "ca net nova 2026",
+        texte: "CA net nova octobre 2026 : 8 500 €.",
         statut: null,
         scope: "projet",
-        projets: ["portfo"],
+        projets: ["nova"],
         date: "2026-11-15",
         sources: ["rec_test"],
-        keywords: ["ca", "chiffre", "affaires", "revenus", "euros", "novembre", "portfo", "financier"],
+        keywords: ["ca", "chiffre", "affaires", "revenus", "euros", "octobre", "nova", "financier"],
         financial: true,
       },
     ]);
 
-    // sbe-hub project: has migration lesson
-    writeStateFile(dir, "proj_sbe-hub", [
+    // orbit project: has migration lesson
+    writeStateFile(dir, "proj_orbit", [
       {
         id: "les_migration_test",
         kind: "leçon",
@@ -230,17 +230,17 @@ describe("FTS search", () => {
         raison: null,
         domaine: "database",
         scope: "projet",
-        projets: ["sbe-hub"],
+        projets: ["orbit"],
         date: "2026-11-12",
         sources: ["rec_test"],
         keywords: ["migration", "prisma", "deploy", "schema", "push", "database", "appliquer"],
       },
     ]);
 
-    // corrections: reels scope
+    // corrections: stream scope
     writeCorrections(
       dir,
-      `## global\nRègle globale : toujours signer les commits.\n\n## reels\nMéthode vidéo-écran (depuis mi-novembre) : pas de face cam, CTA audio only.`
+      `## global\nRègle globale : toujours signer les commits.\n\n## stream\nMéthode screencast (depuis octobre) : pas de caméra frontale, narration voix off.`
     );
 
     rebuildFts(config);
@@ -252,7 +252,7 @@ describe("FTS search", () => {
 
   it("corrections sort before regular elements", () => {
     // Query uses words that exist in the corrections text (AND is implicit in this test via OR query)
-    const results = searchFts(config, "méthode vidéo écran face cam", { limit: 10, threshold: 0 });
+    const results = searchFts(config, "méthode screencast caméra narration voix off", { limit: 10, threshold: 0 });
     const corrResults = results.filter((r) => r.isCorrection);
     expect(corrResults.length).toBeGreaterThan(0);
     if (results.length > 1) {
@@ -262,8 +262,8 @@ describe("FTS search", () => {
   });
 
   it("❌ elements are included and signaled", () => {
-    const results = searchFts(config, "rejet bento grid dashboard stats", {
-      project: "portfo",
+    const results = searchFts(config, "rejet carousel homepage transitions conversion", {
+      project: "nova",
       limit: 10,
       threshold: 0,  // small corpus: scores close to 0
     });
@@ -272,9 +272,9 @@ describe("FTS search", () => {
     expect(bentoResult?.statut).toBe("❌");
   });
 
-  it("⚠️ migration lesson found in sbe-hub context", () => {
+  it("⚠️ migration lesson found in orbit context", () => {
     const results = searchFts(config, "migration prisma développement utiliser", {
-      project: "sbe-hub",
+      project: "orbit",
       limit: 10,
       threshold: 0,
     });
@@ -284,8 +284,8 @@ describe("FTS search", () => {
   });
 
   it("mesures excluded when excludeMesures=true", () => {
-    const results = searchFts(config, "abonnés newsletter botan actifs", {
-      project: "portfo",
+    const results = searchFts(config, "abonnés newsletter zephyr actifs", {
+      project: "nova",
       limit: 10,
       threshold: 0,
       excludeMesures: true,
@@ -294,9 +294,9 @@ describe("FTS search", () => {
   });
 
   it("mesures included by default (searchable via keywords)", () => {
-    // "combien de personne sur la newsletter" real query regression
+    // "combien de personne sur la newsletter" query regression
     const results = searchFts(config, "personne newsletter abonnés inscription", {
-      project: "portfo",
+      project: "nova",
       limit: 10,
       threshold: 0,
     });
@@ -307,12 +307,12 @@ describe("FTS search", () => {
 
   it("project boost: current-project results rank above cross-project", () => {
     const results = searchFts(config, "dashboard design layout stats", {
-      project: "portfo",
+      project: "nova",
       limit: 10,
       threshold: 0,
     });
     if (results.length >= 2) {
-      const firstIsCurrent = results[0].sourceProject === "proj_portfo" || results[0].isCorrection;
+      const firstIsCurrent = results[0].sourceProject === "proj_nova" || results[0].isCorrection;
       expect(firstIsCurrent).toBe(true);
     }
   });
@@ -320,7 +320,7 @@ describe("FTS search", () => {
   it("unrelated query returns empty (or nothing above threshold)", () => {
     // A very unrelated query shouldn't match anything
     const results = searchFts(config, "quantum computing photons relativity", {
-      project: "portfo",
+      project: "nova",
       limit: 10,
       threshold: -0.5,
     });
@@ -336,10 +336,10 @@ describe("FTS search", () => {
 
   // ── Regression: real user phrases ──────────────────────────────────────────
 
-  it('[regression] "refais le design des stats du dashboard" → bento ❌', () => {
-    // Real query: "design" matches keyword "design" on bento element
-    const results = searchFts(config, "refais le design des stats du dashboard", {
-      project: "portfo",
+  it('[regression] "refais le carousel sur la homepage" → carousel ❌', () => {
+    // Query: "carousel*" matches keyword "carousel" on carousel element
+    const results = searchFts(config, "refais le carousel sur la homepage", {
+      project: "nova",
       limit: 10,
       threshold: 0,
     });
@@ -351,7 +351,7 @@ describe("FTS search", () => {
   it('[regression] "applique la nouvelle migration" → db push rule', () => {
     // "migration*" matches texte + keyword "migration" on migration lesson
     const results = searchFts(config, "applique la nouvelle migration", {
-      project: "sbe-hub",
+      project: "orbit",
       limit: 10,
       threshold: 0,
     });
@@ -363,7 +363,7 @@ describe("FTS search", () => {
   it('[regression] "combien de personne sur la newsletter" → mesure abonnés', () => {
     // "personne*" + "newsletter*" match keywords on newsletter mesure
     const results = searchFts(config, "combien de personne sur la newsletter", {
-      project: "portfo",
+      project: "nova",
       limit: 10,
       threshold: 0,
     });
@@ -375,8 +375,8 @@ describe("FTS search", () => {
   // ── Financial mesure blocking ───────────────────────────────────────────────
 
   it("financial mesure excluded when excludeFinancialMesures=true", () => {
-    const results = searchFts(config, "ca revenus euros chiffre affaires portfo novembre", {
-      project: "portfo",
+    const results = searchFts(config, "ca revenus euros chiffre affaires nova octobre", {
+      project: "nova",
       limit: 10,
       threshold: 0,
       excludeFinancialMesures: true,
@@ -385,8 +385,8 @@ describe("FTS search", () => {
   });
 
   it("financial mesure included when excludeFinancialMesures=false (default)", () => {
-    const results = searchFts(config, "ca revenus euros chiffre affaires portfo novembre", {
-      project: "portfo",
+    const results = searchFts(config, "ca revenus euros chiffre affaires nova octobre", {
+      project: "nova",
       limit: 10,
       threshold: 0,
     });
@@ -395,7 +395,7 @@ describe("FTS search", () => {
 
   it("non-financial mesure still injectable when excludeFinancialMesures=true", () => {
     const results = searchFts(config, "personne newsletter abonnés inscription", {
-      project: "portfo",
+      project: "nova",
       limit: 10,
       threshold: 0,
       excludeFinancialMesures: true,
@@ -408,28 +408,28 @@ describe("FTS search", () => {
   // In practice, the user's prompt also contains other related keywords
   // (dashboard, stats, interface…) so the element is still found.
 
-  it('[trigram-check] "Redesign the interface" matches bento via "interface" keyword', () => {
-    // No trigram: "redesign*" does NOT match keyword "design".
-    // But "interface*" matches keyword "interface" on bento element → found.
-    const results = searchFts(config, "Redesign the interface", {
-      project: "portfo",
+  it('[trigram-check] "Rework the interface" matches carousel via "interface" keyword', () => {
+    // No trigram: "rework*" does NOT match keyword "refonte".
+    // But "interface*" matches keyword "interface" on carousel element → found.
+    const results = searchFts(config, "Rework the interface", {
+      project: "nova",
       limit: 10,
       threshold: 0,
     });
     const bento = results.find((r) => r.id === "dec_bento_test");
-    // Found via keyword "interface" (not via redesign→design)
+    // Found via keyword "interface" (not via rework→refonte)
     expect(bento).toBeDefined();
   });
 
-  it('[trigram-check] bare "Redesign" (single token) → null query, no injection', () => {
+  it('[trigram-check] bare "Rework" (single token) → null query, no injection', () => {
     // Single significant token after stopword removal → buildFtsQuery returns null
-    expect(buildFtsQuery("Redesign")).toBeNull();
+    expect(buildFtsQuery("Rework")).toBeNull();
   });
 
   it('[regression] "c\'est quoi la dérivée de ln(x)" → rien', () => {
     // Pure math query — no brain content should match
     const results = searchFts(config, "c'est quoi la dérivée de ln(x)", {
-      project: "portfo",
+      project: "nova",
       limit: 10,
       threshold: -0.5,
     });
