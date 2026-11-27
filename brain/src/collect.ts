@@ -6,6 +6,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { execSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { expandHome, sha256File, estimateTokens, projectNameFromClaudePath, decodeClaudeProjectPath } from "./utils.js";
@@ -617,16 +618,20 @@ export function discoverRepos(config: BrainConfig): string[] {
 export interface DesktopConversation {
   uuid: string;
   name: string;
+  summary?: string;
   created_at: string;   // ISO timestamp
   updated_at: string;   // ISO timestamp
   chat_messages: Array<{
     uuid: string;
-    text: string;
+    text?: string;
+    /** Rich content blocks (type: text | thinking | tool_use | tool_result | image | injected_prompt_block) */
+    content?: Array<{ type: string; text?: string }>;
     sender: "human" | "assistant";
     created_at: string;
     updated_at: string;
     attachments?: unknown[];
     files?: unknown[];
+    parent_message_uuid?: string | null;
   }>;
 }
 
@@ -640,16 +645,25 @@ export function collectClaudeExport(exportPath: string): DesktopConversation[] {
   let jsonText: string;
 
   if (resolvedPath.endsWith(".zip")) {
-    const result = spawnSync("unzip", ["-p", resolvedPath, "conversations.json"], {
-      encoding: "utf8",
-      maxBuffer: 200 * 1024 * 1024, // 200 MB
-    });
-    if (result.status !== 0 || !result.stdout?.trim()) {
-      throw new Error(
-        `Could not extract conversations.json from zip: ${(result.stderr ?? "").slice(0, 300)}`
-      );
+    // Extract to a temp dir (avoids ENOBUFS for large exports piped via stdout)
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brain-export-"));
+    try {
+      const result = spawnSync("unzip", ["-o", resolvedPath, "conversations.json", "-d", tmpDir], {
+        encoding: "utf8",
+      });
+      if (result.status !== 0) {
+        throw new Error(
+          `Could not extract conversations.json from zip: ${(result.stderr ?? "").slice(0, 300)}`
+        );
+      }
+      const extracted = path.join(tmpDir, "conversations.json");
+      if (!fs.existsSync(extracted)) {
+        throw new Error("conversations.json not found inside zip");
+      }
+      jsonText = fs.readFileSync(extracted, "utf8");
+    } finally {
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
     }
-    jsonText = result.stdout;
   } else {
     const stat = fs.statSync(resolvedPath);
     if (stat.isDirectory()) {
@@ -688,7 +702,16 @@ export function formatConversationAsSessionCondensed(
   let allMasked: MaskedItem[] = [];
 
   for (const msg of conv.chat_messages) {
-    const text = msg.text?.trim();
+    // Prefer top-level text; fall back to concatenating text-type content blocks.
+    // Skip thinking, tool_use, tool_result, image, injected_prompt_block.
+    let text = msg.text?.trim() ?? "";
+    if (!text && Array.isArray(msg.content)) {
+      text = msg.content
+        .filter((b) => b.type === "text" && b.text)
+        .map((b) => b.text!)
+        .join("\n")
+        .trim();
+    }
     if (!text) continue;
     const { text: maskedText, masked } = maskSecrets(text);
     messages.push({
@@ -702,7 +725,7 @@ export function formatConversationAsSessionCondensed(
     .map((m) => `${m.role === "human" ? "Human" : "Claude"}: ${m.text}`)
     .join("\n\n");
 
-  const nameHint = (conv.name ?? "").trim() || "conversation";
+  const nameHint = (conv.name ?? conv.summary ?? "").trim().slice(0, 60) || "conversation";
 
   return {
     id: conv.uuid,
