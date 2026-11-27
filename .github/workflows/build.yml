@@ -161,6 +161,9 @@ jobs:
       - name: Test the Android link (pairing, framing, admission, approvals, certificate)
         run: bash scripts/test-android-link.sh
 
+      - name: Test the Botan link (screen, fields, button decisions)
+        run: bash scripts/test-botan-link.sh
+
       - name: Diff engine tests
         run: bash scripts/test-diff-engine.sh
 

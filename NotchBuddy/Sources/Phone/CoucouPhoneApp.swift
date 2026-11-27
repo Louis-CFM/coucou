@@ -28,6 +28,9 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         UNUserNotificationCenter.current().delegate = self
         NotificationActions.register()
         LiveActivityLink.shared.start()
+        // Botan, the little screen on the back of the iPhone (off unless turned on in Settings).
+        // At launch, so iOS can hand back the Bluetooth link when it relaunches the app for Botan.
+        BotanBridge.shared.startIfEnabled()
         application.registerForRemoteNotifications()
         Task { await PhoneLink.shared.start() }
         return true

@@ -93,11 +93,8 @@ struct LinkTestView: View {
                     }
                 }
             }
-            .navigationTitle("Coucou link test")
+            .navigationTitle("Link test")
             .refreshable { await link.refresh() }
-            .toolbar {
-                NavigationLink("Kit") { KitPreviewView() }
-            }
     }
 
     @ViewBuilder private var statusRow: some View {

@@ -124,6 +124,7 @@ targets:
           - "Phone/**"
           - "Widgets/**"
           - "NotificationContent/**"
+          - "NotificationService/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -140,8 +141,8 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "28"
-        CFBundleShortVersionString: "0.6.2"
+        CFBundleVersion: "29"
+        CFBundleShortVersionString: "0.7.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -149,6 +150,7 @@ targets:
         NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify."
         NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate, and to note your calls when you ask it to."
         NSAudioCaptureUsageDescription: "Coucou records what your Mac plays only while you note a call, to write down what the other people say."
+        NSBluetoothAlwaysUsageDescription: "Coucou uses Bluetooth to talk to Botan, the little screen next to your Mac, when you link it in Settings."
         NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
         NSContactsUsageDescription: "Coucou looks up an email address when you ask it, by voice, to prepare an email."
@@ -217,6 +219,7 @@ targets:
           - "Phone/**"
           - "Widgets/**"
           - "NotificationContent/**"
+          - "NotificationService/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -234,7 +237,7 @@ targets:
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
         CFBundleVersion: "20"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -293,6 +296,7 @@ targets:
     dependencies:
       - target: CoucouWidgets
       - target: CoucouNotificationContent
+      - target: CoucouNotificationService
     sources:
       - path: Sources/Phone
         type: group
@@ -316,26 +320,35 @@ targets:
     info:
       path: Resources/InfoPhone.plist
       properties:
-        CFBundleName: Coucou
-        CFBundleDisplayName: Coucou
+        CFBundleName: Botan
+        CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou
         CFBundleVersion: "21"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: APPL
         LSRequiresIPhoneOS: YES
         UILaunchScreen: {}
         UIApplicationSupportsIndirectInputEvents: YES
         UIBackgroundModes:
           - remote-notification
+          # Botan (BotanBridge): keeps the link and takes its button with the iPhone locked.
+          - bluetooth-central
         # Portrait, except a diff opened full screen (PhoneAppDelegate decides).
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: NO
-        NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
-        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for Claude Code."
-        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of an instruction for Claude Code."
+        # Botan is set up with AccessorySetupKit (the system sheet): on iOS 26 that lets iOS relaunch
+        # Coucou for Botan even after it was swiped away in the app switcher.
+        NSAccessorySetupKitSupports:
+          - Bluetooth
+        NSAccessorySetupBluetoothServices:
+          - B07A0001-6D6F-6368-6900-626F74616E00
+        NSBluetoothAlwaysUsageDescription: "Botan uses Bluetooth to show your agents on your Botan, the little screen on the back of your iPhone, and to take its button's answer."
+        NSFaceIDUsageDescription: "Botan asks for Face ID before allowing a command, starting a task or running an action from your iPhone."
+        NSMicrophoneUsageDescription: "Botan uses the microphone when you dictate an instruction, a task or a message to Botan."
+        NSSpeechRecognitionUsageDescription: "Botan turns your voice into text when you dictate an instruction, a task or a message."
         NSSupportsLiveActivities: YES
         # Lets Mochi move at 120 Hz on ProMotion screens, like the Mac's notch.
         CADisableMinimumFrameDurationOnPhone: YES
@@ -355,8 +368,10 @@ targets:
         PRODUCT_NAME: Coucou
         INFOPLIST_FILE: Resources/InfoPhone.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        # Mochi in other colors, picked in Settings (UIApplication.setAlternateIconName).
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Blue AppIcon-Green AppIcon-Purple AppIcon-Pink AppIcon-Graphite"
+        # Botan orange (#FF5A24): the accent of buttons, links and switches.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Other Botan looks, picked in Settings → Look (UIApplication.setAlternateIconName).
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Orange AppIcon-Glow AppIcon-MochiNight AppIcon-MochiOrange"
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
         COUCOU_APNS_ENV: production
         IPHONEOS_DEPLOYMENT_TARGET: "18.0"
@@ -399,10 +414,10 @@ targets:
       path: Resources/InfoWidgets.plist
       properties:
         CFBundleName: CoucouWidgets
-        CFBundleDisplayName: Coucou
+        CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou.Widgets
         CFBundleVersion: "21"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: XPC!
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -444,10 +459,10 @@ targets:
       path: Resources/InfoNotificationContent.plist
       properties:
         CFBundleName: CoucouNotificationContent
-        CFBundleDisplayName: Coucou
+        CFBundleDisplayName: Botan
         CFBundleIdentifier: fr.louisraille.Coucou.NotificationContent
         CFBundleVersion: "21"
-        CFBundleShortVersionString: "2.0"
+        CFBundleShortVersionString: "3.0"
         CFBundlePackageType: XPC!
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
@@ -461,6 +476,51 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.NotificationContent
         PRODUCT_NAME: CoucouNotificationContent
         INFOPLIST_FILE: Resources/InfoNotificationContent.plist
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: 256AUJ9555
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: ""
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+
+  # Fills in the iCloud alert for an approval (agent, project, command): one banner, not two.
+  CoucouNotificationService:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources/NotificationService
+        type: group
+      - path: Sources/CoucouKit
+        type: group
+      - path: Sources/Phone/PendingApprovals.swift
+      - path: Sources/Phone/MacStubs.swift
+      - path: Resources/Privacy/Phone/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    info:
+      path: Resources/InfoNotificationService.plist
+      properties:
+        CFBundleName: CoucouNotificationService
+        CFBundleDisplayName: Botan
+        CFBundleIdentifier: fr.louisraille.Coucou.NotificationService
+        CFBundleVersion: "21"
+        CFBundleShortVersionString: "3.0"
+        CFBundlePackageType: XPC!
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.NotificationService
+        PRODUCT_NAME: CoucouNotificationService
+        INFOPLIST_FILE: Resources/InfoNotificationService.plist
+        CODE_SIGN_ENTITLEMENTS: Resources/CoucouNotificationService.entitlements
         IPHONEOS_DEPLOYMENT_TARGET: "18.0"
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO

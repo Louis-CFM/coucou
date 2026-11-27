@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Label -->
+  <key>Label</key>
+  <string>fr.louisraille.brain-ingest</string>
+
+  <!-- Command: absolute node + absolute dist/cli.js -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/opt/node@22/bin/node</string>
+    <string>/Users/louis/Developer/coucou/brain/dist/cli.js</string>
+    <string>ingest</string>
+  </array>
+
+  <!-- Environment: COUCOU_BRAIN_INTERNAL prevents hook contamination -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>/Users/louis</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>COUCOU_BRAIN_INTERNAL</key>
+    <string>1</string>
+  </dict>
+
+  <!-- Run every hour -->
+  <key>StartInterval</key>
+  <integer>3600</integer>
+
+  <!-- Do not run immediately on load — wait for first interval -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <!-- Logs -->
+  <key>StandardOutPath</key>
+  <string>/Users/louis/CoucouBrain/.state/logs/ingest.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/louis/CoucouBrain/.state/logs/ingest.err</string>
+
+  <!-- Only one instance at a time -->
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

@@ -12,7 +12,7 @@ struct CoucouControl: ControlWidget {
                 Label(lead.text, systemImage: lead.symbol)
             }
         }
-        .displayName("Coucou")
+        .displayName("Botan")
         .description("Your agents at a glance. Opens the one that needs you.")
     }
 }

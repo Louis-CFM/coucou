@@ -36,6 +36,9 @@ final class TurnRecorder {
     }
     private var sessions: [String: (sessionId: String, cwd: String)] = [:]
 
+    /// The folders of the sessions seen since launch (InstructionRunner keeps a longer list).
+    func folders() -> [String] { Array(Set(sessions.values.map(\.cwd).filter { !$0.isEmpty })) }
+
     func start() {
         running = true
         log("turn recorder on")
@@ -52,6 +55,17 @@ final class TurnRecorder {
         if !ids.isEmpty {
             Task { _ = try? await database.modifyRecords(saving: [], deleting: ids, savePolicy: .changedKeys, atomically: false) }
         }
+    }
+
+    /// The user turned a request down: the last action of that tool that hasn't run yet never will.
+    func markDenied(pillId: String, tool: String) {
+        guard running, var turn = turns[pillId],
+              let index = turn.actions.lastIndex(where: { $0.tool == tool && $0.output.isEmpty && !$0.failed && $0.fileIndex == nil && $0.denied != true })
+        else { return }
+        turn.actions[index].denied = true
+        turns[pillId] = turn
+        dirty.insert(pillId)
+        scheduleFlush(soon: false)
     }
 
     /// Called by HookServer for every event of a session pill.

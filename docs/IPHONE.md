@@ -44,6 +44,7 @@ Nothing shows up? See [Troubleshooting](#troubleshooting).
 | **Spotlight** | Search the turns you've seen (can be turned off in the app's settings) |
 | **Focus** | A Focus filter that only lets approvals and questions through |
 | **History** | Your past decisions and turns, grouped by day |
+| **Try the demo** | No Mac at hand: Settings → Try the demo (or the button on the first screens) shows sample agents, services and a command waiting for your OK. Allow, deny, answer, a task or an action play out on the iPhone, with Face ID as for real. Nothing is sent to iCloud, saved or notified, and your own data comes back when you leave the demo (or quit the app). Code: `Sources/Phone/DemoMode.swift` |
 
 ## Privacy
 
@@ -90,7 +91,7 @@ To run it from source on your own iPhone, the Mac app and the iPhone app have to
 2. In `NotchBuddy/project.yml`, set `bundleIdPrefix` and every `DEVELOPMENT_TEAM` to yours.
 3. Replace `iCloud.fr.louisraille.Coucou` with your own container (for example `iCloud.com.you.Coucou`) everywhere it appears: the `.entitlements` files in `NotchBuddy/Resources` and the Swift files under `Sources/App/PhoneLink` and `Sources/Phone` (`grep -rn "iCloud.fr.louisraille.Coucou" NotchBuddy`).
 4. Create the container in the [CloudKit console](https://icloud.developer.apple.com/) and run both apps once in Debug: the record types are created in the Development environment.
-5. For the Live Activity, deploy your own relay with your APNs key ([`relay/README.md`](../relay/README.md)), set `APNS_TOPIC` in `relay/wrangler.toml` to your iPhone app's bundle ID followed by `.push-type.liveactivity`, and put your relay's address in `LiveActivityRelay.defaultRelayURL`.
+5. For the Live Activity, deploy your own relay with your APNs key ([`relay/README.md`](../relay/README.md)), set `APNS_TOPIC` in `relay/wrangler.toml` to your iPhone app's bundle ID followed by `.push-type.liveactivity` and `APNS_APPS` to that bundle ID, and put your relay's address in `LiveActivityRelay.defaultRelayURL`.
 6. Build:
    ```bash
    cd NotchBuddy

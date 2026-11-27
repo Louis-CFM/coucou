@@ -35,6 +35,14 @@ struct DetailItem: Codable, Equatable, Sendable {
     /// A short tag on the right ("Production", "Draft", "Active"…).
     var badge: String? = nil
     var actions: [ServiceActionDef] = []
+    /// Its own page on the iPhone: what it is, field by field ("Fee 0,55 €", "From Payment link"…).
+    /// Optional, so details written before them still decode.
+    var fields: [DetailStat]? = nil
+    /// And the lists inside it (a project's deployments, a repo's CI runs).
+    var sections: [DetailSection]? = nil
+
+    /// Opens a page of its own on the iPhone (instead of going straight to the web).
+    var hasPage: Bool { !(fields ?? []).isEmpty || !(sections ?? []).isEmpty }
 }
 
 struct DetailSection: Codable, Equatable, Sendable {
@@ -58,6 +66,8 @@ struct ServiceDetail: Codable, Equatable, Sendable {
     /// Why the API couldn't be read (no key, 401…).
     var error: String? = nil
     var lastAction: ServiceActionResult? = nil
+    /// The month shown ("2026-10"), for services read month by month (Stripe); nil otherwise.
+    var period: String? = nil
 
     static let recordType = "ServiceDetail"
     static let requestType = "ServiceAction"
@@ -77,5 +87,34 @@ struct ServiceDetail: Codable, Equatable, Sendable {
             }
         }
         return nil
+    }
+}
+
+/// A month as the iPhone and the Mac name it: "2026-10", in the Mac's calendar.
+enum ServicePeriod {
+    static func key(for date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month], from: date)
+        return String(format: "%04d-%02d", parts.year ?? 0, parts.month ?? 0)
+    }
+
+    /// The first instant of the month and of the next one.
+    static func range(of key: String, calendar: Calendar = .current) -> (start: Date, end: Date)? {
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 2, (1...12).contains(parts[1]),
+              let start = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: 1)),
+              let end = calendar.date(byAdding: .month, value: 1, to: start) else { return nil }
+        return (start, end)
+    }
+
+    static func shifted(_ key: String, by months: Int, calendar: Calendar = .current) -> String {
+        guard let start = range(of: key, calendar: calendar)?.start,
+              let moved = calendar.date(byAdding: .month, value: months, to: start) else { return key }
+        return self.key(for: moved, calendar: calendar)
+    }
+
+    /// "November 2026".
+    static func name(of key: String, calendar: Calendar = .current) -> String {
+        guard let start = range(of: key, calendar: calendar)?.start else { return key }
+        return start.formatted(.dateTime.month(.wide).year())
     }
 }

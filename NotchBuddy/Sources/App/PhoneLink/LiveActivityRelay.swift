@@ -14,7 +14,8 @@ import Combine
 //
 // Sent to the relay: the iPhone's token and MochiActivityState (agent, state,
 // counts). Never a project name, a step, a command or a path.
-// Runs only while the Mac is locked with an agent going: lock notifications
+// Runs while the Mac is locked with an agent going (or, when set, as long as an
+// agent works, Mac unlocked too: the Botan app's way): lock notifications
 // and AppState changes, no timer at rest.
 
 @MainActor
@@ -29,11 +30,32 @@ final class LiveActivityRelay {
 
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
 
+    /// Also while the Mac is unlocked: Mochi stays in the iPhone's Dynamic Island as long as an
+    /// agent works (the Botan app's way), not only while the Mac is locked.
+    static let unlockedKey = "iPhoneLiveActivityWhileUnlocked"
+    static var whileUnlocked: Bool { UserDefaults.standard.bool(forKey: unlockedKey) }
+
+    func setWhileUnlocked(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: Self.unlockedKey)
+        guard cancellable != nil else { return }
+        if on {
+            unlockTask?.cancel(); unlockTask = nil
+            if startedAt == nil, let latest, latest.isActive { beginSoon(latest) }
+        } else if !locked, startedAt != nil {
+            finish(dismissAfter: 0)
+        }
+    }
+
+    /// The iPhone shows Mochi: the Mac is locked, or the user wants it there anyway.
+    private var showsOnPhone: Bool { locked || Self.whileUnlocked }
+
     private struct Phone {
         var env: String
         var startToken: String
         var updateToken: String
         var updatedAt: Date
+        /// The iPhone app's bundle id (empty: an older app, the relay's default).
+        var app: String = ""
     }
 
     private var database: CKDatabase { CKContainer(identifier: CloudProbe.containerID).privateCloudDatabase }
@@ -101,6 +123,8 @@ final class LiveActivityRelay {
                 MainActor.assumeIsolated { self?.stateChanged(lead) }
             }
         log(relayURL == nil ? "on, but no relay address yet (relay/README.md)" : "on")
+        // The iPhone's tokens, read now: a start must not wait for a whole iCloud read.
+        Task { await refreshPhones() }
     }
 
     func stop() {
@@ -130,7 +154,7 @@ final class LiveActivityRelay {
         } else {
             log("Mac unlocked")
             lockTask?.cancel(); lockTask = nil
-            guard startedAt != nil else { return }
+            guard startedAt != nil, !Self.whileUnlocked else { return }
             // Mochi comes back to the notch, unless the Mac locks again within 30 s.
             unlockTask = Task {
                 try? await Task.sleep(for: .seconds(30))
@@ -150,18 +174,20 @@ final class LiveActivityRelay {
             return
         }
         guard lockTask == nil else { return }
+        // Mac unlocked (the Botan app's way): a shorter wait, still enough to skip 3-second turns.
+        let wait = locked ? 20 : 8
         lockTask = Task {
-            try? await Task.sleep(for: .seconds(20))
+            try? await Task.sleep(for: .seconds(wait))
             lockTask = nil
-            guard !Task.isCancelled, locked, startedAt == nil, let latest, latest.isActive else { return }
+            guard !Task.isCancelled, showsOnPhone, startedAt == nil, let latest, latest.isActive else { return }
             begin(latest)
         }
     }
 
     private func stateChanged(_ lead: MochiActivityState?) {
-        if lead?.tone != latest?.tone, let lead { log("phase: \(lead.agent) \(lead.statusText)\(locked ? "" : " (Mac unlocked, stays on the Mac)")") }
+        if lead?.tone != latest?.tone, let lead { log("phase: \(lead.agent) \(lead.statusText)\(showsOnPhone ? "" : " (Mac unlocked, stays on the Mac)")") }
         latest = lead
-        guard locked else { return }
+        guard showsOnPhone else { return }
         if startedAt == nil {
             if let lead, lead.isActive { beginSoon(lead) }
             return
@@ -171,11 +197,12 @@ final class LiveActivityRelay {
             doneTask?.cancel(); doneTask = nil
             flush()
         } else if doneTask == nil {
-            // Nothing going any more: show "done" for 10 minutes, then leave,
+            // Nothing going any more: show "done", then leave within a minute,
             // unless an agent starts again meanwhile.
             if lead != nil { flush() }
             doneTask = Task {
-                try? await Task.sleep(for: .seconds(10 * 60))
+                // The iPhone shows "Done" and ends it itself; this is for when it can't.
+                try? await Task.sleep(for: .seconds(60))
                 guard !Task.isCancelled else { return }
                 doneTask = nil
                 finish(dismissAfter: 0)
@@ -193,9 +220,10 @@ final class LiveActivityRelay {
         sent = state
         retries = 0
         Task {
-            await refreshPhones()
+            // Tokens already read (at start or on the last push): leave at once. Otherwise read them.
+            if phones.values.allSatisfy({ $0.startToken.isEmpty }) { await refreshPhones() }
             // The Mac unlocked meanwhile: don't leave.
-            guard startedAt == start, locked else { return }
+            guard startedAt == start, showsOnPhone else { return }
             startSent = start
             let targets = phones.filter { !$0.value.startToken.isEmpty }
             if targets.isEmpty {
@@ -316,6 +344,7 @@ final class LiveActivityRelay {
         if state.since == nil { state.since = activitySince }
         var body: [String: Any] = ["token": token, "env": env, "event": event, "urgent": urgent]
         if let dismissAfter { body["dismissAfter"] = dismissAfter }
+        if let app = phones[phoneID]?.app, !app.isEmpty { body["app"] = app }
         guard let stateData = try? JSONEncoder().encode(state),
               let stateObject = try? JSONSerialization.jsonObject(with: stateData) else { return false }
         body["state"] = stateObject
@@ -368,7 +397,8 @@ final class LiveActivityRelay {
                         env: record["env"] as? String ?? "production",
                         startToken: record.encryptedValues["startToken"] as? String ?? "",
                         updateToken: record.encryptedValues["updateToken"] as? String ?? "",
-                        updatedAt: record["updatedAt"] as? Date ?? .distantPast)
+                        updatedAt: record["updatedAt"] as? Date ?? .distantPast,
+                        app: record["app"] as? String ?? "")
                 }
                 for deletion in changes.deletions where deletion.recordType == "PhoneToken" {
                     phones[deletion.recordID.recordName] = nil

@@ -84,7 +84,7 @@ struct TurnShareCard: View {
             HStack(spacing: 6) {
                 Spacer()
                 MochiStill(state: .idle, showBadge: false).frame(width: 18, height: 18)
-                Text("Coucou").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+                Text("Botan").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
             }
         }
         .padding(24)

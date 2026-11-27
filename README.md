@@ -168,6 +168,7 @@ macOS releases are published as `v*` tags. See [CHANGELOG.md](CHANGELOG.md) for 
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [0.7.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.7.0) | Unreleased | Botan: one button for your agents, start a task from your iPhone, the iPhone app becomes Botan, Mochi stays in the Dynamic Island |
 | [0.6.2](https://github.com/Louis-CFM/coucou/releases/tag/v0.6.2) | Nov 24, 2026 | Mochi's room: a page of the Coucou window where Mochi, your CI weather and your tools are live in a little room, approvals at the door |
 | [0.6.1](https://github.com/Louis-CFM/coucou/releases/tag/v0.6.1) | Nov 19, 2026 | Mochi light on 120 Hz Macs (60 fps open, 30 folded), Botan founders list, crash fixes for speech permission and Flow on macOS 27 |
 | [0.6.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.6.0) | Nov 12, 2026 | Start a Claude Code session from the notch, drop a file on a session, ⌘⇧2 screenshot copied, approve Antigravity commands, Android phone link, Coucoudoro |

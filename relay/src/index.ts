@@ -12,7 +12,8 @@ export interface Env {
   APNS_KEY: string;      // contents of the AuthKey_XXXX.p8 file (secret)
   APNS_KEY_ID: string;   // the key's ID (secret)
   APNS_TEAM_ID: string;
-  APNS_TOPIC: string;
+  APNS_TOPIC: string;    // the default app (requests that name none)
+  APNS_APPS: string;     // the other apps it may push to, comma-separated bundle ids
 }
 
 type Event = "start" | "update" | "end";
@@ -24,6 +25,7 @@ interface RelayRequest {
   state: Record<string, unknown>;
   urgent?: boolean;
   dismissAfter?: number;   // "end" only: seconds the final state stays on the Lock Screen
+  app?: string;            // the iPhone app's bundle id (Coucou or Botan); default APNS_TOPIC
 }
 
 const MAX_BODY_BYTES = 4096;
@@ -59,6 +61,13 @@ export default {
     }
     const problem = validate(body);
     if (problem) return text(400, problem);
+    // Only our own apps: the topic is never taken as given.
+    let topic = env.APNS_TOPIC;
+    if (body.app !== undefined) {
+      const allowed = (env.APNS_APPS ?? "").split(",").map((a) => a.trim()).filter(Boolean);
+      if (typeof body.app !== "string" || !allowed.includes(body.app)) return text(400, "app");
+      topic = `${body.app}.push-type.liveactivity`;
+    }
 
     const payload = buildPayload(body);
     const host = body.env === "production" ? "api.push.apple.com" : "api.sandbox.push.apple.com";
@@ -69,7 +78,7 @@ export default {
         method: "POST",
         headers: {
           authorization: `bearer ${jwt}`,
-          "apns-topic": env.APNS_TOPIC,
+          "apns-topic": topic,
           "apns-push-type": "liveactivity",
           // 10 is limited by an iOS budget: only for start, end and waiting-for-you.
           "apns-priority": body.urgent || body.event !== "update" ? "10" : "5",

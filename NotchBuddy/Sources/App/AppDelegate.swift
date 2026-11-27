@@ -67,6 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if !APPSTORE
         // Coucou for Android (off unless the user turned it on in Settings)
         AndroidLinkService.shared.startIfEnabled()
+        // Botan, the little screen with a button (off unless the user turned it on in Settings)
+        BotanLinkService.shared.startIfEnabled()
         #endif
     }
 

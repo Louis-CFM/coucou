@@ -23,6 +23,12 @@ struct ServiceSection: Codable, Equatable, Sendable {
     var items: [ServiceItem]
 }
 
+struct ServiceMonth: Codable, Equatable, Sendable {
+    /// "2026-10" (ServicePeriod).
+    var month: String
+    var stats: [DetailStat]
+}
+
 struct ServiceSnapshot: Codable, Equatable, Sendable {
     var pillId: String
     var tone: ServiceTone
@@ -32,6 +38,12 @@ struct ServiceSnapshot: Codable, Equatable, Sendable {
     var reason: String
     var sections: [ServiceSection]
     var updatedAt: Date
+    /// Today in one or two figures, for the iPhone's home ("In today 48,00 €", "Deploys 3").
+    /// Optional, so snapshots written before it still decode.
+    var today: [DetailStat]? = nil
+    /// Month by month, newest first (Stripe: received, payments, failed, paid out), so the
+    /// iPhone can answer "how much this month" with figures added up by the Mac.
+    var months: [ServiceMonth]? = nil
 
     static let recordType = "Service"
 
@@ -54,7 +66,7 @@ extension PillCatalog {
     /// The service Mochi the iPhone shows, in this order.
     static let phoneServices = [
         "integration_github", "integration_stripe", "integration_vercel", "integration_resend",
-        "integration_calcom", "integration_n8n", "integration_notion",
+        "integration_calcom", "integration_n8n", "integration_notion", "integration_crypto", "integration_mail",
     ]
 
     /// Agent sessions (VS Code, Cursor, Codex…), as opposed to services and chat providers.

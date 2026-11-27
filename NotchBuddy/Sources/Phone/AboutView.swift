@@ -12,7 +12,25 @@ struct AboutView: View {
     @AppStorage(PhoneSettings.quietFromKey) private var quietFrom = 22 * 60
     @AppStorage(PhoneSettings.quietToKey) private var quietTo = 8 * 60
     @AppStorage(SpotlightIndex.enabledKey) private var spotlight = true
+    @AppStorage(BotanBridge.enabledKey) private var botan = false
     @State private var currentIcon = AppIconChoice.current
+
+    private var botanLinked: Bool {
+        if case .linked = BotanBridge.shared.status { return true }
+        return false
+    }
+
+    private var botanStatus: String {
+        switch BotanBridge.shared.status {
+        case .setup: return "No Botan yet"
+        case .off, .searching: return "Looking for it nearby…"
+        case .connecting: return "Linking…"
+        case .pairing: return "Type the code shown on Botan"
+        case .bluetoothOff: return "Bluetooth is off"
+        case .unauthorized: return "Allow Bluetooth in Settings → Botan"
+        case .linked(let name): return "Linked to \(name)"
+        }
+    }
 
     private var version: String {
         let info = Bundle.main.infoDictionary
@@ -29,12 +47,42 @@ struct AboutView: View {
                         .padding(6)
                         .frame(width: 64, height: 64)
                         .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 16))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Coucou").font(.title3.weight(.semibold))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Image("BotanWordmark")
+                            .resizable().scaledToFit()
+                            .frame(height: 22)
+                            .accessibilityLabel("Botan")
                         Text("Version \(version)").font(.footnote).foregroundStyle(.secondary)
                     }
                 }
                 .padding(.vertical, 4)
+            }
+
+            Section {
+                Toggle("Link with Botan", isOn: $botan)
+                    .onChange(of: botan) { _, on in BotanBridge.shared.setEnabled(on) }
+                if botan {
+                    LabeledContent("Botan") {
+                        Text(botanStatus).foregroundStyle(botanLinked ? Color.secondary : Color.botan)
+                    }
+                    if BotanBridge.shared.status == .setup {
+                        Button("Find Botan") { BotanBridge.shared.findBotan() }
+                    }
+                    if let problem = BotanBridge.shared.problem {
+                        Text(problem).font(.footnote).foregroundStyle(.red).textSelection(.enabled)
+                    }
+                    if BotanBridge.shared.knownName != nil {
+                        Button("Forget this Botan") { BotanBridge.shared.forget() }
+                    }
+                }
+            } header: {
+                Label {
+                    Text("Botan")
+                } icon: {
+                    BotanSign().foregroundStyle(Color.botan).frame(width: 15, height: 15)
+                }
+            } footer: {
+                Text("Botan is the little screen with one button on the back of your iPhone. It shows what your agents are doing on your Mac, and its button allows a request or picks an answer without unlocking your iPhone. It stays linked with your iPhone locked, and on iOS 26 even after you close the app.")
             }
 
             Section("Connection") {
@@ -57,6 +105,20 @@ struct AboutView: View {
                 }
                 Button("How to connect your Mac") { showGuide = true }
             }
+
+            Section {
+                Button(link.isDemo ? "Leave the demo" : "Try the demo") {
+                    withAnimation {
+                        if link.isDemo { Demo.stop(link) } else { Demo.start(link) }
+                    }
+                    Haptics.impact()
+                }
+            } footer: {
+                Text(link.isDemo
+                     ? "You're looking at sample agents and services. Leave the demo to see your Mac's again."
+                     : "Sample agents, services and a command waiting for your OK, to see Botan without a Mac. Nothing is sent or saved.")
+            }
+
 
             Section {
                 Toggle("When an agent finishes or fails", isOn: $notifyDone)
@@ -149,6 +211,7 @@ struct AboutView: View {
 /// First launch: what Coucou needs on the Mac to show anything here.
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(BotanBridge.enabledKey) private var botanOn = false
 
     var body: some View {
         ScrollView {
@@ -158,7 +221,7 @@ struct OnboardingView: View {
                         .frame(width: 88, height: 88)
                     Text("Your agents, in your pocket")
                         .font(.largeTitle.weight(.bold))
-                    Text("Coucou on iPhone shows what Claude Code, Cursor, Codex and your services are doing on your Mac. Three things to set up, once.")
+                    Text("Botan shows what Claude Code, Cursor, Codex and your services are doing on your Mac, through Coucou. Three things to set up, once.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }
@@ -171,9 +234,10 @@ struct OnboardingView: View {
                 step(3, "Same Apple Account",
                      "Sign in to iCloud with the same Apple Account on both. Your sessions go through your private iCloud, encrypted.",
                      icon: "icloud")
+                botanStep
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Then, from here").font(.headline)
-                    Text("• Allow or deny a command, right from the Lock Screen\n• Answer Claude's questions\n• See what Claude did, file by file\n• Mochi in your Dynamic Island when your Mac is locked")
+                    Text("• Allow or deny a command, right from the Lock Screen or with Botan's button\n• Answer Claude's questions\n• See what Claude did, file by file\n• Mochi in your Dynamic Island while your agents work")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -182,26 +246,63 @@ struct OnboardingView: View {
         }
         .background(Color.black)
         .safeAreaInset(edge: .bottom) {
-            Button {
-                dismiss()
-            } label: {
-                Text("Got it").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+            VStack(spacing: 4) {
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Got it").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                // No Mac at hand: sample agents and services, nothing sent or saved.
+                Button("Try the demo first") {
+                    Demo.start(PhoneLink.shared)
+                    dismiss()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .padding(.horizontal, 24)
-            .padding(.bottom, 12)
+            .padding(.bottom, 8)
         }
         .preferredColorScheme(.dark)
     }
 
+    /// Step 4, for those who have the box: link it now (the system sheet), or skip.
+    private var botanStep: some View {
+        HStack(alignment: .top, spacing: 14) {
+            BotanSign()
+                .foregroundStyle(Color.botan)
+                .padding(10)
+                .frame(width: 44, height: 44)
+                .background(Color.black, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
+            VStack(alignment: .leading, spacing: 8) {
+                Text("4. Botan, if you have one").font(.headline)
+                Text("The little screen with one button on the back of your iPhone: your agents at a glance, and a press to allow, iPhone locked.")
+                    .font(.callout).foregroundStyle(.secondary)
+                if botanOn {
+                    Label("Linking is on", systemImage: "checkmark.circle.fill")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.green)
+                } else {
+                    Button("Link Botan") { BotanBridge.shared.setEnabled(true) }
+                        .buttonStyle(.bordered)
+                        .tint(.botan)
+                }
+            }
+        }
+    }
+
     private func step(_ number: Int, _ title: String, _ text: String, icon: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
+            // Same tile as Botan's step: deep black, Botan orange, a thin edge.
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundStyle(.tint)
+                .foregroundStyle(Color.botan)
                 .frame(width: 44, height: 44)
-                .background(Color(white: 0.14), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color.black, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(number). \(title)").font(.headline)
                 Text(text).font(.callout).foregroundStyle(.secondary)
@@ -210,32 +311,37 @@ struct OnboardingView: View {
     }
 }
 
-/// Mochi's colors for the Home Screen icon (alternate app icons).
+/// The Home Screen icon: Botan's (the default), or one of the other Botan looks (alternate app icons).
 enum AppIconChoice: String, CaseIterable, Identifiable {
-    case orange = "", blue = "AppIcon-Blue", green = "AppIcon-Green", purple = "AppIcon-Purple",
-         pink = "AppIcon-Pink", graphite = "AppIcon-Graphite"
+    case botan = "", orange = "AppIcon-Orange", glow = "AppIcon-Glow",
+         mochiNight = "AppIcon-MochiNight", mochiOrange = "AppIcon-MochiOrange"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .botan: "Botan"
         case .orange: "Orange"
-        case .blue: "Blue"
-        case .green: "Green"
-        case .purple: "Purple"
-        case .pink: "Pink"
-        case .graphite: "Graphite"
+        case .glow: "Glow"
+        case .mochiNight: "Mochi"
+        case .mochiOrange: "Mochi Orange"
         }
     }
 
-    var previewName: String { "IconPreview-\(title)" }
+    var previewName: String {
+        switch self {
+        case .botan: "IconPreview-Botan"
+        default: "IconPreview-" + rawValue.replacingOccurrences(of: "AppIcon-", with: "")
+        }
+    }
 
     @MainActor static var current: AppIconChoice {
-        AppIconChoice(rawValue: UIApplication.shared.alternateIconName ?? "") ?? .orange
+        AppIconChoice(rawValue: UIApplication.shared.alternateIconName ?? "") ?? .botan
     }
 
     @MainActor static func apply(_ choice: AppIconChoice) {
         guard UIApplication.shared.supportsAlternateIcons else { return }
-        UIApplication.shared.setAlternateIconName(choice == .orange ? nil : choice.rawValue)
+        UIApplication.shared.setAlternateIconName(choice == .botan ? nil : choice.rawValue)
     }
 }
+
