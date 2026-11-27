@@ -19,7 +19,7 @@ struct HubHomePage: View {
                         subtitle: String(format: String(localized: "hub.hint %@"), flow.key.label)) {
             Button {
                 router.page = .notes
-                if Parakeet.shared.isReady, !NoteTaker.shared.isRecording { Task { await NoteTaker.shared.start() } }
+                if NoteTaker.shared.canRecord, !NoteTaker.shared.isRecording { Task { await NoteTaker.shared.start() } }
             } label: {
                 HStack(spacing: 7) {
                     Circle().fill(HubTheme.onAccent).frame(width: 9, height: 9)

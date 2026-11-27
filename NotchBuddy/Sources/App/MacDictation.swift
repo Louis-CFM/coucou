@@ -230,10 +230,10 @@ final class MacDictation: @unchecked Sendable {
 
     // MARK: Languages
 
-    /// The languages Automatic listens for: last winner, macOS languages, keyboard layouts,
-    /// Coucou's own language, then English — one per language, up to three.
+    /// Preferred language identifiers in priority order: last winner, macOS languages,
+    /// keyboard layouts, Coucou's own language, then English.
     /// Main actor: macOS 27 traps when the keyboard layouts are read off the main thread.
-    @MainActor static func automaticLocales() -> [Locale] {
+    @MainActor static func preferredLanguageIDs() -> [String] {
         var ids: [String] = []
         if let last = UserDefaults.standard.string(forKey: lastHeardKey) { ids.append(last) }
         // The Mac's languages (not Coucou's override in Settings → General → Language).
@@ -242,11 +242,16 @@ final class MacDictation: @unchecked Sendable {
         ids += keyboardLanguages()
         ids += Locale.preferredLanguages
         ids.append("en-US")
+        return ids
+    }
 
+    /// The languages Automatic listens for: last winner, macOS languages, keyboard layouts,
+    /// Coucou's own language, then English — one per language, up to three.
+    @MainActor static func automaticLocales() -> [Locale] {
         let supported = Array(SFSpeechRecognizer.supportedLocales())
         var seen = Set<String>()
         var out: [Locale] = []
-        for id in ids {
+        for id in preferredLanguageIDs() {
             guard let locale = match(id, in: supported) else { continue }
             let language = locale.language.languageCode?.identifier ?? locale.identifier
             guard seen.insert(language).inserted else { continue }

@@ -311,6 +311,70 @@ enum NoteBuilder {
         return (speakers, named)
     }
 
+    /// Splits a recording into speech stretches separated by pauses, so a multi-language recognizer
+    /// can pick the spoken language independently for each utterance.
+    static func speechSegments(samples: [Float], sampleRate: Double = 16_000,
+                               pauseSeconds: Double = 0.45, maxSeconds: Double = 20.0) -> [(start: Double, range: Range<Int>)] {
+        guard !samples.isEmpty, sampleRate > 0 else { return [] }
+        let frame = max(1, Int(sampleRate * 0.05))      // 50 ms RMS frames
+        let frameCount = (samples.count + frame - 1) / frame
+        var rms = [Float](repeating: 0, count: frameCount)
+        for i in 0..<frameCount {
+            let lo = i * frame, hi = min(samples.count, lo + frame)
+            var sum: Float = 0
+            for k in lo..<hi { sum += samples[k] * samples[k] }
+            rms[i] = (sum / Float(hi - lo)).squareRoot()
+        }
+        let silentLevel: Float = 0.012
+        let speechLevel: Float = 0.004
+        let pauseFrames = max(1, Int((pauseSeconds / 0.05).rounded()))
+        let maxFrames = max(pauseFrames + 1, Int((maxSeconds / 0.05).rounded()))
+        let padFrames = 2   // 100 ms breathing room on each side
+
+        var out: [(start: Double, range: Range<Int>)] = []
+        var segStart: Int? = nil
+        var silentRun = 0
+
+        func emit(_ a: Int, _ b: Int) {
+            let lo = max(0, a - padFrames) * frame
+            let hi = min(samples.count, (b + padFrames) * frame)
+            guard hi > lo else { return }
+            var peak: Float = 0
+            for k in a..<b where rms[k] > peak { peak = rms[k] }
+            guard peak >= speechLevel else { return }
+            out.append((start: Double(lo) / sampleRate, range: lo..<hi))
+        }
+
+        for i in 0..<frameCount {
+            let quiet = rms[i] < silentLevel
+            if let start = segStart {
+                if quiet {
+                    silentRun += 1
+                    if silentRun >= pauseFrames {
+                        emit(start, i - silentRun + 1)
+                        segStart = nil
+                        silentRun = 0
+                    }
+                } else {
+                    silentRun = 0
+                }
+                if let start = segStart, i - start + 1 >= maxFrames {
+                    // Cut at the quietest frame in the last quarter of the window.
+                    let searchLo = start + (maxFrames * 3) / 4
+                    let cut = (searchLo...i).min { rms[$0] < rms[$1] } ?? i
+                    emit(start, cut + 1)
+                    segStart = cut + 1 <= i ? cut + 1 : nil
+                    silentRun = 0
+                }
+            } else if !quiet {
+                segStart = i
+                silentRun = 0
+            }
+        }
+        if let start = segStart { emit(start, frameCount) }
+        return out
+    }
+
     // MARK: - Markdown
 
     /// The note as Markdown: title, date, summary, key points, to-dos, then the transcript.
