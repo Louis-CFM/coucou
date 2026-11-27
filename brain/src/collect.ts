@@ -6,7 +6,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { expandHome, sha256File, estimateTokens, projectNameFromClaudePath, decodeClaudeProjectPath } from "./utils.js";
 import { maskSecrets, type MaskedItem } from "./mask.js";
 import type { BrainConfig } from "./config.js";
@@ -609,4 +610,110 @@ export function discoverRepos(config: BrainConfig): string[] {
   }
 
   return [...found].sort();
+}
+
+// ── Claude Desktop export ─────────────────────────────────────────────────────
+
+export interface DesktopConversation {
+  uuid: string;
+  name: string;
+  created_at: string;   // ISO timestamp
+  updated_at: string;   // ISO timestamp
+  chat_messages: Array<{
+    uuid: string;
+    text: string;
+    sender: "human" | "assistant";
+    created_at: string;
+    updated_at: string;
+    attachments?: unknown[];
+    files?: unknown[];
+  }>;
+}
+
+/**
+ * Load conversations from a Claude.ai data export.
+ * Accepts: a .zip file, a directory containing conversations.json, or the JSON file itself.
+ */
+export function collectClaudeExport(exportPath: string): DesktopConversation[] {
+  const resolvedPath = expandHome(exportPath);
+
+  let jsonText: string;
+
+  if (resolvedPath.endsWith(".zip")) {
+    const result = spawnSync("unzip", ["-p", resolvedPath, "conversations.json"], {
+      encoding: "utf8",
+      maxBuffer: 200 * 1024 * 1024, // 200 MB
+    });
+    if (result.status !== 0 || !result.stdout?.trim()) {
+      throw new Error(
+        `Could not extract conversations.json from zip: ${(result.stderr ?? "").slice(0, 300)}`
+      );
+    }
+    jsonText = result.stdout;
+  } else {
+    const stat = fs.statSync(resolvedPath);
+    if (stat.isDirectory()) {
+      const jsonPath = path.join(resolvedPath, "conversations.json");
+      if (!fs.existsSync(jsonPath)) {
+        throw new Error(`conversations.json not found in ${resolvedPath}`);
+      }
+      jsonText = fs.readFileSync(jsonPath, "utf8");
+    } else {
+      jsonText = fs.readFileSync(resolvedPath, "utf8");
+    }
+  }
+
+  const data = JSON.parse(jsonText);
+  const conversations: DesktopConversation[] = Array.isArray(data) ? data : [data];
+
+  // Keep only conversations with at least one message
+  return conversations.filter(
+    (c) => c.uuid && Array.isArray(c.chat_messages) && c.chat_messages.length > 0
+  );
+}
+
+/**
+ * Convert a Claude Desktop conversation into the SessionCondensed format
+ * used by the digest pipeline.
+ */
+export function formatConversationAsSessionCondensed(
+  conv: DesktopConversation
+): SessionCondensed {
+  const date = (conv.updated_at ?? conv.created_at ?? "").slice(0, 10) || "1970-01-01";
+  const hash = createHash("sha256")
+    .update(conv.uuid + "|" + (conv.updated_at ?? ""))
+    .digest("hex");
+
+  const messages: CondensedMessage[] = [];
+  let allMasked: MaskedItem[] = [];
+
+  for (const msg of conv.chat_messages) {
+    const text = msg.text?.trim();
+    if (!text) continue;
+    const { text: maskedText, masked } = maskSecrets(text);
+    messages.push({
+      role: msg.sender === "human" ? "human" : "claude",
+      text: maskedText,
+    });
+    allMasked.push(...masked);
+  }
+
+  const condensedText = messages
+    .map((m) => `${m.role === "human" ? "Human" : "Claude"}: ${m.text}`)
+    .join("\n\n");
+
+  const nameHint = (conv.name ?? "").trim() || "conversation";
+
+  return {
+    id: conv.uuid,
+    projectPath: "desktop",
+    projectNameHint: nameHint.slice(0, 60),
+    jsonlPath: `desktop://${conv.uuid}`,
+    hash,
+    date,
+    messages,
+    filesModified: [],
+    estimatedTokens: estimateTokens(condensedText),
+    masked: allMasked,
+  };
 }

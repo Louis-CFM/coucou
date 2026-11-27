@@ -434,7 +434,8 @@ export function updateProjectFromSession(
   sessionDate: string,
   recordId: string,
   config: BrainConfig,
-  allIds: Set<string>
+  allIds: Set<string>,
+  opts?: { sourceType?: "code" | "desktop" }
 ): void {
   const projectId = `proj_${toSlug(projectSlug)}`;
   const state = loadProjectState(projectId, config);
@@ -458,7 +459,7 @@ export function updateProjectFromSession(
     )
     .filter((e) => e.kind !== "préférence")
     .filter((e) => !(e.kind === "leçon" && e.scope === "transverse"))
-    .map((e) => llmToStored(e, sessionDate, recordId));
+    .map((e) => llmToStored(e, sessionDate, recordId, opts?.sourceType));
 
   state.elements = mergeElements(state.elements, newElements);
   ({ elements: state.elements } = dedupElements(state.elements, 0.7));

@@ -32,6 +32,7 @@ export interface SearchResult {
   sourceProject: string;
   isCorrection: boolean;
   score: number;
+  sourceType?: string;
 }
 
 export interface SearchOptions {
@@ -160,6 +161,7 @@ interface FtsRow {
   source_project: string;
   is_correction: number;
   is_financial: number;
+  source_type: string;
 }
 
 /** Rebuild the FTS index from all state files and corrections.md. */
@@ -187,6 +189,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
         source_project UNINDEXED,
         is_correction UNINDEXED,
         is_financial UNINDEXED,
+        source_type UNINDEXED,
         texte,
         keywords_text,
         tokenize='unicode61 remove_diacritics 1'
@@ -195,8 +198,8 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
 
     const insert = db.prepare(`
       INSERT INTO fts_elements
-        (elem_id, kind, statut, provenance, domaine, scope, projets_text, date_str, source_project, is_correction, is_financial, texte, keywords_text)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (elem_id, kind, statut, provenance, domaine, scope, projets_text, date_str, source_project, is_correction, is_financial, source_type, texte, keywords_text)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = db.transaction((rows: FtsRow[]) => {
@@ -204,7 +207,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
         insert.run(
           row.elem_id, row.kind, row.statut, row.provenance, row.domaine,
           row.scope, row.projets_text, row.date_str, row.source_project,
-          row.is_correction, row.is_financial, row.texte, row.keywords_text
+          row.is_correction, row.is_financial, row.source_type, row.texte, row.keywords_text
         );
       }
     });
@@ -236,6 +239,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
             source_project: projectId,
             is_correction: 0,
             is_financial: e.financial ? 1 : 0,
+            source_type: e.sourceType ?? "",
           }));
           if (rows.length > 0) {
             insertMany(rows);
@@ -263,6 +267,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
       source_project: `corrections:${sec.scope}`,
       is_correction: 1,
       is_financial: 0,
+      source_type: "",
     }));
     if (corrRows.length > 0) {
       insertMany(corrRows);
@@ -358,7 +363,7 @@ export function searchFts(config: BrainConfig, query: string, opts: SearchOption
 
     const sql = `
       SELECT elem_id, kind, statut, provenance, domaine, scope, projets_text,
-             date_str, source_project, is_correction, texte,
+             date_str, source_project, is_correction, source_type, texte,
              bm25(fts_elements) as score
       FROM fts_elements
       WHERE ${conditions.join(" AND ")}
@@ -401,6 +406,7 @@ export function searchFts(config: BrainConfig, query: string, opts: SearchOption
         sourceProject: row.source_project,
         isCorrection: row.is_correction === 1,
         score: row.score,
+        sourceType: row.source_type || undefined,
       });
 
       if (results.length >= limit) break;

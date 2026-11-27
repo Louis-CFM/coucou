@@ -18,6 +18,8 @@ import {
   discoverRepos,
   readSession,
   collectRepo,
+  collectClaudeExport,
+  formatConversationAsSessionCondensed,
 } from "./collect.js";
 import { Manifest } from "./manifest.js";
 import { digestSessionWithRetry, digestRepo, digestPromptHash } from "./digest.js";
@@ -83,6 +85,7 @@ program
   .option("--repos-only", "Only process repos, skip sessions")
   .option("--sessions-only", "Only process sessions, skip repos")
   .option("--force", "Re-digest sessions even if already processed with the same prompt version")
+  .option("--claude-export <path>", "Ingest a Claude.ai data export (zip or folder with conversations.json)")
   .action(async (opts) => {
     const config = loadConfig();
     assertNoRemote(config.brainPath);
@@ -340,6 +343,121 @@ program
           }
         }
         console.log(`\n  Repos : ${repoDone} OK`);
+      }
+    }
+
+    // ── Claude Desktop export (--claude-export) ───────────────────────────────
+    if (opts.claudeExport) {
+      console.log("\n💬 Conversations Claude Desktop");
+      let conversations: ReturnType<typeof collectClaudeExport> = [];
+      try {
+        conversations = collectClaudeExport(opts.claudeExport);
+      } catch (e) {
+        console.error(`  ✗ Lecture export échouée : ${(e as Error).message}`);
+      }
+
+      console.log(`  Découvertes : ${conversations.length}`);
+
+      for (const conv of conversations) {
+        manifest.upsertDesktopConversation({
+          uuid: conv.uuid,
+          updated_at: conv.updated_at ?? conv.created_at ?? "",
+        });
+      }
+
+      const pendingDesktop = manifest.getPendingDesktopConversations()
+        .filter((e) => conversations.some((c) => c.uuid === e.uuid));
+
+      console.log(`  À traiter   : ${pendingDesktop.length}`);
+
+      if (opts.dryRun) {
+        console.log("\n--- DRY RUN : conversations ---");
+        for (const e of pendingDesktop) {
+          const conv = conversations.find((c) => c.uuid === e.uuid)!;
+          console.log(`  ${e.updated_at.slice(0, 10)}  ${(conv.name ?? e.uuid).slice(0, 70)}`);
+        }
+      } else {
+        let desktopDone = 0;
+        let desktopFail = 0;
+
+        for (const entry of pendingDesktop) {
+          const conv = conversations.find((c) => c.uuid === entry.uuid)!;
+          const idx = desktopDone + desktopFail + 1;
+          console.log(
+            `\n  [${idx}/${pendingDesktop.length}] ${(conv.name ?? entry.uuid).slice(0, 70)}`
+          );
+
+          let recordFileCreated: string | null = null;
+
+          try {
+            const condensed = formatConversationAsSessionCondensed(conv);
+            console.log(`    ~${condensed.estimatedTokens.toLocaleString()} tokens condensés`);
+
+            if (condensed.estimatedTokens < 30) {
+              console.log(`    ⏭  conversation quasi vide, ignorée`);
+              manifest.markDesktopConversationFailed(entry.uuid);
+              continue;
+            }
+
+            const openElements = getOpenElements(config);
+            const digest = await digestSessionWithRetry(condensed, config, openElements);
+            if (digest.projects.length === 0) {
+              digest.projects = [condensed.projectNameHint];
+            }
+            const primaryProject = digest.projects[0]!;
+
+            const allIds = collectAllIds(config);
+            const recordId = writeRecord(condensed, digest, config, allRepoPaths);
+            recordFileCreated = recordFilePath(
+              config,
+              condensed.id,
+              condensed.date,
+              primaryProject
+            );
+
+            allIds.add(recordId);
+            for (const proj of digest.projects) {
+              allIds.add(`proj_${toSlug(proj)}`);
+            }
+            for (const name of (digest.people ?? [])) {
+              allIds.add(`people_${toSlug(name)}`);
+            }
+            allIds.add("lessons");
+            allIds.add("louis");
+
+            for (const proj of digest.projects) {
+              const slug = toSlug(proj);
+              console.log(`    → merge dans projects/${slug}.md`);
+              updateProjectFromSession(slug, digest, condensed.date, recordId, config, allIds, {
+                sourceType: "desktop",
+              });
+            }
+
+            updateLessons(digest, condensed.date, recordId, config, allIds);
+            updateLouis(digest, condensed.date, recordId, config, allIds);
+            updatePeople(digest, condensed.date, recordId, config, allIds);
+
+            manifest.markDesktopConversationDone(
+              entry.uuid,
+              recordId,
+              digest.projects,
+              currentPromptHash
+            );
+            desktopDone++;
+            console.log(`    ✓ ${recordId}`);
+          } catch (e) {
+            console.error(`    ✗ Échec: ${(e as Error).message.slice(0, 200)}`);
+            manifest.markDesktopConversationFailed(entry.uuid);
+            desktopFail++;
+
+            if (recordFileCreated && fs.existsSync(recordFileCreated)) {
+              fs.unlinkSync(recordFileCreated);
+              console.log(`    🗑  fiche supprimée (échec propre)`);
+            }
+          }
+        }
+
+        console.log(`\n  Conversations : ${desktopDone} OK, ${desktopFail} échec(s)`);
       }
     }
 

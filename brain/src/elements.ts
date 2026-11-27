@@ -51,6 +51,8 @@ export interface StoredElement {
   keywords?: string[];
   /** true for financial mesures (CA, revenues, amounts in €/$) — blocked from hook auto-injection */
   financial?: boolean;
+  /** "desktop" = from Claude.ai export (never auto-injected by hook outside current project) */
+  sourceType?: "code" | "desktop";
 }
 
 // ── ID computation ────────────────────────────────────────────────────────────
@@ -106,7 +108,8 @@ export function coerceElement(elem: LLMElement): LLMElement {
 export function llmToStored(
   elem: LLMElement,
   sessionDate: string,
-  recordId: string
+  recordId: string,
+  sourceType?: "code" | "desktop"
 ): StoredElement {
   const c = coerceElement(elem);
   return {
@@ -126,6 +129,7 @@ export function llmToStored(
     scope: c.scope ?? "projet",
     keywords: c.keywords ?? [],
     financial: c.financial ?? false,
+    ...(sourceType ? { sourceType } : {}),
   };
 }
 

@@ -9,6 +9,16 @@ import { expandHome } from "./utils.js";
 
 export type ItemStatus = "pending" | "done" | "failed" | "ignored";
 
+export interface DesktopConversationEntry {
+  uuid: string;
+  updated_at: string;
+  status: ItemStatus;
+  processed_at: string | null;
+  record_id: string | null;
+  projects: string;    // JSON array
+  prompt_hash?: string | null;
+}
+
 export interface SessionEntry {
   id: string;           // session UUID (from filename)
   project_path: string; // e.g. "-Users-alice-Developer-myproject"
@@ -61,6 +71,16 @@ export class Manifest {
         status TEXT NOT NULL DEFAULT 'pending',
         processed_at TEXT,
         project_page_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS desktop_conversations (
+        uuid TEXT PRIMARY KEY,
+        updated_at TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        processed_at TEXT,
+        record_id TEXT,
+        projects TEXT NOT NULL DEFAULT '[]',
+        prompt_hash TEXT
       );
 
       CREATE TABLE IF NOT EXISTS meta (
@@ -208,6 +228,55 @@ export class Manifest {
       .prepare("UPDATE repos SET status='pending', processed_at=NULL, project_page_id=NULL WHERE status IN ('done','failed')")
       .run();
     return { sessions: sessions.changes, repos: repos.changes };
+  }
+
+  // ── Desktop conversations ────────────────────────────────────────────────────
+
+  upsertDesktopConversation(entry: { uuid: string; updated_at: string }): void {
+    const existing = this.getDesktopConversation(entry.uuid);
+    if (existing) {
+      // If updated_at changed and status is done → reset to pending for reprocessing
+      if (existing.updated_at !== entry.updated_at && existing.status === "done") {
+        this.db.prepare(`
+          UPDATE desktop_conversations SET updated_at = ?, status = 'pending', processed_at = NULL, record_id = NULL
+          WHERE uuid = ?
+        `).run(entry.updated_at, entry.uuid);
+      }
+    } else {
+      this.db.prepare(`
+        INSERT INTO desktop_conversations (uuid, updated_at, status, processed_at, record_id, projects)
+        VALUES (?, ?, 'pending', NULL, NULL, '[]')
+      `).run(entry.uuid, entry.updated_at);
+    }
+  }
+
+  getDesktopConversation(uuid: string): DesktopConversationEntry | undefined {
+    return this.db.prepare("SELECT * FROM desktop_conversations WHERE uuid = ?")
+      .get(uuid) as DesktopConversationEntry | undefined;
+  }
+
+  getPendingDesktopConversations(): DesktopConversationEntry[] {
+    return this.db
+      .prepare("SELECT * FROM desktop_conversations WHERE status IN ('pending', 'failed') ORDER BY updated_at ASC")
+      .all() as DesktopConversationEntry[];
+  }
+
+  markDesktopConversationDone(uuid: string, recordId: string, projects: string[], promptHash?: string): void {
+    this.db.prepare(`
+      UPDATE desktop_conversations SET status = 'done', processed_at = ?, record_id = ?, projects = ?, prompt_hash = ?
+      WHERE uuid = ?
+    `).run(new Date().toISOString(), recordId, JSON.stringify(projects), promptHash ?? null, uuid);
+  }
+
+  markDesktopConversationFailed(uuid: string): void {
+    this.db.prepare(`
+      UPDATE desktop_conversations SET status = 'failed', processed_at = ? WHERE uuid = ?
+    `).run(new Date().toISOString(), uuid);
+  }
+
+  getAllDesktopConversations(): DesktopConversationEntry[] {
+    return this.db.prepare("SELECT * FROM desktop_conversations ORDER BY updated_at ASC")
+      .all() as DesktopConversationEntry[];
   }
 
   close(): void {

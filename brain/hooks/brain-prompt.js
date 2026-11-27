@@ -328,7 +328,7 @@ function run(rawInput) {
     // Main query: top 30 elements by BM25
     const sql = `
       SELECT elem_id, kind, statut, provenance, domaine, scope,
-             projets_text, date_str, source_project, is_correction, texte,
+             projets_text, date_str, source_project, is_correction, source_type, texte,
              keywords_text, bm25(fts_elements) as score
       FROM fts_elements
       WHERE fts_elements MATCH ?
@@ -343,7 +343,7 @@ function run(rawInput) {
     // Priority query: ❌ and préférence from current project — always included regardless of BM25 rank
     const sqlPriority = `
       SELECT elem_id, kind, statut, provenance, domaine, scope,
-             projets_text, date_str, source_project, is_correction, texte,
+             projets_text, date_str, source_project, is_correction, source_type, texte,
              keywords_text, bm25(fts_elements) as score
       FROM fts_elements
       WHERE fts_elements MATCH ?
@@ -378,6 +378,9 @@ function run(rawInput) {
         row.source_project.startsWith('corrections:global');
       const isProjectCorr = row.is_correction &&
         row.source_project === `corrections:${projectSlug}`;
+
+      // Desktop elements: only inject if they match the current project
+      if (row.source_type === 'desktop' && !isCurrentProject) continue;
 
       // ❌/préférence get priority via SQL (already in rows from priority query),
       // but same term-overlap and BM25 thresholds as other elements — no minMatches reduction
