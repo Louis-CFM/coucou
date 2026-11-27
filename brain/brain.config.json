@@ -1,0 +1,20 @@
+{
+  "brainPath": "~/CoucouBrain",
+  "claudeProjectsPath": "~/.claude/projects",
+  "repoPaths": [
+    "~/Developer"
+  ],
+  "additionalRepoPaths": [
+    "~/Documents/Projets"
+  ],
+  "excludeProjectDirs": [],
+  "repoScanMaxDepth": 2,
+  "chunkModel": "sonnet",
+  "mergeModel": "opus",
+  "maxChunkTokens": 100000,
+  "language": "fr",
+  "repoAliases": {
+    "notch-buddy": "coucou"
+  },
+  "activeSessionMinutes": 30
+}
