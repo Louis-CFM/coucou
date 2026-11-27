@@ -25,6 +25,7 @@ export const LLMElementSchema = z.object({
   raison: z.string().nullable().default(null),
   domaine: z.string().nullable().default(null),
   scope: z.enum(["projet", "transverse"]).nullable().default("projet").transform((v) => v ?? "projet"),
+  keywords: z.array(z.string()).default([]),
 });
 
 export type LLMElement = z.infer<typeof LLMElementSchema>;
@@ -46,6 +47,7 @@ export interface StoredElement {
   raison?: string | null;
   domaine?: string | null;
   scope?: "projet" | "transverse";
+  keywords?: string[];
 }
 
 // ── ID computation ────────────────────────────────────────────────────────────
@@ -119,6 +121,7 @@ export function llmToStored(
     raison: c.raison ?? null,
     domaine: c.domaine ?? null,
     scope: c.scope ?? "projet",
+    keywords: c.keywords ?? [],
   };
 }
 

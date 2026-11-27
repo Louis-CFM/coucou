@@ -483,6 +483,119 @@ program
     manifest.close();
   });
 
+// ── enrich ────────────────────────────────────────────────────────────────────
+
+program
+  .command("enrich")
+  .description("Add keywords to existing elements that don't have them, then rebuild FTS")
+  .option("--dry-run", "Show counts but don't write")
+  .option("--project <slug>", "Restrict to one project")
+  .option("--batch <n>", "Elements per LLM call (default 15)", "15")
+  .action(async (opts: { dryRun?: boolean; project?: string; batch: string }) => {
+    const config = loadConfig();
+    const { spawnSync } = await import("node:child_process");
+    const stateDir = path.join(expandHome(config.brainPath), ".state", "proj");
+    if (!fs.existsSync(stateDir)) {
+      console.error("No state dir found. Run brain ingest first.");
+      process.exitCode = 1;
+      return;
+    }
+
+    const batchSize = Math.max(1, Math.min(50, parseInt(opts.batch, 10) || 15));
+    let totalMissing = 0;
+    let totalWritten = 0;
+
+    for (const f of fs.readdirSync(stateDir)) {
+      if (!f.endsWith(".json") || f === "lessons.json" || f === "louis.json") continue;
+      const stateFile = path.join(stateDir, f);
+      let state: { id: string; elements: Array<{ id: string; kind: string; texte: string; keywords?: string[] }> };
+      try {
+        state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+      } catch { continue; }
+
+      if (opts.project && !state.id.includes(opts.project)) continue;
+
+      const missing = state.elements.filter(
+        (e) => !e.keywords || e.keywords.length === 0
+      );
+      if (missing.length === 0) continue;
+
+      totalMissing += missing.length;
+      console.log(`${state.id}: ${missing.length} elements sans keywords`);
+      if (opts.dryRun) continue;
+
+      // Process in batches
+      let changed = false;
+      for (let i = 0; i < missing.length; i += batchSize) {
+        const batch = missing.slice(i, i + batchSize);
+        const prompt = `Génère 6 à 10 keywords de recherche FR+EN pour chaque élément.
+Inclure les racines des mots composés (ex "Redesign" → "design"), synonymes, domaine, verbes d'action.
+
+Éléments :
+${JSON.stringify(batch.map((e) => ({ id: e.id, kind: e.kind, texte: e.texte })), null, 2)}
+
+Réponds UNIQUEMENT avec le JSON :
+[{"id": "...", "keywords": ["k1", "k2", "k3", "k4", "k5", "k6"]}]`;
+
+        const result = spawnSync(
+          process.execPath,
+          ["-e", `
+const { spawnSync } = require('child_process');
+const r = spawnSync('claude', ['--print', '--model', 'claude-haiku-4-5-20251001'], {
+  input: process.argv[2], encoding: 'utf8', timeout: 60000,
+  env: { ...process.env, COUCOU_BRAIN_INTERNAL: '1' }
+});
+process.stdout.write(r.stdout || '');
+process.stderr.write(r.stderr || '');
+process.exitCode = r.status || 0;
+`, prompt],
+          { encoding: "utf8", timeout: 90000 }
+        );
+
+        const raw = (result.stdout ?? "").trim();
+        if (!raw) {
+          console.error(`  Batch ${i}-${i + batch.length}: no output`);
+          continue;
+        }
+
+        let parsed: Array<{ id: string; keywords: string[] }>;
+        try {
+          // Strip markdown code fences if present
+          const json = raw.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "");
+          parsed = JSON.parse(json);
+        } catch {
+          console.error(`  Batch ${i}-${i + batch.length}: invalid JSON`);
+          continue;
+        }
+
+        for (const item of parsed) {
+          const elem = state.elements.find((e) => e.id === item.id);
+          if (elem && Array.isArray(item.keywords) && item.keywords.length > 0) {
+            elem.keywords = item.keywords.map((k: unknown) => String(k)).slice(0, 10);
+            changed = true;
+            totalWritten++;
+          }
+        }
+        process.stdout.write(`  ${Math.min(i + batchSize, missing.length)}/${missing.length} enrichis\r`);
+      }
+      process.stdout.write("\n");
+
+      if (changed) {
+        fs.writeFileSync(stateFile, JSON.stringify(state, null, 2), "utf8");
+      }
+    }
+
+    console.log(`\nTotal : ${totalMissing} sans keywords, ${totalWritten} enrichis`);
+
+    if (!opts.dryRun && totalWritten > 0) {
+      console.log("Rebuilding FTS...");
+      const { rebuildFts: rebuild, writeHooksConfig: writeHooks } = await import("./fts.js");
+      const result = rebuild(config);
+      writeHooks(config);
+      console.log(`FTS rebuilt: ${result.elements} elements`);
+    }
+  });
+
 // ── reset ─────────────────────────────────────────────────────────────────────
 
 program

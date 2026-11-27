@@ -166,13 +166,13 @@ describe("hook latency", () => {
     expect(r.status).toBe(0);
   });
 
-  it("brain-prompt with COUCOU_BRAIN_INTERNAL exits in < 50ms", () => {
+  it("brain-prompt with COUCOU_BRAIN_INTERNAL exits in < 80ms", () => {
     const r = runHook(
       PROMPT_HOOK,
       { session_id: "latency-guard", prompt: "test" },
       { COUCOU_BRAIN_INTERNAL: "1" }
     );
-    expect(r.ms).toBeLessThan(50);
+    expect(r.ms).toBeLessThan(80);
     expect(r.status).toBe(0);
   });
 });

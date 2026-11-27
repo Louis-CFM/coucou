@@ -160,7 +160,7 @@ describe("FTS search", () => {
   beforeEach(() => {
     ({ dir, config } = tmpConfig());
 
-    // portfo project: has a rejected bento decision
+    // portfo project: has a rejected bento decision + newsletter mesure
     writeStateFile(dir, "proj_portfo", [
       {
         id: "dec_bento_test",
@@ -174,6 +174,7 @@ describe("FTS search", () => {
         projets: ["portfo"],
         date: "2026-11-10",
         sources: ["rec_test"],
+        keywords: ["design", "bento", "grid", "dashboard", "stats", "visuel", "refonte", "interface"],
       },
       {
         id: "dec_design_active",
@@ -187,6 +188,19 @@ describe("FTS search", () => {
         projets: ["portfo"],
         date: "2026-11-15",
         sources: ["rec_test2"],
+        keywords: ["dashboard", "layout", "sidebar", "mission", "control", "interface"],
+      },
+      {
+        id: "mes_newsletter_test",
+        kind: "mesure",
+        nom: "abonnés newsletter botan",
+        texte: "61 abonnés newsletter Botan actifs.",
+        statut: null,
+        scope: "projet",
+        projets: ["portfo", "botan"],
+        date: "2026-11-15",
+        sources: ["rec_test"],
+        keywords: ["abonnés", "newsletter", "inscription", "subscriber", "botan", "personne", "compte"],
       },
     ]);
 
@@ -205,6 +219,7 @@ describe("FTS search", () => {
         projets: ["sbe-hub"],
         date: "2026-11-12",
         sources: ["rec_test"],
+        keywords: ["migration", "prisma", "deploy", "schema", "push", "database", "appliquer"],
       },
     ]);
 
@@ -254,28 +269,26 @@ describe("FTS search", () => {
     expect(migResult?.statut).toBe("⚠️");
   });
 
-  it("mesures never returned", () => {
-    writeStateFile(dir, "proj_portfo", [
-      {
-        id: "mes_mrr_test",
-        kind: "mesure",
-        texte: "MRR : 1500€",
-        statut: null,
-        nom: "mrr",
-        scope: "projet",
-        projets: ["portfo"],
-        date: "2026-11-01",
-        sources: [],
-      },
-    ]);
-    rebuildFts(config);
-    const results = searchFts(config, "MRR revenus chiffre affaires", {
+  it("mesures excluded when excludeMesures=true", () => {
+    const results = searchFts(config, "abonnés newsletter botan actifs", {
+      project: "portfo",
+      limit: 10,
+      threshold: 0,
+      excludeMesures: true,
+    });
+    expect(results.filter((r) => r.kind === "mesure")).toHaveLength(0);
+  });
+
+  it("mesures included by default (searchable via keywords)", () => {
+    // "combien de personne sur la newsletter" real query regression
+    const results = searchFts(config, "personne newsletter abonnés inscription", {
       project: "portfo",
       limit: 10,
       threshold: 0,
     });
-    const mesureResults = results.filter((r) => r.kind === "mesure");
-    expect(mesureResults).toHaveLength(0);
+    const mesureResult = results.find((r) => r.id === "mes_newsletter_test");
+    expect(mesureResult).toBeDefined();
+    expect(mesureResult?.kind).toBe("mesure");
   });
 
   it("project boost: current-project results rank above cross-project", () => {
@@ -305,6 +318,59 @@ describe("FTS search", () => {
     const badConfig: BrainConfig = { ...config, brainPath: "/tmp/nonexistent_brain_xxx" };
     const results = searchFts(badConfig, "migration test", {});
     expect(results).toEqual([]);
+  });
+
+  // ── Regression: real user phrases ──────────────────────────────────────────
+
+  it('[regression] "refais le design des stats du dashboard" → bento ❌', () => {
+    // Real query: "design" matches keyword "design" on bento element
+    const results = searchFts(config, "refais le design des stats du dashboard", {
+      project: "portfo",
+      limit: 10,
+      threshold: 0,
+    });
+    const bento = results.find((r) => r.id === "dec_bento_test");
+    expect(bento).toBeDefined();
+    expect(bento?.statut).toBe("❌");
+  });
+
+  it('[regression] "applique la nouvelle migration" → db push rule', () => {
+    // "migration*" matches texte + keyword "migration" on migration lesson
+    const results = searchFts(config, "applique la nouvelle migration", {
+      project: "sbe-hub",
+      limit: 10,
+      threshold: 0,
+    });
+    const migLesson = results.find((r) => r.id === "les_migration_test");
+    expect(migLesson).toBeDefined();
+    expect(migLesson?.statut).toBe("⚠️");
+  });
+
+  it('[regression] "combien de personne sur la newsletter" → mesure abonnés', () => {
+    // "personne*" + "newsletter*" match keywords on newsletter mesure
+    const results = searchFts(config, "combien de personne sur la newsletter", {
+      project: "portfo",
+      limit: 10,
+      threshold: 0,
+    });
+    const newsletter = results.find((r) => r.id === "mes_newsletter_test");
+    expect(newsletter).toBeDefined();
+    expect(newsletter?.kind).toBe("mesure");
+  });
+
+  it('[regression] "c\'est quoi la dérivée de ln(x)" → rien', () => {
+    // Pure math query — no brain content should match
+    const results = searchFts(config, "c'est quoi la dérivée de ln(x)", {
+      project: "portfo",
+      limit: 10,
+      threshold: -0.5,
+    });
+    // Could return 0 (no match) or low-score results — none should be from our test corpus
+    const relevantKinds = ["décision", "leçon", "fait", "mesure", "préférence"];
+    const bizarreMatches = results.filter((r) =>
+      relevantKinds.includes(r.kind) && !r.isCorrection
+    );
+    expect(bizarreMatches).toHaveLength(0);
   });
 });
 

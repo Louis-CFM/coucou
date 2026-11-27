@@ -274,7 +274,6 @@ function run(rawInput) {
       FROM fts_elements
       WHERE fts_elements MATCH ?
         AND bm25(fts_elements) < -0.5
-        AND kind != 'mesure'
       ORDER BY
         is_correction DESC,
         CASE WHEN source_project = ? OR projets_text LIKE ? THEN 0 ELSE 1 END ASC,

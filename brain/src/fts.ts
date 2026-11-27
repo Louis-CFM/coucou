@@ -149,6 +149,7 @@ interface FtsRow {
   elem_id: string;
   kind: string;
   texte: string;
+  keywords_text: string;
   statut: string;
   provenance: string;
   domaine: string;
@@ -184,14 +185,15 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
         source_project UNINDEXED,
         is_correction UNINDEXED,
         texte,
+        keywords_text,
         tokenize='unicode61 remove_diacritics 1'
       );
     `);
 
     const insert = db.prepare(`
       INSERT INTO fts_elements
-        (elem_id, kind, statut, provenance, domaine, scope, projets_text, date_str, source_project, is_correction, texte)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (elem_id, kind, statut, provenance, domaine, scope, projets_text, date_str, source_project, is_correction, texte, keywords_text)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = db.transaction((rows: FtsRow[]) => {
@@ -199,7 +201,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
         insert.run(
           row.elem_id, row.kind, row.statut, row.provenance, row.domaine,
           row.scope, row.projets_text, row.date_str, row.source_project,
-          row.is_correction, row.texte
+          row.is_correction, row.texte, row.keywords_text
         );
       }
     });
@@ -221,6 +223,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
             elem_id: e.id,
             kind: e.kind,
             texte: e.texte,
+            keywords_text: (e.keywords ?? []).join(" "),
             statut: e.statut ?? "",
             provenance: e.provenance ?? "",
             domaine: e.domaine ?? "",
@@ -246,6 +249,7 @@ export function rebuildFts(config: BrainConfig): { elements: number; corrections
       elem_id: `corr_${sec.scope}_${i}`,
       kind: "correction",
       texte: sec.text,
+      keywords_text: "",
       statut: "",
       provenance: "",
       domaine: "",
@@ -343,8 +347,6 @@ export function searchFts(config: BrainConfig, query: string, opts: SearchOption
     if (opts.excludeMesures) {
       conditions.push("kind != 'mesure'");
     }
-    // Always exclude mesures from hook injection (financial data)
-    conditions.push("kind != 'mesure'");
 
     const sql = `
       SELECT elem_id, kind, statut, provenance, domaine, scope, projets_text,

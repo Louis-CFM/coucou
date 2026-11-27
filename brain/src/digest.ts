@@ -234,6 +234,12 @@ Champs :
 - domaine : pour leçon uniquement : "shell" | "git" | "macos" | "nextjs" | "vercel" | "swift" | "claude-code" | "general"
 - scope : "transverse" (leçon valable hors du projet) | "projet" (propre au projet)
   Règle : toute leçon sur une commande git, gh, shell, npm, ffmpeg, etc. est TOUJOURS "transverse".
+- keywords : 6 à 10 termes de recherche FR + EN (racines, synonymes, domaine, verbes d'action).
+  OBLIGATOIRE pour TOUS les éléments. Inclure les racines des mots composés du texte.
+  Exemples :
+  • "Rejet du bento grid pour les stats du dashboard" → ["design", "bento", "grid", "dashboard", "stats", "visuel", "refonte", "interface"]
+  • "Toujours utiliser db push pour les migrations Prisma" → ["migration", "prisma", "deploy", "schema", "push", "database", "appliquer"]
+  • "61 abonnés newsletter Botan actifs" → ["abonnés", "newsletter", "inscription", "subscriber", "botan", "personne", "compte"]
 
 RÈGLES IMPORTANTES :
 - Approuver un plan ou une action via le notch Coucou N'EST PAS valider une préférence de goût ou de style. Si le condensé contient "[plan approuvé via le notch Coucou]" ou "[X approuvé via le notch Coucou]", le contenu de ce plan/action est [constaté] s'il est resté en place, jamais [décidé] — sauf si Louis a ensuite explicitement validé le choix dans une conversation. Ne jamais utiliser provenance='décidé' pour le seul fait qu'un plan a été approuvé via le notch.
@@ -304,7 +310,8 @@ Réponds UNIQUEMENT avec le JSON ci-dessous, sans markdown, sans commentaire :
       "remplace": null,
       "raison": null,
       "domaine": null,
-      "scope": "projet"
+      "scope": "projet",
+      "keywords": ["terme1", "terme2", "terme3"]
     }
   ],
   "taches_faites": [],

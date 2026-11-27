@@ -212,8 +212,19 @@ export function readSession(jsonlPath: string): SessionCondensed {
       if (!content) continue;
 
       if (typeof content === "string") {
+        // Skip internal notification messages injected by Claude Code hooks/tasks
+        const trimmed = content.trim();
+        if (
+          trimmed.includes("<task-notification>") ||
+          trimmed.includes("<system-reminder>") ||
+          trimmed.includes("<parameter>") ||
+          /^<[a-z][-a-z]*>/.test(trimmed)
+        ) continue;
+        // Skip bare tool use IDs (toolu_01…) that sometimes appear as content
+        if (/^toolu_[A-Za-z0-9]{10,}$/.test(trimmed)) continue;
+
         // Plain human text
-        const { text, masked } = maskSecrets(content.trim());
+        const { text, masked } = maskSecrets(trimmed);
         if (text) {
           messages.push({ role: "human", text });
           allMasked.push(...masked);
