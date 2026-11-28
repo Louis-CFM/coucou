@@ -576,7 +576,84 @@ describe("config set (brain.config.local.json)", () => {
   });
 });
 
-// ── 8. getAllConversations ────────────────────────────────────────────────────
+// ── 8. import --json (rebuildRawIndex with claudeExportPath) ─────────────────
+
+describe("import --json (rebuildRawIndex + claudeExportPath)", () => {
+  let dir: string;
+  let config: BrainConfig;
+  let exportDir: string;
+
+  beforeEach(() => {
+    ({ config, dir } = tmpConfig());
+    exportDir = fs.mkdtempSync(path.join(os.tmpdir(), "brainimport"));
+  });
+  afterEach(() => {
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
+    try { fs.rmSync(exportDir, { recursive: true, force: true }); } catch {}
+  });
+
+  it("imports conversations from a folder with conversations.json", () => {
+    // Write a minimal Claude.ai export
+    const conversations = [
+      {
+        uuid: "import-conv-01",
+        name: "Import test alpha",
+        created_at: "2024-03-01T10:00:00.000Z",
+        updated_at: "2024-03-01T11:00:00.000Z",
+        chat_messages: [
+          { uuid: "m1", sender: "human", text: "xqzimport question one",
+            created_at: "2024-03-01T10:00:00.000Z", updated_at: "2024-03-01T10:00:00.000Z" },
+          { uuid: "m2", sender: "assistant", text: "xqzimport answer one",
+            created_at: "2024-03-01T10:01:00.000Z", updated_at: "2024-03-01T10:01:00.000Z" },
+        ],
+      },
+      {
+        uuid: "import-conv-02",
+        name: "Import test beta",
+        created_at: "2024-03-02T10:00:00.000Z",
+        updated_at: "2024-03-02T11:00:00.000Z",
+        chat_messages: [
+          { uuid: "m3", sender: "human", text: "xqzimport question two",
+            created_at: "2024-03-02T10:00:00.000Z", updated_at: "2024-03-02T10:00:00.000Z" },
+        ],
+      },
+    ];
+    fs.writeFileSync(
+      path.join(exportDir, "conversations.json"),
+      JSON.stringify(conversations),
+      "utf8"
+    );
+
+    const result = rebuildRawIndex(config, { claudeExportPath: exportDir });
+
+    // Return shape matches what `import --json` outputs
+    expect(result).toHaveProperty("conversations");
+    expect(result).toHaveProperty("sessions");
+    expect(result).toHaveProperty("messages");
+    expect(result).toHaveProperty("durationMs");
+    expect(result.conversations).toBe(2);
+    expect(result.sessions).toBe(0);  // no Claude Code sessions
+    expect(result.messages).toBeGreaterThanOrEqual(3); // 2 + 1 messages
+
+    // The imported conversations are searchable
+    const { total } = searchRaw(config, "xqzimport", 10, 0);
+    expect(total).toBe(2);
+  });
+
+  it("import result includes durationMs as a number", () => {
+    fs.writeFileSync(
+      path.join(exportDir, "conversations.json"),
+      JSON.stringify([]),
+      "utf8"
+    );
+
+    const result = rebuildRawIndex(config, { claudeExportPath: exportDir });
+    expect(typeof result.durationMs).toBe("number");
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ── 9. getAllConversations ────────────────────────────────────────────────────
 
 describe("getAllConversations", () => {
   let dir: string;

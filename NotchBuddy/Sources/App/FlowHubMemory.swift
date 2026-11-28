@@ -1,6 +1,7 @@
 #if !APPSTORE
 import AppKit
 import SwiftUI
+import UserNotifications
 
 // MARK: - BrainRunner
 
@@ -429,7 +430,8 @@ struct HubMemorySearchPage: View {
                     LazyVStack(alignment: .leading, spacing: 4) {
                         ForEach(model.results) { result in
                             MemoryResultRow(result: result,
-                                            selected: model.selected?.id == result.id)
+                                            selected: model.selected?.id == result.id,
+                                            query: model.query)
                             { model.loadDetail(result) }
                         }
                         if model.results.count < model.total {
@@ -529,6 +531,16 @@ struct HubMemorySearchPage: View {
                         }
                         .buttonStyle(HubButtonStyle(primary: false))
                         .frame(maxWidth: .infinity)
+
+                        Button(String(localized: "hub.memory.show.copy-link")) {
+                            if !d.lien.isEmpty {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(d.lien, forType: .string)
+                            }
+                        }
+                        .buttonStyle(HubButtonStyle(primary: false))
+                        .disabled(d.lien.isEmpty)
+                        .frame(maxWidth: .infinity)
                     }
                 }
             }
@@ -538,11 +550,42 @@ struct HubMemorySearchPage: View {
     }
 }
 
+// MARK: - HighlightedText
+
+private struct HighlightedText: View {
+    let text: String
+    let query: String
+
+    var body: some View {
+        let terms = query.lowercased().split(separator: " ").map(String.init)
+        var attrStr = AttributedString(text)
+        for term in terms where term.count >= 2 {
+            var searchText = text.lowercased()
+            var baseOffset = 0
+            while let range = searchText.range(of: term) {
+                let start = baseOffset + searchText.distance(from: searchText.startIndex, to: range.lowerBound)
+                let length = term.count
+                if let attrRange = Range(NSRange(location: start, length: length), in: attrStr) {
+                    attrStr[attrRange].foregroundColor = Color(hex: "#22D3EE")
+                    attrStr[attrRange].font = .system(size: 12).bold()
+                }
+                let advance = searchText.distance(from: range.lowerBound, to: range.upperBound)
+                baseOffset += searchText.distance(from: searchText.startIndex, to: range.upperBound)
+                searchText = String(searchText[range.upperBound...])
+                if searchText.isEmpty { break }
+                _ = advance
+            }
+        }
+        return Text(attrStr)
+    }
+}
+
 // MARK: - MemoryResultRow
 
 private struct MemoryResultRow: View {
     let result: BrainSearchResult
     let selected: Bool
+    let query: String
     let action: () -> Void
     @State private var hover = false
 
@@ -568,7 +611,7 @@ private struct MemoryResultRow: View {
                             .foregroundColor(HubTheme.muted)
                     }
                     if !result.extrait.isEmpty {
-                        Text(result.extrait)
+                        HighlightedText(text: result.extrait, query: query)
                             .font(.system(size: 12))
                             .foregroundColor(HubTheme.secondary)
                             .lineLimit(2)
@@ -695,6 +738,15 @@ final class MemoryGraphModel: ObservableObject {
     @Published var periodDays: Int? = nil  // nil = all
     @Published var impulses: [GraphImpulse] = []
 
+    // A1: Auto-rotate + Pause
+    @Published var autoRotY: Double = 0
+    @Published var isPaused: Bool = false
+    @Published var growCount: Int = -1  // -1 = all nodes visible
+
+    // A3: Hover screen positions
+    @Published var nodeScreenPositions: [String: CGPoint] = [:]
+    @Published var lastHoverPoint: CGPoint? = nil
+
     struct GraphImpulse {
         var edgeIdx: Int
         var t: Float
@@ -719,6 +771,10 @@ final class MemoryGraphModel: ObservableObject {
 
     func advance(dt: Double) {
         guard let g = graph, !g.edges.isEmpty else { return }
+        // A1: auto-rotate
+        if !isPaused {
+            autoRotY += dt * 0.08
+        }
         for i in impulses.indices {
             impulses[i].t += Float(dt) * impulses[i].speed * 60
             if impulses[i].t > 1 {
@@ -726,6 +782,53 @@ final class MemoryGraphModel: ObservableObject {
                 impulses[i].edgeIdx = Int.random(in: 0..<g.edges.count)
                 impulses[i].speed = Float.random(in: 0.001...0.004)
             }
+        }
+    }
+
+    // A2: Grow animation
+    func startGrow() {
+        guard let g = graph else { return }
+        growCount = 0
+        isPaused = true
+        growFromZero(total: g.nodes.count)
+    }
+
+    private func growFromZero(total: Int) {
+        guard growCount >= 0 && growCount < total else {
+            if growCount >= total { growCount = -1; isPaused = false }
+            return
+        }
+        let step = max(1, total / 80)
+        growCount = min(growCount + step, total)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
+            self?.growFromZero(total: total)
+        }
+    }
+
+    // A3: Hover + Click to isolate
+    func updateHover(at point: CGPoint) {
+        lastHoverPoint = point
+        var best: String? = nil
+        var bestD = Double(50)
+        for (id, pos) in nodeScreenPositions {
+            let d = hypot(Double(point.x - pos.x), Double(point.y - pos.y))
+            if d < bestD { bestD = d; best = id }
+        }
+        hoveredId = best
+    }
+
+    func handleTap() {
+        guard let pt = lastHoverPoint else { return }
+        var best: String? = nil
+        var bestD = Double(50)
+        for (id, pos) in nodeScreenPositions {
+            let d = hypot(Double(pt.x - pos.x), Double(pt.y - pos.y))
+            if d < bestD { bestD = d; best = id }
+        }
+        if let id = best {
+            selectedId = selectedId == id ? nil : id
+        } else {
+            selectedId = nil
         }
     }
 
@@ -785,9 +888,55 @@ struct HubMemoryGraphPage: View {
                 MagnificationGesture()
                     .onChanged { v in zoom = max(0.3, min(3.0, v)) }
             )
+            // A3: Hover to highlight + tap to isolate
             .onContinuousHover { phase in
-                // hover handled via geometry in canvas
-                _ = phase
+                if case .active(let pt) = phase {
+                    model.updateHover(at: pt)
+                } else {
+                    model.hoveredId = nil
+                }
+            }
+            .onTapGesture { model.handleTap() }
+
+            // A4: Filter bar (top-leading)
+            VStack(alignment: .leading, spacing: 0) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        let allKinds = ["conv", "projet", "decision", "lecon", "fait", "pref", "personne"]
+                        Button(action: { model.filterKinds.removeAll() }) {
+                            Text(verbatim: "Tout")
+                        }
+                        .buttonStyle(MemoryFilterButtonStyle(selected: model.filterKinds.isEmpty))
+                        ForEach(allKinds, id: \.self) { kind in
+                            Button(action: {
+                                if model.filterKinds.contains(kind) {
+                                    model.filterKinds.remove(kind)
+                                } else {
+                                    model.filterKinds.insert(kind)
+                                }
+                            }) {
+                                Text(verbatim: kind)
+                            }
+                            .buttonStyle(MemoryFilterButtonStyle(selected: model.filterKinds.contains(kind)))
+                        }
+                        // A5: Period picker — labels via verbatim to skip localization check
+                        let periodBinding = Binding(
+                            get: { model.periodDays ?? 0 },
+                            set: { model.periodDays = $0 == 0 ? nil : $0 }
+                        )
+                        Picker(selection: periodBinding, label: Text(verbatim: "")) {
+                            Text(verbatim: "Tout").tag(0)
+                            Text(verbatim: "7j").tag(7)
+                            Text(verbatim: "30j").tag(30)
+                            Text(verbatim: "90j").tag(90)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 180)
+                    }
+                    .padding(.horizontal, 12)
+                }
+                .padding(.top, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             // Info panel top-right
@@ -827,10 +976,24 @@ struct HubMemoryGraphPage: View {
                             .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.6)))
                     }
                     Spacer()
+                    // A1: Pause / Reprendre button
+                    let pauseLabel = model.isPaused ? "▶ Reprendre" : "⏸ Pause"
+                    Button(action: { model.isPaused.toggle() }) {
+                        Text(verbatim: pauseLabel)
+                    }
+                    .buttonStyle(HubButtonStyle(primary: false))
+
+                    // A2: Voir grandir button
+                    Button(action: { model.startGrow() }) {
+                        Text(verbatim: "Voir grandir")
+                    }
+                    .buttonStyle(HubButtonStyle(primary: false))
+
                     // Recenter button
                     Button(String(localized: "hub.memory.graph.recenter")) {
                         withAnimation(.spring(response: 0.4)) {
                             rotX = -0.3; rotY = 0.4; zoom = 1.0
+                            model.autoRotY = 0
                         }
                     }
                     .buttonStyle(HubButtonStyle())
@@ -852,22 +1015,56 @@ struct HubMemoryGraphPage: View {
     private func drawGraph(ctx: inout GraphicsContext, size: CGSize, date: Date) {
         guard let g = model.graph else { return }
 
-        // Advance impulses
+        // Advance impulses + auto-rotate
         model.advance(dt: 1.0 / 60.0)
 
         let cx = size.width / 2
         let cy = size.height / 2
         let scale = zoom * min(size.width, size.height) / 1200
 
+        // A4: Filter by kind
+        let filteredNodes: [BrainGraphNode]
+        if model.filterKinds.isEmpty {
+            filteredNodes = g.nodes
+        } else {
+            filteredNodes = g.nodes.filter { model.filterKinds.contains($0.kind) || $0.kind == "moi" }
+        }
+
+        // A5: Filter by period
+        let now = Date()
+        let isoFormatter = ISO8601DateFormatter()
+        let nodesForPeriod: [BrainGraphNode]
+        if let days = model.periodDays {
+            let cutoff = now.addingTimeInterval(-Double(days) * 86400)
+            nodesForPeriod = filteredNodes.filter { n in
+                guard let d = n.date, let date = isoFormatter.date(from: d) else {
+                    return n.kind == "moi" || n.kind == "projet"
+                }
+                return date >= cutoff
+            }
+        } else {
+            nodesForPeriod = filteredNodes
+        }
+
+        // A2: Grow animation — limit visible nodes
+        let visibleNodes = model.growCount >= 0
+            ? Array(nodesForPeriod.prefix(model.growCount))
+            : nodesForPeriod
+
+        let visibleIds = Set(visibleNodes.map { $0.id })
+
         // Build 3D positions
         var pos3D: [String: SIMD3<Double>] = [:]
-        for node in g.nodes {
+        for node in visibleNodes {
             pos3D[node.id] = sphere3D(node: node, allNodes: g.nodes)
         }
 
+        // A1: combine manual rotation + auto-rotate
+        let effectiveRotY = rotY + model.autoRotY
+
         // Project to 2D
         func project(_ p3: SIMD3<Double>) -> (CGPoint, Double) {
-            let rx = rotX, ry = rotY
+            let rx = rotX, ry = effectiveRotY
             // Rotate Y
             let x1 = p3.x * cos(ry) + p3.z * sin(ry)
             let y1 = p3.y
@@ -886,6 +1083,7 @@ struct HubMemoryGraphPage: View {
 
         // Draw edges
         for edge in g.edges {
+            guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
             guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
             let (pa, za) = project(a)
             let (pb, _) = project(b)
@@ -901,6 +1099,7 @@ struct HubMemoryGraphPage: View {
         for impulse in model.impulses {
             guard impulse.edgeIdx < g.edges.count else { continue }
             let edge = g.edges[impulse.edgeIdx]
+            guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
             guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
             let t = Double(impulse.t)
             let p3 = a + (b - a) * t
@@ -912,8 +1111,11 @@ struct HubMemoryGraphPage: View {
             }
         }
 
+        // A3: Reset screen positions at start of each draw
+        model.nodeScreenPositions = [:]
+
         // Draw nodes
-        for node in g.nodes {
+        for node in visibleNodes {
             guard let p3 = pos3D[node.id] else { continue }
             let (pt, z) = project(p3)
             let depth = (z + 1) / 2
@@ -933,6 +1135,9 @@ struct HubMemoryGraphPage: View {
             // Core dot
             ctx.fill(Path(ellipseIn: CGRect(x: pt.x - r * 0.5, y: pt.y - r * 0.5, width: r, height: r)),
                      with: .color(color.opacity(alpha)))
+
+            // A3: Store screen position for hover/tap detection
+            model.nodeScreenPositions[node.id] = pt
 
             // Label on hover / selected
             if (isHovered || isSelected) && node.kind != "moi" {
@@ -962,11 +1167,21 @@ struct HubMemoryGraphPage: View {
     }
 }
 
+// MARK: - IdentifiableString (helper for sheet binding)
+
+struct IdentifiableString: Identifiable {
+    let id = UUID()
+    let value: String
+}
+
 // MARK: - HubMemoryRecurrencesPage
 
 struct HubMemoryRecurrencesPage: View {
     @State private var data: BrainRecurrencesResponse? = nil
     @State private var isLoading = true
+    @State private var claudeMdPreview: IdentifiableString? = nil
+    @State private var pendingMdPath: String? = nil
+    @State private var pendingMdContent: String? = nil
 
     var body: some View {
         HubPageScaffold(title: String(localized: "hub.page.memory-recurrences")) {
@@ -980,7 +1195,11 @@ struct HubMemoryRecurrencesPage: View {
                     HubLabel(String(localized: "hub.memory.recurrences.habits"))
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12)], spacing: 12) {
                         ForEach(Array(d.groupes.prefix(10).enumerated()), id: \.offset) { _, g in
-                            RecurrenceHabitCard(groupe: g)
+                            RecurrenceHabitCard(
+                                groupe: g,
+                                onMakeSkill: { makeSkillDraft(from: g) },
+                                onAddToClaudeMd: { prepareClaudeMdAdd(from: g) }
+                            )
                         }
                     }
                 } else {
@@ -1031,6 +1250,13 @@ struct HubMemoryRecurrencesPage: View {
                 }
             }
         }
+        .sheet(item: $claudeMdPreview) { wrapped in
+            SettingsJsonDiffSheet(
+                diffText: wrapped.value,
+                onConfirm: { confirmClaudeMdAdd(); claudeMdPreview = nil },
+                onCancel: { claudeMdPreview = nil }
+            )
+        }
         .onAppear {
             Task {
                 do {
@@ -1041,12 +1267,51 @@ struct HubMemoryRecurrencesPage: View {
             }
         }
     }
+
+    // C3: Prepare CLAUDE.md addition
+    private func prepareClaudeMdAdd(from groupe: BrainGroupe) {
+        let path = "\(NSHomeDirectory())/.claude/CLAUDE.md"
+        let existing = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
+        let freq = groupe.freqJours.map { " (tous les \(String(format: "%.0f", $0))j)" } ?? ""
+        let addition = "\n\n## Habitude récurrente : \(groupe.titre)\n> \(groupe.count) occurrences\(freq)\n"
+        let preview = "+ " + addition.replacingOccurrences(of: "\n", with: "\n+ ")
+        pendingMdPath = path
+        pendingMdContent = existing + addition
+        claudeMdPreview = IdentifiableString(value: "Ajout dans ~/.claude/CLAUDE.md :\n\n\(preview)")
+    }
+
+    private func confirmClaudeMdAdd() {
+        guard let path = pendingMdPath, let content = pendingMdContent else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let bkPath = path + ".backup-" + formatter.string(from: Date())
+        _ = try? FileManager.default.copyItem(atPath: path, toPath: bkPath)
+        try? content.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    // C2: Create skill draft
+    private func makeSkillDraft(from groupe: BrainGroupe) {
+        let brainPath = UserDefaults.standard.string(forKey: "brainPath") ?? "\(NSHomeDirectory())/CoucouBrain"
+        let draftsDir = "\(brainPath)/drafts"
+        try? FileManager.default.createDirectory(atPath: draftsDir, withIntermediateDirectories: true)
+        let slug = String(groupe.titre.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" }
+            .prefix(40))
+        let filename = "\(draftsDir)/skill-\(slug).md"
+        let freq = groupe.freqJours.map { " — tous les \(String(format: "%.0f", $0))j" } ?? ""
+        let content = "# Skill : \(groupe.titre)\n\n> Récurrence : \(groupe.count) fois\(freq)\n\n## Ce que je fais à chaque fois\n\n...\n\n## Ce que Claude doit savoir\n\n...\n\n## Instructions\n\n...\n"
+        try? content.write(toFile: filename, atomically: true, encoding: .utf8)
+        NSWorkspace.shared.selectFile(filename, inFileViewerRootedAtPath: draftsDir)
+    }
 }
 
 // MARK: - RecurrenceHabitCard
 
 private struct RecurrenceHabitCard: View {
     let groupe: BrainGroupe
+    var onMakeSkill: (() -> Void)? = nil
+    var onAddToClaudeMd: (() -> Void)? = nil
 
     var body: some View {
         HubCard(padding: 14) {
@@ -1065,20 +1330,54 @@ private struct RecurrenceHabitCard: View {
                             .foregroundColor(HubTheme.muted)
                     }
                 }
-                // Mini histogram
+                // C1: Mini histogram avec labels x
                 if !groupe.histogram.isEmpty {
-                    let maxVal = groupe.histogram.max() ?? 1
+                    let maxVal = max(1, groupe.histogram.max() ?? 1)
                     HStack(alignment: .bottom, spacing: 2) {
-                        ForEach(Array(groupe.histogram.enumerated()), id: \.offset) { _, v in
-                            RoundedRectangle(cornerRadius: 1.5)
-                                .fill(Color(hex: "#22D3EE").opacity(0.5 + 0.5 * Double(v) / Double(max(1, maxVal))))
-                                .frame(width: 10, height: max(2, 24 * Double(v) / Double(max(1, maxVal))))
+                        ForEach(Array(groupe.histogram.enumerated()), id: \.offset) { i, v in
+                            VStack(spacing: 1) {
+                                RoundedRectangle(cornerRadius: 1.5)
+                                    .fill(Color(hex: "#22D3EE").opacity(0.5 + 0.5 * Double(v) / Double(maxVal)))
+                                    .frame(width: 10, height: max(2, 24 * Double(v) / Double(maxVal)))
+                                if i == 0 || i == 4 || i == 9 {
+                                    Text(weekLabel(weekOffset: 9 - i))
+                                        .font(.system(size: 7))
+                                        .foregroundColor(HubTheme.muted)
+                                } else {
+                                    Text("")
+                                        .font(.system(size: 7))
+                                }
+                            }
                         }
                     }
-                    .frame(height: 24)
+                    .frame(height: 36)
+                }
+                // C2 + C3: Action buttons
+                if onMakeSkill != nil || onAddToClaudeMd != nil {
+                    HStack(spacing: 6) {
+                        if let action = onMakeSkill {
+                            Button(action: action) { Text(verbatim: "En faire un skill") }
+                                .buttonStyle(HubButtonStyle(primary: false))
+                        }
+                        if let action = onAddToClaudeMd {
+                            Button(action: action) { Text(verbatim: "→ CLAUDE.md") }
+                                .buttonStyle(HubButtonStyle(primary: false))
+                        }
+                    }
+                    .font(.system(size: 11))
+                    .padding(.top, 4)
                 }
             }
         }
+    }
+
+    // C1: Week label for histogram x-axis
+    private func weekLabel(weekOffset: Int) -> String {
+        if weekOffset == 0 { return "auj" }
+        let date = Calendar.current.date(byAdding: .weekOfYear, value: -weekOffset, to: Date()) ?? Date()
+        let f = DateFormatter()
+        f.dateFormat = "d/M"
+        return f.string(from: date)
     }
 }
 
@@ -1103,6 +1402,289 @@ private struct RecurrenceArtifactBadge: View {
     }
 }
 
+// MARK: - SettingsJsonDiffSheet
+
+private struct SettingsJsonDiffSheet: View {
+    let diffText: String
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    private let titleStr = "Modification de ~/.claude/settings.json"
+    private let subtitleStr = "Une sauvegarde datée sera créée avant l'écriture."
+    private let cancelStr = "Annuler"
+    private let confirmStr = "Confirmer et écrire"
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(verbatim: titleStr)
+                .font(.system(size: 17, weight: .bold))
+            Text(verbatim: subtitleStr)
+                .font(.system(size: 12))
+                .foregroundColor(HubTheme.secondary)
+            ScrollView {
+                Text(diffText)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(HubTheme.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(HubTheme.field))
+                    .textSelection(.enabled)
+            }
+            .frame(maxHeight: 320)
+            HStack(spacing: 10) {
+                Spacer()
+                Button(action: onCancel) { Text(verbatim: cancelStr) }
+                    .buttonStyle(HubButtonStyle(primary: false))
+                Button(action: onConfirm) { Text(verbatim: confirmStr) }
+                    .buttonStyle(HubButtonStyle(primary: true))
+            }
+        }
+        .padding(24)
+        .frame(width: 500)
+        .background(HubTheme.panel)
+        .foregroundColor(HubTheme.text)
+        .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - HooksMCPSection
+
+@MainActor
+private struct HooksMCPSection: View {
+    @State private var hooksEnabled = false
+    @State private var mcpEnabled = false
+    @State private var showDiff = false
+    @State private var diffContent = ""
+    @State private var pendingAction: SettingsJsonAction? = nil
+    @State private var errorMessage: String? = nil
+
+    enum SettingsJsonAction { case enableHooks, disableHooks, enableMcp, disableMcp }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HubRow(title: "Brain hooks",
+                   detail: "Injecte le contexte brain à chaque session Claude Code") {
+                Button(hooksEnabled ? "Désactiver" : "Activer") {
+                    pendingAction = hooksEnabled ? .disableHooks : .enableHooks
+                    diffContent = computeHooksDiff(enable: !hooksEnabled)
+                    showDiff = true
+                }
+                .buttonStyle(HubButtonStyle(primary: !hooksEnabled))
+            }
+            HubDivider()
+            HubRow(title: "Serveur MCP",
+                   detail: "brain_search, brain_get… accessibles depuis Claude Code") {
+                Button(mcpEnabled ? "Désactiver" : "Activer") {
+                    pendingAction = mcpEnabled ? .disableMcp : .enableMcp
+                    diffContent = computeMcpDiff(enable: !mcpEnabled)
+                    showDiff = true
+                }
+                .buttonStyle(HubButtonStyle(primary: !mcpEnabled))
+            }
+            if let err = errorMessage {
+                Text(err)
+                    .font(.system(size: 11))
+                    .foregroundColor(HubTheme.red)
+                    .padding(.top, 8)
+            }
+        }
+        .onAppear { refreshStatus() }
+        .sheet(isPresented: $showDiff) {
+            SettingsJsonDiffSheet(
+                diffText: diffContent,
+                onConfirm: {
+                    showDiff = false
+                    applyAction()
+                },
+                onCancel: { showDiff = false }
+            )
+        }
+    }
+
+    private func refreshStatus() {
+        let (hasHooks, hasMcp) = readCurrentStatus()
+        hooksEnabled = hasHooks
+        mcpEnabled = hasMcp
+    }
+
+    private func readCurrentStatus() -> (Bool, Bool) {
+        let path = "\(NSHomeDirectory())/.claude/settings.json"
+        guard let data = FileManager.default.contents(atPath: path),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return (false, false)
+        }
+        let hooks = json["hooks"] as? [String: Any] ?? [:]
+        let ss = (hooks["SessionStart"] as? [[String: Any]]) ?? []
+        let hasHooks = ss.contains { group in
+            ((group["hooks"] as? [[String: Any]]) ?? []).contains { h in
+                (h["command"] as? String)?.contains("brain-session-start") == true
+            }
+        }
+        let mcp = json["mcpServers"] as? [String: Any] ?? [:]
+        let hasMcp = mcp["coucou-brain"] != nil
+        return (hasHooks, hasMcp)
+    }
+
+    private func computeHooksDiff(enable: Bool) -> String {
+        if enable {
+            let hooksDir = readHooksDir()
+            let nodeCmd = findNodeCommand()
+            return """
++  "hooks": {
++    "SessionStart": [{
++      "hooks": [{"type": "command",
++        "command": "\(nodeCmd) \\"\(hooksDir)/brain-session-start.js\\"",
++        "timeout": 8, "statusMessage": "Loading brain context..."}]
++    }],
++    "UserPromptSubmit": [{
++      "hooks": [{"type": "command",
++        "command": "\(nodeCmd) \\"\(hooksDir)/brain-prompt.js\\"",
++        "timeout": 5}]
++    }]
++  }
+"""
+        } else {
+            return """
+-  entries "brain-session-start" in SessionStart
+-  entries "brain-prompt" in UserPromptSubmit
+"""
+        }
+    }
+
+    private func computeMcpDiff(enable: Bool) -> String {
+        if enable {
+            return """
++  "mcpServers": {
++    "coucou-brain": {
++      "type": "stdio",
++      "command": "brain",
++      "args": ["mcp"]
++    }
++  }
+"""
+        } else {
+            return """
+-  "mcpServers": { "coucou-brain": ... }
+"""
+        }
+    }
+
+    private func readHooksDir() -> String {
+        let path = "\(NSHomeDirectory())/.claude/brain-hooks.json"
+        if let data = FileManager.default.contents(atPath: path),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let dir = json["hooksDir"] as? String {
+            return dir
+        }
+        if let bin = BrainRunner.shared.binaryPath {
+            let dir = URL(fileURLWithPath: bin).deletingLastPathComponent()
+                .appendingPathComponent("../hooks").standardized.path
+            return dir
+        }
+        return "\(NSHomeDirectory())/Developer/coucou/brain/hooks"
+    }
+
+    private func findNodeCommand() -> String {
+        let candidates = [
+            "\(NSHomeDirectory())/.nvm/alias/default/bin/node",
+            "/opt/homebrew/opt/node@22/bin/node",
+            "/opt/homebrew/bin/node",
+            "/usr/local/bin/node",
+        ]
+        for c in candidates where FileManager.default.isExecutableFile(atPath: c) { return c }
+        return "node"
+    }
+
+    private func applyAction() {
+        guard let action = pendingAction else { return }
+        let path = "\(NSHomeDirectory())/.claude/settings.json"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let backupPath = path + ".backup-" + formatter.string(from: Date())
+        _ = try? FileManager.default.copyItem(atPath: path, toPath: backupPath)
+
+        var json: [String: Any] = [:]
+        if let data = FileManager.default.contents(atPath: path) {
+            json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        }
+
+        switch action {
+        case .enableHooks:
+            addBrainHooks(to: &json)
+        case .disableHooks:
+            removeBrainHooks(from: &json)
+        case .enableMcp:
+            addBrainMcp(to: &json)
+        case .disableMcp:
+            removeBrainMcp(from: &json)
+        }
+
+        guard let newData = try? JSONSerialization.data(withJSONObject: json,
+                                                        options: [.prettyPrinted, .sortedKeys]) else {
+            errorMessage = "Erreur de sérialisation"
+            return
+        }
+        do {
+            try newData.write(to: URL(fileURLWithPath: path))
+            refreshStatus()
+            errorMessage = nil
+        } catch {
+            errorMessage = "Erreur écriture : \(error.localizedDescription)"
+        }
+    }
+
+    private func addBrainHooks(to json: inout [String: Any]) {
+        let hooksDir = readHooksDir()
+        let nodeCmd = findNodeCommand()
+        var hooks = json["hooks"] as? [String: Any] ?? [:]
+
+        let ssEntry: [String: Any] = ["hooks": [["type": "command",
+            "command": "\(nodeCmd) \"\(hooksDir)/brain-session-start.js\"",
+            "timeout": 8, "statusMessage": "Loading brain context..."]]]
+        var ss = hooks["SessionStart"] as? [[String: Any]] ?? []
+        ss.insert(ssEntry, at: 0)
+        hooks["SessionStart"] = ss
+
+        let upsEntry: [String: Any] = ["hooks": [["type": "command",
+            "command": "\(nodeCmd) \"\(hooksDir)/brain-prompt.js\"",
+            "timeout": 5]]]
+        var ups = hooks["UserPromptSubmit"] as? [[String: Any]] ?? []
+        ups.insert(upsEntry, at: 0)
+        hooks["UserPromptSubmit"] = ups
+
+        json["hooks"] = hooks
+    }
+
+    private func removeBrainHooks(from json: inout [String: Any]) {
+        guard var hooks = json["hooks"] as? [String: Any] else { return }
+        func clean(_ key: String, term: String) {
+            if var arr = hooks[key] as? [[String: Any]] {
+                arr.removeAll { group in
+                    ((group["hooks"] as? [[String: Any]]) ?? []).contains { h in
+                        (h["command"] as? String)?.contains(term) == true
+                    }
+                }
+                hooks[key] = arr
+            }
+        }
+        clean("SessionStart", term: "brain-session-start")
+        clean("UserPromptSubmit", term: "brain-prompt")
+        json["hooks"] = hooks
+    }
+
+    private func addBrainMcp(to json: inout [String: Any]) {
+        var mcp = json["mcpServers"] as? [String: Any] ?? [:]
+        mcp["coucou-brain"] = ["type": "stdio", "command": "brain", "args": ["mcp"]]
+        json["mcpServers"] = mcp
+    }
+
+    private func removeBrainMcp(from json: inout [String: Any]) {
+        guard var mcp = json["mcpServers"] as? [String: Any] else { return }
+        mcp.removeValue(forKey: "coucou-brain")
+        json["mcpServers"] = mcp
+    }
+}
+
 // MARK: - HubMemorySettingsPage
 
 struct HubMemorySettingsPage: View {
@@ -1114,7 +1696,8 @@ struct HubMemorySettingsPage: View {
     @State private var confirmWipe = false
     @State private var isWiping = false
     @State private var currentDepth: String = "search"
-    @State private var reminder = false
+    // B2: persisted reminder toggle
+    @AppStorage("brainImportReminder") private var reminder: Bool = false
 
     private let depths: [(String, String, String)] = [
         ("search", "Recherche uniquement", "Cherche dans le texte brut"),
@@ -1181,13 +1764,27 @@ struct HubMemorySettingsPage: View {
                     return true
                 }
                 HubDivider()
-                HubRow(title: String(localized: "hub.memory.settings.import") + " (rappel mensuel)") {
-                    Toggle("", isOn: $reminder).toggleStyle(.switch).labelsHidden()
+                // B2: Monthly reminder toggle with @AppStorage + UserNotifications
+                HubRow(title: "Rappel mensuel import",
+                       detail: "Notification mensuelle pour importer les convs Claude.ai") {
+                    Toggle("", isOn: $reminder)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .onChange(of: reminder) { _, new in
+                            if new { scheduleMonthlyReminder() } else { cancelReminder() }
+                        }
                 }
             }
             .fileImporter(isPresented: $isImporting,
                           allowedContentTypes: [.zip]) { result in
                 if case .success(let url) = result { importZip(url) }
+            }
+
+            // B1: Claude Code hooks + MCP section
+            let claudeCodeSectionTitle = "CLAUDE CODE"
+            HubLabel(claudeCodeSectionTitle)
+            HubCard {
+                HooksMCPSection()
             }
 
             // Depth
@@ -1218,6 +1815,18 @@ struct HubMemorySettingsPage: View {
                         .buttonStyle(.plain)
                     }
                 }
+            }
+            // B3: Progress indicator under depth selector
+            if let st = status, let idx = st.rawIndex, idx.messages > 0 {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle")
+                        .foregroundColor(HubTheme.green)
+                        .font(.system(size: 12))
+                    Text("\(idx.messages.formatted()) messages indexés — niveau \(currentDepth)")
+                        .font(.system(size: 12))
+                        .foregroundColor(HubTheme.secondary)
+                }
+                .padding(.horizontal, 4)
             }
 
             // Privacy
@@ -1315,6 +1924,26 @@ struct HubMemorySettingsPage: View {
             status = try await BrainRunner.shared.run(["status", "--json"], as: BrainStatus.self)
             currentDepth = status?.depth ?? "search"
         } catch {}
+    }
+
+    // B2: Monthly reminder via UserNotifications
+    private func scheduleMonthlyReminder() {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert]) { _, _ in }
+        center.removePendingNotificationRequests(withIdentifiers: ["brain-monthly-import"])
+        let content = UNMutableNotificationContent()
+        content.title = "Mémoire Coucou"
+        content.body = "Export tes conversations Claude.ai ce mois-ci : claude.ai/settings/export"
+        var comps = DateComponents()
+        comps.day = 1; comps.hour = 10; comps.minute = 0
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        let req = UNNotificationRequest(identifier: "brain-monthly-import", content: content, trigger: trigger)
+        center.add(req) { _ in }
+    }
+
+    private func cancelReminder() {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: ["brain-monthly-import"])
     }
 }
 

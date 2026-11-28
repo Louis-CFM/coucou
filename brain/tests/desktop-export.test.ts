@@ -3,6 +3,8 @@
  * - collectClaudeExport (JSON file, directory)
  * - formatConversationAsSessionCondensed (message mapping, masking, token estimation)
  * - sourceType propagation through llmToStored + FTS round-trip
+ * - domain routing: remapDesktopProjects, getKnownProjectSlugs
+ * - --limit regression: sort newest→oldest + slice
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
@@ -15,6 +17,12 @@ import {
 } from "../src/collect.js";
 import { llmToStored, type LLMElement } from "../src/elements.js";
 import { rebuildFts } from "../src/fts.js";
+import {
+  getKnownProjectSlugs,
+  remapDesktopProjects,
+  FIXED_DOMAINS,
+} from "../src/desktop-routing.js";
+import { Manifest } from "../src/manifest.js";
 import type { BrainConfig } from "../src/config.js";
 import type { StoredElement } from "../src/elements.js";
 
@@ -328,5 +336,177 @@ describe("FTS — source_type column", () => {
 
     expect(codeRow?.source_type).toBe("");      // undefined → stored as ""
     expect(desktopRow?.source_type).toBe("desktop");
+  });
+});
+
+// ── remapDesktopProjects ──────────────────────────────────────────────────────
+
+describe("remapDesktopProjects", () => {
+  const known = new Set(["coucou", "portfo", "sbe-hub"]);
+  const noMessages: Array<{ text: string }> = [];
+
+  it("keeps known project slugs", () => {
+    const { projects } = remapDesktopProjects(["coucou"], known, "test", noMessages);
+    expect(projects).toContain("coucou");
+  });
+
+  it("keeps fixed domain slugs assigned by LLM", () => {
+    // LLM picks "apprentissage" for a learning conversation
+    const { projects } = remapDesktopProjects(["apprentissage"], known, "NVIDIA certs", noMessages);
+    expect(projects).toContain("apprentissage");
+  });
+
+  it("keeps admin-et-argent domain assigned by LLM", () => {
+    const { projects } = remapDesktopProjects(["admin-et-argent"], known, "salary", noMessages);
+    expect(projects).toContain("admin-et-argent");
+  });
+
+  it("extracts people/X into extraPeople, not project page", () => {
+    const { projects, extraPeople } = remapDesktopProjects(["people/enya"], known, "test", noMessages);
+    expect(extraPeople).toContain("enya");
+    expect(projects.some((p) => p.includes("enya"))).toBe(false);
+  });
+
+  it("extracts people-X slug into extraPeople", () => {
+    const { extraPeople } = remapDesktopProjects(["people-frederic"], known, "test", noMessages);
+    expect(extraPeople).toContain("frederic");
+  });
+
+  it("falls back to perso when LLM assigns unknown slug", () => {
+    const { projects } = remapDesktopProjects(["certifications-nvidia"], known, "", noMessages);
+    expect(projects[0]).toBe("perso");
+  });
+
+  it("always returns at least one project even with empty input", () => {
+    const { projects } = remapDesktopProjects([], known, "test", noMessages);
+    expect(projects).toEqual(["perso"]);
+  });
+
+  it("discards unknown projects off-list, keeps known ones", () => {
+    const { projects } = remapDesktopProjects(["portfo", "some-random-thing"], known, "", noMessages);
+    expect(projects).toContain("portfo");
+    expect(projects).not.toContain("some-random-thing");
+  });
+
+  it("LLM can mix known project + fixed domain", () => {
+    const { projects } = remapDesktopProjects(["coucou", "apprentissage"], known, "", noMessages);
+    expect(projects).toContain("coucou");
+    expect(projects).toContain("apprentissage");
+  });
+
+  it("FIXED_DOMAINS has 6 domains", () => {
+    expect(FIXED_DOMAINS).toHaveLength(6);
+    expect(FIXED_DOMAINS).toContain("perso");
+    expect(FIXED_DOMAINS).toContain("admin-et-argent");
+    expect(FIXED_DOMAINS).toContain("achats");
+    expect(FIXED_DOMAINS).toContain("contenu-et-reseaux");
+    expect(FIXED_DOMAINS).toContain("freelance");
+    expect(FIXED_DOMAINS).toContain("apprentissage");
+  });
+});
+
+// ── getKnownProjectSlugs ──────────────────────────────────────────────────────
+
+describe("getKnownProjectSlugs", () => {
+  let tmpDir: string;
+  let brainPath: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brain-slugs-"));
+    brainPath = path.join(tmpDir, "CoucouBrain");
+    fs.mkdirSync(path.join(brainPath, ".state", "proj"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("reads slug from proj_*.json filenames", () => {
+    const stateDir = path.join(brainPath, ".state", "proj");
+    fs.writeFileSync(path.join(stateDir, "proj_portfo.json"), "{}", "utf8");
+    fs.writeFileSync(path.join(stateDir, "proj_sbe-hub.json"), "{}", "utf8");
+    const slugs = getKnownProjectSlugs(brainPath);
+    expect(slugs).toContain("portfo");
+    expect(slugs).toContain("sbe-hub");
+  });
+
+  it("ignores non-proj_ files (lessons.json, louis.json)", () => {
+    const stateDir = path.join(brainPath, ".state", "proj");
+    fs.writeFileSync(path.join(stateDir, "lessons.json"), "{}", "utf8");
+    fs.writeFileSync(path.join(stateDir, "louis.json"), "{}", "utf8");
+    const slugs = getKnownProjectSlugs(brainPath);
+    expect(slugs).not.toContain("lessons");
+    expect(slugs).not.toContain("louis");
+  });
+
+  it("returns empty set when stateDir missing", () => {
+    const slugs = getKnownProjectSlugs(path.join(tmpDir, "nonexistent"));
+    expect(slugs.size).toBe(0);
+  });
+});
+
+// ── --limit regression ────────────────────────────────────────────────────────
+
+describe("--limit regression — desktop conversations", () => {
+  let tmpDir: string;
+  let brainPath: string;
+  let config: BrainConfig;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brain-limit-"));
+    brainPath = path.join(tmpDir, "CoucouBrain");
+    fs.mkdirSync(path.join(brainPath, ".state", "proj"), { recursive: true });
+    config = {
+      brainPath,
+      claudeProjectsPath: "~/.claude/projects",
+      repoPaths: [],
+      repoAliases: {},
+      model: "claude-sonnet-4-6",
+      language: "fr",
+    } as unknown as BrainConfig;
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("slice(0, limit) gives correct count after sort", () => {
+    const manifest = new Manifest(brainPath);
+
+    // Upsert 8 conversations with different timestamps
+    for (let i = 1; i <= 8; i++) {
+      manifest.upsertDesktopConversation({
+        uuid: `uuid-${i}`,
+        updated_at: `2026-0${i < 10 ? i : i}-01T00:00:00.000Z`.replace("0100", "10"),
+      });
+    }
+
+    const all = manifest.getPendingDesktopConversations()
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at)); // newest first
+
+    expect(all.length).toBe(8);
+
+    const limited = all.slice(0, 5);
+    expect(limited.length).toBe(5);
+
+    // Most recent should come first
+    expect(limited[0]!.updated_at > limited[4]!.updated_at).toBe(true);
+
+    manifest.close();
+  });
+
+  it("limit larger than total returns all", () => {
+    const manifest = new Manifest(brainPath);
+    for (let i = 1; i <= 3; i++) {
+      manifest.upsertDesktopConversation({
+        uuid: `uuid-${i}`,
+        updated_at: `2026-01-0${i}T00:00:00.000Z`,
+      });
+    }
+    const pending = manifest.getPendingDesktopConversations()
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    const limited = 10 ? pending.slice(0, 10) : pending; // limit=10 > total=3
+    expect(limited.length).toBe(3);
+    manifest.close();
   });
 });

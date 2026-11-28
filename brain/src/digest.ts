@@ -28,17 +28,54 @@ export const SessionDigestSchema = z.object({
   title: z.string().min(1).transform((s) => s.slice(0, 60)),
   summary: z.string().min(1),
   projects: z.array(z.string()).default([]),
-  elements: z.array(LLMElementSchema).default([]),
+  // Filter out non-objects and elements missing required texte/kind (LLM sometimes returns strings)
+  elements: z.preprocess(
+    (val) => {
+      if (!Array.isArray(val)) return [];
+      return val.filter(
+        (e) =>
+          typeof e === "object" &&
+          e !== null &&
+          typeof (e as Record<string, unknown>).texte === "string" &&
+          ((e as Record<string, unknown>).texte as string).length > 0 &&
+          typeof (e as Record<string, unknown>).kind === "string"
+      );
+    },
+    z.array(LLMElementSchema).default([])
+  ),
   taches_faites: z.array(z.string()).default([]),
-  taches_abandonnees: z.array(z.object({ id: z.string(), raison: z.string() })).default([]),
-  remplacees: z.array(z.object({
-    id: z.string(),
-    par: z.string().nullable().default(null),
-    raison: z.string(),
-  })).default([]),
-  project_states: z
-    .array(z.object({ project: z.string(), etat_actuel: z.string() }))
-    .default([]),
+  // LLM sometimes returns string IDs instead of {id, raison} objects — coerce
+  taches_abandonnees: z.preprocess(
+    (val) => {
+      if (!Array.isArray(val)) return [];
+      return val.map((e) =>
+        typeof e === "string" ? { id: e, raison: "" } : e
+      );
+    },
+    z.array(z.object({ id: z.string(), raison: z.string() })).default([])
+  ),
+  // LLM sometimes returns string IDs instead of {id, par, raison} objects — coerce
+  remplacees: z.preprocess(
+    (val) => {
+      if (!Array.isArray(val)) return [];
+      return val.map((e) =>
+        typeof e === "string" ? { id: e, par: null, raison: "" } : e
+      );
+    },
+    z.array(z.object({
+      id: z.string(),
+      par: z.string().nullable().default(null),
+      raison: z.string(),
+    })).default([])
+  ),
+  // Filter out non-object items (LLM sometimes returns strings here too)
+  project_states: z.preprocess(
+    (val) =>
+      Array.isArray(val)
+        ? val.filter((e) => typeof e === "object" && e !== null)
+        : [],
+    z.array(z.object({ project: z.string(), etat_actuel: z.string() })).default([])
+  ),
   files_touched: z.array(z.string()).default([]),
   people: z.array(z.string()).default([]),
 });
@@ -111,11 +148,12 @@ function buildChunkDigestPrompt(
   chunk: Chunk,
   sessionDate: string,
   projectHint: string,
-  openElements: OpenElementHint[] = []
+  openElements: OpenElementHint[] = [],
+  validProjects?: string[]
 ): string {
   // openElements only passed to last chunk to avoid duplicate taches_faites/remplacees
   const elements = chunk.index === chunk.total - 1 ? openElements : [];
-  const base = buildDigestPrompt(chunk.text, sessionDate, projectHint, elements);
+  const base = buildDigestPrompt(chunk.text, sessionDate, projectHint, elements, validProjects);
   if (chunk.total <= 1) return base;
   const note = `\n⚠️ MORCEAU ${chunk.index + 1}/${chunk.total} : session longue découpée. Extrais UNIQUEMENT les éléments visibles dans CE MORCEAU. Title et summary décrivent CE MORCEAU uniquement. Les morceaux seront fusionnés ensuite.`;
   const marker = `Tu analyses une session Claude Code du ${sessionDate} (projet supposé : ${projectHint}).`;
@@ -199,16 +237,20 @@ function buildDigestPrompt(
   text: string,
   sessionDate: string,
   projectHint: string,
-  openElements: OpenElementHint[] = []
+  openElements: OpenElementHint[] = [],
+  validProjects?: string[]
 ): string {
   const openBlock = buildOpenElementsBlock(openElements);
+  const projetsBlock = validProjects && validProjects.length > 0
+    ? `PROJETS : choisis UNIQUEMENT parmi cette liste : [${validProjects.join(", ")}]. Domaines disponibles si aucun projet métier ne correspond : perso | admin-et-argent | achats | contenu-et-reseaux | freelance | apprentissage. Pages personne : "people/enya" ou "people/nom" (en dehors de la liste projets).`
+    : `PROJETS : identifie tous les slugs de projet touchés (ex: "coucou", "portfo", "sbe-hub"). Sous-projets : "coucou-brain" pour le module brain/ de Coucou. Pages personne : "people/enya" ou "people/nom".`;
   return `${INTERNAL_MARKER}
 Tu analyses une session Claude Code du ${sessionDate} (projet supposé : ${projectHint}).
 ${openBlock}
 
 TITRE : génère un titre en 60 caractères maximum, précis et informatif. Exemples de BONS titres : "brain/ module TypeScript : pipeline sessions + repos", "404 CRT, WebP, panel entreprise, analytics". Mauvais titre : les 60 premiers caractères du résumé coupés au milieu.
 
-PROJETS : identifie tous les slugs de projet touchés (ex: "coucou", "portfo", "sbe-hub"). Sous-projets : "coucou-brain" pour le module brain/ de Coucou. Pages personne : "people/enya" ou "people/nom".
+${projetsBlock}
 
 ÉLÉMENTS : pour chaque décision, fait notable, leçon, tâche, préférence ou mesure, génère un élément.
 Champs :
@@ -364,11 +406,19 @@ function parseDigest(raw: string): SessionDigest {
 
 // ── Main session digest ────────────────────────────────────────────────────────
 
+export interface DigestSessionOpts {
+  timeoutMs?: number;
+  /** When set, the LLM is instructed to pick projects ONLY from this list */
+  validProjects?: string[];
+}
+
 export async function digestSession(
   session: SessionCondensed,
   config: BrainConfig,
-  openElements: OpenElementHint[] = []
+  openElements: OpenElementHint[] = [],
+  opts: DigestSessionOpts = {}
 ): Promise<SessionDigest> {
+  const { timeoutMs, validProjects } = opts;
   const chunks = chunkMessages(session.messages, config.maxChunkTokens);
 
   if (chunks.length === 1) {
@@ -376,19 +426,46 @@ export async function digestSession(
       chunks[0]!.text,
       session.date,
       session.projectNameHint,
-      openElements
+      openElements,
+      validProjects
     );
-    return parseDigest(runClaude(prompt, config.mergeModel));
+    return parseDigest(runClaude(prompt, config.mergeModel, timeoutMs));
   }
 
   // Multi-chunk: extract elements from each chunk independently, then merge
   console.log(`  Session longue : ${chunks.length} morceaux`);
   const partials: SessionDigest[] = [];
   for (const chunk of chunks) {
+    if (chunk.index > 0) {
+      // Brief pause between chunks to reduce rate-limit pressure
+      await new Promise<void>((r) => setTimeout(r, 3_000));
+    }
     console.log(`    Morceau ${chunk.index + 1}/${chunk.total} (~${chunk.estimatedTokens} tokens)…`);
-    const prompt = buildChunkDigestPrompt(chunk, session.date, session.projectNameHint, openElements);
-    const raw = runClaude(prompt, config.mergeModel);
-    partials.push(parseDigest(raw));
+    const prompt = buildChunkDigestPrompt(chunk, session.date, session.projectNameHint, openElements, validProjects);
+
+    // Per-chunk retry: if the first attempt fails, wait and try once more.
+    // If both fail, skip this chunk (log warning) so other chunks still merge.
+    let partial: SessionDigest | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        console.warn(`    Retry morceau ${chunk.index + 1}/${chunk.total}…`);
+        await new Promise<void>((r) => setTimeout(r, 8_000));
+      }
+      try {
+        partial = parseDigest(runClaude(prompt, config.mergeModel, timeoutMs));
+        break;
+      } catch (e) {
+        if (attempt === 1) {
+          console.warn(`    ⚠ Morceau ${chunk.index + 1} ignoré (2 erreurs) : ${(e as Error).message.slice(0, 80)}`);
+        }
+      }
+    }
+    if (partial) partials.push(partial);
+  }
+
+  // If every chunk failed, let the session-level retry handle it
+  if (partials.length === 0) {
+    throw new Error(`Tous les morceaux ont échoué (${chunks.length} morceaux)`);
   }
   return mergeChunkDigests(partials);
 }
@@ -406,14 +483,15 @@ export function digestPromptHash(): string {
 export async function digestSessionWithRetry(
   session: SessionCondensed,
   config: BrainConfig,
-  openElements: OpenElementHint[] = []
+  openElements: OpenElementHint[] = [],
+  opts: DigestSessionOpts = {}
 ): Promise<SessionDigest> {
   try {
-    return await digestSession(session, config, openElements);
+    return await digestSession(session, config, openElements, opts);
   } catch (firstError) {
     console.warn(`  Retry après erreur: ${(firstError as Error).message.slice(0, 100)}`);
     try {
-      return await digestSession(session, config, openElements);
+      return await digestSession(session, config, openElements, opts);
     } catch (secondError) {
       throw new Error(
         `Digest échoué après 2 tentatives pour ${session.id}: ${(secondError as Error).message}`
