@@ -61,9 +61,11 @@ export interface RawSearchResult {
   source: "desktop" | "session";
   /** project slug for sessions, empty for desktop */
   project: string;
-  /** First 200 chars of matching message */
+  /** First 220 chars of matching message */
   excerpt: string;
   score: number;
+  /** Total messages in this conversation that match the query */
+  nbMentions: number;
 }
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
@@ -344,7 +346,8 @@ export function searchRaw(
   config: BrainConfig,
   query: string,
   limit = 10,
-  offset = 0
+  offset = 0,
+  sourceFilter?: "desktop" | "session"
 ): RawSearchResponse {
   const dbPath = rawDbPath(config);
   if (!fs.existsSync(dbPath)) return { results: [], total: 0 };
@@ -371,7 +374,7 @@ export function searchRaw(
 
     // Single pass: all matching rows, ordered by score (best first).
     // bm25() returns negative values; more negative = better match.
-    const rows = db
+    const allRows = db
       .prepare(
         `SELECT conv_id, conv_title, conv_date, conv_link, source, project,
                 text, msg_index, role,
@@ -381,6 +384,17 @@ export function searchRaw(
          ORDER BY bm25(raw_messages) ASC`
       )
       .all(ftsQuery) as Row[];
+
+    // Apply optional source filter
+    const rows = sourceFilter
+      ? allRows.filter((r) => r.source === sourceFilter)
+      : allRows;
+
+    // Count matching messages per conversation (after source filter)
+    const mentionsByConv = new Map<string, number>();
+    for (const row of rows) {
+      mentionsByConv.set(row.conv_id, (mentionsByConv.get(row.conv_id) ?? 0) + 1);
+    }
 
     // Deduplicate: keep best-scoring message per conversation (first seen = best).
     const bestByConv = new Map<string, Row>();
@@ -405,6 +419,7 @@ export function searchRaw(
       project: row.project,
       excerpt: row.text.slice(0, 220).replace(/\n+/g, " "),
       score: row.score,
+      nbMentions: mentionsByConv.get(row.conv_id) ?? 1,
     }));
 
     return { results, total };
@@ -422,6 +437,134 @@ export interface RawIndexStats {
   sessions: number;
   messages: number;
 }
+
+// ── Conversation messages ─────────────────────────────────────────────────────
+
+export interface ConversationDetail {
+  id: string;
+  titre: string;
+  source: "desktop" | "session";
+  date: string;
+  lien: string;
+  projet: string;
+  messages: { role: "human" | "claude"; text: string }[];
+}
+
+/**
+ * Fetch all messages for a conversation from the raw FTS index.
+ * Returns null if the conversation is not indexed.
+ */
+export function getConversationMessages(
+  config: BrainConfig,
+  convId: string
+): ConversationDetail | null {
+  const dbPath = rawDbPath(config);
+  if (!fs.existsSync(dbPath)) return null;
+
+  let db: Database.Database | null = null;
+  try {
+    db = new Database(dbPath, { readonly: true });
+
+    type MsgRow = {
+      msg_index: number;
+      role: string;
+      text: string;
+      conv_title: string;
+      conv_date: string;
+      conv_link: string;
+      source: string;
+      project: string;
+    };
+
+    const rows = db
+      .prepare(
+        `SELECT msg_index, role, text, conv_title, conv_date, conv_link, source, project
+         FROM raw_messages
+         WHERE conv_id = ?
+         ORDER BY msg_index`
+      )
+      .all(convId) as MsgRow[];
+
+    if (rows.length === 0) return null;
+
+    const first = rows[0]!;
+    return {
+      id: convId,
+      titre: first.conv_title,
+      source: first.source as "desktop" | "session",
+      date: first.conv_date,
+      lien: first.conv_link,
+      projet: first.project,
+      messages: rows.map((r) => ({
+        role: r.role as "human" | "claude",
+        text: r.text,
+      })),
+    };
+  } catch {
+    return null;
+  } finally {
+    db?.close();
+  }
+}
+
+// ── All conversations (for graph/recurrences) ─────────────────────────────────
+
+export interface ConversationSummary {
+  convId: string;
+  convTitle: string;
+  convDate: string;
+  convLink: string;
+  source: "desktop" | "session";
+  project: string;
+}
+
+/**
+ * Return all indexed conversations (one entry per distinct conv_id).
+ * Used by graph and recurrences commands — no FTS query needed.
+ */
+export function getAllConversations(config: BrainConfig): ConversationSummary[] {
+  const dbPath = rawDbPath(config);
+  if (!fs.existsSync(dbPath)) return [];
+
+  let db: Database.Database | null = null;
+  try {
+    db = new Database(dbPath, { readonly: true });
+
+    type Row = {
+      conv_id: string;
+      conv_title: string;
+      conv_date: string;
+      conv_link: string;
+      source: string;
+      project: string;
+    };
+
+    // Full scan — one representative row per conv_id (msg_index = 0 = first message)
+    const rows = db
+      .prepare(
+        `SELECT conv_id, conv_title, conv_date, conv_link, source, project
+         FROM raw_messages
+         WHERE msg_index = 0
+         ORDER BY conv_date DESC`
+      )
+      .all() as Row[];
+
+    return rows.map((r) => ({
+      convId: r.conv_id,
+      convTitle: r.conv_title,
+      convDate: r.conv_date,
+      convLink: r.conv_link,
+      source: r.source as "desktop" | "session",
+      project: r.project,
+    }));
+  } catch {
+    return [];
+  } finally {
+    db?.close();
+  }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
 
 export function getRawStats(config: BrainConfig): RawIndexStats | null {
   const dbPath = rawDbPath(config);

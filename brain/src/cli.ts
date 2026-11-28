@@ -992,26 +992,58 @@ program
   .description("Search indexed conversations and sessions (raw text, no LLM)")
   .option("--limit <n>", "Max results per page (default 10)", parseInt)
   .option("--offset <n>", "Skip first N conversations", parseInt)
-  .action(async (query: string, opts: { limit?: number; offset?: number }) => {
+  .option("--source <src>", "Filter by source: claude (claude.ai) or code (Claude Code sessions)")
+  .option("--json", "Output raw JSON for programmatic use (Coucou app)")
+  .action(async (query: string, opts: { limit?: number; offset?: number; source?: string; json?: boolean }) => {
     const config = loadConfig();
     const { searchRaw, getRawStats, rawDbPath } = await import("./rawindex.js");
 
     const dbPath = rawDbPath(config);
     if (!fs.existsSync(expandHome(dbPath))) {
-      console.error('Index raw introuvable. Lance "brain index" d\'abord.');
-      process.exitCode = 1;
+      if (opts.json) {
+        console.log(JSON.stringify({ error: "index_missing", total: 0, results: [] }));
+      } else {
+        console.error('Index raw introuvable. Lance "brain index" d\'abord.');
+        process.exitCode = 1;
+      }
       return;
     }
 
     if (query.trim().length < 3) {
-      console.error("Requête trop courte (minimum 3 caractères).");
-      process.exitCode = 1;
+      if (opts.json) {
+        console.log(JSON.stringify({ error: "query_too_short", total: 0, results: [] }));
+      } else {
+        console.error("Requête trop courte (minimum 3 caractères).");
+        process.exitCode = 1;
+      }
       return;
     }
 
+    // Map --source flag to internal source filter
+    let sourceFilter: "desktop" | "session" | undefined;
+    if (opts.source === "claude") sourceFilter = "desktop";
+    else if (opts.source === "code") sourceFilter = "session";
+
     const limit = opts.limit ?? 10;
     const offset = opts.offset ?? 0;
-    const { results, total } = searchRaw(config, query, limit, offset);
+    const { results, total } = searchRaw(config, query, limit, offset, sourceFilter);
+
+    if (opts.json) {
+      console.log(JSON.stringify({
+        total,
+        results: results.map((r) => ({
+          id: r.convId,
+          titre: r.convTitle,
+          source: r.source === "desktop" ? "claude" : "code",
+          date: r.convDate,
+          extrait: r.excerpt,
+          lien: r.convLink,
+          projet: r.project,
+          nbMentions: r.nbMentions,
+        })),
+      }));
+      return;
+    }
 
     if (total === 0) {
       console.log(`Aucun résultat pour "${query}".`);
@@ -1038,6 +1070,417 @@ program
       console.log(`     ${role}: ${excerpt}`);
       if (link) console.log(link);
       console.log();
+    }
+  });
+
+// ── show (Level 1 — raw FTS) ──────────────────────────────────────────────────
+
+program
+  .command("show <id>")
+  .description("Show full conversation by ID, with digested elements if available")
+  .option("--json", "Output raw JSON for programmatic use (Coucou app)")
+  .action(async (id: string, opts: { json?: boolean }) => {
+    const config = loadConfig();
+    const { getConversationMessages, rawDbPath } = await import("./rawindex.js");
+
+    const dbPath = rawDbPath(config);
+    if (!fs.existsSync(expandHome(dbPath))) {
+      if (opts.json) {
+        console.log(JSON.stringify({ error: "index_missing" }));
+      } else {
+        console.error('Index raw introuvable. Lance "brain index" d\'abord.');
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    const conv = getConversationMessages(config, id);
+    if (!conv) {
+      if (opts.json) {
+        console.log(JSON.stringify({ error: "not_found", id }));
+      } else {
+        console.error(`Conversation introuvable : ${id}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    // Look up digested elements from LLM state files (Level 2+)
+    type ElemOut = { kind: string; texte: string; statut: string | null };
+    let elements: ElemOut[] | null = null;
+    let projets: string[] = [];
+
+    try {
+      // Check manifest for record_id
+      const { Manifest } = await import("./manifest.js");
+      const manifest = new Manifest(config.brainPath);
+      const session = manifest.getSession(id);
+      const desktopEntry = !session ? manifest.getDesktopConversation(id) : null;
+      const recordId = session?.record_id ?? desktopEntry?.record_id ?? null;
+      projets = JSON.parse(session?.projects ?? desktopEntry?.projects ?? "[]");
+      manifest.close();
+
+      if (recordId) {
+        // Scan state files for elements belonging to this record
+        const stateDir = path.join(expandHome(config.brainPath), ".state", "proj");
+        if (fs.existsSync(stateDir)) {
+          elements = [];
+          for (const file of fs.readdirSync(stateDir)) {
+            if (!file.endsWith(".json")) continue;
+            try {
+              const raw = fs.readFileSync(path.join(stateDir, file), "utf8");
+              const state: { elements: Array<{ id: string; kind: string; texte: string; statut?: string | null; sources: string[] }> } = JSON.parse(raw);
+              for (const elem of state.elements) {
+                if (elem.sources.includes(recordId)) {
+                  elements.push({ kind: elem.kind, texte: elem.texte, statut: elem.statut ?? null });
+                }
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+
+    if (opts.json) {
+      console.log(JSON.stringify({
+        id: conv.id,
+        titre: conv.titre,
+        source: conv.source === "desktop" ? "claude" : "code",
+        date: conv.date,
+        lien: conv.lien,
+        projet: conv.projet,
+        projets,
+        messages: conv.messages,
+        elements,
+      }));
+      return;
+    }
+
+    // Human-readable output
+    console.log(`\n📄 "${conv.titre}"  ${conv.date}  (${conv.source})`);
+    if (conv.lien) console.log(`   ${conv.lien}`);
+    console.log(`   Projet: ${conv.projet || "(inconnu)"}`);
+    console.log(`\n${conv.messages.length} messages:\n`);
+    for (const msg of conv.messages.slice(0, 5)) {
+      const role = msg.role === "human" ? "Human" : "Claude";
+      console.log(`  [${role}] ${msg.text.slice(0, 200)}`);
+    }
+    if (conv.messages.length > 5) console.log(`  … (+${conv.messages.length - 5} messages)`);
+
+    if (elements === null) {
+      console.log("\n  (pas encore digérée par le LLM)");
+    } else if (elements.length > 0) {
+      console.log(`\n${elements.length} éléments retenus:`);
+      for (const e of elements) {
+        console.log(`  [${e.kind}${e.statut ? " " + e.statut : ""}] ${e.texte.slice(0, 100)}`);
+      }
+    }
+    console.log();
+  });
+
+// ── graph (Level 1+) ──────────────────────────────────────────────────────────
+
+program
+  .command("graph")
+  .description("Build a knowledge graph (nodes + edges) from indexed conversations and LLM state")
+  .option("--json", "Output raw JSON for programmatic use (Coucou app)")
+  .option("--limit <n>", "Max nodes (default 5000)", parseInt)
+  .action(async (opts: { json?: boolean; limit?: number }) => {
+    const config = loadConfig();
+    const { buildGraph } = await import("./graph.js");
+
+    const data = buildGraph(config, { limit: opts.limit ?? 5000 });
+
+    if (opts.json) {
+      console.log(JSON.stringify(data));
+      return;
+    }
+
+    console.log(`\n🕸  Graphe : ${data.nodes.length} nœuds, ${data.edges.length} liens`);
+    const byKind: Record<string, number> = {};
+    for (const n of data.nodes) byKind[n.kind] = (byKind[n.kind] ?? 0) + 1;
+    for (const [kind, count] of Object.entries(byKind)) {
+      console.log(`   ${kind}: ${count}`);
+    }
+    console.log(`\n  Utilisez --json pour l'export complet.`);
+  });
+
+// ── recurrences ───────────────────────────────────────────────────────────────
+
+program
+  .command("recurrences")
+  .description("Detect recurring topics, repeated errors, and artifact counts")
+  .option("--json", "Output raw JSON for programmatic use (Coucou app)")
+  .action(async (opts: { json?: boolean }) => {
+    const config = loadConfig();
+    const { computeRecurrences } = await import("./recurrences.js");
+
+    const data = computeRecurrences(config);
+
+    if (opts.json) {
+      console.log(JSON.stringify(data));
+      return;
+    }
+
+    if (data.groupes.length > 0) {
+      console.log(`\n🔁 Sujets récurrents (${data.groupes.length}):`);
+      for (const g of data.groupes.slice(0, 10)) {
+        const freq = g.freqJours !== null ? ` · tous les ~${g.freqJours}j` : "";
+        console.log(`   "${g.titre}"  ${g.count} fois${freq}`);
+      }
+    } else {
+      console.log("\n  Aucun sujet récurrent (minimum 5 conversations similaires).");
+    }
+
+    if (data.erreurs.length > 0) {
+      console.log(`\n⚠️  Erreurs répétées (${data.erreurs.length}):`);
+      for (const e of data.erreurs.slice(0, 5)) {
+        console.log(`   ${e.statut} ×${e.count}  ${e.texte.slice(0, 80)}`);
+      }
+    }
+
+    if (data.artifacts.length > 0) {
+      console.log(`\n📦 Éléments par type:`);
+      for (const a of data.artifacts) {
+        console.log(`   ${a.kind}: ${a.count}`);
+      }
+    }
+    console.log();
+  });
+
+// ── status ────────────────────────────────────────────────────────────────────
+
+program
+  .command("status")
+  .description("Show current brain status: depth, raw index, manifest progress, pause")
+  .option("--json", "Output raw JSON for programmatic use (Coucou app)")
+  .action(async (opts: { json?: boolean }) => {
+    const config = loadConfig();
+    const { getRawStats, rawDbPath } = await import("./rawindex.js");
+    const brainBase = expandHome(config.brainPath);
+
+    // Raw index stats
+    const rawIndex = getRawStats(config);
+
+    // Manifest stats (optional — may not exist at Level 1)
+    let manifestStats: {
+      sessions: { total: number; done: number; pending: number; failed: number; ignored: number };
+      conversations: { total: number; done: number };
+    } | null = null;
+
+    const manifestPath = path.join(brainBase, ".state", "manifest.db");
+    if (fs.existsSync(manifestPath)) {
+      try {
+        const { Manifest } = await import("./manifest.js");
+        const manifest = new Manifest(config.brainPath);
+        const sessions = manifest.getAllSessions();
+        const convs = manifest.getAllDesktopConversations?.() ?? [];
+        manifest.close();
+
+        manifestStats = {
+          sessions: {
+            total: sessions.length,
+            done: sessions.filter((s) => s.status === "done").length,
+            pending: sessions.filter((s) => s.status === "pending").length,
+            failed: sessions.filter((s) => s.status === "failed").length,
+            ignored: sessions.filter((s) => s.status === "ignored").length,
+          },
+          conversations: {
+            total: convs.length,
+            done: convs.filter((c) => c.status === "done").length,
+          },
+        };
+      } catch {}
+    }
+
+    // Pause status
+    const pausedFlag = path.join(brainBase, ".state", "paused");
+    const pause = fs.existsSync(pausedFlag)
+      ? fs.readFileSync(pausedFlag, "utf8").trim()
+      : null;
+
+    const status = {
+      depth: config.depth ?? "search",
+      rawIndex,
+      manifest: manifestStats,
+      pause,
+      dailyLimit: config.dailyLimit ?? 50,
+      concurrency: config.concurrency ?? 3,
+    };
+
+    if (opts.json) {
+      console.log(JSON.stringify(status));
+      return;
+    }
+
+    console.log(`\n🧠 Brain status`);
+    console.log(`   Depth: ${status.depth}`);
+    if (rawIndex) {
+      console.log(`   Raw index: ${rawIndex.messages.toLocaleString()} messages · ${rawIndex.conversations} conversations · ${rawIndex.sessions} sessions`);
+    } else {
+      console.log(`   Raw index: absent (lance "brain index")`);
+    }
+    if (manifestStats) {
+      const s = manifestStats.sessions;
+      console.log(`   Sessions: ${s.total} total · ${s.done} digérées · ${s.pending} pending · ${s.failed} échouées`);
+    }
+    if (pause) {
+      console.log(`   ⏸ En pause depuis ${pause.slice(0, 16)} UTC`);
+    } else {
+      console.log(`   Pause: non`);
+    }
+    console.log();
+  });
+
+// ── import (Level 1 — raw FTS, alias for index --claude-export) ───────────────
+
+program
+  .command("import <zip>")
+  .description("Import a Claude.ai conversations export (zip or folder) into the raw FTS index")
+  .option("--json", "Output result as JSON")
+  .action(async (zip: string, opts: { json?: boolean }) => {
+    const config = loadConfig();
+    assertNoRemote(config.brainPath);
+    const { rebuildRawIndex } = await import("./rawindex.js");
+
+    const resolved = expandHome(zip);
+    if (!fs.existsSync(resolved)) {
+      if (opts.json) {
+        console.log(JSON.stringify({ error: "file_not_found", path: resolved }));
+      } else {
+        console.error(`Fichier introuvable : ${resolved}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    const result = rebuildRawIndex(config, {
+      claudeExportPath: zip,
+      onProgress: opts.json ? undefined : (msg) => console.log(msg),
+    });
+
+    if (opts.json) {
+      console.log(JSON.stringify({
+        ok: true,
+        conversations: result.conversations,
+        sessions: result.sessions,
+        messages: result.messages,
+        durationMs: result.durationMs,
+      }));
+    } else {
+      const secs = (result.durationMs / 1000).toFixed(1);
+      console.log(`\n✓ Import terminé en ${secs}s`);
+      console.log(`  Conversations : ${result.conversations}`);
+      console.log(`  Sessions      : ${result.sessions}`);
+      console.log(`  Messages      : ${result.messages.toLocaleString()}`);
+    }
+  });
+
+// ── config set ────────────────────────────────────────────────────────────────
+
+{
+  const configCmd = program
+    .command("config")
+    .description("Read or modify brain configuration");
+
+  configCmd
+    .command("set <key> <value>")
+    .description("Set a config value in brain.config.local.json (keys: depth, dailyLimit, concurrency)")
+    .option("--json", "Output result as JSON")
+    .action(async (key: string, value: string, opts: { json?: boolean }) => {
+      const validKeys = ["depth", "dailyLimit", "concurrency"];
+      if (!validKeys.includes(key)) {
+        if (opts.json) {
+          console.log(JSON.stringify({ error: "invalid_key", key, validKeys }));
+        } else {
+          console.error(`Clé invalide : ${key}. Valeurs acceptées : ${validKeys.join(", ")}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      // Type coerce
+      let coerced: string | number;
+      if (key === "depth") {
+        if (!["search", "live", "full"].includes(value)) {
+          if (opts.json) {
+            console.log(JSON.stringify({ error: "invalid_value", key, value }));
+          } else {
+            console.error(`Valeur invalide pour depth : ${value}. Valeurs acceptées : search, live, full`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+        coerced = value;
+      } else {
+        coerced = parseInt(value, 10);
+        if (isNaN(coerced) || coerced < 0) {
+          if (opts.json) {
+            console.log(JSON.stringify({ error: "invalid_value", key, value }));
+          } else {
+            console.error(`Valeur invalide : ${value} (attendu nombre positif)`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+      }
+
+      // Write to brain.config.local.json (next to brain.config.json)
+      const srcDir = path.dirname(new URL(import.meta.url).pathname);
+      const localPath = path.join(srcDir, "..", "brain.config.local.json");
+      let local: Record<string, unknown> = {};
+      if (fs.existsSync(localPath)) {
+        try { local = JSON.parse(fs.readFileSync(localPath, "utf8")); } catch {}
+      }
+      local[key] = coerced;
+      fs.writeFileSync(localPath, JSON.stringify(local, null, 2) + "\n", "utf8");
+
+      if (opts.json) {
+        console.log(JSON.stringify({ ok: true, key, value: coerced }));
+      } else {
+        console.log(`✓ ${key} = ${coerced} (brain.config.local.json)`);
+      }
+    });
+}
+
+// ── wipe ──────────────────────────────────────────────────────────────────────
+
+program
+  .command("wipe")
+  .description("Delete the raw FTS index (raw.db). Does not affect LLM digestion state.")
+  .option("--yes", "Required to actually run the wipe")
+  .option("--json", "Output result as JSON")
+  .action(async (opts: { yes?: boolean; json?: boolean }) => {
+    const config = loadConfig();
+    const { rawDbPath } = await import("./rawindex.js");
+
+    if (!opts.yes) {
+      if (opts.json) {
+        console.log(JSON.stringify({ error: "confirm_required", hint: "add --yes" }));
+      } else {
+        console.log("Ajoute --yes pour effectuer la suppression de raw.db.");
+        console.log("Cela efface l'index de recherche brut. Lance 'brain index' pour le reconstruire.");
+      }
+      return;
+    }
+
+    const dbPath = rawDbPath(config);
+    const resolved = expandHome(dbPath);
+    if (!fs.existsSync(resolved)) {
+      if (opts.json) {
+        console.log(JSON.stringify({ ok: true, wiped: false, hint: "index_already_absent" }));
+      } else {
+        console.log("Index raw déjà absent.");
+      }
+      return;
+    }
+
+    fs.unlinkSync(resolved);
+
+    if (opts.json) {
+      console.log(JSON.stringify({ ok: true, wiped: true }));
+    } else {
+      console.log("✓ raw.db supprimé. Lance 'brain index' pour reconstruire.");
     }
   });
 
