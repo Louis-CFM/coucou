@@ -38458,6 +38458,27 @@
         }
       }
     },
+    "hub.memory.recurrences.empty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا توجد تكرارات بعد" } },
+        "bn" : { "stringUnit" : { "state" : "translated", "value" : "এখনো কোনো পুনরাবৃত্তি নেই" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Noch keine Muster" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No patterns yet" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aún no hay patrones" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune récurrence pour l'instant" } },
+        "hi" : { "stringUnit" : { "state" : "translated", "value" : "अभी कोई पैटर्न नहीं" } },
+        "id" : { "stringUnit" : { "state" : "translated", "value" : "Belum ada pola" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "まだパターンなし" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "아직 패턴 없음" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhum padrão ainda" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Паттернов пока нет" } },
+        "th" : { "stringUnit" : { "state" : "translated", "value" : "ยังไม่มีรูปแบบ" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Henüz desen yok" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂无规律" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "暫無規律" } }
+      }
+    },
     "hub.memory.recurrences.errors" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -40981,6 +41002,48 @@
             "value" : "來源"
           }
         }
+      }
+    },
+    "hub.memory.settings.sources.reminder-detail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "إشعار شهري لاستيراد محادثات Claude.ai" } },
+        "bn" : { "stringUnit" : { "state" : "translated", "value" : "Claude.ai কথোপকথন আমদানি করতে মাসিক বিজ্ঞপ্তি" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Monatliche Benachrichtigung zum Importieren von Claude.ai-Gesprächen" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Monthly notification to import Claude.ai conversations" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Notificación mensual para importar conversaciones de Claude.ai" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Notification mensuelle pour importer les convs Claude.ai" } },
+        "hi" : { "stringUnit" : { "state" : "translated", "value" : "Claude.ai बातचीत आयात करने के लिए मासिक अधिसूचना" } },
+        "id" : { "stringUnit" : { "state" : "translated", "value" : "Notifikasi bulanan untuk mengimpor percakapan Claude.ai" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Claude.aiの会話をインポートするための月次通知" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Claude.ai 대화를 가져오기 위한 월간 알림" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Notificação mensal para importar conversas do Claude.ai" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ежемесячное уведомление для импорта разговоров Claude.ai" } },
+        "th" : { "stringUnit" : { "state" : "translated", "value" : "การแจ้งเตือนรายเดือนเพื่อนำเข้าการสนทนา Claude.ai" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Claude.ai konuşmalarını içe aktarmak için aylık bildirim" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每月导入 Claude.ai 对话的通知" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每月匯入 Claude.ai 對話的通知" } }
+      }
+    },
+    "hub.memory.settings.sources.reminder-title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "تذكير الاستيراد الشهري" } },
+        "bn" : { "stringUnit" : { "state" : "translated", "value" : "মাসিক আমদানি রিমাইন্ডার" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Monatliche Import-Erinnerung" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Monthly import reminder" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Recordatorio mensual de importación" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rappel mensuel import" } },
+        "hi" : { "stringUnit" : { "state" : "translated", "value" : "मासिक आयात अनुस्मारक" } },
+        "id" : { "stringUnit" : { "state" : "translated", "value" : "Pengingat impor bulanan" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "月次インポートリマインダー" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "월간 가져오기 알림" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Lembrete mensal de importação" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ежемесячное напоминание об импорте" } },
+        "th" : { "stringUnit" : { "state" : "translated", "value" : "การเตือนการนำเข้ารายเดือน" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Aylık içe aktarma hatırlatıcısı" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每月导入提醒" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每月匯入提醒" } }
       }
     },
     "hub.memory.settings.wipe" : {

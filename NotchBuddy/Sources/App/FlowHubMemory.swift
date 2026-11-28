@@ -422,7 +422,7 @@ struct HubMemorySearchPage: View {
     @ViewBuilder private var noIndexCard: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HubGlowCard(color: Color(hex: "#22D3EE")) {
+                HubCard {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(String(localized: "hub.memory.index-missing"))
                             .font(.system(size: 17, weight: .semibold))
@@ -1178,7 +1178,7 @@ struct HubMemoryGraphPage: View {
                                     model.filterKinds.insert(kind)
                                 }
                             }) {
-                                Text(verbatim: kind)
+                                Text(verbatim: kindLabel(kind))
                             }
                             .buttonStyle(MemoryFilterButtonStyle(selected: model.filterKinds.contains(kind)))
                         }
@@ -1188,7 +1188,7 @@ struct HubMemoryGraphPage: View {
                             set: { model.periodDays = $0 == 0 ? nil : $0 }
                         )
                         Picker(selection: periodBinding, label: Text(verbatim: "")) {
-                            Text(String(localized: "hub.memory.graph.filter-all")).tag(0)
+                            Text(verbatim: "∞").tag(0)
                             Text(String(localized: "hub.memory.graph.period-7d")).tag(7)
                             Text(String(localized: "hub.memory.graph.period-30d")).tag(30)
                             Text(String(localized: "hub.memory.graph.period-90d")).tag(90)
@@ -1282,7 +1282,7 @@ struct HubMemoryGraphPage: View {
                 .transition(.opacity)
             }
         }
-        .background(HubTheme.panel)
+        .background(Color(hex: "#06070A"))
         .onAppear { model.load() }
     }
 
@@ -1291,23 +1291,45 @@ struct HubMemoryGraphPage: View {
     // Static formatter — created once, used every frame
     private nonisolated(unsafe) static let isoFormatter = ISO8601DateFormatter()
 
+    private func kindLabel(_ kind: String) -> String {
+        switch kind {
+        case "conv":      return "Convs"
+        case "projet":    return "Projets"
+        case "decision":  return "Décisions"
+        case "lecon":     return "Leçons"
+        case "fait":      return "Faits"
+        case "pref":      return "Prefs"
+        case "personne":  return "Personnes"
+        default:          return kind
+        }
+    }
+
     private func drawGraph(ctx: inout GraphicsContext, size: CGSize, date: Date) {
         guard let g = model.graph else { return }
 
-        // Log first draw timestamp
         if !model.firstDrawLogged {
             model.firstDrawLogged = true
             print("🧠 [4/4] first draw: \(MemoryGraphModel.ms(model.loadStartTime))ms")
         }
 
-        // Advance impulses + auto-rotate
         model.advance(dt: 1.0 / 60.0)
 
         let cx = size.width / 2
         let cy = size.height / 2
         let scale = zoom * min(size.width, size.height) / 1200
 
-        // A4: Filter by kind
+        // ── Background ──────────────────────────────────────────────────────
+        ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: "#06070A")))
+        let bgR = max(size.width, size.height) * 0.55
+        let bgGrad = Gradient(stops: [
+            .init(color: Color(red: 34/255, green: 211/255, blue: 238/255, opacity: 0.07), location: 0),
+            .init(color: .clear, location: 1)
+        ])
+        ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                 with: .radialGradient(bgGrad, center: CGPoint(x: cx, y: cy),
+                                       startRadius: 0, endRadius: bgR))
+
+        // ── Filter ──────────────────────────────────────────────────────────
         let filteredNodes: [BrainGraphNode]
         if model.filterKinds.isEmpty {
             filteredNodes = g.nodes
@@ -1315,7 +1337,6 @@ struct HubMemoryGraphPage: View {
             filteredNodes = g.nodes.filter { model.filterKinds.contains($0.kind) || $0.kind == "moi" }
         }
 
-        // A5: Filter by period (uses static formatter — no allocation per frame)
         let nodesForPeriod: [BrainGraphNode]
         if let days = model.periodDays {
             let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
@@ -1329,27 +1350,19 @@ struct HubMemoryGraphPage: View {
             nodesForPeriod = filteredNodes
         }
 
-        // A2: Grow animation — limit visible nodes
         let visibleNodes = model.growCount >= 0
             ? Array(nodesForPeriod.prefix(model.growCount))
             : nodesForPeriod
 
         let visibleIds = Set(visibleNodes.map { $0.id })
-
-        // Use pre-computed positions — no sphere3D per frame
         let pos3D = model.cachedPositions
-
-        // A1: combine manual rotation + auto-rotate
         let effectiveRotY = rotY + model.autoRotY
 
-        // Project to 2D
         func project(_ p3: SIMD3<Double>) -> (CGPoint, Double) {
             let rx = rotX, ry = effectiveRotY
-            // Rotate Y
             let x1 = p3.x * cos(ry) + p3.z * sin(ry)
             let y1 = p3.y
             let z1 = -p3.x * sin(ry) + p3.z * cos(ry)
-            // Rotate X
             let x2 = x1
             let y2 = y1 * cos(rx) - z1 * sin(rx)
             let z2 = y1 * sin(rx) + z1 * cos(rx)
@@ -1361,79 +1374,125 @@ struct HubMemoryGraphPage: View {
 
         let isolated = model.selectedId != nil
 
-        // Draw edges
+        // ── Edges ───────────────────────────────────────────────────────────
+        let edgeBase = Color(red: 0.510, green: 0.667, blue: 0.902)       // rgba(130,170,230)
+        let edgeSel  = Color(red: 0.133, green: 0.827, blue: 0.933)       // #22D3EE
+
         for edge in g.edges {
             guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
             guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
             let (pa, za) = project(a)
             let (pb, _) = project(b)
-            let depth = (za + 1) / 2  // 0 far, 1 near
-            let opacity = isolated ? 0.04 : (depth > 0.6 ? 0.14 : (depth > 0.3 ? 0.08 : 0.04))
+
+            let isSel = model.selectedId == edge.from || model.selectedId == edge.to
+            let edgeColor: Color
+            let edgeOpacity: Double
+            if isSel {
+                edgeColor = edgeSel; edgeOpacity = 0.45
+            } else {
+                edgeColor = edgeBase
+                let depth = (za + 1) / 2
+                edgeOpacity = isolated ? 0.03 : (depth > 0.6 ? 0.09 : (depth > 0.3 ? 0.055 : 0.03))
+            }
             var path = Path()
-            path.move(to: pa)
-            path.addLine(to: pb)
-            ctx.stroke(path, with: .color(Color.white.opacity(opacity)), lineWidth: 0.6)
+            path.move(to: pa); path.addLine(to: pb)
+            ctx.stroke(path, with: .color(edgeColor.opacity(edgeOpacity)), lineWidth: 1)
         }
 
-        // Draw impulses
+        // ── Impulses — additive white halo ───────────────────────────────────
         for impulse in model.impulses {
             guard impulse.edgeIdx < g.edges.count else { continue }
             let edge = g.edges[impulse.edgeIdx]
             guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
-            // Prend direction en compte
-            let (pA, pB) = impulse.direction > 0 ? (a, b) : (b, a)
             guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
+            let (pA, pB) = impulse.direction > 0 ? (a, b) : (b, a)
             let t = Double(impulse.t)
             let p3 = pA + (pB - pA) * t
-            let (pt, _) = project(p3)
+            let (pt, z2) = project(p3)
+            let f = max(0.1, 900.0 / (900.0 + z2))
+            let ir = 7.0 * f * sqrt(zoom) / 2
+            let iOpacity = sin(t * .pi) * 0.9
             ctx.drawLayer { inner in
-                inner.addFilter(.blur(radius: 2))
-                inner.fill(Path(ellipseIn: CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4)),
-                           with: .color(Color(hex: "#22D3EE").opacity(0.6)))
+                inner.blendMode = .plusLighter
+                let grad = Gradient(stops: [
+                    .init(color: Color.white.opacity(iOpacity), location: 0),
+                    .init(color: .clear, location: 1)
+                ])
+                inner.fill(
+                    Path(ellipseIn: CGRect(x: pt.x - ir, y: pt.y - ir, width: ir * 2, height: ir * 2)),
+                    with: .radialGradient(grad, center: pt, startRadius: 0, endRadius: ir)
+                )
             }
         }
 
-        // A3: Reset screen positions at start of each draw
+        // ── Nodes ────────────────────────────────────────────────────────────
         model.nodeScreenPositions = [:]
 
-        // Draw nodes
         for node in visibleNodes {
             guard let p3 = pos3D[node.id] else { continue }
-            let (pt, z) = project(p3)
-            let depth = (z + 1) / 2
-            let r = max(2, (depth * 7 + 1)) * (node.kind == "moi" ? 1.8 : 1.0)
-            let color = model.nodeColor(node.kind)
+            let (pt, z2) = project(p3)
+
+            // Perspective depth factor — depth fade
+            let f = max(0.1, 900.0 / (900.0 + z2))
+            let baseOpacity = max(0.12, min(1.0, (f - 0.62) * 1.9))
+
             let isSelected = node.id == model.selectedId
-            let isHovered = node.id == model.hoveredId
+            let isHovered  = node.id == model.hoveredId
             let isNeighbor: Bool
             if let sel = model.selectedId, isolated {
                 isNeighbor = model.cachedNeighbors[sel]?.contains(node.id) ?? false
             } else { isNeighbor = false }
             let dimmed = isolated && !isSelected && !isHovered && !isNeighbor
-            let alpha: Double = dimmed ? 0.12 : 1.0
+            let alpha = dimmed ? baseOpacity * 0.12 : baseOpacity
 
-            // Halo additif
-            ctx.drawLayer { inner in
-                inner.addFilter(.blur(radius: r * 1.8))
-                // blendMode additif: accumule la lumière
-                inner.fill(Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)),
-                           with: .color(color.opacity(0.45 * alpha)))
+            let typeColor = model.nodeColor(node.kind)
+            let degree = model.cachedNeighbors[node.id]?.count ?? 0
+
+            let baseR: Double
+            switch node.kind {
+            case "moi":      baseR = 7.0
+            case "projet":   baseR = 3.5 + Double(degree) / 6.0
+            case "personne": baseR = 3.0
+            case "conv":     baseR = 1.5
+            default:         baseR = 1.1  // elements
             }
-            // Cœur blanc
-            ctx.fill(Path(ellipseIn: CGRect(x: pt.x - r * 0.6, y: pt.y - r * 0.6, width: r * 1.2, height: r * 1.2)),
-                     with: .color(color.opacity(0.6 * alpha)))
-            ctx.fill(Path(ellipseIn: CGRect(x: pt.x - r * 0.4, y: pt.y - r * 0.4, width: r * 0.8, height: r * 0.8)),
-                     with: .color(Color.white.opacity(0.9 * alpha)))
+            let haloMult = (node.kind == "moi" || node.kind == "projet") ? 6.5 : 5.0
+            let haloD = baseR * f * zoom * haloMult
+            let haloR = haloD / 2.0
 
-            // A3: Store screen position for hover/tap detection
+            // Halo — additive blend with radial gradient
+            ctx.drawLayer { inner in
+                inner.blendMode = .plusLighter
+                let grad = Gradient(stops: [
+                    .init(color: Color.white.opacity(alpha), location: 0),
+                    .init(color: typeColor.opacity(alpha), location: 0.12),
+                    .init(color: typeColor.opacity(0.35 * alpha), location: 0.33),
+                    .init(color: .clear, location: 1.0)
+                ])
+                inner.fill(
+                    Path(ellipseIn: CGRect(x: pt.x - haloR, y: pt.y - haloR,
+                                          width: haloD, height: haloD)),
+                    with: .radialGradient(grad, center: pt, startRadius: 0, endRadius: haloR)
+                )
+            }
+
+            // Core white dot
+            let coreR = max(1.0, baseR * 0.4 * f * zoom)
+            ctx.fill(
+                Path(ellipseIn: CGRect(x: pt.x - coreR, y: pt.y - coreR,
+                                       width: coreR * 2, height: coreR * 2)),
+                with: .color(Color.white.opacity(alpha))
+            )
+
             model.nodeScreenPositions[node.id] = pt
 
-            // Label on hover / selected
             if (isHovered || isSelected) && node.kind != "moi" {
-                ctx.draw(Text(node.label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white),
-                         at: CGPoint(x: pt.x, y: pt.y - r - 8))
+                ctx.draw(
+                    Text(node.label)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white),
+                    at: CGPoint(x: pt.x, y: pt.y - haloR - 8)
+                )
             }
         }
     }
@@ -1462,7 +1521,7 @@ struct HubMemoryRecurrencesPage: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 40)
-            } else if let d = data {
+            } else if let d = data, !d.groupes.isEmpty || !d.erreurs.isEmpty || !d.artifacts.isEmpty {
                 // Habits
                 if !d.groupes.isEmpty {
                     HubLabel(String(localized: "hub.memory.recurrences.habits"))
@@ -1521,6 +1580,13 @@ struct HubMemoryRecurrencesPage: View {
                         }
                     }
                 }
+            } else {
+                HubEmptyState(
+                    text: String(localized: "hub.memory.recurrences.empty"),
+                    color: "#22D3EE"
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .padding(.top, 40)
             }
         }
         .sheet(item: $claudeMdPreview) { wrapped in
@@ -1994,8 +2060,8 @@ struct HubMemorySettingsPage: View {
                 }
                 HubDivider()
                 // B2: Monthly reminder toggle with @AppStorage + UserNotifications
-                HubRow(title: "Rappel mensuel import",
-                       detail: "Notification mensuelle pour importer les convs Claude.ai") {
+                HubRow(title: String(localized: "hub.memory.settings.sources.reminder-title"),
+                       detail: String(localized: "hub.memory.settings.sources.reminder-detail")) {
                     Toggle("", isOn: $reminder)
                         .toggleStyle(.switch)
                         .labelsHidden()
