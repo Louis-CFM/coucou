@@ -37,6 +37,7 @@
 		091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
 		0A267EE2955C7AD8E02A296C /* N8nPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */; };
 		0BD9756F8AD5C1ECA6B604FB /* FlowDictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD4A635006365A493A57B18 /* FlowDictation.swift */; };
+		0CCE8125FF47CD7FB9C9E447 /* MemorySettingsLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E294E62B9E8EE437648DDBB /* MemorySettingsLogic.swift */; };
 		0D1AD905638B2B021B684A09 /* ServiceDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F64746B2740D5FE26B7E5A /* ServiceDetail.swift */; };
 		0D42F9E694915556009C968C /* QuestionPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C6993B34A0FFF8E3D454ADC /* QuestionPayload.swift */; };
 		0E83C1DD4D20E7FB7A904450 /* VercelPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71718D1B87A39A4879DD2A9D /* VercelPoller.swift */; };
@@ -60,6 +61,7 @@
 		17392C63757FBAC38F22B9D6 /* ServiceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08128342A3F894D567AD9E6B /* ServiceViews.swift */; };
 		17D6063D3B374FB82340314E /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0365DDE3C554F5E8570055F4 /* IslandTypes.swift */; };
 		189811F4DB3C4F6030043643 /* VoiceTranscriptHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE925A6844FE3E3C09131CE0 /* VoiceTranscriptHistory.swift */; };
+		18B1169CF837130899F8DC15 /* MemorySettingsLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E294E62B9E8EE437648DDBB /* MemorySettingsLogic.swift */; };
 		18D47AE663EB96BE5638D5F7 /* ClaudePlanCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */; };
 		1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */; };
 		1AB92CD2830C89F1338B1C15 /* CLIRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39956C0B27F57A21F3521BB8 /* CLIRelay.swift */; };
@@ -677,6 +679,7 @@
 		3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCaptionManager.swift; sourceTree = "<group>"; };
 		3B238F6E7B20EFDED5CD3E8E /* ClaudeSettingsFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsFile.swift; sourceTree = "<group>"; };
 		3D3C36DE7C1DC055250C811D /* MacUpdateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUpdateViews.swift; sourceTree = "<group>"; };
+		3E294E62B9E8EE437648DDBB /* MemorySettingsLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemorySettingsLogic.swift; sourceTree = "<group>"; };
 		41B5FC38A89178D5CEF108B0 /* IslandPlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPlacement.swift; sourceTree = "<group>"; };
 		425D3D31AEE0A0BEEBA05CA5 /* CornerIsland.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CornerIsland.swift; sourceTree = "<group>"; };
 		444604C7E2C530B664849EF9 /* ClaudeResponseText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeResponseText.swift; sourceTree = "<group>"; };
@@ -1004,6 +1007,7 @@
 				216717588DFD8663D35BAE8B /* MailTriage.swift */,
 				5CB06C175FF10385FD8E8C80 /* MailTriageStore.swift */,
 				23F907A5CC3CC05876548E96 /* MailViews.swift */,
+				3E294E62B9E8EE437648DDBB /* MemorySettingsLogic.swift */,
 				BEBDC5F12DE9C57A09918A15 /* MochiRoom.swift */,
 				4F142FB3952B5F0639383047 /* MusicController.swift */,
 				B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */,
@@ -1664,6 +1668,7 @@
 				D0CCA07394F9AE718FF0D45E /* MailTriage.swift in Sources */,
 				02014FFA0D8C24D2926776D4 /* MailTriageStore.swift in Sources */,
 				2A57CCE7D6813E6340C036BE /* MailViews.swift in Sources */,
+				0CCE8125FF47CD7FB9C9E447 /* MemorySettingsLogic.swift in Sources */,
 				D34D31C27D97D23C0441D1BE /* MochiActivityState.swift in Sources */,
 				C420F939B6D425B4AEE4C516 /* MochiMood.swift in Sources */,
 				DD2EEF113DB5EAA35CD88312 /* MochiOutfitDrawing.swift in Sources */,
@@ -1967,6 +1972,7 @@
 				EA4937EF24605DFB893F54CB /* MailTriage.swift in Sources */,
 				A69A5528EB17A674A4124EB6 /* MailTriageStore.swift in Sources */,
 				E9C18F039035C78173C306C7 /* MailViews.swift in Sources */,
+				18B1169CF837130899F8DC15 /* MemorySettingsLogic.swift in Sources */,
 				82E72E0AFCAB192D98AB2004 /* MochiActivityState.swift in Sources */,
 				11CF033FB4438541075CAE25 /* MochiMood.swift in Sources */,
 				ADBB9C15DDA4044625B325BE /* MochiOutfitDrawing.swift in Sources */,

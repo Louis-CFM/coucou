@@ -1708,108 +1708,37 @@ private struct HooksMCPSection: View {
     private func applyAction() {
         guard let action = pendingAction else { return }
         let path = "\(NSHomeDirectory())/.claude/settings.json"
-
-        // 1. Lire + parser d'abord — refuser si impossible
-        guard let data = FileManager.default.contents(atPath: path) else {
-            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-read",
-                value: "Impossible de lire ~/.claude/settings.json", comment: "")
-            return
-        }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-json",
-                value: "Le fichier n'est pas du JSON valide — aucune écriture effectuée.", comment: "")
-            return
-        }
-
-        // 2. Backup daté — refuser si échec
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         let backupPath = path + ".backup-" + formatter.string(from: Date())
+
         do {
-            try FileManager.default.copyItem(atPath: path, toPath: backupPath)
-        } catch {
-            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-backup",
-                value: "Impossible de créer la sauvegarde — aucune écriture effectuée.", comment: "")
-            return
-        }
-
-        // 3. Modifier
-        var updated = json
-        switch action {
-        case .enableHooks:  addBrainHooks(to: &updated)
-        case .disableHooks: removeBrainHooks(from: &updated)
-        case .enableMcp:    addBrainMcp(to: &updated)
-        case .disableMcp:   removeBrainMcp(from: &updated)
-        }
-
-        // 4. Sérialiser
-        guard let newData = try? JSONSerialization.data(withJSONObject: updated,
-                                                        options: [.prettyPrinted, .sortedKeys]) else {
-            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-serial",
-                value: "Erreur de sérialisation — aucune écriture effectuée.", comment: "")
-            return
-        }
-
-        // 5. Écriture atomique
-        do {
-            try newData.write(to: URL(fileURLWithPath: path), options: .atomic)
+            try brainSettingsApply(path: path, backupPath: backupPath) { json in
+                switch action {
+                case .enableHooks:  brainHooksAdd(to: &json, hooksDir: readHooksDir(), nodeCmd: findNodeCommand())
+                case .disableHooks: brainHooksRemove(from: &json)
+                case .enableMcp:    brainMcpAdd(to: &json)
+                case .disableMcp:   brainMcpRemove(from: &json)
+                }
+            }
             refreshStatus()
             errorMessage = nil
+        } catch MemorySettingsError.fileNotFound {
+            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-read",
+                value: "Impossible de lire ~/.claude/settings.json", comment: "")
+        } catch MemorySettingsError.invalidJSON {
+            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-json",
+                value: "Le fichier n'est pas du JSON valide — aucune écriture effectuée.", comment: "")
+        } catch MemorySettingsError.backupFailed {
+            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-backup",
+                value: "Impossible de créer la sauvegarde — aucune écriture effectuée.", comment: "")
+        } catch MemorySettingsError.serializationError {
+            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-serial",
+                value: "Erreur de sérialisation — aucune écriture effectuée.", comment: "")
         } catch {
             errorMessage = String(format: NSLocalizedString("hub.memory.settings.hooks.error-write",
                 value: "Erreur écriture : %@", comment: ""), error.localizedDescription)
         }
-    }
-
-    private func addBrainHooks(to json: inout [String: Any]) {
-        let hooksDir = readHooksDir()
-        let nodeCmd = findNodeCommand()
-        var hooks = json["hooks"] as? [String: Any] ?? [:]
-
-        let ssEntry: [String: Any] = ["hooks": [["type": "command",
-            "command": "\(nodeCmd) \"\(hooksDir)/brain-session-start.js\"",
-            "timeout": 8, "statusMessage": "Loading brain context..."]]]
-        var ss = hooks["SessionStart"] as? [[String: Any]] ?? []
-        ss.insert(ssEntry, at: 0)
-        hooks["SessionStart"] = ss
-
-        let upsEntry: [String: Any] = ["hooks": [["type": "command",
-            "command": "\(nodeCmd) \"\(hooksDir)/brain-prompt.js\"",
-            "timeout": 5]]]
-        var ups = hooks["UserPromptSubmit"] as? [[String: Any]] ?? []
-        ups.insert(upsEntry, at: 0)
-        hooks["UserPromptSubmit"] = ups
-
-        json["hooks"] = hooks
-    }
-
-    private func removeBrainHooks(from json: inout [String: Any]) {
-        guard var hooks = json["hooks"] as? [String: Any] else { return }
-        func clean(_ key: String, term: String) {
-            if var arr = hooks[key] as? [[String: Any]] {
-                arr.removeAll { group in
-                    ((group["hooks"] as? [[String: Any]]) ?? []).contains { h in
-                        (h["command"] as? String)?.contains(term) == true
-                    }
-                }
-                hooks[key] = arr
-            }
-        }
-        clean("SessionStart", term: "brain-session-start")
-        clean("UserPromptSubmit", term: "brain-prompt")
-        json["hooks"] = hooks
-    }
-
-    private func addBrainMcp(to json: inout [String: Any]) {
-        var mcp = json["mcpServers"] as? [String: Any] ?? [:]
-        mcp["coucou-brain"] = ["type": "stdio", "command": "brain", "args": ["mcp"]]
-        json["mcpServers"] = mcp
-    }
-
-    private func removeBrainMcp(from json: inout [String: Any]) {
-        guard var mcp = json["mcpServers"] as? [String: Any] else { return }
-        mcp.removeValue(forKey: "coucou-brain")
-        json["mcpServers"] = mcp
     }
 }
 

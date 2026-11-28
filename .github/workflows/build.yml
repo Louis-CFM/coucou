@@ -182,6 +182,9 @@ jobs:
       - name: Claude settings file tests
         run: bash scripts/test-claude-settings.sh
 
+      - name: Test memory settings protection
+        run: bash scripts/test-memory-settings.sh
+
       - name: Turn end policy tests
         run: bash scripts/test-turn-end-policy.sh
 
