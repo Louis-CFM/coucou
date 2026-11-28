@@ -11,33 +11,22 @@ final class BrainRunner: ObservableObject {
 
     @AppStorage("brainBinaryPath") var customPath: String = ""
 
+    // Cache — not @Published (doesn't need re-render)
+    private var cachedPath: String? = nil
+    private var discovered = false
+
     var binaryPath: String? {
-        // 1. User-provided custom path
-        if !customPath.isEmpty {
-            if FileManager.default.isExecutableFile(atPath: customPath) { return customPath }
+        if !customPath.isEmpty && FileManager.default.isExecutableFile(atPath: customPath) {
+            return customPath
         }
-        // 2. Well-known locations
-        let candidates = [
-            "\(NSHomeDirectory())/.nvm/alias/default/bin/brain",
-            "\(NSHomeDirectory())/.nvm/versions/node/\(nvmDefaultVersion() ?? "")/bin/brain",
-            "/usr/local/bin/brain",
-            "/opt/homebrew/bin/brain",
-        ]
-        for path in candidates where FileManager.default.isExecutableFile(atPath: path) {
-            return path
-        }
-        // 3. Shell which
-        if let found = discoverViashell() { return found }
-        return nil
+        return cachedPath  // Returns nil until discovery completes
     }
 
     var isInstalled: Bool { binaryPath != nil }
 
     // Run brain <args> and return stdout as Data. Throws on non-zero exit.
     func run(_ args: [String]) async throws -> Data {
-        guard let bin = binaryPath else {
-            throw BrainError.notInstalled
-        }
+        let bin = try await resolvedBinary()
         return try await Task.detached(priority: .userInitiated) {
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: bin)
@@ -59,14 +48,58 @@ final class BrainRunner: ObservableObject {
         return try JSONDecoder().decode(type, from: data)
     }
 
-    // MARK: - Private helpers
-
-    private func nvmDefaultVersion() -> String? {
-        let p = "\(NSHomeDirectory())/.nvm/alias/default"
-        return try? String(contentsOfFile: p, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+    // Called once at app start to prime the cache
+    func discoverAsync() {
+        guard !discovered else { return }
+        let custom = customPath
+        Task.detached(priority: .background) { [weak self] in
+            let found = Self.findBinary(customPath: custom)
+            await MainActor.run { [weak self] in
+                self?.cachedPath = found
+                self?.discovered = true
+            }
+        }
     }
 
-    private func discoverViashell() -> String? {
+    // MARK: - Private helpers
+
+    private func resolvedBinary() async throws -> String {
+        if let bin = binaryPath { return bin }
+        // Not yet cached — discover now on background thread
+        let custom = customPath
+        let found = await Task.detached(priority: .userInitiated) {
+            Self.findBinary(customPath: custom)
+        }.value
+        if let f = found {
+            cachedPath = f
+            discovered = true
+            return f
+        }
+        throw BrainError.notInstalled
+    }
+
+    private nonisolated static func findBinary(customPath: String) -> String? {
+        if !customPath.isEmpty && FileManager.default.isExecutableFile(atPath: customPath) {
+            return customPath
+        }
+        let home = NSHomeDirectory()
+        let nvmDefault: String? = {
+            let p = "\(home)/.nvm/alias/default"
+            return try? String(contentsOfFile: p, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+        }()
+        let candidates = [
+            "\(home)/.nvm/alias/default/bin/brain",
+            "\(home)/.nvm/versions/node/\(nvmDefault ?? "")/bin/brain",
+            "/usr/local/bin/brain",
+            "/opt/homebrew/bin/brain",
+        ]
+        for path in candidates where FileManager.default.isExecutableFile(atPath: path) {
+            return path
+        }
+        return discoverViashell()
+    }
+
+    private nonisolated static func discoverViashell() -> String? {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/zsh")
         proc.arguments = ["-l", "-c", "which brain"]
@@ -736,16 +769,15 @@ final class MemoryGraphModel: ObservableObject {
     @Published var selectedId: String? = nil
     @Published var filterKinds: Set<String> = []
     @Published var periodDays: Int? = nil  // nil = all
-    @Published var impulses: [GraphImpulse] = []
+    // NON @Published — mutés chaque frame dans drawGraph, re-render via TimelineView
+    var impulses: [GraphImpulse] = []
+    var autoRotY: Double = 0
+    var nodeScreenPositions: [String: CGPoint] = [:]
+    var lastHoverPoint: CGPoint? = nil
 
-    // A1: Auto-rotate + Pause
-    @Published var autoRotY: Double = 0
+    // @Published — seulement changé au clic utilisateur
     @Published var isPaused: Bool = false
     @Published var growCount: Int = -1  // -1 = all nodes visible
-
-    // A3: Hover screen positions
-    @Published var nodeScreenPositions: [String: CGPoint] = [:]
-    @Published var lastHoverPoint: CGPoint? = nil
 
     struct GraphImpulse {
         var edgeIdx: Int
@@ -834,14 +866,14 @@ final class MemoryGraphModel: ObservableObject {
 
     func nodeColor(_ kind: String) -> Color {
         switch kind {
-        case "moi":      return Color(hex: "#22D3EE")
-        case "projet":   return Color(hex: "#FB923C")
-        case "conv":     return Color(hex: "#3B9EFF")
+        case "moi":      return Color(hex: "#FFFFFF")
+        case "projet":   return Color(hex: "#22D3EE")
+        case "personne": return Color(hex: "#F472B6")
+        case "conv":     return Color(hex: "#93A4C3")
         case "decision": return Color(hex: "#A78BFA")
-        case "lecon":    return Color(hex: "#34D399")
-        case "fait":     return Color(hex: "#F7B32B")
-        case "pref":     return Color(hex: "#F472B6")
-        case "personne": return Color(hex: "#8E939C")
+        case "lecon":    return Color(hex: "#F7B32B")
+        case "fait":     return Color(hex: "#60A5FA")
+        case "pref":     return Color(hex: "#34D399")
         default:         return HubTheme.secondary
         }
     }
@@ -1123,18 +1155,27 @@ struct HubMemoryGraphPage: View {
             let color = model.nodeColor(node.kind)
             let isSelected = node.id == model.selectedId
             let isHovered = node.id == model.hoveredId
-            let dimmed = isolated && !isSelected && !isHovered
-            let alpha: Double = dimmed ? 0.2 : 1.0
+            let isNeighbor: Bool
+            if let sel = model.selectedId, isolated {
+                if let g = model.graph {
+                    isNeighbor = g.edges.contains { ($0.from == sel && $0.to == node.id) || ($0.to == sel && $0.from == node.id) }
+                } else { isNeighbor = false }
+            } else { isNeighbor = false }
+            let dimmed = isolated && !isSelected && !isHovered && !isNeighbor
+            let alpha: Double = dimmed ? 0.12 : 1.0
 
-            // Glow
+            // Halo additif
             ctx.drawLayer { inner in
-                inner.addFilter(.blur(radius: r * 1.5))
+                inner.addFilter(.blur(radius: r * 1.8))
+                // blendMode additif: accumule la lumière
                 inner.fill(Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)),
-                           with: .color(color.opacity(0.5 * alpha)))
+                           with: .color(color.opacity(0.45 * alpha)))
             }
-            // Core dot
-            ctx.fill(Path(ellipseIn: CGRect(x: pt.x - r * 0.5, y: pt.y - r * 0.5, width: r, height: r)),
-                     with: .color(color.opacity(alpha)))
+            // Cœur blanc
+            ctx.fill(Path(ellipseIn: CGRect(x: pt.x - r * 0.6, y: pt.y - r * 0.6, width: r * 1.2, height: r * 1.2)),
+                     with: .color(color.opacity(0.6 * alpha)))
+            ctx.fill(Path(ellipseIn: CGRect(x: pt.x - r * 0.4, y: pt.y - r * 0.4, width: r * 0.8, height: r * 0.8)),
+                     with: .color(Color.white.opacity(0.9 * alpha)))
 
             // A3: Store screen position for hover/tap detection
             model.nodeScreenPositions[node.id] = pt
@@ -1282,11 +1323,22 @@ struct HubMemoryRecurrencesPage: View {
 
     private func confirmClaudeMdAdd() {
         guard let path = pendingMdPath, let content = pendingMdContent else { return }
+
+        // Backup daté — refuser si échec
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         let bkPath = path + ".backup-" + formatter.string(from: Date())
-        _ = try? FileManager.default.copyItem(atPath: path, toPath: bkPath)
-        try? content.write(toFile: path, atomically: true, encoding: .utf8)
+        do {
+            try FileManager.default.copyItem(atPath: path, toPath: bkPath)
+        } catch {
+            // Don't abort if backup fails for CLAUDE.md (it may not exist yet)
+        }
+
+        do {
+            try content.write(toFile: path, atomically: true, encoding: .utf8)
+        } catch {
+            // Error is silent for now — no UI state to show it
+        }
     }
 
     // C2: Create skill draft
@@ -1488,7 +1540,10 @@ private struct HooksMCPSection: View {
                     .padding(.top, 8)
             }
         }
-        .onAppear { refreshStatus() }
+        .onAppear {
+            refreshStatus()
+            BrainRunner.shared.discoverAsync()
+        }
         .sheet(isPresented: $showDiff) {
             SettingsJsonDiffSheet(
                 diffText: diffContent,
@@ -1598,38 +1653,56 @@ private struct HooksMCPSection: View {
     private func applyAction() {
         guard let action = pendingAction else { return }
         let path = "\(NSHomeDirectory())/.claude/settings.json"
+
+        // 1. Lire + parser d'abord — refuser si impossible
+        guard let data = FileManager.default.contents(atPath: path) else {
+            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-read",
+                value: "Impossible de lire ~/.claude/settings.json", comment: "")
+            return
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-json",
+                value: "Le fichier n'est pas du JSON valide — aucune écriture effectuée.", comment: "")
+            return
+        }
+
+        // 2. Backup daté — refuser si échec
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         let backupPath = path + ".backup-" + formatter.string(from: Date())
-        _ = try? FileManager.default.copyItem(atPath: path, toPath: backupPath)
-
-        var json: [String: Any] = [:]
-        if let data = FileManager.default.contents(atPath: path) {
-            json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-        }
-
-        switch action {
-        case .enableHooks:
-            addBrainHooks(to: &json)
-        case .disableHooks:
-            removeBrainHooks(from: &json)
-        case .enableMcp:
-            addBrainMcp(to: &json)
-        case .disableMcp:
-            removeBrainMcp(from: &json)
-        }
-
-        guard let newData = try? JSONSerialization.data(withJSONObject: json,
-                                                        options: [.prettyPrinted, .sortedKeys]) else {
-            errorMessage = "Erreur de sérialisation"
+        do {
+            try FileManager.default.copyItem(atPath: path, toPath: backupPath)
+        } catch {
+            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-backup",
+                value: "Impossible de créer la sauvegarde — aucune écriture effectuée.", comment: "")
             return
         }
+
+        // 3. Modifier
+        var updated = json
+        switch action {
+        case .enableHooks:  addBrainHooks(to: &updated)
+        case .disableHooks: removeBrainHooks(from: &updated)
+        case .enableMcp:    addBrainMcp(to: &updated)
+        case .disableMcp:   removeBrainMcp(from: &updated)
+        }
+
+        // 4. Sérialiser
+        guard let newData = try? JSONSerialization.data(withJSONObject: updated,
+                                                        options: [.prettyPrinted, .sortedKeys]) else {
+            errorMessage = NSLocalizedString("hub.memory.settings.hooks.error-serial",
+                value: "Erreur de sérialisation — aucune écriture effectuée.", comment: "")
+            return
+        }
+
+        // 5. Écriture atomique
         do {
-            try newData.write(to: URL(fileURLWithPath: path))
+            try newData.write(to: URL(fileURLWithPath: path), options: .atomic)
             refreshStatus()
             errorMessage = nil
         } catch {
-            errorMessage = "Erreur écriture : \(error.localizedDescription)"
+            errorMessage = String(format: NSLocalizedString("hub.memory.settings.hooks.error-write",
+                value: "Erreur écriture : %@", comment: ""), error.localizedDescription)
         }
     }
 
