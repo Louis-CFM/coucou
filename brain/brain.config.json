@@ -14,5 +14,13 @@
   "maxChunkTokens": 100000,
   "language": "fr",
   "repoAliases": {},
-  "activeSessionMinutes": 30
+  "activeSessionMinutes": 30,
+
+  "_depth_comment": "depth: search (Level 1, default) | live (Level 2: digest new on the fly) | full (Level 3: backfill all past)",
+  "depth": "search",
+  "claudeExportPath": "~/Downloads/conversations-000.zip",
+
+  "_level3_comment": "Level 3 backfill options (depth: full)",
+  "dailyLimit": 50,
+  "concurrency": 3
 }

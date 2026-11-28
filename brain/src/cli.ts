@@ -45,6 +45,11 @@ import { runCoverage, formatCoverageResult } from "./coverage.js";
 import { rebuildFts, writeHooksConfig, appendCorrection } from "./fts.js";
 import { maskSecrets } from "./mask.js";
 import type { StoredElement } from "./elements.js";
+import {
+  FIXED_DOMAINS,
+  getKnownProjectSlugs,
+  remapDesktopProjects,
+} from "./desktop-routing.js";
 
 const program = new Command();
 
@@ -69,6 +74,7 @@ function assertNoRemote(brainPath: string): void {
     process.exit(1);
   }
 }
+
 
 // ── ingest ────────────────────────────────────────────────────────────────────
 
@@ -375,14 +381,19 @@ program
         });
       }
 
+      // Sort newest→oldest so recent conversations are processed first; apply --limit
       const pendingDesktop = manifest.getPendingDesktopConversations()
-        .filter((e) => conversations.some((c) => c.uuid === e.uuid));
+        .filter((e) => conversations.some((c) => c.uuid === e.uuid))
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
-      console.log(`  À traiter   : ${pendingDesktop.length}`);
+      const toProcessDesktop = opts.limit ? pendingDesktop.slice(0, opts.limit) : pendingDesktop;
+
+      console.log(`  En attente   : ${pendingDesktop.length}`);
+      console.log(`  À traiter    : ${toProcessDesktop.length}${opts.limit ? ` (limité à ${opts.limit})` : ""}`);
 
       if (opts.dryRun) {
         console.log("\n--- DRY RUN : conversations ---");
-        for (const e of pendingDesktop) {
+        for (const e of toProcessDesktop) {
           const conv = conversations.find((c) => c.uuid === e.uuid)!;
           console.log(`  ${e.updated_at.slice(0, 10)}  ${(conv.name ?? e.uuid).slice(0, 70)}`);
         }
@@ -390,11 +401,16 @@ program
         let desktopDone = 0;
         let desktopFail = 0;
 
-        for (const entry of pendingDesktop) {
+        // Sonnet alias + compute valid projects list once (known slugs + fixed domains)
+        const desktopConfig = { ...config, mergeModel: "sonnet" };
+        const knownSlugs = getKnownProjectSlugs(config.brainPath);
+        const validProjects = [...knownSlugs, ...FIXED_DOMAINS];
+
+        for (const entry of toProcessDesktop) {
           const conv = conversations.find((c) => c.uuid === entry.uuid)!;
           const idx = desktopDone + desktopFail + 1;
           console.log(
-            `\n  [${idx}/${pendingDesktop.length}] ${(conv.name ?? entry.uuid).slice(0, 70)}`
+            `\n  [${idx}/${toProcessDesktop.length}] ${(conv.name ?? entry.uuid).slice(0, 70)}`
           );
 
           let recordFileCreated: string | null = null;
@@ -409,11 +425,52 @@ program
               continue;
             }
 
-            const openElements = getOpenElements(config);
-            const digest = await digestSessionWithRetry(condensed, config, openElements);
-            if (digest.projects.length === 0) {
-              digest.projects = [condensed.projectNameHint];
+            let digest: import("./digest.js").SessionDigest;
+
+            if (condensed.estimatedTokens < 300) {
+              // Minimal record: no LLM call, default domain "perso", 0 elements
+              console.log(`    ⚡ minimal (${condensed.estimatedTokens} tokens) → perso`);
+              digest = {
+                title: (conv.name ?? conv.uuid).slice(0, 60),
+                summary: condensed.messages
+                  .slice(0, 3)
+                  .map((m) => `${m.role === "human" ? "Q" : "R"}: ${m.text.slice(0, 200)}`)
+                  .join("\n"),
+                projects: ["perso"],
+                elements: [],
+                taches_faites: [],
+                taches_abandonnees: [],
+                remplacees: [],
+                project_states: [],
+                files_touched: [],
+                people: [],
+              };
+            } else {
+              // Full LLM digest — LLM picks projects from validProjects list
+              // 10-min timeout per chunk to handle large conversations (multi-chunk via chunking)
+              const openElements = getOpenElements(desktopConfig);
+              digest = await digestSessionWithRetry(condensed, desktopConfig, openElements, {
+                timeoutMs: 900_000,
+                validProjects,
+              });
+              if (digest.projects.length === 0) {
+                digest.projects = ["perso"];
+              }
+
+              // Post-validate: enforce LLM stayed within knownSlugs ∪ FIXED_DOMAINS;
+              // extract people slugs; fall back to "perso" if nothing valid survived
+              const { projects: remapped, extraPeople } = remapDesktopProjects(
+                digest.projects,
+                knownSlugs,
+                conv.name ?? "",
+                condensed.messages
+              );
+              digest.projects = remapped;
+              if (extraPeople.length > 0) {
+                digest.people = [...(digest.people ?? []), ...extraPeople];
+              }
             }
+
             const primaryProject = digest.projects[0]!;
 
             const allIds = collectAllIds(config);
@@ -437,7 +494,7 @@ program
 
             for (const proj of digest.projects) {
               const slug = toSlug(proj);
-              console.log(`    → merge dans projects/${slug}.md`);
+              console.log(`    → ${slug}`);
               updateProjectFromSession(slug, digest, condensed.date, recordId, config, allIds, {
                 sourceType: "desktop",
               });
@@ -900,6 +957,86 @@ program
       console.log("▶️  Brain hooks réactivés.");
     } else {
       console.log("(Pas en pause — rien à faire.)");
+    }
+  });
+
+// ── index (Level 1 — raw FTS, no LLM) ────────────────────────────────────────
+
+program
+  .command("index")
+  .description("Index conversations and sessions as raw text (no LLM). Enables `brain search`.")
+  .option("--claude-export <path>", "Path to Claude.ai export zip or folder (overrides config)")
+  .action(async (opts: { claudeExport?: string }) => {
+    const config = loadConfig();
+    assertNoRemote(config.brainPath);
+    const { rebuildRawIndex } = await import("./rawindex.js");
+
+    console.log("\n📑 Indexation brut (niveau 1 — sans LLM)\n");
+    const result = rebuildRawIndex(config, {
+      claudeExportPath: opts.claudeExport,
+      onProgress: (msg) => console.log(msg),
+    });
+
+    const secs = (result.durationMs / 1000).toFixed(1);
+    console.log(`\n✓ Index raw construit en ${secs}s`);
+    console.log(`  Conversations claude.ai : ${result.conversations}`);
+    console.log(`  Sessions Claude Code    : ${result.sessions}`);
+    console.log(`  Messages indexés        : ${result.messages.toLocaleString()}`);
+    console.log(`\n  Utilisez "brain search <texte>" pour chercher.`);
+  });
+
+// ── search (Level 1 — raw FTS) ────────────────────────────────────────────────
+
+program
+  .command("search <query>")
+  .description("Search indexed conversations and sessions (raw text, no LLM)")
+  .option("--limit <n>", "Max results (default 10)", parseInt)
+  .action(async (query: string, opts: { limit?: number }) => {
+    const config = loadConfig();
+    const { searchRaw, getRawStats, rawDbPath } = await import("./rawindex.js");
+
+    const dbPath = rawDbPath(config);
+    if (!fs.existsSync(expandHome(dbPath))) {
+      console.error('Index raw introuvable. Lance "brain index" d\'abord.');
+      process.exitCode = 1;
+      return;
+    }
+
+    if (query.trim().length < 3) {
+      console.error("Requête trop courte (minimum 3 caractères).");
+      process.exitCode = 1;
+      return;
+    }
+
+    const limit = opts.limit ?? 10;
+    const results = searchRaw(config, query, limit);
+
+    if (results.length === 0) {
+      console.log(`Aucun résultat pour "${query}".`);
+      const stats = getRawStats(config);
+      if (stats) {
+        console.log(`  (index: ${stats.messages.toLocaleString()} messages, ${stats.conversations} conversations, ${stats.sessions} sessions)`);
+      }
+      return;
+    }
+
+    console.log(`\n🔍 "${query}" — ${results.length} résultat(s)\n`);
+
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i]!;
+      const num = `[${i + 1}]`;
+      const source =
+        r.source === "desktop"
+          ? `claude.ai`
+          : `session:${r.project}`;
+      const link = r.convLink ? `\n     ${r.convLink}` : "";
+      const role = r.role === "human" ? "Human" : "Claude";
+      const excerpt = r.excerpt.length > 180 ? r.excerpt.slice(0, 177) + "…" : r.excerpt;
+
+      console.log(`${num} "${r.convTitle}"  ${r.convDate}  (${source})`);
+      console.log(`     ${role}: ${excerpt}`);
+      if (link) console.log(link);
+      console.log();
     }
   });
 

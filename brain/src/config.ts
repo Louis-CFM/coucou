@@ -17,6 +17,20 @@ export interface BrainConfig {
   repoAliases: Record<string, string>;
   /** Sessions modified less than this many minutes ago are skipped (active session guard) */
   activeSessionMinutes?: number;
+
+  // ── Depth tiers ────────────────────────────────────────────────────────────
+  /**
+   * "search" (default) — Level 1: raw text FTS only, no LLM.
+   * "live"             — Level 2: digest new sessions on the fly after they end.
+   * "full"             — Level 3: backfill all past sessions in background.
+   */
+  depth?: "search" | "live" | "full";
+  /** Path to Claude.ai export zip or folder (used by `brain index`). */
+  claudeExportPath?: string;
+  /** Level 3: max sessions to digest per day (backfill rate limit). */
+  dailyLimit?: number;
+  /** Level 3: parallel `claude -p` calls for backfill (default 3). */
+  concurrency?: number;
 }
 
 /** Load config: base config.json merged with optional local overrides */
