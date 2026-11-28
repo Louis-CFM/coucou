@@ -41,6 +41,9 @@ const { onLanguageChange, setLanguage, t } = await import("../src/i18n/i18n.ts")
 const { FLOW_PAGES, NOTCH_PAGES, startHub } = await import("../src/hub/shell.ts");
 const pages = [...FLOW_PAGES, ...NOTCH_PAGES];
 const settle = () => new Promise((resolve) => setImmediate(resolve));
+const press = (input, key) => {
+  for (const fn of input.listeners.get("keydown") ?? []) fn({ key, preventDefault() {} });
+};
 
 beforeEach(() => {
   setLanguage("en");
@@ -117,6 +120,52 @@ test("language redraw retains the latest dictation state and key in the status l
     assert.equal(status.textContent, english);
     assert.deepEqual(sent("flow_set_prefs"), []);
     assert.deepEqual(calls, []);
+  } finally {
+    off();
+  }
+});
+
+test("search arrows select the result opened by Enter and restore the sidebar", async () => {
+  const { root, hub, off } = await openHub();
+  try {
+    const input = root.find(".hub-search-input")[0];
+    input.value = "language";
+    input.fire("input");
+    const results = root.find(".hub-search-results")[0];
+    const rows = results.find(".hub-search-row");
+    assert.ok(rows.length > 1);
+    rows.forEach((row) => { row.scrollIntoView = () => {}; });
+    press(input, "ArrowDown");
+    assert.equal(rows[0].classList.contains("on"), false);
+    assert.equal(rows[1].classList.contains("on"), true);
+    press(input, "Enter");
+    await settle();
+    assert.equal(hub.current(), "voice");
+    assert.equal(input.value, "");
+    assert.equal(results.style.display, "none");
+    assert.equal(root.find(".hub-groups")[0].style.display, "");
+  } finally {
+    off();
+  }
+});
+
+test("English page names work in Spanish and Escape clears the results", async () => {
+  setLanguage("es");
+  const { root, hub, off } = await openHub();
+  try {
+    const input = root.find(".hub-search-input")[0];
+    input.value = "shortcuts";
+    input.fire("input");
+    press(input, "Enter");
+    await settle();
+    assert.equal(hub.current(), "shortcuts");
+    input.value = "zzz";
+    input.fire("input");
+    assert.equal(root.find(".hub-search-empty")[0].textContent, t("No setting found"));
+    press(input, "Escape");
+    assert.equal(input.value, "");
+    assert.equal(root.find(".hub-search-results")[0].style.display, "none");
+    assert.equal(root.find(".hub-groups")[0].style.display, "");
   } finally {
     off();
   }
