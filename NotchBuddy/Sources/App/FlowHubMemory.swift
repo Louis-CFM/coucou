@@ -515,7 +515,7 @@ struct HubMemorySearchPage: View {
                             MemoryMessageRow(message: msg)
                         }
                         if d.messages.count > 8 {
-                            Text("+ \(d.messages.count - 8) messages…")
+                            Text(String(format: String(localized: "hub.memory.show.more-messages"), d.messages.count - 8))
                                 .font(.system(size: 11))
                                 .foregroundColor(HubTheme.muted)
                         }
@@ -783,6 +783,8 @@ final class MemoryGraphModel: ObservableObject {
         var edgeIdx: Int
         var t: Float
         var speed: Float
+        var direction: Int  // +1 = from→to, -1 = to→from
+        var hopsLeft: Int   // sauts restants avant renaissance
     }
 
     func load() {
@@ -794,7 +796,9 @@ final class MemoryGraphModel: ObservableObject {
                 impulses = (0..<min(100, g.edges.count * 3)).map { _ in
                     GraphImpulse(edgeIdx: Int.random(in: 0..<max(1, g.edges.count)),
                                  t: Float.random(in: 0..<1),
-                                 speed: Float.random(in: 0.001...0.004))
+                                 speed: Float.random(in: 0.001...0.004),
+                                 direction: Bool.random() ? 1 : -1,
+                                 hopsLeft: Int.random(in: 3...7))
                 }
             } catch {}
             isLoading = false
@@ -807,11 +811,43 @@ final class MemoryGraphModel: ObservableObject {
         if !isPaused {
             autoRotY += dt * 0.08
         }
+
         for i in impulses.indices {
             impulses[i].t += Float(dt) * impulses[i].speed * 60
             if impulses[i].t > 1 {
+                impulses[i].hopsLeft -= 1
+
+                if impulses[i].hopsLeft <= 0 {
+                    // Renaissance depuis un nœud au hasard
+                    impulses[i].edgeIdx = Int.random(in: 0..<g.edges.count)
+                    impulses[i].direction = Bool.random() ? 1 : -1
+                    impulses[i].hopsLeft = Int.random(in: 3...7)
+                } else {
+                    // Nœud d'arrivée de l'edge courante
+                    let edge = g.edges[impulses[i].edgeIdx]
+                    let arrivalNodeId = impulses[i].direction > 0 ? edge.to : edge.from
+
+                    // Liens adjacents (partageant arrivalNodeId)
+                    let adjacent = g.edges.indices.filter { idx in
+                        idx != impulses[i].edgeIdx &&
+                        (g.edges[idx].from == arrivalNodeId || g.edges[idx].to == arrivalNodeId)
+                    }
+
+                    if adjacent.isEmpty {
+                        // Pas de voisins → renaissance
+                        impulses[i].edgeIdx = Int.random(in: 0..<g.edges.count)
+                        impulses[i].direction = Bool.random() ? 1 : -1
+                        impulses[i].hopsLeft = Int.random(in: 3...7)
+                    } else {
+                        // Lien adjacent au hasard
+                        let nextIdx = adjacent[Int.random(in: 0..<adjacent.count)]
+                        let nextEdge = g.edges[nextIdx]
+                        // Direction depuis arrivalNodeId
+                        impulses[i].direction = nextEdge.from == arrivalNodeId ? 1 : -1
+                        impulses[i].edgeIdx = nextIdx
+                    }
+                }
                 impulses[i].t = 0
-                impulses[i].edgeIdx = Int.random(in: 0..<g.edges.count)
                 impulses[i].speed = Float.random(in: 0.001...0.004)
             }
         }
@@ -859,6 +895,26 @@ final class MemoryGraphModel: ObservableObject {
         }
         if let id = best {
             selectedId = selectedId == id ? nil : id
+
+            // Impulsions depuis le nœud cliqué
+            if let g = graph {
+                let adjacent = g.edges.indices.filter {
+                    g.edges[$0].from == id || g.edges[$0].to == id
+                }
+                if !adjacent.isEmpty {
+                    let newImpulses = (0..<min(3, adjacent.count)).map { k -> GraphImpulse in
+                        let edgeIdx = adjacent[k % adjacent.count]
+                        let edge = g.edges[edgeIdx]
+                        let dir = edge.from == id ? 1 : -1
+                        return GraphImpulse(edgeIdx: edgeIdx, t: 0,
+                                            speed: Float.random(in: 0.002...0.005),
+                                            direction: dir, hopsLeft: Int.random(in: 4...7))
+                    }
+                    impulses.append(contentsOf: newImpulses)
+                    // Limite à 150 impulsions max
+                    if impulses.count > 150 { impulses.removeFirst(impulses.count - 150) }
+                }
+            }
         } else {
             selectedId = nil
         }
@@ -936,7 +992,7 @@ struct HubMemoryGraphPage: View {
                     HStack(spacing: 6) {
                         let allKinds = ["conv", "projet", "decision", "lecon", "fait", "pref", "personne"]
                         Button(action: { model.filterKinds.removeAll() }) {
-                            Text(verbatim: "Tout")
+                            Text(String(localized: "hub.memory.graph.filter-all"))
                         }
                         .buttonStyle(MemoryFilterButtonStyle(selected: model.filterKinds.isEmpty))
                         ForEach(allKinds, id: \.self) { kind in
@@ -957,10 +1013,10 @@ struct HubMemoryGraphPage: View {
                             set: { model.periodDays = $0 == 0 ? nil : $0 }
                         )
                         Picker(selection: periodBinding, label: Text(verbatim: "")) {
-                            Text(verbatim: "Tout").tag(0)
-                            Text(verbatim: "7j").tag(7)
-                            Text(verbatim: "30j").tag(30)
-                            Text(verbatim: "90j").tag(90)
+                            Text(String(localized: "hub.memory.graph.filter-all")).tag(0)
+                            Text(String(localized: "hub.memory.graph.period-7d")).tag(7)
+                            Text(String(localized: "hub.memory.graph.period-30d")).tag(30)
+                            Text(String(localized: "hub.memory.graph.period-90d")).tag(90)
                         }
                         .pickerStyle(.segmented)
                         .frame(width: 180)
@@ -1000,7 +1056,7 @@ struct HubMemoryGraphPage: View {
                 HStack(alignment: .bottom) {
                     // Counter
                     if let g = model.graph {
-                        Text("\(g.nodes.count) nœuds · \(g.edges.count) liens")
+                        Text(String(format: String(localized: "hub.memory.graph.counter"), g.nodes.count, g.edges.count))
                             .font(.system(size: 11))
                             .foregroundColor(HubTheme.muted)
                             .padding(.horizontal, 12)
@@ -1009,7 +1065,9 @@ struct HubMemoryGraphPage: View {
                     }
                     Spacer()
                     // A1: Pause / Reprendre button
-                    let pauseLabel = model.isPaused ? "▶ Reprendre" : "⏸ Pause"
+                    let pauseLabel = model.isPaused
+                        ? String(localized: "hub.memory.graph.resume")
+                        : String(localized: "hub.memory.graph.pause")
                     Button(action: { model.isPaused.toggle() }) {
                         Text(verbatim: pauseLabel)
                     }
@@ -1017,7 +1075,7 @@ struct HubMemoryGraphPage: View {
 
                     // A2: Voir grandir button
                     Button(action: { model.startGrow() }) {
-                        Text(verbatim: "Voir grandir")
+                        Text(String(localized: "hub.memory.graph.replay"))
                     }
                     .buttonStyle(HubButtonStyle(primary: false))
 
@@ -1131,10 +1189,12 @@ struct HubMemoryGraphPage: View {
         for impulse in model.impulses {
             guard impulse.edgeIdx < g.edges.count else { continue }
             let edge = g.edges[impulse.edgeIdx]
-            guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
             guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
+            // Prend direction en compte
+            let (pA, pB) = impulse.direction > 0 ? (a, b) : (b, a)
+            guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
             let t = Double(impulse.t)
-            let p3 = a + (b - a) * t
+            let p3 = pA + (pB - pA) * t
             let (pt, _) = project(p3)
             ctx.drawLayer { inner in
                 inner.addFilter(.blur(radius: 2))
@@ -1265,7 +1325,7 @@ struct HubMemoryRecurrencesPage: View {
                                         .foregroundColor(HubTheme.body)
                                         .lineLimit(2)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text("×\(err.count)")
+                                    Text(verbatim: String(UnicodeScalar(0x00D7)!) + String(err.count))
                                         .font(.system(size: 12, weight: .semibold))
                                         .foregroundColor(HubTheme.red)
                                 }
@@ -1373,11 +1433,11 @@ private struct RecurrenceHabitCard: View {
                     .foregroundColor(HubTheme.text)
                     .lineLimit(2)
                 HStack(spacing: 6) {
-                    Text("\(groupe.count) fois")
+                    Text(String(format: String(localized: "hub.memory.recurrences.times"), groupe.count))
                         .font(.system(size: 11))
                         .foregroundColor(HubTheme.secondary)
                     if let freq = groupe.freqJours {
-                        Text("· tous les \(String(format: "%.1f", freq))j")
+                        Text(String(format: String(localized: "hub.memory.recurrences.freq-days"), freq))
                             .font(.system(size: 11))
                             .foregroundColor(HubTheme.muted)
                     }
@@ -1408,11 +1468,11 @@ private struct RecurrenceHabitCard: View {
                 if onMakeSkill != nil || onAddToClaudeMd != nil {
                     HStack(spacing: 6) {
                         if let action = onMakeSkill {
-                            Button(action: action) { Text(verbatim: "En faire un skill") }
+                            Button(action: action) { Text(String(localized: "hub.memory.recurrences.make-skill")) }
                                 .buttonStyle(HubButtonStyle(primary: false))
                         }
                         if let action = onAddToClaudeMd {
-                            Button(action: action) { Text(verbatim: "→ CLAUDE.md") }
+                            Button(action: action) { Text(String(localized: "hub.memory.recurrences.add-claude-md")) }
                                 .buttonStyle(HubButtonStyle(primary: false))
                         }
                     }
@@ -1440,7 +1500,7 @@ private struct RecurrenceArtifactBadge: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text("\(artifact.count)")
+            Text(verbatim: String(artifact.count))
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(Color(hex: "#22D3EE"))
             Text(artifact.kind)
@@ -1461,16 +1521,11 @@ private struct SettingsJsonDiffSheet: View {
     let onConfirm: () -> Void
     let onCancel: () -> Void
 
-    private let titleStr = "Modification de ~/.claude/settings.json"
-    private let subtitleStr = "Une sauvegarde datée sera créée avant l'écriture."
-    private let cancelStr = "Annuler"
-    private let confirmStr = "Confirmer et écrire"
-
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(verbatim: titleStr)
+            Text(String(localized: "hub.memory.settings.hooks.diff-title"))
                 .font(.system(size: 17, weight: .bold))
-            Text(verbatim: subtitleStr)
+            Text(String(localized: "hub.memory.settings.hooks.diff-subtitle"))
                 .font(.system(size: 12))
                 .foregroundColor(HubTheme.secondary)
             ScrollView {
@@ -1485,9 +1540,9 @@ private struct SettingsJsonDiffSheet: View {
             .frame(maxHeight: 320)
             HStack(spacing: 10) {
                 Spacer()
-                Button(action: onCancel) { Text(verbatim: cancelStr) }
+                Button(action: onCancel) { Text(String(localized: "hub.memory.settings.hooks.cancel")) }
                     .buttonStyle(HubButtonStyle(primary: false))
-                Button(action: onConfirm) { Text(verbatim: confirmStr) }
+                Button(action: onConfirm) { Text(String(localized: "hub.memory.settings.hooks.confirm")) }
                     .buttonStyle(HubButtonStyle(primary: true))
             }
         }
@@ -1796,7 +1851,7 @@ struct HubMemorySettingsPage: View {
                                 .foregroundColor(HubTheme.secondary)
                         }
                         if let pause = st.pause {
-                            Text("En pause : \(pause)")
+                            Text(String(format: String(localized: "hub.memory.settings.paused"), pause))
                                 .font(.system(size: 11))
                                 .foregroundColor(HubTheme.muted)
                         }
@@ -1895,7 +1950,7 @@ struct HubMemorySettingsPage: View {
                     Image(systemName: "checkmark.circle")
                         .foregroundColor(HubTheme.green)
                         .font(.system(size: 12))
-                    Text("\(idx.messages.formatted()) messages indexés — niveau \(currentDepth)")
+                    Text(String(format: String(localized: "hub.memory.settings.index-info"), idx.messages, currentDepth))
                         .font(.system(size: 12))
                         .foregroundColor(HubTheme.secondary)
                 }
