@@ -339,7 +339,10 @@ export function searchRaw(
   try {
     db = new Database(dbPath, { readonly: true });
 
-    // Overfetch 3× to allow per-conversation deduplication
+    // Overfetch enough to find `limit` distinct conversations.
+    // A single word can match many messages per conversation; empirically
+    // we need ~6-7× more rows than the desired conversation count.
+    const fetchRows = Math.max(limit * 15, 150);
     const rows = db
       .prepare(
         `SELECT conv_id, conv_title, conv_date, conv_link, msg_index, role, source, project, text,
@@ -350,7 +353,7 @@ export function searchRaw(
          ORDER BY bm25(raw_messages) ASC
          LIMIT ?`
       )
-      .all(ftsQuery, limit * 4) as Array<{
+      .all(ftsQuery, fetchRows) as Array<{
       conv_id: string;
       conv_title: string;
       conv_date: string;
