@@ -151,6 +151,13 @@ final class SettingsSearch: ObservableObject {
             e("mail.rules", .mailRules, "hub.mail.rules", ["hub.mail.field.sender", "hub.mail.field.subject", "hub.mail.do.junk"]),
             e("mail.banned", .mailBanned, "hub.mail.banned"),
             e("mail.vip", .mailVIP, "hub.mail.vip"),
+            // Memory
+            e("memory.search", .memorySearch, "hub.page.memory-search", ["hub.memory.search.placeholder"]),
+            e("memory.graph", .memoryGraph, "hub.page.memory-graph"),
+            e("memory.recurrences", .memoryRecurrences, "hub.page.memory-recurrences"),
+            e("memory.settings", .memorySettings, "hub.page.memory-settings",
+              ["hub.memory.settings.sources", "hub.memory.settings.depth", "hub.memory.settings.privacy",
+               "hub.memory.settings.wipe", "hub.memory.settings.open-folder"]),
         ]
         #if !PHONE_LINK
         list.removeAll { $0.id == "general.iphone" }

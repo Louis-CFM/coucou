@@ -275,6 +275,29 @@ struct HubHeroTheme {
             return .init(color: Color(hex: "#FF453A"), cast: [m("#FF453A", 54, 0.25, outfit: .sunglasses), m("#F5F6F8", 44, 0.8, state: .sleeping, roams: false)])
         case .mailVIP:
             return .init(color: Color(hex: "#F5A524"), cast: [m("#F5A524", 60, 0.3, outfit: .crown), m("#2F8CFF", 46, 0.85)])
+        case .memorySearch:
+            return .init(color: Color(hex: "#22D3EE"), cast: [
+                m("#22D3EE", 60, 0.2, state: .thinking, roams: false),
+                m("#3B9EFF", 50, 0.6, outfit: .roundGlasses),
+                m("#A78BFA", 42, 0.95)
+            ])
+        case .memoryGraph:
+            return .init(color: Color(hex: "#22D3EE"), cast: [
+                m("#22D3EE", 56, 0.15),
+                m("#FB923C", 46, 0.5, outfit: .crown),
+                m("#34D399", 44, 0.9)
+            ])
+        case .memoryRecurrences:
+            return .init(color: Color(hex: "#22D3EE"), cast: [
+                m("#22D3EE", 54, 0.3, state: .thinking, roams: false),
+                m("#F7B32B", 44, 0.75),
+                m("#F5F6F8", 40, 1, outfit: .beanie)
+            ])
+        case .memorySettings:
+            return .init(color: Color(hex: "#22D3EE"), cast: [
+                m("#22D3EE", 58, 0.25, outfit: .roundGlasses),
+                m("#8E939C", 46, 0.8, state: .sleeping, roams: false)
+            ])
         }
     }
 }

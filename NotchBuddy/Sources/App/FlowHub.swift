@@ -8,12 +8,14 @@ enum HubPage: String, CaseIterable, Identifiable {
     case dictation, notes, insights, dictionary, snippets, styles, settings
     case room, general, pills, agents, chat, integrations, voice, shortcuts
     case mailOverview, mailRules, mailBanned, mailVIP
+    case memorySearch, memoryGraph, memoryRecurrences, memorySettings
 
     var id: String { rawValue }
 
     static let flowPages: [HubPage] = [.dictation, .notes, .insights, .dictionary, .snippets, .styles, .settings]
     static let notchPages: [HubPage] = [.room, .general, .pills, .agents, .chat, .integrations, .voice, .shortcuts]
     static let mailPages: [HubPage] = [.mailOverview, .mailRules, .mailBanned, .mailVIP]
+    static let memoryPages: [HubPage] = [.memorySearch, .memoryGraph, .memoryRecurrences, .memorySettings]
 
     /// The section of Settings this page shows, for the notch's pages.
     var settingsSection: String? {
@@ -55,6 +57,10 @@ enum HubPage: String, CaseIterable, Identifiable {
         case .mailRules:    return String(localized: "hub.mail.rules")
         case .mailBanned:   return String(localized: "hub.mail.banned")
         case .mailVIP:      return String(localized: "hub.mail.vip")
+        case .memorySearch:      return String(localized: "hub.page.memory-search")
+        case .memoryGraph:       return String(localized: "hub.page.memory-graph")
+        case .memoryRecurrences: return String(localized: "hub.page.memory-recurrences")
+        case .memorySettings:    return String(localized: "hub.page.memory-settings")
         }
     }
 
@@ -79,6 +85,10 @@ enum HubPage: String, CaseIterable, Identifiable {
         case .mailRules:    return "line.3.horizontal.decrease"
         case .mailBanned:   return "nosign"
         case .mailVIP:      return "star"
+        case .memorySearch:      return "magnifyingglass"
+        case .memoryGraph:       return "point.3.connected.trianglepath.dotted"
+        case .memoryRecurrences: return "arrow.trianglehead.2.counterclockwise.rotate.90"
+        case .memorySettings:    return "archivebox"
         }
     }
 }
@@ -248,6 +258,12 @@ struct FlowHubView: View {
         case .mailRules:    HubMailRulesPage()
         case .mailBanned:   HubMailBannedPage()
         case .mailVIP:      HubMailVIPPage()
+        #if !APPSTORE
+        case .memorySearch:      HubMemorySearchPage()
+        case .memoryGraph:       HubMemoryGraphPage()
+        case .memoryRecurrences: HubMemoryRecurrencesPage()
+        case .memorySettings:    HubMemorySettingsPage()
+        #endif
         default:
             if let section = router.page.settingsSection {
                 VStack(alignment: .leading, spacing: 0) {
@@ -306,6 +322,13 @@ private struct HubSidebar: View {
                         ForEach(HubPage.mailPages) { page in
                             HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
                         }
+                        #if !APPSTORE
+                        HubSidebarHeader(text: String(localized: "hub.section.memory"))
+                            .padding(.top, 14)
+                        ForEach(HubPage.memoryPages) { page in
+                            HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+                        }
+                        #endif
                     }
                 }
             }
