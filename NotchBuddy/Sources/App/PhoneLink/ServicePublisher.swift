@@ -40,13 +40,25 @@ final class ServicePublisher {
             s.$notionPages.map { _ in () }.eraseToAnyPublisher(),
             s.$notionError.map { _ in () }.eraseToAnyPublisher(),
             s.$n8nRuns.map { _ in () }.eraseToAnyPublisher(),
-        ]
+            CryptoController.shared.$quotes.map { _ in () }.eraseToAnyPublisher(),
+        ] + Self.mailChanges
         cancellable = Publishers.MergeMany(changes)
             .debounce(for: .seconds(2), scheduler: RunLoop.main)
             .sink { [weak self] in
                 MainActor.assumeIsolated { self?.publish() }
             }
         log("service publisher on")
+    }
+
+    /// Mail is in the GitHub build only (Apple Events).
+    private static var mailChanges: [AnyPublisher<Void, Never>] {
+        #if APPSTORE
+        return []
+        #else
+        let mail = MailController.shared
+        return [mail.$messages.map { _ in () }.eraseToAnyPublisher(),
+                mail.$unreadCount.map { _ in () }.eraseToAnyPublisher()]
+        #endif
     }
 
     /// Stops and deletes this Mac's services from iCloud.
@@ -61,7 +73,29 @@ final class ServicePublisher {
         log("service publisher off")
     }
 
+    /// Stripe month by month (ServiceAPI.stripeMonths), read again every 30 minutes at most.
+    private(set) var stripeMonths: [ServiceMonth] = []
+    private var stripeMonthsAt: Date?
+    private var readingMonths = false
+
+    private func refreshStripeMonthsIfStale() {
+        guard AppState.shared.stripeLoaded, !readingMonths,
+              stripeMonthsAt.map({ Date().timeIntervalSince($0) > 30 * 60 }) ?? true else { return }
+        readingMonths = true
+        Task {
+            do {
+                stripeMonths = try await ServiceAPI.stripeMonths()
+            } catch {
+                log("Stripe months not read: \(error.localizedDescription)")
+            }
+            stripeMonthsAt = Date()
+            readingMonths = false
+            publish()
+        }
+    }
+
     private func publish() {
+        refreshStripeMonthsIfStale()
         guard !writing else { again = true; return }
         writing = true
         let snapshots = ServiceSnapshots.all(from: AppState.shared)
@@ -130,8 +164,123 @@ final class ServicePublisher {
 @MainActor
 enum ServiceSnapshots {
     static func all(from s: AppState) -> [String: ServiceSnapshot] {
-        let built = [github(s), stripe(s), vercel(s), resend(s), calcom(s), n8n(s), notion(s)].compactMap { $0 }
+        let built = [github(s), stripe(s), vercel(s), resend(s), calcom(s), n8n(s), notion(s), crypto(), mail()]
+            .compactMap { $0 }
+            .map { snapshot -> ServiceSnapshot in
+                var snapshot = snapshot
+                let figures = today(snapshot.pillId, s)
+                snapshot.today = figures.isEmpty ? nil : figures
+                if snapshot.pillId == "integration_stripe", !ServicePublisher.shared.stripeMonths.isEmpty {
+                    snapshot.months = ServicePublisher.shared.stripeMonths
+                }
+                return snapshot
+            }
         return Dictionary(uniqueKeysWithValues: built.map { ($0.pillId, $0) })
+    }
+
+    // MARK: Today
+
+    /// The day so far, per service, for the iPhone's home.
+    static func today(_ pillId: String, _ s: AppState) -> [DetailStat] {
+        let calendar = Calendar.current
+        func isToday(_ date: Date) -> Bool { calendar.isDateInToday(date) }
+        switch pillId {
+        case "integration_stripe":
+            let paid = s.stripePayments.filter { $0.isSuccess && isToday($0.createdAt) }
+            guard let currency = paid.first?.currency ?? s.stripePayments.first?.currency else { return [] }
+            let total = paid.filter { $0.currency == currency }.reduce(0) { $0 + $1.amount }
+            let value = (Double(total) / 100).formatted(.currency(code: currency.uppercased()))
+            return [DetailStat(label: paid.count == 1 ? "1 payment" : "\(paid.count) payments", value: value,
+                               tone: total > 0 ? .ok : .idle)]
+        case "integration_vercel":
+            let deploys = s.vercelDeployments.filter { isToday($0.createdAt) }
+            let failed = deploys.filter { $0.state == "ERROR" }.count
+            return [DetailStat(label: failed > 0 ? "\(failed) failed" : "deploys", value: "\(deploys.count)",
+                               tone: failed > 0 ? .error : deploys.isEmpty ? .idle : .ok)]
+        case "integration_github":
+            guard let pulse = s.githubPulse else { return [] }
+            let failing = pulse.mainCI.filter { $0.ci == .failure }.count
+            return [DetailStat(label: failing > 0 ? "CI failing" : "open PRs",
+                               value: failing > 0 ? "\(failing)" : "\(pulse.myPRs.count)",
+                               tone: failing > 0 ? .error : pulse.toReview.isEmpty ? .info : .warning)]
+        case "integration_calcom":
+            let meetings = s.calcomBookings.filter { $0.isActive && isToday($0.startTime) }
+            return [DetailStat(label: meetings.count == 1 ? "meeting" : "meetings", value: "\(meetings.count)",
+                               tone: meetings.isEmpty ? .idle : .info)]
+        case "integration_n8n":
+            let runs = s.n8nRuns.filter { isToday($0.date) }
+            let failed = runs.filter { !$0.success }.count
+            return [DetailStat(label: failed > 0 ? "\(failed) failed" : "runs", value: "\(runs.count)",
+                               tone: failed > 0 ? .error : runs.isEmpty ? .idle : .ok)]
+        case "integration_resend":
+            let sent = s.resendEmails.filter { isToday($0.createdAt) }
+            return [DetailStat(label: "emails", value: "\(sent.count)", tone: sent.isEmpty ? .idle : .ok)]
+        case "integration_crypto":
+            guard let lead = CryptoController.shared.quotes.first else { return [] }
+            return [DetailStat(label: lead.symbol, value: cryptoChange(lead.change), tone: lead.change >= 0 ? .ok : .error)]
+        case "integration_mail":
+            #if APPSTORE
+            return []
+            #else
+            let unread = MailController.shared.unreadCount ?? 0
+            return [DetailStat(label: "unread", value: "\(unread)", tone: unread > 0 ? .info : .idle)]
+            #endif
+        default:
+            return []
+        }
+    }
+
+    // MARK: Crypto
+
+    /// The coins the crypto pill follows (public prices, no account): the first one in the headline,
+    /// a dot that warns when one moves 5 % or more in 24 h.
+    static func crypto() -> ServiceSnapshot? {
+        let c = CryptoController.shared
+        guard c.loaded, let lead = c.quotes.first else { return nil }
+        let currency = CryptoSettings.currency
+        let items = c.quotes.map { q in
+            ServiceItem(title: q.symbol, detail: "\(cryptoPrice(q.price)) \(currency) · \(cryptoChange(q.change))",
+                        tone: q.change >= 0 ? .ok : .error,
+                        url: CryptoSettings.exchange.tradeURL(CryptoSettings.exchange.pair(q.symbol, currency))?.absoluteString)
+        }
+        let mover = c.quotes.max { abs($0.change) < abs($1.change) } ?? lead
+        return ServiceSnapshot(pillId: "integration_crypto",
+                               tone: abs(mover.change) >= 5 ? .warning : .info,
+                               headline: "\(lead.symbol) \(cryptoPrice(lead.price)) \(currency) · \(cryptoChange(lead.change))",
+                               reason: "Biggest move in 24 h: \(mover.symbol) \(cryptoChange(mover.change))",
+                               sections: [ServiceSection(title: "Prices", items: items)], updatedAt: Date())
+    }
+
+    nonisolated static func cryptoPrice(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(value >= 100 ? 0 : value >= 1 ? 2 : 4)))
+    }
+
+    nonisolated static func cryptoChange(_ percent: Double) -> String {
+        (percent >= 0 ? "+" : "") + percent.formatted(.number.precision(.fractionLength(1))) + " %"
+    }
+
+    // MARK: Mail
+
+    /// Apple Mail's inboxes (GitHub build): unread count, flagged and latest messages.
+    static func mail() -> ServiceSnapshot? {
+        #if APPSTORE
+        return nil
+        #else
+        let m = MailController.shared
+        guard m.loaded else { return nil }
+        let unread = m.unreadCount ?? m.messages.filter { !$0.isRead }.count
+        let flagged = m.messages.filter(\.isFlagged)
+        let items = m.messages.prefix(10).map { msg in
+            ServiceItem(title: msg.subject.isEmpty ? "(no subject)" : msg.subject, detail: msg.senderName,
+                        tone: msg.isFlagged ? .warning : (msg.isRead ? .idle : .info), date: msg.date)
+        }
+        return ServiceSnapshot(pillId: "integration_mail",
+                               tone: !flagged.isEmpty ? .warning : (unread > 0 ? .info : .idle),
+                               headline: unread == 0 ? "Inbox read" : "\(unread) unread",
+                               reason: flagged.first.map { "Flagged: \($0.subject) · \($0.senderName)" }
+                                   ?? (unread > 0 ? "\(unread) unread in Mail" : "Nothing new in Mail"),
+                               sections: [ServiceSection(title: "Latest", items: Array(items))], updatedAt: Date())
+        #endif
     }
 
     // MARK: GitHub

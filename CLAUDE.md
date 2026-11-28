@@ -28,6 +28,7 @@ Windows and Linux: `cd windows && npm install && npm run tauri dev`
 - Performance: 0 % CPU when the island is hidden.
 - Keep the bundle identifier `fr.louisraille.NotchBuddy` (Keychain items, preferences and permissions depend on it).
 - Never restyle what already ships (pills, cards, Settings, chat…): existing views stay exactly as they are in `main`, which is the App Store build. Change the look of an existing view only when explicitly asked.
+  Exception (Louis, 22 Nov 2026): the iPhone app (`Sources/Phone`, `Sources/Widgets`, `Sources/NotificationContent`) is becoming Botan, so its views may change. It stays an Apple-style iOS app (system font, Settings, glass); Botan comes in as touches: the orange #FF5A24 accent, the Botan logo, Mochi.
 - Pill IDs are stable contract values (Keychain, UserDefaults, hook routing): never rename an existing pill ID.
 - New views follow the existing app style. `design/prototype/notch-buddy.html` and `design/captures/` are references for new work, not a reason to change existing views.
 - Every release adds its CHANGELOG.md section, a row in the README Versions table, and commits the regenerated Info.plist with the new version.

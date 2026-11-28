@@ -2,14 +2,17 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-// Mochi's Live Activity: on the Lock Screen and in the Dynamic Island while
-// the Mac is locked and an agent is working. The Mac drives it (step 8).
+// Mochi's Live Activity: on the Lock Screen and in the Dynamic Island while an
+// agent works. Like on Botan's screen, Mochi takes the color and the face of
+// the moment (working, thinking, waiting for your OK, done), then leaves once
+// the work is done. The Mac starts it; the iPhone keeps it up to date and ends it.
 
 struct MochiLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: MochiActivityAttributes.self) { context in
             LockScreenActivityView(state: context.state, stale: context.isStale)
-                .activityBackgroundTint(Color(white: 0.08))
+                // See-through, like the notifications around it, instead of a black slab.
+                .activityBackgroundTint(Color.black.opacity(0.22))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             let state = context.state
@@ -34,32 +37,26 @@ struct MochiLiveActivity: Widget {
                     .animation(.phaseChange, value: state)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    if state.others > 0 {
-                        Text("+\(state.others)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.trailing, 4)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        if let since = state.sinceDate, state.isActive {
+                            Text(since, style: .timer)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 52, alignment: .trailing)
+                        }
+                        if state.others > 0 {
+                            Text("+\(state.others)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .padding(.trailing, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     if let fingerprint = state.approval, state.tone == "waiting" {
                         ApprovalButtons(fingerprint: fingerprint, pillId: state.pillId)
                             .padding(.horizontal, 4)
                             .transition(.phaseIn)
-                    } else {
-                        HStack(spacing: 10) {
-                            if state.stepCount > 0 {
-                                StepsBar(index: state.stepIndex, count: state.stepCount, color: state.toneColor)
-                            }
-                            if let since = state.sinceDate, state.isActive {
-                                Text(since, style: .timer)
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 52, alignment: .trailing)
-                            }
-                        }
-                        .padding(.horizontal, 4)
-                        .transition(.phaseIn)
                     }
                 }
             } compactLeading: {
@@ -69,8 +66,7 @@ struct MochiLiveActivity: Widget {
                 Text(state.compactText)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(state.toneColor)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
+                    .contentTransition(.interpolate)
                     .animation(.phaseChange, value: state.compactText)
             } minimal: {
                 MochiSwap(state: state)
@@ -88,9 +84,7 @@ struct LockScreenActivityView: View {
     var body: some View {
         HStack(spacing: 14) {
             MochiSwap(state: state)
-                .padding(6)
-                .frame(width: 52, height: 52)
-                .background(Color.mochiTile(hex: state.color), in: RoundedRectangle(cornerRadius: 14))
+                .frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(state.agent).font(.headline)
@@ -117,9 +111,6 @@ struct LockScreenActivityView: View {
                     ApprovalButtons(fingerprint: fingerprint, pillId: state.pillId)
                         .padding(.top, 4)
                         .transition(.phaseIn)
-                } else if state.stepCount > 0 && !stale {
-                    StepsBar(index: state.stepIndex, count: state.stepCount, color: state.toneColor)
-                        .transition(.phaseIn)
                 }
             }
             Spacer(minLength: 0)
@@ -140,7 +131,9 @@ struct MochiSwap: View {
 
     var body: some View {
         ZStack {
-            MochiStill(state: state.botState)
+            // Colored like on Botan's screen: blue at work, violet thinking, amber waiting
+            // for your OK, green once done; the badge says the same (dots, "!", "?").
+            MochiStill(state: state.botState, bodyHex: state.botState.mochiBodyHex)
                 .id(state.state)
                 .transition(.mochiSwap)
         }
@@ -222,14 +215,33 @@ extension MochiActivityState {
         }
     }
 
-    /// A few characters next to the camera.
+    /// A word next to the camera: what is going on, not a step count.
     var compactText: String {
         switch tone {
         case "waiting": "OK?"
         case "question": "?"
-        case "error": "!"
-        case "done": "✓"
-        default: stepCount > 0 ? "\(min(stepIndex + 1, stepCount))/\(stepCount)" : "…"
+        case "error": "Error"
+        case "done": "Done"
+        default: botState == .thinking ? "Thinking" : "Working"
         }
+    }
+}
+
+extension BotState {
+    /// Mochi's body on the Lock Screen and in the Dynamic Island: the state's color, softened
+    /// with white (Botan's screen tints him the same way).
+    var mochiBodyHex: String {
+        let hex: UInt32
+        switch self {
+        case .working, .searching: hex = 0x3B9EFF
+        case .thinking: hex = 0x8B5CF6
+        case .approval: hex = 0xF5A524
+        case .question: hex = 0x22D3EE
+        case .error, .ratelimit, .dizzy: hex = 0xF4505E
+        case .finished: hex = 0x34D399
+        default: return "#FFFFFF"
+        }
+        func soft(_ c: UInt32) -> Int { Int((Double(c) * 0.7 + 255 * 0.3).rounded()) }
+        return String(format: "#%02X%02X%02X", soft(hex >> 16 & 0xFF), soft(hex >> 8 & 0xFF), soft(hex & 0xFF))
     }
 }

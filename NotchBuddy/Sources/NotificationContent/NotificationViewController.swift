@@ -63,7 +63,7 @@ struct ApprovalNotificationView: View {
                     .frame(width: 60, height: 60)
                     .background(Color.mochiTile(hex: color), in: RoundedRectangle(cornerRadius: 16))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title.isEmpty || title == "Coucou" ? (pill?.name ?? "Coucou") : title)
+                    Text(title.isEmpty || title == "Coucou" || title == "Botan" ? (pill?.name ?? "Botan") : title)
                         .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(1)

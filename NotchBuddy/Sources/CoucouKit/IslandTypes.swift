@@ -84,6 +84,7 @@ struct AgentTask: Identifiable, Equatable {
     var pillBadge: PillBadge? = nil  // alert badge shown on pill when not focused
     var sessionCwd: String?  = nil  // last known working directory (Claude Code sessions)
     var sessionBundleId: String? = nil  // app the session runs in (hook bundle_id), for "Open terminal"
+    var sessionId: String?   = nil  // the session that owns the pill (Claude Code session id)
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
     var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
     /// The sessions sharing this pill, for the open card; empty while one session (or none) is behind it.

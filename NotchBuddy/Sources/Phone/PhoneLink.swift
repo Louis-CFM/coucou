@@ -26,6 +26,9 @@ struct SessionItem: Identifiable, Codable, Equatable {
     let steps: [String]
     let needsApproval: Bool
     let approvalCommand: String
+    /// The tool asking ("Bash", "Edit"…), for Botan's one line. Optional: sessions cached by an
+    /// earlier version have none, and must still load.
+    let approvalTool: String?
     let approvalFingerprint: String
     /// The Mac runs instructions sent from here for this session (GitHub build, switch on).
     let acceptsInstructions: Bool
@@ -47,6 +50,7 @@ struct SessionItem: Identifiable, Codable, Equatable {
         steps = record.encryptedValues["steps"] as? [String] ?? []
         needsApproval = record["needsApproval"] as? Bool ?? false
         approvalCommand = record.encryptedValues["approvalCommand"] as? String ?? ""
+        approvalTool = record.encryptedValues["approvalTool"] as? String ?? ""
         approvalFingerprint = record["approvalFingerprint"] as? String ?? ""
         acceptsInstructions = record["acceptsInstructions"] as? Bool ?? false
         question = record.encryptedValues["question"] as? String ?? ""
@@ -131,6 +135,14 @@ final class PhoneLink {
     var notificationsAllowed: Bool?
     /// A session to open, from a notification, a shortcut or the Control Center.
     var openPillId: String?
+    /// What the Mac can run for a new task (GitHub build with instructions on), nil otherwise.
+    var macAgents: MacAgents?
+    /// How the tasks started here ended, by task id.
+    var taskResults: [String: TaskResult] = [:]
+    /// Sample data instead of the Mac's (Demo): nothing is sent to iCloud, saved or notified.
+    var isDemo = false
+    /// The real state, kept aside while the demo shows.
+    @ObservationIgnored var demoStash: DemoStash?
 
     @ObservationIgnored private let container = CKContainer(identifier: PhoneLink.containerID)
     @ObservationIgnored private var database: CKDatabase { container.privateCloudDatabase }
@@ -170,6 +182,7 @@ final class PhoneLink {
 
     /// Checks the account, makes sure the subscription exists, then fetches new records.
     func refresh() async {
+        guard !isDemo else { return }
         do {
             let accountStatus = try await container.accountStatus()
             guard accountStatus == .available else {
@@ -185,13 +198,26 @@ final class PhoneLink {
         if !subscribed { await subscribe() }
         if subscribed && !approvalsSubscribed { await subscribeToApprovals() }
         _ = await fetchChanges()
+        // The demo started while iCloud answered: its sample data stays out of everything else.
+        guard !isDemo else { return }
+        BotanBridge.shared.sessionsChanged()
+        LiveActivityLink.shared.sessionsChanged(sessions)
+        sharePendingApprovals()
+        recordJournal()
         await notifyNewApprovals()
         await postEvents()
     }
 
-    /// Called on a CloudKit push. Returns true when new records arrived.
+    /// Called on a CloudKit push (and on Botan's heartbeat). Returns true when new records arrived.
     func handlePush() async -> Bool {
+        guard !isDemo else { return false }
         let gotNew = await fetchChanges()
+        guard !isDemo else { return false }
+        // Botan first: it is what a locked iPhone shows.
+        BotanBridge.shared.sessionsChanged()
+        LiveActivityLink.shared.sessionsChanged(sessions)
+        sharePendingApprovals()
+        recordJournal()
         await notifyNewApprovals()
         await postEvents()
         return gotNew
@@ -223,11 +249,13 @@ final class PhoneLink {
                                             options: [.firesOnRecordCreation])
         approvals.zoneID = Self.zoneID
         let alert = CKSubscription.NotificationInfo()
-        alert.title = "Coucou"
+        alert.title = "Botan"
         alert.alertBody = "An agent is waiting for your OK"
         alert.soundName = mochi ? "approval.wav" : "default"
         alert.category = NotificationActions.approvalCategory
         alert.shouldSendContentAvailable = true
+        // The notification service fills in the agent, the project and the command (one banner).
+        alert.shouldSendMutableContent = true
         alert.desiredKeys = ["fingerprint", "pillId"]
         approvals.notificationInfo = alert
         do {
@@ -259,7 +287,7 @@ final class PhoneLink {
 
     @discardableResult
     private func fetchChanges() async -> Bool {
-        guard !fetching else { return false }
+        guard !fetching, !isDemo else { return false }
         fetching = true
         defer { fetching = false }
         var gotNew = false
@@ -268,8 +296,13 @@ final class PhoneLink {
             while more {
                 var pageGotNew = false
                 let changes = try await database.recordZoneChanges(inZoneWith: Self.zoneID, since: changeToken)
+                // The demo started meanwhile: the real records wait for its end (same token).
+                guard !isDemo else { return false }
                 for (_, result) in changes.modificationResultsByID {
                     if case .success(let mod) = result, add(mod.record) { pageGotNew = true }
+                }
+                for deletion in changes.deletions where deletion.recordType == MacAgents.recordType {
+                    macAgents = nil
                 }
                 for deletion in changes.deletions where deletion.recordType == "Session" {
                     sessions.removeAll { "session-\($0.id)" == deletion.recordID.recordName }
@@ -341,6 +374,21 @@ final class PhoneLink {
     }
 
     private func add(_ record: CKRecord) -> Bool {
+        if record.recordType == MacAgents.recordType {
+            if let payload = record.encryptedValues["payload"] as? String,
+               let agents = try? JSONDecoder().decode(MacAgents.self, from: Data(payload.utf8)) {
+                macAgents = agents
+            }
+            return false
+        }
+        if record.recordType == TaskResult.recordType {
+            if let payload = record.encryptedValues["payload"] as? String,
+               let result = try? JSONDecoder().decode(TaskResult.self, from: Data(payload.utf8)) {
+                taskResults[result.id] = result
+                Journal.shared.record(task: result)
+            }
+            return false
+        }
         if record.recordType == TurnSnapshot.recordType {
             guard let payload = record.encryptedValues["payload"] as? String,
                   let turn = try? JSONDecoder().decode(TurnSnapshot.self, from: Data(payload.utf8)) else { return false }
@@ -398,6 +446,23 @@ final class PhoneLink {
     /// that updates the sessions does, so a new approval also gets a local
     /// notification, unless the iCloud one came, or the app is open.
     /// Notifications for requests no longer pending are removed.
+    /// Everything seen so far, kept for History and the search (Journal).
+    func recordJournal() {
+        guard !isDemo else { return }
+        Journal.shared.record(decisions: history, turns: Array(turns.values) + archive.past.values.flatMap { $0 },
+                              services: services)
+    }
+
+    /// What the notification service needs to fill in an approval's banner (PendingApprovals).
+    private func sharePendingApprovals() {
+        var items: [String: PendingApprovals.Item] = [:]
+        for s in sessions where s.needsApproval && !s.approvalFingerprint.isEmpty {
+            items[s.approvalFingerprint] = .init(agent: s.pillName, project: s.title,
+                                                command: s.approvalCommand, pillId: s.id)
+        }
+        if items != PendingApprovals.load() { PendingApprovals.save(items) }
+    }
+
     private func notifyNewApprovals() async {
         await removeAnsweredNotifications()
         let fresh = sessions.filter {
@@ -407,8 +472,9 @@ final class PhoneLink {
         fresh.forEach { notifiedFingerprints.insert($0.approvalFingerprint) }
         // The app is open: the request is on screen.
         guard UIApplication.shared.applicationState != .active else { return }
-        // Give the iCloud alert a moment to land first, then check the request still waits.
-        try? await Task.sleep(for: .seconds(3))
+        // The iCloud alert (filled in by the notification service) is the one banner. This one
+        // is only for when it never comes: give it time to land, then check the request still waits.
+        try? await Task.sleep(for: .seconds(12))
         _ = await fetchChanges()
         let shown = await Self.shownApprovals().map { $0.fingerprint }
         for session in fresh where !shown.contains(session.approvalFingerprint) {
@@ -492,6 +558,7 @@ final class PhoneLink {
     /// Answers the question a session waits on. The Mac takes it within ~2 s,
     /// only if it is still the same question and the picks are among its choices.
     func answer(fingerprint: String, pillId: String, selections: [[String]]) async -> Bool {
+        if isDemo { return await Demo.answer(fingerprint: fingerprint, pillId: pillId, selections: selections, link: self) }
         let record = CKRecord(recordType: "Answer",
                               recordID: CKRecord.ID(recordName: "answer-\(UUID().uuidString)", zoneID: Self.zoneID))
         record["fingerprint"] = fingerprint
@@ -513,9 +580,11 @@ final class PhoneLink {
     /// Asks the Mac to read this service's API now (it answers within ~10 s).
     /// False when no new detail came back in time (Mac asleep, sync off, older build).
     @discardableResult
-    func requestServiceDetail(_ pillId: String) async -> Bool {
+    /// `period`: a month ("2026-10") for services read month by month (Stripe); empty = now.
+    func requestServiceDetail(_ pillId: String, period: String = "") async -> Bool {
+        if isDemo { return await Demo.serviceDetail(pillId, period: period, link: self) }
         let previous = serviceDetails[pillId]?.fetchedAt
-        guard await sendServiceRequest(kind: ServiceDetail.refreshKind, target: "", pillId: pillId) else { return false }
+        guard await sendServiceRequest(kind: ServiceDetail.refreshKind, target: period, pillId: pillId) else { return false }
         // The new detail usually comes with a push; fetch anyway in case it doesn't.
         for _ in 0..<3 {
             // Screen left (task cancelled): stop rather than fetch back to back.
@@ -531,6 +600,7 @@ final class PhoneLink {
     /// True only when the Mac's result for this request came back and it worked.
     func runServiceAction(_ action: ServiceActionDef, pillId: String) async -> Bool {
         guard await OwnerCheck.confirm(reason: "\(action.title) from your Mac") else { return false }
+        if isDemo { return await Demo.action(action, pillId: pillId, link: self) }
         // The result already shown (from an earlier action) doesn't count for this one.
         let previous = serviceDetails[pillId]?.lastAction
         guard await sendServiceRequest(kind: action.kind, target: action.target, pillId: pillId) else { return false }
@@ -563,6 +633,7 @@ final class PhoneLink {
     /// Sends an instruction to continue a session on the Mac. The Mac takes it
     /// within ~15 s and deletes it; it never runs twice.
     func sendInstruction(_ text: String, pillId: String) async -> Bool {
+        if isDemo { return await Demo.instruction(text, pillId: pillId, link: self) }
         let record = CKRecord(recordType: "Instruction",
                               recordID: CKRecord.ID(recordName: "instruction-\(UUID().uuidString)", zoneID: Self.zoneID))
         record["pillId"] = pillId
@@ -575,6 +646,32 @@ final class PhoneLink {
         } catch {
             lastPong = "Instruction failed: \(error.localizedDescription)"
             return false
+        }
+    }
+
+    /// A new task for the agent of your choice, in one of the folders the Mac published.
+    /// Returns the task id, or nil when iCloud refused it.
+    func sendTask(_ text: String, agent: PhoneAgent, project: MacAgents.Project,
+                  continuing previous: String? = nil) async -> String? {
+        if isDemo { return await Demo.task(text, agent: agent, project: project, link: self) }
+        let taskId = UUID().uuidString
+        let record = CKRecord(recordType: "Instruction",
+                              recordID: CKRecord.ID(recordName: "instruction-\(taskId)", zoneID: Self.zoneID))
+        record["pillId"] = agent.pillId
+        record["agent"] = agent.rawValue
+        record["taskId"] = taskId
+        // "Allow and continue": the Mac allows only what it reported as turned down for that task.
+        if let previous { record["continueTask"] = previous }
+        record["createdAt"] = Date()
+        record["deviceName"] = UIDevice.current.name
+        record.encryptedValues["text"] = text
+        record.encryptedValues["project"] = project.path
+        do {
+            _ = try await database.save(record)
+            return taskId
+        } catch {
+            lastPong = "Task failed: \(error.localizedDescription)"
+            return nil
         }
     }
 
@@ -594,6 +691,9 @@ final class PhoneLink {
     /// Sends allow / deny for one exact request. The Mac applies it only if the
     /// fingerprint still matches the request it is waiting on.
     func decide(_ decision: Decision, fingerprint: String, pillId: String, summary: String) async -> Bool {
+        if isDemo {
+            return await Demo.decide(decision, fingerprint: fingerprint, pillId: pillId, summary: summary, link: self)
+        }
         let record = CKRecord(recordType: "Decision",
                               recordID: CKRecord.ID(recordName: "decision-\(UUID().uuidString)", zoneID: Self.zoneID))
         record["fingerprint"] = fingerprint
@@ -606,6 +706,7 @@ final class PhoneLink {
             history.insert(DecisionLog(decision: decision, pillId: pillId, summary: summary, date: .now), at: 0)
             history = Array(history.prefix(50))
             DecisionLog.save(history)
+            recordJournal()
             // A few decisions sent from the phone: a good moment to ask for a review (ReviewPolicy).
             if ReviewPolicy.note(needed: ReviewPolicy.phoneMoments) { askForAppReview = true }
             return true

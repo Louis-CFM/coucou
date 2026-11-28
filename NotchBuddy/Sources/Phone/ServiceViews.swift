@@ -92,6 +92,10 @@ struct ServiceDetailView: View {
     private var pill: PillDefinition? { PillCatalog.definition(for: pillId) }
     /// The Mac didn't answer the last request (asleep, sync off, older build).
     @State private var macSilent = false
+    /// The month shown, for services read month by month (Stripe).
+    @State private var month = ServicePeriod.key(for: Date())
+    @State private var loadingMonth = false
+    private var byMonth: Bool { pillId == "integration_stripe" }
 
     var body: some View {
         ScrollView {
@@ -102,9 +106,12 @@ struct ServiceDetailView: View {
                     if snapshot.tone == .error || snapshot.tone == .warning || link.serviceDetails[pillId] == nil {
                         reasonCard(snapshot)
                     }
+                    if byMonth { monthPicker }
                     // Read live from the service's API by the Mac, with actions.
                     if let detail = link.serviceDetails[pillId] {
                         ServiceLiveDetail(link: link, pillId: pillId, detail: detail)
+                            .opacity(loadingMonth ? 0.45 : 1)
+                            .animation(.easeOut(duration: 0.25), value: loadingMonth)
                     } else {
                         HStack(spacing: 10) {
                             if macSilent {
@@ -135,10 +142,49 @@ struct ServiceDetailView: View {
         .background(Color.black)
         .navigationTitle(pill?.name ?? "Service")
         .navigationBarTitleDisplayMode(.inline)
-        .task { macSilent = !(await link.requestServiceDetail(pillId)) && link.serviceDetails[pillId] == nil }
+        .task { macSilent = !(await link.requestServiceDetail(pillId, period: period)) && link.serviceDetails[pillId] == nil }
         .refreshable {
             macSilent = false
-            macSilent = !(await link.requestServiceDetail(pillId)) && link.serviceDetails[pillId] == nil
+            macSilent = !(await link.requestServiceDetail(pillId, period: period)) && link.serviceDetails[pillId] == nil
+        }
+    }
+
+    private var period: String { byMonth ? month : "" }
+    private var thisMonth: String { ServicePeriod.key(for: Date()) }
+
+    /// ‹ November 2026 › — any month back to two years; the Mac reads that month's payments.
+    private var monthPicker: some View {
+        HStack {
+            Button { show(ServicePeriod.shifted(month, by: -1)) } label: {
+                Image(systemName: "chevron.left").frame(width: 44, height: 36)
+            }
+            .disabled(month <= ServicePeriod.shifted(thisMonth, by: -24))
+            Spacer()
+            HStack(spacing: 8) {
+                Text(ServicePeriod.name(of: month))
+                    .font(.headline)
+                    .contentTransition(.numericText())
+                if loadingMonth { ProgressView().controlSize(.small) }
+            }
+            Spacer()
+            Button { show(ServicePeriod.shifted(month, by: 1)) } label: {
+                Image(systemName: "chevron.right").frame(width: 44, height: 36)
+            }
+            .disabled(month >= thisMonth)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .glassCard(cornerRadius: 18)
+    }
+
+    private func show(_ newMonth: String) {
+        withAnimation(.snappy) { month = newMonth }
+        Haptics.impact()
+        Task {
+            loadingMonth = true
+            _ = await link.requestServiceDetail(pillId, period: newMonth)
+            // Another tap moved on meanwhile: that one shows its own loading.
+            if month == newMonth { loadingMonth = false }
         }
     }
 

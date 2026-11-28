@@ -270,6 +270,7 @@ final class HookServer: @unchecked Sendable {
         }
         if let display = sessions.display(pill: client, session: session.rawSession) {
             if !display.cwd.isEmpty { task.sessionCwd = display.cwd }
+            task.sessionId = session.rawSession
             if task.pill == "integration_claude" { task.hostApp = display.hostApp }
             if !display.bundleId.isEmpty { task.sessionBundleId = display.bundleId }
         }
@@ -1347,6 +1348,10 @@ final class HookServer: @unchecked Sendable {
         // The recap only counts allow / always / deny ("ask" hands the choice back to the agent).
         let recapDecision = ["plan_auto": "allow", "plan_default": "allow", "plan_change": "deny"][decision] ?? decision
         if decision != "ask" { RecapStore.shared.recordDecision(pillId: head.pillId, decision: recapDecision) }
+        #if PHONE_LINK
+        // The iPhone's turn shows it didn't run, instead of an action that looks done.
+        if recapDecision == "deny" { TurnRecorder.shared.markDenied(pillId: head.pillId, tool: head.tool) }
+        #endif
         removeApproval(id: head.id, answer: json)
         if decision == "plan_change" { ClaudeHost.activate(head.hostApp) }
     }
@@ -1499,6 +1504,7 @@ final class HookServer: @unchecked Sendable {
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+            if !session.isEmpty { state.tasks[idx].sessionId = session }
             if PillCatalog.basePillId(id) == "integration_claude" { state.tasks[idx].hostApp = hostApp }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
@@ -1511,6 +1517,7 @@ final class HookServer: @unchecked Sendable {
                              state: .idle, steps: [], source: source, isIntegration: true)
         if task.pill == "integration_claude" { task.hostApp = hostApp }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
+        if !session.isEmpty { task.sessionId = session }
         // A session's own pill goes after its client's other pills, so they stay together.
         if let sibling = state.tasks.lastIndex(where: { $0.pill == task.pill }) {
             state.tasks.insert(task, at: sibling + 1)

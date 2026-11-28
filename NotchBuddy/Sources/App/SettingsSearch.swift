@@ -112,6 +112,7 @@ final class SettingsSearch: ObservableObject {
             e("general.language", .general, "Language", ["Restart Coucou"]),
             e("general.iphone", .general, "iPhone", ["iphone.sync.toggle", "iphone.live-activity.toggle", "iphone.instruction.toggle"]),
             e("general.android", .general, "Android phone", ["android.link.toggle", "android.link.details", "android.link.answers", "android.link.usage"]),
+            e("general.botan", .general, "Botan", ["botan.link.toggle"]),
             // Notch → Mochi's room
             e("room.settings", .room, "room.settings",
               ["room.title", "room.enabled", "room.setting.door", "room.setting.weather", "room.setting.day-night"]),
@@ -164,6 +165,7 @@ final class SettingsSearch: ObservableObject {
         #endif
         #if APPSTORE
         list.removeAll { $0.id == "general.android" }
+        list.removeAll { $0.id == "general.botan" }
         #endif
         return list
     }()
