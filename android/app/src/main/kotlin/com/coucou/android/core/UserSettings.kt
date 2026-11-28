@@ -52,6 +52,8 @@ data class UserSettings(
     val mutedAgents: Set<String> = emptySet(),
     /** Keep the island away while the phone is in Do Not Disturb (the notifications still reach the shade). Off = today's behaviour. */
     val hideIslandInDnd: Boolean = false,
+    /** Say one short line when an agent needs the user or finishes (see [SpokenAlertPolicy]). Off by default. */
+    val spokenAlerts: Boolean = false,
 ) {
     companion object {
         private const val SOUND = "sound_on"
@@ -69,6 +71,7 @@ data class UserSettings(
         private const val DYNAMIC = "dynamic_colour"
         private const val MUTED = "muted_agents"
         private const val HIDE_IN_DND = "island_hide_in_dnd"
+        private const val SPOKEN = "spoken_alerts"
 
         fun load(store: KeyValueStore): UserSettings {
             val d = UserSettings()
@@ -90,6 +93,7 @@ data class UserSettings(
                 dynamicColour = store.getBoolean(DYNAMIC, d.dynamicColour),
                 mutedAgents = AgentMute.decode(store.getString(MUTED, "")),
                 hideIslandInDnd = store.getBoolean(HIDE_IN_DND, d.hideIslandInDnd),
+                spokenAlerts = store.getBoolean(SPOKEN, d.spokenAlerts),
             )
         }
 
@@ -109,6 +113,7 @@ data class UserSettings(
             store.put(DYNAMIC, s.dynamicColour)
             store.put(MUTED, AgentMute.encode(s.mutedAgents))
             store.put(HIDE_IN_DND, s.hideIslandInDnd)
+            store.put(SPOKEN, s.spokenAlerts)
         }
     }
 }

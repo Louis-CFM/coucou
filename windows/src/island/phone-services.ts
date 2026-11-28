@@ -105,13 +105,23 @@ const BUILDERS: Record<string, Builder> = {
   },
   integration_n8n: () => {
     const task = State.tasks.find((x) => x.id === "integration_n8n");
-    if (!task || (task.state !== "finished" && task.state !== "error")) return null;
-    // The workflow's name and whether it worked; the error text stays on the computer.
+    if (task && (task.state === "finished" || task.state === "error")) {
+      // The workflow's name and whether it worked; the error text stays on the computer.
+      return {
+        id: "integration_n8n", title: "n8n",
+        headline: task.state === "finished" ? t("Success") : t("Failed"),
+        reason: t("Workflow"),
+        items: task.steps[0] ? [{ label: task.steps[0], detail: "" }] : [],
+      };
+    }
+    if (!usable("integration_n8n")) return null;
+    const d = obj("integration_n8n");
+    if (typeof d.workflow !== "string" || d.workflow.length === 0) return null;
     return {
       id: "integration_n8n", title: "n8n",
-      headline: task.state === "finished" ? t("Success") : t("Failed"),
+      headline: d.status === "success" ? t("Success") : t("Failed"),
       reason: t("Workflow"),
-      items: task.steps[0] ? [{ label: task.steps[0], detail: "" }] : [],
+      items: [{ label: d.workflow, detail: "" }],
     };
   },
 };

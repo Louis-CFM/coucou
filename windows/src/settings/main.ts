@@ -219,6 +219,12 @@ function claudeSection(status: HookStatus): HTMLElement {
         text: t("coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`."),
       }));
     }
+    if (status.relayError) {
+      body.append(h("div", {
+        class: "notice warn",
+        text: t("The hook relay could not start ({error}). Hooks will not reach Coucou.", { error: status.relayError }),
+      }));
+    }
 
     const actions = h("div", { class: "row" });
     const install = h("button", {
@@ -244,6 +250,11 @@ function claudeSection(status: HookStatus): HTMLElement {
   }
 
   draw();
+  void onEvent<string | null>("pipe-error", (err) => {
+    if (!section.isConnected) return;
+    status.relayError = err ?? null;
+    redraw();
+  });
   return section;
 }
 

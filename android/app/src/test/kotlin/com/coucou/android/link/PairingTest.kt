@@ -41,6 +41,13 @@ class PairingTest {
         assertEquals(fp, PairingPayload.parse(good.replace(fp, fp.uppercase()))!!.certSha256)
     }
 
+    @Test fun formattedFingerprintGroupsUppercaseHex() {
+        val p = PairingPayload.parse(good)!!
+        val formatted = p.formattedFingerprint()
+        assertEquals(16, formatted.split(" ").size)
+        assertTrue(formatted.startsWith("ABAB ABAB ABAB"))
+    }
+
     @Test fun pinnedTrustManagerRejectsNonMatchingAndEmptyChains() {
         val tm = PinnedTrustManager(fp)
         try { tm.checkServerTrusted(emptyArray(), "ECDHE_ECDSA"); fail("empty chain accepted") } catch (_: CertificateException) { }

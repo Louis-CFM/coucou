@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -60,6 +61,10 @@ class DevDesktopInteropTest {
         override fun onUsage(usage: UsageSnapshot) { usages.add(usage) }
         val diffParts = LinkedBlockingQueue<ServerMsg.Diff>()
         override fun onDiff(part: ServerMsg.Diff) { diffParts.add(part) }
+        val projects = LinkedBlockingQueue<List<LaunchProject>>()
+        override fun onProjects(projects: List<LaunchProject>) { this.projects.add(projects) }
+        val launchResults = LinkedBlockingQueue<Triple<String, Boolean, String>>()
+        override fun onLaunchResult(id: String, ok: Boolean, reason: String) { launchResults.add(Triple(id, ok, reason)) }
         val questions = LinkedBlockingQueue<QuestionRequest>()
         override fun onQuestion(request: QuestionRequest) { questions.add(request) }
         val caps = LinkedBlockingQueue<Set<String>>()
@@ -173,6 +178,40 @@ class DevDesktopInteropTest {
             val cards = rec.serviceCards.poll(10, TimeUnit.SECONDS)!!
             assertEquals(listOf("integration_stripe", "integration_notion"), cards.map { it.id })
             assertEquals("Roadmap", cards[1].items[0].label)
+        } finally {
+            client.stop()
+        }
+    }
+
+    @Test fun aSessionIsStartedOrRefusedOnTheNodeDesktopThatOffersIt() {
+        val info = startDesktop("--launch")
+        val rec = Rec()
+        val client = chatClient(info, rec)
+        try {
+            client.start()
+            assertEquals(setOf("launch"), rec.caps.poll(10, TimeUnit.SECONDS))
+            val list = rec.projects.poll(10, TimeUnit.SECONDS)!!
+            assertEquals(listOf("coucou", "website", "notes"), list.map { it.name })
+            assertTrue(client.launch("a1", list[0].id, "fix the tests"))
+            assertEquals(Triple("a1", true, ""), rec.launchResults.poll(10, TimeUnit.SECONDS))
+            assertTrue(client.launch("a2", "/home/me/code", "fix the tests"))
+            assertEquals(Triple("a2", false, "unknown_project"), rec.launchResults.poll(10, TimeUnit.SECONDS))
+            assertTrue(client.launch("a3", list[1].id, "/fail"))
+            assertEquals(Triple("a3", false, "failed"), rec.launchResults.poll(10, TimeUnit.SECONDS))
+        } finally {
+            client.stop()
+        }
+    }
+
+    @Test fun aNodeDesktopWithoutTheFlagOffersNoLaunchLikeAnOlderComputer() {
+        val info = startDesktop()
+        val rec = Rec()
+        val client = chatClient(info, rec)
+        try {
+            client.start()
+            assertEquals(emptySet<String>(), rec.caps.poll(10, TimeUnit.SECONDS))
+            assertNull(rec.projects.poll(1, TimeUnit.SECONDS))
+            assertFalse(client.launch("a1", "3f9a00112233aabb", "fix the tests"))
         } finally {
             client.stop()
         }

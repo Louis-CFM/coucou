@@ -98,6 +98,8 @@ pub struct Settings {
     pub phone_usage: bool,
     /// Show last week's recap (counts only) on the phone (cap `recap`). Off by default; owned by Rust like the other phone switches.
     pub phone_recap: bool,
+    /// Let the phone start a Claude Code session in one of the island's projects (cap `launch`). Off by default; owned by Rust like the other phone switches.
+    pub phone_launch: bool,
     /// The service pills whose cards the phone may see, by pill id (cap `services`). None by default; owned by Rust like the other phone switches.
     pub phone_services: Vec<String>,
     /// Reach the phone through the user's own relay when it is not on this network (phone_link/relay_client.rs).
@@ -186,6 +188,7 @@ impl Default for Settings {
             phone_diffs: false,
             phone_usage: false,
             phone_recap: false,
+            phone_launch: false,
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
@@ -489,6 +492,7 @@ mod tests {
   "phoneDiffs": true,
   "phoneUsage": true,
   "phoneRecap": true,
+  "phoneLaunch": true,
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
@@ -670,6 +674,15 @@ mod tests {
         assert!(!parse(&custom_with("phoneRecap", None)).unwrap().phone_recap);
         assert!(parse(&custom_with("phoneRecap", Some(serde_json::json!(true)))).unwrap().phone_recap);
         assert!(!parse(&custom_with("phoneRecap", Some(serde_json::json!("yes")))).unwrap().phone_recap, "a wrong type does not switch it on");
+    }
+
+    #[test]
+    fn a_file_from_before_sessions_from_the_phone_keeps_it_off() {
+        // Starting a session from the phone is never on by default; an older file is not consent.
+        assert!(!Settings::default().phone_launch);
+        assert!(!parse(&custom_with("phoneLaunch", None)).unwrap().phone_launch);
+        assert!(parse(&custom_with("phoneLaunch", Some(serde_json::json!(true)))).unwrap().phone_launch);
+        assert!(!parse(&custom_with("phoneLaunch", Some(serde_json::json!("yes")))).unwrap().phone_launch, "a wrong type does not switch it on");
     }
 
     #[test]
@@ -1012,6 +1025,7 @@ mod tests {
                 "phoneDiffs",
                 "phoneUsage",
                 "phoneRecap",
+                "phoneLaunch",
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",

@@ -138,6 +138,10 @@ final class SettingsSearch: ObservableObject {
             e("general.language", .general, "Language", ["Restart Coucou"]),
             e("general.iphone", .general, "iPhone", ["iphone.sync.toggle", "iphone.live-activity.toggle", "iphone.instruction.toggle"]),
             e("general.android", .general, "Android phone", ["android.link.toggle", "android.link.details", "android.link.answers", "android.link.usage"]),
+            // Notch → Mochi's room
+            e("room.settings", .room, "room.settings",
+              ["room.title", "room.enabled", "room.setting.door", "room.setting.weather", "room.setting.day-night"]),
+            e("room.tools", .room, "room.tools", ["Stripe", "GitHub", "Vercel", "n8n", "Cal.com"]),
             // Notch → Active pills, Agents, Chat, Integrations
             e("pills.main", .pills, "settings.main-pill", ["Active pills"]),
             e("agents.claude", .agents, "hooks.claude-code.title",

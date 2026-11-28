@@ -149,6 +149,32 @@
     "overlay_hint": "Uma ilha desce do topo da tela enquanto um agente trabalha e depois volta a subir.",
     "overlay_dnd_title": "Ocultar a ilha no Não perturbe",
     "overlay_dnd_hint": "Enquanto o Não perturbe estiver ativado, nada desce do topo da tela. Os pedidos continuam chegando como notificações.",
+    "spoken_title": "Alertas falados",
+    "spoken_hint": "Seu celular diz uma frase curta quando um agente precisa de você ou termina, como “Claude Code precisa da sua aprovação”. Nunca o comando nem a mensagem. Fica em silêncio no Não perturbe, no modo silencioso ou vibrar, e durante uma chamada.",
+    "spoken_no_voice": "Seu celular não tem uma voz offline para este idioma, então nada é falado. Você pode adicionar uma nas configurações de conversão de texto em voz do Android.",
+    "spoken_approval": "%1$s precisa da sua aprovação",
+    "spoken_question": "%1$s tem uma pergunta para você",
+    "spoken_finished": "%1$s terminou",
+    "launch_title": "Nova sessão do Claude Code",
+    "launch_row_hint": "Inicie uma no seu computador daqui.",
+    "launch_choose": "Escolher um projeto",
+    "launch_prompt_hint": "O que o Claude deve fazer?",
+    "launch_send": "Enviar",
+    "launch_sending": "Enviando…",
+    "launch_lock_hint": "Enviar pede sua digital ou o bloqueio de tela.",
+    "launch_confirm_title": "Iniciar uma sessão do Claude Code",
+    "launch_sent": "Enviado. Seu terminal está abrindo em %1$s com o Claude Code.",
+    "launch_too_long": "Está longo demais: no máximo %1$d caracteres.",
+    "launch_unsupported_title": "Seu computador ainda não oferece isso",
+    "launch_unsupported_body": "É preciso o Coucou 0.6 ou mais recente no Windows ou Linux. Lá, ative Ajustes > Celular Android > \"Permitir que o celular inicie sessões do Claude Code\".",
+    "launch_no_projects": "Nenhum projeto ainda. Rode o Claude Code uma vez no seu computador e a pasta dele aparecerá aqui.",
+    "launch_not_connected": "Não é possível alcançar seu computador agora.",
+    "launch_no_answer": "Sem resposta do seu computador. Olhe lá antes de enviar de novo.",
+    "launch_refused_off": "Seu computador não permite mais isso. Reative lá, em Ajustes > Celular Android.",
+    "launch_refused_project": "Este projeto não está mais na lista do seu computador.",
+    "launch_refused_rate": "Sessões demais foram iniciadas em pouco tempo. Tente de novo em alguns minutos.",
+    "launch_refused_failed": "Seu computador não conseguiu abrir um terminal neste projeto.",
+    "launch_refused_other": "Seu computador recusou iniciar a sessão.",
     "msg_overlay_permission": "Permita «exibir sobre outros apps» para o Coucou e volte.",
     "settings_title": "Ajustes",
     "settings_sound": "Sons do Mochi",
@@ -158,7 +184,7 @@
     "quiet_hours": "Horário silencioso",
     "quiet_hint": "Sem som e sem pílula para agentes concluídos ou com falha. Pedidos e perguntas continuam chegando.",
     "quiet_from": "De",
-    "quiet_to": "Para",
+    "quiet_to": "Até",
     "history_title": "Atividade",
     "history_empty": "Suas decisões aparecerão aqui. Elas ficam só neste celular.",
     "history_today": "Hoje",
@@ -291,7 +317,9 @@
     "pair_confirm_body": "%1$s:%2$d na sua rede. Pareie só com um computador que seja seu.",
     "pair_confirm_relay": "Ele também pode alcançar o seu computador de outras redes pelo relay em %1$s. Pareie só se você mesmo configurou esse relay.",
     "pair_confirm_replace": "Isso substitui o computador ao qual você está conectado agora.",
+    "pair_confirm_fingerprint": "Impressão digital do certificado: %1$s",
     "pair_confirm_ok": "Parear",
+    "msg_pair_verify_failed": "Não foi possível verificar o novo computador. Sua conexão atual foi mantida.",
     "wardrobe_title": "O guarda-roupa do Mochi",
     "wardrobe_note": "Escolha o que o Mochi veste neste celular.",
     "wardrobe_follow": "Igual ao meu computador",
@@ -459,11 +487,35 @@
     "mute_agents_hint": "Os avisos de término, falha e limite dos agentes escolhidos ficam quietos. Pedidos e perguntas sempre chegam."
   },
   "plurals": {
-    "widget_n_waiting": {"one": "%1$d esperando", "many": "%1$d esperando", "other": "%1$d esperando"},
-    "glance_requests": {"one": "%1$d pedido para aprovar", "many": "%1$d de pedidos para aprovar", "other": "%1$d pedidos para aprovar"},
-    "glance_questions": {"one": "%1$d pergunta de um agente", "many": "%1$d de perguntas de agentes", "other": "%1$d perguntas de agentes"},
-    "glance_stopped": {"one": "%1$d agente parado", "many": "%1$d de agentes parados", "other": "%1$d agentes parados"},
-    "glance_working_many": {"one": "%1$d agente está trabalhando", "many": "%1$d de agentes estão trabalhando", "other": "%1$d agentes estão trabalhando"},
-    "spoken_waiting_you": {"one": "%1$d esperando por você", "many": "%1$d esperando por você", "other": "%1$d esperando por você"}
+    "widget_n_waiting": {
+      "one": "%1$d esperando",
+      "many": "%1$d esperando",
+      "other": "%1$d esperando"
+    },
+    "glance_requests": {
+      "one": "%1$d pedido para aprovar",
+      "many": "%1$d de pedidos para aprovar",
+      "other": "%1$d pedidos para aprovar"
+    },
+    "glance_questions": {
+      "one": "%1$d pergunta de um agente",
+      "many": "%1$d de perguntas de agentes",
+      "other": "%1$d perguntas de agentes"
+    },
+    "glance_stopped": {
+      "one": "%1$d agente parado",
+      "many": "%1$d de agentes parados",
+      "other": "%1$d agentes parados"
+    },
+    "glance_working_many": {
+      "one": "%1$d agente está trabalhando",
+      "many": "%1$d de agentes estão trabalhando",
+      "other": "%1$d agentes estão trabalhando"
+    },
+    "spoken_waiting_you": {
+      "one": "%1$d esperando por você",
+      "many": "%1$d esperando por você",
+      "other": "%1$d esperando por você"
+    }
   }
 }

@@ -86,6 +86,10 @@ pub trait Features: Send + Sync {
     fn services(&self) -> Vec<String> {
         Vec::new()
     }
+    /// Starting a Claude Code session from the phone, in one of the island's projects.
+    fn launch(&self) -> bool {
+        false
+    }
 }
 
 /// Nothing extra: how the link behaved before capabilities existed.
@@ -288,6 +292,7 @@ where
     let recap = asked("recap") && shared.features.recap();
     let relay = asked("relay") && shared.features.relay();
     let services: Vec<String> = if asked("services") { shared.features.services() } else { Vec::new() };
+    let launch = asked("launch") && shared.features.launch();
     let mut offered: Vec<&str> = Vec::new();
     if chat.is_some() {
         offered.push("chat");
@@ -316,12 +321,15 @@ where
     if !services.is_empty() {
         offered.push("services");
     }
+    if launch {
+        offered.push("launch");
+    }
     let mut welcome = json!({ "type": "welcome", "v": PROTOCOL, "desktop": shared.name, "os": std::env::consts::OS });
     if !offered.is_empty() {
         welcome["caps"] = json!(offered);
     }
     let _ = say(welcome).await;
-    let (id, evicted) = shared.hub.subscribe_with(tx.clone(), (shared.clock)(), crate::phone_link::hub::Caps { details, answers, prefs, diffs, usage, recap, relay, services });
+    let (id, evicted) = shared.hub.subscribe_with(tx.clone(), (shared.clock)(), crate::phone_link::hub::Caps { details, answers, prefs, diffs, usage, recap, relay, services, launch });
 
     // 2. the conversation
     loop {
@@ -364,6 +372,12 @@ where
                 if let (false, true, Some(file)) = (pill.is_empty(), pill.len() <= 64, msg["fileId"].as_u64()) {
                     shared.hub.request_diff(id, pill, file, (shared.clock)());
                 }
+            }
+            Some("launch") if launch => {
+                // A new Claude Code session in one of the projects this computer listed. The switch is read again for
+                // every message; the hub checks the rest and always answers (hub.rs).
+                let field = |k: &str| msg[k].as_str().unwrap_or("").to_string();
+                shared.hub.launch(id, &field("id"), &field("project"), &field("prompt"), shared.features.launch(), (shared.clock)());
             }
             Some("bye") => break,
             Some(t) if t.starts_with("chat") => {

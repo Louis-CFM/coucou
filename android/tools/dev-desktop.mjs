@@ -2,7 +2,7 @@
 // A pretend Coucou desktop for developing and testing the Android app without the real one.
 // Speaks docs/ANDROID_LINK.md (v1): TLS with a self-signed certificate, newline-delimited JSON.
 //
-//   node android/tools/dev-desktop.mjs [--host IP] [--port N] [--name "My PC"] [--step MS] [--once] [--fake-chat] [--details] [--answers] [--diffs] [--usage] [--recap] [--services]
+//   node android/tools/dev-desktop.mjs [--host IP] [--port N] [--name "My PC"] [--step MS] [--once] [--fake-chat] [--details] [--answers] [--diffs] [--usage] [--recap] [--services] [--launch]
 //
 // --details offers the "details" capability: the sessions then carry steps, finalLine, project (a folder
 // name) and color, like the real desktop with "Show session details on the phone" turned on. A phone that
@@ -21,6 +21,10 @@
 // resets) sent when the phone connects and every few steps with the percentages moving, like the real desktop's pills.
 //
 // --recap offers the "recap" capability: last week's counts (FAKE numbers) sent once after the first sessions, for the phone's recap card.
+//
+// --launch offers the "launch" capability with three FAKE projects (coucou, website, notes). A request for one of them is
+// answered as started (nothing is started: this is a pretend computer); a prompt that begins with /fail is answered as a
+// terminal that did not open, and any other project id as unknown. The prompt is never logged.
 //
 // --services offers the "services" capability with two FAKE cards (Stripe and Notion), as if the user had ticked both.
 // The cards carry only a headline and short lines, like the real ones.
@@ -112,6 +116,13 @@ const withDetails = (list, state) =>
   });
 
 // ── Fake chat (the messages are those of phone_link/chat.rs, with a fake provider) ─────────────
+/** --launch: projects as the real computer sends them (an id and a folder name, never a path). */
+const FAKE_PROJECTS = [
+  { id: "3f9a00112233aabb", name: "coucou" },
+  { id: "00ff00ff00ff00ff", name: "website" },
+  { id: "1234567890abcdef", name: "notes" },
+];
+
 const CHAT_MODELS = [
   { id: "fake/echo", provider: "fake", label: "Fake · echo" },
   { id: "fake/other", provider: "fake", label: "Fake · other" },
@@ -180,6 +191,7 @@ const server = tls.createServer({ key, cert, minVersion: "TLSv1.2" }, (sock) => 
   let diffs = false;
   let usage = false;
   let recap = false;
+  let launch = false;
   let services = false;
   let asked = null; // { fingerprint, questions }
   const sessionsMsg = (list) => ({ type: "sessions", sessions: diffs ? withFiles(details ? withDetails(list) : list) : details ? withDetails(list) : list });
@@ -305,8 +317,11 @@ const server = tls.createServer({ key, cert, minVersion: "TLSv1.2" }, (sock) => 
       services = flag("services") && Array.isArray(m.caps) && m.caps.includes("services");
       usage = flag("usage") && Array.isArray(m.caps) && m.caps.includes("usage");
       recap = flag("recap") && Array.isArray(m.caps) && m.caps.includes("recap");
+      launch = flag("launch") && Array.isArray(m.caps) && m.caps.includes("launch");
       const offered = [...(chat ? ["chat"] : []), ...(details ? ["details"] : []), ...(answers ? ["answers"] : []), ...(diffs ? ["diffs"] : []), ...(usage ? ["usage"] : []), ...(recap ? ["recap"] : []), ...(services ? ["services"] : [])];
+      if (launch) offered.push("launch");
       send({ type: "welcome", v: V, desktop: NAME, os: process.platform, ...(offered.length ? { caps: offered } : {}) });
+      if (launch) send({ type: "projects", projects: FAKE_PROJECTS });
       advance();
       timer = setInterval(advance, STEP_MS);
       return;
@@ -323,6 +338,14 @@ const server = tls.createServer({ key, cert, minVersion: "TLSv1.2" }, (sock) => 
       case "chatReset": {
         if (chat) { if (run) { const id = run.id; stopRun(); chatError(id, "canceled"); } log("CHAT reset"); }
         return;
+      }
+      case "launch": {
+        if (!launch || typeof m.id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(m.id)) return;
+        const project = FAKE_PROJECTS.find((p) => p.id === m.project);
+        const prompt = typeof m.prompt === "string" ? m.prompt.trim() : "";
+        const reason = !project ? "unknown_project" : !prompt ? "empty" : prompt.length > 4000 ? "too_long" : prompt.startsWith("/fail") ? "failed" : null;
+        log(`LAUNCH ${reason ?? "started"} ${project ? project.name : "?"}`); // the prompt is not logged
+        return send({ type: "launchResult", id: m.id, ok: !reason, ...(reason ? { reason } : {}) });
       }
       case "getDiff": {
         if (!diffs || typeof m.pillId !== "string" || !m.pillId || !Number.isInteger(m.fileId)) return;

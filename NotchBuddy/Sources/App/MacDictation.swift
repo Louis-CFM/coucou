@@ -232,7 +232,8 @@ final class MacDictation: @unchecked Sendable {
 
     /// The languages Automatic listens for: last winner, macOS languages, keyboard layouts,
     /// Coucou's own language, then English — one per language, up to three.
-    static func automaticLocales() -> [Locale] {
+    /// Main actor: macOS 27 traps when the keyboard layouts are read off the main thread.
+    @MainActor static func automaticLocales() -> [Locale] {
         var ids: [String] = []
         if let last = UserDefaults.standard.string(forKey: lastHeardKey) { ids.append(last) }
         // The Mac's languages (not Coucou's override in Settings → General → Language).
@@ -281,7 +282,7 @@ final class MacDictation: @unchecked Sendable {
     }
 
     /// The main language of each enabled keyboard layout ("fr" for AZERTY, "en" for ABC…).
-    private static func keyboardLanguages() -> [String] {
+    @MainActor private static func keyboardLanguages() -> [String] {
         let filter = ["TISPropertyInputSourceCategory": "TISCategoryKeyboardInputSource"] as CFDictionary
         guard let list = TISCreateInputSourceList(filter, false)?.takeRetainedValue() as? [TISInputSource] else { return [] }
         return list.compactMap { source in

@@ -16,8 +16,17 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- Optional, asked only when the user turns on the pill that drops from the top of the screen. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Hides non-system overlays over sensitive approval, question, chat, and pairing screens (API 31+). -->
+    <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Spoken alerts (off by default): lets the app find the phone's own text-to-speech engine. Nothing is sent to it but one short line. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
 
     <application
         android:name=".app.CoucouApp"

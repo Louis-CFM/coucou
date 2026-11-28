@@ -22,6 +22,9 @@ data class PairingPayload(
     /** The relay fields of the link (all four or none); null for a link that only works on the local network. */
     val relay: RelayPairing? = null,
 ) {
+    /** Formatted SHA-256 certificate fingerprint for out-of-band confirmation before pairing. */
+    fun formattedFingerprint(): String = certSha256.uppercase().chunked(4).joinToString(" ")
+
     companion object {
         /** Returns null for anything that is not a well-formed v1 pairing link. */
         fun parse(text: String): PairingPayload? {

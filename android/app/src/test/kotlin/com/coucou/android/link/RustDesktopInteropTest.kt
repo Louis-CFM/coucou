@@ -109,6 +109,10 @@ class RustDesktopInteropTest {
         val diffParts = LinkedBlockingQueue<ServerMsg.Diff>()
         override fun onDiff(part: ServerMsg.Diff) { diffParts.add(part) }
         override fun onPrefs(outfit: String) { prefs.add(outfit) }
+        val projects = LinkedBlockingQueue<List<LaunchProject>>()
+        override fun onProjects(projects: List<LaunchProject>) { this.projects.add(projects) }
+        val launchResults = LinkedBlockingQueue<Triple<String, Boolean, String>>()
+        override fun onLaunchResult(id: String, ok: Boolean, reason: String) { launchResults.add(Triple(id, ok, reason)) }
         override fun onChatModels(models: List<ChatModel>) { chat.add("models:" + models.joinToString(",") { it.id }) }
         override fun onChatDelta(id: String, text: String) { chat.add("delta:$id:$text") }
         override fun onChatDone(id: String, text: String?) { chat.add("done:$id:${text ?: "-"}") }
@@ -350,6 +354,63 @@ class RustDesktopInteropTest {
         try {
             assertEquals(emptySet<String>(), rec.caps.poll(15, TimeUnit.SECONDS))
             assertNull(rec.recaps.poll(2, TimeUnit.SECONDS))
+        } finally {
+            client.stop()
+        }
+    }
+
+    // ── Starting a Claude Code session (cap launch) ─────────────────────────────────
+
+    @Test fun theRealServerStartsASessionInAListedProjectAndRefusesAnythingElse() {
+        val info = startDesktop()
+        command("launch on")
+        command("projects")
+        val rec = Rec()
+        val client = chatClient(info, rec)
+        val old = Rec()
+        val oldClient = chatClient(info, old, caps = emptyList())
+        try {
+            assertEquals(setOf("prefs", "launch"), rec.allCaps.poll(15, TimeUnit.SECONDS))
+            val list = rec.projects.poll(10, TimeUnit.SECONDS)!!
+            // The computer published two full paths: only their folder names arrive, with ids that are not paths.
+            assertEquals(listOf("coucou", "site"), list.map { it.name })
+            assertTrue(list.all { p -> p.id.length == 16 && p.id.all { it in "0123456789abcdef" } })
+
+            val words = "fix the \"login\" bug; rm -rf / && echo \$HOME"
+            assertTrue(client.launch("a1", list[1].id, words))
+            assertEquals(Triple("a1", true, ""), rec.launchResults.poll(10, TimeUnit.SECONDS))
+            // The computer chose the folder from its own list, and the words reached its launcher as they were typed.
+            assertTrue(sawLine("LAUNCH /home/someone/private/site $words", 5))
+
+            // A path instead of an id, and an id that is not in the list: refused, and nothing reaches the launcher.
+            assertTrue(client.launch("a2", "/home/someone/private/site", "do it"))
+            assertEquals(Triple("a2", false, "unknown_project"), rec.launchResults.poll(10, TimeUnit.SECONDS))
+            assertTrue(client.launch("a3", "0000000000000000", "do it"))
+            assertEquals(Triple("a3", false, "unknown_project"), rec.launchResults.poll(10, TimeUnit.SECONDS))
+
+            // The switch goes off while the phone is connected: the next request is refused.
+            command("launch off")
+            assertTrue(client.launch("a4", list[0].id, "do it"))
+            assertEquals(Triple("a4", false, "off"), rec.launchResults.poll(10, TimeUnit.SECONDS))
+            assertFalse("only one session was started", sawLine("LAUNCH /home/someone/private/coucou do it", 1))
+
+            assertNull("an app that did not ask hears nothing of the projects", old.projects.poll(1, TimeUnit.SECONDS))
+            assertFalse(oldClient.launch("b1", list[0].id, "do it"))
+        } finally {
+            client.stop()
+            oldClient.stop()
+        }
+    }
+
+    @Test fun withTheSwitchOffTheRealServerOffersNoLaunchAndThePhoneSendsNothing() {
+        val info = startDesktop()
+        command("projects")
+        val rec = Rec()
+        val client = chatClient(info, rec)
+        try {
+            assertEquals(emptySet<String>(), rec.caps.poll(15, TimeUnit.SECONDS))
+            assertNull(rec.projects.poll(2, TimeUnit.SECONDS))
+            assertFalse(client.launch("a1", "0000000000000000", "do it"))
         } finally {
             client.stop()
         }

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.2 — November 24, 2026
+
+- **Mochi's room** *(GitHub build)* — a new page at the top of the Notch section of the Coucou window, off by default: Mochi in a little room where every object is live data. He naps on the bed when nothing runs, sits at the desk while an agent works (code types itself on the screen) and runs to the door when one asks something: the permission request opens under the room with Deny, Always and Allow, each a click. The window is your weather: sun when the CI of your main branches and your last Vercel deploy are green, clouds while something builds, rain when a build fails, a storm when a deploy fails, stars at night. The frames on the wall are your connected tools with their logos — Stripe paid today, GitHub stars, the last Vercel deploy, n8n runs, your next Cal.com call — a click opens them. The clock gives the real time and the time coded with agents today, and the plant on the shelf grows with your streak. Under the room: time coded, approvals, deploys and streak for today, and the room's settings (door, weather, day and night, which tools hang on the wall). It only reads what Coucou already has, and draws nothing while it is off or the window is hidden. The idea came from the community
+
+## 0.6.1 — November 19, 2026
+
+- **Mochi no longer weighs down 120 Hz Macs** — on a ProMotion screen Mochi was redrawn 120 times a second, even folded in the notch: 35 to 60 % CPU, and as much again in WindowServer. He is now drawn at 60 fps while the island is open and 30 folded, the mini Mochis at 30, with the same motion on every screen; on a ProMotion Mac he also stops moving twice as fast (#1116, found by @liztim17)
+- **Botan, the founders list** — the "Your Coucou so far" step of the card shown after an update has one more line: *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). Botan is Mochi on a little device that snaps onto the back of your iPhone. The Coucou page has the same link
+- **No crash when Coucou asks for speech recognition** (#1128 by @luchdom)
+- **Flow on macOS 27** — Flow no longer crashes when it reads your keyboard layouts (#1110 by @chennurivarun)
+- **Flow pastes your words as heard** when the clean-up model answers or refuses instead of rewriting them (#1124 by @liztim17)
+- **Hermes approvals** also work when Hermes is installed as a shell script that starts Python (#1080 by @liztim17)
+- **Open terminal without VS Code** — the ↗ button opens the session's terminal when VS Code isn't installed, instead of nothing (#679, #1079 by @InesZenkri)
+- **Long pill names** no longer run under Mochi (#1058 by @pterisaur)
+- **Security hygiene** — the copied Android pairing link is marked as concealed for clipboard managers, and the editor fallback only opens a regular file (#1102 by @Ohualtex)
+- **iPhone** — the app no longer waits on "Connecting to iCloud" at every launch: it keeps what it last synced and fetches only the changes (#1096 by @Ohualtex, in the next iPhone build)
+
 ## 0.6.0 — November 12, 2026
 
 - **Start a Claude Code session from the notch** *(GitHub build)* — the terminal tab in the island's header, or ⌃⌥N: pick the project (the folders your sessions ran in, or any folder), type or dictate what Claude should do, and your terminal opens there with Claude Code and your words. Terminal, iTerm2, Ghostty, kitty, WezTerm and Alacritty; the prompt is never written into a command line
@@ -26,12 +43,15 @@ Fixes:
 - **Mochi reads the memory pressure** as soon as he comes back on screen (#795 by @orrrrli)
 - **iPhone link**: the relay is sturdier (#1035) and no longer retries a bad device token forever (#1036), by @hasnain-amir
 
-## Windows and Linux 0.6.0 — Unreleased
+## Windows and Linux 0.6.0 — November 21, 2026
 
+- **The n8n card fills in on start** and shows each new execution, with its sound (#1093, #1095 by @Ohualtex)
+- **Hardening** — the hook pipe only accepts your own account, Coucou's folders are restricted to you, and the hook relay is checked by its SHA-256 (#1076, #1100 by @Ohualtex)
 - **Start a Claude Code session from the island** — the terminal tab in the island's header: pick the project (the folders your sessions ran in, or any folder), say what Claude should do, and your terminal opens there with Claude Code and your words. Windows Terminal or PowerShell on Windows; your own terminal on Linux. The prompt is never written into a command line
 - **Drop a file on a session** — drag a file over the island and let go on one of the sessions listed on the right of the drop card: its window comes forward and the file's path lands in its prompt
 - **Approve Antigravity commands from the island** *(optional)* — the Mac's setting comes to Windows and Linux: turn on Settings → Agents → Antigravity → **Approve commands from the notch**, and a shell command that none of your Antigravity rules covers waits for you on the approval card: **Allow**, **Deny**, or **Reply in terminal** for Antigravity's own prompt. Commands your rules allow or deny are left to Antigravity, and with no answer in 2 min, or Coucou closed, Antigravity asks in its terminal as before. Reinstall the Antigravity hooks once, then restart Antigravity: its command hook now waits up to 2 min
 - **Relay settings for testers** — the *Away from home Wi-Fi* block in Settings → Android phone stays hidden until a relay is ready for everyone, but now shows when Coucou starts with `COUCOU_RELAY_SETTINGS=1` (or when a relay is already on), so the Android relay link can be tested; how in [docs/RELAY_DEPLOY.md](docs/RELAY_DEPLOY.md)
+- **Start a Claude Code session from your Android phone** *(optional, off by default)* — Settings → Android phone → **Let the phone start Claude Code sessions**: Coucou for Android 0.6.0 can then pick one of the projects of the island's own list and say what Claude should do, and your terminal opens here as from the island, through the same launcher (the prompt is never written into a command line). The phone is told the projects' folder names only, never a path, and cannot name a folder itself; it asks for its fingerprint or screen lock each time; at most 6 sessions in 10 minutes. A session started from the phone always starts in Claude Code's standard permission mode, whatever your own settings say, so it asks for approval. With the switch off the phone is offered nothing. Not on the Mac yet (by @Rhytam23)
 - **Approve OpenCode from the island** — OpenCode's permission requests get Allow and Deny on the island; with no click, OpenCode asks as usual (#442 by @ValentinoMartz)
 - **A card answered in the terminal goes away** — allow or deny in the terminal (or Claude's app) and the island's card closes by itself (#740 by @arnavaggarwal-dev)
 - **Flow: one press starts hands-free** (#1063 by @Brezinben)
@@ -50,6 +70,16 @@ Fixes:
 - **Settings → General follows changes made from the island**, and a failed drop's note no longer reopens a folded island (#695, #696 by @mahach666)
 - **Instant page switches in Settings** *(Linux)* (#906 by @RomainBrocheton)
 - **The finished card goes away when a new prompt comes** (#587) and **the GitHub week strip is graded against its own week** (#611), by @rollecode
+- **Botan, the founders list** — the second step of the card shown after an update has one more line, *Botan: Mochi is leaving the notch. Join the founders ↗*, which opens [louisraille.fr/botan](https://louisraille.fr/botan). The card is a little taller for it
+
+## Android 0.6.0 — November 21, 2026
+
+- **Coucou for Android 0.6.0**, by @Rhytam23 (versionCode 6)
+  - **Start a Claude Code session from your phone** — a row on Home, **New Claude Code session**: pick one of the projects your computer lists, write what Claude should do, and send. Your terminal opens on the computer with Claude Code and your words, and the session shows on the phone like any other. Sending asks for your fingerprint or screen lock, like Allow. The phone sees the projects' folder names only and cannot type a path; the sheet says whether it was sent, refused (and why) or got no answer. It needs Coucou 0.6.0 on Windows or Linux with Settings → Android phone → **Let the phone start Claude Code sessions** turned on (off by default); with an older computer or a Mac the phone says "Your computer doesn't offer this yet" and everything else works as before
+  - **Spoken alerts** *(optional, off by default)* — Settings → Sound → **Spoken alerts**: the phone says one short line with its own voice when an agent needs you or finishes, like "Claude Code needs your approval". It names the agent and the kind of event, never the command, a file name or the message, and it never answers anything. Silent in Do Not Disturb, on silent or vibrate, during a call, and when the phone has no offline voice for the app's language; a finish also follows the agents you muted and your quiet hours. No network, no microphone
+  - The texts of both are in the app's 16 languages (written by a machine, listed in `android/i18n/REVIEW.md` for a native speaker to check)
+  - **Quiet hours: "To" reads as the end of the hours** in Indonesian, Russian, Simplified Chinese, Bengali, Hindi, Spanish and Brazilian Portuguese; it was the "To" of a message's recipient
+  - **Settings → Vibration for a request: "Standard" is no longer cut to "Stan…"** on a narrow phone; the three choices keep their look with less space inside each pill
 
 ## Android 0.5.0 — November 13, 2026
 

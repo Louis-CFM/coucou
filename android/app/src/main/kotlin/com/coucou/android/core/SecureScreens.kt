@@ -14,6 +14,8 @@ object SecureScreens {
         questionSheetShown: Boolean,
         /** "Pair with this computer?" after a scan or a link. */
         pairConfirmShown: Boolean,
+        /** "New Claude Code session": the project names and what the user is writing for Claude. */
+        launchSheetShown: Boolean = false,
     ): Boolean = screen == Screen.CHAT || screen == Screen.SCAN || (screen == Screen.HOME && pairing) ||
-        approvalSheetShown || questionSheetShown || pairConfirmShown
+        approvalSheetShown || questionSheetShown || pairConfirmShown || launchSheetShown
 }

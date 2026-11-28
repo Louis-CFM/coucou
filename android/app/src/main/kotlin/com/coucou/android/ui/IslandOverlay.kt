@@ -296,6 +296,7 @@ class IslandOverlay(
         }
         val lifecycleOwner = Owner()
         val v = ComposeView(context).apply {
+            filterTouchesWhenObscured = true
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             setViewTreeViewModelStoreOwner(lifecycleOwner)
