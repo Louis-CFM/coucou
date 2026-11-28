@@ -10,8 +10,10 @@ final class BrainRunner: ObservableObject {
     static let shared = BrainRunner()
 
     @AppStorage("brainBinaryPath") var customPath: String = ""
+    // Persisted across launches — skips file-candidate scan on subsequent starts
+    @AppStorage("brainDiscoveredPath") private var discoveredPath: String = ""
 
-    // Cache — not @Published (doesn't need re-render)
+    // In-process cache (avoids repeated isExecutableFile calls within a session)
     private var cachedPath: String? = nil
     private var discovered = false
 
@@ -19,7 +21,14 @@ final class BrainRunner: ObservableObject {
         if !customPath.isEmpty && FileManager.default.isExecutableFile(atPath: customPath) {
             return customPath
         }
-        return cachedPath  // Returns nil until discovery completes
+        if let c = cachedPath { return c }
+        // Check persisted path from previous launch
+        if !discoveredPath.isEmpty && FileManager.default.isExecutableFile(atPath: discoveredPath) {
+            cachedPath = discoveredPath
+            discovered = true
+            return discoveredPath
+        }
+        return nil
     }
 
     var isInstalled: Bool { binaryPath != nil }
@@ -56,6 +65,7 @@ final class BrainRunner: ObservableObject {
             let found = Self.findBinary(customPath: custom)
             await MainActor.run { [weak self] in
                 self?.cachedPath = found
+                if let f = found { self?.discoveredPath = f }
                 self?.discovered = true
             }
         }
@@ -72,6 +82,7 @@ final class BrainRunner: ObservableObject {
         }.value
         if let f = found {
             cachedPath = f
+            discoveredPath = f
             discovered = true
             return f
         }
@@ -170,20 +181,23 @@ struct BrainConversationDetail: Decodable {
     let elements: [BrainElement]?
 }
 
-struct BrainGraphNode: Decodable, Identifiable {
+struct BrainGraphNode: Decodable, Identifiable, Sendable {
     let id: String
     let kind: String
     let label: String
     let date: String?
     let projet: String?
+    let x: Double?  // pre-computed sphere position from brain
+    let y: Double?
+    let z: Double?
 }
 
-struct BrainGraphEdge: Decodable {
+struct BrainGraphEdge: Decodable, Sendable {
     let from: String
     let to: String
 }
 
-struct BrainGraphResponse: Decodable {
+struct BrainGraphResponse: Decodable, Sendable {
     let nodes: [BrainGraphNode]
     let edges: [BrainGraphEdge]
 }
@@ -761,6 +775,15 @@ private struct MemoryFilterButtonStyle: ButtonStyle {
 
 // MARK: - MemoryGraphModel
 
+// Sendable value carrying everything computed in the background
+private struct PreparedGraph: Sendable {
+    let graph: BrainGraphResponse
+    let positions: [String: SIMD3<Double>]  // id → 3D sphere position
+    let neighbors: [String: Set<String>]    // id → adjacent node ids (O(1) highlight lookup)
+    let totalCount: Int                     // before 3000-cap
+    let fileMtime: Date?
+}
+
 @MainActor
 final class MemoryGraphModel: ObservableObject {
     @Published var graph: BrainGraphResponse? = nil
@@ -774,10 +797,20 @@ final class MemoryGraphModel: ObservableObject {
     var autoRotY: Double = 0
     var nodeScreenPositions: [String: CGPoint] = [:]
     var lastHoverPoint: CGPoint? = nil
+    // Pre-computed at load time — used by drawGraph every frame (O(1) lookup)
+    var cachedPositions: [String: SIMD3<Double>] = [:]
+    var cachedNeighbors: [String: Set<String>] = [:]
+    var totalNodeCount: Int = 0
+    // For timing logs
+    var loadStartTime: CFAbsoluteTime = 0
+    var firstDrawLogged = false
+    // Cache invalidation
+    private var graphFileMtime: Date? = nil
 
     // @Published — seulement changé au clic utilisateur
     @Published var isPaused: Bool = false
     @Published var growCount: Int = -1  // -1 = all nodes visible
+    @Published var graphOpacity: Double = 0  // fade-in after load
 
     struct GraphImpulse {
         var edgeIdx: Int
@@ -787,22 +820,163 @@ final class MemoryGraphModel: ObservableObject {
         var hopsLeft: Int   // sauts restants avant renaissance
     }
 
+    // Default graph.json path (matches brain.config.json brainPath default)
+    private static let graphJsonPath = "\(NSHomeDirectory())/CoucouBrain/.state/graph.json"
+
     func load() {
-        Task {
-            do {
-                let g = try await BrainRunner.shared.run(["graph", "--json"], as: BrainGraphResponse.self)
-                graph = g
-                // Seed impulses
-                impulses = (0..<min(100, g.edges.count * 3)).map { _ in
-                    GraphImpulse(edgeIdx: Int.random(in: 0..<max(1, g.edges.count)),
-                                 t: Float.random(in: 0..<1),
-                                 speed: Float.random(in: 0.001...0.004),
-                                 direction: Bool.random() ? 1 : -1,
-                                 hopsLeft: Int.random(in: 3...7))
-                }
-            } catch {}
-            isLoading = false
+        // Cache hit: same file, graph already loaded → instant return
+        if graph != nil {
+            let currentMtime = MemoryGraphModel.fileMtime(at: MemoryGraphModel.graphJsonPath)
+            if currentMtime != nil && currentMtime == graphFileMtime {
+                print("🧠 graph cache hit — skipping reload")
+                return
+            }
         }
+
+        isLoading = true
+        graphOpacity = 0
+        firstDrawLogged = false
+        loadStartTime = CFAbsoluteTimeGetCurrent()
+        let t0 = loadStartTime
+        let jsonPath = MemoryGraphModel.graphJsonPath
+
+        Task {
+            // Try direct file read first (fastest — no process spawn)
+            if let data = FileManager.default.contents(atPath: jsonPath) {
+                let mtime = MemoryGraphModel.fileMtime(at: jsonPath)
+                print("🧠 [1] graph.json read: \(data.count / 1024)KB +\(MemoryGraphModel.ms(t0))ms")
+
+                let prepared = await Task.detached(priority: .userInitiated) {
+                    MemoryGraphModel.prepare(data: data, mtime: mtime, t0: t0)
+                }.value
+                if let prepared {
+                    self.applyPrepared(prepared)
+                    print("🧠 total (file path): \(MemoryGraphModel.ms(t0))ms")
+                    return
+                }
+            }
+
+            // Fallback: brain process (graph.json not generated yet)
+            print("🧠 [1] graph.json absent, launching process +\(MemoryGraphModel.ms(t0))ms")
+            do {
+                let raw = try await BrainRunner.shared.run(["graph", "--json"])
+                print("🧠 [2] process done: \(raw.count / 1024)KB +\(MemoryGraphModel.ms(t0))ms")
+                let prepared = await Task.detached(priority: .userInitiated) {
+                    MemoryGraphModel.prepare(data: raw, mtime: nil, t0: t0)
+                }.value
+                if let prepared { self.applyPrepared(prepared) }
+            } catch {
+                print("🧠 error: \(error)")
+            }
+            self.isLoading = false
+            print("🧠 total (process path): \(MemoryGraphModel.ms(t0))ms")
+        }
+    }
+
+    private func applyPrepared(_ p: PreparedGraph) {
+        graph = p.graph
+        cachedPositions = p.positions
+        cachedNeighbors = p.neighbors
+        totalNodeCount = p.totalCount
+        graphFileMtime = p.fileMtime
+        impulses = (0..<min(100, p.graph.edges.count * 3)).map { _ in
+            GraphImpulse(edgeIdx: Int.random(in: 0..<max(1, p.graph.edges.count)),
+                         t: Float.random(in: 0..<1),
+                         speed: Float.random(in: 0.001...0.004),
+                         direction: Bool.random() ? 1 : -1,
+                         hopsLeft: Int.random(in: 3...7))
+        }
+        isLoading = false
+        withAnimation(.easeIn(duration: 0.4)) { graphOpacity = 1.0 }
+    }
+
+    // MARK: - nonisolated static helpers (called from Task.detached)
+
+    private nonisolated static func fileMtime(at path: String) -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date
+    }
+
+    nonisolated static func ms(_ t0: CFAbsoluteTime) -> Int {
+        Int((CFAbsoluteTimeGetCurrent() - t0) * 1000)
+    }
+
+    private nonisolated static func prepare(data: Data, mtime: Date?, t0: CFAbsoluteTime) -> PreparedGraph? {
+        let t1 = CFAbsoluteTimeGetCurrent()
+        guard let g = try? JSONDecoder().decode(BrainGraphResponse.self, from: data) else {
+            print("🧠 JSON decode failed")
+            return nil
+        }
+        print("🧠 [2/3] JSON decode: \(g.nodes.count) nodes, \(g.edges.count) edges +\(ms(t0))ms (\(Int((CFAbsoluteTimeGetCurrent()-t1)*1000))ms)")
+
+        let t2 = CFAbsoluteTimeGetCurrent()
+        let (capped, total) = capGraph(g, limit: 3000)
+
+        // Pre-compute positions (stable — no random hashValue)
+        var positions: [String: SIMD3<Double>] = [:]
+        positions.reserveCapacity(capped.nodes.count)
+        for node in capped.nodes {
+            positions[node.id] = position(for: node)
+        }
+
+        // Pre-compute adjacency for O(1) neighbor highlight
+        var neighbors: [String: Set<String>] = [:]
+        neighbors.reserveCapacity(capped.nodes.count)
+        for edge in capped.edges {
+            neighbors[edge.from, default: []].insert(edge.to)
+            neighbors[edge.to, default: []].insert(edge.from)
+        }
+        print("🧠 [3/4] layout: \(capped.nodes.count) nodes +\(ms(t0))ms (\(Int((CFAbsoluteTimeGetCurrent()-t2)*1000))ms)")
+
+        return PreparedGraph(graph: capped, positions: positions, neighbors: neighbors,
+                             totalCount: total, fileMtime: mtime)
+    }
+
+    private nonisolated static func capGraph(_ g: BrainGraphResponse, limit: Int) -> (BrainGraphResponse, totalCount: Int) {
+        guard g.nodes.count > limit else { return (g, g.nodes.count) }
+        let total = g.nodes.count
+        // Keep: moi + projects always, then most recent convs, then elements by date
+        var kept: [BrainGraphNode] = []
+        var ids = Set<String>()
+        for node in g.nodes where node.kind == "moi" || node.kind == "projet" {
+            kept.append(node); ids.insert(node.id)
+        }
+        let isoFmt = ISO8601DateFormatter()
+        let others = g.nodes.filter { $0.kind != "moi" && $0.kind != "projet" }
+            .sorted { a, b in
+                let da = a.date.flatMap { isoFmt.date(from: $0) } ?? .distantPast
+                let db = b.date.flatMap { isoFmt.date(from: $0) } ?? .distantPast
+                return da > db
+            }
+        for node in others {
+            if kept.count >= limit { break }
+            kept.append(node); ids.insert(node.id)
+        }
+        let edges = g.edges.filter { ids.contains($0.from) && ids.contains($0.to) }
+        return (BrainGraphResponse(nodes: kept, edges: edges), total)
+    }
+
+    // Stable sphere position — matches brain TypeScript stableHash
+    nonisolated static func position(for node: BrainGraphNode) -> SIMD3<Double> {
+        // Use brain-precomputed position if available
+        if let x = node.x, let y = node.y, let z = node.z {
+            return SIMD3(x, y, z)
+        }
+        if node.kind == "moi" { return .zero }
+        let r: Double
+        switch node.kind {
+        case "projet": r = 200
+        case "conv":   r = 400
+        default:       r = 550
+        }
+        // Stable hash (djb2 variant — same as brain TypeScript)
+        var h: Int32 = 0
+        for c in node.id.utf8 { h = h &* 31 &+ Int32(c) }
+        let hash = abs(Int(h))
+        let theta = Double(hash % 1000) / 1000.0 * .pi * 2
+        let phi   = Double((hash / 1000) % 1000) / 1000.0 * .pi
+        return SIMD3(r * sin(phi) * cos(theta),
+                     r * cos(phi),
+                     r * sin(phi) * sin(theta))
     }
 
     func advance(dt: Double) {
@@ -950,12 +1124,13 @@ struct HubMemoryGraphPage: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Full-bleed graph canvas
+            // Full-bleed graph canvas — fades in after load
             TimelineView(.animation(paused: !visible)) { timeline in
                 Canvas { ctx, size in
                     drawGraph(ctx: &ctx, size: size, date: timeline.date)
                 }
             }
+            .opacity(model.graphOpacity)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .gesture(
                 DragGesture(minimumDistance: 2)
@@ -1054,9 +1229,14 @@ struct HubMemoryGraphPage: View {
             VStack {
                 Spacer()
                 HStack(alignment: .bottom) {
-                    // Counter
+                    // Counter — shows cap info when > 3000 nodes
                     if let g = model.graph {
-                        Text(String(format: String(localized: "hub.memory.graph.counter"), g.nodes.count, g.edges.count))
+                        let counterText: String = model.totalNodeCount > g.nodes.count
+                            ? String(format: String(localized: "hub.memory.graph.counter-capped"),
+                                     model.totalNodeCount, g.edges.count)
+                            : String(format: String(localized: "hub.memory.graph.counter"),
+                                     g.nodes.count, g.edges.count)
+                        Text(counterText)
                             .font(.system(size: 11))
                             .foregroundColor(HubTheme.muted)
                             .padding(.horizontal, 12)
@@ -1092,8 +1272,14 @@ struct HubMemoryGraphPage: View {
             }
 
             if model.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                VStack(spacing: 10) {
+                    ProgressView()
+                    Text(String(localized: "hub.memory.graph.loading"))
+                        .font(.system(size: 13))
+                        .foregroundColor(HubTheme.muted)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .transition(.opacity)
             }
         }
         .background(HubTheme.panel)
@@ -1102,8 +1288,17 @@ struct HubMemoryGraphPage: View {
 
     // MARK: - Drawing
 
+    // Static formatter — created once, used every frame
+    private nonisolated(unsafe) static let isoFormatter = ISO8601DateFormatter()
+
     private func drawGraph(ctx: inout GraphicsContext, size: CGSize, date: Date) {
         guard let g = model.graph else { return }
+
+        // Log first draw timestamp
+        if !model.firstDrawLogged {
+            model.firstDrawLogged = true
+            print("🧠 [4/4] first draw: \(MemoryGraphModel.ms(model.loadStartTime))ms")
+        }
 
         // Advance impulses + auto-rotate
         model.advance(dt: 1.0 / 60.0)
@@ -1120,14 +1315,12 @@ struct HubMemoryGraphPage: View {
             filteredNodes = g.nodes.filter { model.filterKinds.contains($0.kind) || $0.kind == "moi" }
         }
 
-        // A5: Filter by period
-        let now = Date()
-        let isoFormatter = ISO8601DateFormatter()
+        // A5: Filter by period (uses static formatter — no allocation per frame)
         let nodesForPeriod: [BrainGraphNode]
         if let days = model.periodDays {
-            let cutoff = now.addingTimeInterval(-Double(days) * 86400)
+            let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
             nodesForPeriod = filteredNodes.filter { n in
-                guard let d = n.date, let date = isoFormatter.date(from: d) else {
+                guard let d = n.date, let date = HubMemoryGraphPage.isoFormatter.date(from: d) else {
                     return n.kind == "moi" || n.kind == "projet"
                 }
                 return date >= cutoff
@@ -1143,11 +1336,8 @@ struct HubMemoryGraphPage: View {
 
         let visibleIds = Set(visibleNodes.map { $0.id })
 
-        // Build 3D positions
-        var pos3D: [String: SIMD3<Double>] = [:]
-        for node in visibleNodes {
-            pos3D[node.id] = sphere3D(node: node, allNodes: g.nodes)
-        }
+        // Use pre-computed positions — no sphere3D per frame
+        let pos3D = model.cachedPositions
 
         // A1: combine manual rotation + auto-rotate
         let effectiveRotY = rotY + model.autoRotY
@@ -1217,9 +1407,7 @@ struct HubMemoryGraphPage: View {
             let isHovered = node.id == model.hoveredId
             let isNeighbor: Bool
             if let sel = model.selectedId, isolated {
-                if let g = model.graph {
-                    isNeighbor = g.edges.contains { ($0.from == sel && $0.to == node.id) || ($0.to == sel && $0.from == node.id) }
-                } else { isNeighbor = false }
+                isNeighbor = model.cachedNeighbors[sel]?.contains(node.id) ?? false
             } else { isNeighbor = false }
             let dimmed = isolated && !isSelected && !isHovered && !isNeighbor
             let alpha: Double = dimmed ? 0.12 : 1.0
@@ -1250,22 +1438,6 @@ struct HubMemoryGraphPage: View {
         }
     }
 
-    private func sphere3D(node: BrainGraphNode, allNodes: [BrainGraphNode]) -> SIMD3<Double> {
-        if node.kind == "moi" { return .zero }
-        let r: Double
-        switch node.kind {
-        case "projet":   r = 200
-        case "conv":     r = 400
-        default:         r = 550
-        }
-        // Deterministic pseudo-random from id hash
-        let hash = abs(node.id.hashValue)
-        let theta = Double(hash % 1000) / 1000.0 * .pi * 2
-        let phi   = Double((hash / 1000) % 1000) / 1000.0 * .pi
-        return SIMD3(r * sin(phi) * cos(theta),
-                     r * cos(phi),
-                     r * sin(phi) * sin(theta))
-    }
 }
 
 // MARK: - IdentifiableString (helper for sheet binding)

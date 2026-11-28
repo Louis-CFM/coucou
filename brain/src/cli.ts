@@ -554,6 +554,15 @@ program
       } catch (e) {
         console.warn(`  ⚠️  FTS rebuild failed (non bloquant) : ${(e as Error).message}`);
       }
+
+      // Save graph.json for instant Coucou reads
+      try {
+        const { buildGraph, saveGraphJson } = await import("./graph.js");
+        saveGraphJson(config, buildGraph(config));
+        console.log("  ✓ graph.json sauvegardé");
+      } catch (e) {
+        console.warn(`  ⚠️  graph.json save failed : ${(e as Error).message}`);
+      }
     }
 
     manifest.close();
@@ -982,6 +991,16 @@ program
     console.log(`  Conversations claude.ai : ${result.conversations}`);
     console.log(`  Sessions Claude Code    : ${result.sessions}`);
     console.log(`  Messages indexés        : ${result.messages.toLocaleString()}`);
+
+    // Save graph.json for instant Coucou reads
+    try {
+      const { buildGraph, saveGraphJson } = await import("./graph.js");
+      saveGraphJson(config, buildGraph(config));
+      console.log(`  ✓ graph.json sauvegardé`);
+    } catch (e) {
+      console.warn(`  ⚠️  graph.json save failed : ${(e as Error).message}`);
+    }
+
     console.log(`\n  Utilisez "brain search <texte>" pour chercher.`);
   });
 
@@ -1187,9 +1206,21 @@ program
   .option("--limit <n>", "Max nodes (default 5000)", parseInt)
   .action(async (opts: { json?: boolean; limit?: number }) => {
     const config = loadConfig();
-    const { buildGraph } = await import("./graph.js");
+    const { buildGraph, saveGraphJson } = await import("./graph.js");
+
+    // Fast path: graph.json already computed by brain index / brain ingest
+    if (opts.json && !opts.limit) {
+      const { expandHome } = await import("./utils.js");
+      const graphJsonPath = path.join(expandHome(config.brainPath), ".state", "graph.json");
+      if (fs.existsSync(graphJsonPath)) {
+        process.stdout.write(fs.readFileSync(graphJsonPath, "utf8"));
+        return;
+      }
+    }
 
     const data = buildGraph(config, { limit: opts.limit ?? 5000 });
+    // Save for next time (so subsequent calls go through the fast path)
+    if (!opts.limit) saveGraphJson(config, data);
 
     if (opts.json) {
       console.log(JSON.stringify(data));

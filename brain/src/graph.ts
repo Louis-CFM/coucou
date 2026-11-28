@@ -31,6 +31,9 @@ export interface GraphNode {
   label: string;
   date: string | null;
   projet: string | null;
+  x: number;  // pre-computed sphere position (stable across runs)
+  y: number;
+  z: number;
 }
 
 export interface GraphEdge {
@@ -41,6 +44,37 @@ export interface GraphEdge {
 export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
+}
+
+// ── Position helpers ─────────────────────────────────────────────────────────
+
+/** Stable djb2-style hash — matches Swift's stableHash in FlowHubMemory.swift */
+function stableHash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function spherePos(id: string, kind: NodeKind): { x: number; y: number; z: number } {
+  if (kind === "moi") return { x: 0, y: 0, z: 0 };
+  const r = kind === "projet" ? 200 : kind === "conv" ? 400 : 550;
+  const hash = stableHash(id);
+  const theta = ((hash % 1000) / 1000) * Math.PI * 2;
+  const phi = ((Math.floor(hash / 1000) % 1000) / 1000) * Math.PI;
+  return {
+    x: r * Math.sin(phi) * Math.cos(theta),
+    y: r * Math.cos(phi),
+    z: r * Math.sin(phi) * Math.sin(theta),
+  };
+}
+
+/** Save graph.json to .state/ for instant Coucou reads (no process spawn needed). */
+export function saveGraphJson(config: BrainConfig, data: GraphData): void {
+  const stateDir = path.join(expandHome(config.brainPath), ".state");
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(path.join(stateDir, "graph.json"), JSON.stringify(data), "utf8");
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -77,7 +111,7 @@ export function buildGraph(
   }
 
   // ── "Moi" root node ───────────────────────────────────────────────────────
-  addNode({ id: "moi", kind: "moi", label: "Moi", date: null, projet: null });
+  addNode({ id: "moi", kind: "moi", label: "Moi", date: null, projet: null, ...spherePos("moi", "moi") });
 
   // ── Conversations from rawindex ───────────────────────────────────────────
   const convs = getAllConversations(config);
@@ -94,7 +128,7 @@ export function buildGraph(
   // Add project nodes
   for (const [proj, date] of projectFirstDate) {
     const id = `proj_${proj}`;
-    addNode({ id, kind: "projet", label: proj, date, projet: null });
+    addNode({ id, kind: "projet", label: proj, date, projet: null, ...spherePos(id, "projet") });
     addEdge("moi", id);
   }
 
@@ -106,7 +140,7 @@ export function buildGraph(
     const projId = `proj_${proj}`;
     const id = `conv_${conv.convId}`;
     const label = conv.convTitle || conv.convId.slice(0, 8);
-    addNode({ id, kind: "conv", label, date: conv.convDate, projet: proj });
+    addNode({ id, kind: "conv", label, date: conv.convDate, projet: proj, ...spherePos(id, "conv") });
     addEdge(projId, id);
   }
 
@@ -125,7 +159,7 @@ export function buildGraph(
 
         // Ensure the project node exists
         if (!nodeIds.has(projId)) {
-          addNode({ id: projId, kind: "projet", label: projLabel, date: null, projet: null });
+          addNode({ id: projId, kind: "projet", label: projLabel, date: null, projet: null, ...spherePos(projId, "projet") });
           addEdge("moi", projId);
         }
 
@@ -134,7 +168,7 @@ export function buildGraph(
           const kind = kindOf(elem.kind);
           const id = elem.id;
           const label = elem.texte.slice(0, 60);
-          addNode({ id, kind, label, date: elem.date, projet: projLabel });
+          addNode({ id, kind, label, date: elem.date, projet: projLabel, ...spherePos(id, kind) });
           addEdge(projId, id);
         }
 
@@ -144,7 +178,7 @@ export function buildGraph(
           if (elem.nom) {
             const id = `people_${elem.nom.toLowerCase().replace(/\s+/g, "_")}`;
             if (!nodeIds.has(id)) {
-              addNode({ id, kind: "personne", label: elem.nom, date: elem.date, projet: null });
+              addNode({ id, kind: "personne", label: elem.nom, date: elem.date, projet: null, ...spherePos(id, "personne") });
               addEdge("moi", id);
             }
           }
