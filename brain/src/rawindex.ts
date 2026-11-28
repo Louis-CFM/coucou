@@ -324,74 +324,92 @@ export function incrementalUpdateRaw(
 
 // ── Search ────────────────────────────────────────────────────────────────────
 
+export interface RawSearchResponse {
+  results: RawSearchResult[];
+  /** Total distinct conversations matching the query (no threshold). */
+  total: number;
+}
+
+/**
+ * Search the raw FTS index.
+ *
+ * FTS5 auxiliary functions (bm25) cannot be used in GROUP BY or window
+ * functions. We instead fetch all matching rows in one pass, deduplicate
+ * by conv_id in JS (best-scoring message wins), then sort and paginate.
+ *
+ * No BM25 threshold — every conversation containing a query term is returned.
+ * `total` is the count of distinct matching conversations (before pagination).
+ */
 export function searchRaw(
   config: BrainConfig,
   query: string,
-  limit = 10
-): RawSearchResult[] {
+  limit = 10,
+  offset = 0
+): RawSearchResponse {
   const dbPath = rawDbPath(config);
-  if (!fs.existsSync(dbPath)) return [];
+  if (!fs.existsSync(dbPath)) return { results: [], total: 0 };
 
   const ftsQuery = buildSearchQuery(query);
-  if (!ftsQuery) return [];
+  if (!ftsQuery) return { results: [], total: 0 };
 
   let db: Database.Database | null = null;
   try {
     db = new Database(dbPath, { readonly: true });
 
-    // Overfetch enough to find `limit` distinct conversations.
-    // A single word can match many messages per conversation; empirically
-    // we need ~6-7× more rows than the desired conversation count.
-    const fetchRows = Math.max(limit * 15, 150);
-    const rows = db
-      .prepare(
-        `SELECT conv_id, conv_title, conv_date, conv_link, msg_index, role, source, project, text,
-                bm25(raw_messages) as score
-         FROM raw_messages
-         WHERE raw_messages MATCH ?
-           AND bm25(raw_messages) < -0.5
-         ORDER BY bm25(raw_messages) ASC
-         LIMIT ?`
-      )
-      .all(ftsQuery, fetchRows) as Array<{
+    type Row = {
       conv_id: string;
       conv_title: string;
       conv_date: string;
       conv_link: string;
-      msg_index: number;
-      role: string;
       source: string;
       project: string;
       text: string;
+      msg_index: number;
+      role: string;
       score: number;
-    }>;
+    };
 
-    // Keep only the best-matching message per conversation
-    const bestByConv = new Map<string, (typeof rows)[0]>();
+    // Single pass: all matching rows, ordered by score (best first).
+    // bm25() returns negative values; more negative = better match.
+    const rows = db
+      .prepare(
+        `SELECT conv_id, conv_title, conv_date, conv_link, source, project,
+                text, msg_index, role,
+                bm25(raw_messages) as score
+         FROM raw_messages
+         WHERE raw_messages MATCH ?
+         ORDER BY bm25(raw_messages) ASC`
+      )
+      .all(ftsQuery) as Row[];
+
+    // Deduplicate: keep best-scoring message per conversation (first seen = best).
+    const bestByConv = new Map<string, Row>();
     for (const row of rows) {
-      const best = bestByConv.get(row.conv_id);
-      if (!best || row.score < best.score) {
+      if (!bestByConv.has(row.conv_id)) {
         bestByConv.set(row.conv_id, row);
       }
     }
 
-    return [...bestByConv.values()]
-      .sort((a, b) => a.score - b.score)
-      .slice(0, limit)
-      .map((row) => ({
-        convId: row.conv_id,
-        convTitle: row.conv_title,
-        convDate: row.conv_date,
-        convLink: row.conv_link,
-        msgIndex: row.msg_index,
-        role: row.role as "human" | "claude",
-        source: row.source as "desktop" | "session",
-        project: row.project,
-        excerpt: row.text.slice(0, 220).replace(/\n+/g, " "),
-        score: row.score,
-      }));
+    const all = [...bestByConv.values()]; // already sorted best-first
+    const total = all.length;
+    const page = all.slice(offset, offset + limit);
+
+    const results: RawSearchResult[] = page.map((row) => ({
+      convId: row.conv_id,
+      convTitle: row.conv_title,
+      convDate: row.conv_date,
+      convLink: row.conv_link,
+      msgIndex: row.msg_index,
+      role: row.role as "human" | "claude",
+      source: row.source as "desktop" | "session",
+      project: row.project,
+      excerpt: row.text.slice(0, 220).replace(/\n+/g, " "),
+      score: row.score,
+    }));
+
+    return { results, total };
   } catch {
-    return [];
+    return { results: [], total: 0 };
   } finally {
     db?.close();
   }

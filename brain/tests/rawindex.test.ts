@@ -188,9 +188,9 @@ describe("session exclusion from brainPath", () => {
   });
 });
 
-// ── 4. Deduplication ─────────────────────────────────────────────────────────
+// ── 4. Search: total count + deduplication + pagination ──────────────────────
 
-describe("search deduplication", () => {
+describe("search total, deduplication, pagination", () => {
   let dir: string;
   let config: BrainConfig;
 
@@ -202,32 +202,79 @@ describe("search deduplication", () => {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
   });
 
-  it("each conversation appears at most once in search results", () => {
-    // 3 "signal" sessions — 1 message each with the keyword.
-    // BM25 IDF is meaningful only when signal/total < ~50%, so we keep
-    // signal messages low (3) relative to total (3 + 7*2 = 17 → 18%).
-    for (let i = 1; i <= 3; i++) {
-      writeSession(config.claudeProjectsPath!, `-proj-dedup-${i}`, `sess-dedup-${i}`, [
-        { role: "human", text: `testdedup query about widget configuration session ${i}` },
+  it("total equals SQL COUNT(DISTINCT conv_id)", () => {
+    for (let i = 1; i <= 5; i++) {
+      writeSession(config.claudeProjectsPath!, `-proj-${i}`, `sess-${i}`, [
+        { role: "human", text: `unique keyword xqztest session ${i} configuration deployment` },
       ]);
     }
-
-    // 7 "noise" sessions without the keyword — keeps the signal ratio low
-    // so BM25 scores are non-trivially negative (< -0.5 threshold).
-    for (let i = 4; i <= 10; i++) {
-      writeSession(config.claudeProjectsPath!, `-proj-noise-${i}`, `sess-noise-${i}`, [
-        { role: "human", text: `Unrelated message about deployment configuration number ${i}.` },
-        { role: "assistant", text: `Here is the deployment plan for project ${i}.` },
+    // 2 noise sessions without the keyword
+    for (let i = 6; i <= 7; i++) {
+      writeSession(config.claudeProjectsPath!, `-proj-${i}`, `sess-${i}`, [
+        { role: "human", text: `unrelated deployment configuration plan ${i}` },
       ]);
     }
 
     rebuildRawIndex(config);
 
-    const results = searchRaw(config, "testdedup widget", 10);
-    const ids = results.map((r) => r.convId);
-    const uniqueIds = new Set(ids);
+    const dbPath = rawDbPath(config);
+    const db = new Database(dbPath, { readonly: true });
+    const sqlCount = (db
+      .prepare("SELECT COUNT(DISTINCT conv_id) as n FROM raw_messages WHERE raw_messages MATCH 'xqztest*'")
+      .get() as { n: number }).n;
+    db.close();
 
-    expect(results.length, "Should find all 3 signal sessions").toBe(3);
-    expect(uniqueIds.size, "Each conversation appears at most once").toBe(ids.length);
+    const { total } = searchRaw(config, "xqztest", 10);
+    expect(total, "searchRaw total must match SQL COUNT(DISTINCT conv_id)").toBe(sqlCount);
+    expect(total).toBe(5);
+  });
+
+  it("each conversation appears at most once (GROUP BY in SQL)", () => {
+    // Each session has 10 messages mentioning the keyword → test SQL GROUP BY
+    for (let i = 1; i <= 3; i++) {
+      const msgs = Array.from({ length: 10 }, (_, j) => ({
+        role: (j % 2 === 0 ? "human" : "assistant") as "human" | "assistant",
+        text: `groupbytest session ${i} message ${j} widget`,
+      }));
+      writeSession(config.claudeProjectsPath!, `-proj-grp-${i}`, `sess-grp-${i}`, msgs);
+    }
+
+    rebuildRawIndex(config);
+
+    const { results } = searchRaw(config, "groupbytest widget", 10);
+    const ids = results.map((r) => r.convId);
+    expect(new Set(ids).size, "Each conversation appears once").toBe(ids.length);
+    expect(results.length).toBe(3);
+  });
+
+  it("--offset paginates correctly", () => {
+    for (let i = 1; i <= 5; i++) {
+      writeSession(config.claudeProjectsPath!, `-proj-page-${i}`, `sess-page-${i}`, [
+        { role: "human", text: `paginatetest topic configuration session ${i}` },
+      ]);
+    }
+    // 3 noise sessions
+    for (let i = 6; i <= 8; i++) {
+      writeSession(config.claudeProjectsPath!, `-proj-noise-${i}`, `sess-noise-${i}`, [
+        { role: "human", text: `unrelated deployment plan ${i}` },
+      ]);
+    }
+
+    rebuildRawIndex(config);
+
+    const page1 = searchRaw(config, "paginatetest", 3, 0);
+    const page2 = searchRaw(config, "paginatetest", 3, 3);
+
+    expect(page1.total).toBe(5);
+    expect(page2.total).toBe(5);
+    expect(page1.results.length).toBe(3);
+    expect(page2.results.length).toBe(2);
+
+    // No overlap between pages
+    const ids1 = new Set(page1.results.map((r) => r.convId));
+    const ids2 = page2.results.map((r) => r.convId);
+    for (const id of ids2) {
+      expect(ids1.has(id), `${id} should not appear in page 1`).toBe(false);
+    }
   });
 });

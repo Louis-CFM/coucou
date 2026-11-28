@@ -990,8 +990,9 @@ program
 program
   .command("search <query>")
   .description("Search indexed conversations and sessions (raw text, no LLM)")
-  .option("--limit <n>", "Max results (default 10)", parseInt)
-  .action(async (query: string, opts: { limit?: number }) => {
+  .option("--limit <n>", "Max results per page (default 10)", parseInt)
+  .option("--offset <n>", "Skip first N conversations", parseInt)
+  .action(async (query: string, opts: { limit?: number; offset?: number }) => {
     const config = loadConfig();
     const { searchRaw, getRawStats, rawDbPath } = await import("./rawindex.js");
 
@@ -1009,9 +1010,10 @@ program
     }
 
     const limit = opts.limit ?? 10;
-    const results = searchRaw(config, query, limit);
+    const offset = opts.offset ?? 0;
+    const { results, total } = searchRaw(config, query, limit, offset);
 
-    if (results.length === 0) {
+    if (total === 0) {
       console.log(`Aucun résultat pour "${query}".`);
       const stats = getRawStats(config);
       if (stats) {
@@ -1020,15 +1022,14 @@ program
       return;
     }
 
-    console.log(`\n🔍 "${query}" — ${results.length} résultat(s)\n`);
+    const showing = offset + results.length;
+    const more = total > showing ? `  (--offset ${showing} pour la suite)` : "";
+    console.log(`\n🔍 "${query}" — ${total} conversation(s)  [${offset + 1}-${showing}]${more}\n`);
 
     for (let i = 0; i < results.length; i++) {
       const r = results[i]!;
-      const num = `[${i + 1}]`;
-      const source =
-        r.source === "desktop"
-          ? `claude.ai`
-          : `session:${r.project}`;
+      const num = `[${offset + i + 1}]`;
+      const source = r.source === "desktop" ? `claude.ai` : `session:${r.project}`;
       const link = r.convLink ? `\n     ${r.convLink}` : "";
       const role = r.role === "human" ? "Human" : "Claude";
       const excerpt = r.excerpt.length > 180 ? r.excerpt.slice(0, 177) + "…" : r.excerpt;
