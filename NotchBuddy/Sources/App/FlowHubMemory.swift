@@ -794,7 +794,25 @@ final class MemoryGraphModel: ObservableObject {
     @Published var periodDays: Int? = nil  // nil = all
     // NON @Published — mutés chaque frame dans drawGraph, re-render via TimelineView
     var impulses: [GraphImpulse] = []
-    var autoRotY: Double = 0
+    // Galaxy camera state (all mutated in advance() or by gesture handlers on @MainActor)
+    var autoAzimuth: Double = 0        // slow auto-rotation around Y axis
+    var blackHoleRot: Double = 0       // accretion disk spin
+    var camTilt: Double = 0.9          // tilt from top-down (radians, ~52°)
+    var camPanX: Double = 0            // camera center in world XZ
+    var camPanZ: Double = 0
+    var camZoomFactor: Double = 1.0    // zoom multiplier, range 0.2–40
+    var camManualAzimuth: Double = 0   // azimuth added by user drag
+    var velPanX: Double = 0            // pan inertia
+    var velPanZ: Double = 0
+    // Fly-to animation
+    var flyToTarget: SIMD3<Double>? = nil
+    var flyToZoom: Double = 1.0
+    var flyToProgress: Double = 0
+    var flyFromX: Double = 0
+    var flyFromZ: Double = 0
+    var flyFromZoom: Double = 1.0
+    // Last canvas size (needed by gesture handlers for coordinate conversion)
+    var lastSize: CGSize = .zero
     var nodeScreenPositions: [String: CGPoint] = [:]
     var lastHoverPoint: CGPoint? = nil
     // Pre-computed at load time — used by drawGraph every frame (O(1) lookup)
@@ -981,42 +999,63 @@ final class MemoryGraphModel: ObservableObject {
 
     func advance(dt: Double) {
         guard let g = graph, !g.edges.isEmpty else { return }
-        // A1: auto-rotate
+
         if !isPaused {
-            autoRotY += dt * 0.08
+            autoAzimuth += dt * 0.04      // slow galaxy rotation
+            blackHoleRot += dt * 0.3      // accretion disk spin
         }
 
+        // Pan inertia
+        if abs(velPanX) > 0.05 || abs(velPanZ) > 0.05 {
+            camPanX += velPanX
+            camPanZ += velPanZ
+            velPanX *= 0.88
+            velPanZ *= 0.88
+            if abs(velPanX) < 0.05 { velPanX = 0 }
+            if abs(velPanZ) < 0.05 { velPanZ = 0 }
+        }
+
+        // Fly-to animation (0.8s)
+        if var target = flyToTarget {
+            flyToProgress += dt / 0.8
+            if flyToProgress >= 1 {
+                camPanX = target.x
+                camPanZ = target.z
+                camZoomFactor = flyToZoom
+                flyToTarget = nil
+                flyToProgress = 0
+            } else {
+                let t = flyToProgress * flyToProgress * (3 - 2 * flyToProgress) // smoothstep
+                camPanX = flyFromX + (target.x - flyFromX) * t
+                camPanZ = flyFromZ + (target.z - flyFromZ) * t
+                camZoomFactor = flyFromZoom + (flyToZoom - flyFromZoom) * t
+            }
+            _ = target  // suppress unused warning
+        }
+
+        // Impulses along edges
         for i in impulses.indices {
             impulses[i].t += Float(dt) * impulses[i].speed * 60
             if impulses[i].t > 1 {
                 impulses[i].hopsLeft -= 1
-
                 if impulses[i].hopsLeft <= 0 {
-                    // Renaissance depuis un nœud au hasard
                     impulses[i].edgeIdx = Int.random(in: 0..<g.edges.count)
                     impulses[i].direction = Bool.random() ? 1 : -1
                     impulses[i].hopsLeft = Int.random(in: 3...7)
                 } else {
-                    // Nœud d'arrivée de l'edge courante
                     let edge = g.edges[impulses[i].edgeIdx]
                     let arrivalNodeId = impulses[i].direction > 0 ? edge.to : edge.from
-
-                    // Liens adjacents (partageant arrivalNodeId)
                     let adjacent = g.edges.indices.filter { idx in
                         idx != impulses[i].edgeIdx &&
                         (g.edges[idx].from == arrivalNodeId || g.edges[idx].to == arrivalNodeId)
                     }
-
                     if adjacent.isEmpty {
-                        // Pas de voisins → renaissance
                         impulses[i].edgeIdx = Int.random(in: 0..<g.edges.count)
                         impulses[i].direction = Bool.random() ? 1 : -1
                         impulses[i].hopsLeft = Int.random(in: 3...7)
                     } else {
-                        // Lien adjacent au hasard
                         let nextIdx = adjacent[Int.random(in: 0..<adjacent.count)]
                         let nextEdge = g.edges[nextIdx]
-                        // Direction depuis arrivalNodeId
                         impulses[i].direction = nextEdge.from == arrivalNodeId ? 1 : -1
                         impulses[i].edgeIdx = nextIdx
                     }
@@ -1115,16 +1154,13 @@ struct HubMemoryGraphPage: View {
     @StateObject private var model = MemoryGraphModel()
     @Environment(\.hubVisible) private var visible
 
-    @State private var rotX: Double = -0.3
-    @State private var rotY: Double = 0.4
-    @State private var zoom: Double = 1.0
-    @State private var dragStart: CGPoint? = nil
-    @State private var dragRotX: Double = -0.3
-    @State private var dragRotY: Double = 0.4
+    // Gesture state
+    @State private var lastDragLoc: CGPoint? = nil
+    @GestureState private var magnifyAmount: CGFloat = 1.0
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Full-bleed graph canvas — fades in after load
+            // Full-bleed galaxy canvas
             TimelineView(.animation(paused: !visible)) { timeline in
                 Canvas { ctx, size in
                     drawGraph(ctx: &ctx, size: size, date: timeline.date)
@@ -1133,25 +1169,38 @@ struct HubMemoryGraphPage: View {
             .opacity(model.graphOpacity)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .gesture(
-                DragGesture(minimumDistance: 2)
+                DragGesture(minimumDistance: 1)
                     .onChanged { value in
-                        if dragStart == nil {
-                            dragStart = value.startLocation
-                            dragRotX = rotX
-                            dragRotY = rotY
+                        let baseZoom = min(model.lastSize.width, model.lastSize.height) / 7000.0
+                        let actualZoom = baseZoom * model.camZoomFactor * Double(magnifyAmount)
+                        guard actualZoom > 1e-6 else { return }
+                        let dx = value.location.x - (lastDragLoc?.x ?? value.location.x)
+                        let dy = value.location.y - (lastDragLoc?.y ?? value.location.y)
+                        lastDragLoc = value.location
+                        if NSEvent.modifierFlags.contains(.option) {
+                            model.camManualAzimuth -= dx * 0.005
+                        } else {
+                            let totalAz = model.camManualAzimuth + model.autoAzimuth
+                            let dAx = dx / actualZoom
+                            let cosT = cos(model.camTilt)
+                            let dAz = abs(cosT) > 0.1 ? dy / (actualZoom * cosT) : dy / actualZoom
+                            let dcx = dAx * cos(totalAz) - dAz * sin(totalAz)
+                            let dcz = dAx * sin(totalAz) + dAz * cos(totalAz)
+                            model.camPanX += dcx
+                            model.camPanZ += dcz
+                            model.velPanX = dcx
+                            model.velPanZ = dcz
                         }
-                        let dx = value.location.x - value.startLocation.x
-                        let dy = value.location.y - value.startLocation.y
-                        rotY = dragRotY + dx * 0.005
-                        rotX = dragRotX + dy * 0.005
                     }
-                    .onEnded { _ in dragStart = nil }
+                    .onEnded { _ in lastDragLoc = nil }
             )
-            .gesture(
+            .simultaneousGesture(
                 MagnificationGesture()
-                    .onChanged { v in zoom = max(0.3, min(3.0, v)) }
+                    .updating($magnifyAmount) { v, s, _ in s = v }
+                    .onEnded { v in
+                        model.camZoomFactor = max(0.2, min(40.0, model.camZoomFactor * Double(v)))
+                    }
             )
-            // A3: Hover to highlight + tap to isolate
             .onContinuousHover { phase in
                 if case .active(let pt) = phase {
                     model.updateHover(at: pt)
@@ -1159,9 +1208,21 @@ struct HubMemoryGraphPage: View {
                     model.hoveredId = nil
                 }
             }
+            .simultaneousGesture(
+                TapGesture(count: 2).onEnded {
+                    if let id = model.hoveredId, let pos = model.cachedPositions[id] {
+                        model.flyFromX = model.camPanX
+                        model.flyFromZ = model.camPanZ
+                        model.flyFromZoom = model.camZoomFactor * Double(magnifyAmount)
+                        model.flyToTarget = pos
+                        model.flyToZoom = max(model.flyFromZoom, 5.0)
+                        model.flyToProgress = 0
+                    }
+                }
+            )
             .onTapGesture { model.handleTap() }
 
-            // A4: Filter bar (top-leading)
+            // Filter bar (top-leading)
             VStack(alignment: .leading, spacing: 0) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
@@ -1244,7 +1305,17 @@ struct HubMemoryGraphPage: View {
                             .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.6)))
                     }
                     Spacer()
-                    // A1: Pause / Reprendre button
+                    // Zoom −/+
+                    Button(action: { model.camZoomFactor = max(0.2, model.camZoomFactor / 1.6) }) {
+                        Text(verbatim: "−")
+                    }
+                    .buttonStyle(HubButtonStyle(primary: false))
+                    Button(action: { model.camZoomFactor = min(40.0, model.camZoomFactor * 1.6) }) {
+                        Text(verbatim: "+")
+                    }
+                    .buttonStyle(HubButtonStyle(primary: false))
+
+                    // Pause / Resume
                     let pauseLabel = model.isPaused
                         ? String(localized: "hub.memory.graph.resume")
                         : String(localized: "hub.memory.graph.pause")
@@ -1253,18 +1324,21 @@ struct HubMemoryGraphPage: View {
                     }
                     .buttonStyle(HubButtonStyle(primary: false))
 
-                    // A2: Voir grandir button
+                    // Voir grandir
                     Button(action: { model.startGrow() }) {
                         Text(String(localized: "hub.memory.graph.replay"))
                     }
                     .buttonStyle(HubButtonStyle(primary: false))
 
-                    // Recenter button
+                    // Recentrer
                     Button(String(localized: "hub.memory.graph.recenter")) {
-                        withAnimation(.spring(response: 0.4)) {
-                            rotX = -0.3; rotY = 0.4; zoom = 1.0
-                            model.autoRotY = 0
-                        }
+                        model.camPanX = 0
+                        model.camPanZ = 0
+                        model.camZoomFactor = 1.0
+                        model.camManualAzimuth = 0
+                        model.autoAzimuth = 0
+                        model.velPanX = 0
+                        model.velPanZ = 0
                     }
                     .buttonStyle(HubButtonStyle())
                 }
@@ -1282,13 +1356,12 @@ struct HubMemoryGraphPage: View {
                 .transition(.opacity)
             }
         }
-        .background(Color(hex: "#06070A"))
+        .background(Color(hex: "#03040A"))
         .onAppear { model.load() }
     }
 
     // MARK: - Drawing
 
-    // Static formatter — created once, used every frame
     private nonisolated(unsafe) static let isoFormatter = ISO8601DateFormatter()
 
     private func kindLabel(_ kind: String) -> String {
@@ -1304,6 +1377,17 @@ struct HubMemoryGraphPage: View {
         }
     }
 
+    // LOD level based on zoom factor
+    private func lodLevel() -> Int {
+        switch model.camZoomFactor {
+        case ..<0.4:  return 1   // galaxy shape, project names, arm glow only
+        case ..<1.5:  return 2   // + conv clouds, project dots, person names
+        case ..<6.0:  return 3   // + conv stars with colors, element dots
+        case ..<20.0: return 4   // + conv titles always, element labels on hover
+        default:      return 5   // + full element text
+        }
+    }
+
     private func drawGraph(ctx: inout GraphicsContext, size: CGSize, date: Date) {
         guard let g = model.graph else { return }
 
@@ -1313,188 +1397,295 @@ struct HubMemoryGraphPage: View {
         }
 
         model.advance(dt: 1.0 / 60.0)
+        model.lastSize = size
 
         let cx = size.width / 2
         let cy = size.height / 2
-        let scale = zoom * min(size.width, size.height) / 1200
+        let baseZoom = min(size.width, size.height) / 7000.0
+        let actualZoom = baseZoom * model.camZoomFactor * Double(magnifyAmount)
+        let totalAz = model.camManualAzimuth + model.autoAzimuth
+        let tilt = model.camTilt
+        let lod = lodLevel()
+
+        func project(_ p: SIMD3<Double>) -> CGPoint {
+            let wx = p.x - model.camPanX
+            let wz = p.z - model.camPanZ
+            let ax = wx * cos(totalAz) + wz * sin(totalAz)
+            let az = -wx * sin(totalAz) + wz * cos(totalAz)
+            let sy = az * cos(tilt) - p.y * sin(tilt)
+            return CGPoint(x: cx + ax * actualZoom, y: cy + sy * actualZoom)
+        }
 
         // ── Background ──────────────────────────────────────────────────────
-        ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: "#06070A")))
-        let bgR = max(size.width, size.height) * 0.55
-        let bgGrad = Gradient(stops: [
-            .init(color: Color(red: 34/255, green: 211/255, blue: 238/255, opacity: 0.07), location: 0),
-            .init(color: .clear, location: 1)
-        ])
-        ctx.fill(Path(CGRect(origin: .zero, size: size)),
-                 with: .radialGradient(bgGrad, center: CGPoint(x: cx, y: cy),
-                                       startRadius: 0, endRadius: bgR))
+        ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: "#03040A")))
 
-        // ── Filter ──────────────────────────────────────────────────────────
+        // ── Background stars (300 from seeded LCG, beyond r=3000) ───────────
+        var lcgSeed: UInt64 = 0xABCDEF42_1234CDEF
+        func lcgNext() -> Double {
+            lcgSeed = lcgSeed &* 6364136223846793005 &+ 1442695040888963407
+            return Double(lcgSeed >> 32) / 4294967295.0
+        }
+        for _ in 0..<300 {
+            let r     = 3200 + lcgNext() * 5000
+            let theta = lcgNext() * .pi * 2
+            let yOff  = (lcgNext() - 0.5) * 60
+            let brite = 0.07 + lcgNext() * 0.16
+            let starR = 0.4  + lcgNext() * 0.9
+            let p = SIMD3<Double>(r * cos(theta), yOff, r * sin(theta))
+            let pt = project(p)
+            guard pt.x > -4 && pt.x < size.width + 4 && pt.y > -4 && pt.y < size.height + 4 else { continue }
+            ctx.fill(
+                Path(ellipseIn: CGRect(x: pt.x - starR, y: pt.y - starR, width: starR * 2, height: starR * 2)),
+                with: .color(Color.white.opacity(brite))
+            )
+        }
+
+        // ── Filter + Period ──────────────────────────────────────────────────
         let filteredNodes: [BrainGraphNode]
         if model.filterKinds.isEmpty {
             filteredNodes = g.nodes
         } else {
             filteredNodes = g.nodes.filter { model.filterKinds.contains($0.kind) || $0.kind == "moi" }
         }
-
         let nodesForPeriod: [BrainGraphNode]
         if let days = model.periodDays {
             let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
             nodesForPeriod = filteredNodes.filter { n in
-                guard let d = n.date, let date = HubMemoryGraphPage.isoFormatter.date(from: d) else {
+                guard let d = n.date, let parsed = HubMemoryGraphPage.isoFormatter.date(from: d) else {
                     return n.kind == "moi" || n.kind == "projet"
                 }
-                return date >= cutoff
+                return parsed >= cutoff
             }
         } else {
             nodesForPeriod = filteredNodes
         }
-
         let visibleNodes = model.growCount >= 0
             ? Array(nodesForPeriod.prefix(model.growCount))
             : nodesForPeriod
-
         let visibleIds = Set(visibleNodes.map { $0.id })
         let pos3D = model.cachedPositions
-        let effectiveRotY = rotY + model.autoRotY
-
-        func project(_ p3: SIMD3<Double>) -> (CGPoint, Double) {
-            let rx = rotX, ry = effectiveRotY
-            let x1 = p3.x * cos(ry) + p3.z * sin(ry)
-            let y1 = p3.y
-            let z1 = -p3.x * sin(ry) + p3.z * cos(ry)
-            let x2 = x1
-            let y2 = y1 * cos(rx) - z1 * sin(rx)
-            let z2 = y1 * sin(rx) + z1 * cos(rx)
-            let persp = 1200 / (1200 + z2 * scale * 400)
-            let sx = cx + x2 * scale * persp * 400
-            let sy = cy + y2 * scale * persp * 400
-            return (CGPoint(x: sx, y: sy), z2)
-        }
-
         let isolated = model.selectedId != nil
 
-        // ── Edges ───────────────────────────────────────────────────────────
-        let edgeBase = Color(red: 0.510, green: 0.667, blue: 0.902)       // rgba(130,170,230)
-        let edgeSel  = Color(red: 0.133, green: 0.827, blue: 0.933)       // #22D3EE
-
-        for edge in g.edges {
-            guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
-            guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
-            let (pa, za) = project(a)
-            let (pb, _) = project(b)
-
-            let isSel = model.selectedId == edge.from || model.selectedId == edge.to
-            let edgeColor: Color
-            let edgeOpacity: Double
-            if isSel {
-                edgeColor = edgeSel; edgeOpacity = 0.45
-            } else {
-                edgeColor = edgeBase
-                let depth = (za + 1) / 2
-                edgeOpacity = isolated ? 0.03 : (depth > 0.6 ? 0.09 : (depth > 0.3 ? 0.055 : 0.03))
+        // ── Arm glow — soft radial bands per project ─────────────────────────
+        for node in g.nodes where node.kind == "projet" {
+            guard let p3 = pos3D[node.id] else { continue }
+            let projR = sqrt(p3.x * p3.x + p3.z * p3.z)
+            let projTheta = atan2(p3.z, p3.x)
+            let armBase = projTheta - 0.35 * log(max(projR, 1))
+            let col = model.nodeColor(node.kind)
+            let armR = max(2.0, min(55.0, 50.0 * actualZoom))
+            let baseOp = 0.022 / max(1.0, model.camZoomFactor * 0.4)
+            for step in 0..<10 {
+                let sr = 150.0 + Double(step) * 285.0
+                let st = armBase + 0.35 * log(max(sr, 1))
+                let sp = SIMD3<Double>(sr * cos(st), 0, sr * sin(st))
+                let pt = project(sp)
+                guard pt.x > -armR - 10 && pt.x < size.width + armR + 10 &&
+                      pt.y > -armR - 10 && pt.y < size.height + armR + 10 else { continue }
+                let op = max(0, baseOp - Double(step) * 0.0012)
+                guard op > 0.001 else { break }
+                ctx.drawLayer { inner in
+                    inner.blendMode = .plusLighter
+                    let grad = Gradient(stops: [
+                        .init(color: col.opacity(op), location: 0),
+                        .init(color: .clear, location: 1)
+                    ])
+                    inner.fill(
+                        Path(ellipseIn: CGRect(x: pt.x - armR, y: pt.y - armR, width: armR * 2, height: armR * 2)),
+                        with: .radialGradient(grad, center: pt, startRadius: 0, endRadius: armR)
+                    )
+                }
             }
-            var path = Path()
-            path.move(to: pa); path.addLine(to: pb)
-            ctx.stroke(path, with: .color(edgeColor.opacity(edgeOpacity)), lineWidth: 1)
         }
 
-        // ── Impulses — additive white halo ───────────────────────────────────
-        for impulse in model.impulses {
-            guard impulse.edgeIdx < g.edges.count else { continue }
-            let edge = g.edges[impulse.edgeIdx]
-            guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
-            guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
-            let (pA, pB) = impulse.direction > 0 ? (a, b) : (b, a)
-            let t = Double(impulse.t)
-            let p3 = pA + (pB - pA) * t
-            let (pt, z2) = project(p3)
-            let f = max(0.1, 900.0 / (900.0 + z2))
-            let ir = 7.0 * f * sqrt(zoom) / 2
-            let iOpacity = sin(t * .pi) * 0.9
-            ctx.drawLayer { inner in
-                inner.blendMode = .plusLighter
-                let grad = Gradient(stops: [
-                    .init(color: Color.white.opacity(iOpacity), location: 0),
-                    .init(color: .clear, location: 1)
-                ])
-                inner.fill(
-                    Path(ellipseIn: CGRect(x: pt.x - ir, y: pt.y - ir, width: ir * 2, height: ir * 2)),
-                    with: .radialGradient(grad, center: pt, startRadius: 0, endRadius: ir)
-                )
+        // ── Black hole (always rendered) ─────────────────────────────────────
+        let bhPt = project(.zero)
+        let bhCoreR = max(3.5, 20.0 * actualZoom)
+        let diskRW  = max(6.0, 50.0 * actualZoom)
+        let diskRH  = diskRW * abs(sin(tilt)) * 0.4
+        ctx.drawLayer { inner in
+            inner.blendMode = .plusLighter
+            let haloR = bhCoreR * 5.5
+            let haloGrad = Gradient(stops: [
+                .init(color: Color(red: 1, green: 0.92, blue: 0.75, opacity: 0.13), location: 0),
+                .init(color: Color(red: 1, green: 0.6,  blue: 0.2,  opacity: 0.04), location: 0.5),
+                .init(color: .clear, location: 1)
+            ])
+            inner.fill(
+                Path(ellipseIn: CGRect(x: bhPt.x - haloR, y: bhPt.y - haloR, width: haloR * 2, height: haloR * 2)),
+                with: .radialGradient(haloGrad, center: bhPt, startRadius: 0, endRadius: haloR)
+            )
+            let diskGrad = Gradient(stops: [
+                .init(color: Color.white.opacity(0), location: 0.4),
+                .init(color: Color(red: 1, green: 0.97, blue: 0.9, opacity: 0.9), location: 0.65),
+                .init(color: Color(red: 1, green: 0.7,  blue: 0.3, opacity: 0.3), location: 0.9),
+                .init(color: .clear, location: 1.0)
+            ])
+            inner.fill(
+                Path(ellipseIn: CGRect(x: bhPt.x - diskRW, y: bhPt.y - diskRH, width: diskRW * 2, height: diskRH * 2)),
+                with: .radialGradient(diskGrad, center: bhPt, startRadius: diskRW * 0.4, endRadius: diskRW)
+            )
+        }
+        ctx.fill(
+            Path(ellipseIn: CGRect(x: bhPt.x - bhCoreR, y: bhPt.y - bhCoreR, width: bhCoreR * 2, height: bhCoreR * 2)),
+            with: .color(Color(hex: "#03040A"))
+        )
+
+        // ── Edges (LOD 2+) ───────────────────────────────────────────────────
+        let edgeBase = Color(red: 0.33, green: 0.50, blue: 0.75)
+        let edgeSel  = Color(hex: "#22D3EE")
+        if lod >= 2 {
+            let edgeOp = isolated ? 0.025 : (lod >= 4 ? 0.08 : 0.04)
+            for edge in g.edges {
+                guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
+                guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
+                let pa = project(a); let pb = project(b)
+                guard pa.x > -20 && pa.x < size.width + 20 && pa.y > -20 && pa.y < size.height + 20 ||
+                      pb.x > -20 && pb.x < size.width + 20 && pb.y > -20 && pb.y < size.height + 20
+                else { continue }
+                let isSel = model.selectedId == edge.from || model.selectedId == edge.to
+                var path = Path(); path.move(to: pa); path.addLine(to: pb)
+                ctx.stroke(path, with: .color(isSel ? edgeSel.opacity(0.45) : edgeBase.opacity(edgeOp)), lineWidth: 1)
+            }
+        }
+
+        // ── Impulses ─────────────────────────────────────────────────────────
+        if lod >= 2 {
+            for impulse in model.impulses {
+                guard impulse.edgeIdx < g.edges.count else { continue }
+                let edge = g.edges[impulse.edgeIdx]
+                guard visibleIds.contains(edge.from) && visibleIds.contains(edge.to) else { continue }
+                guard let a = pos3D[edge.from], let b = pos3D[edge.to] else { continue }
+                let (pA, pB) = impulse.direction > 0 ? (a, b) : (b, a)
+                let t = Double(impulse.t)
+                let p3 = pA + (pB - pA) * t
+                let pt = project(p3)
+                guard pt.x > -20 && pt.x < size.width + 20 && pt.y > -20 && pt.y < size.height + 20 else { continue }
+                let ir = max(2.0, 6.0 * actualZoom * 20)
+                let iOp = sin(t * .pi) * 0.75
+                ctx.drawLayer { inner in
+                    inner.blendMode = .plusLighter
+                    let grad = Gradient(stops: [
+                        .init(color: Color.white.opacity(iOp), location: 0),
+                        .init(color: .clear, location: 1)
+                    ])
+                    inner.fill(
+                        Path(ellipseIn: CGRect(x: pt.x - ir, y: pt.y - ir, width: ir * 2, height: ir * 2)),
+                        with: .radialGradient(grad, center: pt, startRadius: 0, endRadius: ir)
+                    )
+                }
             }
         }
 
         // ── Nodes ────────────────────────────────────────────────────────────
         model.nodeScreenPositions = [:]
-
         for node in visibleNodes {
             guard let p3 = pos3D[node.id] else { continue }
-            let (pt, z2) = project(p3)
-
-            // Perspective depth factor — depth fade
-            let f = max(0.1, 900.0 / (900.0 + z2))
-            let baseOpacity = max(0.12, min(1.0, (f - 0.62) * 1.9))
-
+            let pt = project(p3)
+            guard pt.x > -60 && pt.x < size.width + 60 && pt.y > -60 && pt.y < size.height + 60 else { continue }
+            // LOD gates
+            switch node.kind {
+            case "moi", "projet": break
+            case "personne": guard lod >= 2 else { continue }
+            case "conv":     guard lod >= 2 else { continue }
+            default:         guard lod >= 3 else { continue }
+            }
             let isSelected = node.id == model.selectedId
             let isHovered  = node.id == model.hoveredId
-            let isNeighbor: Bool
-            if let sel = model.selectedId, isolated {
-                isNeighbor = model.cachedNeighbors[sel]?.contains(node.id) ?? false
-            } else { isNeighbor = false }
+            let isNeighbor: Bool = {
+                guard let sel = model.selectedId, isolated else { return false }
+                return model.cachedNeighbors[sel]?.contains(node.id) ?? false
+            }()
             let dimmed = isolated && !isSelected && !isHovered && !isNeighbor
-            let alpha = dimmed ? baseOpacity * 0.12 : baseOpacity
-
+            let alpha: Double = dimmed ? 0.07 : 1.0
             let typeColor = model.nodeColor(node.kind)
             let degree = model.cachedNeighbors[node.id]?.count ?? 0
-
             let baseR: Double
             switch node.kind {
-            case "moi":      baseR = 7.0
-            case "projet":   baseR = 3.5 + Double(degree) / 6.0
-            case "personne": baseR = 3.0
-            case "conv":     baseR = 1.5
-            default:         baseR = 1.1  // elements
+            case "moi":      baseR = max(5.0, 28.0 * actualZoom)
+            case "projet":   baseR = max(3.0, (9.0 + Double(degree) / 5.0) * actualZoom)
+            case "personne": baseR = max(2.0, 7.0 * actualZoom)
+            case "conv":     baseR = max(1.5, 4.5 * actualZoom)
+            default:         baseR = max(1.0, 3.0 * actualZoom)
             }
-            let haloMult = (node.kind == "moi" || node.kind == "projet") ? 6.5 : 5.0
-            let haloD = baseR * f * zoom * haloMult
-            let haloR = haloD / 2.0
-
-            // Halo — additive blend with radial gradient
+            let haloMult: Double = node.kind == "moi" ? 7.0 : (node.kind == "projet" ? 6.0 : 4.5)
+            let haloR = baseR * haloMult
             ctx.drawLayer { inner in
                 inner.blendMode = .plusLighter
                 let grad = Gradient(stops: [
-                    .init(color: Color.white.opacity(alpha), location: 0),
-                    .init(color: typeColor.opacity(alpha), location: 0.12),
-                    .init(color: typeColor.opacity(0.35 * alpha), location: 0.33),
-                    .init(color: .clear, location: 1.0)
+                    .init(color: Color.white.opacity(alpha),           location: 0),
+                    .init(color: typeColor.opacity(alpha),             location: 0.14),
+                    .init(color: typeColor.opacity(0.3 * alpha),       location: 0.35),
+                    .init(color: .clear,                               location: 1.0)
                 ])
                 inner.fill(
-                    Path(ellipseIn: CGRect(x: pt.x - haloR, y: pt.y - haloR,
-                                          width: haloD, height: haloD)),
+                    Path(ellipseIn: CGRect(x: pt.x - haloR, y: pt.y - haloR, width: haloR * 2, height: haloR * 2)),
                     with: .radialGradient(grad, center: pt, startRadius: 0, endRadius: haloR)
                 )
             }
-
-            // Core white dot
-            let coreR = max(1.0, baseR * 0.4 * f * zoom)
+            let coreR = max(0.8, baseR * 0.45)
             ctx.fill(
-                Path(ellipseIn: CGRect(x: pt.x - coreR, y: pt.y - coreR,
-                                       width: coreR * 2, height: coreR * 2)),
+                Path(ellipseIn: CGRect(x: pt.x - coreR, y: pt.y - coreR, width: coreR * 2, height: coreR * 2)),
                 with: .color(Color.white.opacity(alpha))
             )
-
             model.nodeScreenPositions[node.id] = pt
-
-            if (isHovered || isSelected) && node.kind != "moi" {
+            // Labels — LOD-gated
+            let showLabel: Bool
+            switch node.kind {
+            case "moi":      showLabel = false
+            case "projet":   showLabel = lod >= 1
+            case "personne": showLabel = lod >= 2 && (isHovered || isSelected)
+            case "conv":     showLabel = lod >= 3 && (isHovered || isSelected || lod >= 4)
+            default:         showLabel = lod >= 4 && (isHovered || isSelected)
+            }
+            if showLabel && !dimmed {
+                let isProjLod1 = node.kind == "projet" && lod == 1
                 ctx.draw(
                     Text(node.label)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white),
-                    at: CGPoint(x: pt.x, y: pt.y - haloR - 8)
+                        .font(.system(size: isProjLod1 ? 10 : 11,
+                                      weight: node.kind == "projet" ? .semibold : .regular))
+                        .foregroundColor(node.kind == "projet" ? typeColor : .white),
+                    at: CGPoint(x: pt.x, y: pt.y - haloR - 5)
                 )
             }
         }
+
+        // ── Mini-map (bottom-left, 120×68) ───────────────────────────────────
+        let mmW: Double = 120, mmH: Double = 68
+        let mmX: Double = 16, mmY: Double = size.height - mmH - 56
+        let mmScale: Double = mmW / 7000.0
+        ctx.fill(Path(CGRect(x: mmX, y: mmY, width: mmW, height: mmH)),
+                 with: .color(Color.black.opacity(0.55)))
+        ctx.stroke(Path(CGRect(x: mmX, y: mmY, width: mmW, height: mmH)),
+                   with: .color(Color.white.opacity(0.12)), lineWidth: 1)
+        for node in g.nodes {
+            guard let p3 = pos3D[node.id] else { continue }
+            let mmPx = mmX + mmW / 2 + p3.x * mmScale
+            let mmPy = mmY + mmH / 2 + p3.z * mmScale * abs(cos(tilt))
+            guard mmPx > mmX && mmPx < mmX + mmW && mmPy > mmY && mmPy < mmY + mmH else { continue }
+            let (col, r): (Color, Double)
+            switch node.kind {
+            case "moi":    (col, r) = (.white, 1.5)
+            case "projet": (col, r) = (Color(hex: "#22D3EE"), 1.2)
+            case "conv":   (col, r) = (Color.white.opacity(0.3), 0.5)
+            default:       (col, r) = (model.nodeColor(node.kind).opacity(0.4), 0.4)
+            }
+            ctx.fill(Path(ellipseIn: CGRect(x: mmPx - r, y: mmPy - r, width: r * 2, height: r * 2)),
+                     with: .color(col))
+        }
+        // Viewport rect
+        let vpHalfW = size.width / (2 * max(actualZoom, 0.001))
+        let cosT = abs(cos(tilt))
+        let vpHalfD = cosT > 0.1 ? size.height / (2 * max(actualZoom, 0.001) * cosT) : vpHalfW
+        let mmCamX = mmX + mmW / 2 + model.camPanX * mmScale
+        let mmCamZ = mmY + mmH / 2 + model.camPanZ * mmScale * cosT
+        ctx.stroke(
+            Path(CGRect(x: mmCamX - vpHalfW * mmScale,
+                        y: mmCamZ - vpHalfD * mmScale * cosT,
+                        width: vpHalfW * 2 * mmScale,
+                        height: vpHalfD * 2 * mmScale * cosT)),
+            with: .color(Color(hex: "#22D3EE").opacity(0.5)), lineWidth: 1
+        )
     }
 
 }

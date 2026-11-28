@@ -1,8 +1,9 @@
 /**
  * brain graph — build a knowledge graph from rawindex + LLM state files.
  *
- * Level 1 (search only): nodes = moi + projects + conversations; edges = moi→proj, proj→conv.
- * Level 2+ (after LLM digestion): also element nodes (decisions, leçons, faits, prefs, people).
+ * Galaxy layout: moi = black hole at origin, each project = logarithmic spiral arm,
+ * convs placed along arm by age (recent near center r=120, old at edge r=3000).
+ * XZ = galaxy disk plane, Y = disk thickness (σ≈20).
  *
  * Capped at 5000 newest nodes (by date).
  */
@@ -31,7 +32,7 @@ export interface GraphNode {
   label: string;
   date: string | null;
   projet: string | null;
-  x: number;  // pre-computed sphere position (stable across runs)
+  x: number;  // galaxy disk plane (XZ), disk thickness (Y)
   y: number;
   z: number;
 }
@@ -48,34 +49,13 @@ export interface GraphData {
 
 // ── Position helpers ─────────────────────────────────────────────────────────
 
-/** Stable djb2-style hash — matches Swift's stableHash in FlowHubMemory.swift */
+/** Stable hash — same as Swift's stableHash in FlowHubMemory.swift */
 function stableHash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) {
     h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   }
   return Math.abs(h);
-}
-
-/**
- * Fibonacci sphere layout — evenly distributes `total` points on a sphere of `radius`.
- * Returns the position for point at `index`.
- */
-function fibonacciSpherePos(
-  index: number,
-  total: number,
-  radius: number
-): { x: number; y: number; z: number } {
-  const golden = (1 + Math.sqrt(5)) / 2;
-  const theta = (2 * Math.PI * index) / golden;
-  const cosPhiRaw = 1 - 2 * (index + 0.5) / Math.max(total, 1);
-  const cosPhi = Math.max(-1, Math.min(1, cosPhiRaw));
-  const phi = Math.acos(cosPhi);
-  return {
-    x: radius * Math.sin(phi) * Math.cos(theta),
-    y: radius * Math.cos(phi),
-    z: radius * Math.sin(phi) * Math.sin(theta),
-  };
 }
 
 /**
@@ -90,12 +70,10 @@ function gaussianOffset(
   const hy = stableHash(id + "y");
   const hz = stableHash(id + "z");
 
-  // Box-Muller: map hash to (0,1) then to Gaussian
   const ux = ((hx % 1000) + 0.5) / 1001;
   const uy = ((hy % 1000) + 0.5) / 1001;
   const uz = ((hz % 1000) + 0.5) / 1001;
 
-  // Use paired Box-Muller: (ux, uy) → two normals, (uz, ux) → one more
   const r1 = sigma * Math.sqrt(-2 * Math.log(ux + 1e-9));
   const r2 = sigma * Math.sqrt(-2 * Math.log(uy + 1e-9));
   const r3 = sigma * Math.sqrt(-2 * Math.log(uz + 1e-9));
@@ -107,6 +85,31 @@ function gaussianOffset(
     x: r1 * Math.cos(angle1),
     y: r2 * Math.sin(angle1),
     z: r3 * Math.cos(angle2),
+  };
+}
+
+/**
+ * Galaxy spiral position for a point along a project arm.
+ * armAngle: the base angle of this project's arm (0–2π).
+ * ageFactor: 0=newest (near center), 1=oldest (far edge).
+ * Returns XZ in disk plane, Y = disk thickness.
+ */
+function galaxyArmPos(
+  id: string,
+  armAngle: number,
+  ageFactor: number
+): { x: number; y: number; z: number } {
+  const r = 120 + ageFactor * 2880;  // r in [120, 3000]
+  const theta = armAngle + 0.35 * Math.log(Math.max(r, 1));
+
+  // Perpendicular Gaussian spread in disk plane (σ=40) + disk thickness (σ=20)
+  const off = gaussianOffset(id, 40);
+  const thick = gaussianOffset(id + "thick", 20);
+
+  return {
+    x: r * Math.cos(theta) + off.x,
+    y: thick.x,            // disk thickness, σ≈20
+    z: r * Math.sin(theta) + off.y,
   };
 }
 
@@ -152,7 +155,7 @@ export function buildGraph(
   const edges: GraphEdge[] = [];
   const nodeIds = new Set<string>();
 
-  // Edge deduplication: key is "smaller|larger" to treat edges as undirected for dedup
+  // Edge deduplication: key is "smaller|larger"
   const edgeSet = new Set<string>();
 
   function addNode(node: GraphNode): void {
@@ -170,66 +173,102 @@ export function buildGraph(
     }
   }
 
-  // ── "Moi" root node ───────────────────────────────────────────────────────
+  // ── "Moi" root node — galaxy center / black hole ─────────────────────────
   addNode({ id: "moi", kind: "moi", label: "Moi", date: null, projet: null, x: 0, y: 0, z: 0 });
 
   // ── Conversations from rawindex ───────────────────────────────────────────
   const convs = getAllConversations(config);
 
-  // Collect distinct projects (preserving insertion order = first-seen)
-  const projectFirstDate = new Map<string, string>();
+  // Collect distinct projects + date ranges
+  const projectFirstDate = new Map<string, string>();  // oldest conv date
+  const projectLatestDate = new Map<string, string>(); // newest conv date
+
   for (const conv of convs) {
     const proj = conv.project || (conv.source === "desktop" ? "claude.ai" : "sessions");
-    if (!projectFirstDate.has(proj) || conv.convDate < projectFirstDate.get(proj)!) {
-      projectFirstDate.set(proj, conv.convDate);
+    const d = conv.convDate;
+    if (!projectFirstDate.has(proj) || d < projectFirstDate.get(proj)!) {
+      projectFirstDate.set(proj, d);
+    }
+    if (!projectLatestDate.has(proj) || d > projectLatestDate.get(proj)!) {
+      projectLatestDate.set(proj, d);
     }
   }
 
-  // Add project nodes using Fibonacci sphere at radius 290
+  // ── Project nodes — spiral arm roots ────────────────────────────────────
   const projectList = Array.from(projectFirstDate.keys());
   const totalProjects = projectList.length;
+
+  // arm angle per project: evenly spaced, stable order
+  const projArmAngle = new Map<string, number>();
+
   for (let i = 0; i < projectList.length; i++) {
     const proj = projectList[i];
     const date = projectFirstDate.get(proj)!;
     const id = `proj_${proj}`;
-    const pos = fibonacciSpherePos(i, totalProjects, 290);
-    addNode({ id, kind: "projet", label: proj, date, projet: null, ...pos });
+    const armAngle = (i / Math.max(totalProjects, 1)) * 2 * Math.PI;
+    projArmAngle.set(proj, armAngle);
+
+    // Project anchor at r=90 on the arm (innermost ring, near black hole)
+    const r = 90;
+    const theta = armAngle + 0.35 * Math.log(r);
+    addNode({
+      id, kind: "projet", label: proj, date, projet: null,
+      x: r * Math.cos(theta),
+      y: 0,
+      z: r * Math.sin(theta),
+    });
     addEdge("moi", id);
   }
 
-  // Build a map of projId → Fibonacci sphere position for clustering children
-  const projPos = new Map<string, { x: number; y: number; z: number }>();
-  for (const node of nodes) {
-    if (node.kind === "projet") {
-      projPos.set(node.id, { x: node.x, y: node.y, z: node.z });
-    }
-  }
-
-  // Add conversation nodes (capped — keep newest first, up to limit - projects - moi - elements)
+  // ── Conversation nodes — along spiral arms, sorted oldest→outermost ──────
   const convLimit = Math.max(0, limit - nodes.length - 500); // reserve 500 for elements
   const convSlice = convs.slice(0, convLimit);
 
-  // Map convId → projId for later use
-  const convToProj = new Map<string, string>();
-
+  // Group convs by project
+  const convsByProjRaw = new Map<string, typeof convSlice>();
   for (const conv of convSlice) {
     const proj = conv.project || (conv.source === "desktop" ? "claude.ai" : "sessions");
+    if (!convsByProjRaw.has(proj)) convsByProjRaw.set(proj, []);
+    convsByProjRaw.get(proj)!.push(conv);
+  }
+
+  const convToProj = new Map<string, string>(); // conv node id → proj node id
+
+  for (const [proj, projConvList] of convsByProjRaw) {
     const projId = `proj_${proj}`;
-    const id = `conv_${conv.convId}`;
-    const label = conv.convTitle || conv.convId.slice(0, 8);
+    const armAngle = projArmAngle.get(proj) ?? 0;
+    const newestDate = projectLatestDate.get(proj) ?? "2020-01-01";
+    const oldestDate = projectFirstDate.get(proj) ?? "2020-01-01";
+    const newestMs = new Date(newestDate).getTime();
+    const oldestMs = new Date(oldestDate).getTime();
+    const dateRange = Math.max(1, newestMs - oldestMs);
 
-    // Gaussian cluster (σ≈60) around project position
-    const base = projPos.get(projId) ?? { x: 0, y: 0, z: 0 };
-    const offset = gaussianOffset(id, 60);
-    const pos = { x: base.x + offset.x, y: base.y + offset.y, z: base.z + offset.z };
+    // Sort chronologically oldest→newest (highest age → closest to outer edge)
+    const sorted = [...projConvList].sort((a, b) => a.convDate.localeCompare(b.convDate));
+    const convIds: string[] = [];
 
-    addNode({ id, kind: "conv", label, date: conv.convDate, projet: proj, ...pos });
-    addEdge(projId, id);
-    convToProj.set(id, projId);
+    for (const conv of sorted) {
+      const id = `conv_${conv.convId}`;
+      const label = conv.convTitle || conv.convId.slice(0, 8);
+
+      // ageFactor: 0 = newest (near center), 1 = oldest (far outer edge)
+      const convMs = new Date(conv.convDate).getTime();
+      const ageFactor = Math.max(0, Math.min(1, 1 - (convMs - oldestMs) / dateRange));
+
+      const pos = galaxyArmPos(id, armAngle, ageFactor);
+      addNode({ id, kind: "conv", label, date: conv.convDate, projet: proj, ...pos });
+      addEdge(projId, id);
+      convToProj.set(id, projId);
+      convIds.push(id);
+    }
+
+    // Sequential conv-conv links along the arm (guaranteed density)
+    for (let i = 1; i < convIds.length; i++) {
+      addEdge(convIds[i - 1], convIds[i]);
+    }
   }
 
   // ── Conv ↔ 2 nearest convs in same project (by title word overlap > 0) ──
-  // Group convs by project
   const convsByProj = new Map<string, { id: string; label: string }[]>();
   for (const node of nodes) {
     if (node.kind === "conv") {
@@ -240,7 +279,6 @@ export function buildGraph(
   }
 
   for (const [, convGroup] of convsByProj) {
-    // For each conv, find up to 2 others in same project with overlap > 0
     for (let i = 0; i < convGroup.length; i++) {
       const a = convGroup[i];
       const aKw = keywords(a.label);
@@ -251,7 +289,6 @@ export function buildGraph(
         const overlap = keywordOverlap(aKw, keywords(b.label));
         if (overlap > 0) candidates.push({ id: b.id, overlap });
       }
-      // Sort by overlap descending, take top 2
       candidates.sort((x, y) => y.overlap - x.overlap);
       for (const c of candidates.slice(0, 2)) {
         addEdge(a.id, c.id);
@@ -264,7 +301,6 @@ export function buildGraph(
   if (fs.existsSync(stateDir) && nodes.length < limit) {
     const files = fs.readdirSync(stateDir).filter((f) => f.endsWith(".json"));
 
-    // Collect all elements across all projects for cross-element edges
     const allElements: {
       id: string;
       kind: NodeKind;
@@ -284,18 +320,23 @@ export function buildGraph(
 
         // Ensure the project node exists (projects from state files not in rawindex)
         if (!nodeIds.has(projId)) {
-          // Find an index for this new project (append to end of fibonacci sphere)
-          const newIndex = projectList.length;
-          const pos = fibonacciSpherePos(newIndex, Math.max(totalProjects, newIndex + 1), 290);
-          addNode({ id: projId, kind: "projet", label: projLabel, date: null, projet: null, ...pos });
+          const newIdx = projectList.length;
+          const armAngle = (newIdx / Math.max(totalProjects + 1, 1)) * 2 * Math.PI;
+          const r = 90;
+          const theta = armAngle + 0.35 * Math.log(r);
+          addNode({
+            id: projId, kind: "projet", label: projLabel, date: null, projet: null,
+            x: r * Math.cos(theta),
+            y: 0,
+            z: r * Math.sin(theta),
+          });
           addEdge("moi", projId);
-          projPos.set(projId, pos);
+          projArmAngle.set(projLabel, armAngle);
           projectList.push(projLabel);
         }
 
-        const basePos = projPos.get(projId) ?? { x: 0, y: 0, z: 0 };
-
-        // Group elements by their source conv for sequential linking
+        const projNode = nodes.find((n) => n.id === projId);
+        const basePos = projNode ? { x: projNode.x, y: projNode.y, z: projNode.z } : { x: 0, y: 0, z: 0 };
         const elemsByConv = new Map<string, StoredElement[]>();
 
         for (const elem of state.elements) {
@@ -304,71 +345,60 @@ export function buildGraph(
           const id = elem.id;
           const label = elem.texte.slice(0, 60);
 
-          // Determine conversation anchor
           const sourceConvId = elem.sources && elem.sources.length > 0
             ? `conv_${elem.sources[0]}`
             : null;
 
-          // Position: Gaussian cluster (σ≈15) around conv position (or project if no conv)
-          const anchor = sourceConvId && nodeIds.has(sourceConvId)
-            ? (() => {
-                const n = nodes.find((x) => x.id === sourceConvId);
-                return n ? { x: n.x, y: n.y, z: n.z } : basePos;
-              })()
+          // Elements cluster (σ≈10) around their conv, σ≈5 disk thickness
+          const convNode = sourceConvId ? nodes.find((x) => x.id === sourceConvId) : null;
+          const anchor = convNode
+            ? { x: convNode.x, y: convNode.y, z: convNode.z }
             : basePos;
-          const offset = gaussianOffset(id, 15);
-          const pos = { x: anchor.x + offset.x, y: anchor.y + offset.y, z: anchor.z + offset.z };
+          const off = gaussianOffset(id, 10);
+          const thick = gaussianOffset(id + "thick", 5);
+          const pos = {
+            x: anchor.x + off.x,
+            y: anchor.y + thick.x,
+            z: anchor.z + off.y,
+          };
 
           addNode({ id, kind, label, date: elem.date, projet: projLabel, ...pos });
-
-          // proj → element edge
           addEdge(projId, id);
-
-          // element → its conversation
           if (sourceConvId && nodeIds.has(sourceConvId)) {
             addEdge(id, sourceConvId);
           }
 
-          // Track for sequential within-conv linking
           const convKey = sourceConvId ?? `__proj_${projId}`;
           if (!elemsByConv.has(convKey)) elemsByConv.set(convKey, []);
           elemsByConv.get(convKey)!.push(elem);
 
-          // Collect for cross-element edges
           allElements.push({
-            id,
-            kind,
-            projId,
-            convId: sourceConvId,
-            label,
-            kw: keywords(elem.texte),
+            id, kind, projId, convId: sourceConvId, label, kw: keywords(elem.texte),
           });
         }
 
-        // Element → previous element in same conv (sequential)
+        // Sequential element → previous element in same conv
         for (const [, group] of elemsByConv) {
           for (let i = 1; i < group.length; i++) {
             addEdge(group[i].id, group[i - 1].id);
           }
         }
 
-        // People from elements
+        // People nodes — near their project arm (σ=80, flat in disk)
         for (const elem of state.elements) {
           if (nodes.length >= limit) break;
           if (elem.nom) {
             const id = `people_${elem.nom.toLowerCase().replace(/\s+/g, "_")}`;
             if (!nodeIds.has(id)) {
-              // People: Gaussian offset (σ≈80) from project position
-              const offset = gaussianOffset(id, 80);
-              const pos = {
-                x: basePos.x + offset.x,
-                y: basePos.y + offset.y,
-                z: basePos.z + offset.z,
-              };
-              addNode({ id, kind: "personne", label: elem.nom, date: elem.date, projet: null, ...pos });
+              const off = gaussianOffset(id, 80);
+              addNode({
+                id, kind: "personne", label: elem.nom, date: elem.date, projet: null,
+                x: basePos.x + off.x,
+                y: off.y * 0.1, // keep near disk plane
+                z: basePos.z + off.z,
+              });
               addEdge("moi", id);
             }
-            // Person → their project
             addEdge(id, projId);
           }
         }
