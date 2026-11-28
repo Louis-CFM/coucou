@@ -294,6 +294,7 @@ final class LiveActivityRelay {
                 lastAlertTime = now
                 lastAlertedFingerprint = state.approval
             }
+            var anyOk = false
             for (id, phone) in targets {
                 let sound: String? = alertNeeded ? (phone.mochiSounds ? "approval.wav" : "default") : nil
                 let ok = await post(event: "update", token: phone.updateToken, env: phone.env, state: state,
@@ -302,11 +303,19 @@ final class LiveActivityRelay {
                 if ok && (urgent || sent?.tone != state.tone) {
                     log("update sent: \(state.agent) \(state.statusText)\(state.approval == nil ? "" : " (with Allow / Deny)")")
                 }
-                // Alert delivered: the Live Activity is the notification — tell ApprovalRelay
-                // to skip the iCloud record (and its banner) for this fingerprint.
-                if ok, alertNeeded, let fingerprint = state.approval {
-                    ApprovalRelay.shared.liveActivityHandledApproval(fingerprint)
+                if ok {
+                    anyOk = true
+                    // Alert delivered: the Live Activity is the notification — tell ApprovalRelay
+                    // to skip the iCloud record (and its banner) for this fingerprint.
+                    if alertNeeded, let fingerprint = state.approval {
+                        ApprovalRelay.shared.liveActivityHandledApproval(fingerprint)
+                    }
                 }
+            }
+            // All phones rejected the push (relay unreachable, bad token, 4xx/5xx): fall back to
+            // iCloud immediately without waiting for the 20 s fallback timer.
+            if !anyOk, alertNeeded, let fingerprint = state.approval {
+                ApprovalRelay.shared.liveActivityFailedApproval(fingerprint)
             }
             sent = state
             sending = false

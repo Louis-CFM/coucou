@@ -134,6 +134,19 @@ final class ApprovalRelay {
         log("approval (\(fingerprint.prefix(8))…): LA delivered, iCloud record skipped")
     }
 
+    /// Called by `LiveActivityRelay` when every push attempt failed (relay unreachable, 4xx/5xx,
+    /// bad token). Cancels the 20 s wait and publishes to iCloud right away so the user gets
+    /// notified without the full delay.
+    func liveActivityFailedApproval(_ fingerprint: String) {
+        guard current?.fingerprint == fingerprint else { return }
+        iCloudFallbackTask?.cancel()
+        iCloudFallbackTask = nil
+        guard let approval = AppState.shared.pendingApproval,
+              Self.fingerprint(approval) == fingerprint else { return }
+        Task { [weak self] in await self?.publishRequest(approval, fingerprint: fingerprint) }
+        log("approval (\(fingerprint.prefix(8))…): LA push failed, iCloud notified immediately")
+    }
+
     private func requestID(_ fingerprint: String) -> CKRecord.ID {
         CKRecord.ID(recordName: "approval-\(fingerprint.prefix(32))", zoneID: zoneID)
     }
