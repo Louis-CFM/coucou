@@ -136,17 +136,20 @@ const ELTXT = {
 const nodes = [], edges = [], groups = [];
 const addEdge = (a, b) => { if (a === b) return; edges.push([a, b]); nodes[a].adj.push(b); nodes[b].adj.push(a); };
 
-// PORT — placement : un seul nuage sphérique autour du trou noir. Chaque groupe (projet) = un amas
-// dont le rayon ∝ √(nombre de points) ; les centres des amas sont répartis sur une sphère (spirale de
-// Fibonacci), à une distance qui grandit avec la taille de l'amas. Les amas se touchent sans se confondre.
-const N_TOTAL = GROUPS.reduce((s, g) => s + g[1], 0);
-GROUPS.forEach(([name, count], gi) => {
-  const r = 12 * Math.sqrt(count);
-  const k = gi + 0.5, phi = Math.acos(1 - 2 * k / GROUPS.length), th = 2.39996 * gi;
-  const dist = 120 + r * 0.75;
-  const g = { name, count, r,
-    cx: dist * Math.sin(phi) * Math.cos(th), cy: dist * Math.cos(phi) * 0.8, cz: dist * Math.sin(phi) * Math.sin(th), ids: [] };
-  groups.push(g);
+// PORT — placement : TOUT EST À PLAT (2D), autour du trou noir, jamais devant ni derrière.
+// Les souvenirs forment un anneau plein autour du trou noir (de HOLE_CLEAR à R_OUT). Chaque groupe
+// (projet) en occupe un secteur dont l'angle est proportionnel à son nombre de points ; R_OUT grandit
+// avec le nombre total de points (≈ 22 unités² par point), donc la densité reste la même.
+const HOLE_CLEAR = 190;
+const N_ALL = GROUPS.reduce((s, g) => s + g[1], 0);
+const R_OUT = Math.sqrt(HOLE_CLEAR ** 2 + N_ALL * 22 * 22 / Math.PI);
+const GAP = 0.025;                                         // petit espace entre deux secteurs
+let acc = -Math.PI / 2;
+GROUPS.forEach(([name, count]) => {
+  const span = (2 * Math.PI - GAP * GROUPS.length) * count / N_ALL;
+  const a0 = acc, a1 = acc + span; acc = a1 + GAP;
+  const am = (a0 + a1) / 2, rm = (HOLE_CLEAR + R_OUT) / 2;
+  groups.push({ name, count, a0, a1, r: Math.sqrt(count) * 12, cx: Math.cos(am) * rm, cy: Math.sin(am) * rm, ids: [] });
 });
 
 const today = Date.now();
@@ -157,87 +160,68 @@ groups.forEach((g, gi) => {
     const isConv = i < nConv;
     let kind = 'conv';
     if (!isConv) kind = ['decision', 'decision', 'lecon', 'fait', 'fait', 'pref'][Math.floor(rnd() * 6)];
-    let x, y, z, parent = -1;
-    if (isConv) {
-      // point uniforme dans une sphère (aplatie en hauteur)
-      let u, v, w; do { u = rnd() * 2 - 1; v = rnd() * 2 - 1; w = rnd() * 2 - 1; } while (u * u + v * v + w * w > 1);
-      x = g.cx + u * g.r; y = g.cy + v * g.r * 0.85; z = g.cz + w * g.r;
-    } else {
-      parent = convIds[Math.floor(rnd() * convIds.length)];
-      const p = nodes[parent];
-      x = p.x + gauss() * 9; y = p.y + gauss() * 6; z = p.z + gauss() * 9;
-    }
+    let x, y, parent = -1;
+    if (isConv) { const rho = Math.sqrt(HOLE_CLEAR ** 2 + rnd() * (R_OUT ** 2 - HOLE_CLEAR ** 2)), th = g.a0 + rnd() * (g.a1 - g.a0); x = Math.cos(th) * rho; y = Math.sin(th) * rho; }
+    else { parent = convIds[Math.floor(rnd() * convIds.length)]; x = nodes[parent].x + gauss() * 9; y = nodes[parent].y + gauss() * 9; }
     const age = Math.floor(rnd() * rnd() * 400);
-    const id = nodes.length;
-    const t = TITLES[g.name];
-    nodes.push({ id, kind, g: gi, x, y, z, adj: [], age, parent,
+    const id = nodes.length, t = TITLES[g.name];
+    nodes.push({ id, kind, g: gi, x, y, adj: [], age, parent, ph: rnd() * 6.283,
       label: kind === 'conv' ? t[i % t.length] + (i >= t.length ? ' (' + (Math.floor(i / t.length) + 1) + ')' : '') : ELTXT[kind][i % ELTXT[kind].length],
       src: rnd() < 0.7 ? 'claude.ai' : 'Claude Code' });
     g.ids.push(id);
     if (isConv) convIds.push(id); else addEdge(id, parent);
   }
 });
-// quelques personnes
 [['Ohualtex', 0], ['Rhytam', 0], ['Eduardo', 0], ['Enya', 4]].forEach(([name, gi]) => {
   const g = groups[gi], id = nodes.length;
-  nodes.push({ id, kind: 'personne', g: gi, x: g.cx + gauss() * g.r * 0.5, y: g.cy + gauss() * 20, z: g.cz + gauss() * g.r * 0.5, adj: [], age: 3, parent: -1, label: name, src: '' });
+  nodes.push({ id, kind: 'personne', g: gi, x: g.cx + gauss() * g.r * 0.4, y: g.cy + gauss() * g.r * 0.4, adj: [], age: 3, parent: -1, ph: rnd() * 6.283, label: name, src: '' });
   g.ids.push(id);
 });
 
-// PORT — espacement : relaxation par collision dans chaque amas (distance mini 8),
-// pour qu'aucun point n'en recouvre un autre. Fait une fois, dans brain (graph.json).
-const MIN_D = 8;
+// PORT — espacement : relaxation par collision dans chaque amas (distance mini 10, 24 passes),
+// et personne à moins de HOLE_CLEAR du centre. Fait une fois, dans brain (graph.json).
+const MIN_D = 10;
 groups.forEach(g => {
   const ids = g.ids;
   for (let it = 0; it < 24; it++) {
     for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
       const a = nodes[ids[i]], b = nodes[ids[j]];
-      let dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, d = Math.hypot(dx, dy, dz) || 0.01;
-      if (d < MIN_D) { const k = (MIN_D - d) / d * 0.5; dx *= k; dy *= k; dz *= k; a.x -= dx; a.y -= dy; a.z -= dz; b.x += dx; b.y += dy; b.z += dz; }
+      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+      if (d < MIN_D) { const k = (MIN_D - d) / d * 0.5; dx *= k; dy *= k; a.x -= dx; a.y -= dy; b.x += dx; b.y += dy; }
     }
+    for (const i of ids) { const n = nodes[i], d = Math.hypot(n.x, n.y); if (d < HOLE_CLEAR) { n.x *= HOLE_CLEAR / d; n.y *= HOLE_CLEAR / d; } }
   }
 });
-// PORT — liens : chaque conversation → ses 2 voisines les plus proches du même amas ;
-// (3 voisines) ; éléments → leur conversation ; personnes → 8 conversations de leur projet ; 3 % de ponts entre amas.
+// PORT — liens : chaque conversation → ses 3 voisines les plus proches de son amas ; éléments → leur
+// conversation ; personnes → 8 conversations de leur projet ; 3 % de ponts entre amas.
 groups.forEach(g => {
   const convs = g.ids.filter(i => nodes[i].kind === 'conv');
   convs.forEach(i => {
     const a = nodes[i];
-    const near = convs.filter(j => j !== i).map(j => [j, (nodes[j].x - a.x) ** 2 + (nodes[j].y - a.y) ** 2 + (nodes[j].z - a.z) ** 2]).sort((p, q) => p[1] - q[1]);
+    const near = convs.filter(j => j !== i).map(j => [j, (nodes[j].x - a.x) ** 2 + (nodes[j].y - a.y) ** 2]).sort((p, q) => p[1] - q[1]);
     for (let k = 0; k < 3 && k < near.length; k++) if (!a.adj.includes(near[k][0])) addEdge(i, near[k][0]);
-    if (rnd() < 0.03) { const og = groups[Math.floor(rnd() * groups.length)]; const t = og.ids[Math.floor(rnd() * og.ids.length)]; if (nodes[t].kind === 'conv') addEdge(i, t); }
+    if (rnd() < 0.015) { const og = groups[Math.floor(rnd() * groups.length)]; const t = og.ids[Math.floor(rnd() * og.ids.length)]; if (nodes[t].kind === 'conv') addEdge(i, t); }
   });
   g.ids.filter(i => nodes[i].kind === 'personne').forEach(p => { for (let k = 0; k < 8; k++) addEdge(p, convs[Math.floor(rnd() * convs.length)]); });
 });
-// centroïde réel de chaque amas (après relaxation) pour placer son nom
-groups.forEach(g => { let x = 0, y = 0, z = 0; g.ids.forEach(i => { x += nodes[i].x; y += nodes[i].y; z += nodes[i].z; }); g.cx = x / g.ids.length; g.cy = y / g.ids.length; g.cz = z / g.ids.length; });
+groups.forEach(g => { let x = 0, y = 0; g.ids.forEach(i => { x += nodes[i].x; y += nodes[i].y; }); g.cx = x / g.ids.length; g.cy = y / g.ids.length; });
+const nodeEdges = nodes.map(() => []); edges.forEach(([a, b], k) => { nodeEdges[a].push(k); nodeEdges[b].push(k); });
 const MAX_AGE = 400;
 
-// ---------- 2. Caméra ----------
+// ---------- 2. Caméra (vue de dessus, à plat) ----------
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let W = 0, H = 0, DPR = 1;
-const cam = { yaw: 0.5, pitch: -0.18, zoom: 1, tx: 0, ty: 0, tz: 0 };
+// PORT — caméra 2D : la mémoire tourne très lentement autour du trou noir (rot), on se déplace (tx, ty)
+// et on zoome (0,35 → 40). Pas d'inclinaison, pas de 3D.
+const cam = { rot: 0, zoom: 1, tx: 0, ty: 0 };
 let fly = null, paused = false, grow = 1, sel = -1, hover = -1, inGroup = -1;
-
 function resize() { DPR = Math.min(2, devicePixelRatio || 1); W = cv.clientWidth * DPR; H = cv.clientHeight * DPR; cv.width = W; cv.height = H; buildNebula(); }
 addEventListener('resize', resize);
-
-// PORT — projection : rotation (yaw puis pitch) autour de la cible, perspective F=1400, échelle = zoom × min(W,H)/820.
-const F = 1400;
-const P = new Float32Array(nodes.length * 3); // x, y écran ; f (profondeur)
-const PZ = new Float32Array(nodes.length);     // profondeur caméra
-let holeZ = 0;
-function project(x, y, z, out) {
-  x -= cam.tx; y -= cam.ty; z -= cam.tz;
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-  const x1 = x * cy - z * sy, z1 = x * sy + z * cy;
-  const y1 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
-  const f = F / (F + z2), s = cam.zoom * Math.min(W, H) / 820;
-  out[0] = W / 2 + x1 * f * s; out[1] = H / 2 + y1 * f * s; out[2] = f; out[3] = z2;
-  return out;
-}
-const tmp = [0, 0, 0, 0];
-function scale() { return cam.zoom * Math.min(W, H) / 820; }
+const P = new Float32Array(nodes.length * 2);
+const tmp = [0, 0];
+function scale() { return cam.zoom * Math.min(W, H) / (2 * R_OUT + 260); }
+function rot(x, y) { const c = Math.cos(cam.rot), s = Math.sin(cam.rot); return [x * c - y * s, x * s + y * c]; }
+function project(x, y, out) { const r = rot(x, y), k = scale(); out[0] = W / 2 + (r[0] - cam.tx) * k; out[1] = H / 2 + (r[1] - cam.ty) * k; return out; }
 
 // ---------- 3. Fond : nébuleuse grise (bruit fractal précalculé) + étoiles ----------
 let neb = null;
@@ -261,75 +245,85 @@ function buildNebula() {
 }
 const stars = Array.from({ length: 420 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 0.9 + 0.2, a: Math.random() * 0.5 + 0.15 }));
 
-// ---------- 4. Trou noir (toi) : disque d'accrétion façon Interstellar ----------
-const dust = Array.from({ length: 520 }, () => ({ r: 1.5 + Math.pow(Math.random(), 1.6) * 3.2, a: Math.random() * 6.283, s: 0.6 + Math.random() * 0.8 }));
+// ---------- 4. Trou noir (toi), d'après la référence : Gargantua ----------
+// PORT — anneaux lentillés faits de nombreux arcs fins qui tournent, côté gauche plus brillant
+// (Doppler), horizon presque noir, fin anneau pointillé intérieur, longue bande d'accrétion
+// horizontale qui passe DEVANT, éclat à gauche, poussière dorée en orbite.
+const dust = Array.from({ length: 700 }, () => ({ r: 1.55 + Math.pow(Math.random(), 1.4) * 1.9, a: Math.random() * 6.283, s: 0.5 + Math.random(), z: Math.random() }));
+const arcs = Array.from({ length: 22 }, (_, k) => ({ r: 1.04 + Math.random() * 0.55, a0: Math.random() * 6.283, len: 1.4 + Math.random() * 3.6,
+  w: 0.5 + Math.random() * 1.3, sp: (0.00012 + Math.random() * 0.00025) * (Math.random() < 0.85 ? 1 : -1), al: 0.25 + Math.random() * 0.55 }));
+const BH_R = 64;
 function drawBlackHole(t) {
-  project(0, 0, 0, tmp);
-  const bx = tmp[0], by = tmp[1], R = 34 * tmp[2] * scale(); // rayon de l'horizon
-  const flat = 0.16;                                                        // disque vu presque par la tranche
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  // halo doré
-  let g = ctx.createRadialGradient(bx, by, R * 0.8, bx, by, R * 6);
-  g.addColorStop(0, 'rgba(255,190,120,0.35)'); g.addColorStop(0.35, 'rgba(255,150,80,0.08)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g; ctx.fillRect(bx - R * 6, by - R * 6, R * 12, R * 12);
-  // poussière en orbite (moitié arrière)
-  drawDust(bx, by, R, flat, t, true);
-  // moitié arrière du disque (au-dessus du trou)
-  drawDisk(bx, by, R, flat, true);
-  ctx.restore();
-  // horizon : disque noir
-  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(bx, by, R, 0, 6.283); ctx.fill();
+  project(0, 0, tmp);
+  const bx = tmp[0], by = tmp[1], R = BH_R * scale();
+  const warm = (a, k = 0) => `rgba(255,${226 - k * 60 | 0},${186 - k * 110 | 0},${a})`;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  // anneau de photons + image lentillée du disque (anneau autour de l'horizon)
-  for (const [rr, w, a] of [[1.05, 0.06, 0.95], [1.18, 0.16, 0.55], [1.34, 0.22, 0.22]]) {
-    ctx.lineWidth = R * w;
-    const rg = ctx.createLinearGradient(bx - R * 1.4, by, bx + R * 1.4, by);
-    rg.addColorStop(0, `rgba(255,236,205,${a})`); rg.addColorStop(1, `rgba(255,170,95,${a * 0.6})`);
-    ctx.strokeStyle = rg; ctx.beginPath(); ctx.arc(bx, by, R * rr, 0, 6.283); ctx.stroke();
+  // halo
+  let g = ctx.createRadialGradient(bx, by, R * 0.9, bx, by, R * 4.6);
+  g.addColorStop(0, 'rgba(255,176,102,0.20)'); g.addColorStop(0.4, 'rgba(255,140,70,0.05)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(bx - R * 5, by - R * 5, R * 10, R * 10);
+  // poussière en orbite (disque vu de dessus)
+  for (const d of dust) {
+    const a = d.a + t * 0.0009 * d.s / Math.pow(d.r, 1.5);
+    const x = bx + Math.cos(a) * d.r * R, y = by + Math.sin(a) * d.r * R;
+    const al = (1 - (d.r - 1.55) / 1.9) * (0.25 + d.z * 0.45);
+    ctx.fillStyle = warm(al, d.z); ctx.fillRect(x, y, 1.1 * DPR, 1.1 * DPR);
   }
-  // moitié avant du disque (passe devant le trou)
-  drawDisk(bx, by, R, flat, false);
-  drawDust(bx, by, R, flat, t, false);
+  // anneaux lentillés : arcs fins qui tournent ; luminosité selon l'angle (gauche = plus brillant)
+  for (const c of arcs) {
+    const a0 = c.a0 + t * c.sp, seg = 10;
+    ctx.lineWidth = c.w * DPR * Math.min(2, Math.max(0.7, R / 40));
+    for (let k = 0; k < seg; k++) {
+      const s0 = a0 + c.len * k / seg, s1 = a0 + c.len * (k + 1) / seg, mid = (s0 + s1) / 2;
+      const dop = 0.35 + 0.65 * (0.5 - 0.5 * Math.cos(mid - Math.PI) * -1);       // max à gauche (angle π)
+      const fade = Math.sin(Math.PI * (k + 0.5) / seg);                          // bouts de l'arc qui s'effacent
+      ctx.strokeStyle = warm(c.al * dop * fade, (c.r - 1.04) / 0.55 * 0.8);
+      ctx.beginPath(); ctx.arc(bx, by, R * c.r, s0, s1); ctx.stroke();
+    }
+  }
+  ctx.restore();
+  // horizon
+  g = ctx.createRadialGradient(bx, by, 0, bx, by, R);
+  g.addColorStop(0, '#000'); g.addColorStop(0.8, '#060403'); g.addColorStop(1, '#1d1108');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, R, 0, 6.283); ctx.fill();
+  // anneau pointillé intérieur qui tourne
+  ctx.save(); ctx.setLineDash([3 * DPR, 5 * DPR]); ctx.lineDashOffset = -t * 0.006 * DPR;
+  ctx.strokeStyle = 'rgba(255,236,210,0.28)'; ctx.lineWidth = 0.8 * DPR; ctx.beginPath(); ctx.arc(bx, by, R * 0.9, 0, 6.283); ctx.stroke(); ctx.restore();
+  // bande d'accrétion qui passe devant (légèrement inclinée), plus brillante à gauche
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(bx, by); ctx.rotate(-0.035);
+  const L = R * 4.8;
+  for (const [w, a] of [[0.26, 0.10], [0.08, 0.45], [0.024, 1]]) {
+    const lg = ctx.createLinearGradient(-L, 0, L, 0);
+    lg.addColorStop(0, 'rgba(255,150,80,0)'); lg.addColorStop(0.22, warm(a * 0.55, 0.6)); lg.addColorStop(0.4, `rgba(255,250,240,${a})`);
+    lg.addColorStop(0.56, warm(a * 0.85, 0.2)); lg.addColorStop(0.8, warm(a * 0.35, 0.9)); lg.addColorStop(1, 'rgba(255,140,70,0)');
+    ctx.strokeStyle = lg; ctx.lineWidth = Math.max(0.8 * DPR, R * w); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(L, 0); ctx.stroke();
+  }
+  // éclat à gauche de l'horizon
+  g = ctx.createRadialGradient(-R * 1.02, 0, 0, -R * 1.02, 0, R * 1.1);
+  g.addColorStop(0, 'rgba(255,252,245,0.75)'); g.addColorStop(0.3, 'rgba(255,214,160,0.25)'); g.addColorStop(1, 'rgba(255,170,90,0)');
+  ctx.fillStyle = g; ctx.fillRect(-R * 2.2, -R * 1.2, R * 2.4, R * 2.4);
   ctx.restore();
   return { bx, by, R };
 }
-function drawDisk(bx, by, R, flat, back) {
-  for (const [rx, w, a] of [[3.6, 0.10, 0.18], [2.6, 0.12, 0.45], [1.9, 0.10, 0.85], [1.45, 0.07, 1]]) {
-    const g = ctx.createLinearGradient(bx - R * rx, by, bx + R * rx, by);
-    // effet Doppler : le côté gauche (qui vient vers nous) est plus brillant
-    g.addColorStop(0, 'rgba(255,170,90,0)'); g.addColorStop(0.25, `rgba(255,214,160,${a})`); g.addColorStop(0.5, `rgba(255,248,235,${a})`);
-    g.addColorStop(0.78, `rgba(255,170,95,${a * 0.6})`); g.addColorStop(1, 'rgba(255,140,70,0)');
-    ctx.strokeStyle = g; ctx.lineWidth = R * w;
-    ctx.beginPath(); ctx.ellipse(bx, by, R * rx, R * rx * flat, 0, back ? Math.PI : 0, back ? 2 * Math.PI : Math.PI); ctx.stroke();
-  }
-}
-function drawDust(bx, by, R, flat, t, back) {
-  for (const d of dust) {
-    const a = d.a + t * 0.00035 * d.s / Math.pow(d.r, 1.5) * 6;
-    const s = Math.sin(a); if ((s < 0) !== back) continue;
-    const x = bx + Math.cos(a) * d.r * R, y = by + s * d.r * R * flat * 2.2;
-    const al = Math.max(0, 1 - (d.r - 1.5) / 3.4) * 0.8;
-    ctx.fillStyle = `rgba(255,${200 + d.r * 10 | 0},${150 + d.r * 20 | 0},${al})`;
-    ctx.fillRect(x, y, 1.3 * DPR, 1.3 * DPR);
-  }
-}
 
-// ---------- 5. Orbites décoratives avec comètes ----------
-const orbits = [{ r: 560, sp: 0.00006, a0: 0.4 }, { r: 660, sp: -0.00004, a0: 2.2 }, { r: 770, sp: 0.00003, a0: 4.1 }, { r: 880, sp: -0.000025, a0: 5.2 }];
+// ---------- 5. Orbites décoratives avec comètes (cercles à plat autour du trou noir) ----------
+const orbits = [{ r: R_OUT + 60, sp: 0.00005, a0: 0.4 }, { r: R_OUT + 140, sp: -0.000035, a0: 2.2 }, { r: R_OUT + 240, sp: 0.000028, a0: 4.1 }, { r: R_OUT + 360, sp: -0.00002, a0: 5.2 }];
 function drawOrbits(t) {
-  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
   for (const o of orbits) {
-    const head = o.a0 + t * o.sp, dir = Math.sign(o.sp), len = 1.1;
-    let prev = null;
-    for (let k = 0; k <= 40; k++) {
-      const a = head - dir * len * (k / 40);
-      project(Math.cos(a) * o.r, 0, Math.sin(a) * o.r, tmp);
-      if (prev) { ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - k / 40) ** 1.5})`; ctx.lineWidth = 1 * DPR; ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(tmp[0], tmp[1]); ctx.stroke(); }
-      prev = [tmp[0], tmp[1]];
+    const head = o.a0 + t * o.sp, dir = Math.sign(o.sp), len = 0.9, N = 36;
+    let px = null, py = null;
+    for (let k = 0; k <= N; k++) {
+      const a = head - dir * len * (k / N);
+      project(Math.cos(a) * o.r, Math.sin(a) * o.r, tmp);
+      if (px !== null) { ctx.strokeStyle = `rgba(255,255,255,${0.42 * (1 - k / N) ** 1.6})`; ctx.lineWidth = 1 * DPR; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(tmp[0], tmp[1]); ctx.stroke(); }
+      px = tmp[0]; py = tmp[1];
     }
-    project(Math.cos(head) * o.r, 0, Math.sin(head) * o.r, tmp);
-    ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.arc(tmp[0], tmp[1], 2.2 * DPR, 0, 6.283); ctx.fill();
+    project(Math.cos(head) * o.r, Math.sin(head) * o.r, tmp);
+    const g = ctx.createRadialGradient(tmp[0], tmp[1], 0, tmp[0], tmp[1], 6 * DPR);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(tmp[0] - 6 * DPR, tmp[1] - 6 * DPR, 12 * DPR, 12 * DPR);
   }
   ctx.restore();
 }
@@ -339,88 +333,104 @@ let last = performance.now(), fpsAcc = 0, fpsN = 0, labelRects = [];
 const vis = new Uint8Array(nodes.length);
 const focus = new Uint8Array(nodes.length);
 const filter = { kinds: new Set(), q: '' };
+// PORT — signaux : ~70 petites traînées lumineuses qui courent le long des liens, de point en point
+// (3 à 7 sauts), puis renaissent ailleurs. C'est ce qui fait « bouger » les connexions.
+const signals = Array.from({ length: 70 }, () => newSignal());
+function newSignal(from) {
+  let a, e;
+  if (from != null && nodeEdges[from].length) { e = nodeEdges[from][Math.floor(Math.random() * nodeEdges[from].length)]; a = from; }
+  else { e = Math.floor(Math.random() * edges.length); a = edges[e][Math.random() < 0.5 ? 0 : 1]; }
+  const b = edges[e][0] === a ? edges[e][1] : edges[e][0];
+  return { a, b, t: Math.random() * (from == null ? 1 : 0), sp: 0.004 + Math.random() * 0.008, hops: 3 + Math.floor(Math.random() * 5) };
+}
 
 function frame(now) {
-  const dt = now - last; last = now; fpsAcc += dt; fpsN++;
+  const dt = Math.min(50, now - last); last = now; fpsAcc += dt; fpsN++;
   if (fpsAcc > 500) { document.getElementById('fps').textContent = `${nodes.length.toLocaleString('fr-FR')} souvenirs · ${Math.round(1000 * fpsN / fpsAcc)} i/s`; fpsAcc = 0; fpsN = 0; }
-  if (!paused && !dragging) cam.yaw += dt * 0.000035;
+  // PORT — rotation lente de toute la mémoire autour de toi (un tour en ~15 min), arrêtée quand on zoome
+  if (!paused && !dragging && cam.zoom < 1.6 && !fly) cam.rot += dt * 0.000007;
   if (grow < 1) grow = Math.min(1, grow + dt / 5000);
   if (fly) { const k = Math.min(1, (now - fly.t0) / fly.d), e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
-    for (const key of ['tx', 'ty', 'tz', 'zoom']) cam[key] = fly.from[key] + (fly.to[key] - fly.from[key]) * e; if (k >= 1) fly = null; }
+    for (const key of ['tx', 'ty', 'zoom']) cam[key] = fly.from[key] + (fly.to[key] - fly.from[key]) * e; if (k >= 1) fly = null; }
 
   ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   ctx.fillStyle = '#040405'; ctx.fillRect(0, 0, W, H);
-  // nébuleuse (parallaxe légère)
-  if (neb) { const s = Math.max(W, H) * 1.5, ox = -cam.tx * 0.08 * scale() - (s - W) / 2, oy = -cam.tz * 0.04 * scale() - (s - H) / 2; ctx.globalAlpha = 0.55; ctx.drawImage(neb, ox, oy, s, s); ctx.globalAlpha = 1; }
-  for (const s of stars) { ctx.fillStyle = `rgba(255,255,255,${s.a})`; ctx.fillRect(s.x * W, s.y * H, s.r * DPR, s.r * DPR); }
+  if (neb) { const s = Math.max(W, H) * 1.5, ox = -cam.tx * 0.05 * scale() - (s - W) / 2, oy = -cam.ty * 0.05 * scale() - (s - H) / 2; ctx.globalAlpha = 0.45; ctx.drawImage(neb, ox, oy, s, s); ctx.globalAlpha = 1; }
+  for (const s of stars) { ctx.fillStyle = `rgba(255,255,255,${s.a * 0.7})`; ctx.fillRect(s.x * W, s.y * H, s.r * DPR, s.r * DPR); }
 
-  // projeter tous les points
-  project(0, 0, 0, tmp); holeZ = tmp[3];
-  const sc = scale();
+  // PORT — chaque point flotte un peu autour de sa place (±1,6), donc les liens bougent doucement
   for (let i = 0; i < nodes.length; i++) {
     const n = nodes[i];
-    project(n.x, n.y, n.z, tmp); P[i * 3] = tmp[0]; P[i * 3 + 1] = tmp[1]; P[i * 3 + 2] = tmp[2]; PZ[i] = tmp[3];
-    const ok = (filter.kinds.size === 0 || filter.kinds.has(n.kind))
-      && (grow >= 1 || n.kind === 'personne' || n.age >= MAX_AGE * (1 - grow));   // « Voir grandir » : du plus ancien au plus récent
-    vis[i] = ok && tmp[3] > -F * 0.9 ? 1 : 0;
+    const wx = Math.sin(now * 0.00045 + n.ph) * 1.6, wy = Math.cos(now * 0.0004 + n.ph * 1.3) * 1.6;
+    project(n.x + wx, n.y + wy, tmp); P[i * 2] = tmp[0]; P[i * 2 + 1] = tmp[1];
+    vis[i] = (filter.kinds.size === 0 || filter.kinds.has(n.kind)) && (grow >= 1 || n.kind === 'personne' || n.age >= MAX_AGE * (1 - grow)) ? 1 : 0;
   }
   drawOrbits(now);
 
-  // PORT — liens : blancs, 1 seul Path, opacité qui monte avec le zoom (0,06 → 0,16)
-  const eA = Math.min(0.24, 0.13 + (cam.zoom - 1) * 0.03) * (sel >= 0 ? 0.35 : 1);
-  ctx.strokeStyle = `rgba(255,255,255,${eA})`; ctx.lineWidth = 0.6 * DPR; ctx.beginPath();
-  for (const [a, b] of edges) { if (!vis[a] || !vis[b]) continue; ctx.moveTo(P[a * 3], P[a * 3 + 1]); ctx.lineTo(P[b * 3], P[b * 3 + 1]); }
-  ctx.stroke();
-  // liens du point choisi / survolé
+  // PORT — liens : fins, blancs, en 3 groupes dont l'opacité respire chacun à son rythme (0,06 → 0,16)
+  const base = Math.min(0.2, 0.11 + (cam.zoom - 1) * 0.025) * (sel >= 0 ? 0.3 : 1);
+  ctx.lineWidth = 0.6 * DPR;
+  for (let b = 0; b < 3; b++) {
+    ctx.strokeStyle = `rgba(255,255,255,${base * (0.62 + 0.38 * Math.sin(now * 0.0011 + b * 2.1))})`; ctx.beginPath();
+    for (let k = b; k < edges.length; k += 3) { const [a, c] = edges[k]; if (!vis[a] || !vis[c]) continue; ctx.moveTo(P[a * 2], P[a * 2 + 1]); ctx.lineTo(P[c * 2], P[c * 2 + 1]); }
+    ctx.stroke();
+  }
+  // signaux
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  for (let k = 0; k < signals.length; k++) {
+    let s = signals[k]; s.t += s.sp * dt / 16;
+    if (s.t >= 1) { signals[k] = s.hops > 0 ? Object.assign(newSignal(s.b), { hops: s.hops - 1 }) : newSignal(); if (sel >= 0 && Math.random() < 0.35) signals[k] = newSignal(sel); continue; }
+    if (!vis[s.a] || !vis[s.b]) continue;
+    const ax = P[s.a * 2], ay = P[s.a * 2 + 1], bx = P[s.b * 2], by = P[s.b * 2 + 1];
+    const t0 = Math.max(0, s.t - 0.3), x0 = ax + (bx - ax) * t0, y0 = ay + (by - ay) * t0, x1 = ax + (bx - ax) * s.t, y1 = ay + (by - ay) * s.t;
+    const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, `rgba(255,255,255,${0.55 * Math.sin(Math.PI * Math.min(1, s.t * 1.2))})`);
+    ctx.strokeStyle = g; ctx.lineWidth = 1 * DPR; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  ctx.restore();
   const lit = (i, a, w) => { ctx.strokeStyle = `rgba(255,255,255,${a})`; ctx.lineWidth = w * DPR; ctx.beginPath();
-    for (const j of nodes[i].adj) if (vis[j]) { ctx.moveTo(P[i * 3], P[i * 3 + 1]); ctx.lineTo(P[j * 3], P[j * 3 + 1]); } ctx.stroke(); };
-  if (sel >= 0) lit(sel, 0.85, 1.1);
-  if (hover >= 0 && hover !== sel) lit(hover, 0.45, 0.9);
+    for (const j of nodes[i].adj) if (vis[j]) { ctx.moveTo(P[i * 2], P[i * 2 + 1]); ctx.lineTo(P[j * 2], P[j * 2 + 1]); } ctx.stroke(); };
+  if (sel >= 0) lit(sel, 0.8, 1);
+  if (hover >= 0 && hover !== sel) lit(hover, 0.4, 0.8);
 
-  // points derrière le trou noir, puis le trou noir, puis les points devant
-  drawPoints(false, sc);
+  drawPoints(now);
   const bh = drawBlackHole(now);
-  drawPoints(true, sc);
 
-  // PORT — noms : de loin, seulement les amas (nom + nombre) ; de près, quelques points (sans chevauchement)
+  // PORT — noms : de loin, seulement les amas (nom + nombre), du plus gros au plus petit, décalés ou
+  // cachés s'ils se chevauchent ; de près, 18 titres au plus, jamais l'un sur l'autre.
   labelRects = [];
   ctx.textAlign = 'center';
-  const showGroups = inGroup < 0 || cam.zoom < 2.2;
   const taken = [];
   const free = (x, y, w, h) => { for (const r of taken) if (x < r[0] + r[2] && x + w > r[0] && y < r[1] + r[3] && y + h > r[1]) return false; taken.push([x, y, w, h]); return true; };
-  free(bh.bx - 40 * DPR, bh.by + bh.R * 1.2, 80 * DPR, 28 * DPR);
-  // nom "Toi" sous le trou noir
-  pillLabel(bh.bx, bh.by + bh.R * 1.55 + 10 * DPR, 'Toi');
-  // PORT — noms des amas : du plus gros au plus petit ; si un nom en chevauche un autre, on le décale
-  // un peu vers le haut ou le bas, sinon on le cache (il réapparaît en zoomant).
+  taken.push([bh.bx - bh.R * 4.8, bh.by - bh.R * 1.7, bh.R * 9.6, bh.R * 3.6]);
+  pillLabel(bh.bx, bh.by + bh.R * 1.85, 'Toi');
+  const showGroups = inGroup < 0 || cam.zoom < 2.2;
   if (showGroups) [...groups.keys()].sort((a, b) => groups[b].ids.length - groups[a].ids.length).forEach(gi => {
     const g = groups[gi];
-    project(g.cx, g.cy, g.cz, tmp); const x = tmp[0]; let y = tmp[1];
+    project(g.cx, g.cy, tmp); const x = tmp[0]; let y = tmp[1];
     ctx.font = `600 ${12.5 * DPR}px -apple-system,system-ui,sans-serif`;
     const lw = Math.max(ctx.measureText(g.name).width, 70 * DPR) + 12 * DPR, lh = 32 * DPR;
-    const ok = [0, -1, 1, -2, 2].some(k => { const yy = tmp[1] + k * 20 * DPR; if (free(x - lw / 2, yy - 14 * DPR, lw, lh)) { y = yy; return true; } return false; });
+    const ok = [0, -1, 1, -2, 2, -3, 3].some(k => { const yy = tmp[1] + k * 20 * DPR; if (free(x - lw / 2, yy - 14 * DPR, lw, lh)) { y = yy; return true; } return false; });
     if (!ok) return;
-    const a = sel >= 0 ? 0.35 : (inGroup >= 0 && inGroup !== gi ? 0.4 : 1);
-    ctx.globalAlpha = a;
-    ctx.font = `600 ${12.5 * DPR}px -apple-system,system-ui,sans-serif`; ctx.fillStyle = '#F2F3F5'; ctx.fillText(g.name, x, y);
-    ctx.font = `${10.5 * DPR}px -apple-system,system-ui,sans-serif`; ctx.fillStyle = 'rgba(200,204,210,.65)'; ctx.fillText(`${g.ids.length} souvenirs`, x, y + 14 * DPR);
+    ctx.globalAlpha = sel >= 0 ? 0.35 : (inGroup >= 0 && inGroup !== gi ? 0.4 : 1);
+    ctx.fillStyle = '#ECEEF2'; ctx.fillText(g.name, x, y);
+    ctx.font = `${10.5 * DPR}px -apple-system,system-ui,sans-serif`; ctx.fillStyle = 'rgba(200,204,210,.6)'; ctx.fillText(`${g.ids.length} souvenirs`, x, y + 14 * DPR);
     labelRects.push({ gi, x: x - lw / 2, y: y - 14 * DPR, w: lw, h: lh });
     ctx.globalAlpha = 1;
   });
   if (cam.zoom >= 2.2 || (inGroup >= 0 && cam.zoom >= 1.2)) {
     const cand = [];
     for (let i = 0; i < nodes.length; i++) { if (!vis[i] || nodes[i].kind !== 'conv' && nodes[i].kind !== 'personne') continue;
-      if (inGroup >= 0 && nodes[i].g !== inGroup) continue;   // dans un amas : seulement ses noms
-      const x = P[i * 3], y = P[i * 3 + 1]; if (x < 0 || y < 0 || x > W || y > H) continue; cand.push([nodes[i].adj.length + P[i * 3 + 2] * 3, i]); }
+      if (inGroup >= 0 && nodes[i].g !== inGroup) continue;
+      const x = P[i * 2], y = P[i * 2 + 1]; if (x < 0 || y < 0 || x > W || y > H) continue; cand.push([nodes[i].adj.length, i]); }
     cand.sort((a, b) => b[0] - a[0]);
     ctx.font = `500 ${11 * DPR}px -apple-system,system-ui,sans-serif`;
     let shown = 0;
     for (const [, i] of cand) { if (shown > 18) break;
-      const x = P[i * 3], y = P[i * 3 + 1] - 9 * DPR, t = nodes[i].label, w = ctx.measureText(t).width + 8 * DPR;
+      const x = P[i * 2], y = P[i * 2 + 1] - 9 * DPR, t = nodes[i].label, w = ctx.measureText(t).width + 8 * DPR;
       if (!free(x - w / 2, y - 12 * DPR, w, 15 * DPR)) continue;
-      ctx.fillStyle = sel >= 0 && !focus[i] ? 'rgba(220,224,230,.25)' : 'rgba(220,224,230,.78)'; ctx.fillText(t, x, y); shown++; }
+      ctx.fillStyle = sel >= 0 && !focus[i] ? 'rgba(220,224,230,.22)' : 'rgba(220,224,230,.72)'; ctx.fillText(t, x, y); shown++; }
   }
-  if (sel >= 0) { const i = sel; pillLabel(P[i * 3], P[i * 3 + 1] - 16 * DPR, nodes[i].label); }
+  if (sel >= 0) pillLabel(P[sel * 2], P[sel * 2 + 1] - 16 * DPR, nodes[sel].label);
   requestAnimationFrame(frame);
 }
 function pillLabel(x, y, t) {
@@ -430,46 +440,44 @@ function pillLabel(x, y, t) {
   ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#F2F3F5'; ctx.textBaseline = 'middle'; ctx.fillText(t, x, y + DPR); ctx.textBaseline = 'alphabetic';
 }
-// PORT — points : blancs, minuscules (1 à 2,4 px), taille selon le nombre de liens, un léger halo seulement pour les plus reliés.
-function drawPoints(front, sc) {
-  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+// PORT — points : discrets. Blanc cassé, opacité 0,4 → 0,8 selon les liens, qui scintille un peu ;
+// petite croix de lumière (✦) seulement pour les plus reliés ; aucun gros halo.
+function drawPoints(now) {
   for (let i = 0; i < nodes.length; i++) {
     if (!vis[i]) continue;
-    const f = P[i * 3 + 2]; if ((PZ[i] < holeZ) !== front) continue;   // devant ou derrière le trou noir
-    const n = nodes[i], x = P[i * 3], y = P[i * 3 + 1];
+    const n = nodes[i], x = P[i * 2], y = P[i * 2 + 1];
     if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
-    let a = Math.max(0.25, Math.min(1, (f - 0.7) * 2.4));
-    if (sel >= 0 && !focus[i]) a *= 0.15;
-    else if (inGroup >= 0 && n.g !== inGroup) a *= 0.3;   // dans un amas : les autres s'estompent
     const deg = n.adj.length;
-    const r = (n.kind === 'conv' || n.kind === 'personne' ? Math.min(2.4, 1 + deg * 0.12) : 0.8) * DPR * Math.pow(cam.zoom, 0.3) * f;
-    if (deg > 6 || i === sel || i === hover) { const g = ctx.createRadialGradient(x, y, 0, x, y, r * 5); g.addColorStop(0, `rgba(255,255,255,${0.35 * a})`); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - r * 5, y - r * 5, r * 10, r * 10); }
-    ctx.fillStyle = n.kind === 'personne' ? `rgba(255,214,170,${a})` : `rgba(255,255,255,${a})`;
+    let a = (n.kind === 'conv' || n.kind === 'personne' ? 0.5 + Math.min(0.4, deg * 0.045) : 0.35) * (0.82 + 0.18 * Math.sin(now * 0.002 + n.ph * 3));
+    if (sel >= 0 && !focus[i]) a *= 0.15; else if (inGroup >= 0 && n.g !== inGroup) a *= 0.3;
+    if (i === sel || i === hover) a = 1;
+    const r = (n.kind === 'conv' || n.kind === 'personne' ? 0.75 + Math.min(0.85, deg * 0.08) : 0.55) * DPR * Math.pow(cam.zoom, 0.35);
+    ctx.fillStyle = n.kind === 'personne' ? `rgba(255,220,180,${a})` : `rgba(236,238,243,${a})`;
     ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
-    if (i === sel) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.2 * DPR; ctx.beginPath(); ctx.arc(x, y, r + 5 * DPR, 0, 6.283); ctx.stroke(); }
+    if (deg >= 7 || i === sel) {
+      ctx.strokeStyle = `rgba(255,255,255,${a * 0.35})`; ctx.lineWidth = 0.6 * DPR; const L = r * 4.5;
+      ctx.beginPath(); ctx.moveTo(x - L, y); ctx.lineTo(x + L, y); ctx.moveTo(x, y - L); ctx.lineTo(x, y + L); ctx.stroke();
+    }
+    if (i === sel) { ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.1 * DPR; ctx.beginPath(); ctx.arc(x, y, r + 5 * DPR, 0, 6.283); ctx.stroke(); }
   }
-  ctx.restore();
 }
 
 // ---------- 7. Interactions ----------
 let dragging = false, down = null;
 function pick(mx, my) {
   let best = -1, bd = (10 * DPR) ** 2;
-  for (let i = 0; i < nodes.length; i++) { if (!vis[i]) continue; const d = (P[i * 3] - mx) ** 2 + (P[i * 3 + 1] - my) ** 2; if (d < bd) { bd = d; best = i; } }
+  for (let i = 0; i < nodes.length; i++) { if (!vis[i]) continue; const d = (P[i * 2] - mx) ** 2 + (P[i * 2 + 1] - my) ** 2; if (d < bd) { bd = d; best = i; } }
   return best;
 }
 function groupAt(mx, my) { for (const r of labelRects) if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) return r.gi; return -1; }
-// PORT — glisser = se déplacer (dans le plan de l'écran) ; Maj + glisser = tourner/incliner ;
-// molette/pincement = zoom vers le curseur ; double-clic = voler vers le point.
-cv.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, m: 0, shift: e.shiftKey }; cv.setPointerCapture(e.pointerId); });
+// PORT — glisser = se déplacer ; molette / pincement = zoom vers le curseur ; double-clic = voler vers le point.
+cv.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, m: 0 }; cv.setPointerCapture(e.pointerId); });
 cv.addEventListener('pointermove', e => {
   const mx = e.clientX * DPR, my = e.clientY * DPR;
   if (down) {
     const dx = e.clientX - down.x, dy = e.clientY - down.y; down.m += Math.abs(dx) + Math.abs(dy); down.x = e.clientX; down.y = e.clientY;
     if (down.m > 4) { dragging = true; cv.classList.add('drag'); fly = null; }
-    if (!dragging) return;
-    if (down.shift) { cam.yaw += dx * 0.005; cam.pitch = Math.max(-1.35, Math.min(-0.05, cam.pitch + dy * 0.004)); }
-    else panScreen(dx * DPR, dy * DPR);
+    if (dragging) { const k = scale(); cam.tx -= dx * DPR / k; cam.ty -= dy * DPR / k; }
     return;
   }
   const h = pick(mx, my); hover = h;
@@ -482,38 +490,20 @@ cv.addEventListener('pointerup', e => {
   if (wasDrag) return;
   const mx = e.clientX * DPR, my = e.clientY * DPR;
   const gi = groupAt(mx, my); if (gi >= 0 && sel < 0) { enterGroup(gi); return; }
-  const i = pick(mx, my); select(i);
+  select(pick(mx, my)); document.getElementById('tip').style.display = 'none';
 });
-cv.addEventListener('dblclick', e => { const i = pick(e.clientX * DPR, e.clientY * DPR); if (i >= 0) flyTo(nodes[i].x, nodes[i].y, nodes[i].z, Math.max(cam.zoom, 5)); });
+cv.addEventListener('dblclick', e => { const i = pick(e.clientX * DPR, e.clientY * DPR); if (i >= 0) flyTo(nodes[i].x, nodes[i].y, 0, Math.max(cam.zoom, 5)); });
 cv.addEventListener('pointerleave', () => { hover = -1; document.getElementById('tip').style.display = 'none'; });
-cv.addEventListener('wheel', e => {
-  e.preventDefault(); fly = null;
-  const k = Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0016));
-  zoomAt(e.clientX * DPR, e.clientY * DPR, k);
-}, { passive: false });
+cv.addEventListener('wheel', e => { e.preventDefault(); fly = null; zoomAt(e.clientX * DPR, e.clientY * DPR, Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0016))); }, { passive: false });
 
-function zoomAt(mx, my, k) {
-  const z0 = cam.zoom, z1 = Math.max(0.35, Math.min(40, z0 * k));
-  // garder le point sous le curseur fixe : déplacer la cible vers le curseur
-  const before = screenToWorld(mx, my);
-  cam.zoom = z1;
-  const after = screenToWorld(mx, my);
-  cam.tx += before[0] - after[0]; cam.ty += before[1] - after[1]; cam.tz += before[2] - after[2];
+function zoomAt(mx, my, f) {
+  const k0 = scale(), wx = (mx - W / 2) / k0 + cam.tx, wy = (my - H / 2) / k0 + cam.ty;
+  cam.zoom = Math.max(0.35, Math.min(40, cam.zoom * f));
+  const k1 = scale(); cam.tx = wx - (mx - W / 2) / k1; cam.ty = wy - (my - H / 2) / k1;
 }
-function screenToWorld(mx, my) { // point du plan qui passe par la cible, face à la caméra
-  const s = scale(), dx = (mx - W / 2) / s, dy = (my - H / 2) / s;
-  return inverseRot(dx, dy).map((v, k) => v + [cam.tx, cam.ty, cam.tz][k]);
-}
-function inverseRot(x1, y1) {
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-  const y = y1 * cp, z1 = -y1 * sp; // z2 = 0
-  return [x1 * cy + z1 * sy, y, -x1 * sy + z1 * cy];
-}
-function panScreen(dx, dy) { const s = scale(), w = inverseRot(-dx / s, -dy / s); cam.tx += w[0]; cam.ty += w[1]; cam.tz += w[2]; }
-function flyTo(x, y, z, zoom, d = 850) { fly = { t0: performance.now(), d, from: { ...cam }, to: { tx: x, ty: y, tz: z, zoom } }; }
-
-function enterGroup(gi) { inGroup = gi; const g = groups[gi]; flyTo(g.cx, g.cy, g.cz, Math.min(6, 650 / (g.r * 2.2))); document.getElementById('back').style.display = 'block'; document.getElementById('brand').style.display = 'none'; }
-function leaveGroup() { inGroup = -1; select(-1); flyTo(0, 0, 0, 1); document.getElementById('back').style.display = 'none'; document.getElementById('brand').style.display = 'block'; }
+function flyTo(x, y, _z, zoom, d = 850) { const r = rot(x, y); fly = { t0: performance.now(), d, from: { ...cam }, to: { tx: r[0], ty: r[1], zoom } }; }
+function enterGroup(gi) { inGroup = gi; const g = groups[gi]; flyTo(g.cx, g.cy, 0, Math.min(5, Math.max(1.6, 2.6 * Math.sqrt(N_ALL / g.count) * 0.55))); document.getElementById('back').style.display = 'block'; document.getElementById('brand').style.display = 'none'; }
+function leaveGroup() { inGroup = -1; select(-1); fly = { t0: performance.now(), d: 850, from: { ...cam }, to: { tx: 0, ty: 0, zoom: 1 } }; document.getElementById('back').style.display = 'none'; document.getElementById('brand').style.display = 'block'; }
 
 function select(i) {
   sel = i; focus.fill(0);
