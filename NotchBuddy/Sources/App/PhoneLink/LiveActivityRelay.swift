@@ -56,6 +56,8 @@ final class LiveActivityRelay {
         var updatedAt: Date
         /// The iPhone app's bundle id (empty: an older app, the relay's default).
         var app: String = ""
+        /// Whether the iPhone user has Mochi sounds on (read from PhoneToken.mochiSounds).
+        var mochiSounds: Bool = true
     }
 
     private var database: CKDatabase { CKContainer(identifier: CloudProbe.containerID).privateCloudDatabase }
@@ -67,7 +69,7 @@ final class LiveActivityRelay {
     private var locked = false
     private var latest: MochiActivityState?
     /// Set while a Live Activity runs on the iPhone(s).
-    private var startedAt: Date?
+    private(set) var startedAt: Date?
     /// Sent with every push of an activity, so the iPhone shows the time since.
     private var activitySince: Int?
     /// The startedAt whose start push actually went out.
@@ -78,6 +80,10 @@ final class LiveActivityRelay {
     private var retries = 0
     /// The phase a start was sent again for, so it is only tried once each.
     private var restartedFor: String?
+    /// Last time an urgent alert (banner + sound) was sent; used for burst and fingerprint dedup.
+    private var lastAlertTime: Date?
+    /// The approval fingerprint of the last alert sent; suppresses re-alerts for 2 minutes.
+    private var lastAlertedFingerprint: String?
     /// A start waiting to see if the Mac stays locked, and an end waiting to
     /// see if it stays unlocked: iOS allows only so many starts an hour, so a
     /// quick lock and unlock doesn't spend one.
@@ -270,12 +276,36 @@ final class LiveActivityRelay {
             }
             retries = 0
             let urgent = state.tone == "waiting" || state.tone == "question"
+            // Burst and fingerprint dedup: suppress the alert (banner + sound) but still update
+            // the Live Activity content so Allow/Deny stays visible in the Dynamic Island.
+            let now = Date()
+            var alertNeeded = urgent
+            if urgent {
+                let elapsed = lastAlertTime.map { now.timeIntervalSince($0) } ?? .infinity
+                if let fp = state.approval, fp == lastAlertedFingerprint, elapsed < 120 {
+                    // Same approval fingerprint within 2 minutes: silent update, no second ring.
+                    alertNeeded = false
+                } else if elapsed < 10 {
+                    // Different request but within 10 s (burst): only the first one rings.
+                    alertNeeded = false
+                }
+            }
+            if alertNeeded {
+                lastAlertTime = now
+                lastAlertedFingerprint = state.approval
+            }
             for (id, phone) in targets {
+                let sound: String? = alertNeeded ? (phone.mochiSounds ? "approval.wav" : "default") : nil
                 let ok = await post(event: "update", token: phone.updateToken, env: phone.env, state: state,
-                                    urgent: urgent, phoneID: id)
+                                    urgent: alertNeeded, sound: sound, phoneID: id)
                 // Every change of phase is logged; step counts only when they fail.
                 if ok && (urgent || sent?.tone != state.tone) {
                     log("update sent: \(state.agent) \(state.statusText)\(state.approval == nil ? "" : " (with Allow / Deny)")")
+                }
+                // Alert delivered: the Live Activity is the notification — tell ApprovalRelay
+                // to skip the iCloud record (and its banner) for this fingerprint.
+                if ok, alertNeeded, let fingerprint = state.approval {
+                    ApprovalRelay.shared.liveActivityHandledApproval(fingerprint)
                 }
             }
             sent = state
@@ -337,12 +367,13 @@ final class LiveActivityRelay {
     /// Sends one push through the relay. Returns true when Apple accepted it.
     @discardableResult
     private func post(event: String, token: String, env: String, state: MochiActivityState,
-                      urgent: Bool = false, dismissAfter: Int? = nil, phoneID: String,
-                      triedOtherEnv: Bool = false) async -> Bool {
+                      urgent: Bool = false, sound: String? = nil, dismissAfter: Int? = nil,
+                      phoneID: String, triedOtherEnv: Bool = false) async -> Bool {
         guard let url = relayURL else { return false }
         var state = state
         if state.since == nil { state.since = activitySince }
         var body: [String: Any] = ["token": token, "env": env, "event": event, "urgent": urgent]
+        if let sound { body["sound"] = sound }
         if let dismissAfter { body["dismissAfter"] = dismissAfter }
         if let app = phones[phoneID]?.app, !app.isEmpty { body["app"] = app }
         guard let stateData = try? JSONEncoder().encode(state),
@@ -368,8 +399,8 @@ final class LiveActivityRelay {
                     phones[phoneID]?.env = other
                     log("relay \(event): token not valid on \(env), trying \(other)")
                     return await post(event: event, token: token, env: other, state: state,
-                                      urgent: urgent, dismissAfter: dismissAfter, phoneID: phoneID,
-                                      triedOtherEnv: true)
+                                      urgent: urgent, sound: sound, dismissAfter: dismissAfter,
+                                      phoneID: phoneID, triedOtherEnv: true)
                 }
             }
             if status == 410 {
@@ -398,7 +429,8 @@ final class LiveActivityRelay {
                         startToken: record.encryptedValues["startToken"] as? String ?? "",
                         updateToken: record.encryptedValues["updateToken"] as? String ?? "",
                         updatedAt: record["updatedAt"] as? Date ?? .distantPast,
-                        app: record["app"] as? String ?? "")
+                        app: record["app"] as? String ?? "",
+                        mochiSounds: (record["mochiSounds"] as? String) != "0")
                 }
                 for deletion in changes.deletions where deletion.recordType == "PhoneToken" {
                     phones[deletion.recordID.recordName] = nil

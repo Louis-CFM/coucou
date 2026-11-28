@@ -478,8 +478,12 @@ final class PhoneLink {
         _ = await fetchChanges()
         let shown = await Self.shownApprovals().map { $0.fingerprint }
         for session in fresh where !shown.contains(session.approvalFingerprint) {
+            // Skip the fallback if the Live Activity is already displaying this approval's
+            // Allow/Deny buttons — the LA push is the alert in that case.
+            let laShowsThisApproval = LiveActivityLink.shared.currentApprovalFingerprint == session.approvalFingerprint
             guard pendingFingerprints.contains(session.approvalFingerprint),
-                  !iCloudAlerted.contains(session.approvalFingerprint) else { continue }
+                  !iCloudAlerted.contains(session.approvalFingerprint),
+                  !laShowsThisApproval else { continue }
             let content = UNMutableNotificationContent()
             content.title = "\(session.pillName) · \(session.title)"
             content.body = session.approvalCommand.isEmpty

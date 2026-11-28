@@ -26,6 +26,7 @@ interface RelayRequest {
   urgent?: boolean;
   dismissAfter?: number;   // "end" only: seconds the final state stays on the Lock Screen
   app?: string;            // the iPhone app's bundle id (Coucou or Botan); default APNS_TOPIC
+  sound?: string;          // "approval.wav" or "default" for urgent update alerts
 }
 
 const MAX_BODY_BYTES = 4096;
@@ -126,6 +127,9 @@ function validate(body: RelayRequest): string | null {
   if (body.dismissAfter !== undefined &&
       (typeof body.dismissAfter !== "number" || !Number.isInteger(body.dismissAfter) ||
        body.dismissAfter < 0 || body.dismissAfter > 4 * 3600)) return "dismissAfter";
+  if (body.sound !== undefined &&
+      (typeof body.sound !== "string" || body.sound.length > 64 ||
+       !/^[a-zA-Z0-9_.]+$/.test(body.sound))) return "sound";
   return null;
 }
 
@@ -154,9 +158,12 @@ function buildPayload(body: RelayRequest) {
   }
   if (body.event === "update" && body.urgent) {
     // Waiting for your OK or a question: the Dynamic Island opens and the
-    // Lock Screen lights up, with Allow / Deny right there. No sound: the
-    // approval notification already makes one.
+    // Lock Screen lights up, with Allow / Deny right there.
     aps["alert"] = { title: String(state.agent), body: String(state.statusText) };
+    // Sound is set by the Mac based on the iPhone's Mochi sounds preference.
+    if (typeof body.sound === "string" && body.sound.length > 0) {
+      aps["sound"] = body.sound;
+    }
   }
   if (body.event === "end") {
     aps["dismissal-date"] = now + (body.dismissAfter ?? 0);
@@ -207,3 +214,6 @@ function base64url(input: string | Uint8Array): string {
 function text(status: number, message: string): Response {
   return new Response(message, { status, headers: { "content-type": "text/plain" } });
 }
+
+// Named exports for unit testing.
+export { validate, buildPayload };

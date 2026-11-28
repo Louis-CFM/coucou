@@ -452,6 +452,8 @@ struct NotchHeader: View {
                             panel(waiting)
                                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26))
                                 .glassEffectID("panel", in: glass)
+                                // Mirror the entry animation on exit (move down + fade).
+                                .transition(.move(edge: .top).combined(with: .opacity))
                         }
                     }
                 }

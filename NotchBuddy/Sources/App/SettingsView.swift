@@ -153,6 +153,7 @@ struct SettingsView: View {
     @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
     @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
     @AppStorage(LiveActivityRelay.unlockedKey) private var iPhoneLiveActivityWhileUnlocked = false
+    @AppStorage(ApprovalRelay.approvalAlwaysNotifyKey) private var approvalAlwaysNotify = false
     @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
     #endif
     @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
@@ -570,6 +571,14 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                Toggle("Approval alerts: always notify (default: only when Live Activity isn't there)", isOn: $approvalAlwaysNotify)
+                    .disabled(!iPhoneSyncEnabled || !iPhoneLiveActivityEnabled)
+                    .padding(.leading, 18)
+                Text("When the Live Activity is running, its alert is the approval banner. Enable this only if you want both.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 18)
                 #if !APPSTORE
                 Toggle(String(localized: "iphone.instruction.toggle"), isOn: $iPhoneInstructionsEnabled)
                     .disabled(!iPhoneSyncEnabled)

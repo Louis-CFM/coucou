@@ -16,10 +16,19 @@ import CryptoKit
 //     meant for another command, is ignored. Only "allow" and "deny" exist: no
 //     "always" from the phone.
 // The request record is deleted as soon as the approval is resolved, on either side.
+//
+// When the Live Activity is running and the LA push reached the iPhone (HTTP 200),
+// the LA update is the alert (banner + sound + Allow/Deny on the Lock Screen). In
+// that case the iCloud record is not written — it would add a second banner. If
+// the LA push fails (relay down, no token), iCloud is used as before.
+// The user can override this with the "always" notification setting (SettingsView).
 
 @MainActor
 final class ApprovalRelay {
     static let shared = ApprovalRelay()
+
+    /// When true, the iCloud alert is sent even if the Live Activity already alerted.
+    static let approvalAlwaysNotifyKey = "approvalAlwaysNotify"
 
     private let container = CKContainer(identifier: "iCloud.fr.louisraille.Coucou")
     private var database: CKDatabase { container.privateCloudDatabase }
@@ -29,6 +38,10 @@ final class ApprovalRelay {
     private var current: (fingerprint: String, since: Date)?
     private var pollTask: Task<Void, Never>?
     private var changeToken: CKServerChangeToken?
+    /// iCloud fallback: published after a delay if the Live Activity push didn't fire first.
+    private var iCloudFallbackTask: Task<Void, Never>?
+    /// When each fingerprint was first notified (across any channel), for the 2-min cooldown.
+    private var recentlyNotified: [String: Date] = [:]
 
     /// Stable identifier of one pending request.
     nonisolated static func fingerprint(_ approval: ApprovalInfo) -> String {
@@ -51,6 +64,8 @@ final class ApprovalRelay {
 
     func stop() {
         cancellable = nil
+        iCloudFallbackTask?.cancel()
+        iCloudFallbackTask = nil
         pendingChanged(to: nil)
     }
 
@@ -63,13 +78,16 @@ final class ApprovalRelay {
         if let old = current, old.fingerprint != fingerprint {
             pollTask?.cancel()
             pollTask = nil
+            iCloudFallbackTask?.cancel()
+            iCloudFallbackTask = nil
             current = nil
             let id = requestID(old.fingerprint)
             Task { _ = try? await database.modifyRecords(saving: [], deleting: [id]) }
         }
         guard let fingerprint, let approval, current?.fingerprint != fingerprint else { return }
         current = (fingerprint, Date())
-        Task { await publishRequest(approval, fingerprint: fingerprint) }
+
+        // Decision polling — always, regardless of which channel handles the notification.
         pollTask = Task { [weak self] in
             // The Mac dismisses the request after 115 s anyway.
             for _ in 0..<60 {
@@ -78,6 +96,42 @@ final class ApprovalRelay {
                 if await self.checkDecisions(for: fingerprint) { return }
             }
         }
+
+        // 2-minute cooldown: same fingerprint (Claude retries the same command) doesn't ring again.
+        let now = Date()
+        recentlyNotified = recentlyNotified.filter { now.timeIntervalSince($0.value) < 180 }
+        if let first = recentlyNotified[fingerprint], now.timeIntervalSince(first) < 120 {
+            log("approval (\(approval.tool)): within 2-min cooldown, polling only")
+            return
+        }
+        recentlyNotified[fingerprint] = now
+
+        // When the Live Activity is active, let it be the alert (it shows Allow/Deny and
+        // plays approval.wav right on the Lock Screen). The LA relay calls
+        // liveActivityHandledApproval() if the push goes through; otherwise the fallback
+        // below publishes the iCloud record and the query subscription delivers the banner.
+        let laActive = LiveActivityRelay.isEnabled && LiveActivityRelay.shared.startedAt != nil
+        let alwaysNotify = UserDefaults.standard.bool(forKey: Self.approvalAlwaysNotifyKey)
+        if laActive && !alwaysNotify {
+            // Give the LA relay time to push (1 s debounce + network ≈ 5 s; 20 s to be safe).
+            iCloudFallbackTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(20))
+                guard !Task.isCancelled, let self else { return }
+                await self.publishRequest(approval, fingerprint: fingerprint)
+            }
+            log("approval (\(approval.tool)): LA active, waiting for relay before iCloud")
+        } else {
+            Task { await publishRequest(approval, fingerprint: fingerprint) }
+        }
+    }
+
+    /// Called by `LiveActivityRelay` when its urgent push reached the iPhone (HTTP 200).
+    /// Cancels the iCloud fallback so only one alert is delivered.
+    func liveActivityHandledApproval(_ fingerprint: String) {
+        guard current?.fingerprint == fingerprint else { return }
+        iCloudFallbackTask?.cancel()
+        iCloudFallbackTask = nil
+        log("approval (\(fingerprint.prefix(8))…): LA delivered, iCloud record skipped")
     }
 
     private func requestID(_ fingerprint: String) -> CKRecord.ID {

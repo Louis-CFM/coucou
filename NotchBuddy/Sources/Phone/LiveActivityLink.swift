@@ -36,6 +36,13 @@ final class LiveActivityLink {
 
     var activitiesEnabled: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
 
+    /// The approval fingerprint the Live Activity is currently showing, if any.
+    /// Used by PhoneLink to skip the iCloud fallback notification when the LA is handling the alert.
+    var currentApprovalFingerprint: String? {
+        Activity<MochiActivityAttributes>.activities
+            .first(where: { $0.activityState == .active })?.content.state.approval
+    }
+
     func start() {
         guard !started else { return }
         started = true
@@ -50,8 +57,21 @@ final class LiveActivityLink {
                 watch(activity)
             }
         }
-        // Activities already running when the app launches.
-        for activity in Activity<MochiActivityAttributes>.activities { watch(activity) }
+        // Activities already running when the app launches: keep one, end the rest.
+        // Without this, `watch()` processes them in creation order and they compete to kill
+        // each other — the oldest (possibly a ghost from a finished session) can win.
+        let existing = Activity<MochiActivityAttributes>.activities
+        let active = existing.filter { $0.activityState == .active }
+        // Prefer the activity the Mac holds an update token for; fall back to the last one
+        // (last in the array tends to be the most recently started).
+        let keeper = active.first(where: { $0.id == activityID }) ?? active.last
+        // Watch all without inner dedup: we handle it here.
+        for activity in existing { watch(activity, dedup: false) }
+        // End all non-keeper active activities right away.
+        for activity in active where activity.id != keeper?.id {
+            let id = activity.id
+            Task { await Self.end(id: id, with: nil) }
+        }
     }
 
     /// The activity follows the sessions from here, each time the app is awake (open, an
@@ -62,6 +82,8 @@ final class LiveActivityLink {
     /// The Mac starts it when the app is closed (iOS starts one in the background only on a
     /// push); with the app open, the iPhone starts it itself.
     func sessionsChanged(_ sessions: [SessionItem]) {
+        // Every wake: drop any activity whose session is gone or that shouldn't be here.
+        purgeExtras()
         answered = answered.filter { Date().timeIntervalSince($0.value) < 120 }
         let lead = Self.leadState(sessions, answered: Set(answered.keys))
         guard let activity = Activity<MochiActivityAttributes>.activities.first(where: { $0.activityState == .active }) else {
@@ -164,13 +186,31 @@ final class LiveActivityLink {
             approval: urgency == 0 && !session.approvalFingerprint.isEmpty ? session.approvalFingerprint : nil)
     }
 
-    private func watch(_ activity: Activity<MochiActivityAttributes>) {
-        guard watched.insert(activity.id).inserted else { return }
-        // One Mochi at a time: the newest one stays.
-        let newest = activity.id
-        for older in Activity<MochiActivityAttributes>.activities where older.id != newest && older.activityState == .active {
-            let id = older.id
+    /// Ends all active activities except the canonical one.
+    /// Called at every session change so a ghost (from a finished session on the Mac that never
+    /// sent an end push) doesn't linger after the app wakes up.
+    private func purgeExtras() {
+        let active = Activity<MochiActivityAttributes>.activities.filter { $0.activityState == .active }
+        guard active.count > 1 else { return }
+        let keeper = active.first(where: { $0.id == activityID }) ?? active.last
+        for activity in active where activity.id != keeper?.id {
+            let id = activity.id
             Task { await Self.end(id: id, with: nil) }
+        }
+    }
+
+    /// Starts tracking an activity's tokens and state.
+    /// - Parameter dedup: when `true` (new activity from push/stream), ends all other active
+    ///   activities immediately. When `false` (existing activities enumerated at launch), dedup
+    ///   is handled by `start()` to avoid a race where activities compete to kill each other.
+    private func watch(_ activity: Activity<MochiActivityAttributes>, dedup: Bool = true) {
+        guard watched.insert(activity.id).inserted else { return }
+        if dedup {
+            // One Mochi at a time: the newest one stays.
+            for older in Activity<MochiActivityAttributes>.activities where older.id != activity.id && older.activityState == .active {
+                let id = older.id
+                Task { await Self.end(id: id, with: nil) }
+            }
         }
         Task {
             for await data in activity.pushTokenUpdates {
@@ -199,6 +239,8 @@ final class LiveActivityLink {
         record["deviceName"] = UIDevice.current.name
         // Which app the tokens belong to (Botan or Coucou): the relay pushes to that app.
         record["app"] = Bundle.main.bundleIdentifier ?? ""
+        // The Mac reads this to pick the right sound for Live Activity approval alerts.
+        record["mochiSounds"] = PhoneSettings.mochiSounds ? "1" : "0"
         record.encryptedValues["startToken"] = startToken
         record.encryptedValues["updateToken"] = updateToken
         // Several tokens can arrive at once; the last write wins, with all fields.
